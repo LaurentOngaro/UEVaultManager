@@ -261,7 +261,7 @@ class LegendaryCore:
 
         cached = self.lgd.get_cached_version()
         version_info = cached['data']
-        if force or not version_info or (datetime.now().timestamp() - cached['last_update']) > 24*3600:
+        if force or not version_info or (datetime.now().timestamp() - cached['last_update']) > 24 * 3600:
             version_info = self.lgdapi.get_version_information()
             self.lgd.set_cached_version(version_info)
 
@@ -1521,8 +1521,8 @@ class LegendaryCore:
             min_disk_space = analysis.disk_space_delta
             _, _, free = shutil.disk_usage(base_path)
             if free < min_disk_space:
-                free_gib = free / 1024**3
-                required_gib = min_disk_space / 1024**3
+                free_gib = free / 1024 ** 3
+                required_gib = min_disk_space / 1024 ** 3
                 if ignore_space_req:
                     results.warnings.add(f'Potentially not enough available disk space! '
                                          f'{free_gib:.02f} GiB < {required_gib:.02f} GiB')
@@ -1899,7 +1899,7 @@ class LegendaryCore:
     def check_for_overlay_updates(self):
         cached = self.lgd.get_cached_overlay_version()
         version_info = cached['data']
-        if not version_info or (datetime.now().timestamp() - cached['last_update']) > 24*3600:
+        if not version_info or (datetime.now().timestamp() - cached['last_update']) > 24 * 3600:
             # start anoymous session for update check if we're not logged in yet
             if not self.logged_in:
                 self.egs.start_session(client_credentials=True)

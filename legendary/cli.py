@@ -2382,7 +2382,7 @@ class LegendaryCLI:
                 default_choice = None
                 for i, bottle in enumerate(usable_bottles, start=1):
                     extra = []
-                    
+
                     if cx_version in bottle['cx_versions']:
                         if app_name in bottle['compatible_apps']:
                             extra.append('recommended')
