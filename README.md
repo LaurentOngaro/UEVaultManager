@@ -184,12 +184,6 @@ usage: UEVaultManager list [-h] [--platform <Platform>] [--include-ue] [-T] [--c
 
 optional arguments:
   -h, --help            show this help message and exit
-  --platform <Platform>
-                        Platform to fetch game list for (default: Mac on
-                        macOS, otherwise Windows)
-  -T, --third-party, --include-non-installable
-                        Include apps that are not installable (e.g. that have
-                        to be activated on Origin)
   --csv                 List asset in CSV format
   --tsv                 List asset in TSV format
   --json                List asset in JSON format
@@ -208,8 +202,6 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --force-download      Always download instead of using on-disk manifest
-  --platform <Platform>
-                        Platform (default: Mac on macOS, otherwise Windows)
   --manifest <uri>      Manifest URL or path to use instead of the CDN one
   --csv                 Output in CSV format
   --tsv                 Output in TSV format
