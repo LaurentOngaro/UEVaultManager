@@ -33,13 +33,13 @@ class LGDLFS:
         # EGS asset data
         self._assets = None
         # EGS metadata
-        self._game_metadata = dict()
+        self._assets_metadata = dict()
         # UEVaultManager update check info
         self._update_info = None
         # UE assets metadata cache data (Hack LO)
         self._ue_assets_cache_data = None
 
-        # Config with game specific settings (e.g. start parameters, env variables)
+        # Config with item specific settings (e.g. start parameters, env variables)
         self.config = LGDConf(comment_prefixes='/', allow_no_value=True)
 
         if config_file:
@@ -109,9 +109,9 @@ class LGDLFS:
         for gm_file in os.listdir(os.path.join(self.path, 'metadata')):
             try:
                 _meta = json.load(open(os.path.join(self.path, 'metadata', gm_file)))
-                self._game_metadata[_meta['app_name']] = _meta
+                self._assets_metadata[_meta['app_name']] = _meta
             except Exception as e:
-                self.log.debug(f'Loading game meta file "{gm_file}" failed: {e!r}')
+                self.log.debug(f'Loading asset meta file "{gm_file}" failed: {e!r}')
 
         # load auto-aliases if enabled
         self.aliases = dict()
@@ -216,27 +216,27 @@ class LGDLFS:
             f.write(manifest_data)
 
     def get_item_meta(self, app_name):
-        if _meta := self._game_metadata.get(app_name, None):
+        if _meta := self._assets_metadata.get(app_name, None):
             return App.from_json(_meta)
         return None
 
-    def set_game_meta(self, app_name, meta):
+    def set_item_meta(self, app_name, meta):
         json_meta = meta.__dict__
-        self._game_metadata[app_name] = json_meta
+        self._assets_metadata[app_name] = json_meta
         meta_file = os.path.join(self.path, 'metadata', f'{app_name}.json')
         json.dump(json_meta, open(meta_file, 'w'), indent=2, sort_keys=True)
 
-    def delete_game_meta(self, app_name):
-        if app_name not in self._game_metadata:
-            raise ValueError(f'Game {app_name} does not exist in metadata DB!')
+    def delete_item_meta(self, app_name):
+        if app_name not in self._assets_metadata:
+            raise ValueError(f'Item {app_name} does not exist in metadata DB!')
 
-        del self._game_metadata[app_name]
+        del self._assets_metadata[app_name]
         meta_file = os.path.join(self.path, 'metadata', f'{app_name}.json')
         if os.path.exists(meta_file):
             os.remove(meta_file)
 
-    def get_game_app_names(self):
-        return sorted(self._game_metadata.keys())
+    def get_item_app_names(self):
+        return sorted(self._assets_metadata.keys())
 
     def get_tmp_path(self):
         return os.path.join(self.path, 'tmp')
@@ -327,16 +327,16 @@ class LGDLFS:
         collisions = set()
         alias_map = defaultdict(set)
 
-        for app_name in self._game_metadata.keys():
-            game = self.get_item_meta(app_name)
-            if game.is_dlc:
+        for app_name in self._assets_metadata.keys():
+            item = self.get_item_meta(app_name)
+            if item.is_dlc:
                 continue
-            game_folder = game.metadata.get('customAttributes', {}).get('FolderName', {}).get('value', None)
-            _aliases = generate_aliases(game.app_title, game_folder=game_folder, app_name=game.app_name)
+            item_folder = item.metadata.get('customAttributes', {}).get('FolderName', {}).get('value', None)
+            _aliases = generate_aliases(item.app_title, item_folder=item_folder, app_name=item.app_name)
             for alias in _aliases:
                 if alias not in aliases:
                     aliases.add(alias)
-                    alias_map[game.app_name].add(alias)
+                    alias_map[item.app_name].add(alias)
                 else:
                     collisions.add(alias)
 

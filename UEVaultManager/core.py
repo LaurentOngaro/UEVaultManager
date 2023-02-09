@@ -10,12 +10,11 @@ from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha1
 from locale import getdefaultlocale
 from platform import system
-from requests import session
+from requests import session, __version__
 from requests.exceptions import HTTPError, ConnectionError
 from urllib.parse import urlparse
 from datetime import datetime
 
-from UEVaultManager import __version__
 from UEVaultManager.api.egs import EPCAPI
 from UEVaultManager.api.lgd import LGDAPI
 from UEVaultManager.lfs.egl import EPCLFS
@@ -29,14 +28,13 @@ from UEVaultManager.utils.env import is_windows_mac_or_pyi
 from UEVaultManager.utils.game_workarounds import update_workarounds
 from UEVaultManager.utils.selective_dl import games as sdl_games
 
-
 # ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
 #  can handle to give the user more details. (Not required yet since there's no GUI so log output is fine)
 
 
-class LegendaryCore:
+class AppCore:
     """
-  LegendaryCore handles most of the lower level interaction with
+  AppCore handles most of the lower level interaction with
   the downloader, lfs, and api components to make writing CLI/GUI
   code easier and cleaner and avoid duplication.
   """
@@ -83,30 +81,32 @@ class LegendaryCore:
         self.ue_assets_update_available = False
         # after 15 days UE assets metadata cache will be invalidated
         self.ue_assets_max_cache_duration = 15 * 24 * 3600
+        # set to True to add more log
+        self.verbose_mode = False
 
     def auth_sid(self, sid) -> str:
         """
-    Handles getting an exchange code from an id
-    :param sid: session id
-    :return: exchange code
-    """
+        Handles getting an exchange code from an id
+        :param sid: session id
+        :return: exchange code
+        """
         s = session()
         s.headers.update(
             {
-                'X-Epic-Event-Action'  :
-                    'login',
+                'X-Epic-Event-Action':
+                'login',
                 'X-Epic-Event-Category':
-                    'login',
+                'login',
                 'X-Epic-Strategy-Flags':
-                    '',
-                'X-Requested-With'     :
-                    'XMLHttpRequest',
-                'User-Agent'           :
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                    'AppleWebKit/537.36 (KHTML, like Gecko) '
-                    f'EpicGamesLauncher/{self._egl_version} '
-                    'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
-                    'Chrome/84.0.4147.38 Safari/537.36'
+                '',
+                'X-Requested-With':
+                'XMLHttpRequest',
+                'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                f'EpicGamesLauncher/{self._egl_version} '
+                'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
+                'Chrome/84.0.4147.38 Safari/537.36'
             }
         )
         s.cookies['EPIC_COUNTRY'] = self.country_code.upper()
@@ -258,9 +258,9 @@ class LegendaryCore:
 
         web_version = version_info['release_info']['version']
 
+        self.update_available = version_tuple(web_version) > version_tuple(__version__)
         # version check is disabled because it's checking for Legendary
         # TODO: check UEVaultManager updates instead
-        # self.update_available = version_tuple(web_version) > version_tuple(__version__)
         self.update_available = False
 
         self.apply_lgd_config(version_info)
@@ -332,7 +332,7 @@ class LegendaryCore:
 
             assets = self.lgd.assets.copy() if self.lgd.assets else dict()
 
-            assets.update({platform: [AppAsset.from_egs_json(a) for a in self.egs.get_game_assets(platform=platform)]})
+            assets.update({platform: [AppAsset.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
 
             # only save (and write to disk) if there were changes
             if self.lgd.assets != assets:
@@ -404,7 +404,8 @@ class LegendaryCore:
         bypass_count = 0
         for app_name, app_assets in sorted(assets.items()):
             if app_assets['Windows'].namespace != 'ue':
-                self.log.info(f' {app_name} has been bypassed #1')
+                if self.verbose_mode:
+                    self.log.info(f' {app_name} has been bypassed #1')
                 bypass_count += 1
                 continue
 
@@ -418,18 +419,19 @@ class LegendaryCore:
         force_refresh = self.ue_assets_update_available
 
         # loop through valid items (Hack LO)
-        for libitem in valid_items:
-            app_name = libitem["name"]
-            app_assets = libitem["asset"]
-            self.log.info(f' adding {app_name} / {app_assets["Windows"].namespace} to the list')
+        for lib_item in valid_items:
+            app_name = lib_item["name"]
+            app_assets = lib_item["asset"]
+            if self.verbose_mode:
+                self.log.info(f' adding {app_name} / {app_assets["Windows"].namespace} to the list')
 
-            game = self.lgd.get_item_meta(app_name)
+            item = self.lgd.get_item_meta(app_name)
             asset_updated = False
-            if game:
-                asset_updated = any(game.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
-                apps[app_name] = game
+            if item:
+                asset_updated = any(item.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
+                apps[app_name] = item
 
-            if update_assets and (not game or force_refresh or (game and asset_updated)):
+            if update_assets and (not item or force_refresh or (item and asset_updated)):
                 self.log.debug(f'Scheduling metadata update for {app_name}')
                 # namespace/catalog item are the same for all platforms, so we can just use the first one
                 _ga = next(iter(app_assets.values()))
@@ -440,7 +442,7 @@ class LegendaryCore:
             name, namespace, catalog_item_id = args
             eg_meta = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
             app = App(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
-            self.lgd.set_game_meta(app.app_name, app)
+            self.lgd.set_item_meta(app.app_name, app)
             apps[name] = app
             # (Hack LO) some items to update could have bypassed
             try:
@@ -463,21 +465,22 @@ class LegendaryCore:
             # skip all items that are not UE assets if the --ue-assets-only command line option has been used (Hack LO)
             # if ue_assets_only and all(v.namespace != 'ue' for v in app_assets.values()):
             if app_assets['Windows'].namespace != 'ue':
-                self.log.info(f' {app_name} has been bypassed #3')
+                if self.verbose_mode:
+                    self.log.info(f' {app_name} has been bypassed #3')
                 bypass_count += 1
                 continue
 
-            game = apps.get(app_name)
+            item = apps.get(app_name)
             # retry if metadata is still missing/threaded loading wasn't used
-            if not game or app_name in still_needs_update:
+            if not item or app_name in still_needs_update:
                 if use_threads:
                     self.log.warning(f'Fetching metadata for {app_name} failed, retrying')
                 _ga = next(iter(app_assets.values()))
                 fetch_asset_meta((app_name, _ga.namespace, _ga.catalog_item_id))
-                game = apps[app_name]
+                item = apps[app_name]
 
-            if not any(i['path'] == 'mods' for i in game.metadata.get('categories', [])) and platform in app_assets:
-                _ret.append(game)
+            if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])) and platform in app_assets:
+                _ret.append(item)
 
         self.update_aliases(force=meta_updated)
         if meta_updated:
@@ -486,20 +489,20 @@ class LegendaryCore:
         return _ret, _dlc
 
     def _prune_metadata(self):
-        # compile list of games without assets, then delete their metadata
+        # compile list of items without assets, then delete their metadata
 
-        for app_name in self.lgd.get_game_app_names():
+        for app_name in self.lgd.get_item_app_names():
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
-            self.lgd.delete_game_meta(app_name)
+            self.lgd.delete_item_meta(app_name)
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
         """
-    Gets a list of Games without assets for installation, for instance Games delivered via
+    Gets a list of Items without assets for installation, for instance Items delivered via
     third-party stores that do not have assets for installation
 
     :param force_refresh: Force a metadata refresh
-    :param skip_ue: Ingore Unreal Marketplace entries
-    :return: List of Games and DLC that do not have assets
+    :param skip_ue: Ignore Unreal Marketplace entries
+    :return: List of Items that do not have assets
     """
         _ret = []
         _dlc = defaultdict(list)
@@ -512,16 +515,16 @@ class LegendaryCore:
             if libitem['appName'] in ignore:
                 continue
 
-            game = self.lgd.get_item_meta(libitem['appName'])
-            if not game or force_refresh:
+            item = self.lgd.get_item_meta(libitem['appName'])
+            if not item or force_refresh:
                 eg_meta = self.egs.get_item_info(libitem['namespace'], libitem['catalogItemId'])
-                game = App(app_name=libitem['appName'], app_title=eg_meta['title'], metadata=eg_meta)
-                self.lgd.set_game_meta(game.app_name, game)
+                item = App(app_name=libitem['appName'], app_title=eg_meta['title'], metadata=eg_meta)
+                self.lgd.set_item_meta(item.app_name, item)
 
-            if game.is_dlc:
-                _dlc[game.metadata['mainGameItem']['id']].append(game)
-            elif not any(i['path'] == 'mods' for i in game.metadata.get('categories', [])):
-                _ret.append(game)
+            if item.is_dlc:
+                _dlc[item.metadata['mainGameItem']['id']].append(item)
+            elif not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])):
+                _ret.append(item)
 
         # Force refresh to make sure these titles are included in aliasing
         self.update_aliases(force=True)
@@ -544,8 +547,8 @@ class LegendaryCore:
         else:
             return Manifest.read_all(data)
 
-    def get_cdn_urls(self, game, platform='Windows'):
-        m_api_r = self.egs.get_game_manifest(game.namespace, game.catalog_item_id, game.app_name, platform)
+    def get_cdn_urls(self, item, platform='Windows'):
+        m_api_r = self.egs.get_item_manifest(item.namespace, item.catalog_item_id, item.app_name, platform)
 
         # never seen this outside the launcher itself, but if it happens: PANIC!
         if len(m_api_r['elements']) > 1:
@@ -567,8 +570,8 @@ class LegendaryCore:
 
         return manifest_urls, base_urls, manifest_hash
 
-    def get_cdn_manifest(self, game, platform='Windows', disable_https=False):
-        manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(game, platform)
+    def get_cdn_manifest(self, item, platform='Windows', disable_https=False):
+        manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(item, platform)
         if not manifest_urls:
             raise ValueError('No manifest URLs returned by API')
 

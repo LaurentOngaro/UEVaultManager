@@ -133,7 +133,7 @@ class EPCAPI:
     def invalidate_session(self):  # unused
         _ = self.session.delete(f'https://{self._oauth_host}/account/api/oauth/sessions/kill/{self.access_token}', timeout=self.request_timeout)
 
-    def get_game_token(self):
+    def get_item_token(self):
         r = self.session.get(f'https://{self._oauth_host}/account/api/oauth/exchange', timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
@@ -155,14 +155,14 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_game_assets(self, platform='Windows', label='Live'):
+    def get_item_assets(self, platform='Windows', label='Live'):
         r = self.session.get(
             f'https://{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.request_timeout
         )
         r.raise_for_status()
         return r.json()
 
-    def get_game_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live'):
+    def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live'):
         r = self.session.get(
             f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform'
             f'/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app'

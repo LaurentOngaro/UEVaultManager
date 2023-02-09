@@ -16,7 +16,7 @@ from platform import platform
 from sys import exit, stdout, platform as sys_platform
 
 from UEVaultManager import __version__, __codename__
-from UEVaultManager.core import LegendaryCore
+from UEVaultManager.core import AppCore
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
@@ -28,7 +28,7 @@ logger = logging.getLogger('cli')
 class UEVaultManagerCLI:
 
     def __init__(self, override_config=None, api_timeout=None):
-        self.core = LegendaryCore(override_config, timeout=api_timeout)
+        self.core = AppCore(override_config, timeout=api_timeout)
         self.logger = logging.getLogger('cli')
         self.logging_queue = None
 
@@ -149,153 +149,95 @@ class UEVaultManagerCLI:
 
         # (Hack LO) add ue_assets_only argument
         items, dlc_list = self.core.get_inner_asset_list()
-        # Get information for games that cannot be installed through UEVaultManager (yet), such
+        # Get information for items that cannot be installed through UEVaultManager (yet), such
         # as games that have to be activated on and launched through Origin.
         if args.include_noasset:
-            na_games, na_dlcs = self.core.get_non_asset_library_items(skip_ue=not args.include_ue)
-            items.extend(na_games)
+            na_items, na_dlcs = self.core.get_non_asset_library_items(skip_ue=not args.include_ue)
+            items.extend(na_items)
 
         # sort games and dlc by name
         items = sorted(items, key=lambda x: x.app_title.lower())
 
-        # add some metadata in the returned list og "games" for ue only assets (Hack LO)
-        if args.ue_assets_only:
-            dummy_text = "dummy_text"
-            # output with extended info
-            if args.csv or args.tsv:
-                writer = csv.writer(stdout, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
+        dummy_text = "dummy_text"
+        # output with extended info
+        if args.csv or args.tsv:
+            writer = csv.writer(stdout, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
+            writer.writerow(
+                [
+                    # dans les infos
+                    'App name', 'App title', 'Asset_id', 'Image', 'Url', 'UE Version', 'compatible Versions', 'Review', 'Vendeur', 'Description',
+                    'Categorie', 'Prix', 'uid', 'Date Creation', 'Date Updated', 'Status'
+                    # calculés lors de l'ajout
+                    , 'Date Ajout', 'En Promo', 'Ancien Prix'
+                    # Complétés par l'utilisateur
+                    , 'Emplacement', 'A Acheter', 'Test', 'Avis', 'Remarque', 'Commentaire', 'Dossier Test', 'Dossier Asset', 'Alternative'
+                ]
+            )
+            for asset in items:
+                metadata = asset.metadata
+                asset_id = asset.asset_infos['Windows'].asset_id
+                uid = metadata["id"]
+                separator = ','
+                tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata["releaseInfo"]]
+                compatible_versions = separator.join(tmp_list)
+
+                # the following methods always return an empty vamue due to an obsolete API call:
+                price = self.core.egs.get_assets_price(uid)
+                review = self.core.egs.get_assets_review(asset_id)
+
+                print(f'price {price} review {review}')
                 writer.writerow(
-                    [
+                    (
                         # dans les infos
-                        'App name', 'App title', 'Asset_id', 'Image', 'Url', 'UE Version', 'compatible Versions', 'Review', 'Vendeur', 'Description',
-                        'Categorie', 'Prix', 'uid', 'Date Creation', 'Date Updated', 'Status'
-                        # calculés lors de l'ajout
-                        , 'Date Ajout', 'En Promo', 'Ancien Prix'
-                        # Complétés par l'utilisateur
-                        , 'Emplacement', 'A Acheter', 'Test', 'Avis', 'Remarque', 'Commentaire', 'Dossier Test', 'Dossier Asset', 'Alternative'
-                    ]
-                )
-                for game in items:
-                    metadata = game.metadata
-                    asset_id = game.asset_infos['Windows'].asset_id
-                    uid = metadata["id"]
-                    separator = ','
-                    tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata["releaseInfo"]]
-                    compatible_versions = separator.join(tmp_list)
+                        asset.app_name  # 'App name'
+                        , asset.app_title  # 'App title'
+                        , asset_id  # 'asset_id'
+                        , metadata["keyImages"][2]["url"]  # 'Image' with 488 height
+                        , f'https://www.unrealengine.com/marketplace/en-US/product/{asset_id}'  # 'Url'
+                        , asset.app_version(args.platform)  # 'UE Version'
+                        , compatible_versions  # compatible_versions
+                        , review  # 'Review'
+                        , metadata["developer"]  # 'Vendeur'
+                        , metadata["description"]  # 'Description'
+                        , metadata["categories"][0]['path']  # 'Categorie'
+                        , price  # 'Prix'
+                        , uid  # 'uid'
+                        , metadata["creationDate"]  # 'Date creation'
+                        , metadata["lastModifiedDate"]  # 'Date MAJ'
+                        , metadata["status"]  # 'status'
 
-                    # the following methods always return an empty vamue due to an obsolete API call:
-                    price = self.core.egs.get_assets_price(uid)
-                    review = self.core.egs.get_assets_review(asset_id)
+                        # calculé lors de l'ajout
+                        , dummy_text  # 'Date Ajout'
+                        , dummy_text  # 'En Promo'
+                        , dummy_text  # 'Ancien Prix'
 
-                    print(f'price {price} review {review}')
-                    writer.writerow(
-                        (
-                            # dans les infos
-                            game.app_name  # 'App name'
-                            , game.app_title  # 'App title'
-                            , asset_id  # 'asset_id'
-                            , metadata["keyImages"][2]["url"]  # 'Image' with 488 height
-                            , f'https://www.unrealengine.com/marketplace/en-US/product/{asset_id}'  # 'Url'
-                            , game.app_version(args.platform)  # 'UE Version'
-                            , compatible_versions  # compatible_versions
-                            , review  # 'Review'
-                            , metadata["developer"]  # 'Vendeur'
-                            , metadata["description"]  # 'Description'
-                            , metadata["categories"][0]['path']  # 'Categorie'
-                            , price  # 'Prix'
-                            , uid  # 'uid'
-                            , metadata["creationDate"]  # 'Date creation'
-                            , metadata["lastModifiedDate"]  # 'Date MAJ'
-                            , metadata["status"]  # 'status'
-
-                            # calculé lors de l'ajout
-                            , dummy_text  # 'Date Ajout'
-                            , dummy_text  # 'En Promo'
-                            , dummy_text  # 'Ancien Prix'
-
-                            # complétés par l'utilisateur
-                            , ''  # 'Emplacement'
-                            , ''  # 'A Acheter'
-                            , ''  # 'Test
-                            , ''  # 'Avis'
-                            , ''  # 'Remarque'
-                            , ''  # 'Commentaire'
-                            , ''  # 'Dossier Test'
-                            , ''  # 'Dossier Asset'
-                            , ''  # 'Alternative'
-                        )
+                        # complétés par l'utilisateur
+                        , ''  # 'Emplacement'
+                        , ''  # 'A Acheter'
+                        , ''  # 'Test
+                        , ''  # 'Avis'
+                        , ''  # 'Remarque'
+                        , ''  # 'Commentaire'
+                        , ''  # 'Dossier Test'
+                        , ''  # 'Dossier Asset'
+                        , ''  # 'Alternative'
                     )
-                return
+                )
+            return
 
-            if args.json:
-                _out = []
-                for game in items:
-                    _j = vars(game)
-                    _j['dlcs'] = [vars(dlc) for dlc in dlc_list[game.catalog_item_id]]
-                    _out.append(_j)
+        if args.json:
+            _out = []
+            for asset in items:
+                _j = vars(asset)
+                _j['dlcs'] = [vars(dlc) for dlc in dlc_list[asset.catalog_item_id]]
+                _out.append(_j)
 
-            print('\nAvailable UE Assets:')
-            for game in items:
-                version = game.app_version(args.platform)
-                print(f' * {game.app_title.strip()} (App name: {game.app_name} | Version: {version})')
+        print('\nAvailable UE Assets:')
+        for asset in items:
+            version = asset.app_version("Windows")
+            print(f' * {asset.app_title.strip()} (App name: {asset.app_name} | Version: {version})')
 
-            print(f'\nTotal: {len(items)}')
-
-        else:
-            # standard output
-            if args.csv or args.tsv:
-                writer = csv.writer(stdout, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
-                writer.writerow(['App name', 'App title', 'Version', 'Is DLC'])
-                for game in items:
-                    writer.writerow((game.app_name, game.app_title, game.app_version(args.platform), False))
-                    for dlc in dlc_list[game.catalog_item_id]:
-                        writer.writerow((dlc.app_name, dlc.app_title, dlc.app_version(args.platform), True))
-                return
-
-            if args.json:
-                _out = []
-                for game in items:
-                    _j = vars(game)
-                    _j['dlcs'] = [vars(dlc) for dlc in dlc_list[game.catalog_item_id]]
-                    _out.append(_j)
-
-                return self._print_json(_out, args.pretty_json)
-
-            print('\nAvailable Assets:')
-            for game in items:
-                version = game.app_version(args.platform)
-                print(f' * {game.app_title.strip()} (App name: {game.app_name} | Version: {version})')
-                # Games that "require" launching through EGL/UEVaultManager, but have to be installed and managed through
-                # a third-party application (such as Origin).
-                if not version:
-                    _store = game.third_party_store
-                    if _store == 'Origin':
-                        print(
-                            f'  - This game has to be activated, installed, and launched via Origin, use '
-                            f'"UEVaultManager launch --origin {game.app_name}" to activate and/or run the game.'
-                        )
-                    elif _store:
-                        print(f'  ! This game has to be installed through a third-party store ({_store}, not supported)')
-                    else:
-                        print('  ! No version information (unknown cause)')
-                # Games that have assets, but only require a one-time activation before they can be independently installed
-                # via a third-party platform (e.g. Uplay)
-                if game.partner_link_type:
-                    _type = game.partner_link_type
-                    if _type == 'ubisoft':
-                        print(
-                            '  - This game can be activated directly on your Ubisoft account and does not require '
-                            'UEVaultManager to install/run. Use "UEVaultManager activate --uplay" and follow the instructions.'
-                        )
-                    else:
-                        print(f'  ! This app requires linking to a third-party account (name: "{_type}", not supported)')
-
-                for dlc in dlc_list[game.catalog_item_id]:
-                    print(f'  + {dlc.app_title} (App name: {dlc.app_name} | Version: {dlc.app_version(args.platform)})')
-                    if not dlc.app_version(args.platform):
-                        print(f'   ! This DLC is either included in the base game, or not available for {args.platform}')
-
-            print(f'\nTotal: {len(items)}')
+        print(f'\nTotal: {len(items)}')
 
     def list_files(self, args):
         if args.platform:
@@ -316,11 +258,11 @@ class UEVaultManagerCLI:
             if not self.core.login():
                 logger.error('Login failed! Cannot continue with download process.')
                 exit(1)
-            game = self.core.get_item(args.app_name, update_meta=True)
-            if not game:
+            item = self.core.get_item(args.app_name, update_meta=True)
+            if not item:
                 logger.fatal(f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)')
                 exit(1)
-            manifest_data, _ = self.core.get_cdn_manifest(game, platform=args.platform)
+            manifest_data, _ = self.core.get_cdn_manifest(item, platform=args.platform)
 
         manifest = self.core.load_manifest(manifest_data)
         files = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
@@ -368,12 +310,12 @@ class UEVaultManagerCLI:
         else:
             user_name = self.core.lgd.userdata['displayName']
 
-        games_available = len(self.core.get_asset_list(update_assets=not args.offline))
+        assets_available = len(self.core.get_asset_list(update_assets=not args.offline))
         if args.json:
-            return self._print_json(dict(account=user_name, games_available=games_available, config_directory=self.core.lgd.path), args.pretty_json)
+            return self._print_json(dict(account=user_name, assets_available=assets_available, config_directory=self.core.lgd.path), args.pretty_json)
 
         print(f'Epic account: {user_name}')
-        print(f'Assets available: {games_available}')
+        print(f'Assets available: {assets_available}')
         print(f'Config directory: {self.core.lgd.path}')
         print(f'Platform (System): {platform()} ({os.name})')
         print(f'\nUEVaultManager version: {__version__} - "{__codename__}"')
@@ -404,13 +346,13 @@ class UEVaultManagerCLI:
                 pass
 
         # lists that will be printed or turned into JSON data
-        info_items = dict(game=list(), manifest=list(), install=list())
+        info_items = dict(assets=list(), manifest=list(), install=list())
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
 
-        game = self.core.get_item(app_name, update_meta=not args.offline, platform=args.platform)
-        if game and not self.core.asset_available(game, platform=args.platform):
+        item = self.core.get_item(app_name, update_meta=not args.offline, platform=args.platform)
+        if item and not self.core.asset_available(item, platform=args.platform):
             logger.warning(
-                f'Asset information for "{game.app_name}" is missing, this may be due to the game '
+                f'Asset information for "{item.app_name}" is missing, this may be due to the asset '
                 f'not being available on the selected platform or currently logged-in account.'
             )
             args.offline = True
@@ -427,52 +369,52 @@ class UEVaultManagerCLI:
                 with open(manifest_uri, 'rb') as f:
                     manifest_data = f.read()
             else:
-                logger.info('Game not installed and offline mode enabled, cannot load manifest.')
-        elif game:
+                logger.info('Asset not installed and offline mode enabled, cannot load manifest.')
+        elif item:
             entitlements = self.core.egs.get_user_entitlements()
-            egl_meta = self.core.egs.get_asset_info(game.namespace, game.catalog_item_id)
-            game.metadata = egl_meta
+            egl_meta = self.core.egs.get_asset_info(item.namespace, item.catalog_item_id)
+            item.metadata = egl_meta
             # Get manifest if asset exists for current platform
-            if args.platform in game.asset_infos:
-                manifest_data, _ = self.core.get_cdn_manifest(game, args.platform)
+            if args.platform in item.asset_infos:
+                manifest_data, _ = self.core.get_cdn_manifest(item, args.platform)
 
-        if game:
-            game_infos = info_items['game']
-            game_infos.append(InfoItem('App name', 'app_name', game.app_name, game.app_name))
-            game_infos.append(InfoItem('Title', 'title', game.app_title, game.app_title))
-            game_infos.append(InfoItem('Latest version', 'version', game.app_version(args.platform), game.app_version(args.platform)))
-            all_versions = {k: v.build_version for k, v in game.asset_infos.items()}
-            game_infos.append(InfoItem('All versions', 'platform_versions', all_versions, all_versions))
+        if item:
+            asset_infos = info_items['assets']
+            asset_infos.append(InfoItem('App name', 'app_name', item.app_name, item.app_name))
+            asset_infos.append(InfoItem('Title', 'title', item.app_title, item.app_title))
+            asset_infos.append(InfoItem('Latest version', 'version', item.app_version(args.platform), item.app_version(args.platform)))
+            all_versions = {k: v.build_version for k, v in item.asset_infos.items()}
+            asset_infos.append(InfoItem('All versions', 'platform_versions', all_versions, all_versions))
             # Cloud save support for Mac and Windows
-            game_infos.append(
+            asset_infos.append(
                 InfoItem(
-                    'Cloud saves supported', 'cloud_saves_supported', game.supports_cloud_saves or game.supports_mac_cloud_saves,
-                                                                      game.supports_cloud_saves or game.supports_mac_cloud_saves
+                    'Cloud saves supported', 'cloud_saves_supported', item.supports_cloud_saves or item.supports_mac_cloud_saves,
+                    item.supports_cloud_saves or item.supports_mac_cloud_saves
                 )
             )
             cs_dir = None
-            if game.supports_cloud_saves:
-                cs_dir = game.metadata['customAttributes']['CloudSaveFolder']['value']
-            game_infos.append(InfoItem('Cloud save folder (Windows)', 'cloud_save_folder', cs_dir, cs_dir))
+            if item.supports_cloud_saves:
+                cs_dir = item.metadata['customAttributes']['CloudSaveFolder']['value']
+            asset_infos.append(InfoItem('Cloud save folder (Windows)', 'cloud_save_folder', cs_dir, cs_dir))
 
             cs_dir = None
-            if game.supports_mac_cloud_saves:
-                cs_dir = game.metadata['customAttributes']['CloudSaveFolder_MAC']['value']
-            game_infos.append(InfoItem('Cloud save folder (Mac)', 'cloud_save_folder_mac', cs_dir, cs_dir))
+            if item.supports_mac_cloud_saves:
+                cs_dir = item.metadata['customAttributes']['CloudSaveFolder_MAC']['value']
+            asset_infos.append(InfoItem('Cloud save folder (Mac)', 'cloud_save_folder_mac', cs_dir, cs_dir))
 
-            game_infos.append(InfoItem('Is DLC', 'is_dlc', game.is_dlc, game.is_dlc))
+            asset_infos.append(InfoItem('Is DLC', 'is_dlc', item.is_dlc, item.is_dlc))
 
-            external_activation = game.third_party_store or game.partner_link_type
-            game_infos.append(InfoItem('Activates on external platform', 'external_activation', external_activation or 'No', external_activation))
+            external_activation = item.third_party_store or item.partner_link_type
+            asset_infos.append(InfoItem('Activates on external platform', 'external_activation', external_activation or 'No', external_activation))
 
             # Find custom launch options, if available
             launch_options = []
             i = 1
-            while f'extraLaunchOption_{i:03d}_Name' in game.metadata['customAttributes']:
+            while f'extraLaunchOption_{i:03d}_Name' in item.metadata['customAttributes']:
                 launch_options.append(
                     (
-                        game.metadata['customAttributes'][f'extraLaunchOption_{i:03d}_Name']['value'],
-                        game.metadata['customAttributes'][f'extraLaunchOption_{i:03d}_Args']['value']
+                        item.metadata['customAttributes'][f'extraLaunchOption_{i:03d}_Name']['value'],
+                        item.metadata['customAttributes'][f'extraLaunchOption_{i:03d}_Args']['value']
                     )
                 )
                 i += 1
@@ -483,16 +425,16 @@ class UEVaultManagerCLI:
                 for opt_name, opt_cmd in sorted(launch_options):
                     human_list.append(f'Name: "{opt_name}", Parameters: {opt_cmd}')
                     json_list.append(dict(name=opt_name, parameters=opt_cmd))
-                game_infos.append(InfoItem('Extra launch options', 'launch_options', human_list, json_list))
+                asset_infos.append(InfoItem('Extra launch options', 'launch_options', human_list, json_list))
             else:
-                game_infos.append(InfoItem('Extra launch options', 'launch_options', None, []))
+                asset_infos.append(InfoItem('Extra launch options', 'launch_options', None, []))
 
             # list all owned DLC based on entitlements
-            if entitlements and not game.is_dlc:
+            if entitlements and not item.is_dlc:
                 owned_entitlements = {i['entitlementName'] for i in entitlements}
                 owned_app_names = {g.app_name for g in self.core.get_assets(args.platform)}
                 owned_dlc = []
-                for dlc in game.metadata.get('dlcItemList', []):
+                for dlc in item.metadata.get('dlcItemList', []):
                     installable = dlc.get('releaseInfo', None)
                     if dlc['entitlementName'] in owned_entitlements:
                         owned_dlc.append((installable, None, dlc['title'], dlc['id']))
@@ -510,11 +452,11 @@ class UEVaultManagerCLI:
                             human_list.append(f'App name: {app_name}, Title: "{title}"')
                         else:
                             human_list.append(f'Title: "{title}" (no installation required)')
-                    game_infos.append(InfoItem('Owned DLC', 'owned_dlc', human_list, json_list))
+                    asset_infos.append(InfoItem('Owned DLC', 'owned_dlc', human_list, json_list))
                 else:
-                    game_infos.append(InfoItem('Owned DLC', 'owned_dlc', None, []))
+                    asset_infos.append(InfoItem('Owned DLC', 'owned_dlc', None, []))
             else:
-                game_infos.append(InfoItem('Owned DLC', 'owned_dlc', None, []))
+                asset_infos.append(InfoItem('Owned DLC', 'owned_dlc', None, []))
 
         if manifest_data:
             manifest_info = info_items['manifest']
@@ -618,9 +560,9 @@ class UEVaultManagerCLI:
                 else:
                     print(f'- {item.name}: {item.value}')
 
-            if info_items['game']:
-                print('\nGame Information:')
-                for info_item in info_items['game']:
+            if info_items['asset']:
+                print('\nAsset Information:')
+                for info_item in info_items['asset']:
                     print_info_item(info_item)
             if info_items['install']:
                 print('\nInstallation information:')
@@ -632,11 +574,11 @@ class UEVaultManagerCLI:
                     print_info_item(info_item)
 
             if not any(info_items.values()):
-                print('No game information available.')
+                print('No asset information available.')
         else:
-            json_out = dict(game=dict(), install=dict(), manifest=dict())
-            for info_item in info_items['game']:
-                json_out['game'][info_item.json_name] = info_item.json_value
+            json_out = dict(asset=dict(), install=dict(), manifest=dict())
+            for info_item in info_items['asset']:
+                json_out['asset'][info_item.json_name] = info_item.json_value
             for info_item in info_items['install']:
                 json_out['install'][info_item.json_name] = info_item.json_value
             for info_item in info_items['manifest']:

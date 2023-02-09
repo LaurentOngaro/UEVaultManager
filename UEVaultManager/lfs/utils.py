@@ -29,9 +29,7 @@ def delete_folder(path: str, recursive=True) -> bool:
         return True
 
 
-def delete_filelist(path: str, filenames: List[str],
-    delete_root_directory: bool = False,
-    silent: bool = False) -> bool:
+def delete_filelist(path: str, filenames: List[str], delete_root_directory: bool = False, silent: bool = False) -> bool:
     dirs = set()
     no_error = True
 
@@ -72,13 +70,12 @@ def delete_filelist(path: str, filenames: List[str],
             os.rmdir(path)
         except Exception as e:
             if not silent:
-                logger.error(f'Removing game directory failed with {e!r}')
+                logger.error(f'Removing directory failed with {e!r}')
 
     return no_error
 
 
-def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1',
-    large_file_threshold=1024 * 1024 * 512) -> Iterator[tuple]:
+def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1', large_file_threshold=1024 * 1024 * 512) -> Iterator[tuple]:
     """
     Validates the files in filelist in path against the provided hashes
 
@@ -114,7 +111,7 @@ def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1',
                 # enable progress indicator and go to new line
                 stdout.write('\n')
                 show_progress = True
-                interval = (_size / (1024 * 1024)) // 100
+                interval = (_size / (1024*1024)) // 100
                 start_time = perf_counter()
 
             with open(full_path, 'rb') as f:
@@ -124,18 +121,22 @@ def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1',
                     real_file_hash.update(chunk)
                     if show_progress and i % interval == 0:
                         pos = f.tell()
-                        perc = (pos / _size) * 100
+                        perc = (pos/_size) * 100
                         speed = pos / 1024 / 1024 / (perf_counter() - start_time)
-                        stdout.write(f'\r=> Verifying large file "{file_path}": {perc:.0f}% '
-                                     f'({pos / 1024 / 1024:.1f}/{_size / 1024 / 1024:.1f} MiB) '
-                                     f'[{speed:.1f} MiB/s]\t')
+                        stdout.write(
+                            f'\r=> Verifying large file "{file_path}": {perc:.0f}% '
+                            f'({pos / 1024 / 1024:.1f}/{_size / 1024 / 1024:.1f} MiB) '
+                            f'[{speed:.1f} MiB/s]\t'
+                        )
                         stdout.flush()
                     i += 1
 
                 if show_progress:
-                    stdout.write(f'\r=> Verifying large file "{file_path}": 100% '
-                                 f'({_size / 1024 / 1024:.1f}/{_size / 1024 / 1024:.1f} MiB) '
-                                 f'[{speed:.1f} MiB/s]\t\n')
+                    stdout.write(
+                        f'\r=> Verifying large file "{file_path}": 100% '
+                        f'({_size / 1024 / 1024:.1f}/{_size / 1024 / 1024:.1f} MiB) '
+                        f'[{speed:.1f} MiB/s]\t\n'
+                    )
 
                 result_hash = real_file_hash.hexdigest()
                 if file_hash != result_hash:
