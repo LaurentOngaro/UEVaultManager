@@ -223,7 +223,7 @@ class LGDLFS:
         with open(self._get_manifest_filename(app_name, version, platform), 'wb') as f:
             f.write(manifest_data)
 
-    def get_game_meta(self, app_name):
+    def get_item_meta(self, app_name):
         if _meta := self._game_metadata.get(app_name, None):
             return App.from_json(_meta)
         return None
@@ -343,7 +343,7 @@ class LGDLFS:
         alias_map = defaultdict(set)
 
         for app_name in self._game_metadata.keys():
-            game = self.get_game_meta(app_name)
+            game = self.get_item_meta(app_name)
             if game.is_dlc:
                 continue
             game_folder = game.metadata.get('customAttributes', {}).get('FolderName', {}).get('value', None)

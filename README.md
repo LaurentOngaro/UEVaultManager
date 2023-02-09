@@ -2,7 +2,10 @@
 
 ## A free and open-source Epic Games Launcher alternative
 
-UEVaultManager is an open-source game launcher that can download and install asset from the Epic Games platform on Linux, macOS, and Windows.
+UEVaultManager is an open-source assets manager that can list assets from the Epic Games Marketplace.
+Its main purpose is to list the assets (with or without user login) and save the list into a file that can be reused later as a data source (for instance
+in an Excel sheet).
+In a future versions, this application will also offer a GUI, and will be able to read directly the result file, display and edit the assets list. 
 
 Please read the [config file](#config-file) and [cli usage](#usage) sections before creating an issue to avoid invalid reports.
 
@@ -19,7 +22,13 @@ it has to be run from a terminal (e.g. PowerShell)
 **Planned:**
 
 - Simple GUI for managing assets (WIP)
-- Lots and lots of bug fixes, optimizations, and refactoring...
+- Install and download assets into Unreal VaultCache or projects folders
+
+**Special thanks:**
+
+This code is mainly a lighter version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some addition regarding the
+management of the unreal engine marketplace assets.
+Thanks to the Legendary team for the fantastic work on their tool.
 
 ## Requirements
 
@@ -31,8 +40,6 @@ it has to be run from a terminal (e.g. PowerShell)
   + `requests`
   + (optional) `pywebview` for webview-based login
   + (optional) `setuptools` and `wheel` for setup/building
-
-**Note:** Running Windows applications on Linux or macOS requires [Wine](https://www.winehq.org/).
 
 ## How to run/install
 
@@ -107,8 +114,8 @@ Otherwise, authentication is a little finicky since we have to go through the Ep
 The login page should open in your browser and after logging in you should be presented with a JSON response that contains a code ("
 authorizationCode"), just copy the code into the terminal and hit enter.
 
-Alternatively you can use the `--import` flag to import the authentication from the Epic Games Launcher (manually specifying the used WINE prefix may
-be required on Linux).
+Alternatively you can use the `--import` flag to import the authentication from the Epic Games Launcher
+
 Note that this will log you out of the Epic Launcher.
 
 Listing your asset
@@ -163,7 +170,7 @@ optional arguments:
 
 
 Command: info
-usage: UEVaultManager info [-h] [--offline] [--json] [--platform <Platform>]
+usage: UEVaultManager info [-h] [--offline] [--json]
                       <App Name/Manifest URI>
 
 positional arguments:
@@ -174,12 +181,9 @@ optional arguments:
   -h, --help            show this help message and exit
   --offline             Only print info available offline
   --json                Output information in JSON format
-  --platform <Platform>
-                        Platform to fetch info for (default: installed or Mac
-                        on macOS, Windows otherwise)
 
 Command: list
-usage: UEVaultManager list [-h] [--platform <Platform>] [--include-ue] [-T] [--csv]
+usage: UEVaultManager list [-h] [-T] [--csv]
                       [--tsv] [--json] [--force-refresh]
 
 optional arguments:
@@ -191,7 +195,7 @@ optional arguments:
 
 
 Command: list-files
-usage: UEVaultManager list-files [-h] [--force-download] [--platform <Platform>]
+usage: UEVaultManager list-files [-h] [--force-download]
                             [--manifest <uri>] [--csv] [--tsv] [--json]
                             [--hashlist] [--install-tag <tag>]
                             [<App Name>]
@@ -233,13 +237,13 @@ max_memory = 2048
 ; maximum number of worker processes when downloading (fewer workers will be slower, but also use less system resources)
 max_workers = 8
 ; default install directory
-install_dir = /mnt/UEAssets
+install_dir = D:/UEAssets
 ; locale override, must be in RFC 1766 format (e.g. "en-US")
 locale = en-US
 ; whether or not syncing with egl is enabled
 egl_sync = false
 ; path to the "Manifests" folder in the EGL ProgramData directory
-egl_programdata = /home/user/Games/epic-asset-store/drive_c/...
+egl_programdata = C:/ProgramData/Epic/EpicGamesLauncher/Data/Manifests
 ; Set preferred CDN host (e.g. to improve download speed)
 preferred_cdn = epicasset-download1.akamaized.net
 ; disable HTTPS for downloads (e.g. to use a LanCache)
