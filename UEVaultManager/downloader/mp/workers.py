@@ -1,33 +1,27 @@
 # coding: utf-8
 
-import os
-import requests
-import time
 import logging
-
+import os
+import time
 from logging.handlers import QueueHandler
 from multiprocessing import Process
 from multiprocessing.shared_memory import SharedMemory
 from queue import Empty
 
+import requests
+
 from UEVaultManager.models.chunk import Chunk
-from UEVaultManager.models.downloading import (
-    DownloaderTask, DownloaderTaskResult,
-    WriterTask, WriterTaskResult,
-    TerminateWorkerTask, TaskFlags
-)
+from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, WriterTask, WriterTaskResult, TerminateWorkerTask, TaskFlags)
 
 
 class DLWorker(Process):
-    def __init__(self, name, queue, out_queue, shm, max_retries=7,
-        logging_queue=None, dl_timeout=10):
+
+    def __init__(self, name, queue, out_queue, shm, max_retries=7, logging_queue=None, dl_timeout=10):
         super().__init__(name=name)
         self.q = queue
         self.o_q = out_queue
         self.session = requests.session()
-        self.session.headers.update({
-            'User-Agent': 'EpicGamesLauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit'
-        })
+        self.session.headers.update({'User-Agent': 'EpicGamesLauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit'})
         self.max_retries = max_retries
         self.shm = SharedMemory(name=shm)
         self.log_level = logging.getLogger().level
@@ -67,7 +61,7 @@ class DLWorker(Process):
                 while tries < self.max_retries:
                     # retry once immediately, otherwise do exponential backoff
                     if tries > 1:
-                        sleep_time = 2 ** (tries - 1)
+                        sleep_time = 2**(tries - 1)
                         logger.info(f'Sleeping {sleep_time} seconds before retrying.')
                         time.sleep(sleep_time)
 
@@ -111,8 +105,7 @@ class DLWorker(Process):
 
                 self.shm.buf[job.shm.offset:job.shm.offset + size] = bytes(chunk.data)
                 del chunk
-                self.o_q.put(DownloaderTaskResult(success=True, size_decompressed=size,
-                                                  size_downloaded=compressed, **job.__dict__))
+                self.o_q.put(DownloaderTaskResult(success=True, size_decompressed=size, size_downloaded=compressed, **job.__dict__))
             except Exception as e:
                 logger.warning(f'Job for {job.chunk_guid} failed with: {e!r}, fetching next one...')
                 self.o_q.put(DownloaderTaskResult(success=False, **job.__dict__))
@@ -125,6 +118,7 @@ class DLWorker(Process):
 
 
 class FileWorker(Process):
+
     def __init__(self, queue, out_queue, base_path, shm, cache_path=None, logging_queue=None):
         super().__init__(name='FileWorker')
         self.q = queue

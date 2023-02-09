@@ -2,9 +2,10 @@
 # coding: utf-8
 
 import logging
+from platform import system
+
 import requests
 
-from platform import system
 from UEVaultManager import __version__
 
 

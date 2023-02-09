@@ -49,12 +49,7 @@ def generate_aliases(game_name, item_folder=None, split_words=True, app_name=Non
     # filter out empty parts
     game_parts = [p for p in game_parts if p]
 
-    _aliases = [
-        game_name.lower().strip(),
-        ' '.join(game_parts),
-        ''.join(game_parts),
-        ''.join(roman.get(p, p) for p in game_parts),
-    ]
+    _aliases = [game_name.lower().strip(), ' '.join(game_parts), ''.join(game_parts), ''.join(roman.get(p, p) for p in game_parts), ]
 
     # single word abbreviation
     try:

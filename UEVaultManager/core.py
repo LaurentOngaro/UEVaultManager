@@ -3,30 +3,28 @@
 import json
 import logging
 import os
-
 from base64 import b64decode
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from hashlib import sha1
 from locale import getdefaultlocale
 from platform import system
+from urllib.parse import urlparse
+
 from requests import session, __version__
 from requests.exceptions import HTTPError, ConnectionError
-from urllib.parse import urlparse
-from datetime import datetime
 
 from UEVaultManager.api.egs import EPCAPI
 from UEVaultManager.api.lgd import LGDAPI
 from UEVaultManager.lfs.egl import EPCLFS
 from UEVaultManager.lfs.lgndry import LGDLFS
-from UEVaultManager.models.exceptions import *
 from UEVaultManager.models.app import *
+from UEVaultManager.models.exceptions import *
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
-from UEVaultManager.utils.game_workarounds import update_workarounds
-from UEVaultManager.utils.selective_dl import games as sdl_games
+
 
 # ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
 #  can handle to give the user more details. (Not required yet since there's no GUI so log output is fine)
@@ -76,7 +74,7 @@ class AppCore:
         self.webview_killswitch = False
         self.logged_in = False
 
-        # UE assets metadata cache properties (Hack LO)
+        # UE assets metadata cache properties 
         self.ue_assets_count = 0
         self.ue_assets_update_available = False
         # after 15 days UE assets metadata cache will be invalidated
@@ -93,20 +91,20 @@ class AppCore:
         s = session()
         s.headers.update(
             {
-                'X-Epic-Event-Action':
-                'login',
+                'X-Epic-Event-Action'  :
+                    'login',
                 'X-Epic-Event-Category':
-                'login',
+                    'login',
                 'X-Epic-Strategy-Flags':
-                '',
-                'X-Requested-With':
-                'XMLHttpRequest',
-                'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                f'EpicGamesLauncher/{self._egl_version} '
-                'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
-                'Chrome/84.0.4147.38 Safari/537.36'
+                    '',
+                'X-Requested-With'     :
+                    'XMLHttpRequest',
+                'User-Agent'           :
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                    'AppleWebKit/537.36 (KHTML, like Gecko) '
+                    f'EpicGamesLauncher/{self._egl_version} '
+                    'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
+                    'Chrome/84.0.4147.38 Safari/537.36'
             }
         )
         s.cookies['EPIC_COUNTRY'] = self.country_code.upper()
@@ -280,43 +278,12 @@ class AppCore:
             for data_key in version_info['egl_config'].get('data_keys', []):
                 if data_key not in self.egl.data_keys:
                     self.egl.data_keys.append(data_key)
-        if game_overrides := version_info.get('game_overrides'):
-            update_workarounds(game_overrides)
-            if sdl_config := game_overrides.get('sdl_config'):
-                # add placeholder for games to fetch from API that aren't hardcoded
-                for app_name in sdl_config.keys():
-                    if app_name not in sdl_games:
-                        sdl_games[app_name] = None
+
         if lgd_config := version_info.get('legendary_config'):
             self.webview_killswitch = lgd_config.get('webview_killswitch', False)
 
     def get_update_info(self):
         return self.lgd.get_cached_version()['data'].get('release_info')
-
-    def get_sdl_data(self, app_name, platform='Windows'):
-        if platform not in ('Win32', 'Windows'):
-            app_name = f'{app_name}_{platform}'
-
-        if app_name not in sdl_games:
-            return None
-        # load hardcoded data as fallback
-        sdl_data = sdl_games[app_name]
-        # get cached data
-        cached = self.lgd.get_cached_sdl_data(app_name)
-        # check if newer version is available and/or download if necessary
-        version_info = self.lgd.get_cached_version()['data']
-        latest = version_info.get('game_overrides', {}).get('sdl_config', {}).get(app_name)
-        if (not cached and latest) or (cached and latest and latest > cached['version']):
-            try:
-                sdl_data = self.lgdapi.get_sdl_config(app_name)
-                self.log.debug(f'Downloaded SDL data for "{app_name}", version: {latest}')
-                self.lgd.set_cached_sdl_data(app_name, latest, sdl_data)
-            except Exception as e:
-                self.log.warning(f'Downloading SDL data failed with {e!r}')
-        elif cached:
-            sdl_data = cached['data']
-        # return data if available
-        return sdl_data
 
     def update_aliases(self, force=False):
         _aliases_enabled = not self.lgd.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False)
@@ -369,13 +336,12 @@ class AppCore:
             self.get_asset_list(True, platform=platform)
         return self.lgd.get_item_meta(app_name)
 
-    def get_asset_list(self, update_assets=True, platform='Windows') -> List[App]:
-        return self.get_inner_asset_list(update_assets=update_assets, platform=platform)[0]
+    def get_asset_list_old(self, update_assets=True, platform='Windows') -> List[App]:
+        return self.get_asset_list(update_assets=update_assets, platform=platform)[0]
 
-    # add a parameter to bypass some resource loads if ue asset only are required (Hack LO)
-    def get_inner_asset_list(self, update_assets=True, platform='Windows') -> (List[App], Dict[str, List[App]]):
+    # add a parameter to bypass some resource loads if ue asset only are required 
+    def get_asset_list(self, update_assets=True, platform='Windows') -> (List[App], Dict[str, List[App]]):
         _ret = []
-        _dlc = defaultdict(list)
         meta_updated = False
 
         # fetch asset information for Windows, all installed platforms, and the specified one
@@ -386,7 +352,7 @@ class AppCore:
             self.get_assets(update_assets=update_assets, platform=_platform)
 
         if not self.lgd.assets:
-            return _ret, _dlc
+            return _ret
 
         assets = {}
         for _platform, _assets in self.lgd.assets.items():
@@ -399,7 +365,7 @@ class AppCore:
         fetch_list = []
         apps = {}
 
-        # split asset checking and data grabbing to optimize cache checking (Hack LO)
+        # split asset checking and data grabbing to optimize cache checking 
         valid_items = []
         bypass_count = 0
         for app_name, app_assets in sorted(assets.items()):
@@ -414,16 +380,16 @@ class AppCore:
 
         self.ue_assets_count = len(valid_items)
 
-        # check if we must refresh ue asset metadata cache (Hack LO)
+        # check if we must refresh ue asset metadata cache 
         self.check_for_ue_assets_updates()
         force_refresh = self.ue_assets_update_available
 
-        # loop through valid items (Hack LO)
+        # loop through valid items 
         for lib_item in valid_items:
             app_name = lib_item["name"]
             app_assets = lib_item["asset"]
             if self.verbose_mode:
-                self.log.info(f' adding {app_name} / {app_assets["Windows"].namespace} to the list')
+                self.log.info(f' adding {app_name} for {app_assets["Windows"].namespace} to the list')
 
             item = self.lgd.get_item_meta(app_name)
             asset_updated = False
@@ -444,7 +410,7 @@ class AppCore:
             app = App(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
             self.lgd.set_item_meta(app.app_name, app)
             apps[name] = app
-            # (Hack LO) some items to update could have bypassed
+            #  some items to update could have bypassed
             try:
                 still_needs_update.remove(name)
             except Exception as e:
@@ -462,7 +428,7 @@ class AppCore:
         bypass_count = 0
 
         for app_name, app_assets in sorted(assets.items()):
-            # skip all items that are not UE assets if the --ue-assets-only command line option has been used (Hack LO)
+            # skip all items that are not UE assets if the --ue-assets-only command line option has been used 
             # if ue_assets_only and all(v.namespace != 'ue' for v in app_assets.values()):
             if app_assets['Windows'].namespace != 'ue':
                 if self.verbose_mode:
@@ -486,7 +452,7 @@ class AppCore:
         if meta_updated:
             self._prune_metadata()
 
-        return _ret, _dlc
+        return _ret
 
     def _prune_metadata(self):
         # compile list of items without assets, then delete their metadata
@@ -497,38 +463,35 @@ class AppCore:
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
         """
-    Gets a list of Items without assets for installation, for instance Items delivered via
-    third-party stores that do not have assets for installation
+        Gets a list of Items without assets for installation, for instance Items delivered via
+        third-party stores that do not have assets for installation
 
-    :param force_refresh: Force a metadata refresh
-    :param skip_ue: Ignore Unreal Marketplace entries
-    :return: List of Items that do not have assets
-    """
+        :param force_refresh: Force a metadata refresh
+        :param skip_ue: Ignore Unreal Marketplace entries
+        :return: List of Items that do not have assets
+        """
         _ret = []
-        _dlc = defaultdict(list)
         # get all the appnames we have to ignore
         ignore = set(i.app_name for i in self.get_assets())
 
-        for libitem in self.egs.get_library_items():
-            if libitem['namespace'] == 'ue' and skip_ue:
+        for lib_item in self.egs.get_library_items():
+            if lib_item['namespace'] == 'ue' and skip_ue:
                 continue
-            if libitem['appName'] in ignore:
+            if lib_item['appName'] in ignore:
                 continue
 
-            item = self.lgd.get_item_meta(libitem['appName'])
+            item = self.lgd.get_item_meta(lib_item['appName'])
             if not item or force_refresh:
-                eg_meta = self.egs.get_item_info(libitem['namespace'], libitem['catalogItemId'])
-                item = App(app_name=libitem['appName'], app_title=eg_meta['title'], metadata=eg_meta)
+                eg_meta = self.egs.get_item_info(lib_item['namespace'], lib_item['catalogItemId'])
+                item = App(app_name=lib_item['appName'], app_title=eg_meta['title'], metadata=eg_meta)
                 self.lgd.set_item_meta(item.app_name, item)
 
-            if item.is_dlc:
-                _dlc[item.metadata['mainGameItem']['id']].append(item)
-            elif not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])):
+            if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])):
                 _ret.append(item)
 
         # Force refresh to make sure these titles are included in aliasing
         self.update_aliases(force=True)
-        return _ret, _dlc
+        return _ret
 
     def get_app_environment(self, app_name) -> dict:
         # get environment overrides from config
@@ -622,7 +585,7 @@ class AppCore:
         r = self.egs.unauth_session.get(f'{base_url}/Deltas/{new_build_id}/{old_build_id}.delta')
         return r.content if r.status_code == 200 else None
 
-    # Check if the UE assets metadata cache must be updated (Hack LO)
+    # Check if the UE assets metadata cache must be updated 
     def check_for_ue_assets_updates(self):
         cached = self.lgd.get_ue_assets_cache_data()
         ue_assets_count = cached['ue_assets_count']

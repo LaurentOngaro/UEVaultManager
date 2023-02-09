@@ -6,7 +6,6 @@ import hashlib
 import logging
 import struct
 import zlib
-
 from base64 import b64encode
 from io import BytesIO
 from typing import Optional
@@ -121,9 +120,11 @@ class Manifest:
         _manifest.version = struct.unpack('<I', bio.read(4))[0]
 
         if bio.tell() != _manifest.header_size:
-            logger.warning(f'Did not read entire header {bio.tell()} != {_manifest.header_size}! '
-                           f'Header version: {_manifest.version}, please report this on '
-                           f'GitHub along with a sample of the problematic manifest!')
+            logger.warning(
+                f'Did not read entire header {bio.tell()} != {_manifest.header_size}! '
+                f'Header version: {_manifest.version}, please report this on '
+                f'GitHub along with a sample of the problematic manifest!'
+            )
             bio.seek(_manifest.header_size)
 
         data = bio.read()
@@ -226,6 +227,7 @@ class Manifest:
 
 
 class ManifestMeta:
+
     def __init__(self):
         self.meta_size = 0
         self.data_version = 0
@@ -295,8 +297,10 @@ class ManifestMeta:
             _meta.uninstall_action_args = read_fstring(bio)
 
         if (size_read := bio.tell()) != _meta.meta_size:
-            logger.warning(f'Did not read entire manifest metadata! Version: {_meta.data_version}, '
-                           f'{_meta.meta_size - size_read} bytes missing, skipping...')
+            logger.warning(
+                f'Did not read entire manifest metadata! Version: {_meta.data_version}, '
+                f'{_meta.meta_size - size_read} bytes missing, skipping...'
+            )
             bio.seek(_meta.meta_size - size_read, 1)
             # downgrade version to prevent issues during serialisation
             _meta.data_version = 0
@@ -337,6 +341,7 @@ class ManifestMeta:
 
 
 class CDL:
+
     def __init__(self):
         self.version = 0
         self.size = 0
@@ -468,6 +473,7 @@ class CDL:
 
 
 class ChunkInfo:
+
     def __init__(self, manifest_version=18):
         self.guid = None
         self.hash = 0
@@ -504,12 +510,11 @@ class ChunkInfo:
         if self._guid_num is not None:
             return self._group_num
 
-        self._group_num = (zlib.crc32(
-            struct.pack('<I', self.guid[0]) +
-            struct.pack('<I', self.guid[1]) +
-            struct.pack('<I', self.guid[2]) +
-            struct.pack('<I', self.guid[3])
-        ) & 0xffffffff) % 100
+        self._group_num = (
+            zlib.crc32(
+                struct.pack('<I', self.guid[0]) + struct.pack('<I', self.guid[1]) + struct.pack('<I', self.guid[2]) + struct.pack('<I', self.guid[3])
+            ) & 0xffffffff
+        ) % 100
         return self._group_num
 
     @group_num.setter
@@ -519,11 +524,12 @@ class ChunkInfo:
     @property
     def path(self):
         return '{}/{:02d}/{:016X}_{}.chunk'.format(
-            get_chunk_dir(self._manifest_version), self.group_num,
-            self.hash, ''.join('{:08X}'.format(g) for g in self.guid))
+            get_chunk_dir(self._manifest_version), self.group_num, self.hash, ''.join('{:08X}'.format(g) for g in self.guid)
+        )
 
 
 class FML:
+
     def __init__(self):
         self.version = 0
         self.size = 0
@@ -671,6 +677,7 @@ class FML:
 
 
 class FileManifest:
+
     def __init__(self):
         self.filename = ''
         self.symlink_target = ''
@@ -709,13 +716,12 @@ class FileManifest:
 
         # ToDo add MD5, MIME, SHA256 if those ever become relevant
         return '<FileManifest (filename="{}", symlink_target="{}", hash={}, flags={}, ' \
-               'install_tags=[{}], chunk_parts=[{}], file_size={})>'.format(
-            self.filename, self.symlink_target, self.hash.hex(), self.flags,
-            ', '.join(self.install_tags), cp_repr, self.file_size
-        )
+               'install_tags=[{}], chunk_parts=[{}], file_size={})>'.format(self.filename, self.symlink_target, self.hash.hex(), self.flags,
+                                                                            ', '.join(self.install_tags), cp_repr, self.file_size)
 
 
 class ChunkPart:
+
     def __init__(self, guid=None, offset=0, size=0, file_offset=0):
         self.guid = guid
         self.offset = offset
@@ -739,11 +745,11 @@ class ChunkPart:
 
     def __repr__(self):
         guid_readable = '-'.join('{:08x}'.format(g) for g in self.guid)
-        return '<ChunkPart (guid={}, offset={}, size={}, file_offset={})>'.format(
-            guid_readable, self.offset, self.size, self.file_offset)
+        return '<ChunkPart (guid={}, offset={}, size={}, file_offset={})>'.format(guid_readable, self.offset, self.size, self.file_offset)
 
 
 class CustomFields:
+
     def __init__(self):
         self.size = 0
         self.version = 0
@@ -811,6 +817,7 @@ class CustomFields:
 
 
 class ManifestComparison:
+
     def __init__(self):
         self.added = set()
         self.removed = set()

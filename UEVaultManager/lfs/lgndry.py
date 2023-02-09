@@ -1,19 +1,18 @@
 # coding: utf-8
 
 import json
-import os
 import logging
-from datetime import datetime
+import os
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from time import time
 
-from .utils import clean_filename
-
 from UEVaultManager.models.app import *
-from UEVaultManager.utils.aliasing import generate_aliases
 from UEVaultManager.models.config import LGDConf
+from UEVaultManager.utils.aliasing import generate_aliases
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
+from .utils import clean_filename
 
 
 class LGDLFS:
@@ -36,7 +35,7 @@ class LGDLFS:
         self._assets_metadata = dict()
         # UEVaultManager update check info
         self._update_info = None
-        # UE assets metadata cache data (Hack LO)
+        # UE assets metadata cache data 
         self._ue_assets_cache_data = None
 
         # Config with item specific settings (e.g. start parameters, env variables)
@@ -352,7 +351,7 @@ class LGDLFS:
 
         json.dump(alias_map, open(os.path.join(self.path, 'aliases.json'), 'w', newline='\n'), indent=2, sort_keys=True, default=serialise_sets)
 
-    # Get UE assets metadata cache data (Hack LO)
+    # Get UE assets metadata cache data 
     def get_ue_assets_cache_data(self):
         if self._ue_assets_cache_data:
             return self._ue_assets_cache_data
@@ -365,7 +364,7 @@ class LGDLFS:
 
         return self._ue_assets_cache_data
 
-    # Set UE assets metadata cache data (Hack LO)
+    # Set UE assets metadata cache data 
     def set_ue_assets_cache_data(self, ue_assets_count):
         self._ue_assets_cache_data = dict(last_update=datetime.now().timestamp(), ue_assets_count=ue_assets_count)
         json.dump(self._ue_assets_cache_data, open(os.path.join(self.path, 'ue_assets_cache_data.json'), 'w'), indent=2, sort_keys=True)

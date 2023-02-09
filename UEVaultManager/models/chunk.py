@@ -2,7 +2,6 @@
 
 import struct
 import zlib
-
 from hashlib import sha1
 from io import BytesIO
 from uuid import uuid4

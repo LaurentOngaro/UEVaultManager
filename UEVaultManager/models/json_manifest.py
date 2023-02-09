@@ -2,7 +2,6 @@
 
 import json
 import struct
-
 from copy import deepcopy
 
 from UEVaultManager.models.manifest import (

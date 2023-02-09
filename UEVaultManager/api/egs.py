@@ -1,11 +1,11 @@
 # !/usr/bin/env python
 # coding: utf-8
 
+import logging
 import urllib.parse
+
 import requests
 import requests.adapters
-import logging
-
 from requests.auth import HTTPBasicAuth
 
 from UEVaultManager.models.exceptions import InvalidCredentialsError
@@ -249,7 +249,7 @@ class EPCAPI:
 
         return records
 
-    # (Hack LO) get the price of a product
+    #  get the price of a product
     def get_assets_price(self, product_id):
         # TODO: find a better way to get this data (marketplace web scrapping ?)
         # this API seems obsolete: a 404 error is always returned
@@ -260,7 +260,7 @@ class EPCAPI:
         else:
             return {}
 
-    # (Hack LO) get the reviews of a product
+    #  get the reviews of a product
     def get_assets_review(self, product_id):
         # TODO: find a better way to get this data (marketplace web scrapping ?)
         # this API seems obsolete: a 404 error is always returned

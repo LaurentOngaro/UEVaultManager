@@ -5,7 +5,6 @@
 import logging
 import os
 import time
-
 from collections import Counter, defaultdict, deque
 from logging.handlers import QueueHandler
 from multiprocessing import cpu_count, Process, Queue as MPQueue
@@ -20,9 +19,19 @@ from UEVaultManager.models.manifest import ManifestComparison, Manifest
 
 
 class DLManager(Process):
-    def __init__(self, download_dir, base_url, cache_dir=None, status_q=None,
-        max_workers=0, update_interval=1.0, dl_timeout=10, resume_file=None,
-        max_shared_memory=1024 * 1024 * 1024):
+
+    def __init__(
+        self,
+        download_dir,
+        base_url,
+        cache_dir=None,
+        status_q=None,
+        max_workers=0,
+        update_interval=1.0,
+        dl_timeout=10,
+        resume_file=None,
+        max_shared_memory=1024 * 1024 * 1024
+    ):
         super().__init__(name='DLManager')
         self.log = logging.getLogger('DLM')
         self.proc_debug = False
@@ -76,10 +85,17 @@ class DLManager(Process):
         self.num_processed_since_last = 0
         self.num_tasks_processed_since_last = 0
 
-    def run_analysis(self, manifest: Manifest, old_manifest: Manifest = None,
-        patch=True, resume=True, file_prefix_filter=None,
-        file_exclude_filter=None, file_install_tag=None,
-        processing_optimization=False) -> AnalysisResult:
+    def run_analysis(
+        self,
+        manifest: Manifest,
+        old_manifest: Manifest = None,
+        patch=True,
+        resume=True,
+        file_prefix_filter=None,
+        file_exclude_filter=None,
+        file_install_tag=None,
+        processing_optimization=False
+    ) -> AnalysisResult:
         """
         Run analysis on manifest and old manifest (if not None) and return a result
         with a summary resources required in order to install the provided manifest.
@@ -143,9 +159,11 @@ class DLManager(Process):
             if isinstance(file_install_tag, str):
                 file_install_tag = [file_install_tag]
 
-            files_to_skip = set(i.filename for i in manifest.file_manifest_list.elements
-                                if not any((fit in i.install_tags) or (not fit and not i.install_tags)
-                                           for fit in file_install_tag))
+            files_to_skip = set(
+                i.filename
+                for i in manifest.file_manifest_list.elements
+                if not any((fit in i.install_tags) or (not fit and not i.install_tags) for fit in file_install_tag)
+            )
             self.log.info(f'Found {len(files_to_skip)} files to skip based on install tag.')
             mc.added -= files_to_skip
             mc.changed -= files_to_skip
@@ -159,8 +177,9 @@ class DLManager(Process):
                 file_exclude_filter = [file_exclude_filter]
 
             file_exclude_filter = [f.lower() for f in file_exclude_filter]
-            files_to_skip = set(i.filename for i in manifest.file_manifest_list.elements if
-                                any(i.filename.lower().startswith(pfx) for pfx in file_exclude_filter))
+            files_to_skip = set(
+                i.filename for i in manifest.file_manifest_list.elements if any(i.filename.lower().startswith(pfx) for pfx in file_exclude_filter)
+            )
             self.log.info(f'Found {len(files_to_skip)} files to skip based on exclude prefix.')
             mc.added -= files_to_skip
             mc.changed -= files_to_skip
@@ -171,8 +190,9 @@ class DLManager(Process):
                 file_prefix_filter = [file_prefix_filter]
 
             file_prefix_filter = [f.lower() for f in file_prefix_filter]
-            files_to_skip = set(i.filename for i in manifest.file_manifest_list.elements if not
-            any(i.filename.lower().startswith(pfx) for pfx in file_prefix_filter))
+            files_to_skip = set(
+                i.filename for i in manifest.file_manifest_list.elements if not any(i.filename.lower().startswith(pfx) for pfx in file_prefix_filter)
+            )
             self.log.info(f'Found {len(files_to_skip)} files to skip based on include prefix(es)')
             mc.added -= files_to_skip
             mc.changed -= files_to_skip
@@ -181,8 +201,7 @@ class DLManager(Process):
         if file_prefix_filter or file_exclude_filter or file_install_tag:
             self.log.info(f'Remaining files after filtering: {len(mc.added) + len(mc.changed)}')
             # correct install size after filtering
-            analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements
-                                            if fm.filename in mc.added)
+            analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements if fm.filename in mc.added)
 
         if mc.removed:
             analysis_res.removed = len(mc.removed)
@@ -205,8 +224,7 @@ class DLManager(Process):
 
         # count references to chunks for determining runtime cache size later
         references = Counter()
-        fmlist = sorted(manifest.file_manifest_list.elements,
-                        key=lambda a: a.filename.lower())
+        fmlist = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
 
         # Create reference count for chunks and calculate additional/temporary disk size required for install
         current_tmp_size = 0
@@ -243,8 +261,7 @@ class DLManager(Process):
             # ignore files with less than N chunk parts, this speeds things up dramatically
             cp_threshold = 5
 
-            remaining_files = {fm.filename: {cp.guid_num for cp in fm.chunk_parts}
-                               for fm in fmlist if fm.filename not in mc.unchanged}
+            remaining_files = {fm.filename: {cp.guid_num for cp in fm.chunk_parts} for fm in fmlist if fm.filename not in mc.unchanged}
             _fmlist = []
 
             # iterate over all files that will be downloaded and pair up those that share the most chunks
@@ -361,8 +378,9 @@ class DLManager(Process):
                 self.tasks.extend(chunk_tasks)
                 self.tasks.append(FileTask(current_file.filename + u'.tmp', flags=TaskFlags.CLOSE_FILE))
                 # delete old file and rename temporary
-                self.tasks.append(FileTask(current_file.filename, old_file=current_file.filename + u'.tmp',
-                                           flags=TaskFlags.RENAME_FILE | TaskFlags.DELETE_FILE))
+                self.tasks.append(
+                    FileTask(current_file.filename, old_file=current_file.filename + u'.tmp', flags=TaskFlags.RENAME_FILE | TaskFlags.DELETE_FILE)
+                )
             else:
                 self.tasks.append(FileTask(current_file.filename, flags=TaskFlags.OPEN_FILE))
                 self.tasks.extend(chunk_tasks)
@@ -383,8 +401,7 @@ class DLManager(Process):
         if analysis_res.min_memory > self.max_shared_memory:
             shared_mib = f'{self.max_shared_memory / 1024 / 1024:.01f} MiB'
             required_mib = f'{analysis_res.min_memory / 1024 / 1024:.01f} MiB'
-            suggested_mib = round(self.max_shared_memory / 1024 / 1024 +
-                                  (analysis_res.min_memory - self.max_shared_memory) / 1024 / 1024 + 32)
+            suggested_mib = round(self.max_shared_memory / 1024 / 1024 + (analysis_res.min_memory - self.max_shared_memory) / 1024 / 1024 + 32)
 
             if processing_optimization:
                 message = f'Try running UEVaultManager with "--enable-reordering --max-shared-memory {suggested_mib:.0f}"'
@@ -392,8 +409,7 @@ class DLManager(Process):
                 message = 'Try running UEVaultManager with "--enable-reordering" to reduce memory usage, ' \
                           f'or use "--max-shared-memory {suggested_mib:.0f}" to increase the limit.'
 
-            raise MemoryError(f'Current shared memory cache is smaller than required: {shared_mib} < {required_mib}. '
-                              + message)
+            raise MemoryError(f'Current shared memory cache is smaller than required: {shared_mib} < {required_mib}. ' + message)
 
         # calculate actual dl and patch write size.
         analysis_res.dl_size = \
@@ -426,9 +442,7 @@ class DLManager(Process):
                 chunk = self.chunk_data_list.get_chunk_by_guid(c_guid)
                 self.log.debug(f'Adding {chunk.guid_num} (active: {self.active_tasks})')
                 try:
-                    self.dl_worker_queue.put(DownloaderTask(url=self.base_url + '/' + chunk.path,
-                                                            chunk_guid=c_guid, shm=sms),
-                                             timeout=1.0)
+                    self.dl_worker_queue.put(DownloaderTask(url=self.base_url + '/' + chunk.path, chunk_guid=c_guid, shm=sms), timeout=1.0)
                 except Exception as e:
                     self.log.warning(f'Failed to add to download queue: {e!r}')
                     self.chunks_to_dl.appendleft(c_guid)
@@ -480,12 +494,18 @@ class DLManager(Process):
 
                 try:
                     self.log.debug(f'Adding {task.chunk_guid} to writer queue')
-                    self.writer_queue.put(WriterTask(
-                        filename=current_file, shared_memory=res_shm,
-                        chunk_offset=task.chunk_offset, chunk_size=task.chunk_size,
-                        chunk_guid=task.chunk_guid, old_file=task.chunk_file,
-                        flags=TaskFlags.RELEASE_MEMORY if task.cleanup else TaskFlags.NONE
-                    ), timeout=1.0)
+                    self.writer_queue.put(
+                        WriterTask(
+                            filename=current_file,
+                            shared_memory=res_shm,
+                            chunk_offset=task.chunk_offset,
+                            chunk_size=task.chunk_size,
+                            chunk_guid=task.chunk_guid,
+                            old_file=task.chunk_file,
+                            flags=TaskFlags.RELEASE_MEMORY if task.cleanup else TaskFlags.NONE
+                        ),
+                        timeout=1.0
+                    )
                 except Exception as e:
                     self.log.warning(f'Adding to queue failed: {e!r}')
                     break
@@ -608,8 +628,10 @@ class DLManager(Process):
                     child.terminate()
 
             # clean up all the queues, otherwise this process won't terminate properly
-            for name, q in zip(('Download jobs', 'Writer jobs', 'Download results', 'Writer results'),
-                               (self.dl_worker_queue, self.writer_queue, self.dl_result_q, self.writer_result_q)):
+            for name, q in zip(
+                ('Download jobs', 'Writer jobs', 'Download results', 'Writer results'),
+                (self.dl_worker_queue, self.writer_queue, self.dl_result_q, self.writer_result_q)
+            ):
                 self.log.debug(f'Cleaning up queue "{name}"')
                 try:
                     while True:
@@ -624,8 +646,7 @@ class DLManager(Process):
 
         # create the shared memory segments and add them to their respective pools
         for i in range(int(self.shared_memory.size / self.analysis.biggest_chunk)):
-            _sms = SharedMemorySegment(offset=i * self.analysis.biggest_chunk,
-                                       end=i * self.analysis.biggest_chunk + self.analysis.biggest_chunk)
+            _sms = SharedMemorySegment(offset=i * self.analysis.biggest_chunk, end=i * self.analysis.biggest_chunk + self.analysis.biggest_chunk)
             self.sms.append(_sms)
 
         self.log.debug(f'Created {len(self.sms)} shared memory segments.')
@@ -638,15 +659,19 @@ class DLManager(Process):
 
         self.log.info(f'Starting download workers...')
         for i in range(self.max_workers):
-            w = DLWorker(f'DLWorker {i + 1}', self.dl_worker_queue, self.dl_result_q,
-                         self.shared_memory.name, logging_queue=self.logging_queue,
-                         dl_timeout=self.dl_timeout)
+            w = DLWorker(
+                f'DLWorker {i + 1}',
+                self.dl_worker_queue,
+                self.dl_result_q,
+                self.shared_memory.name,
+                logging_queue=self.logging_queue,
+                dl_timeout=self.dl_timeout
+            )
             self.children.append(w)
             w.start()
 
         self.log.info('Starting file writing worker...')
-        writer_p = FileWorker(self.writer_queue, self.writer_result_q, self.dl_dir,
-                              self.shared_memory.name, self.cache_dir, self.logging_queue)
+        writer_p = FileWorker(self.writer_queue, self.writer_result_q, self.dl_dir, self.shared_memory.name, self.cache_dir, self.logging_queue)
         self.children.append(writer_p)
         writer_p.start()
 
@@ -721,9 +746,11 @@ class DLManager(Process):
                 hours = minutes = seconds = 0
                 rt_hours = rt_minutes = rt_seconds = 0
 
-            self.log.info(f'= Progress: {perc:.02f}% ({processed_chunks}/{num_chunk_tasks}), '
-                          f'Running for {rt_hours:02d}:{rt_minutes:02d}:{rt_seconds:02d}, '
-                          f'ETA: {hours:02d}:{minutes:02d}:{seconds:02d}')
+            self.log.info(
+                f'= Progress: {perc:.02f}% ({processed_chunks}/{num_chunk_tasks}), '
+                f'Running for {rt_hours:02d}:{rt_minutes:02d}:{rt_seconds:02d}, '
+                f'ETA: {hours:02d}:{minutes:02d}:{seconds:02d}'
+            )
             self.log.info(f' - Downloaded: {total_dl / 1024 / 1024:.02f} MiB, '
                           f'Written: {total_write / 1024 / 1024:.02f} MiB')
             self.log.info(f' - Cache usage: {total_used:.02f} MiB, active tasks: {self.active_tasks}')
@@ -735,10 +762,16 @@ class DLManager(Process):
             # send status update to back to instantiator (if queue exists)
             if self.status_queue:
                 try:
-                    self.status_queue.put(UIUpdate(
-                        progress=perc, download_speed=dl_unc_speed, write_speed=w_speed, read_speed=r_speed,
-                        memory_usage=total_used * 1024 * 1024
-                    ), timeout=1.0)
+                    self.status_queue.put(
+                        UIUpdate(
+                            progress=perc,
+                            download_speed=dl_unc_speed,
+                            write_speed=w_speed,
+                            read_speed=r_speed,
+                            memory_usage=total_used * 1024 * 1024
+                        ),
+                        timeout=1.0
+                    )
                 except Exception as e:
                     self.log.warning(f'Failed to send status update to queue: {e!r}')
 

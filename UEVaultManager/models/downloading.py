@@ -1,7 +1,7 @@
 # coding: utf-8
 
-from enum import Flag, auto
 from dataclasses import dataclass
+from enum import Flag, auto
 from typing import Optional
 
 from .manifest import ManifestComparison

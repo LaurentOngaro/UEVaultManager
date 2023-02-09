@@ -4,11 +4,10 @@
 import argparse
 import csv
 import json
-import subprocess
-import webbrowser
 import logging
 import os
-
+import subprocess
+import webbrowser
 from collections import namedtuple
 from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
@@ -147,15 +146,15 @@ class UEVaultManagerCLI:
         else:
             logger.info('Getting asset list... (this may take a while)')
 
-        # (Hack LO) add ue_assets_only argument
-        items, dlc_list = self.core.get_inner_asset_list()
+        #  add ue_assets_only argument
+        items = self.core.get_asset_list()
         # Get information for items that cannot be installed through UEVaultManager (yet), such
         # as games that have to be activated on and launched through Origin.
         if args.include_noasset:
-            na_items, na_dlcs = self.core.get_non_asset_library_items(skip_ue=not args.include_ue)
+            na_items = self.core.get_non_asset_library_items(skip_ue=not args.include_ue)
             items.extend(na_items)
 
-        # sort games and dlc by name
+        # sort assets by name
         items = sorted(items, key=lambda x: x.app_title.lower())
 
         dummy_text = "dummy_text"
@@ -181,7 +180,7 @@ class UEVaultManagerCLI:
                 tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata["releaseInfo"]]
                 compatible_versions = separator.join(tmp_list)
 
-                # the following methods always return an empty vamue due to an obsolete API call:
+                # the following methods always return an empty value due to an obsolete API call:
                 price = self.core.egs.get_assets_price(uid)
                 review = self.core.egs.get_assets_review(asset_id)
 
@@ -194,7 +193,7 @@ class UEVaultManagerCLI:
                         , asset_id  # 'asset_id'
                         , metadata["keyImages"][2]["url"]  # 'Image' with 488 height
                         , f'https://www.unrealengine.com/marketplace/en-US/product/{asset_id}'  # 'Url'
-                        , asset.app_version(args.platform)  # 'UE Version'
+                        , asset.app_version("Windows")  # 'UE Version'
                         , compatible_versions  # compatible_versions
                         , review  # 'Review'
                         , metadata["developer"]  # 'Vendeur'
@@ -229,7 +228,6 @@ class UEVaultManagerCLI:
             _out = []
             for asset in items:
                 _j = vars(asset)
-                _j['dlcs'] = [vars(dlc) for dlc in dlc_list[asset.catalog_item_id]]
                 _out.append(_j)
 
         print('\nAvailable UE Assets:')
@@ -240,9 +238,6 @@ class UEVaultManagerCLI:
         print(f'\nTotal: {len(items)}')
 
     def list_files(self, args):
-        if args.platform:
-            args.force_download = True
-
         if not args.override_manifest and not args.app_name:
             print('You must provide either a manifest url/path or app name!')
             return
@@ -262,7 +257,7 @@ class UEVaultManagerCLI:
             if not item:
                 logger.fatal(f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)')
                 exit(1)
-            manifest_data, _ = self.core.get_cdn_manifest(item, platform=args.platform)
+            manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
 
         manifest = self.core.load_manifest(manifest_data)
         files = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
@@ -349,8 +344,8 @@ class UEVaultManagerCLI:
         info_items = dict(assets=list(), manifest=list(), install=list())
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
 
-        item = self.core.get_item(app_name, update_meta=not args.offline, platform=args.platform)
-        if item and not self.core.asset_available(item, platform=args.platform):
+        item = self.core.get_item(app_name, update_meta=not args.offline, platform="Windows")
+        if item and not self.core.asset_available(item, platform="Windows"):
             logger.warning(
                 f'Asset information for "{item.app_name}" is missing, this may be due to the asset '
                 f'not being available on the selected platform or currently logged-in account.'
@@ -358,7 +353,7 @@ class UEVaultManagerCLI:
             args.offline = True
 
         manifest_data = None
-        entitlements = None
+        # entitlements = None
         # load installed manifest or URI
         if args.offline or manifest_uri:
             if manifest_uri and manifest_uri.startswith('http'):
@@ -371,18 +366,18 @@ class UEVaultManagerCLI:
             else:
                 logger.info('Asset not installed and offline mode enabled, cannot load manifest.')
         elif item:
-            entitlements = self.core.egs.get_user_entitlements()
+            # entitlements = self.core.egs.get_user_entitlements()
             egl_meta = self.core.egs.get_asset_info(item.namespace, item.catalog_item_id)
             item.metadata = egl_meta
             # Get manifest if asset exists for current platform
-            if args.platform in item.asset_infos:
-                manifest_data, _ = self.core.get_cdn_manifest(item, args.platform)
+            if "Windows" in item.asset_infos:
+                manifest_data, _ = self.core.get_cdn_manifest(item, "Windows")
 
         if item:
             asset_infos = info_items['assets']
             asset_infos.append(InfoItem('App name', 'app_name', item.app_name, item.app_name))
             asset_infos.append(InfoItem('Title', 'title', item.app_title, item.app_title))
-            asset_infos.append(InfoItem('Latest version', 'version', item.app_version(args.platform), item.app_version(args.platform)))
+            asset_infos.append(InfoItem('Latest version', 'version', item.app_version("Windows"), item.app_version("Windows")))
             all_versions = {k: v.build_version for k, v in item.asset_infos.items()}
             asset_infos.append(InfoItem('All versions', 'platform_versions', all_versions, all_versions))
             # Cloud save support for Mac and Windows
@@ -428,35 +423,6 @@ class UEVaultManagerCLI:
                 asset_infos.append(InfoItem('Extra launch options', 'launch_options', human_list, json_list))
             else:
                 asset_infos.append(InfoItem('Extra launch options', 'launch_options', None, []))
-
-            # list all owned DLC based on entitlements
-            if entitlements and not item.is_dlc:
-                owned_entitlements = {i['entitlementName'] for i in entitlements}
-                owned_app_names = {g.app_name for g in self.core.get_assets(args.platform)}
-                owned_dlc = []
-                for dlc in item.metadata.get('dlcItemList', []):
-                    installable = dlc.get('releaseInfo', None)
-                    if dlc['entitlementName'] in owned_entitlements:
-                        owned_dlc.append((installable, None, dlc['title'], dlc['id']))
-                    elif installable:
-                        app_name = dlc['releaseInfo'][0]['appId']
-                        if app_name in owned_app_names:
-                            owned_dlc.append((installable, app_name, dlc['title'], dlc['id']))
-
-                if owned_dlc:
-                    human_list = []
-                    json_list = []
-                    for installable, app_name, title, dlc_id in owned_dlc:
-                        json_list.append(dict(app_name=app_name, title=title, installable=installable, id=dlc_id))
-                        if installable:
-                            human_list.append(f'App name: {app_name}, Title: "{title}"')
-                        else:
-                            human_list.append(f'Title: "{title}" (no installation required)')
-                    asset_infos.append(InfoItem('Owned DLC', 'owned_dlc', human_list, json_list))
-                else:
-                    asset_infos.append(InfoItem('Owned DLC', 'owned_dlc', None, []))
-            else:
-                asset_infos.append(InfoItem('Owned DLC', 'owned_dlc', None, []))
 
         if manifest_data:
             manifest_info = info_items['manifest']
@@ -546,19 +512,19 @@ class UEVaultManagerCLI:
 
         if not args.json:
 
-            def print_info_item(item: InfoItem):
-                if item.value is None:
-                    print(f'- {item.name}: (None)')
-                elif isinstance(item.value, list):
-                    print(f'- {item.name}:')
-                    for list_item in item.value:
+            def print_info_item(local_item: InfoItem):
+                if local_item.value is None:
+                    print(f'- {local_item.name}: (None)')
+                elif isinstance(local_item.value, list):
+                    print(f'- {local_item.name}:')
+                    for list_item in local_item.value:
                         print(' + ', list_item)
-                elif isinstance(item.value, dict):
-                    print(f'- {item.name}:')
-                    for k, v in item.value.items():
+                elif isinstance(local_item.value, dict):
+                    print(f'- {local_item.name}:')
+                    for k, v in local_item.value.items():
                         print(' + ', k, ':', v)
                 else:
-                    print(f'- {item.name}: {item.value}')
+                    print(f'- {local_item.name}: {local_item.value}')
 
             if info_items['asset']:
                 print('\nAsset Information:')
@@ -770,13 +736,6 @@ def main():
         # keep requests quiet
         logging.getLogger('requests').setLevel(logging.WARNING)
         logging.getLogger('urllib3').setLevel(logging.WARNING)
-
-    if hasattr(args, 'platform'):
-        if not args.platform:
-            os_default = 'Mac' if sys_platform == 'darwin' else 'Windows'
-            args.platform = cli.core.lgd.config.get('UEVaultManager', 'default_platform', fallback=os_default)
-        elif args.platform not in ('Win32', 'Windows', 'Mac'):
-            logger.warning(f'Platform "{args.platform}" may be invalid. Valid ones are: Windows, Win32, Mac.')
 
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:

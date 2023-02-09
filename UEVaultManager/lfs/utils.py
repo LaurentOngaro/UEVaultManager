@@ -1,10 +1,9 @@
 # coding: utf-8
 
-import os
-import shutil
 import hashlib
 import logging
-
+import os
+import shutil
 from pathlib import Path
 from sys import stdout
 from time import perf_counter
@@ -111,7 +110,7 @@ def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1', larg
                 # enable progress indicator and go to new line
                 stdout.write('\n')
                 show_progress = True
-                interval = (_size / (1024*1024)) // 100
+                interval = (_size / (1024 * 1024)) // 100
                 start_time = perf_counter()
 
             with open(full_path, 'rb') as f:
@@ -121,7 +120,7 @@ def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1', larg
                     real_file_hash.update(chunk)
                     if show_progress and i % interval == 0:
                         pos = f.tell()
-                        perc = (pos/_size) * 100
+                        perc = (pos / _size) * 100
                         speed = pos / 1024 / 1024 / (perf_counter() - start_time)
                         stdout.write(
                             f'\r=> Verifying large file "{file_path}": {perc:.0f}% '
