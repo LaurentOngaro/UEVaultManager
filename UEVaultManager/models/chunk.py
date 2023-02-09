@@ -7,7 +7,7 @@ from hashlib import sha1
 from io import BytesIO
 from uuid import uuid4
 
-from legendary.utils.rolling_hash import get_hash
+from UEVaultManager.utils.rolling_hash import get_hash
 
 
 class Chunk:

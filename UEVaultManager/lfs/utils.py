@@ -10,7 +10,7 @@ from sys import stdout
 from time import perf_counter
 from typing import List, Iterator
 
-from legendary.models.game import VerifyResult
+from UEVaultManager.models.app import VerifyResult
 
 logger = logging.getLogger('LFS Utils')
 

@@ -5,7 +5,7 @@ import logging
 import requests
 
 from platform import system
-from legendary import __version__
+from UEVaultManager import __version__
 
 
 class LGDAPI:

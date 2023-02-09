@@ -14,9 +14,9 @@ from queue import Empty
 from sys import exit
 from threading import Condition, Thread
 
-from legendary.downloader.mp.workers import DLWorker, FileWorker
-from legendary.models.downloading import *
-from legendary.models.manifest import ManifestComparison, Manifest
+from UEVaultManager.downloader.mp.workers import DLWorker, FileWorker
+from UEVaultManager.models.downloading import *
+from UEVaultManager.models.manifest import ManifestComparison, Manifest
 
 
 class DLManager(Process):
@@ -387,9 +387,9 @@ class DLManager(Process):
                                   (analysis_res.min_memory - self.max_shared_memory) / 1024 / 1024 + 32)
 
             if processing_optimization:
-                message = f'Try running legendary with "--enable-reordering --max-shared-memory {suggested_mib:.0f}"'
+                message = f'Try running UEVaultManager with "--enable-reordering --max-shared-memory {suggested_mib:.0f}"'
             else:
-                message = 'Try running legendary with "--enable-reordering" to reduce memory usage, ' \
+                message = 'Try running UEVaultManager with "--enable-reordering" to reduce memory usage, ' \
                           f'or use "--max-shared-memory {suggested_mib:.0f}" to increase the limit.'
 
             raise MemoryError(f'Current shared memory cache is smaller than required: {shared_mib} < {required_mib}. '

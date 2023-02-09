@@ -3,17 +3,17 @@
 import json
 import os
 import logging
-
+from datetime import datetime
 from collections import defaultdict
 from pathlib import Path
 from time import time
 
 from .utils import clean_filename
 
-from legendary.models.game import *
-from legendary.utils.aliasing import generate_aliases
-from legendary.models.config import LGDConf
-from legendary.utils.env import is_windows_mac_or_pyi
+from UEVaultManager.models.app import *
+from UEVaultManager.utils.aliasing import generate_aliases
+from UEVaultManager.models.config import LGDConf
+from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
 
 class LGDLFS:
@@ -21,9 +21,9 @@ class LGDLFS:
         self.log = logging.getLogger('LGDLFS')
 
         if config_path := os.environ.get('XDG_CONFIG_HOME'):
-            self.path = os.path.join(config_path, 'legendary')
+            self.path = os.path.join(config_path, 'UEVaultManager')
         else:
-            self.path = os.path.expanduser('~/.config/legendary')
+            self.path = os.path.expanduser('~/.config/UEVaultManager')
 
         # EGS user info
         self._user_data = None
@@ -33,17 +33,20 @@ class LGDLFS:
         self._assets = None
         # EGS metadata
         self._game_metadata = dict()
-        # Legendary update check info
+        # UEVaultManager update check info
         self._update_info = None
         # EOS Overlay install/update check info
         self._overlay_update_info = None
         self._overlay_install_info = None
+        # UE assets metadata cache data (Hack LO)
+        self._ue_assets_cache_data = None
+
         # Config with game specific settings (e.g. start parameters, env variables)
         self.config = LGDConf(comment_prefixes='/', allow_no_value=True)
 
         if config_file:
             # if user specified a valid relative/absolute path use that,
-            # otherwise create file in legendary config directory
+            # otherwise create file in UEVaultManager config directory
             if os.path.exists(config_file):
                 self.config_path = os.path.abspath(config_file)
             else:
@@ -93,17 +96,17 @@ class LGDLFS:
             self.log.warning('Continuing with blank config in safe-mode...')
             self.config.read_only = True
 
-        # make sure "Legendary" section exists
-        if 'Legendary' not in self.config:
-            self.config.add_section('Legendary')
+        # make sure "UEVaultManager" section exists
+        if 'UEVaultManager' not in self.config:
+            self.config.add_section('UEVaultManager')
 
         # Add opt-out options with explainers
-        if not self.config.has_option('Legendary', 'disable_update_check'):
-            self.config.set('Legendary', '; Disables the automatic update check')
-            self.config.set('Legendary', 'disable_update_check', 'false')
-        if not self.config.has_option('Legendary', 'disable_update_notice'):
-            self.config.set('Legendary', '; Disables the notice about an available update on exit')
-            self.config.set('Legendary', 'disable_update_notice', 'false' if is_windows_mac_or_pyi() else 'true')
+        if not self.config.has_option('UEVaultManager', 'disable_update_check'):
+            self.config.set('UEVaultManager', '; Disables the automatic update check')
+            self.config.set('UEVaultManager', 'disable_update_check', 'false')
+        if not self.config.has_option('UEVaultManager', 'disable_update_notice'):
+            self.config.set('UEVaultManager', '; Disables the notice about an available update on exit')
+            self.config.set('UEVaultManager', 'disable_update_notice', 'false' if is_windows_mac_or_pyi() else 'true')
 
         try:
             self._installed = json.load(open(os.path.join(self.path, 'installed.json')))
@@ -121,7 +124,7 @@ class LGDLFS:
 
         # load auto-aliases if enabled
         self.aliases = dict()
-        if not self.config.getboolean('Legendary', 'disable_auto_aliasing', fallback=False):
+        if not self.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False):
             try:
                 _j = json.load(open(os.path.join(self.path, 'aliases.json')))
                 for app_name, aliases in _j.items():
@@ -182,7 +185,7 @@ class LGDLFS:
         if self._assets is None:
             try:
                 tmp = json.load(open(os.path.join(self.path, 'assets.json')))
-                self._assets = {k: [GameAsset.from_json(j) for j in v] for k, v in tmp.items()}
+                self._assets = {k: [AppAsset.from_json(j) for j in v] for k, v in tmp.items()}
             except Exception as e:
                 self.log.debug(f'Failed to load assets data: {e!r}')
                 return None
@@ -222,7 +225,7 @@ class LGDLFS:
 
     def get_game_meta(self, app_name):
         if _meta := self._game_metadata.get(app_name, None):
-            return Game.from_json(_meta)
+            return App.from_json(_meta)
         return None
 
     def set_game_meta(self, app_name, meta):
@@ -280,50 +283,6 @@ class LGDLFS:
                 except Exception as e:
                     self.log.warning(f'Failed to delete file "{f}": {e!r}')
 
-    def get_installed_game(self, app_name):
-        if self._installed is None:
-            try:
-                self._installed = json.load(open(os.path.join(self.path, 'installed.json')))
-            except Exception as e:
-                self.log.debug(f'Failed to load installed game data: {e!r}')
-                return None
-
-        if game_json := self._installed.get(app_name, None):
-            return InstalledGame.from_json(game_json)
-        return None
-
-    def set_installed_game(self, app_name, install_info):
-        if self._installed is None:
-            self._installed = dict()
-
-        if app_name in self._installed:
-            self._installed[app_name].update(install_info.__dict__)
-        else:
-            self._installed[app_name] = install_info.__dict__
-
-        json.dump(self._installed, open(os.path.join(self.path, 'installed.json'), 'w'),
-                  indent=2, sort_keys=True)
-
-    def remove_installed_game(self, app_name):
-        if self._installed is None:
-            self.log.warning('Trying to remove a game, but no installed games?!')
-            return
-
-        if app_name in self._installed:
-            del self._installed[app_name]
-        else:
-            self.log.warning('Trying to remove non-installed game:', app_name)
-            return
-
-        json.dump(self._installed, open(os.path.join(self.path, 'installed.json'), 'w'),
-                  indent=2, sort_keys=True)
-
-    def get_installed_list(self):
-        if not self._installed:
-            return []
-
-        return [InstalledGame.from_json(i) for i in self._installed.values()]
-
     def save_config(self):
         # do not save if in read-only mode or file hasn't changed
         if self.config.read_only or not self.config.modified:
@@ -332,7 +291,7 @@ class LGDLFS:
         if os.path.exists(self.config_path):
             if (modtime := int(os.stat(self.config_path).st_mtime)) != self.config.modtime:
                 new_filename = f'config.{modtime}.ini'
-                self.log.warning(f'Configuration file has been modified while legendary was running, '
+                self.log.warning(f'Configuration file has been modified while UEVaultManager was running, '
                                  f'user-modified config will be renamed to "{new_filename}"...')
                 os.rename(self.config_path, os.path.join(os.path.dirname(self.config_path), new_filename))
 
@@ -375,47 +334,6 @@ class LGDLFS:
                   open(os.path.join(self.path, 'tmp', f'{app_name}.json'), 'w'),
                   indent=2, sort_keys=True)
 
-    def get_cached_overlay_version(self):
-        if self._overlay_update_info:
-            return self._overlay_update_info
-
-        try:
-            self._overlay_update_info = json.load(open(
-                os.path.join(self.path, 'overlay_version.json')))
-        except Exception as e:
-            self.log.debug(f'Failed to load cached Overlay update data: {e!r}')
-            self._overlay_update_info = dict(last_update=0, data=None)
-
-        return self._overlay_update_info
-
-    def set_cached_overlay_version(self, version_data):
-        self._overlay_update_info = dict(last_update=time(), data=version_data)
-        json.dump(self._overlay_update_info,
-                  open(os.path.join(self.path, 'overlay_version.json'), 'w'),
-                  indent=2, sort_keys=True)
-
-    def get_overlay_install_info(self):
-        if not self._overlay_install_info:
-            try:
-                data = json.load(open(os.path.join(self.path, 'overlay_install.json')))
-                self._overlay_install_info = InstalledGame.from_json(data)
-            except Exception as e:
-                self.log.debug(f'Failed to load overlay install data: {e!r}')
-
-        return self._overlay_install_info
-
-    def set_overlay_install_info(self, igame: InstalledGame):
-        self._overlay_install_info = igame
-        json.dump(vars(igame), open(os.path.join(self.path, 'overlay_install.json'), 'w'),
-                  indent=2, sort_keys=True)
-
-    def remove_overlay_install_info(self):
-        try:
-            self._overlay_install_info = None
-            os.remove(os.path.join(self.path, 'overlay_install.json'))
-        except Exception as e:
-            self.log.debug(f'Failed to delete overlay install data: {e!r}')
-
     def generate_aliases(self):
         self.log.debug('Generating list of aliases...')
 
@@ -449,3 +367,24 @@ class LGDLFS:
 
         json.dump(alias_map, open(os.path.join(self.path, 'aliases.json'), 'w', newline='\n'),
                   indent=2, sort_keys=True, default=serialise_sets)
+
+    # Get UE assets metadata cache data (Hack LO)
+    def get_ue_assets_cache_data(self):
+        if self._ue_assets_cache_data:
+            return self._ue_assets_cache_data
+
+        try:
+            self._ue_assets_cache_data = json.load(open(
+                os.path.join(self.path, 'ue_assets_cache_data.json')))
+        except Exception as e:
+            self.log.debug(f'Failed to UE assets last update data: {e!r}')
+            self._ue_assets_cache_data = dict(last_update=0, ue_assets_count=0)
+
+        return self._ue_assets_cache_data
+
+    # Set UE assets metadata cache data (Hack LO)
+    def set_ue_assets_cache_data(self, ue_assets_count):
+        self._ue_assets_cache_data = dict(last_update=datetime.now().timestamp(), ue_assets_count=ue_assets_count)
+        json.dump(self._ue_assets_cache_data,
+                  open(os.path.join(self.path, 'ue_assets_cache_data.json'), 'w'),
+                  indent=2, sort_keys=True)

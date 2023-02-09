@@ -6,12 +6,12 @@ import os
 
 from typing import List
 
-from legendary.models.egl import EGLManifest
+from UEVaultManager.models.egl import EGLManifest
 
 
 class EPCLFS:
     # Known encryption key(s) for JSON user data
-    # Data is encrypted using AES-256-ECB mode
+    # encrypted using AES-256-ECB mode
     data_keys = []
 
     def __init__(self):

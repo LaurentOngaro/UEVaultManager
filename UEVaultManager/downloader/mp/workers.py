@@ -10,8 +10,8 @@ from multiprocessing import Process
 from multiprocessing.shared_memory import SharedMemory
 from queue import Empty
 
-from legendary.models.chunk import Chunk
-from legendary.models.downloading import (
+from UEVaultManager.models.chunk import Chunk
+from UEVaultManager.models.downloading import (
     DownloaderTask, DownloaderTaskResult,
     WriterTask, WriterTaskResult,
     TerminateWorkerTask, TaskFlags
