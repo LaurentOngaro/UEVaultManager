@@ -12,12 +12,12 @@ logger = logging.getLogger('EOSUtils')
 EOSOverlayApp = App(app_name='98bc04bc842e4906993fd6d6644ffb8d',
                     app_title='Epic Online Services Overlay',
                     metadata=dict(namespace='302e5ede476149b1bc3e4fe6ae45e50e',
-                                   id='cc15684f44d849e89e9bf4cec0508b68'))
+                                  id='cc15684f44d849e89e9bf4cec0508b68'))
 # EOS Windows service
 EOSHApp = App(app_name='c9e2eb9993a1496c99dc529b49a07339',
               app_title='Epic Online Services Helper (EOSH)',
               metadata=dict(namespace='302e5ede476149b1bc3e4fe6ae45e50e',
-                             id='1108a9c0af47438da91331753b22ea21'))
+                            id='1108a9c0af47438da91331753b22ea21'))
 
 EOS_OVERLAY_KEY = r'SOFTWARE\Epic Games\EOS'
 WINE_EOS_OVERLAY_KEY = EOS_OVERLAY_KEY.replace('\\', '\\\\')

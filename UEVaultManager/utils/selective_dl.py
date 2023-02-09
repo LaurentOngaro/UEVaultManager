@@ -15,19 +15,19 @@ _cyberpunk_sdl = {
 }
 
 _fortnite_sdl = {
-    '__required': {'tags': ['chunk0', 'chunk10'], 'name': 'Fortnite Core'},
-    'stw': {'tags': ['chunk11', 'chunk11optional'], 'name': 'Fortnite Save the World'},
+    '__required' : {'tags': ['chunk0', 'chunk10'], 'name': 'Fortnite Core'},
+    'stw'        : {'tags': ['chunk11', 'chunk11optional'], 'name': 'Fortnite Save the World'},
     'hd_textures': {'tags': ['chunk10optional'], 'name': 'High Resolution Textures'},
-    'lang_de': {'tags': ['chunk2'], 'name': '(Language Pack) Deutsch'},
-    'lang_fr': {'tags': ['chunk5'], 'name': '(Language Pack) français'},
-    'lang_pl': {'tags': ['chunk7'], 'name': '(Language Pack) polski'},
-    'lang_ru': {'tags': ['chunk8'], 'name': '(Language Pack) русский'},
-    'lang_cn': {'tags': ['chunk9'], 'name': '(Language Pack) 中文（中国）'}
+    'lang_de'    : {'tags': ['chunk2'], 'name': '(Language Pack) Deutsch'},
+    'lang_fr'    : {'tags': ['chunk5'], 'name': '(Language Pack) français'},
+    'lang_pl'    : {'tags': ['chunk7'], 'name': '(Language Pack) polski'},
+    'lang_ru'    : {'tags': ['chunk8'], 'name': '(Language Pack) русский'},
+    'lang_cn'    : {'tags': ['chunk9'], 'name': '(Language Pack) 中文（中国）'}
 }
 
 games = {
     'Fortnite': _fortnite_sdl,
-    'Ginger': _cyberpunk_sdl
+    'Ginger'  : _cyberpunk_sdl
 }
 
 
@@ -35,7 +35,7 @@ def get_sdl_appname(app_name):
     for k in games.keys():
         if k.endswith('_Mac'):
             continue
-        
+
         if app_name.startswith(k):
             return k
     return None

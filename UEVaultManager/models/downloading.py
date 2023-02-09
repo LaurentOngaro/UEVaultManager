@@ -157,4 +157,3 @@ class TerminateWorkerTask:
     Universal task to signal a worker to exit
     """
     pass
-

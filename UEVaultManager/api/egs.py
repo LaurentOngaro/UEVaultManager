@@ -251,9 +251,10 @@ class EPCAPI:
 
     # (Hack LO) get the price of a product
     def get_assets_price(self, product_id):
-        # TODO
+        # TODO: find a better way to get this data (marketplace web scrapping ?)
         # this API seems obsolete: a 404 error is always returned
         r = self.session.get(f"https://{self._launcher_host}/launcher/api/v2/ecommerce/product/{product_id}", timeout=self.request_timeout)
+
         if r.ok:
             return r.json()
         else:
@@ -261,8 +262,10 @@ class EPCAPI:
 
     # (Hack LO) get the reviews of a product
     def get_assets_review(self, product_id):
+        # TODO: find a better way to get this data (marketplace web scrapping ?)
         # this API seems obsolete: a 404 error is always returned
         r = self.session.get(f"https://{self._launcher_host}/launcher/api/v2/ecommerce/product/{product_id}/reviews", timeout=self.request_timeout)
+
         if r.ok:
             return r.json()
         else:

@@ -5,9 +5,9 @@ from sys import platform
 # games where the download order optimizations are enabled by default
 # a set() of versions can be specified, empty set means all versions.
 _optimize_default = {
-    'wombat': {},  # world war z
-    'snapdragon': {},  # metro exodus
-    'honeycreeper': {},  # diabotical
+    'wombat'                          : {},  # world war z
+    'snapdragon'                      : {},  # metro exodus
+    'honeycreeper'                    : {},  # diabotical
     'bcc75c246fe04e45b0c1f1c3fd52503a': {  # pillars of eternity
         '1.0.2'  # problematic version
     }
@@ -15,10 +15,10 @@ _optimize_default = {
 
 # Some games use launchers that don't work with Legendary, these are overriden here
 _exe_overrides = {
-    'kinglet':  {
+    'kinglet': {
         'darwin': 'Base/Binaries/Win64EOS/CivilizationVI.exe',
-        'linux': 'Base/Binaries/Win64EOS/CivilizationVI.exe',
-        'win32': 'LaunchPad/LaunchPad.exe'
+        'linux' : 'Base/Binaries/Win64EOS/CivilizationVI.exe',
+        'win32' : 'LaunchPad/LaunchPad.exe'
     }
 }
 
@@ -41,4 +41,3 @@ def update_workarounds(api_data):
     if 'executable_override' in api_data:
         _exe_overrides.clear()
         _exe_overrides.update(api_data['executable_override'])
-

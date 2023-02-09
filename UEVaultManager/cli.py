@@ -184,7 +184,6 @@ class UEVaultManagerCLI:
                     compatible_versions = separator.join(tmp_list)
 
                     # the following methods always return an empty vamue due to an obsolete API call:
-                    # TODO: find a better way to get this data (marketplace web scrapping ?)
                     price = self.core.egs.get_assets_price(uid)
                     review = self.core.egs.get_assets_review(asset_id)
 

@@ -20,7 +20,7 @@ from UEVaultManager.models.downloading import (
 
 class DLWorker(Process):
     def __init__(self, name, queue, out_queue, shm, max_retries=7,
-                 logging_queue=None, dl_timeout=10):
+        logging_queue=None, dl_timeout=10):
         super().__init__(name=name)
         self.q = queue
         self.o_q = out_queue
@@ -67,7 +67,7 @@ class DLWorker(Process):
                 while tries < self.max_retries:
                     # retry once immediately, otherwise do exponential backoff
                     if tries > 1:
-                        sleep_time = 2**(tries-1)
+                        sleep_time = 2 ** (tries - 1)
                         logger.info(f'Sleeping {sleep_time} seconds before retrying.')
                         time.sleep(sleep_time)
 

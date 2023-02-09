@@ -21,8 +21,8 @@ from UEVaultManager.models.manifest import ManifestComparison, Manifest
 
 class DLManager(Process):
     def __init__(self, download_dir, base_url, cache_dir=None, status_q=None,
-                 max_workers=0, update_interval=1.0, dl_timeout=10, resume_file=None,
-                 max_shared_memory=1024 * 1024 * 1024):
+        max_workers=0, update_interval=1.0, dl_timeout=10, resume_file=None,
+        max_shared_memory=1024 * 1024 * 1024):
         super().__init__(name='DLManager')
         self.log = logging.getLogger('DLM')
         self.proc_debug = False
@@ -77,9 +77,9 @@ class DLManager(Process):
         self.num_tasks_processed_since_last = 0
 
     def run_analysis(self, manifest: Manifest, old_manifest: Manifest = None,
-                     patch=True, resume=True, file_prefix_filter=None,
-                     file_exclude_filter=None, file_install_tag=None,
-                     processing_optimization=False) -> AnalysisResult:
+        patch=True, resume=True, file_prefix_filter=None,
+        file_exclude_filter=None, file_install_tag=None,
+        processing_optimization=False) -> AnalysisResult:
         """
         Run analysis on manifest and old manifest (if not None) and return a result
         with a summary resources required in order to install the provided manifest.
@@ -172,7 +172,7 @@ class DLManager(Process):
 
             file_prefix_filter = [f.lower() for f in file_prefix_filter]
             files_to_skip = set(i.filename for i in manifest.file_manifest_list.elements if not
-                                any(i.filename.lower().startswith(pfx) for pfx in file_prefix_filter))
+            any(i.filename.lower().startswith(pfx) for pfx in file_prefix_filter))
             self.log.info(f'Found {len(files_to_skip)} files to skip based on include prefix(es)')
             mc.added -= files_to_skip
             mc.changed -= files_to_skip
@@ -233,7 +233,7 @@ class DLManager(Process):
                 current_tmp_size -= old_manifest.file_manifest_list.get_file_by_path(fm.filename).file_size
 
         # clamp to 0
-        self.log.debug(f'Disk space delta: {analysis_res.disk_space_delta/1024/1024:.02f} MiB')
+        self.log.debug(f'Disk space delta: {analysis_res.disk_space_delta / 1024 / 1024:.02f} MiB')
 
         if processing_optimization:
             s_time = time.time()

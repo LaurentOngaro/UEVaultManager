@@ -195,9 +195,7 @@ class LegendaryCore:
                 self.logged_in = False
 
         # run update check
-        # TODO re-enable this code
-        # if self.update_check_enabled():
-        if False and self.update_check_enabled():
+        if self.update_check_enabled():
             try:
                 self.check_for_updates()
             except Exception as e:
@@ -259,7 +257,12 @@ class LegendaryCore:
             self.lgd.set_cached_version(version_info)
 
         web_version = version_info['release_info']['version']
-        self.update_available = version_tuple(web_version) > version_tuple(__version__)
+
+        # version check is disabled because it's checking for Legendary
+        # TODO: check UEVaultManager updates instead
+        # self.update_available = version_tuple(web_version) > version_tuple(__version__)
+        self.update_available = False
+
         self.apply_lgd_config(version_info)
 
     def apply_lgd_config(self, version_info=None):

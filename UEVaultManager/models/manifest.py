@@ -710,9 +710,9 @@ class FileManifest:
         # ToDo add MD5, MIME, SHA256 if those ever become relevant
         return '<FileManifest (filename="{}", symlink_target="{}", hash={}, flags={}, ' \
                'install_tags=[{}], chunk_parts=[{}], file_size={})>'.format(
-                    self.filename, self.symlink_target, self.hash.hex(), self.flags,
-                    ', '.join(self.install_tags), cp_repr, self.file_size
-               )
+            self.filename, self.symlink_target, self.hash.hex(), self.flags,
+            ', '.join(self.install_tags), cp_repr, self.file_size
+        )
 
 
 class ChunkPart:

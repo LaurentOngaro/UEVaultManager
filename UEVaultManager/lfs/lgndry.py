@@ -17,6 +17,7 @@ from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
 
 class LGDLFS:
+
     def __init__(self, config_file=None):
         self.log = logging.getLogger('LGDLFS')
 
@@ -35,9 +36,6 @@ class LGDLFS:
         self._game_metadata = dict()
         # UEVaultManager update check info
         self._update_info = None
-        # EOS Overlay install/update check info
-        self._overlay_update_info = None
-        self._overlay_install_info = None
         # UE assets metadata cache data (Hack LO)
         self._ue_assets_cache_data = None
 
@@ -75,8 +73,7 @@ class LGDLFS:
             for _f in os.listdir(os.path.join(self.path, 'manifests', 'old')):
                 try:
                     self.log.debug(f'Renaming "{_f}"')
-                    os.rename(os.path.join(self.path, 'manifests', 'old', _f),
-                              os.path.join(self.path, 'manifests', _f))
+                    os.rename(os.path.join(self.path, 'manifests', 'old', _f), os.path.join(self.path, 'manifests', _f))
                 except Exception as e:
                     self.log.warning(f'Renaming manifest file "{_f}" failed: {e!r}')
 
@@ -107,12 +104,6 @@ class LGDLFS:
         if not self.config.has_option('UEVaultManager', 'disable_update_notice'):
             self.config.set('UEVaultManager', '; Disables the notice about an available update on exit')
             self.config.set('UEVaultManager', 'disable_update_notice', 'false' if is_windows_mac_or_pyi() else 'true')
-
-        try:
-            self._installed = json.load(open(os.path.join(self.path, 'installed.json')))
-        except Exception as e:
-            self.log.debug(f'Loading installed games failed: {e!r}')
-            self._installed = None
 
         # load existing app metadata
         for gm_file in os.listdir(os.path.join(self.path, 'metadata')):
@@ -151,8 +142,7 @@ class LGDLFS:
             raise ValueError('Userdata is none!')
 
         self._user_data = userdata
-        json.dump(userdata, open(os.path.join(self.path, 'user.json'), 'w'),
-                  indent=2, sort_keys=True)
+        json.dump(userdata, open(os.path.join(self.path, 'user.json'), 'w'), indent=2, sort_keys=True)
 
     def invalidate_userdata(self):
         self._user_data = None
@@ -177,8 +167,7 @@ class LGDLFS:
             raise ValueError('Entitlements is none!')
 
         self._entitlements = entitlements
-        json.dump(entitlements, open(os.path.join(self.path, 'entitlements.json'), 'w'),
-                  indent=2, sort_keys=True)
+        json.dump(entitlements, open(os.path.join(self.path, 'entitlements.json'), 'w'), indent=2, sort_keys=True)
 
     @property
     def assets(self):
@@ -198,9 +187,12 @@ class LGDLFS:
             raise ValueError('Assets is none!')
 
         self._assets = assets
-        json.dump({platform: [a.__dict__ for a in assets] for platform, assets in self._assets.items()},
-                  open(os.path.join(self.path, 'assets.json'), 'w'),
-                  indent=2, sort_keys=True)
+        json.dump(
+            {platform: [a.__dict__ for a in assets] for platform, assets in self._assets.items()},
+            open(os.path.join(self.path, 'assets.json'), 'w'),
+            indent=2,
+            sort_keys=True
+        )
 
     def _get_manifest_filename(self, app_name, version, platform=None):
         if platform:
@@ -266,15 +258,9 @@ class LGDLFS:
                     self.log.warning(f'Failed to delete file "{f}": {e!r}')
 
     def clean_manifests(self, in_use):
-        in_use_files = {
-            f'{clean_filename(f"{app_name}_{version}")}.manifest'
-            for app_name, version, _ in in_use
-        }
+        in_use_files = {f'{clean_filename(f"{app_name}_{version}")}.manifest' for app_name, version, _ in in_use}
 
-        in_use_files |= {
-            f'{clean_filename(f"{app_name}_{platform}_{version}")}.manifest'
-            for app_name, version, platform in in_use
-        }
+        in_use_files |= {f'{clean_filename(f"{app_name}_{platform}_{version}")}.manifest' for app_name, version, platform in in_use}
 
         for f in os.listdir(os.path.join(self.path, 'manifests')):
             if f not in in_use_files:
@@ -291,8 +277,10 @@ class LGDLFS:
         if os.path.exists(self.config_path):
             if (modtime := int(os.stat(self.config_path).st_mtime)) != self.config.modtime:
                 new_filename = f'config.{modtime}.ini'
-                self.log.warning(f'Configuration file has been modified while UEVaultManager was running, '
-                                 f'user-modified config will be renamed to "{new_filename}"...')
+                self.log.warning(
+                    f'Configuration file has been modified while UEVaultManager was running, '
+                    f'user-modified config will be renamed to "{new_filename}"...'
+                )
                 os.rename(self.config_path, os.path.join(os.path.dirname(self.config_path), new_filename))
 
         with open(self.config_path, 'w') as cf:
@@ -317,8 +305,7 @@ class LGDLFS:
         if not version_data:
             return
         self._update_info = dict(last_update=time(), data=version_data)
-        json.dump(self._update_info, open(os.path.join(self.path, 'version.json'), 'w'),
-                  indent=2, sort_keys=True)
+        json.dump(self._update_info, open(os.path.join(self.path, 'version.json'), 'w'), indent=2, sort_keys=True)
 
     def get_cached_sdl_data(self, app_name):
         try:
@@ -330,9 +317,7 @@ class LGDLFS:
     def set_cached_sdl_data(self, app_name, sdl_version, sdl_data):
         if not app_name or not sdl_data:
             return
-        json.dump(dict(version=sdl_version, data=sdl_data),
-                  open(os.path.join(self.path, 'tmp', f'{app_name}.json'), 'w'),
-                  indent=2, sort_keys=True)
+        json.dump(dict(version=sdl_version, data=sdl_data), open(os.path.join(self.path, 'tmp', f'{app_name}.json'), 'w'), indent=2, sort_keys=True)
 
     def generate_aliases(self):
         self.log.debug('Generating list of aliases...')
@@ -365,8 +350,7 @@ class LGDLFS:
             """Turn sets into sorted lists for storage"""
             return sorted(obj) if isinstance(obj, set) else obj
 
-        json.dump(alias_map, open(os.path.join(self.path, 'aliases.json'), 'w', newline='\n'),
-                  indent=2, sort_keys=True, default=serialise_sets)
+        json.dump(alias_map, open(os.path.join(self.path, 'aliases.json'), 'w', newline='\n'), indent=2, sort_keys=True, default=serialise_sets)
 
     # Get UE assets metadata cache data (Hack LO)
     def get_ue_assets_cache_data(self):
@@ -374,8 +358,7 @@ class LGDLFS:
             return self._ue_assets_cache_data
 
         try:
-            self._ue_assets_cache_data = json.load(open(
-                os.path.join(self.path, 'ue_assets_cache_data.json')))
+            self._ue_assets_cache_data = json.load(open(os.path.join(self.path, 'ue_assets_cache_data.json')))
         except Exception as e:
             self.log.debug(f'Failed to UE assets last update data: {e!r}')
             self._ue_assets_cache_data = dict(last_update=0, ue_assets_count=0)
@@ -385,6 +368,4 @@ class LGDLFS:
     # Set UE assets metadata cache data (Hack LO)
     def set_ue_assets_cache_data(self, ue_assets_count):
         self._ue_assets_cache_data = dict(last_update=datetime.now().timestamp(), ue_assets_count=ue_assets_count)
-        json.dump(self._ue_assets_cache_data,
-                  open(os.path.join(self.path, 'ue_assets_cache_data.json'), 'w'),
-                  indent=2, sort_keys=True)
+        json.dump(self._ue_assets_cache_data, open(os.path.join(self.path, 'ue_assets_cache_data.json'), 'w'), indent=2, sort_keys=True)

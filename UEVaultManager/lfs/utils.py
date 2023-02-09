@@ -30,8 +30,8 @@ def delete_folder(path: str, recursive=True) -> bool:
 
 
 def delete_filelist(path: str, filenames: List[str],
-                    delete_root_directory: bool = False,
-                    silent: bool = False) -> bool:
+    delete_root_directory: bool = False,
+    silent: bool = False) -> bool:
     dirs = set()
     no_error = True
 
@@ -78,7 +78,7 @@ def delete_filelist(path: str, filenames: List[str],
 
 
 def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1',
-                   large_file_threshold=1024 * 1024 * 512) -> Iterator[tuple]:
+    large_file_threshold=1024 * 1024 * 512) -> Iterator[tuple]:
     """
     Validates the files in filelist in path against the provided hashes
 
@@ -120,7 +120,7 @@ def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1',
             with open(full_path, 'rb') as f:
                 real_file_hash = hashlib.new(hash_type)
                 i = 0
-                while chunk := f.read(1024*1024):
+                while chunk := f.read(1024 * 1024):
                     real_file_hash.update(chunk)
                     if show_progress and i % interval == 0:
                         pos = f.tell()
