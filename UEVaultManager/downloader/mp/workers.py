@@ -141,7 +141,7 @@ class FileWorker(Process):
 
         last_filename = ''
         current_file = None
-
+        j = {}
         while True:
             try:
                 try:

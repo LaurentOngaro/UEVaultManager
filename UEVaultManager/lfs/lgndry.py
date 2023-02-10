@@ -35,7 +35,7 @@ class LGDLFS:
         self._assets_metadata = dict()
         # UEVaultManager update check info
         self._update_info = None
-        # UE assets metadata cache data 
+        # UE assets metadata cache data
         self._ue_assets_cache_data = None
 
         # Config with item specific settings (e.g. start parameters, env variables)
@@ -103,6 +103,19 @@ class LGDLFS:
         if not self.config.has_option('UEVaultManager', 'disable_update_notice'):
             self.config.set('UEVaultManager', '; Disables the notice about an available update on exit')
             self.config.set('UEVaultManager', 'disable_update_notice', 'false' if is_windows_mac_or_pyi() else 'true')
+
+        if not self.config.has_option('UEVaultManager', 'create_output_backup'):
+            self.config.set(
+                'UEVaultManager',
+                '; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file'
+            )
+            self.config.set('UEVaultManager', 'create_output_backup', 'true')
+        if not self.config.has_option('UEVaultManager', 'verbose_mode'):
+            self.config.set('UEVaultManager', '; Print more information during long operations')
+            self.config.set('UEVaultManager', 'verbose_mode', 'false')
+        if not self.config.has_option('UEVaultManager', 'ue_assets_max_cache_duration'):
+            self.config.set('UEVaultManager', '; Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days')
+            self.config.set('UEVaultManager', 'ue_assets_max_cache_duration', '1296000')
 
         # load existing app metadata
         for gm_file in os.listdir(os.path.join(self.path, 'metadata')):
@@ -351,7 +364,7 @@ class LGDLFS:
 
         json.dump(alias_map, open(os.path.join(self.path, 'aliases.json'), 'w', newline='\n'), indent=2, sort_keys=True, default=serialise_sets)
 
-    # Get UE assets metadata cache data 
+    # Get UE assets metadata cache data
     def get_ue_assets_cache_data(self):
         if self._ue_assets_cache_data:
             return self._ue_assets_cache_data
@@ -364,7 +377,7 @@ class LGDLFS:
 
         return self._ue_assets_cache_data
 
-    # Set UE assets metadata cache data 
+    # Set UE assets metadata cache data
     def set_ue_assets_cache_data(self, ue_assets_count):
         self._ue_assets_cache_data = dict(last_update=datetime.now().timestamp(), ue_assets_count=ue_assets_count)
         json.dump(self._ue_assets_cache_data, open(os.path.join(self.path, 'ue_assets_cache_data.json'), 'w'), indent=2, sort_keys=True)

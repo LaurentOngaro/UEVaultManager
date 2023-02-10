@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import webbrowser
 from collections import namedtuple
 from logging.handlers import QueueListener
@@ -146,82 +147,104 @@ class UEVaultManagerCLI:
         else:
             logger.info('Getting asset list... (this may take a while)')
 
-        #  add ue_assets_only argument
-        items = self.core.get_asset_list()
-        # Get information for items that cannot be installed through UEVaultManager (yet), such
-        # as games that have to be activated on and launched through Origin.
+        items = self.core.get_asset_list(platform='Windows', filter_category=args.category)
+
         if args.include_noasset:
-            na_items = self.core.get_non_asset_library_items(skip_ue=not args.include_ue)
+            na_items = self.core.get_non_asset_library_items(skip_ue=False)
             items.extend(na_items)
 
         # sort assets by name
         items = sorted(items, key=lambda x: x.app_title.lower())
 
-        dummy_text = "dummy_text"
+        no_data_value = "0"
+        no_data_text = "N.A."
         # output with extended info
         if args.csv or args.tsv:
-            writer = csv.writer(stdout, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
-            writer.writerow(
-                [
-                    # dans les infos
-                    'App name', 'App title', 'Asset_id', 'Image', 'Url', 'UE Version', 'compatible Versions', 'Review', 'Vendeur', 'Description',
-                    'Categorie', 'Prix', 'uid', 'Date Creation', 'Date Updated', 'Status'
-                    # calculés lors de l'ajout
-                    , 'Date Ajout', 'En Promo', 'Ancien Prix'
-                    # Complétés par l'utilisateur
-                    , 'Emplacement', 'A Acheter', 'Test', 'Avis', 'Remarque', 'Commentaire', 'Dossier Test', 'Dossier Asset', 'Alternative'
-                ]
-            )
-            for asset in items:
-                metadata = asset.metadata
-                asset_id = asset.asset_infos['Windows'].asset_id
-                uid = metadata["id"]
-                separator = ','
-                tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata["releaseInfo"]]
-                compatible_versions = separator.join(tmp_list)
+            output = args.output if args.output else stdout
+            headings = [
+                # dans les infos
+                'Asset_id', 'App name', 'App title', 'Categorie', 'Image', 'Url', 'UE Version', 'compatible Versions', 'Review', 'Vendeur',
+                'Description', 'Prix', 'uid', 'Date Creation', 'Date Updated', 'Status'
+                # calculés lors de l'ajout
+                , 'Date Ajout', 'En Promo', 'Ancien Prix'
+                # Complétés par l'utilisateur
+                , 'Emplacement', 'A Acheter', 'Test', 'Avis', 'Remarque', 'Commentaire', 'Dossier Test', 'Dossier Asset', 'Alternative'
+            ]
+            try:
+                writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
+                writer.writerow(headings)
+                cpt = 0
+                cpt_max = len(items)
+                for asset in items:
+                    record = [""] * (len(headings))  # create a list of empty string
+                    metadata = asset.metadata
+                    asset_id = asset.asset_infos['Windows'].asset_id
+                    uid = metadata["id"]
+                    category = metadata["categories"][0]['path']
 
-                # the following methods always return an empty value due to an obsolete API call:
-                price = self.core.egs.get_assets_price(uid)
-                review = self.core.egs.get_assets_review(asset_id)
+                    separator = ','
+                    tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata["releaseInfo"]]
+                    compatible_versions = separator.join(tmp_list)
 
-                print(f'price {price} review {review}')
-                writer.writerow(
-                    (
-                        # dans les infos
-                        asset.app_name  # 'App name'
-                        , asset.app_title  # 'App title'
-                        , asset_id  # 'asset_id'
-                        , metadata["keyImages"][2]["url"]  # 'Image' with 488 height
-                        , f'https://www.unrealengine.com/marketplace/en-US/product/{asset_id}'  # 'Url'
-                        , asset.app_version("Windows")  # 'UE Version'
-                        , compatible_versions  # compatible_versions
-                        , review  # 'Review'
-                        , metadata["developer"]  # 'Vendeur'
-                        , metadata["description"]  # 'Description'
-                        , metadata["categories"][0]['path']  # 'Categorie'
-                        , price  # 'Prix'
-                        , uid  # 'uid'
-                        , metadata["creationDate"]  # 'Date creation'
-                        , metadata["lastModifiedDate"]  # 'Date MAJ'
-                        , metadata["status"]  # 'status'
+                    image_url = ""
+                    try:
+                        image_url = metadata["keyImages"][2]["url"]  # 'Image' with 488 height
+                    except IndexError:
+                        self.logger.debug(f'asset {asset.app_name} has no image')
 
-                        # calculé lors de l'ajout
-                        , dummy_text  # 'Date Ajout'
-                        , dummy_text  # 'En Promo'
-                        , dummy_text  # 'Ancien Prix'
+                    # the following methods always return an empty value due to an obsolete API call:
+                    price = self.core.egs.get_assets_price(uid)
+                    review = self.core.egs.get_assets_review(asset_id)
 
-                        # complétés par l'utilisateur
-                        , ''  # 'Emplacement'
-                        , ''  # 'A Acheter'
-                        , ''  # 'Test
-                        , ''  # 'Avis'
-                        , ''  # 'Remarque'
-                        , ''  # 'Commentaire'
-                        , ''  # 'Dossier Test'
-                        , ''  # 'Dossier Asset'
-                        , ''  # 'Alternative'
-                    )
-                )
+                    if self.core.verbose_mode:
+                        self.logger.info(
+                            f'Saving asset {cpt}/{cpt_max} {asset.app_name}: id={asset_id} category={category} price={price} review={review}'
+                        )
+
+                    try:
+                        record = (
+                            # dans les infos
+                            asset_id  # 'asset_id'
+                            , asset.app_name  # 'App name'
+                            , asset.app_title  # 'App title'
+                            , category  # 'Categorie'
+                            , image_url  # 'Image' with 488 height
+                            , f'https://www.unrealengine.com/marketplace/en-US/product/{asset_id}'  # 'Url'
+                            , asset.app_version('Windows')  # 'UE Version'
+                            , compatible_versions  # compatible_versions
+                            , review  # 'Review'
+                            , metadata["developer"]  # 'Vendeur'
+                            , metadata["description"]  # 'Description'
+                            , price  # 'Prix'
+                            , uid  # 'uid'
+                            , metadata["creationDate"]  # 'Date creation'
+                            , metadata["lastModifiedDate"]  # 'Date MAJ'
+                            , metadata["status"]  # 'status'
+
+                            # calculé lors de l'ajout
+                            , no_data_text  # 'Date Ajout'
+                            , no_data_value  # 'En Promo'
+                            , no_data_value  # 'Ancien Prix'
+
+                            # complétés par l'utilisateur
+                            , no_data_text  # 'Emplacement'
+                            , no_data_value  # 'A Acheter'
+                            , no_data_text  # 'Test
+                            , no_data_text  # 'Avis'
+                            , no_data_text  # 'Remarque'
+                            , no_data_text  # 'Commentaire'
+                            , no_data_text  # 'Dossier Test'
+                            , no_data_text  # 'Dossier Asset'
+                            , no_data_text  # 'Alternative'
+                        )
+                    except TypeError:
+                        self.logger.error(f'Could not create record for {asset.app_name} BAD TYPE VALUE')
+                    try:
+                        writer.writerow(record)
+                    except (OSError, UnicodeEncodeError) as error:
+                        self.logger.error(f'Could not write record for {asset.app_name} into {args.output}.\nError:{error}')
+            except OSError:
+                self.logger.error(f'Could not write list result to {args.output}')
             return
 
         if args.json:
@@ -232,7 +255,7 @@ class UEVaultManagerCLI:
 
         print('\nAvailable UE Assets:')
         for asset in items:
-            version = asset.app_version("Windows")
+            version = asset.app_version('Windows')
             print(f' * {asset.app_title.strip()} (App name: {asset.app_name} | Version: {version})')
 
         print(f'\nTotal: {len(items)}')
@@ -344,8 +367,8 @@ class UEVaultManagerCLI:
         info_items = dict(assets=list(), manifest=list(), install=list())
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
 
-        item = self.core.get_item(app_name, update_meta=not args.offline, platform="Windows")
-        if item and not self.core.asset_available(item, platform="Windows"):
+        item = self.core.get_item(app_name, update_meta=not args.offline, platform='Windows')
+        if item and not self.core.asset_available(item, platform='Windows'):
             logger.warning(
                 f'Asset information for "{item.app_name}" is missing, this may be due to the asset '
                 f'not being available on the selected platform or currently logged-in account.'
@@ -370,14 +393,14 @@ class UEVaultManagerCLI:
             egl_meta = self.core.egs.get_asset_info(item.namespace, item.catalog_item_id)
             item.metadata = egl_meta
             # Get manifest if asset exists for current platform
-            if "Windows" in item.asset_infos:
-                manifest_data, _ = self.core.get_cdn_manifest(item, "Windows")
+            if 'Windows' in item.asset_infos:
+                manifest_data, _ = self.core.get_cdn_manifest(item, 'Windows')
 
         if item:
             asset_infos = info_items['assets']
             asset_infos.append(InfoItem('App name', 'app_name', item.app_name, item.app_name))
             asset_infos.append(InfoItem('Title', 'title', item.app_title, item.app_title))
-            asset_infos.append(InfoItem('Latest version', 'version', item.app_version("Windows"), item.app_version("Windows")))
+            asset_infos.append(InfoItem('Latest version', 'version', item.app_version('Windows'), item.app_version('Windows')))
             all_versions = {k: v.build_version for k, v in item.asset_infos.items()}
             asset_infos.append(InfoItem('All versions', 'platform_versions', all_versions, all_versions))
             # Cloud save support for Mac and Windows
@@ -670,6 +693,22 @@ def main():
     list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='List assets in TSV format')
     list_parser.add_argument('--json', dest='json', action='store_true', help='List assets in JSON format')
     list_parser.add_argument('--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
+    list_parser.add_argument(
+        '-o',
+        '--output',
+        dest='output',
+        default=sys.stdout,
+        type=argparse.FileType('w'),
+        help='The file name (with path) where the list should be written'
+    )
+    list_parser.add_argument(
+        '-c',
+        '--category',
+        action='store',
+        metavar='<category>',
+        dest='category',
+        help='Filter assets by category. Search against the category in the marketplace. Search is case insensitive and can  be partial'
+    )
 
     list_files_parser.add_argument(
         '--force-download', dest='force_download', action='store_true', help='Always download instead of using on-disk manifest'
@@ -730,12 +769,17 @@ def main():
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
     ql = cli.setup_threaded_logging()
 
-    config_ll = cli.core.lgd.config.get('UEVaultManager', 'log_level', fallback='info')
-    if config_ll == 'debug' or args.debug:
+    conf_log_level = cli.core.lgd.config.get('UEVaultManager', 'log_level', fallback='info')
+    if conf_log_level == 'debug' or args.debug:
+        cli.core.verbose_mode = True
         logging.getLogger().setLevel(level=logging.DEBUG)
         # keep requests quiet
         logging.getLogger('requests').setLevel(logging.WARNING)
         logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+    cli.core.create_output_backup = cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', True)
+    cli.core.verbose_mode = cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', False)
+    cli.ue_assets_max_cache_duration = cli.core.lgd.config.get('UEVaultManager', 'ue_assets_max_cache_duration', 1296000)
 
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:

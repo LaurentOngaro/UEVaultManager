@@ -184,7 +184,7 @@ optional arguments:
 
 Command: list
 usage: UEVaultManager list [-h] [-T] [--csv]
-                      [--tsv] [--json] [--force-refresh]
+                      [--tsv] [--json] [--force-refresh] [--output]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -192,6 +192,7 @@ optional arguments:
   --tsv                 List asset in TSV format
   --json                List asset in JSON format
   --force-refresh       Force a refresh of all game metadata
+  -o, --output          The file name (with path) where the list should be written to
 
 
 Command: list-files
@@ -232,26 +233,16 @@ UEVaultManager supports some options as well as game specific configuration in `
 ````ini
 [UEVaultManager]
 log_level = debug
-; maximum shared memory (in MiB) to use for installation
-max_memory = 2048
-; maximum number of worker processes when downloading (fewer workers will be slower, but also use less system resources)
-max_workers = 8
-; default install directory
-install_dir = D:/UEAssets
 ; locale override, must be in RFC 1766 format (e.g. "en-US")
 locale = en-US
-; whether or not syncing with egl is enabled
-egl_sync = false
 ; path to the "Manifests" folder in the EGL ProgramData directory
 egl_programdata = C:/ProgramData/Epic/EpicGamesLauncher/Data/Manifests
-; Set preferred CDN host (e.g. to improve download speed)
-preferred_cdn = epicasset-download1.akamaized.net
-; disable HTTPS for downloads (e.g. to use a LanCache)
-disable_https = false
 ; Disables the automatic update check
 disable_update_check = false
 ; Disables the notice about an available update on exit
 disable_update_notice = false
 ; Disable automatically-generated aliases
 disable_auto_aliasing = false
+; Create a backup of the output file (when using the --output option) suffixe by a timestamp
+create_output_backup = false
 ````

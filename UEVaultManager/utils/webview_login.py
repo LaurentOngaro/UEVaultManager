@@ -49,6 +49,7 @@ sid_req.send();
 
 
 class MockLauncher:
+
     def __init__(self, callback_sid, callback_code):
         self.callback_sid = callback_sid
         self.callback_code = callback_code
@@ -137,16 +138,17 @@ def do_webview_login(callback_sid=None, callback_code=None):
 
     logger.info('Opening Epic Games login window...')
     # Open logout URL first to remove existing cookies, then redirect to login.
-    window = webview.create_window(f'UEVaultManager {__version__} - Epic Games Account Login',
-                                   url=url, width=768, height=1024, js_api=api)
+    window = webview.create_window(f'UEVaultManager {__version__} - Epic Games Account Login', url=url, width=768, height=1024, js_api=api)
     api.window = window
     window.events.loaded += api.on_loaded
 
     try:
         webview.start()
     except Exception as we:
-        logger.error(f'Running webview failed with {we!r}. If this error persists try the manual '
-                     f'login process by adding --disable-webview to your command line.')
+        logger.error(
+            f'Running webview failed with {we!r}. If this error persists try the manual '
+            f'login process by adding --disable-webview to your command line.'
+        )
         return None
 
     if api.callback_result is None:

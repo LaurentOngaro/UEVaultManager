@@ -7,7 +7,7 @@ from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from hashlib import sha1
-from locale import getdefaultlocale
+from locale import getlocale, LC_CTYPE
 from platform import system
 from urllib.parse import urlparse
 
@@ -24,7 +24,6 @@ from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
-
 
 # ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
 #  can handle to give the user more details. (Not required yet since there's no GUI so log output is fine)
@@ -52,13 +51,12 @@ class AppCore:
                 self.log.error(f'Config EGL path ("{self.egl.programdata_path}") is invalid! Disabling sync...')
                 self.egl.programdata_path = None
                 self.lgd.config.remove_option('UEVaultManager', 'egl_programdata')
-                self.lgd.config.remove_option('UEVaultManager', 'egl_sync')
                 self.lgd.save_config()
 
         self.local_timezone = datetime.now().astimezone().tzinfo
         self.language_code, self.country_code = ('en', 'US')
 
-        if locale := self.lgd.config.get('UEVaultManager', 'locale', fallback=getdefaultlocale(('LANG', 'LANGUAGE', 'LC_ALL', 'LC_CTYPE'))[0]):
+        if locale := self.lgd.config.get('UEVaultManager', 'locale', fallback=getlocale(LC_CTYPE)[0]):
             try:
                 self.language_code, self.country_code = locale.split('-' if '-' in locale else '_')
                 self.log.debug(f'Set locale to {self.language_code}-{self.country_code}')
@@ -74,13 +72,16 @@ class AppCore:
         self.webview_killswitch = False
         self.logged_in = False
 
-        # UE assets metadata cache properties 
+        # UE assets metadata cache properties
         self.ue_assets_count = 0
         self.ue_assets_update_available = False
-        # after 15 days UE assets metadata cache will be invalidated
+
+        # Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days
         self.ue_assets_max_cache_duration = 15 * 24 * 3600
-        # set to True to add more log
+        # set to True to add print more information during long operations
         self.verbose_mode = False
+        # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
+        self.create_output_backup = True
 
     def auth_sid(self, sid) -> str:
         """
@@ -91,20 +92,20 @@ class AppCore:
         s = session()
         s.headers.update(
             {
-                'X-Epic-Event-Action'  :
-                    'login',
+                'X-Epic-Event-Action':
+                'login',
                 'X-Epic-Event-Category':
-                    'login',
+                'login',
                 'X-Epic-Strategy-Flags':
-                    '',
-                'X-Requested-With'     :
-                    'XMLHttpRequest',
-                'User-Agent'           :
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                    'AppleWebKit/537.36 (KHTML, like Gecko) '
-                    f'EpicGamesLauncher/{self._egl_version} '
-                    'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
-                    'Chrome/84.0.4147.38 Safari/537.36'
+                '',
+                'X-Requested-With':
+                'XMLHttpRequest',
+                'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                f'EpicGamesLauncher/{self._egl_version} '
+                'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
+                'Chrome/84.0.4147.38 Safari/537.36'
             }
         )
         s.cookies['EPIC_COUNTRY'] = self.country_code.upper()
@@ -336,11 +337,23 @@ class AppCore:
             self.get_asset_list(True, platform=platform)
         return self.lgd.get_item_meta(app_name)
 
-    def get_asset_list_old(self, update_assets=True, platform='Windows') -> List[App]:
-        return self.get_asset_list(update_assets=update_assets, platform=platform)[0]
+    # add a parameter to bypass some resource loads if ue asset only are required
+    def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
 
-    # add a parameter to bypass some resource loads if ue asset only are required 
-    def get_asset_list(self, update_assets=True, platform='Windows') -> (List[App], Dict[str, List[App]]):
+        def fetch_asset_meta(args):
+            name, namespace, catalog_item_id = args
+            eg_meta = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
+            app = App(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
+            self.lgd.set_item_meta(app.app_name, app)
+            apps[name] = app
+            #  some items to update could have bypassed
+            try:
+                if name in still_needs_update:
+                    still_needs_update.remove(name)
+            except Exception as e:
+                self.log.warning(f'Removing {name} from the update list failed with {e!r}')
+                return False
+
         _ret = []
         meta_updated = False
 
@@ -363,16 +376,19 @@ class AppCore:
                     assets[_asset.app_name] = {_platform: _asset}
 
         fetch_list = []
+        assets_bypassed = {}
         apps = {}
 
-        # split asset checking and data grabbing to optimize cache checking 
+        # loop through assets items to check for if they are for ue or not
         valid_items = []
         bypass_count = 0
+        self.log.debug(f'\n======\nSTARTING asset indexing phase 1 (ue or not)\n')
         for app_name, app_assets in sorted(assets.items()):
+            assets_bypassed[app_name] = False
             if app_assets['Windows'].namespace != 'ue':
-                if self.verbose_mode:
-                    self.log.info(f' {app_name} has been bypassed #1')
+                self.log.debug(f'{app_name} has been bypassed (namespace != "ue") in phase 1')
                 bypass_count += 1
+                assets_bypassed[app_name] = True
                 continue
 
             item = {"name": app_name, "asset": app_assets}
@@ -380,42 +396,48 @@ class AppCore:
 
         self.ue_assets_count = len(valid_items)
 
-        # check if we must refresh ue asset metadata cache 
+        # check if we must refresh ue asset metadata cache
         self.check_for_ue_assets_updates()
         force_refresh = self.ue_assets_update_available
 
-        # loop through valid items 
-        for lib_item in valid_items:
+        self.log.debug(f'A total of {bypass_count} asset has been bypassed in phase 1')
+        self.log.debug(f'\n======\nSTARTING asset indexing phase 2 (filtering and updating metadata) \n')
+
+        # loop through valid items to check for update and filtering
+        bypass_count = 0
+        i = 0
+        while i < len(valid_items):
+            lib_item = valid_items[i]
             app_name = lib_item["name"]
             app_assets = lib_item["asset"]
+            assets_bypassed[app_name] = False
             if self.verbose_mode:
-                self.log.info(f' adding {app_name} for {app_assets["Windows"].namespace} to the list')
+                self.log.info(f"checking {app_name}....")
 
             item = self.lgd.get_item_meta(app_name)
+
             asset_updated = False
             if item:
+                category = str(item.metadata['categories'][0]['path']).lower()
+                if filter_category and category.find(filter_category.lower()) == -1:
+                    self.log.debug(f'{app_name} has been FILTERED by category ({filter_category} not in {category})')
+                    assets_bypassed[app_name] = True
+                    bypass_count += 1
+                    # self.log.debug(f'REMOVING {valid_items[i]["name"]}')
+                    del valid_items[i]
+                    # i = i + 1
+                    continue
                 asset_updated = any(item.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
                 apps[app_name] = item
+                self.log.debug(f'{app_name} has been ADDED to the apps list')
 
+            i = i + 1
             if update_assets and (not item or force_refresh or (item and asset_updated)):
                 self.log.debug(f'Scheduling metadata update for {app_name}')
                 # namespace/catalog item are the same for all platforms, so we can just use the first one
                 _ga = next(iter(app_assets.values()))
                 fetch_list.append((app_name, _ga.namespace, _ga.catalog_item_id))
                 meta_updated = True
-
-        def fetch_asset_meta(args):
-            name, namespace, catalog_item_id = args
-            eg_meta = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
-            app = App(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
-            self.lgd.set_item_meta(app.app_name, app)
-            apps[name] = app
-            #  some items to update could have bypassed
-            try:
-                still_needs_update.remove(name)
-            except Exception as e:
-                self.log.warning(f'Removing {name} from the update list failed with {e!r}')
-                return False
 
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
         still_needs_update = {e[0] for e in fetch_list}
@@ -425,20 +447,21 @@ class AppCore:
             if use_threads:
                 with ThreadPoolExecutor(max_workers=16) as executor:
                     executor.map(fetch_asset_meta, fetch_list, timeout=60.0)
+
+        self.log.debug(f'A total of {bypass_count} asset has been bypassed in phase 2')
+        self.log.debug(f'\n======\nSTARTING asset indexing phase 3 (fetching metadata)\n')
+
+        # loop through valid items
+        meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata for assets that have been filtered
         bypass_count = 0
+        for lib_item in valid_items:
+            app_name = lib_item["name"]
+            app_assets = lib_item["asset"]
 
-        for app_name, app_assets in sorted(assets.items()):
-            # skip all items that are not UE assets if the --ue-assets-only command line option has been used 
-            # if ue_assets_only and all(v.namespace != 'ue' for v in app_assets.values()):
-            if app_assets['Windows'].namespace != 'ue':
-                if self.verbose_mode:
-                    self.log.info(f' {app_name} has been bypassed #3')
-                bypass_count += 1
-                continue
-
-            item = apps.get(app_name)
+            item = apps[app_name]
             # retry if metadata is still missing/threaded loading wasn't used
-            if not item or app_name in still_needs_update:
+            ignore_asset = (app_name in assets_bypassed) and (assets_bypassed[app_name])
+            if not ignore_asset and (not item or app_name in still_needs_update):
                 if use_threads:
                     self.log.warning(f'Fetching metadata for {app_name} failed, retrying')
                 _ga = next(iter(app_assets.values()))
@@ -448,6 +471,8 @@ class AppCore:
             if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])) and platform in app_assets:
                 _ret.append(item)
 
+        self.log.debug(f'A total of {bypass_count} asset has been bypassed in phase 3')
+
         self.update_aliases(force=meta_updated)
         if meta_updated:
             self._prune_metadata()
@@ -455,7 +480,9 @@ class AppCore:
         return _ret
 
     def _prune_metadata(self):
-        # compile list of items without assets, then delete their metadata
+        # compile list of games without assets, then delete their metadata
+        available_assets = set()
+        available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
         for app_name in self.lgd.get_item_app_names():
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
@@ -541,6 +568,7 @@ class AppCore:
         if disable_https:
             manifest_urls = [url.replace('https://', 'http://') for url in manifest_urls]
 
+        r = {}
         for url in manifest_urls:
             self.log.debug(f'Trying to download manifest from "{url}"...')
             try:
@@ -585,7 +613,7 @@ class AppCore:
         r = self.egs.unauth_session.get(f'{base_url}/Deltas/{new_build_id}/{old_build_id}.delta')
         return r.content if r.status_code == 200 else None
 
-    # Check if the UE assets metadata cache must be updated 
+    # Check if the UE assets metadata cache must be updated
     def check_for_ue_assets_updates(self):
         cached = self.lgd.get_ue_assets_cache_data()
         ue_assets_count = cached['ue_assets_count']
