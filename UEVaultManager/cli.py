@@ -160,7 +160,10 @@ class UEVaultManagerCLI:
         no_data_text = "N.A."
         # output with extended info
         if args.csv or args.tsv:
-            output = args.output if args.output else stdout
+            if args.output:
+                output = open(args.output, "w")
+            else:
+                output = stdout
             headings = [
                 # dans les infos
                 'Asset_id', 'App name', 'App title', 'Categorie', 'Image', 'Url', 'UE Version', 'compatible Versions', 'Review', 'Vendeur',
@@ -245,6 +248,7 @@ class UEVaultManagerCLI:
                         self.logger.error(f'Could not write record for {asset.app_name} into {args.output}.\nError:{error}')
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
+            output.close()
             return
 
         if args.json:
@@ -697,16 +701,16 @@ def main():
         '-o',
         '--output',
         dest='output',
-        default=sys.stdout,
-        type=argparse.FileType('w'),
+        metavar='<output>',
+        action='store',
         help='The file name (with path) where the list should be written'
     )
     list_parser.add_argument(
         '-c',
         '--category',
-        action='store',
         metavar='<category>',
         dest='category',
+        action='store',
         help='Filter assets by category. Search against the category in the marketplace. Search is case insensitive and can  be partial'
     )
 
@@ -777,9 +781,9 @@ def main():
         logging.getLogger('requests').setLevel(logging.WARNING)
         logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-    cli.core.create_output_backup = cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', True)
-    cli.core.verbose_mode = cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', False)
-    cli.ue_assets_max_cache_duration = cli.core.lgd.config.get('UEVaultManager', 'ue_assets_max_cache_duration', 1296000)
+    cli.core.create_output_backup = cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', fallback=True)
+    cli.core.verbose_mode = cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', fallback=False)
+    cli.ue_assets_max_cache_duration = cli.core.lgd.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000)
 
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
