@@ -194,6 +194,7 @@ class UEVaultManagerCLI:
         items = sorted(items, key=lambda x: x.app_title.lower())
 
         # create a minimal and full dict of data from existing assets
+        items_in_file = {}
         assets = {}
         cpt = 0
         cpt_max = len(items)
@@ -284,7 +285,7 @@ class UEVaultManagerCLI:
 
         if args.csv or args.tsv:
             if args.output:
-                items_in_file = {}
+                file_src = args.output
                 # If the output file exists, we read its content to keep some data
                 try:
                     with open(file_src, 'r', encoding="utf-8") as output:
@@ -306,6 +307,7 @@ class UEVaultManagerCLI:
             try:
                 writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
                 writer.writerow(headings.keys())
+                asset_id = ''
                 for asset in sorted(assets.items()):
                     try:
                         asset_id = asset[0]

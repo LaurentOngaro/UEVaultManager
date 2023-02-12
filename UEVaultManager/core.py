@@ -453,8 +453,6 @@ class AppCore:
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'\n======\nSTARTING asset indexing phase 3 (fetching metadata)\n')
-        item = []
-        valid_items = []
 
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
