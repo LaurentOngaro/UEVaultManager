@@ -273,15 +273,7 @@ class UEVaultManagerCLI:
 
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json):
-            file_src = args.output
-            if self.core.create_output_backup:
-                try:
-                    # make a backup of the existing file
-                    file_backup = f'{file_src}_{datetime.datetime.now().strftime("%y_%m_%d-%H_%M")}'
-                    shutil.copy(file_src, file_backup)
-                    self.logger.info(f'Existing output file has been copied to {file_backup}')
-                except FileNotFoundError:
-                    self.logger.info(f'No previous file has been found')
+            self.create_output_file_backup(args.output)
 
         if args.csv or args.tsv:
             if args.output:
@@ -290,8 +282,6 @@ class UEVaultManagerCLI:
                 try:
                     with open(file_src, 'r', encoding="utf-8") as output:
                         csv_reader = csv.DictReader(output)
-                        # skip the header
-                        # next(csv_reader)
                         # get the data (it's a dict)
                         for record in csv_reader:
                             asset_id = record['Asset_id']
@@ -342,6 +332,18 @@ class UEVaultManagerCLI:
             print(f' * {asset.app_title.strip()} (App name: {asset.app_name} | Version: {version})')
 
         print(f'\nTotal: {len(items)}')
+
+    def create_output_file_backup(self, filename: str):
+        file_src = filename
+        if self.core.create_output_backup:
+            try:
+                # make a backup of the existing file
+                file_name_noext, file_extension = os.path.splitext(file_src)
+                file_backup = f'{file_name_noext}.BACKUP_{datetime.datetime.now().strftime("%y_%m_%d-%H_%M")}{file_extension}'
+                shutil.copy(file_src, file_backup)
+                self.logger.info(f'Existing output file has been copied to {file_backup}')
+            except FileNotFoundError:
+                self.logger.info(f'No previous file has been found')
 
     def list_files(self, args):
         if not args.override_manifest and not args.app_name:
