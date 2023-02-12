@@ -25,7 +25,6 @@ from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
-
 # ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
 #  can handle to give the user more details. (Not required yet since there's no GUI so log output is fine)
 
@@ -93,20 +92,20 @@ class AppCore:
         s = session()
         s.headers.update(
             {
-                'X-Epic-Event-Action'  :
-                    'login',
+                'X-Epic-Event-Action':
+                'login',
                 'X-Epic-Event-Category':
-                    'login',
+                'login',
                 'X-Epic-Strategy-Flags':
-                    '',
-                'X-Requested-With'     :
-                    'XMLHttpRequest',
-                'User-Agent'           :
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                    'AppleWebKit/537.36 (KHTML, like Gecko) '
-                    f'EpicGamesLauncher/{self._egl_version} '
-                    'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
-                    'Chrome/84.0.4147.38 Safari/537.36'
+                '',
+                'X-Requested-With':
+                'XMLHttpRequest',
+                'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                f'EpicGamesLauncher/{self._egl_version} '
+                'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
+                'Chrome/84.0.4147.38 Safari/537.36'
             }
         )
         s.cookies['EPIC_COUNTRY'] = self.country_code.upper()
@@ -380,16 +379,15 @@ class AppCore:
         apps = {}
 
         # loop through assets items to check for if they are for ue or not
-        valid_items = {}
+        valid_items = []
         bypass_count = 0
-        self.log.debug(f'\n======\nSTARTING asset indexing phase 1 (ue or not)\n')
+        self.log.info(f'\n======\nSTARTING asset indexing phase 1 (ue or not)\n')
         # note: we sort by reverse, as it the most recent version of an asset will be listed first
         for app_name, app_assets in sorted(assets.items(), reverse=True):
             # notes:
             #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
             #   app_name is unique because it includes the unreal version
-            #   we use asset_id as key because we don't want to have several entries for the same asset
-            asset_id = app_assets['Windows'].asset_id
+            # asset_id = app_assets['Windows'].asset_id
             assets_bypassed[app_name] = False
             if app_assets['Windows'].namespace != 'ue':
                 self.log.debug(f'{app_name} has been bypassed (namespace != "ue") in phase 1')
@@ -397,16 +395,8 @@ class AppCore:
                 assets_bypassed[app_name] = True
                 continue
 
-            if app_assets['Windows'].namespace != 'ue':
-                self.log.debug(f'{app_name} has been bypassed (namespace != "ue") in phase 1')
-                bypass_count += 1
-                assets_bypassed[app_name] = True
-                continue
-
             item = {"name": app_name, "asset": app_assets}
-            # we use asset_id as a key to avoid duplicates
-            if valid_items.get(asset_id) is None:
-                valid_items[asset_id] = item
+            valid_items.append(item)
 
         self.ue_assets_count = len(valid_items)
 
@@ -414,37 +404,43 @@ class AppCore:
         self.check_for_ue_assets_updates()
         force_refresh = self.ue_assets_update_available
 
-        self.log.debug(f'A total of {bypass_count} asset has been bypassed in phase 1')
-        self.log.debug(f'\n======\nSTARTING asset indexing phase 2 (filtering and updating metadata) \n')
+        self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 1')
+        self.log.info(f'\n======\nSTARTING asset indexing phase 2 (filtering and updating metadata) \n')
 
         # loop through valid items to check for update and filtering
         bypass_count = 0
-        for asset_id, app_assets in valid_items.items():
-            app_name = app_assets['name']
+        filtered_items = []
+        i = 0
+        while i < len(valid_items):
+            item = valid_items[i]
+            app_name = item["name"]
+            app_assets = item["asset"]
             if self.verbose_mode:
                 self.log.info(f"Checking {app_name}....")
 
-            item = self.lgd.get_item_meta(app_name)
+            item_metadata = self.lgd.get_item_meta(app_name)
 
             asset_updated = False
-            if item:
-                category = str(item.metadata['categories'][0]['path']).lower()
+            if item_metadata:
+                category = str(item_metadata.metadata['categories'][0]['path']).lower()
                 if filter_category and category.find(filter_category.lower()) == -1:
                     self.log.debug(f'{app_name} has been FILTERED by category ({filter_category} not in {category})')
                     assets_bypassed[app_name] = True
                     bypass_count += 1
-                    del valid_items[asset_id]
+                    i += 1
                     continue
-                asset_updated = any(item.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
-                apps[app_name] = item
+                asset_updated = any(item_metadata.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
+                apps[app_name] = item_metadata
                 self.log.debug(f'{app_name} has been ADDED to the apps list')
 
-            if update_assets and (not item or force_refresh or (item and asset_updated)):
+            if update_assets and (not item_metadata or force_refresh or (item_metadata and asset_updated)):
                 self.log.debug(f'Scheduling metadata update for {app_name}')
                 # namespace/catalog item are the same for all platforms, so we can just use the first one
                 _ga = next(iter(app_assets.values()))
                 fetch_list.append((app_name, _ga.namespace, _ga.catalog_item_id))
                 meta_updated = True
+            i += 1
+            filtered_items.append(item)
 
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
         still_needs_update = {e[0] for e in fetch_list}
@@ -455,14 +451,18 @@ class AppCore:
                 with ThreadPoolExecutor(max_workers=16) as executor:
                     executor.map(fetch_asset_meta, fetch_list, timeout=60.0)
 
-        self.log.debug(f'A total of {bypass_count} asset has been bypassed in phase 2')
-        self.log.debug(f'\n======\nSTARTING asset indexing phase 3 (fetching metadata)\n')
+        self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
+        self.log.info(f'\n======\nSTARTING asset indexing phase 3 (fetching metadata)\n')
+        item = []
+        valid_items = []
 
-        # loop through valid items
-        meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata for assets that have been filtered
+        # loop through valid and filtered items
+        meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
         bypass_count = 0
-        for asset_id, app_assets in valid_items.items():
-            app_name = app_assets['name']
+        for item in filtered_items:
+            app_name = item["name"]
+            app_assets = item["asset"]
+
             item = apps[app_name]
             # retry if metadata is still missing/threaded loading wasn't used
             ignore_asset = (app_name in assets_bypassed) and (assets_bypassed[app_name])
@@ -476,7 +476,7 @@ class AppCore:
             if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])) and platform in app_assets:
                 _ret.append(item)
 
-        self.log.debug(f'A total of {bypass_count} asset has been bypassed in phase 3')
+        self.log.info(f'A total of {bypass_count} on {len(filtered_items)} assets have been bypassed in phase 3')
 
         self.update_aliases(force=meta_updated)
         if meta_updated:
