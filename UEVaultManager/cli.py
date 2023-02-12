@@ -471,7 +471,9 @@ class UEVaultManagerCLI:
         info_items = dict(assets=list(), manifest=list(), install=list())
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
 
-        item = self.core.get_item(app_name, update_meta=not args.offline, platform='Windows')
+        update_meta = not args.offline and args.force_refresh
+
+        item = self.core.get_item(app_name, update_meta=update_meta, platform='Windows')
         if item and not self.core.asset_available(item, platform='Windows'):
             logger.warning(
                 f'Asset information for "{item.app_name}" is missing, this may be due to the asset '
@@ -494,7 +496,7 @@ class UEVaultManagerCLI:
                 logger.info('Asset not installed and offline mode enabled, cannot load manifest.')
         elif item:
             # entitlements = self.core.egs.get_user_entitlements()
-            egl_meta = self.core.egs.get_asset_info(item.namespace, item.catalog_item_id)
+            egl_meta = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
             item.metadata = egl_meta
             # Get manifest if asset exists for current platform
             if 'Windows' in item.asset_infos:
@@ -610,15 +612,15 @@ class UEVaultManagerCLI:
                 else:
                     print(f'- {local_item.name}: {local_item.value}')
 
-            if info_items['asset']:
+            if info_items.get('asset'):
                 print('\nAsset Information:')
                 for info_item in info_items['asset']:
                     print_info_item(info_item)
-            if info_items['install']:
+            if info_items.get('install'):
                 print('\nInstallation information:')
                 for info_item in info_items['install']:
                     print_info_item(info_item)
-            if info_items['manifest']:
+            if info_items.get('manifest'):
                 print('\nManifest information:')
                 for info_item in info_items['manifest']:
                     print_info_item(info_item)
@@ -790,6 +792,7 @@ def main():
 
     info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
     info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
+    info_parser.add_argument('--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
 
     get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
     get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')

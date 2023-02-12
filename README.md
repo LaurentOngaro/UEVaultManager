@@ -206,6 +206,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --offline             Only print info available offline
   --json                Output information in JSON format
+  --force-refresh       Force a refresh of all asset metadata
 
 Command: list
 usage: UEVaultManager list [-h] [-T] [--csv]
