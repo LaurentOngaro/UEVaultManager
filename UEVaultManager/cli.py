@@ -3,11 +3,12 @@
 
 import argparse
 import csv
+import datetime
 import json
 import logging
 import os
+import shutil
 import subprocess
-import sys
 import webbrowser
 from collections import namedtuple
 from logging.handlers import QueueListener
@@ -18,6 +19,7 @@ from sys import exit, stdout, platform as sys_platform
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.core import AppCore
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.utils.cli import strtobool
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 # todo custom formatter for cli logger (clean info, highlighted error/warning)
@@ -153,99 +155,174 @@ class UEVaultManagerCLI:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
             items.extend(na_items)
 
+        no_data_value = "0"
+        no_data_text = "N.A."
+        # Note: The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
+        headings = {
+            'Asset_id': False,
+            'App name': False,
+            'App title': False,
+            'Categorie': False,
+            'Image': False,
+            'Url': False,
+            'UE Version': False,
+            'compatible Versions': False,
+            'Review': False,
+            'Vendeur': False,
+            'Description': False,
+            'Prix': False,
+            'uid': False,
+            'Date Creation': False,
+            'Date Updated': False,
+            'Status': False,
+            # calculés lors de l'ajout
+            'Date Ajout': True,
+            'En Promo': True,
+            'Ancien Prix': True,
+            # Complétés par l'utilisateur
+            'Emplacement': True,
+            'A Acheter': True,
+            'Test': True,
+            'Avis': True,
+            'Remarque': True,
+            'Commentaire': True,
+            'Dossier Test': True,
+            'Dossier Asset': True,
+            'Alternative': True
+        }
         # sort assets by name
         items = sorted(items, key=lambda x: x.app_title.lower())
 
-        no_data_value = "0"
-        no_data_text = "N.A."
+        # create a minimal and full dict of data from existing assets
+        assets = {}
+        cpt = 0
+        cpt_max = len(items)
+        for item in items:
+            cpt += 1
+            # notes:
+            #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
+            #   app_name is unique because it includes the unreal version
+            #   we use asset_id as key because we don't want to have several entries for the same asset
+            asset_id = item.asset_infos['Windows'].asset_id
+            if assets.get(asset_id):
+                self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
+                continue
+
+            record = [""] * (len(headings.items()))  # create a list of empty string
+            metadata = item.metadata
+            uid = metadata["id"]
+            category = metadata["categories"][0]['path']
+
+            separator = ','
+            tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata["releaseInfo"]]
+            compatible_versions = separator.join(tmp_list)
+
+            image_url = ""
+            try:
+                image_url = metadata["keyImages"][2]["url"]  # 'Image' with 488 height
+            except IndexError:
+                self.logger.debug(f'asset {item.app_name} has no image')
+
+            # the following methods always return an empty value due to an obsolete API call:
+            price = self.core.egs.get_assets_price(uid)
+            review = self.core.egs.get_assets_review(asset_id)
+
+            if self.core.verbose_mode:
+                self.logger.info(f'Saving asset {cpt}/{cpt_max} {item.app_name}: id={asset_id} category={category} price={price} review={review}')
+
+            try:
+                record = (
+                    # dans les infos
+                    asset_id  # 'asset_id'
+                    , item.app_name  # 'App name'
+                    , item.app_title  # 'App title'
+                    , category  # 'Categorie'
+                    , image_url  # 'Image' with 488 height
+                    , f'https://www.unrealengine.com/marketplace/en-US/product/{asset_id}'  # 'Url'
+                    , item.app_version('Windows')  # 'UE Version'
+                    , compatible_versions  # compatible_versions
+                    , review  # 'Review'
+                    , metadata["developer"]  # 'Vendeur'
+                    , metadata["description"]  # 'Description'
+                    , price  # 'Prix'
+                    , uid  # 'uid'
+                    , metadata["creationDate"]  # 'Date creation'
+                    , metadata["lastModifiedDate"]  # 'Date MAJ'
+                    , metadata["status"]  # 'status'
+
+                    # calculé lors de l'ajout
+                    , no_data_text  # 'Date Ajout'
+                    , no_data_value  # 'En Promo'
+                    , no_data_value  # 'Ancien Prix'
+
+                    # complétés par l'utilisateur
+                    , no_data_text  # 'Emplacement'
+                    , no_data_value  # 'A Acheter'
+                    , no_data_text  # 'Test
+                    , no_data_text  # 'Avis'
+                    , no_data_text  # 'Remarque'
+                    , no_data_text  # 'Commentaire'
+                    , no_data_text  # 'Dossier Test'
+                    , no_data_text  # 'Dossier Asset'
+                    , no_data_text  # 'Alternative'
+                )
+            except TypeError:
+                self.logger.error(f'Could not create record for {item.app_name} BAD TYPE VALUE')
+            assets[asset_id] = record
+
         # output with extended info
+        if args.output and (args.csv or args.tsv or args.json):
+            file_src = args.output
+            if self.core.create_output_backup:
+                try:
+                    # make a backup of the existing file
+                    file_backup = f'{file_src}_{datetime.datetime.now().strftime("%y_%m_%d-%H_%M")}'
+                    shutil.copy(file_src, file_backup)
+                    self.logger.info(f'Existing output file has been copied to {file_backup}')
+                except FileNotFoundError:
+                    self.logger.info(f'No previous file has been found')
+
         if args.csv or args.tsv:
             if args.output:
-                output = open(args.output, "w")
+                items_in_file = {}
+                # If the output file exists, we read its content to keep some data
+                try:
+                    with open(file_src, 'r', encoding="utf-8") as output:
+                        csv_reader = csv.DictReader(output)
+                        # skip the header
+                        # next(csv_reader)
+                        # get the data (it's a dict)
+                        for record in csv_reader:
+                            asset_id = record['Asset_id']
+                            items_in_file[asset_id] = record
+                        output.close()
+                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration) as error:
+                    self.logger.warning(f'Could not read data from the file {args.output}.\nError:{error}')
+
+                # write the content of the file to keep some data
+                output = open(file_src, "w", encoding="utf-8")
             else:
                 output = stdout
-            headings = [
-                # dans les infos
-                'Asset_id', 'App name', 'App title', 'Categorie', 'Image', 'Url', 'UE Version', 'compatible Versions', 'Review', 'Vendeur',
-                'Description', 'Prix', 'uid', 'Date Creation', 'Date Updated', 'Status'
-                # calculés lors de l'ajout
-                , 'Date Ajout', 'En Promo', 'Ancien Prix'
-                # Complétés par l'utilisateur
-                , 'Emplacement', 'A Acheter', 'Test', 'Avis', 'Remarque', 'Commentaire', 'Dossier Test', 'Dossier Asset', 'Alternative'
-            ]
             try:
                 writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
-                writer.writerow(headings)
-                cpt = 0
-                cpt_max = len(items)
-                for asset in items:
-                    record = [""] * (len(headings))  # create a list of empty string
-                    metadata = asset.metadata
-                    asset_id = asset.asset_infos['Windows'].asset_id
-                    uid = metadata["id"]
-                    category = metadata["categories"][0]['path']
-
-                    separator = ','
-                    tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata["releaseInfo"]]
-                    compatible_versions = separator.join(tmp_list)
-
-                    image_url = ""
+                writer.writerow(headings.keys())
+                for asset in sorted(assets.items()):
                     try:
-                        image_url = metadata["keyImages"][2]["url"]  # 'Image' with 488 height
-                    except IndexError:
-                        self.logger.debug(f'asset {asset.app_name} has no image')
-
-                    # the following methods always return an empty value due to an obsolete API call:
-                    price = self.core.egs.get_assets_price(uid)
-                    review = self.core.egs.get_assets_review(asset_id)
-
-                    if self.core.verbose_mode:
-                        self.logger.info(
-                            f'Saving asset {cpt}/{cpt_max} {asset.app_name}: id={asset_id} category={category} price={price} review={review}'
-                        )
-
-                    try:
-                        record = (
-                            # dans les infos
-                            asset_id  # 'asset_id'
-                            , asset.app_name  # 'App name'
-                            , asset.app_title  # 'App title'
-                            , category  # 'Categorie'
-                            , image_url  # 'Image' with 488 height
-                            , f'https://www.unrealengine.com/marketplace/en-US/product/{asset_id}'  # 'Url'
-                            , asset.app_version('Windows')  # 'UE Version'
-                            , compatible_versions  # compatible_versions
-                            , review  # 'Review'
-                            , metadata["developer"]  # 'Vendeur'
-                            , metadata["description"]  # 'Description'
-                            , price  # 'Prix'
-                            , uid  # 'uid'
-                            , metadata["creationDate"]  # 'Date creation'
-                            , metadata["lastModifiedDate"]  # 'Date MAJ'
-                            , metadata["status"]  # 'status'
-
-                            # calculé lors de l'ajout
-                            , no_data_text  # 'Date Ajout'
-                            , no_data_value  # 'En Promo'
-                            , no_data_value  # 'Ancien Prix'
-
-                            # complétés par l'utilisateur
-                            , no_data_text  # 'Emplacement'
-                            , no_data_value  # 'A Acheter'
-                            , no_data_text  # 'Test
-                            , no_data_text  # 'Avis'
-                            , no_data_text  # 'Remarque'
-                            , no_data_text  # 'Commentaire'
-                            , no_data_text  # 'Dossier Test'
-                            , no_data_text  # 'Dossier Asset'
-                            , no_data_text  # 'Alternative'
-                        )
-                    except TypeError:
-                        self.logger.error(f'Could not create record for {asset.app_name} BAD TYPE VALUE')
-                    try:
+                        asset_id = asset[0]
+                        record = list(asset[1])
+                        # merge data from the items in the file (if exists) and those get by the application
+                        # items_in_file is a dict of dict
+                        if items_in_file.get(asset_id):
+                            # loops through its columns
+                            index = 0
+                            for key, keep_value_in_file in headings.items():
+                                if keep_value_in_file:
+                                    record[index] = items_in_file[asset_id][key]
+                                index += 1
                         writer.writerow(record)
-                    except (OSError, UnicodeEncodeError) as error:
-                        self.logger.error(f'Could not write record for {asset.app_name} into {args.output}.\nError:{error}')
+                    except (OSError, UnicodeEncodeError, TypeError) as error:
+                        self.logger.error(f'Could not write record for {asset_id} into {args.output}.\nError:{error}')
+
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
             output.close()
@@ -698,12 +775,7 @@ def main():
     list_parser.add_argument('--json', dest='json', action='store_true', help='List assets in JSON format')
     list_parser.add_argument('--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
     list_parser.add_argument(
-        '-o',
-        '--output',
-        dest='output',
-        metavar='<output>',
-        action='store',
-        help='The file name (with path) where the list should be written'
+        '-o', '--output', dest='output', metavar='<output>', action='store', help='The file name (with path) where the list should be written'
     )
     list_parser.add_argument(
         '-c',
@@ -781,9 +853,9 @@ def main():
         logging.getLogger('requests').setLevel(logging.WARNING)
         logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-    cli.core.create_output_backup = cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', fallback=True)
-    cli.core.verbose_mode = cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', fallback=False)
-    cli.ue_assets_max_cache_duration = cli.core.lgd.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000)
+    cli.core.create_output_backup = strtobool(cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', fallback=True))
+    cli.core.verbose_mode = strtobool(cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', fallback=False))
+    cli.ue_assets_max_cache_duration = int(cli.core.lgd.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000))
 
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
