@@ -3,9 +3,10 @@
 ## A free and open-source Epic Games Launcher alternative
 
 UEVaultManager is an open-source assets manager that can list assets from the Epic Games Marketplace.
-Its main purpose is to list the assets (with or without user login) and save the list into a file that can be reused later as a data source (for instance
+Its main purpose is to list the assets (with or without user login) and save the list into a file that can be reused later as a data source (for
+instance
 in an Excel sheet).
-In a future versions, this application will also offer a GUI, and will be able to read directly the result file, display and edit the assets list. 
+In a future versions, this application will also offer a GUI, and will be able to read directly the result file, display and edit the assets list.
 
 Please read the [config file](#config-file) and [cli usage](#usage) sections before creating an issue to avoid invalid reports.
 
@@ -74,6 +75,8 @@ pip install UEVaultManager
 
 #### Ubuntu 20.04 example
 
+NOT TESTED BUT SHOULD RUN FINE
+
 Ubuntu 20.04's standard repositories include everything needed to install UEVaultManager:
 
 ````bash
@@ -90,9 +93,24 @@ the command:
 echo 'export PATH=$PATH:~/.local/bin' >> ~/.profile && source ~/.profile
 ```
 
+#### Windows example
+
+1. First install the Python language (3.9 minimal version required) as explained on the [official python website](https://www.python.org/downloads/windows/) 
+2. create a folder for storing the source files 
+3. open a command prompt or a terminal from this folder.
+4. run the following commands:
+
+```
+git clone https://github.com/LaurentOngaro/UEVaultManager.git
+cd UEVaultManager
+pip install .
+```
+
+If the `UEVaultManager` executable is not available after installation, you may need to configure your `PATH` correctly. 
+
 ### Directly from the repo (for dev/testing)
 
-- Install python3.9 and requests (optionally in a venv)
+- Install python 3.9 and requests (optionally in a venv)
 - cd into the repository
 - Run `pip install -e .`
 
@@ -130,6 +148,13 @@ This will fetch a list of asset available on your account, the first time may ta
 
 ````
 usage: UEVaultManager [-h] [-H] [-v] [-y] [-V] [-J] [-A <seconds>] <command> ...
+
+exemple: 
+  
+  UEVaultManager list --csv -c "plugin" --output "D:\testing\list.csv"
+  
+  Will list all the assets of the marketplace that have "plugin" it their category field (on the marketplace) and save the result using a csv format 
+  into the ""D:\testing\list.csv" file 
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -191,8 +216,10 @@ optional arguments:
   --csv                 List asset in CSV format
   --tsv                 List asset in TSV format
   --json                List asset in JSON format
-  --force-refresh       Force a refresh of all game metadata
+  --force-refresh       Force a refresh of all asset metadata
+  -c, --category        Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial
   -o, --output          The file name (with path) where the list should be written to
+
 
 
 Command: list-files
@@ -228,7 +255,7 @@ optional arguments:
 
 ## Config file
 
-UEVaultManager supports some options as well as game specific configuration in `~/.config/UEVaultManager/config.ini`:
+UEVaultManager supports some options in `~/.config/UEVaultManager/config.ini`:
 
 ````ini
 [UEVaultManager]
@@ -246,3 +273,57 @@ disable_auto_aliasing = false
 ; Create a backup of the output file (when using the --output option) suffixe by a timestamp
 create_output_backup = false
 ````
+
+## Output Format and file
+
+### CSV file
+
+These are the headings that will be written to the stdout or to the file pointed by the --output command line option
+The script also use a (hardcoded) boolean value to know if the content of the columns must be preserved before overwriting an existing
+output file
+This feature goal is to avoid overwriting data that could have been manually changed by the user in the output file between successive runs of the
+program.
+
+```python
+headings = {
+    'Asset_id'           : False,  # ! important: Do not Rename => this field is used as main key for each asset
+    'App name'           : False,
+    'App title'          : False,
+    'Category'           : False,
+    'Image'              : False,
+    'Url'                : False,
+    'UE Version'         : False,
+    'Compatible Versions': False,
+    'Review'             : False,
+    'Developer'          : False,
+    'Description'        : False,
+    'Uid'                : False,
+    'Creation Date'      : False,
+    'Update Date'        : False,
+    'Status'             : False,
+    # Modified Fields when added into the file
+    'Date Added'         : True,
+    'Price'              : False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+    'Old Price'          : False,  # ! important always place it after the Price field in the list
+    'On Sale'            : False,  # ! important always place it after the Old Price field in the list
+    # Modified Fields when added into the file
+    'Comment'            : True,
+    'Stars'              : True,
+    'Asset Folder'       : True,
+    'Must Buy'           : True,
+    'Test result'        : True,
+    'Installed Folder'   : True,
+    'Alternative'        : True
+}
+```
+
+### Json file
+
+TODO
+
+## Known bugs and limitations
+
+### invalid data
+
+Due to API changes, the `Price` and `Review` fields of an asset can not be retrieved and will be set to a default value
+Consequently, the `Old Price` and `On Sale` fields will be also be set to a default value because of the mode of calculation
