@@ -250,25 +250,25 @@ class EPCAPI:
         return records
 
     #  get the price of a product
-    def get_assets_price(self, product_id):
+    def get_assets_price(self, product_id: str) -> int:
         # TODO: find a better way to get this data (marketplace web scrapping ?)
         # this API seems obsolete: a 404 error is always returned
-        return {}
+        return 0
 
         r = self.session.get(f'https://{self._launcher_host}/launcher/api/v2/ecommerce/product/{product_id}', timeout=self.request_timeout)
         if r.ok:
-            return r.json()
+            return r.json()["Price]"]
         else:
-            return {}
+            return 0
 
     #  get the reviews of a product
-    def get_assets_review(self, product_id):
+    def get_assets_review(self, product_id: str) -> list:
         # TODO: find a better way to get this data (marketplace web scrapping ?)
         # this API seems obsolete: a 404 error is always returned
-        return {}
+        return []
 
         r = self.session.get(f'https://{self._launcher_host}/launcher/api/v2/ecommerce/product/{product_id}/reviews', timeout=self.request_timeout)
         if r.ok:
-            return r.json()
+            return r.json()["Review]"]
         else:
-            return {}
+            return []
