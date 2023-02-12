@@ -159,34 +159,34 @@ class UEVaultManagerCLI:
         no_data_text = "N.A."
         # Note: The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
         headings = {
-            'Asset_id': False,  # ! important: Do not Remame => this field is used as main key for each asset
-            'App name': False,
-            'App title': False,
-            'Category': False,
-            'Image': False,
-            'Url': False,
-            'UE Version': False,
+            'Asset_id'           : False,  # ! important: Do not Remame => this field is used as main key for each asset
+            'App name'           : False,
+            'App title'          : False,
+            'Category'           : False,
+            'Image'              : False,
+            'Url'                : False,
+            'UE Version'         : False,
             'Compatible Versions': False,
-            'Review': False,
-            'Developer': False,
-            'Description': False,
-            'Uid': False,
-            'Creation Date': False,
-            'Update Date': False,
-            'Status': False,
+            'Review'             : False,
+            'Developer'          : False,
+            'Description'        : False,
+            'Uid'                : False,
+            'Creation Date'      : False,
+            'Update Date'        : False,
+            'Status'             : False,
             # Modified Fields when added into the file
-            'Date Added': True,
-            'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-            'Old Price': False,  # ! important: always place it after the Price field in the list
-            'On Sale': False,  # ! important: always place it after the Old Price field in the list
+            'Date Added'         : True,
+            'Price'              : False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+            'Old Price'          : False,  # ! important: always place it after the Price field in the list
+            'On Sale'            : False,  # ! important: always place it after the Old Price field in the list
             # Modified Fields when added into the file
-            'Comment': True,
-            'Stars': True,
-            'Asset Folder': True,
-            'Must Buy': True,
-            'Test result': True,
-            'Installed Folder': True,
-            'Alternative': True
+            'Comment'            : True,
+            'Stars'              : True,
+            'Asset Folder'       : True,
+            'Must Buy'           : True,
+            'Test result'        : True,
+            'Installed Folder'   : True,
+            'Alternative'        : True
         }
         # sort assets by name
         items = sorted(items, key=lambda x: x.app_title.lower())
@@ -293,6 +293,7 @@ class UEVaultManagerCLI:
                 writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
                 writer.writerow(headings.keys())
                 asset_id = ''
+                cpt = 0
                 for asset in sorted(assets.items()):
                     try:
                         asset_id = asset[0]
@@ -326,12 +327,16 @@ class UEVaultManagerCLI:
                             record[price_index + 1] = old_price
                             record[price_index + 2] = on_sale
                         writer.writerow(record)
+                        cpt += 1
                     except (OSError, UnicodeEncodeError, TypeError) as error:
                         self.logger.error(f'Could not write record for {asset_id} into {args.output}.\nError:{error}')
 
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
             output.close()
+            self.logger.info(
+                f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions).\nOperation Finished\n======\n'
+            )
             return
 
         if args.json:
@@ -502,49 +507,6 @@ class UEVaultManagerCLI:
             asset_infos.append(InfoItem('Latest version', 'version', item.app_version('Windows'), item.app_version('Windows')))
             all_versions = {k: v.build_version for k, v in item.asset_infos.items()}
             asset_infos.append(InfoItem('All versions', 'platform_versions', all_versions, all_versions))
-            # Cloud save support for Mac and Windows
-            asset_infos.append(
-                InfoItem(
-                    'Cloud saves supported', 'cloud_saves_supported', item.supports_cloud_saves or item.supports_mac_cloud_saves,
-                    item.supports_cloud_saves or item.supports_mac_cloud_saves
-                )
-            )
-            cs_dir = None
-            if item.supports_cloud_saves:
-                cs_dir = item.metadata['customAttributes']['CloudSaveFolder']['value']
-            asset_infos.append(InfoItem('Cloud save folder (Windows)', 'cloud_save_folder', cs_dir, cs_dir))
-
-            cs_dir = None
-            if item.supports_mac_cloud_saves:
-                cs_dir = item.metadata['customAttributes']['CloudSaveFolder_MAC']['value']
-            asset_infos.append(InfoItem('Cloud save folder (Mac)', 'cloud_save_folder_mac', cs_dir, cs_dir))
-
-            asset_infos.append(InfoItem('Is DLC', 'is_dlc', item.is_dlc, item.is_dlc))
-
-            external_activation = item.third_party_store or item.partner_link_type
-            asset_infos.append(InfoItem('Activates on external platform', 'external_activation', external_activation or 'No', external_activation))
-
-            # Find custom launch options, if available
-            launch_options = []
-            i = 1
-            while f'extraLaunchOption_{i:03d}_Name' in item.metadata['customAttributes']:
-                launch_options.append(
-                    (
-                        item.metadata['customAttributes'][f'extraLaunchOption_{i:03d}_Name']['value'],
-                        item.metadata['customAttributes'][f'extraLaunchOption_{i:03d}_Args']['value']
-                    )
-                )
-                i += 1
-
-            if launch_options:
-                human_list = []
-                json_list = []
-                for opt_name, opt_cmd in sorted(launch_options):
-                    human_list.append(f'Name: "{opt_name}", Parameters: {opt_cmd}')
-                    json_list.append(dict(name=opt_name, parameters=opt_cmd))
-                asset_infos.append(InfoItem('Extra launch options', 'launch_options', human_list, json_list))
-            else:
-                asset_infos.append(InfoItem('Extra launch options', 'launch_options', None, []))
 
         if manifest_data:
             manifest_info = info_items['manifest']
