@@ -159,35 +159,33 @@ class UEVaultManagerCLI:
         no_data_text = "N.A."
         # Note: The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
         headings = {
-            'Asset_id': False,
+            'Asset_id': False,  # ! important: Do not Remame => this field is used as main key for each asset
             'App name': False,
             'App title': False,
-            'Categorie': False,
+            'Category': False,
             'Image': False,
             'Url': False,
             'UE Version': False,
-            'compatible Versions': False,
+            'Compatible Versions': False,
             'Review': False,
-            'Vendeur': False,
+            'Developer': False,
             'Description': False,
-            'Prix': False,
-            'uid': False,
-            'Date Creation': False,
-            'Date Updated': False,
+            'Uid': False,
+            'Creation Date': False,
+            'Update Date': False,
             'Status': False,
-            # calculés lors de l'ajout
-            'Date Ajout': True,
-            'En Promo': True,
-            'Ancien Prix': True,
-            # Complétés par l'utilisateur
-            'Emplacement': True,
-            'A Acheter': True,
-            'Test': True,
-            'Avis': True,
-            'Remarque': True,
-            'Commentaire': True,
-            'Dossier Test': True,
-            'Dossier Asset': True,
+            # Modified Fields when added into the file
+            'Date Added': True,
+            'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+            'Old Price': False,  # ! important: always place it after the Price field in the list
+            'On Sale': False,  # ! important: always place it after the Old Price field in the list
+            # Modified Fields when added into the file
+            'Comment': True,
+            'Stars': True,
+            'Asset Folder': True,
+            'Must Buy': True,
+            'Test result': True,
+            'Installed Folder': True,
             'Alternative': True
         }
         # sort assets by name
@@ -224,6 +222,7 @@ class UEVaultManagerCLI:
             except IndexError:
                 self.logger.debug(f'asset {item.app_name} has no image')
 
+            date_added = datetime.datetime.now().strftime("%y-%m-%dT%H:%M:%S")
             # the following methods always return an empty value due to an obsolete API call:
             price = self.core.egs.get_assets_price(uid)
             review = self.core.egs.get_assets_review(asset_id)
@@ -237,34 +236,30 @@ class UEVaultManagerCLI:
                     asset_id  # 'asset_id'
                     , item.app_name  # 'App name'
                     , item.app_title  # 'App title'
-                    , category  # 'Categorie'
+                    , category  # 'Category'
                     , image_url  # 'Image' with 488 height
                     , f'https://www.unrealengine.com/marketplace/en-US/product/{asset_id}'  # 'Url'
                     , item.app_version('Windows')  # 'UE Version'
                     , compatible_versions  # compatible_versions
                     , review  # 'Review'
-                    , metadata["developer"]  # 'Vendeur'
+                    , metadata["developer"]  # 'Developer'
                     , metadata["description"]  # 'Description'
-                    , price  # 'Prix'
-                    , uid  # 'uid'
-                    , metadata["creationDate"]  # 'Date creation'
-                    , metadata["lastModifiedDate"]  # 'Date MAJ'
+                    , uid  # 'Uid'
+                    , metadata["creationDate"]  # 'Creation Date'
+                    , metadata["lastModifiedDate"]  # 'Update Date'
                     , metadata["status"]  # 'status'
-
-                    # calculé lors de l'ajout
-                    , no_data_text  # 'Date Ajout'
-                    , no_data_value  # 'En Promo'
-                    , no_data_value  # 'Ancien Prix'
-
-                    # complétés par l'utilisateur
-                    , no_data_text  # 'Emplacement'
-                    , no_data_value  # 'A Acheter'
-                    , no_data_text  # 'Test
-                    , no_data_text  # 'Avis'
-                    , no_data_text  # 'Remarque'
-                    , no_data_text  # 'Commentaire'
-                    , no_data_text  # 'Dossier Test'
-                    , no_data_text  # 'Dossier Asset'
+                    # Modified Fields when added into the file
+                    , date_added  # 'Date Added'
+                    , price  # 'Price'
+                    , no_data_value  # 'Old Price'
+                    , no_data_value  # 'On Sale'
+                    # Modified Fields when added into the file
+                    , no_data_text  # 'Comment'
+                    , no_data_text  # 'Stars'
+                    , no_data_text  # 'Asset Folder'
+                    , no_data_value  # 'Must Buy'
+                    , no_data_text  # 'Test result
+                    , no_data_text  # 'Installed Folder'
                     , no_data_text  # 'Alternative'
                 )
             except TypeError:
@@ -307,10 +302,29 @@ class UEVaultManagerCLI:
                         if items_in_file.get(asset_id):
                             # loops through its columns
                             index = 0
+                            price_index = 0
+                            price = float(no_data_value)
+                            old_price = float(no_data_value)
+                            on_sale = no_data_value
                             for key, keep_value_in_file in headings.items():
                                 if keep_value_in_file:
                                     record[index] = items_in_file[asset_id][key]
+                                # Get the old price in the previous file
+                                if key == "Price":
+                                    price_index = index
+                                    try:
+                                        price = float(record[price_index])
+                                        old_price = float(
+                                            items_in_file[asset_id][key]
+                                        )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                                    except Exception as error:
+                                        self.logger.warning(f'Price values can not be converted for asset {asset_id}.\nError:{error}')
                                 index += 1
+                            # compute the price related fields
+                            if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
+                                on_sale = 1 if price > old_price else 0
+                            record[price_index + 1] = old_price
+                            record[price_index + 2] = on_sale
                         writer.writerow(record)
                     except (OSError, UnicodeEncodeError, TypeError) as error:
                         self.logger.error(f'Could not write record for {asset_id} into {args.output}.\nError:{error}')
@@ -779,15 +793,15 @@ def main():
     list_parser.add_argument('--json', dest='json', action='store_true', help='List assets in JSON format')
     list_parser.add_argument('--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
     list_parser.add_argument(
-        '-o', '--output', dest='output', metavar='<output>', action='store', help='The file name (with path) where the list should be written'
-    )
-    list_parser.add_argument(
         '-c',
         '--category',
         metavar='<category>',
         dest='category',
         action='store',
-        help='Filter assets by category. Search against the category in the marketplace. Search is case insensitive and can  be partial'
+        help='Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial'
+    )
+    list_parser.add_argument(
+        '-o', '--output', dest='output', metavar='<output>', action='store', help='The file name (with path) where the list should be written'
     )
 
     list_files_parser.add_argument(
