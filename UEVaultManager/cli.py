@@ -338,8 +338,8 @@ class UEVaultManagerCLI:
         if self.core.create_output_backup:
             try:
                 # make a backup of the existing file
-                file_name_noext, file_extension = os.path.splitext(file_src)
-                file_backup = f'{file_name_noext}.BACKUP_{datetime.datetime.now().strftime("%y_%m_%d-%H_%M")}{file_extension}'
+                file_name_no_ext, file_ext = os.path.splitext(file_src)
+                file_backup = f'{file_name_no_ext}.BACKUP_{datetime.datetime.now().strftime("%y_%m_%d-%H_%M")}{file_ext}'
                 shutil.copy(file_src, file_backup)
                 self.logger.info(f'Existing output file has been copied to {file_backup}')
             except FileNotFoundError:
