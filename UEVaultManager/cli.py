@@ -159,34 +159,34 @@ class UEVaultManagerCLI:
         no_data_text = "N.A."
         # Note: The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
         headings = {
-            'Asset_id'           : False,  # ! important: Do not Remame => this field is used as main key for each asset
-            'App name'           : False,
-            'App title'          : False,
-            'Category'           : False,
-            'Image'              : False,
-            'Url'                : False,
-            'UE Version'         : False,
+            'Asset_id': False,  # ! important: Do not Remame => this field is used as main key for each asset
+            'App name': False,
+            'App title': False,
+            'Category': False,
+            'Image': False,
+            'Url': False,
+            'UE Version': False,
             'Compatible Versions': False,
-            'Review'             : False,
-            'Developer'          : False,
-            'Description'        : False,
-            'Uid'                : False,
-            'Creation Date'      : False,
-            'Update Date'        : False,
-            'Status'             : False,
+            'Review': False,
+            'Developer': False,
+            'Description': False,
+            'Uid': False,
+            'Creation Date': False,
+            'Update Date': False,
+            'Status': False,
             # Modified Fields when added into the file
-            'Date Added'         : True,
-            'Price'              : False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-            'Old Price'          : False,  # ! important: always place it after the Price field in the list
-            'On Sale'            : False,  # ! important: always place it after the Old Price field in the list
+            'Date Added': True,
+            'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+            'Old Price': False,  # ! important: always place it after the Price field in the list
+            'On Sale': False,  # ! important: always place it after the Old Price field in the list
             # Modified Fields when added into the file
-            'Comment'            : True,
-            'Stars'              : True,
-            'Asset Folder'       : True,
-            'Must Buy'           : True,
-            'Test result'        : True,
-            'Installed Folder'   : True,
-            'Alternative'        : True
+            'Comment': True,
+            'Stars': True,
+            'Asset Folder': True,
+            'Must Buy': True,
+            'Test result': True,
+            'Installed Folder': True,
+            'Alternative': True
         }
         # sort assets by name
         items = sorted(items, key=lambda x: x.app_title.lower())
@@ -380,7 +380,8 @@ class UEVaultManagerCLI:
             if not self.core.login():
                 logger.error('Login failed! Cannot continue with download process.')
                 exit(1)
-            item = self.core.get_item(args.app_name, update_meta=True)
+            update_meta = args.force_refresh
+            item = self.core.get_item(args.app_name, update_meta=update_meta)
             if not item:
                 logger.fatal(f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)')
                 exit(1)
@@ -388,9 +389,6 @@ class UEVaultManagerCLI:
 
         manifest = self.core.load_manifest(manifest_data)
         files = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
-
-        if args.install_tag:
-            files = [fm for fm in files if args.install_tag in fm.install_tags]
 
         if args.hashlist:
             for fm in files:
@@ -644,11 +642,16 @@ class UEVaultManagerCLI:
                     json_out[key] = None
             return self._print_json(json_out, args.pretty_json)
 
-    def cleanup(self):
+    def cleanup(self, args):
         before = self.core.lgd.get_dir_size()
+
         # delete metadata
-        logger.debug('Removing app metadata...')
-        self.core.lgd.clean_metadata(app_names=[])
+        if args.delete_metadata:
+            logger.debug('Removing app metadata...')
+            self.core.lgd.clean_metadata(app_names=[])
+
+        logger.debug('Removing manifests...')
+        self.core.lgd.clean_manifests()
 
         logger.debug('Removing tmp data')
         self.core.lgd.clean_tmp_data()
@@ -772,10 +775,6 @@ def main():
     )
 
     list_files_parser.add_argument(
-        '--force-download', dest='force_download', action='store_true', help='Always download instead of using on-disk manifest'
-    )
-
-    list_files_parser.add_argument(
         '--manifest', dest='override_manifest', action='store', metavar='<uri>', help='Manifest URL or path to use instead of the CDN one'
     )
     list_files_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in CSV format')
@@ -784,14 +783,14 @@ def main():
     list_files_parser.add_argument(
         '--hashlist', dest='hashlist', action='store_true', help='Output file hash list in hashcheck/sha1sum -c compatible format'
     )
-    list_files_parser.add_argument(
-        '--install-tag', dest='install_tag', action='store', metavar='<tag>', type=str, help='Show only files with specified install tag'
-    )
+    list_files_parser.add_argument('--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
 
     status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not login')
     status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
 
-    clean_parser.add_argument('--keep-manifests', dest='keep_manifests', action='store_true', help='Do not delete old manifests')
+    clean_parser.add_argument(
+        '-d,' '--delete-metadata', dest='delete_metadata', action='store_true', help='Also delete metadata files. They are kept by default'
+    )
 
     info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
     info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
@@ -861,7 +860,7 @@ def main():
         elif args.subparser_name == 'info':
             cli.info(args)
         elif args.subparser_name == 'cleanup':
-            cli.cleanup()
+            cli.cleanup(args)
         elif args.subparser_name == 'get-token':
             cli.get_token(args)
     except KeyboardInterrupt:

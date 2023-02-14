@@ -157,7 +157,7 @@ exemple:
   into the ""D:\testing\list.csv" file 
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help            Show this help message and exit
   -H, --full-help       Show full help (including individual command help)
   -v, --debug           Set loglevel to debug
   -y, --yes             Default to yes for all prompts
@@ -169,6 +169,7 @@ optional arguments:
 Commands:
   <command>
     auth                Authenticate with the Epic Games Store
+    cleanup             Remove old temporary, metadata, and manifest files
     info                Prints info about specified app name or manifest
     list                List available assets
     list-files          List files in manifest
@@ -181,7 +182,7 @@ usage: UEVaultManager auth [-h] [--import] [--code <exchange code>]
                       [--sid <session id>] [--delete] [--disable-webview]
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help            Show this help message and exit
   --import              Import Epic Games Launcher authentication data (logs
                         out of EGL)
   --code <authorization code>
@@ -194,8 +195,16 @@ optional arguments:
   --disable-webview     Do not use embedded browser for login
 
 
+Command: cleanup
+usage: legendary cleanup [-h] [--delete-manifests]
+
+optional arguments:
+  -h, --help            Show this help message and exit
+  -d, --delete-metadata Also Delete metadata files. They are kept by default
+
+
 Command: info
-usage: UEVaultManager info [-h] [--offline] [--json]
+usage: UEVaultManager info [-h] [--offline] [--json] [--force-refresh]
                       <App Name/Manifest URI>
 
 positional arguments:
@@ -203,17 +212,18 @@ positional arguments:
                         App name or manifest path/URI
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help            Show this help message and exit
   --offline             Only print info available offline
   --json                Output information in JSON format
   --force-refresh       Force a refresh of all asset metadata
 
 Command: list
-usage: UEVaultManager list [-h] [-T] [--csv]
-                      [--tsv] [--json] [--force-refresh] [--output]
+usage: UEVaultManager list [-h] [--csv]
+                      [--tsv] [--json] [--force-refresh] 
+                      [--category <text_to_search>] [--output <file_name_with_path>] 
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help            Show this help message and exit
   --csv                 List asset in CSV format
   --tsv                 List asset in TSV format
   --json                List asset in JSON format
@@ -224,33 +234,31 @@ optional arguments:
 
 
 Command: list-files
-usage: UEVaultManager list-files [-h] [--force-download]
-                            [--manifest <uri>] [--csv] [--tsv] [--json]
-                            [--hashlist] [--install-tag <tag>]
+usage: UEVaultManager list-files [-h] [--manifest <uri>] [--csv] [--tsv] [--json]
+                            [--hashlist] [--force-refresh]
                             [<App Name>]
 
 positional arguments:
   <App Name>            Name of the app (optional)
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --force-download      Always download instead of using on-disk manifest
+  -h, --help            Show this help message and exit
   --manifest <uri>      Manifest URL or path to use instead of the CDN one
   --csv                 Output in CSV format
   --tsv                 Output in TSV format
   --json                Output in JSON format
   --hashlist            Output file hash list in hashcheck/sha1sum -c
                         compatible format
-  --install-tag <tag>   Show only files with specified install tag
+  --force-refresh       Force a refresh of all asset metadata
 
 
 Command: status
 usage: UEVaultManager status [-h] [--offline] [--json]
 
 optional arguments:
-  -h, --help  show this help message and exit
-  --offline   Only print offline status information, do not login
-  --json      Show status in JSON format
+  -h, --help            Show this help message and exit
+  --offline             Only print offline status information, do not login
+  --json                Show status in JSON format
 
 ````
 

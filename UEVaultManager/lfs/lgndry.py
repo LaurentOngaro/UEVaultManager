@@ -269,17 +269,12 @@ class LGDLFS:
                 except Exception as e:
                     self.log.warning(f'Failed to delete file "{f}": {e!r}')
 
-    def clean_manifests(self, in_use):
-        in_use_files = {f'{clean_filename(f"{app_name}_{version}")}.manifest' for app_name, version, _ in in_use}
-
-        in_use_files |= {f'{clean_filename(f"{app_name}_{platform}_{version}")}.manifest' for app_name, version, platform in in_use}
-
-        for f in os.listdir(os.path.join(self.path, 'manifests')):
-            if f not in in_use_files:
-                try:
-                    os.remove(os.path.join(self.path, 'manifests', f))
-                except Exception as e:
-                    self.log.warning(f'Failed to delete file "{f}": {e!r}')
+    def clean_manifests(self):
+      for f in os.listdir(os.path.join(self.path, 'manifests')):
+        try:
+            os.remove(os.path.join(self.path, 'manifests', f))
+        except Exception as e:
+            self.log.warning(f'Failed to delete file "{f}": {e!r}')
 
     def save_config(self):
         # do not save if in read-only mode or file hasn't changed
