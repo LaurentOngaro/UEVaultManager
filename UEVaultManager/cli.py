@@ -629,12 +629,15 @@ class UEVaultManagerCLI:
                 print('No asset information available.')
         else:
             json_out = dict(asset=dict(), install=dict(), manifest=dict())
-            for info_item in info_items['asset']:
-                json_out['asset'][info_item.json_name] = info_item.json_value
-            for info_item in info_items['install']:
-                json_out['install'][info_item.json_name] = info_item.json_value
-            for info_item in info_items['manifest']:
-                json_out['manifest'][info_item.json_name] = info_item.json_value
+            if info_items.get('asset'):
+                for info_item in info_items['asset']:
+                    json_out['asset'][info_item.json_name] = info_item.json_value
+            if info_items.get('install'):
+                for info_item in info_items['install']:
+                    json_out['install'][info_item.json_name] = info_item.json_value
+            if info_items.get('manifest'):
+                for info_item in info_items['manifest']:
+                    json_out['manifest'][info_item.json_name] = info_item.json_value
             # set empty items to null
             for key, value in json_out.items():
                 if not value:
