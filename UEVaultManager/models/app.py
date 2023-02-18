@@ -46,7 +46,7 @@ class AppAsset:
 @dataclass
 class App:
     """
-    Combination of app asset and app metadata as stored on disk
+    Combination of app asset, app metadata and app extras as stored on disk
     """
     app_name: str
     app_title: str
@@ -104,7 +104,7 @@ class App:
 
     @classmethod
     def from_json(cls, json):
-        tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''), )
+        tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''),)
         tmp.metadata = json.get('metadata', dict())
         if 'asset_infos' in json:
             tmp.asset_infos = {k: AppAsset.from_json(v) for k, v in json['asset_infos'].items()}
@@ -118,8 +118,8 @@ class App:
     @property
     def __dict__(self):
         """This is just here so asset_infos gets turned into a dict as well"""
-        assets_dictified = {k: v.__dict__ for k, v in self.asset_infos.items()}
-        return dict(metadata=self.metadata, asset_infos=assets_dictified, app_name=self.app_name, app_title=self.app_title, base_urls=self.base_urls)
+        assets_dict = {k: v.__dict__ for k, v in self.asset_infos.items()}
+        return dict(metadata=self.metadata, asset_infos=assets_dict, app_name=self.app_name, app_title=self.app_title, base_urls=self.base_urls)
 
 
 class VerifyResult(Enum):
