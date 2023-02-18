@@ -12,9 +12,9 @@ class HiddenAliasSubparsersAction(argparse._SubParsersAction):
 
         # create a pseudo-action to hold the choice help
         if 'help' in kwargs:
-            help = kwargs.pop('help')
+            help_value = kwargs.pop('help')
             _aliases = None if hide_aliases else aliases
-            choice_action = self._ChoicesPseudoAction(name, _aliases, help)
+            choice_action = self._ChoicesPseudoAction(name, _aliases, help_value)
             self._choices_actions.append(choice_action)
 
         # create the parser and add it to the map

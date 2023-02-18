@@ -4,6 +4,7 @@ import time
 
 
 class LGDConf(configparser.ConfigParser):
+
     def __init__(self, *args, **kwargs):
         self.modified = False
         self.read_only = False
@@ -11,7 +12,7 @@ class LGDConf(configparser.ConfigParser):
         super().__init__(*args, **kwargs)
         self.optionxform = str
 
-    def read(self, filename):
+    def read(self, filename) -> []:
         # if config file exists, save modification time
         if os.path.exists(filename):
             self.modtime = int(os.stat(filename).st_mtime)

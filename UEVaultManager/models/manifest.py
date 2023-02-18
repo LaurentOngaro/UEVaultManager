@@ -214,7 +214,7 @@ class Manifest:
             pass
 
         # add new chunks from delta manifest to main manifest and again clear maps and update count
-        existing_chunk_guids = self.chunk_data_list._guid_int_map.keys()
+        existing_chunk_guids = self.chunk_data_list.guid_int_map.keys()
 
         for chunk in delta_manifest.chunk_data_list.elements:
             if chunk.guid_num not in existing_chunk_guids:
@@ -222,7 +222,7 @@ class Manifest:
 
         self.chunk_data_list.count = len(self.chunk_data_list.elements)
         self.chunk_data_list._guid_map = None
-        self.chunk_data_list._guid_int_map = None
+        self.chunk_data_list.guid_int_map = None
         self.chunk_data_list._path_map = None
 
 
@@ -349,8 +349,9 @@ class CDL:
         self.elements = []
         self._manifest_version = 18
         self._guid_map = None
-        self._guid_int_map = None
         self._path_map = None
+
+        self.guid_int_map = None
 
     def get_chunk_by_path(self, path):
         if not self._path_map:
@@ -389,12 +390,12 @@ class CDL:
         return self.elements[index]
 
     def get_chunk_by_guid_num(self, guid_int):
-        if not self._guid_int_map:
-            self._guid_int_map = dict()
+        if not self.guid_int_map:
+            self.guid_int_map = dict()
             for index, chunk in enumerate(self.elements):
-                self._guid_int_map[chunk.guid_num] = index
+                self.guid_int_map[chunk.guid_num] = index
 
-        index = self._guid_int_map.get(guid_int, None)
+        index = self.guid_int_map.get(guid_int, None)
         if index is None:
             raise ValueError(f'Invalid GUID! {hex(guid_int)}')
         return self.elements[index]

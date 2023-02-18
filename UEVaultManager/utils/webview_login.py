@@ -9,6 +9,7 @@ logger = logging.getLogger('WebViewHelper')
 webview_available = True
 
 try:
+    # noinspection PyUnresolvedReferences,PyPackageRequirements
     import webview
 
     # silence logger
@@ -80,30 +81,31 @@ class MockLauncher:
     def nop(self, *args, **kwargs):
         return
 
-    def open_url_external(self, url):
+    @staticmethod
+    def open_url_external(url):
         webbrowser.open(url)
 
     def set_exchange_code(self, exchange_code):
         self.inject_js = False
         logger.debug('Got exchange code (stage 1)!')
-        # The default Windows webview retains cookies, GTK/Qt do not. Therefore we can
+        # The default Windows webview retains cookies, GTK/Qt do not. Therefore, we can
         # skip logging out on those platforms and directly use the exchange code we're given.
-        # On windows we have to do a little dance with the SID to create a session that
+        # On Windows we have to do a little dance with the SID to create a session that
         # remains valid after logging out in the embedded browser.
         #  Update: Epic broke SID login, we'll also do this on Windows now
         # if self.window.gui.renderer in ('gtkwebkit2', 'qtwebengine', 'qtwebkit'):
         self.destroy_on_load = True
         try:
             self.callback_result = self.callback_code(exchange_code)
-        except Exception as e:
-            logger.error(f'Logging in via exchange-code failed with {e!r}')
+        except Exception as error:
+            logger.error(f'Logging in via exchange-code failed with {error!r}')
         finally:
             # We cannot destroy the browser from here,
             # so we'll load a small goodbye site first.
             self.window.load_url(goodbye_url)
 
-    def trigger_sid_exchange(self, *args, **kwargs):
-        # check if code-based login hasn't already set the destroy flag
+    def trigger_sid_exchange(self):
+        # check if code-based login hasn't already set the destroying flag
         if not self.destroy_on_load:
             logger.debug('Injecting SID JS')
             # inject JS to get SID API response and call our API
@@ -118,8 +120,8 @@ class MockLauncher:
             exchange_code = self.callback_sid(sid)
             if exchange_code:
                 self.callback_result = self.callback_code(exchange_code)
-        except Exception as e:
-            logger.error(f'SID login failed with {e!r}')
+        except Exception as error:
+            logger.error(f'SID login failed with {error!r}')
         finally:
             logger.debug('Starting browser logout...')
             self.window.load_url(logout_url)
@@ -137,7 +139,7 @@ def do_webview_login(callback_sid=None, callback_code=None):
         api.inject_js = False
 
     logger.info('Opening Epic Games login window...')
-    # Open logout URL first to remove existing cookies, then redirect to login.
+    # Open logout URL first to remove existing cookies, then redirect to log in.
     window = webview.create_window(f'UEVaultManager {__version__} - Epic Games Account Login', url=url, width=768, height=1024, js_api=api)
     api.window = window
     window.events.loaded += api.on_loaded

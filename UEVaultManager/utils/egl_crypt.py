@@ -198,7 +198,7 @@ class AES:
             word = xor_bytes(word, key_columns[-iteration_size])
             key_columns.append(word)
 
-        # Group key words in 4x4 byte matrices.
+        # Group keywords in 4x4 byte matrices.
         return [key_columns[4 * i: 4 * (i + 1)] for i in range(len(key_columns) // 4)]
 
     def decrypt_block(self, ciphertext):
@@ -230,7 +230,7 @@ class AES:
 
         blocks = []
         for ciphertext_block in split_blocks(ciphertext, require_padding=False):
-            # CTR mode decrypt: ciphertext XOR encrypt(nonce)
+            # CTR mode decrypt : ciphertext XOR encrypt(nonce)
             block = self.decrypt_block(ciphertext_block)
             blocks.append(block)
 
@@ -241,6 +241,7 @@ def decrypt_epic_data(key, encrypted):
     decrypted = unpad(AES(key.encode('ascii')).decrypt_ecb(encrypted)).strip(b'\x00')
     # try various encodings, just to be sure
     for encoding in (locale.getpreferredencoding(), 'cp1252', 'cp932', 'ascii', 'utf-8'):
+        # noinspection PyBroadException
         try:
             return decrypted.decode(encoding)
         except:  # ignore exception, just try the next encoding
