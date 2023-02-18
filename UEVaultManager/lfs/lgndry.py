@@ -33,6 +33,8 @@ class LGDLFS:
         self._assets = None
         # EGS metadata
         self._assets_metadata = dict()
+        # additional infos (price, review...)
+        self._assets_extras_data = dict()
         # UEVaultManager update check info
         self._update_info = None
         # UE assets metadata cache data
@@ -53,7 +55,7 @@ class LGDLFS:
             self.config_path = os.path.join(self.path, 'config.ini')
 
         # ensure folders exist.
-        for f in ['', 'manifests', 'metadata', 'tmp']:
+        for f in ['', 'manifests', 'metadata', 'tmp', 'extras']:
             if not os.path.exists(os.path.join(self.path, f)):
                 os.makedirs(os.path.join(self.path, f))
 
@@ -93,37 +95,67 @@ class LGDLFS:
             self.config.read_only = True
 
         # make sure "UEVaultManager" section exists
+        has_changed = False
         if 'UEVaultManager' not in self.config:
             self.config.add_section('UEVaultManager')
+            has_changed = True
 
         # Add opt-out options with explainers
         if not self.config.has_option('UEVaultManager', 'disable_update_check'):
             self.config.set('UEVaultManager', '; Disables the automatic update check')
             self.config.set('UEVaultManager', 'disable_update_check', 'false')
+            has_changed = True
         if not self.config.has_option('UEVaultManager', 'disable_update_notice'):
             self.config.set('UEVaultManager', '; Disables the notice about an available update on exit')
             self.config.set('UEVaultManager', 'disable_update_notice', 'false' if is_windows_mac_or_pyi() else 'true')
-
+            has_changed = True
         if not self.config.has_option('UEVaultManager', 'create_output_backup'):
             self.config.set(
                 'UEVaultManager',
                 '; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file'
             )
             self.config.set('UEVaultManager', 'create_output_backup', 'true')
+            has_changed = True
         if not self.config.has_option('UEVaultManager', 'verbose_mode'):
             self.config.set('UEVaultManager', '; Print more information during long operations')
             self.config.set('UEVaultManager', 'verbose_mode', 'false')
+            has_changed = True
         if not self.config.has_option('UEVaultManager', 'ue_assets_max_cache_duration'):
             self.config.set('UEVaultManager', '; Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days')
             self.config.set('UEVaultManager', 'ue_assets_max_cache_duration', '1296000')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'ignored_assets_filename_log'):
+            self.config.set(
+                'UEVaultManager', '; Set the file name (and path) for logging issues with assets when running the --list command' + "\n" + '; Set to '
+                ' to disabled this feature' + "\n" + '; use "~/" at the start of the filename to store it relatively to the user directory'
+            )
+            self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
+        if not self.config.has_option('UEVaultManager', 'notfound_assets_filename_log'):
+            self.config.set('UEVaultManager', 'notfound_assets_filename_log', '~/.config/notfound_assets.log')
+        if not self.config.has_option('UEVaultManager', 'bad_data_assets_filename_log'):
+            self.config.set('UEVaultManager', 'bad_data_assets_filename_log', '~/.config/bad_data_assets.log')
+
+            has_changed = True
+
+        if has_changed:
+            self.save_config()
 
         # load existing app metadata
+        _meta = None
         for gm_file in os.listdir(os.path.join(self.path, 'metadata')):
             try:
                 _meta = json.load(open(os.path.join(self.path, 'metadata', gm_file)))
                 self._assets_metadata[_meta['app_name']] = _meta
             except Exception as e:
                 self.log.debug(f'Loading asset meta file "{gm_file}" failed: {e!r}')
+
+        # load existing app extras data
+        for gm_file in os.listdir(os.path.join(self.path, 'extras')):
+            try:
+                _extras = json.load(open(os.path.join(self.path, 'extras', gm_file)))
+                self._assets_extras_data[_extras['asset_name']] = _extras
+            except Exception as e:
+                self.log.debug(f'Loading asset extras file "{gm_file}" failed: {e!r}')
 
         # load auto-aliases if enabled
         self.aliases = dict()
@@ -238,7 +270,7 @@ class LGDLFS:
         meta_file = os.path.join(self.path, 'metadata', f'{app_name}.json')
         json.dump(json_meta, open(meta_file, 'w'), indent=2, sort_keys=True)
 
-    def delete_item_meta(self, app_name):
+    def delete_item_meta(self, app_name: str):
         if app_name not in self._assets_metadata:
             raise ValueError(f'Item {app_name} does not exist in metadata DB!')
 
@@ -246,6 +278,24 @@ class LGDLFS:
         meta_file = os.path.join(self.path, 'metadata', f'{app_name}.json')
         if os.path.exists(meta_file):
             os.remove(meta_file)
+
+    def get_item_extras(self, app_name: str):
+        return self._assets_extras_data.get(app_name, None)
+
+    def set_item_extras(self, app_name: str, extras: dict):
+        extras_file = os.path.join(self.path, 'extras', f'{app_name}.json')
+        self.log.debug(f'--- SAVING {len(extras)} extras data for {app_name} in {extras_file}')
+        self._assets_extras_data[app_name] = extras
+        json.dump(extras, open(extras_file, 'w'), indent=2, sort_keys=True)
+
+    def delete_item_extras(self, app_name: str):
+        if app_name not in self._assets_extras_data:
+            raise ValueError(f'Item {app_name} does not exist in extras data DB!')
+
+        del self._assets_extras_data[app_name]
+        extras_file = os.path.join(self.path, 'extras', f'{app_name}.json')
+        if os.path.exists(extras_file):
+            os.remove(extras_file)
 
     def get_item_app_names(self):
         return sorted(self._assets_metadata.keys())
@@ -260,21 +310,30 @@ class LGDLFS:
             except Exception as e:
                 self.log.warning(f'Failed to delete file "{f}": {e!r}')
 
-    def clean_metadata(self, app_names):
+    def clean_metadata(self, app_names_to_keep):
         for f in os.listdir(os.path.join(self.path, 'metadata')):
             app_name = f.rpartition('.')[0]
-            if app_name not in app_names:
+            if app_name not in app_names_to_keep:
                 try:
                     os.remove(os.path.join(self.path, 'metadata', f))
                 except Exception as e:
                     self.log.warning(f'Failed to delete file "{f}": {e!r}')
 
+    def clean_extras(self, app_names_to_keep):
+        for f in os.listdir(os.path.join(self.path, 'extras')):
+            app_name = f.rpartition('.')[0]
+            if app_name not in app_names_to_keep:
+                try:
+                    os.remove(os.path.join(self.path, 'extras', f))
+                except Exception as e:
+                    self.log.warning(f'Failed to delete file "{f}": {e!r}')
+
     def clean_manifests(self):
-      for f in os.listdir(os.path.join(self.path, 'manifests')):
-        try:
-            os.remove(os.path.join(self.path, 'manifests', f))
-        except Exception as e:
-            self.log.warning(f'Failed to delete file "{f}": {e!r}')
+        for f in os.listdir(os.path.join(self.path, 'manifests')):
+            try:
+                os.remove(os.path.join(self.path, 'manifests', f))
+            except Exception as e:
+                self.log.warning(f'Failed to delete file "{f}": {e!r}')
 
     def save_config(self):
         # do not save if in read-only mode or file hasn't changed

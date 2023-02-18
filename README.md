@@ -281,6 +281,14 @@ disable_update_notice = false
 disable_auto_aliasing = false
 ; Create a backup of the output file (when using the --output option) suffixe by a timestamp
 create_output_backup = false
+; Create a backup of the output file (when using the --output option) suffixe by a timestamp
+create_output_backup = false
+; Set the file name (and path) for logging issues with assets when running the --list command
+; Set to '' to disabled this feature
+; use "~/ at the start of the filename to store it relatively to the user directory 
+ignored_assets_filename_log = ~/.config/ignored_assets.log
+notfound_assets_filename_log = ~/.config/notfound_assets.log
+bad_data_assets_filename_log = ~/.config/bad_data_assets.log
 ````
 
 ## Output Format and file

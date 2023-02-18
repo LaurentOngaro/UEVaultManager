@@ -31,10 +31,10 @@ from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
 class AppCore:
     """
-  AppCore handles most of the lower level interaction with
-  the downloader, lfs, and api components to make writing CLI/GUI
-  code easier and cleaner and avoid duplication.
-  """
+    AppCore handles most of the lower level interaction with
+    the downloader, lfs, and api components to make writing CLI/GUI
+    code easier and cleaner and avoid duplication.
+    """
     _egl_version = '11.0.1-14907503+++Portal+Release-Live'
 
     def __init__(self, override_config=None, timeout=10.0):
@@ -72,16 +72,56 @@ class AppCore:
         self.webview_killswitch = False
         self.logged_in = False
 
+        self.default_datetime_format = '%y-%m-%d %H:%M:%S'
         # UE assets metadata cache properties
         self.ue_assets_count = 0
         self.ue_assets_update_available = False
-
         # Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days
         self.ue_assets_max_cache_duration = 15 * 24 * 3600
         # set to True to add print more information during long operations
         self.verbose_mode = False
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
+        # Set the file name (and path) for logging when an asset is ignored or filtered when running the --list command
+        self.ignored_assets_filename_log = ''
+        # Set the file name (and path) for logging when an asset is not found on the marketplace when running the --list command
+        self.notfound_assets_filename_log = ''
+        # Set the file name (and path) for logging when an asset has metadata and extras data are incoherent when running the --list command
+        self.bad_data_assets_filename_log = ''
+        # new file loggers
+        self.ignored_logger = None
+        self.notfound_logger = None
+        self.bad_data_logger = None
+        # average time to process metadata and extras update
+        self.process_time_average = 0.0
+
+    def setup_assets_logging(self):
+        formatter = logging.Formatter('%(message)s')
+        message = f"-----\n{datetime.now().strftime(self.default_datetime_format)} Log Started\n-----\n"
+
+        if self.ignored_assets_filename_log != '':
+            ignored_assets_filename_log = self.ignored_assets_filename_log.replace('~/.config', self.lgd.path)
+            ignored_assets_handler = logging.FileHandler(ignored_assets_filename_log, mode='w')
+            ignored_assets_handler.setFormatter(formatter)
+            self.ignored_logger = logging.Logger('IgnoredAssets', 'INFO')
+            self.ignored_logger.addHandler(ignored_assets_handler)
+            self.ignored_logger.info(message)
+
+        if self.notfound_assets_filename_log != '':
+            notfound_assets_filename_log = self.notfound_assets_filename_log.replace('~/.config', self.lgd.path)
+            notfound_assets_handler = logging.FileHandler(notfound_assets_filename_log, mode='w')
+            notfound_assets_handler.setFormatter(formatter)
+            self.notfound_logger = logging.Logger('NotFoundAssets', 'INFO')
+            self.notfound_logger.addHandler(notfound_assets_handler)
+            self.notfound_logger.info(message)
+
+        if self.bad_data_assets_filename_log != '':
+            bad_data_assets_filename_log = self.bad_data_assets_filename_log.replace('~/.config', self.lgd.path)
+            bad_data_assets_handler = logging.FileHandler(bad_data_assets_filename_log, mode='w')
+            bad_data_assets_handler.setFormatter(formatter)
+            self.bad_data_logger = logging.Logger('BadDataAssets', 'INFO')
+            self.bad_data_logger.addHandler(bad_data_assets_handler)
+            self.bad_data_logger.info(message)
 
     def auth_sid(self, sid) -> str:
         """
@@ -125,8 +165,8 @@ class AppCore:
 
     def auth_code(self, code) -> bool:
         """
-    Handles authentication via authorization code (either retrieved manually or automatically)
-    """
+        Handles authentication via authorization code (either retrieved manually or automatically)
+        """
         try:
             self.lgd.userdata = self.egs.start_session(authorization_code=code)
             return True
@@ -136,8 +176,8 @@ class AppCore:
 
     def auth_ex_token(self, code) -> bool:
         """
-    Handles authentication via exchange token (either retrieved manually or automatically)
-    """
+        Handles authentication via exchange token (either retrieved manually or automatically)
+        """
         try:
             self.lgd.userdata = self.egs.start_session(exchange_token=code)
             return True
@@ -176,10 +216,10 @@ class AppCore:
 
     def login(self, force_refresh=False) -> bool:
         """
-    Attempts logging in with existing credentials.
+        Attempts logging in with existing credentials.
 
-    raises ValueError if no existing credentials or InvalidCredentialsError if the API return an error
-    """
+        raises ValueError if no existing credentials or InvalidCredentialsError if the API return an error
+        """
         if not self.lgd.userdata:
             raise ValueError('No saved credentials')
         elif self.logged_in and self.lgd.userdata['expires_at']:
@@ -340,18 +380,41 @@ class AppCore:
     def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
 
         def fetch_asset_meta(args):
+            start_time = datetime.now()
             name, namespace, catalog_item_id = args
             eg_meta = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
             app = App(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
             self.lgd.set_item_meta(app.app_name, app)
             apps[name] = app
-            #  some items to update could have bypassed
+
+            self.log.info(f'--- STARTING EXTRAS FOR {name}')
+            eg_extras = self.egs.get_assets_extras(
+                eg_meta['title']
+            )  # we use title instead of name because it's less ambiguous when searching this asset
+            self.lgd.set_item_extras(name, eg_extras)
+            # compute process time and average in s
+            end_time = datetime.now()
+            process_time = (end_time - start_time).total_seconds()
+            if self.process_time_average > 0:
+                self.process_time_average = (self.process_time_average + process_time) / 2
+            else:
+                self.process_time_average = process_time
+
             try:
                 if name in still_needs_update:
                     still_needs_update.remove(name)
+                    if self.verbose_mode:
+                        self.log.info(
+                            f'Removing {name} from the metadata update.\n===Found {eg_extras["asset_name_in_url"]}:Time Processing={process_time:.3f}s # Time Average={self.process_time_average:.3f} s # {len(still_needs_update)} assets to process ({(len(still_needs_update) * self.process_time_average):.3f} s time left)'
+                        )
             except Exception as e:
-                self.log.warning(f'Removing {name} from the update list failed with {e!r}')
+                self.log.info(f'Removing {name} from the metadata update list failed with {e!r}')
                 return False
+
+            # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
+            if eg_extras['page_title'] != '' and eg_extras['page_title'] != eg_meta['title']:
+                self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
+                self.bad_data_logger.info(name)
 
         _ret = []
         meta_updated = False
@@ -395,7 +458,7 @@ class AppCore:
                 assets_bypassed[app_name] = True
                 continue
 
-            item = {"name": app_name, "asset": app_assets}
+            item = {'name': app_name, 'asset': app_assets}
             valid_items.append(item)
 
         self.ue_assets_count = len(valid_items)
@@ -413,18 +476,22 @@ class AppCore:
         i = 0
         while i < len(valid_items):
             item = valid_items[i]
-            app_name = item["name"]
-            app_assets = item["asset"]
+            app_name = item['name']
+            app_assets = item['asset']
             if self.verbose_mode:
-                self.log.info(f"Checking {app_name}....")
+                self.log.info(f'Checking {app_name}....')
 
             item_metadata = self.lgd.get_item_meta(app_name)
+            item_extras_data = self.lgd.get_item_extras(app_name)
 
             asset_updated = False
             if item_metadata:
                 category = str(item_metadata.metadata['categories'][0]['path']).lower()
-                if filter_category and category.find(filter_category.lower()) == -1:
-                    self.log.debug(f'{app_name} has been FILTERED by category ({filter_category} not in {category})')
+                if filter_category and filter_category.lower() in category:
+                    self.log.debug(
+                        f'{app_name} has been FILTERED by category ({filter_category} not in {category}).It has been added to the ignored_logger file'
+                    )
+                    self.ignored_logger.info(app_name)
                     assets_bypassed[app_name] = True
                     bypass_count += 1
                     i += 1
@@ -433,8 +500,8 @@ class AppCore:
                 apps[app_name] = item_metadata
                 self.log.debug(f'{app_name} has been ADDED to the apps list')
 
-            if update_assets and (not item_metadata or force_refresh or (item_metadata and asset_updated)):
-                self.log.debug(f'Scheduling metadata update for {app_name}')
+            if update_assets and (not item_extras_data or not item_metadata or force_refresh or (item_metadata and asset_updated)):
+                self.log.debug(f'Scheduling metadata and extras update for {app_name}')
                 # namespace/catalog item are the same for all platforms, so we can just use the first one
                 _ga = next(iter(app_assets.values()))
                 fetch_list.append((app_name, _ga.namespace, _ga.catalog_item_id))
@@ -445,6 +512,7 @@ class AppCore:
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
         still_needs_update = {e[0] for e in fetch_list}
         use_threads = len(fetch_list) > 5
+        use_threads = False  # debug only
         if fetch_list:
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if use_threads:
@@ -458,10 +526,10 @@ class AppCore:
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
         bypass_count = 0
         for item in filtered_items:
-            app_name = item["name"]
-            app_assets = item["asset"]
+            app_name = item['name']
+            app_assets = item['asset']
 
-            item = apps[app_name]
+            item = apps.get(app_name)
             # retry if metadata is still missing/threaded loading wasn't used
             ignore_asset = (app_name in assets_bypassed) and (assets_bypassed[app_name])
             if not ignore_asset and (not item or app_name in still_needs_update):
@@ -479,17 +547,27 @@ class AppCore:
         self.update_aliases(force=meta_updated)
         if meta_updated:
             self._prune_metadata()
+            self._prune_extras_data()
 
         return _ret
 
     def _prune_metadata(self):
-        # compile list of games without assets, then delete their metadata
+        # compile list of assets without assets, then delete their metadata
         available_assets = set()
         available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
         for app_name in self.lgd.get_item_app_names():
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
             self.lgd.delete_item_meta(app_name)
+
+    def _prune_extras_data(self):
+        # compile list of assets without assets, then delete their extras data
+        available_assets = set()
+        available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
+
+        for app_name in self.lgd.get_item_app_names():
+            self.log.debug(f'Removing old/unused extras data for "{app_name}"')
+            self.lgd.delete_item_extras(app_name)
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
         """
@@ -501,7 +579,7 @@ class AppCore:
         :return: List of Items that do not have assets
         """
         _ret = []
-        # get all the appnames we have to ignore
+        # get all the app names we have to ignore
         ignore = set(i.app_name for i in self.get_assets())
 
         for lib_item in self.egs.get_library_items():

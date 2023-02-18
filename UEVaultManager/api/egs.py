@@ -2,13 +2,28 @@
 # coding: utf-8
 
 import logging
+import re
 import urllib.parse
 
+import inflection as inflection
 import requests
 import requests.adapters
+from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
-
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+
+
+def create_empty_assets_extras(asset_name: str) -> dict:
+    return {
+        'asset_name': asset_name,
+        'asset_url': '',
+        'asset_name_in_url': '',
+        'price': 0,
+        'review': 0,
+        'purchased': False,
+        'supported_versions': '',
+        'page_title': ''
+    }
 
 
 class EPCAPI:
@@ -31,10 +46,12 @@ class EPCAPI:
     # _store_gql_host = 'launcher.store.epicgames.com'
     _store_gql_host = 'graphql.epicgames.com'
     _artifact_service_host = 'artifact-public-service-prod.beee.live.use1a.on.epicgames.com'
+    _search_url = 'www.unrealengine.com/marketplace/en-US'
+    _login_url = 'www.unrealengine.com/id/login/epic'
 
     def __init__(self, lc='en', cc='US', timeout=10.0):
         self.log = logging.getLogger('EPCAPI')
-
+        self.notfound_logger = None  # will be setup when created in core.py
         self.session = requests.session()
         self.session.headers['User-Agent'] = self._user_agent
         # increase maximum pool size for multithreaded metadata requests
@@ -204,7 +221,7 @@ class EPCAPI:
         return r.json().get(catalog_item_id, None)
 
     def get_artifact_service_ticket(self, sandbox_id: str, artifact_id: str, label='Live', platform='Windows'):
-        # Based on EOS Helper Windows service implementation. Only works with anonymous EOSH session.
+        # Based on EOS Helper Windows service implementation. Only works with anonymous EOS Helper session.
         # sandbox_id is the same as the namespace, artifact_id is the same as the app name
         r = self.session.post(
             f'https://{self._artifact_service_host}/artifact-service/api/public/v1/dependency/'
@@ -249,26 +266,144 @@ class EPCAPI:
 
         return records
 
-    #  get the price of a product
-    def get_assets_price(self, product_id: str) -> int:
-        # TODO: find a better way to get this data (marketplace web scrapping ?)
-        # this API seems obsolete: a 404 error is always returned
-        return 0
+    def find_asset_url(self, asset_name: str, timeout=10.0) -> []:
+        # remove the suffix _engineversion (ex _4.27) at the end of the name to have a valid search value
+        regex = r"_[4|5]\.\d{1,2}$"
+        converted_name = re.sub(regex, '', asset_name, 0)
+        # Replace ' ' by '%20'
+        converted_name = converted_name.replace(' ', '%20')
+        # SnakeCase
+        # converted_name = inflection.underscore(converted_name)
+        # Lower case
+        converted_name = converted_name.lower()
+        # Replace '_' by '-'
+        # converted_name = converted_name.replace('_', '-')
 
-        r = self.session.get(f'https://{self._launcher_host}/launcher/api/v2/ecommerce/product/{product_id}', timeout=self.request_timeout)
-        if r.ok:
-            return r.json()["Price]"]
+        # remove some not alphanumeric cars (NOT ALL, keep %)
+        entry_list = [':', ',', '.', ';', '=', '?', '!', '#', "/", "$", "€"]
+        for entry in entry_list:
+            converted_name = converted_name.replace(entry, '')
+
+        # debug only
+        # converted_name = 'heretic'  # 5/5
+        # converted_name = 'cursed-king'  # 4.25/5
+        url = ''
+        asset_name_in_url = ''
+        search_url_root = f'https://{self._search_url}/assets?keywords='
+        search_url_full = search_url_root + converted_name
+        r = self.session.get(search_url_full, timeout=timeout)
+
+        if not r.ok:
+            self.log.warning(f'Error when finding the url for {asset_name}:{r.reason}')
+            return [url, asset_name_in_url]
+
+        soup = BeautifulSoup(r.content, 'html.parser')
+        links = []
+        group_elt = soup.find('div', attrs={'class': 'asset-list-group'})
+
+        if "No content found" in group_elt.getText():
+            self.log.info(f'{asset_name} has not been not found in marketplace.It has been added to the notfound_logger file')
+            self.notfound_logger.info(asset_name)
+            return [url, asset_name_in_url]
+
+        # find all links to assets that correspond to the search
+        for link in group_elt.findAll('a', attrs={'class': 'mock-ellipsis-item mock-ellipsis-item-helper ellipsis-text'}):
+            links.append(link.get('href'))
+
+        # return the first one (probably the best choice)
+        asset_name_in_url = links[0].replace('/marketplace/en-US/product/', '')
+        url = 'https://www.unrealengine.com' + links[0]
+        return [url, asset_name_in_url]
+
+    #  get the extras data of an asset (price, review...)
+    def get_assets_extras(self, asset_name: str, timeout=10.0) -> dict:
+        not_found_price = 0.0
+        not_found_review = 0.0
+        supported_versions = ''
+        page_title = ''
+        no_result = create_empty_assets_extras(asset_name=asset_name)
+
+        # try to find the url of the asset by doing a search in the marketplace
+        asset_url, asset_name_in_url = self.find_asset_url(asset_name, timeout)
+        if asset_url == '' or asset_name_in_url == '':
+            return no_result
+
+        try:
+            response = self.session.get(asset_url)  # when using session, we are already logged in Epic game
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            self.log.warning(f'Error when getting extras data for {asset_name}:{e}')
+            return no_result
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # check if already purchased
+        purchased = False
+        purchased_elt = soup.find('div', class_='purchase')
+        if purchased_elt is not None and 'Open in Launcher' in purchased_elt.getText():
+            self.log.info(f'{asset_name} as already been purchased')
+            purchased = True
+
+        # get price
+        asset_price = soup.find('span', class_='asset-price')
+        if asset_price is not None:
+            inner_span_elt = asset_price.find('span')  # inner span
+            try:
+                price = inner_span_elt.text.strip('$')
+                price = price.strip('€')
+                price = float(price)
+            except Exception as e:
+                self.log.warning(f'Error when getting price for {asset_name}:{e}')
+                price = not_found_price
         else:
-            return 0
+            self.log.debug(f'Error: price not found for {asset_name}')
+            price = not_found_price
 
-    #  get the reviews of a product
-    def get_assets_review(self, product_id: str) -> list:
-        # TODO: find a better way to get this data (marketplace web scrapping ?)
-        # this API seems obsolete: a 404 error is always returned
-        return []
-
-        r = self.session.get(f'https://{self._launcher_host}/launcher/api/v2/ecommerce/product/{product_id}/reviews', timeout=self.request_timeout)
-        if r.ok:
-            return r.json()["Review]"]
+        # get review
+        reviews_elt = soup.find('div', class_='asset-detail-rating')
+        if reviews_elt is not None:
+            reviews_elt = reviews_elt.find('div', class_='rating-board__pop__title')
+        if reviews_elt is not None:
+            try:
+                inner_span_elt = reviews_elt.find('span')  # 4.25 out of 5 stars
+                content = inner_span_elt.text
+                pos = content.index(' out of ')
+                reviews = float(content[0:pos])
+            except Exception as e:
+                self.log.warning(f'Error when getting review for {asset_name}:{e}')
+                reviews = not_found_review
         else:
-            return []
+            self.log.debug(f'Error: reviews not found for {asset_name}')
+            reviews = not_found_review
+
+        # get Supported Engine Versions
+        title_elt = soup.find('span', class_='ue-version')
+        if title_elt is not None:
+            try:
+                supported_versions = title_elt.text
+            except Exception as e:
+                self.log.warning(f'Error when getting Supported Engine Versions for {asset_name}:{e}')
+        else:
+            self.log.debug(f'Error: Supported Engine Versions not found for {asset_name}')
+            reviews = not_found_review
+
+        # get page title
+        title_elt = soup.find('h1', class_='post-title')
+        if title_elt is not None:
+            try:
+                page_title = title_elt.text
+            except Exception as e:
+                self.log.warning(f'Error when getting Page title for {asset_name}:{e}')
+        else:
+            self.log.debug(f'Error: Supported Page title not found for {asset_name}')
+            reviews = not_found_review
+        return {
+            'asset_name': asset_name,
+            'asset_url': asset_url,
+            'asset_name_in_url': asset_name_in_url,
+            'page_title': page_title,
+            'price': price,
+            'review': reviews,
+            'purchased': purchased,
+            'supported_versions': supported_versions,
+        }
