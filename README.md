@@ -377,7 +377,7 @@ The value is False if its content is not preserved, and True if it is preserved 
     'Purchased'          : False,
     'Supported Versions' : False,
     'Page title'         : False,
-    'Error'              : False,
+    'Error'              : True,
     # User Fields
     'Comment'            : True,
     'Stars'              : True,
