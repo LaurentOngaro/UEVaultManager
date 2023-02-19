@@ -9,7 +9,7 @@ logger = logging.getLogger('WebViewHelper')
 webview_available = True
 
 try:
-    # noinspection PyUnresolvedReferences,PyPackageRequirements
+    # note : webview don't came with the obsolete webview package but with [pywebview](https://pywebview.flowrl.com/)
     import webview
 
     # silence logger
@@ -18,7 +18,7 @@ try:
     if gui and os.name == 'nt' and gui.renderer not in ('edgechromium', 'cef'):
         raise NotImplementedError(f'Renderer {gui.renderer} not supported on Windows.')
 except Exception as e:
-    logger.debug(f'Webview unavailable, disabling webview login (Exception: {e!r}).')
+    logger.debug(f'Webview unavailable, disabling webview login. Try to run "pip install pywebview" (Exception: {e!r}).')
     webview_available = False
 
 login_url = 'https://www.epicgames.com/id/login'
