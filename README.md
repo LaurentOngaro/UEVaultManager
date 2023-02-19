@@ -420,9 +420,16 @@ To limit this error, a text comparison is done between the asset title in the me
 If the values are different, the asset name is added to the file pointed by the "bad_data_assets_filename_log" value of the config file and its "
 error" field will contain a 1 (meaning an "INCONSISTANT_DATA" error code) instead of 0 (meaning a "NO_ERROR" value)
 
-To fix that, the search of the correct url for the asset must be done and validated manually
-Once validated, the correct URL can be added into the result file, inside the Url field.
+To fix that, the search of the correct url for the asset must be done and validated manually.
+
+Once validated, the correct URL could be added into the result file, inside the Url field.
 As this field is marked as "protected", it won't be overwritten on the next data update and will be used as a source url for the page to be grabbed
 instead of making a new search for the asset page
+
+**Please Note that the user is responsable for respecting the attended format of the result file when modifying its content. 
+Breaking its structure will probably result in losing the data the user has modified in the file when the application will be executed next time.**
+
+Making a backup before any manual modification is certainly a good idea.
+Using a tool (e.g. a linter) to check if the structure of the file (json or CSV) is still correct before running the application again is also a very good idea.
 
 ## Known bugs and limitations
