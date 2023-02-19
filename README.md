@@ -3,7 +3,8 @@
 ## A free and open-source Epic Games Launcher alternative
 
 UEVaultManager is an open-source assets manager that can list assets from the Epic Games Marketplace.
-Its main purpose is to list the assets (with or without user login) and save the list into a file that can be reused later as a data source (for
+Its main purpose is to list the assets (with or without user login), filter (optional) and save the list into a file that can be reused later as a
+data source (for
 instance
 in an Excel sheet).
 In a future versions, this application will also offer a GUI, and will be able to read directly the result file, display and edit the assets list.
@@ -13,22 +14,33 @@ Please read the [config file](#config-file) and [cli usage](#usage) sections bef
 or [create an issue on GitHub](https://github.com/LaurentOngaro/UEVaultManager/issues/new/choose), so we can fix it!
 
 **Note:** UEVaultManager is currently a CLI (command-line interface) application without a graphical user interface,
-it has to be run from a terminal (e.g. PowerShell)
+it has to be run from a terminal (e.g. a Linux terminal, a PowerShell or a Dos Console)
 
-**Features:**
+**Implemented Features:**
 
 - Authenticating with Epic's service
-- Listing and managing your assets
+- Listing and getting data about assets
+  - all the metadata used before by legendary: name, title, id, description, ue versions...
+  - add extras data grabbed from the marketplace page of an asset : price, review, asset purchased or not...
+- Using a cache to avoid getting and grabbing the data using API calls and web scrapping each time the app is run. The delay of cache conservation can
+  be set in the configuration file
+- Filtering the assets by category before their listing (via the -c | --category command line option)
+- Saving the resulting list in a csv or a json file (via the -o | --output command line option)
+- Saving the metadata and the extras data in individual json files (one for each asset) in sub-folders of the config folder
+- Persisting user data for each asset (see the `Result files` section below)
 
-**Planned:**
+**Planned Features:**
 
+- Managing the assets data:
+- Adding (and saving) comments, personal note... on each asset
 - Simple GUI for managing assets (WIP)
 - Install and download assets into Unreal VaultCache or projects folders
 
 **Special thanks:**
 
-This code is mainly a lighter version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some addition regarding the
-management of the unreal engine marketplace assets.
+This code is mainly a lighter version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some addition regarding the listing
+and the
+management of unreal engine marketplace assets.
 Thanks to the Legendary team for the fantastic work on their tool.
 
 ## Requirements
@@ -95,18 +107,19 @@ echo 'export PATH=$PATH:~/.local/bin' >> ~/.profile && source ~/.profile
 
 #### Windows example
 
-1. First install the Python language (3.9 minimal version required) as explained on the [official python website](https://www.python.org/downloads/windows/) 
-2. create a folder for storing the source files 
+1. First install the Python language (3.9 minimal version required) as explained on
+   the [official python website](https://www.python.org/downloads/windows/)
+2. create a folder for storing the source files
 3. open a command prompt or a terminal from this folder.
 4. run the following commands:
 
-```
+```batchfile
 git clone https://github.com/LaurentOngaro/UEVaultManager.git
 cd UEVaultManager
 pip install .
 ```
 
-If the `UEVaultManager` executable is not available after installation, you may need to configure your `PATH` correctly. 
+If the `UEVaultManager` executable is not available after installation, you may need to configure your `PATH` correctly.
 
 ### Directly from the repo (for dev/testing)
 
@@ -126,7 +139,7 @@ To log in:
 UEVaultManager auth
 ````
 
-When using the prebuilt Windows executables of version 0.20.14 or higher this should open a new window with the Epic Login.
+If the pywebview package is installed (that is done by the installation process), this should open a new window with the Epic Login.
 
 Otherwise, authentication is a little finicky since we have to go through the Epic website and manually copy a code.
 The login page should open in your browser and after logging in you should be presented with a JSON response that contains a code ("
@@ -224,7 +237,7 @@ usage: UEVaultManager list [-h] [--csv]
 
 optional arguments:
   -h, --help            Show this help message and exit
-  --csv                 List asset in CSV format
+   --csv                 List asset in CSV format
   --tsv                 List asset in TSV format
   --json                List asset in JSON format
   --force-refresh       Force a refresh of all asset metadata
@@ -262,30 +275,43 @@ optional arguments:
 
 ````
 
+## Config folder
+
+Configuration file, log files and results files are stored by default in the data folder of the app.
+
+The <data folder> location is:
+
+- for Linux: `~/.config/UEVaultManager/`
+- for Windows: `C:\users\<you_login_name>\.config\UEVaultManager\`
+
 ## Config file
 
-UEVaultManager supports some options in `~/.config/UEVaultManager/config.ini`:
+UEVaultManager supports some settings in its config file `<data folder>/config.ini`:
+
+This is an example of this file content and the settings you can change:
 
 ````ini
 [UEVaultManager]
 log_level = debug
 ; locale override, must be in RFC 1766 format (e.g. "en-US")
-locale = en-US
+locale = fr-FR
 ; path to the "Manifests" folder in the EGL ProgramData directory
 egl_programdata = C:/ProgramData/Epic/EpicGamesLauncher/Data/Manifests
 ; Disables the automatic update check
-disable_update_check = false
+disable_update_check = true
 ; Disables the notice about an available update on exit
-disable_update_notice = false
+disable_update_notice = true
 ; Disable automatically-generated aliases
 disable_auto_aliasing = false
-; Create a backup of the output file (when using the --output option) suffixe by a timestamp
-create_output_backup = false
-; Create a backup of the output file (when using the --output option) suffixe by a timestamp
-create_output_backup = false
+; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
+create_output_backup = true
+; Print more information during long operations
+verbose_mode = true
+; Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days
+ue_assets_max_cache_duration = 1296000
 ; Set the file name (and path) for logging issues with assets when running the --list command
-; Set to '' to disabled this feature
-; use "~/ at the start of the filename to store it relatively to the user directory 
+; Set to  to disabled this feature
+; use "~/" at the start of the filename to store it relatively to the user directory
 ignored_assets_filename_log = ~/.config/ignored_assets.log
 notfound_assets_filename_log = ~/.config/notfound_assets.log
 bad_data_assets_filename_log = ~/.config/bad_data_assets.log
@@ -293,22 +319,51 @@ bad_data_assets_filename_log = ~/.config/bad_data_assets.log
 
 ## Output Format and file
 
-### CSV file
+### Log files and debug
 
-These are the headings that will be written to the stdout or to the file pointed by the --output command line option
-The script also use a (hardcoded) boolean value to know if the content of the columns must be preserved before overwriting an existing
+3 different log files could be used during the process
+Use the config file to set their file name (and path)
+
+- ignored assets file log
+  - file is defined by the setting: 'ignored_assets_filename_log (default is ~/.config/ignored_assets.log)'
+  - each asset listed in the file has been ignored during the process. Possible reasons are: not an UE asset, not an asset, asset filtered by
+    category (-c option)
+- not found assets log
+  - file is defined by the setting: 'notfound_assets_filename_log (default is ~/.config/notfound_assets.log)'
+  - each asset listed in the file has not been found during the grabbing process (extras data). Possible reasons are: invalid, obsolete or removed
+    from the marketplace
+- bad data assets log
+  - file is defined by the setting: 'bad_data_assets_filename_log  (default is ~/.config/bad_data_assets.log)'
+  - each asset listed has different value in extras data and metadata. Reasons is: ambiguous asset name that leaded to an invalid search result during
+    the grabbing process.
+    See the `how to fix invalid search result during the grabbing process` section bellow
+
+### The output file
+
+The result of the listing can be displayed on the console where the app has been launched.
+This is done by default.
+But it can also be saved in a csv or a json file for futur use
+
+The script use a (hardcoded) boolean value to know if the content of the columns must be preserved before overwriting an existing
 output file
 This feature goal is to avoid overwriting data that could have been manually changed by the user in the output file between successive runs of the
 program.
 
+As it, if the user manually change the content of some data in the file, by adding a comment for instance, this data WON'T be overwritten.
+Also Note that if `create_output_backup = true` is set in the config file, the app will create a backup of the output file suffixed by a timestamp
+before overwriting the result file
+
+These are the headings that will be written into the CSV file (or the names of the fields ins the Json file).
+The value is False if its content is not preserved, and True if it is preserved (and can be used to store persistant data)
+
 ```python
-headings = {
-    'Asset_id'           : False,  # ! important: Do not Rename => this field is used as main key for each asset
+{
+    'Asset_id'           : False,
     'App name'           : False,
     'App title'          : False,
     'Category'           : False,
     'Image'              : False,
-    'Url'                : False,
+    'Url'                : True,
     'UE Version'         : False,
     'Compatible Versions': False,
     'Review'             : False,
@@ -318,12 +373,16 @@ headings = {
     'Creation Date'      : False,
     'Update Date'        : False,
     'Status'             : False,
-    # Modified Fields when added into the file
+    # Modified Fields when added into the file (mainly from extras data)
     'Date Added'         : True,
-    'Price'              : False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-    'Old Price'          : False,  # ! important always place it after the Price field in the list
-    'On Sale'            : False,  # ! important always place it after the Old Price field in the list
-    # Modified Fields when added into the file
+    'Price'              : False,
+    'Old Price'          : False,
+    'On Sale'            : False,
+    'Purchased'          : False,
+    'Supported Versions' : False,
+    'Page title'         : False,
+    'Error'              : False,
+    # User Fields
     'Comment'            : True,
     'Stars'              : True,
     'Asset Folder'       : True,
@@ -334,13 +393,33 @@ headings = {
 }
 ```
 
-### Json file
+### The individual json files
 
-TODO
+Each asset will also have its data saved in to different json files:
+
+- the folder `<data folder>/metadata`: contains a json file for each asset (identified by its 'asset_id') to store its metadata (get from a call to
+  the epic API)
+- the folder `<data folder>/extras`: contains a json file for each asset (identified by its 'asset_id') to store its 'extras data' (grabbed from the
+  marketplace page of the asset)
+
+Note:
+
+- filtering data (using the -c command) occurs BEFORE saving extras data
+- some "extras" json files can be missing where the corresponding "metadata" json file is present, that's because some data could have not been
+  grabbed or the asset page not found during the process.
+- the grabbing processing for extras data is using a text based search, so the analysed asset page could be the bad one and results could be taken for
+  another asset. See the `how to fix invalid search result during the grabbing process` section bellow
+
+### how to fix invalid search result during the grabbing process
+
+The grabbing processing for extras data is using a text based search. 
+When the asset name (that must be converted to be used as a search keyword) is ambiguous, the search could provide several results or even a false result.
+By default, only the first result of this search is taken as the corresponding asset.
+So, in that case, the asset page that is analysed could be the bad one and grabbed data could be taken for
+the wrong asset. 
+To limit this error, a comparison is done between the asset title in the metadata and the title in the asset page.
+If the values are different, the asset name is added to the file pointed by the "bad_data_assets_filename_log" value of the config file
+
+To fix that, the search of the correct url for the asset must be done and validated manually
 
 ## Known bugs and limitations
-
-### invalid data
-
-Due to API changes, the `Price` and `Review` fields of an asset can not be retrieved and will be set to a default value
-Consequently, the `Old Price` and `On Sale` fields will be also be set to a default value because of the mode of calculation
