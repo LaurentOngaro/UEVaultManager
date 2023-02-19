@@ -26,8 +26,8 @@ it has to be run from a terminal (e.g. a Linux Shell, a PowerShell or a Dos Cons
   - extras data grabbed from the marketplace page of an asset : price, review, purchased or not...
 - Using a cache system to avoid getting data using API calls and web scrapping each time the app is run. The delay of cache conservation can
   be set in the configuration file
-- Filtering the asset list by category before their listing (via the -c | --category command line option)
-- Saving the resulting list in a csv or a json file (via the -o | --output command line option)
+- Filtering the asset list by category before their listing (via the -c | --category optional arguments)
+- Saving the resulting list in a csv or a json file (via the -o | --output optional arguments)
 - Adding (and saving) comments, personal note... on each asset (NO GUI yet, must be done directly in the result files)
 - Saving the metadata and the extras data in individual json files (one for each asset) in sub-folders of the config folder
 - Persisting user data for each asset (see the [Output file](#the-output-file) section below)
@@ -400,7 +400,7 @@ Each asset will also have its data saved in to different json files:
 
 Note:
 
-- filtering data (using the -c command) occurs BEFORE saving extras data
+- filtering data (using the -c optional arguments) occurs BEFORE saving extras data
 - some "extras" json files can be missing where the corresponding "metadata" json file is present, that's because some data could have not been
   grabbed or the asset page not found during the process.
 - the grabbing processing for extras data is using a text based search, so the analysed asset page could be the bad one and results could be taken for
