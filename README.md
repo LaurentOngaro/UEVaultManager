@@ -1,39 +1,41 @@
 # UEVaultManager
 
-## A free and open-source Epic Games Launcher alternative
+## A free and open-source Epic Games Assets Manager for Unreal Engine
 
-UEVaultManager is an open-source assets manager that can list assets from the Epic Games Marketplace.
+_*An Epic Launcher alternative available on all Windows/Linux/MacOs*_
+
+UEVaultManager is an open-source assets manager that can list assets and their data from the Epic Games Marketplace.
+
 Its main purpose is to list the assets (with or without user login), filter (optional) and save the list into a file that can be reused later as a
-data source (for
-instance
-in an Excel sheet).
-In a future versions, this application will also offer a GUI, and will be able to read directly the result file, display and edit the assets list.
+data source (for instance in an Excel sheet).
+
+In future versions, this application will also offer a GUI, and will be able to read directly the result file, display and edit the assets list.
 
 Please read the [config file](#config-file) and [cli usage](#usage) sections before creating an issue to avoid invalid reports.
 
 or [create an issue on GitHub](https://github.com/LaurentOngaro/UEVaultManager/issues/new/choose), so we can fix it!
 
-**Note:** UEVaultManager is currently a CLI (command-line interface) application without a graphical user interface,
-it has to be run from a terminal (e.g. a Linux terminal, a PowerShell or a Dos Console)
+**Note:** UEVaultManager is currently a CLI (command-line interface) application without a graphical user interface (GUI),
+it has to be run from a terminal (e.g. a Linux Shell, a PowerShell or a Dos Console)
 
 **Implemented Features:**
 
 - Authenticating with Epic's service
 - Listing and getting data about assets
-  - all the metadata used before by legendary: name, title, id, description, ue versions...
-  - add extras data grabbed from the marketplace page of an asset : price, review, asset purchased or not...
-- Using a cache to avoid getting and grabbing the data using API calls and web scrapping each time the app is run. The delay of cache conservation can
+  - all the metadata that were already downloaded before by legendary: name, title, id, description, UE versions...
+  - extras data grabbed from the marketplace page of an asset : price, review, purchased or not...
+- Using a cache system to avoid getting data using API calls and web scrapping each time the app is run. The delay of cache conservation can
   be set in the configuration file
-- Filtering the assets by category before their listing (via the -c | --category command line option)
+- Filtering the asset list by category before their listing (via the -c | --category command line option)
 - Saving the resulting list in a csv or a json file (via the -o | --output command line option)
+- Adding (and saving) comments, personal note... on each asset (NO GUI yet, must be done directly in the result files)
 - Saving the metadata and the extras data in individual json files (one for each asset) in sub-folders of the config folder
-- Persisting user data for each asset (see the `Result files` section below)
+- Persisting user data for each asset (see the [Output file](#the-output-file) section below)
 
 **Planned Features:**
 
-- Managing the assets data:
-- Adding (and saving) comments, personal note... on each asset
 - Simple GUI for managing assets (WIP)
+- editing all the assets data using a GUI (WIP)
 - Install and download assets into Unreal VaultCache or projects folders
 
 **Special thanks:**
@@ -56,34 +58,28 @@ Thanks to the Legendary team for the fantastic work on their tool.
 
 ## How to run/install
 
-**NOT DONE FOR NOW / TODO**
-
-Download the `uevaultmanager` or `uevaultmanager.exe` binary
-from [the latest release](https://github.com/LaurentOngaro/UEVaultManager/releases/latest)
-and move it to somewhere in your `$PATH`/`%PATH%`. Don't forget to `chmod +x` it on Linux/macOS.
-
-The Windows .exe and Linux/macOS executable were created with PyInstaller and will run standalone even without python being installed.
-Note that on Linux glibc >= 2.25 is required, so older distributions such as Ubuntu 16.04 or Debian stretch will not work.
-
-### Python Package (any)
-
 #### Prerequisites
 
-**NOT DONE FOR NOW / TODO**
-
-To prevent problems with permissions during installation, please upgrade your `pip` by running `python -m pip install -U pip --user`.
+- To prevent problems with permissions during installation, please upgrade your `pip` by running `python -m pip install -U pip --user`.
+- Install python3.9, setuptools, wheel, and requests
 
 > **Tip:** You may need to replace `python` in the above command with `python3` on Linux/macOS.
 
-```bash
-pip install UEVaultManager
+### Directly from the repo (for dev/testing)
+
+#### Windows example
+
+1. First install the Python language (3.9 minimal version required) as explained on
+   the [official python website](https://www.python.org/downloads/windows/)
+2. create a folder for storing the source files
+3. open a command prompt or a terminal from this folder.
+4. run the following commands:
+
+```batchfile
+git clone https://github.com/LaurentOngaro/UEVaultManager.git
+cd UEVaultManager
+pip install .
 ```
-
-#### Manually from the repo
-
-- Install python3.9, setuptools, wheel, and requests
-- Clone the git repository and cd into it
-- Run `pip install .`
 
 #### Ubuntu 20.04 example
 
@@ -105,29 +101,30 @@ the command:
 echo 'export PATH=$PATH:~/.local/bin' >> ~/.profile && source ~/.profile
 ```
 
-#### Windows example
-
-1. First install the Python language (3.9 minimal version required) as explained on
-   the [official python website](https://www.python.org/downloads/windows/)
-2. create a folder for storing the source files
-3. open a command prompt or a terminal from this folder.
-4. run the following commands:
-
-```batchfile
-git clone https://github.com/LaurentOngaro/UEVaultManager.git
-cd UEVaultManager
-pip install .
-```
-
 If the `UEVaultManager` executable is not available after installation, you may need to configure your `PATH` correctly.
 
-### Directly from the repo (for dev/testing)
+### Direct installation (any)
 
-- Install python 3.9 and requests (optionally in a venv)
-- cd into the repository
-- Run `pip install -e .`
+#### Python Package on [pypi](https://pypi.org) (any)
 
-This installs `UEVaultManager` in "editable" mode - any changes to the source code will take effect next time the `UEVaultManager` executable runs.
+**NOT DONE FOR NOW / TODO**
+
+```bash
+pip install UEVaultManager
+```
+
+> **Tip:** You may need to replace `python` in the above command with `python3` on Linux/macOS.
+
+#### Windows Binaries from repos
+
+**NOT DONE FOR NOW / TODO**
+
+Download the `uevaultmanager` or `uevaultmanager.exe` binary
+from [the latest release](https://github.com/LaurentOngaro/UEVaultManager/releases/latest)
+and move it to somewhere in your `$PATH`/`%PATH%`. Don't forget to `chmod +x` it on Linux/macOS.
+
+The Windows .exe and Linux/macOS executable were created with PyInstaller and will run standalone even without python being installed.
+Note that on Linux glibc >= 2.25 is required, so older distributions such as Ubuntu 16.04 or Debian stretch will not work.
 
 ## Quickstart
 
@@ -326,7 +323,7 @@ Use the config file to set their file name (and path)
 
 - ignored assets file log
   - file is defined by the setting: 'ignored_assets_filename_log (default is ~/.config/ignored_assets.log)'
-  - each asset listed in the file has been ignored during the process. Possible reasons are: not an UE asset, not an asset, asset filtered by
+  - each asset listed in the file has been ignored during the process. Possible reasons are: not a UE asset, not an asset, asset filtered by
     category (-c option)
 - not found assets log
   - file is defined by the setting: 'notfound_assets_filename_log (default is ~/.config/notfound_assets.log)'
@@ -336,25 +333,24 @@ Use the config file to set their file name (and path)
   - file is defined by the setting: 'bad_data_assets_filename_log  (default is ~/.config/bad_data_assets.log)'
   - each asset listed has different value in extras data and metadata. Reasons is: ambiguous asset name that leaded to an invalid search result during
     the grabbing process.
-    See the `how to fix invalid search result during the grabbing process` section bellow
+    See the [how to fix invalid search result during the grabbing process](#how-to-fix-invalid-search-result-during-the-grabbing-process) section bellow
 
 ### The output file
 
 The result of the listing can be displayed on the console where the app has been launched.
 This is done by default.
-But it can also be saved in a csv or a json file for futur use
+But it can also be saved in a csv or a json file for a future use.
 
-The script use a (hardcoded) boolean value to know if the content of the columns must be preserved before overwriting an existing
-output file
-This feature goal is to avoid overwriting data that could have been manually changed by the user in the output file between successive runs of the
-program.
+The script use a (hardcoded) boolean value to know if the content of the field is "protected" and must be preserved before overwriting an existing
+output file.
 
+This feature goal is to avoid overwriting data that could have been manually changed by the user in the output file between successive runs.
 As it, if the user manually change the content of some data in the file, by adding a comment for instance, this data WON'T be overwritten.
 Also Note that if `create_output_backup = true` is set in the config file, the app will create a backup of the output file suffixed by a timestamp
-before overwriting the result file
+before overwriting the result file.
 
-These are the headings that will be written into the CSV file (or the names of the fields ins the Json file).
-The value is False if its content is not preserved, and True if it is preserved (and can be used to store persistant data)
+These are the fields (or column headings) that will be written in that order into the CSV file (or the names of the fields ins the Json file).
+The value is False if its content is not preserved, and True if it is preserved (and can be used to store persistant data).
 
 ```python
 {
@@ -408,18 +404,25 @@ Note:
 - some "extras" json files can be missing where the corresponding "metadata" json file is present, that's because some data could have not been
   grabbed or the asset page not found during the process.
 - the grabbing processing for extras data is using a text based search, so the analysed asset page could be the bad one and results could be taken for
-  another asset. See the `how to fix invalid search result during the grabbing process` section bellow
+  another asset. See the [how to fix invalid search result during the grabbing process](#how-to-fix-invalid-search-result-during-the-grabbing-process) section bellow
 
 ### how to fix invalid search result during the grabbing process
 
-The grabbing processing for extras data is using a text based search. 
-When the asset name (that must be converted to be used as a search keyword) is ambiguous, the search could provide several results or even a false result.
+The grabbing processing for extras data is using a text based search (partial and case-insensitive).
 By default, only the first result of this search is taken as the corresponding asset.
-So, in that case, the asset page that is analysed could be the bad one and grabbed data could be taken for
-the wrong asset. 
-To limit this error, a comparison is done between the asset title in the metadata and the title in the asset page.
-If the values are different, the asset name is added to the file pointed by the "bad_data_assets_filename_log" value of the config file
+When the asset name, which must be converted to be used as a search keyword, is ambiguous, the search could provide several results or even a wrong
+result (an asset that don't correspond).
+
+So, in that case, the asset page that is analyzed could be the bad one and grabbed data could be taken for
+the wrong asset.
+
+To limit this error, a text comparison is done between the asset title in the metadata and the title in the asset page.
+If the values are different, the asset name is added to the file pointed by the "bad_data_assets_filename_log" value of the config file and its "
+error" field will contain a 1 (meaning an "INCONSISTANT_DATA" error code) instead of 0 (meaning a "NO_ERROR" value)
 
 To fix that, the search of the correct url for the asset must be done and validated manually
+Once validated, the correct URL can be added into the result file, inside the Url field.
+As this field is marked as "protected", it won't be overwritten on the next data update and will be used as a source url for the page to be grabbed
+instead of making a new search for the asset page
 
 ## Known bugs and limitations
