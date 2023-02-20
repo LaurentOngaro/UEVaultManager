@@ -126,8 +126,8 @@ class LGDLFS:
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'ignored_assets_filename_log'):
             self.config.set(
-                'UEVaultManager', '; Set the file name (and path) for logging issues with assets when running the --list command' + "\n" + '; Set to '
-                ' to disabled this feature' + "\n" + '; use "~/" at the start of the filename to store it relatively to the user directory'
+                'UEVaultManager', '; Set the file name (and path) for logging issues with assets when running the --list command' + "\n" +
+                '; use "~/" at the start of the filename to store it relatively to the user directory'
             )
             self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
         if not self.config.has_option('UEVaultManager', 'notfound_assets_filename_log'):
@@ -260,8 +260,9 @@ class LGDLFS:
             f.write(manifest_data)
 
     def get_item_meta(self, app_name):
+        # note: self._assets_metadata is filled ay the start of the list command by reading all the json files in the metadata folder
         if _meta := self._assets_metadata.get(app_name, None):
-            return App.from_json(_meta)
+            return App.from_json(_meta)  # create an object from the App class using the json data
         return None
 
     def set_item_meta(self, app_name, meta):
@@ -280,6 +281,7 @@ class LGDLFS:
             os.remove(meta_file)
 
     def get_item_extras(self, app_name: str):
+        # note: self._assets_extras_data is filled ay the start of the list command by reading all the json files in the extras folder
         return self._assets_extras_data.get(app_name, None)
 
     def set_item_extras(self, app_name: str, extras: dict):
@@ -341,8 +343,8 @@ class LGDLFS:
             return
         # if config file has been modified externally, back-up the user-modified version before writing
         if os.path.exists(self.config_path):
-            if (modtime := int(os.stat(self.config_path).st_mtime)) != self.config.modtime:
-                new_filename = f'config.{modtime}.ini'
+            if (mod_time := int(os.stat(self.config_path).st_mtime)) != self.config.modtime:
+                new_filename = f'config.{mod_time}.ini'
                 self.log.warning(
                     f'Configuration file has been modified while UEVaultManager was running, '
                     f'user-modified config will be renamed to "{new_filename}"...'

@@ -234,7 +234,7 @@ usage: UEVaultManager list [-h] [--csv]
 
 optional arguments:
   -h, --help            Show this help message and exit
-   --csv                 List asset in CSV format
+  --csv                 List asset in CSV format
   --tsv                 List asset in TSV format
   --json                List asset in JSON format
   --force-refresh       Force a refresh of all asset metadata
@@ -319,7 +319,8 @@ bad_data_assets_filename_log = ~/.config/bad_data_assets.log
 ### Log files and debug
 
 3 different log files could be used during the process
-Use the config file to set their file name (and path)
+Use the config file to set their file name (and path).
+If a file name is missing, empty or set to '' the corresponding log feature will be disabled
 
 - ignored assets file log
   - file is defined by the setting: 'ignored_assets_filename_log (default is ~/.config/ignored_assets.log)'
@@ -333,7 +334,8 @@ Use the config file to set their file name (and path)
   - file is defined by the setting: 'bad_data_assets_filename_log  (default is ~/.config/bad_data_assets.log)'
   - each asset listed has different value in extras data and metadata. Reasons is: ambiguous asset name that leaded to an invalid search result during
     the grabbing process.
-    See the [how to fix invalid search result during the grabbing process](#how-to-fix-invalid-search-result-during-the-grabbing-process) section bellow
+    See the [how to fix invalid search result during the grabbing process](#how-to-fix-invalid-search-result-during-the-grabbing-process) section
+    bellow
 
 ### The output file
 
@@ -352,40 +354,42 @@ before overwriting the result file.
 These are the fields (or column headings) that will be written in that order into the CSV file (or the names of the fields ins the Json file).
 The value is False if its content is not preserved, and True if it is preserved (and can be used to store persistant data).
 
+These value are defined by the CSV_headings variable at the beginning of the [core.py](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/core.py) file:
+
 ```python
-{
-    'Asset_id'           : False,
-    'App name'           : False,
-    'App title'          : False,
-    'Category'           : False,
-    'Image'              : False,
-    'Url'                : True,
-    'UE Version'         : False,
-    'Compatible Versions': False,
-    'Review'             : False,
-    'Developer'          : False,
-    'Description'        : False,
-    'Uid'                : False,
-    'Creation Date'      : False,
-    'Update Date'        : False,
-    'Status'             : False,
-    # Modified Fields when added into the file (mainly from extras data)
-    'Date Added'         : True,
-    'Price'              : False,
-    'Old Price'          : False,
-    'On Sale'            : False,
-    'Purchased'          : False,
-    'Supported Versions' : False,
-    'Page title'         : False,
-    'Error'              : True,
-    # User Fields
-    'Comment'            : True,
-    'Stars'              : True,
-    'Asset Folder'       : True,
-    'Must Buy'           : True,
-    'Test result'        : True,
-    'Installed Folder'   : True,
-    'Alternative'        : True
+headings = {
+  'Asset_id'           : False,
+  'App name'           : False,
+  'App title'          : False,
+  'Category'           : False,
+  'Image'              : False,
+  'Url'                : True,
+  'UE Version'         : False,
+  'Compatible Versions': False,
+  'Review'             : False,
+  'Developer'          : False,
+  'Description'        : False,
+  'Uid'                : False,
+  'Creation Date'      : False,
+  'Update Date'        : False,
+  'Status'             : False,
+  # Modified Fields when added into the file (mainly from extras data)
+  'Date Added'         : True,
+  'Price'              : False,
+  'Old Price'          : False,
+  'On Sale'            : False,
+  'Purchased'          : False,
+  'Supported Versions' : False,
+  'Page title'         : False,
+  'Error'              : True,
+  # User Fields
+  'Comment'            : True,
+  'Stars'              : True,
+  'Asset Folder'       : True,
+  'Must Buy'           : True,
+  'Test result'        : True,
+  'Installed Folder'   : True,
+  'Alternative'        : True
 }
 ```
 
@@ -404,7 +408,8 @@ Note:
 - some "extras" json files can be missing where the corresponding "metadata" json file is present, that's because some data could have not been
   grabbed or the asset page not found during the process.
 - the grabbing processing for extras data is using a text based search, so the analysed asset page could be the bad one and results could be taken for
-  another asset. See the [how to fix invalid search result during the grabbing process](#how-to-fix-invalid-search-result-during-the-grabbing-process) section bellow
+  another asset. See the [how to fix invalid search result during the grabbing process](#how-to-fix-invalid-search-result-during-the-grabbing-process)
+  section bellow
 
 ### how to fix invalid search result during the grabbing process
 
@@ -418,7 +423,8 @@ the wrong asset.
 
 To limit this error, a text comparison is done between the asset title in the metadata and the title in the asset page.
 If the values are different, the asset name is added to the file pointed by the "bad_data_assets_filename_log" value of the config file and its "
-error" field will contain a 1 (meaning an "INCONSISTANT_DATA" error code) instead of 0 (meaning a "NO_ERROR" value)
+error" field will contain a value different from 0. Each value correspond to a specific error code (
+see [error code](#possible-values-in-the-error-field) bellow)
 
 To fix that, the search of the correct url for the asset must be done and validated manually.
 
@@ -426,10 +432,24 @@ Once validated, the correct URL could be added into the result file, inside the 
 As this field is marked as "protected", it won't be overwritten on the next data update and will be used as a source url for the page to be grabbed
 instead of making a new search for the asset page
 
-**Please Note that the user is responsable for respecting the attended format of the result file when modifying its content. 
+**Please Note that the user is responsable for respecting the attended format of the result file when modifying its content.
 Breaking its structure will probably result in losing the data the user has modified in the file when the application will be executed next time.**
 
 Making a backup before any manual modification is certainly a good idea.
-Using a tool (e.g. a linter) to check if the structure of the file (json or CSV) is still correct before running the application again is also a very good idea.
+Using a tool (e.g. a linter) to check if the structure of the file (json or CSV) is still correct before running the application again is also a very
+good idea.
+
+### possible values in the error Field
+
+The "Error" field of each asset contains a value that indicate how the process has run.
+These code are defined by the following enum at the beginning of the [api/egs.py](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/api/egs.py) file:
+
+```pyhton
+class ErrorCode(Enum):
+    NO_ERROR = 0
+    INCONSISTANT_DATA = 1
+    PAGE_NOT_FOUND = 2
+    CONTENT_NOT_FOUND = 3
+```
 
 ## Known bugs and limitations

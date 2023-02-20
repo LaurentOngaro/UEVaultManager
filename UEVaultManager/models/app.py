@@ -104,7 +104,7 @@ class App:
 
     @classmethod
     def from_json(cls, json):
-        tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''),)
+        tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''),)  # call to the class constructor
         tmp.metadata = json.get('metadata', dict())
         if 'asset_infos' in json:
             tmp.asset_infos = {k: AppAsset.from_json(v) for k, v in json['asset_infos'].items()}
