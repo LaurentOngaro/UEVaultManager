@@ -3,12 +3,14 @@
 import json
 import logging
 import os
+import time
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta
 from hashlib import sha1
 from locale import getlocale, LC_CTYPE
 from platform import system
+from threading import current_thread
 from urllib.parse import urlparse
 
 from requests import session, __version__
@@ -22,8 +24,46 @@ from UEVaultManager.models.app import *
 from UEVaultManager.models.exceptions import *
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
+from UEVaultManager.utils.cli import check_and_create_path
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
+
+# The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
+CSV_headings = {
+    'Asset_id': False,  # ! important: Do not Rename => this field is used as main key for each asset
+    'App name': False,
+    'App title': False,
+    'Category': False,
+    'Image': False,
+    'Url': False,
+    'UE Version': False,
+    'Compatible Versions': False,
+    'Review': False,
+    'Developer': False,
+    'Description': False,
+    'Uid': False,
+    'Creation Date': False,
+    'Update Date': False,
+    'Status': False,
+    # Modified Fields when added into the file (mainly from extras data)
+    'Date Added': True,
+    'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+    'Old Price': False,  # ! important: always place it after the Price field in the list
+    'On Sale': False,  # ! important: always place it after the Old Price field in the list
+    'Purchased': False,
+    # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
+    'Supported Versions': False,
+    'Page title': False,
+    'Error': False,
+    # User Fields
+    'Comment': True,
+    'Stars': True,
+    'Asset Folder': True,
+    'Must Buy': True,
+    'Test result': True,
+    'Installed Folder': True,
+    'Alternative': True
+}
 
 # ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
 #  can handle to give the user more details. (Not required yet since there's no GUI so log output is fine)
@@ -62,8 +102,8 @@ class AppCore:
                 self.log.debug(f'Set locale to {self.language_code}-{self.country_code}')
                 # adjust egs api language as well
                 self.egs.language_code, self.egs.country_code = self.language_code, self.country_code
-            except Exception as e:
-                self.log.warning(f'Getting locale failed: {e!r}, falling back to using en-US.')
+            except Exception as error:
+                self.log.warning(f'Getting locale failed: {error!r}, falling back to using en-US.')
         elif system() != 'Darwin':  # macOS doesn't have a default locale we can query
             self.log.warning('Could not determine locale, falling back to en-US')
 
@@ -88,12 +128,15 @@ class AppCore:
         self.notfound_assets_filename_log = ''
         # Set the file name (and path) for logging when an asset has metadata and extras data are incoherent when running the --list command
         self.bad_data_assets_filename_log = ''
+        # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
+        self.create_log_backup = True
         # new file loggers
         self.ignored_logger = None
         self.notfound_logger = None
         self.bad_data_logger = None
         # store time to process metadata and extras update
         self.process_time_average = {'time': 0.0, 'count': 0}
+        self.use_threads = False
 
     def setup_assets_logging(self):
         formatter = logging.Formatter('%(message)s')
@@ -101,27 +144,30 @@ class AppCore:
 
         if self.ignored_assets_filename_log != '':
             ignored_assets_filename_log = self.ignored_assets_filename_log.replace('~/.config', self.lgd.path)
-            ignored_assets_handler = logging.FileHandler(ignored_assets_filename_log, mode='w')
-            ignored_assets_handler.setFormatter(formatter)
-            self.ignored_logger = logging.Logger('IgnoredAssets', 'INFO')
-            self.ignored_logger.addHandler(ignored_assets_handler)
-            self.ignored_logger.info(message)
+            if check_and_create_path(ignored_assets_filename_log):
+                ignored_assets_handler = logging.FileHandler(ignored_assets_filename_log, mode='w')
+                ignored_assets_handler.setFormatter(formatter)
+                self.ignored_logger = logging.Logger('IgnoredAssets', 'INFO')
+                self.ignored_logger.addHandler(ignored_assets_handler)
+                self.ignored_logger.info(message)
 
         if self.notfound_assets_filename_log != '':
             notfound_assets_filename_log = self.notfound_assets_filename_log.replace('~/.config', self.lgd.path)
-            notfound_assets_handler = logging.FileHandler(notfound_assets_filename_log, mode='w')
-            notfound_assets_handler.setFormatter(formatter)
-            self.notfound_logger = logging.Logger('NotFoundAssets', 'INFO')
-            self.notfound_logger.addHandler(notfound_assets_handler)
-            self.notfound_logger.info(message)
+            if check_and_create_path(notfound_assets_filename_log):
+                notfound_assets_handler = logging.FileHandler(notfound_assets_filename_log, mode='w')
+                notfound_assets_handler.setFormatter(formatter)
+                self.notfound_logger = logging.Logger('NotFoundAssets', 'INFO')
+                self.notfound_logger.addHandler(notfound_assets_handler)
+                self.notfound_logger.info(message)
 
         if self.bad_data_assets_filename_log != '':
             bad_data_assets_filename_log = self.bad_data_assets_filename_log.replace('~/.config', self.lgd.path)
-            bad_data_assets_handler = logging.FileHandler(bad_data_assets_filename_log, mode='w')
-            bad_data_assets_handler.setFormatter(formatter)
-            self.bad_data_logger = logging.Logger('BadDataAssets', 'INFO')
-            self.bad_data_logger.addHandler(bad_data_assets_handler)
-            self.bad_data_logger.info(message)
+            if check_and_create_path(bad_data_assets_filename_log):
+                bad_data_assets_handler = logging.FileHandler(bad_data_assets_filename_log, mode='w')
+                bad_data_assets_handler.setFormatter(formatter)
+                self.bad_data_logger = logging.Logger('BadDataAssets', 'INFO')
+                self.bad_data_logger.addHandler(bad_data_assets_handler)
+                self.bad_data_logger.info(message)
 
     def auth_sid(self, sid) -> str:
         """
@@ -170,8 +216,8 @@ class AppCore:
         try:
             self.lgd.userdata = self.egs.start_session(authorization_code=code)
             return True
-        except Exception as e:
-            self.log.error(f'Logging in failed with {e!r}, please try again.')
+        except Exception as error:
+            self.log.error(f'Logging in failed with {error!r}, please try again.')
             return False
 
     def auth_ex_token(self, code) -> bool:
@@ -181,8 +227,8 @@ class AppCore:
         try:
             self.lgd.userdata = self.egs.start_session(exchange_token=code)
             return True
-        except Exception as e:
-            self.log.error(f'Logging in failed with {e!r}, please try again.')
+        except Exception as error:
+            self.log.error(f'Logging in failed with {error!r}, please try again.')
             return False
 
     def auth_import(self) -> bool:
@@ -197,8 +243,8 @@ class AppCore:
                     decrypted_data = decrypt_epic_data(data_key, raw_data)
                     re_data = json.loads(decrypted_data)[0]
                     break
-                except Exception as e:
-                    self.log.debug(f'Decryption with key {data_key} failed with {e!r}')
+                except Exception as error:
+                    self.log.debug(f'Decryption with key {data_key} failed with {error!r}')
             else:
                 raise ValueError('Decryption of EPIC launcher user information failed.')
         else:
@@ -210,8 +256,8 @@ class AppCore:
         try:
             self.lgd.userdata = self.egs.start_session(refresh_token=refresh_token)
             return True
-        except Exception as e:
-            self.log.error(f'Logging in failed with {e!r}, please try again.')
+        except Exception as error:
+            self.log.error(f'Logging in failed with {error!r}, please try again.')
             return False
 
     def login(self, force_refresh=False) -> bool:
@@ -237,8 +283,8 @@ class AppCore:
         if self.update_check_enabled():
             try:
                 self.check_for_updates()
-            except Exception as e:
-                self.log.warning(f'Checking for UEVaultManager updates failed: {e!r}')
+            except Exception as error:
+                self.log.warning(f'Checking for UEVaultManager updates failed: {error!r}')
         else:
             self.apply_lgd_config()
 
@@ -254,10 +300,10 @@ class AppCore:
                     self.egs.resume_session(self.lgd.userdata)
                     self.logged_in = True
                     return True
-                except InvalidCredentialsError as e:
-                    self.log.warning(f'Resuming failed due to invalid credentials: {e!r}')
-                except Exception as e:
-                    self.log.warning(f'Resuming failed for unknown reason: {e!r}')
+                except InvalidCredentialsError as error:
+                    self.log.warning(f'Resuming failed due to invalid credentials: {error!r}')
+                except Exception as error:
+                    self.log.warning(f'Resuming failed for unknown reason: {error!r}')
                 # If verify fails just continue the normal authentication process
                 self.log.info('Falling back to using refresh token...')
 
@@ -268,8 +314,8 @@ class AppCore:
             self.log.error('Stored credentials are no longer valid! Please login again.')
             self.lgd.invalidate_userdata()
             return False
-        except (HTTPError, ConnectionError) as e:
-            self.log.error(f'HTTP request for login failed: {e!r}, please try again later.')
+        except (HTTPError, ConnectionError) as error:
+            self.log.error(f'HTTP request for login failed: {error!r}, please try again later.')
             return False
 
         self.lgd.userdata = userdata
@@ -379,9 +425,16 @@ class AppCore:
 
     def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
 
-        def fetch_asset_meta(name) -> bool:
+        def fetch_asset_meta(name: str) -> bool:
             if name in currently_fetching or not fetch_list.get(name):
                 return False
+
+            thread_data = ''
+            if self.use_threads:
+                thread = current_thread()
+                thread_data = f' ==> By Thread name={thread.name}'
+
+            self.log.debug(f'--- START fetching data {name}{thread_data}')
 
             currently_fetching[name] = True
             start_time = datetime.now()
@@ -396,7 +449,6 @@ class AppCore:
             app_title = apps[name].app_title
 
             if _process_extras:
-                self.log.info(f'--- STARTING EXTRAS FOR {name}')
                 # we use title  because it's less ambiguous than a name when searching an asset
                 eg_extras = self.egs.get_assets_extras(name, app_title)
                 self.lgd.set_item_extras(name, eg_extras)
@@ -410,10 +462,11 @@ class AppCore:
                     if name in fetch_list:
                         del fetch_list[name]
                         if self.verbose_mode:
+                            self.log.info(f'Removing {name} from the metadata update\n===Found {eg_extras["asset_name_in_url"]}')
+                        if not self.use_threads:
                             process_average = self.process_time_average['time'] / self.process_time_average['count']
-                            self.log.info(
-                                f'Removing {name} from the metadata update.\n===Found {eg_extras["asset_name_in_url"]}:Time Processing={process_time:.3f}s # Time Average={process_average:.3f} s # {len(fetch_list)} assets to process ({(len(fetch_list) * process_average):.3f} s time left)'
-                            )
+                            self.log.info(f'===Time Average={process_average:.3f} s # ({(len(fetch_list) * process_average):.3f} s time left)')
+
                 except Exception as error:
                     self.log.info(f'Removing {name} from the metadata update list failed with {error!r}')
                     return False
@@ -425,7 +478,10 @@ class AppCore:
                     if self.bad_data_logger:
                         self.bad_data_logger.info(name)
 
-                currently_fetching.remove(name)
+                del currently_fetching[name]
+                self.log.info(
+                    f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
+                )
                 return True
 
         _ret = []
@@ -456,7 +512,7 @@ class AppCore:
         # loop through assets items to check for if they are for ue or not
         valid_items = []
         bypass_count = 0
-        self.log.info(f'\n======\nSTARTING phase 1: asset indexing (ue or not)\n')
+        self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
         # note: we sort by reverse, as it the most recent version of an asset will be listed first
         for app_name, app_assets in sorted(assets.items(), reverse=True):
             # notes:
@@ -480,7 +536,13 @@ class AppCore:
         force_refresh = self.ue_assets_update_available
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 1')
-        self.log.info(f'\n======\nSTARTING phase 2:asset filtering and metadata updating\n')
+
+        if force_refresh:
+            self.log.info(f'!! Assets metadata will be updated !!\n')
+        else:
+            self.log.info(f"Asset metadata won't be updated\n")
+
+        self.log.info(f'======\nSTARTING phase 2:asset filtering and metadata updating\n')
 
         # loop through valid items to check for update and filtering
         bypass_count = 0
@@ -498,9 +560,11 @@ class AppCore:
             item_extras_data = self.lgd.get_item_extras(app_name)
 
             asset_updated = False
-            if item_metadata:
+            if not item_metadata:
+                self.log.info(f'Metadata for {app_name} are missing. It Will be ADDED to the FETCH list')
+            else:
                 category = str(item_metadata.metadata['categories'][0]['path']).lower()
-                if filter_category and filter_category.lower() in category:
+                if filter_category and filter_category.lower() not in category:
                     self.log.debug(
                         f'{app_name} has been FILTERED by category ({filter_category} not in {category}).It has been added to the ignored_logger file'
                     )
@@ -513,6 +577,9 @@ class AppCore:
                 asset_updated = any(item_metadata.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
                 apps[app_name] = item_metadata
                 self.log.debug(f'{app_name} has been ADDED to the apps list')
+
+            if not item_extras_data:
+                self.log.info(f'Extras Data for {app_name} are missing. It Will be ADDED to the FETCH list')
 
             process_meta = not item_metadata or force_refresh or (item_metadata and asset_updated)
             process_extras = not item_extras_data or force_refresh
@@ -529,16 +596,17 @@ class AppCore:
 
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
 
-        use_threads = len(fetch_list) > 5
-        use_threads = False  # debug only
+        self.use_threads = len(fetch_list) > 5
+
         if fetch_list:
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
-            if use_threads:
-                with ThreadPoolExecutor(max_workers=16) as executor:
-                    executor.map(fetch_asset_meta, app_name, timeout=60.0)
+            if self.use_threads:
+                # note:  unreal engine API limits the number of connection to 16. So no more threads than 16 !
+                with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() + 2), thread_name_prefix="Asset_Fetcher") as executor:
+                    executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
-        self.log.info(f'\n======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
+        self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
         while len(filtered_items) > 0:
@@ -546,25 +614,32 @@ class AppCore:
             app_name = item['name']
             app_assets = item['asset']
             try:
-                item = apps.get(app_name)
-            except (KeyError, IndexError) as e:
+                app_item = apps.get(app_name)
+            except (KeyError, IndexError):
                 self.log.debug(f'{app_name} has not been found int the app list. Bypassing')
+                # item not found in app, ignore and pass to next one
                 continue
 
-            still_needs_update = len(fetch_list) > 0
-
-            if still_needs_update:
-                if use_threads:
-                    self.log.warning(f'Fetching metadata for {app_name} is still no done, retrying')
+            # retry if the asset is still in fetch list
+            if fetch_list.get(app_name) and not currently_fetching.get(app_name):
+                self.log.info(f'Fetching metadata for {app_name} is still no done, retrying')
                 fetch_asset_meta(app_name)
 
-            # retry if metadata is still missing/threaded loading wasn't used
-            ignore_asset = (app_name in assets_bypassed) and (assets_bypassed[app_name])
-            if not ignore_asset and (not item or app_name in fetch_list or app_name in currently_fetching):
-                if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])) and platform in app_assets:
-                    _ret.append(item)
+            is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
+            is_a_mod = any(i['path'] == 'mods' for i in app_item.metadata.get('categories', []))
+            has_valid_platform = platform in app_assets
+            is_still_fetching = (app_name in fetch_list) or (app_name in currently_fetching)
 
-        self.log.info(f'A total of {len(_ret)} assets have been fetched and kept in phase 3')
+            if is_still_fetching:
+                # put again the asset in the list waiting when it will be fetched
+                filtered_items.append(item)
+                time.sleep(3)  # Sleep for 3 seconds to let the fetch process progress or end
+
+            # check if the asset will be added to the final list
+            if not is_bypassed and not is_still_fetching and not is_a_mod and has_valid_platform:
+                _ret.append(app_item)
+
+        self.log.info(f'A total of {len(_ret)} assets have been analysed and kept in phase 3')
 
         self.update_aliases(force=meta_updated)
 
@@ -679,9 +754,9 @@ class AppCore:
             self.log.debug(f'Trying to download manifest from "{url}"...')
             try:
                 r = self.egs.unauth_session.get(url, timeout=10.0)
-            except Exception as e:
+            except Exception as error:
                 self.log.warning(f'Unable to download manifest from "{urlparse(url).netloc}" '
-                                 f'(Exception: {e!r}), trying next URL...')
+                                 f'(Exception: {error!r}), trying next URL...')
                 continue
 
             if r.status_code == 200:
@@ -725,13 +800,16 @@ class AppCore:
         ue_assets_count = cached['ue_assets_count']
 
         self.ue_assets_update_available = False
-        if not ue_assets_count or ue_assets_count != self.ue_assets_count or (
-            datetime.now().timestamp() - cached['last_update']
-        ) > self.ue_assets_max_cache_duration:
+        date_diff = datetime.now().timestamp() - cached['last_update']
+        if not ue_assets_count or ue_assets_count != self.ue_assets_count or date_diff > self.ue_assets_max_cache_duration:
             ue_assets_count = self.ue_assets_count
             self.lgd.set_ue_assets_cache_data(ue_assets_count=ue_assets_count)
             self.ue_assets_update_available = True
+        else:
+            self.log.info(f'Data in cache are still valid. Cache age is {str(timedelta(seconds=date_diff))}')
 
-    def exit(self):
+    def clean_exit(self, code=0):
         """ Do cleanup, config saving, and exit. """
         self.lgd.save_config()
+        logging.shutdown()
+        exit(code)

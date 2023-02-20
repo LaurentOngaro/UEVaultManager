@@ -17,49 +17,13 @@ from platform import platform
 from sys import exit, stdout, platform as sys_platform
 
 from UEVaultManager import __version__, __codename__
-from UEVaultManager.core import AppCore
+from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
-from UEVaultManager.utils.cli import strtobool
+from UEVaultManager.utils.cli import strtobool, check_and_create_path
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 # todo custom formatter for cli logger (clean info, highlighted error/warning)
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
-
-# The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
-CSV_headings = {
-    'Asset_id'           : False,  # ! important: Do not Rename => this field is used as main key for each asset
-    'App name'           : False,
-    'App title'          : False,
-    'Category'           : False,
-    'Image'              : False,
-    'Url'                : False,
-    'UE Version'         : False,
-    'Compatible Versions': False,
-    'Review'             : False,
-    'Developer'          : False,
-    'Description'        : False,
-    'Uid'                : False,
-    'Creation Date'      : False,
-    'Update Date'        : False,
-    'Status'             : False,
-    # Modified Fields when added into the file (mainly from extras data)
-    'Date Added'         : True,
-    'Price'              : False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-    'Old Price'          : False,  # ! important: always place it after the Price field in the list
-    'On Sale'            : False,  # ! important: always place it after the Old Price field in the list
-    'Purchased'          : False,
-    'Supported Versions' : False,
-    'Page title'         : False,
-    'Error'              : False,
-    # User Fields
-    'Comment'            : True,
-    'Stars'              : True,
-    'Asset Folder'       : True,
-    'Must Buy'           : True,
-    'Test result'        : True,
-    'Installed Folder'   : True,
-    'Alternative'        : True
-}
 
 
 class UEVaultManagerCLI:
@@ -92,17 +56,26 @@ class UEVaultManagerCLI:
         else:
             print(json.dumps(data))
 
-    def _create_output_file_backup(self, filename: str):
-        file_src = filename
-        if self.core.create_output_backup:
-            try:
-                # make a backup of the existing file
-                file_name_no_ext, file_ext = os.path.splitext(file_src)
-                file_backup = f'{file_name_no_ext}.BACKUP_{datetime.now().strftime(self.core.default_datetime_format)}{file_ext}'
-                shutil.copy(file_src, file_backup)
-                self.logger.info(f'Existing output file has been copied to {file_backup}')
-            except FileNotFoundError:
-                self.logger.info(f'No previous file has been found')
+    def create_file_backup(self, file_src):
+        # make a backup of the existing file
+
+        # for files defined relatively to the config folder
+        file_src = file_src.replace('~/.config', self.core.lgd.path)
+
+        if not file_src:
+            return
+        try:
+            file_name_no_ext, file_ext = os.path.splitext(file_src)
+            file_backup = f'{file_name_no_ext}.BACKUP_{datetime.now().strftime("%y-%m-%d_%H-%M-%S")}{file_ext}'
+            shutil.copy(file_src, file_backup)
+            self.logger.info(f'File {file_src} has been copied to {file_backup}')
+        except FileNotFoundError:
+            self.logger.info(f'File {file_src} has not been found')
+
+    def create_log_file_backup(self):
+        self.create_file_backup(self.core.ignored_assets_filename_log)
+        self.create_file_backup(self.core.notfound_assets_filename_log)
+        self.create_file_backup(self.core.bad_data_assets_filename_log)
 
     def auth(self, args):
         if args.auth_delete:
@@ -137,10 +110,10 @@ class UEVaultManagerCLI:
                     return
                 else:
                     self.logger.warning('Login session from EGS seems to no longer be valid.')
-                    exit(1)
-            except Exception as e:
-                self.logger.error(f'No EGS login session found, please login manually. (Exception: {e!r})')
-                exit(1)
+                    self.core.clean_exit(1)
+            except Exception as error:
+                self.logger.error(f'No EGS login session found, please login manually. (Exception: {error!r})')
+                self.core.clean_exit(1)
 
         exchange_token = ''
         auth_code = ''
@@ -189,7 +162,7 @@ class UEVaultManagerCLI:
         self.logger.info('Logging in...')
         if not self.core.login():
             self.logger.error('Login failed, cannot continue!')
-            exit(1)
+            self.core.clean_exit(1)
 
         if args.force_refresh:
             self.logger.info('Refreshing asset list, this may take a while...')
@@ -205,8 +178,8 @@ class UEVaultManagerCLI:
         no_data_value = 0
         no_data_text = 'N.A.'
 
-        # sort assets by name
-        items = sorted(items, key=lambda x: x.app_title.lower())
+        # sort assets by name in reverse (to have the latest version first
+        items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
 
         # create a minimal and full dict of data from existing assets
         items_in_file = {}
@@ -242,9 +215,9 @@ class UEVaultManagerCLI:
             date_added = datetime.now().strftime(self.core.default_datetime_format)
 
             try:
-                extras_data = item.extras_data
-            except AttributeError as e:
-                self.logger.warning(f'Error getting extra data for {item.app_name} : {e!r}')
+                extras_data = self.core.lgd.get_item_extras(item.app_name)
+            except AttributeError as error:
+                self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
                 extras_data = self.core.egs.create_empty_assets_extras({item.app_name})
 
             if self.core.verbose_mode:
@@ -272,11 +245,11 @@ class UEVaultManagerCLI:
                     , extras_data['price']  # 'Price'
                     , no_data_value  # 'Old Price'
                     , no_data_value  # 'On Sale'
-                    , False  # 'Purchased'
-                    , self.core.egs.ErrorCode.NO_ERROR.value  # 'Error'
+                    , extras_data['purchased']  # 'Purchased'
                     # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
-                    , no_data_text  # 'supported versions'
-                    , no_data_text  # 'page title'
+                    , extras_data['supported_versions']  # 'supported versions'
+                    , extras_data['page_title']  # 'page title'
+                    , extras_data['error']  # 'Error'
                     # Modified Fields when added into the file
                     , no_data_text  # 'Comment'
                     , no_data_text  # 'Stars'
@@ -291,8 +264,8 @@ class UEVaultManagerCLI:
             assets[asset_id] = record
 
         # output with extended info
-        if args.output and (args.csv or args.tsv or args.json):
-            self._create_output_file_backup(args.output)
+        if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
+            self.create_file_backup(args.output)
 
         if args.csv or args.tsv:
             if args.output:
@@ -306,10 +279,14 @@ class UEVaultManagerCLI:
                             asset_id = record['Asset_id']
                             items_in_file[asset_id] = record
                         output.close()
-                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration) as e:
-                    self.logger.warning(f'Could not read data from the file {args.output}.\nError:{e!r}')
+                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration) as error:
+                    self.logger.warning(f'Could not read data from the file {args.output}')
 
                 # write the content of the file to keep some data
+                if not check_and_create_path(file_src):
+                    self.logger.critical(f'Could not create folder for {file_src}')
+                    self.core.clean_exit(1)
+
                 output = open(file_src, 'w', encoding='utf-8')
             else:
                 output = stdout
@@ -342,8 +319,8 @@ class UEVaultManagerCLI:
                                         old_price = float(
                                             items_in_file[asset_id][key]
                                         )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
-                                    except Exception as e:
-                                        self.logger.warning(f'Price values can not be converted for asset {asset_id}.\nError:{e!r}')
+                                    except Exception as error:
+                                        self.logger.warning(f'Price values can not be converted for asset {asset_id}\nError:{error!r}')
                                 index += 1
                             # compute the price related fields
                             if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
@@ -352,14 +329,14 @@ class UEVaultManagerCLI:
                             record[price_index + 2] = on_sale
                         writer.writerow(record)
                         cpt += 1
-                    except (OSError, UnicodeEncodeError, TypeError) as e:
-                        self.logger.error(f'Could not write record for {asset_id} into {args.output}.\nError:{e!r}')
+                    except (OSError, UnicodeEncodeError, TypeError) as error:
+                        self.logger.error(f'Could not write record for {asset_id} into {args.output}\nError:{error!r}')
 
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
             output.close()
             self.logger.info(
-                f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions).\nOperation Finished\n======\n'
+                f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions)\nOperation Finished\n======\n'
             )
             return
 
@@ -391,12 +368,12 @@ class UEVaultManagerCLI:
             self.logger.info(f'Logging in and downloading manifest for {args.app_name}')
             if not self.core.login():
                 self.logger.error('Login failed! Cannot continue with download process.')
-                exit(1)
+                self.core.clean_exit(1)
             update_meta = args.force_refresh
             item = self.core.get_item(args.app_name, update_meta=update_meta)
             if not item:
-                self.logger.fatal(f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)')
-                exit(1)
+                self.logger.critical(f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)')
+                self.core.clean_exit(1)
             manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
 
         manifest = self.core.load_manifest(manifest_data)
@@ -430,7 +407,7 @@ class UEVaultManagerCLI:
             try:
                 if not self.core.login():
                     self.logger.error('Log in failed!')
-                    exit(1)
+                    self.core.clean_exit(1)
             except ValueError:
                 pass
             # if automatic checks are off force an update here
@@ -473,7 +450,7 @@ class UEVaultManagerCLI:
             try:
                 if not self.core.login():
                     self.logger.error('Log in failed!')
-                    exit(1)
+                    self.core.clean_exit(1)
             except ValueError:
                 pass
 
@@ -857,12 +834,16 @@ def main():
         logging.getLogger('urllib3').setLevel(logging.WARNING)
 
     cli.core.create_output_backup = strtobool(cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', fallback=True))
+    cli.core.create_log_backup = strtobool(cli.core.lgd.config.get('UEVaultManager', 'create_log_backup', fallback=True))
     cli.core.verbose_mode = strtobool(cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', fallback=False))
     cli.ue_assets_max_cache_duration = int(cli.core.lgd.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000))
 
     cli.core.ignored_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
     cli.core.notfound_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
     cli.core.bad_data_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'bad_data_assets_filename_log', fallback='')
+
+    if cli.core.create_log_backup:
+        cli.create_log_file_backup()
 
     # open log file for assets if necessary
     cli.core.setup_assets_logging()
@@ -919,7 +900,7 @@ def main():
 
                 print(f'\n- Download URL: {update_info["downloads"][dl_platform]}')
 
-    cli.core.exit()
+    cli.core.clean_exit()
     ql.stop()
     exit(0)
 

@@ -183,15 +183,11 @@ class EPCAPI:
         return r.json()
 
     def get_item_assets(self, platform='Windows', label='Live'):
-        try:
-            r = self.session.get(
-                f'https://{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.request_timeout
-            )
-            r.raise_for_status()
-            return r.json()
-        except ConnectionError as e:
-            self.log.error(f'Connexion Error when getting item asset: {e!r}')
-            exit(1)
+        r = self.session.get(
+            f'https://{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.request_timeout
+        )
+        r.raise_for_status()
+        return r.json()
 
     def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live'):
         r = self.session.get(
@@ -308,7 +304,7 @@ class EPCAPI:
         r = self.session.get(search_url_full, timeout=timeout)
 
         if not r.ok:
-            self.log.warning(f'Error when finding the url for {asset_name}:{r.reason}')
+            self.log.warning(f'Can not find the url for {asset_name}:{r.reason}')
             return [url, asset_name_in_url, ErrorCode.PAGE_NOT_FOUND.value]
 
         soup = BeautifulSoup(r.content, 'html.parser')
@@ -336,7 +332,6 @@ class EPCAPI:
         not_found_review = 0.0
         supported_versions = ''
         page_title = ''
-        error_code = ErrorCode.NO_ERROR.value
         no_result = create_empty_assets_extras(asset_name=asset_name)
 
         # try to find the url of the asset by doing a search in the marketplace
@@ -348,8 +343,8 @@ class EPCAPI:
         try:
             response = self.session.get(asset_url)  # when using session, we are already logged in Epic game
             response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            self.log.warning(f'Error when getting extras data for {asset_name}:{e!r}')
+        except requests.exceptions.RequestException as error:
+            self.log.warning(f'Can not get extras data for {asset_name}:{error!r}')
             no_result['error'] = error_code
             return no_result
 
@@ -370,14 +365,14 @@ class EPCAPI:
                 price = inner_span_elt.text.strip('$')
                 price = price.strip('€')
                 price = float(price)
-            except Exception as e:
-                self.log.warning(f'Error when getting price for {asset_name}:{e!r}')
+            except Exception as error:
                 if 'Free' in asset_price:
                     price = 0.0
                 else:
+                    self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
                     price = not_found_price
         else:
-            self.log.debug(f'Error: price not found for {asset_name}')
+            self.log.debug(f'price not found for {asset_name}')
             price = not_found_price
 
         # get review
@@ -386,15 +381,15 @@ class EPCAPI:
             reviews_elt = reviews_elt.find('div', class_='rating-board__pop__title')
         if reviews_elt is not None:
             try:
-                inner_span_elt = reviews_elt.find('span')  # 4.25 out of 5 stars
+                inner_span_elt = reviews_elt.find('span')
                 content = inner_span_elt.text
                 pos = content.index(' out of ')
                 reviews = float(content[0:pos])
-            except Exception as e:
-                self.log.warning(f'Error when getting review for {asset_name}:{e!r}')
+            except Exception as error:
+                self.log.warning(f'Can not find the review for {asset_name}:{error!r}')
                 reviews = not_found_review
         else:
-            self.log.debug(f'Error: reviews not found for {asset_name}')
+            self.log.debug(f'reviews not found for {asset_name}')
             reviews = not_found_review
 
         # get Supported Engine Versions
@@ -402,10 +397,10 @@ class EPCAPI:
         if title_elt is not None:
             try:
                 supported_versions = title_elt.text
-            except Exception as e:
-                self.log.warning(f'Error when getting Supported Engine Versions for {asset_name}:{e!r}')
+            except Exception as error:
+                self.log.warning(f'Can not find the Supported Engine Versions for {asset_name}:{error!r}')
         else:
-            self.log.debug(f'Error: Supported Engine Versions not found for {asset_name}')
+            self.log.debug(f'Can not find the Supported Engine Versions for {asset_name}')
             reviews = not_found_review
 
         # get page title
@@ -413,10 +408,10 @@ class EPCAPI:
         if title_elt is not None:
             try:
                 page_title = title_elt.text
-            except Exception as e:
-                self.log.warning(f'Error when getting Page title for {asset_name}:{e!r}')
+            except Exception as error:
+                self.log.warning(f'Can not find the Page title for {asset_name}:{error!r}')
         else:
-            self.log.debug(f'Error: Supported Page title not found for {asset_name}')
+            self.log.debug(f'Can not find the Page title not found for {asset_name}')
             reviews = not_found_review
         return {
             'asset_name': asset_name,

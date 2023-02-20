@@ -43,6 +43,12 @@ class LGDLFS:
         # Config with item specific settings (e.g. start parameters, env variables)
         self.config = LGDConf(comment_prefixes='/', allow_no_value=True)
 
+        # Folders used by the app
+        self.manifests_folder = 'manifests'
+        self.metadata_folder = 'metadata'
+        self.tmp_folder = 'tmp'
+        self.extras_folder = 'extras'
+
         if config_file:
             # if user specified a valid relative/absolute path use that,
             # otherwise create file in UEVaultManager config directory
@@ -55,7 +61,8 @@ class LGDLFS:
             self.config_path = os.path.join(self.path, 'config.ini')
 
         # ensure folders exist.
-        for f in ['', 'manifests', 'metadata', 'tmp', 'extras']:
+
+        for f in ['', self.manifests_folder, self.metadata_folder, self.tmp_folder, self.extras_folder]:
             if not os.path.exists(os.path.join(self.path, f)):
                 os.makedirs(os.path.join(self.path, f))
 
@@ -115,6 +122,10 @@ class LGDLFS:
                 '; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file'
             )
             self.config.set('UEVaultManager', 'create_output_backup', 'true')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'create_log_backup'):
+            self.config.set('UEVaultManager', ';Create a backup of the log files that store asset analysis suffixed by a timestamp')
+            self.config.set('UEVaultManager', 'create_log_backup', 'true')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'verbose_mode'):
             self.config.set('UEVaultManager', '; Print more information during long operations')

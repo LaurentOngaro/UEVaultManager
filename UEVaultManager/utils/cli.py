@@ -1,3 +1,6 @@
+import os
+
+
 def get_boolean_choice(prompt, default=True):
     yn = 'Y/n' if default else 'y/N'
 
@@ -58,3 +61,14 @@ def strtobool(val):
         return False
     else:
         raise ValueError('invalid truth value %r' % (val,))
+
+
+def check_and_create_path(full_file_name: str) -> bool:
+    # create folder if not exist
+    file_path, file_name = os.path.split(full_file_name)
+    if not os.path.isdir(file_path):
+        try:
+            os.makedirs(file_path, exist_ok=True)
+        except OSError:
+            return False
+    return True

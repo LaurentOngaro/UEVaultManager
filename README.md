@@ -302,6 +302,8 @@ disable_update_notice = true
 disable_auto_aliasing = false
 ; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
 create_output_backup = true
+; Create a backup of the log files that store asset analysis suffixed by a timestamp
+create_log_backup = True
 ; Print more information during long operations
 verbose_mode = true
 ; Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days
@@ -358,38 +360,39 @@ These value are defined by the CSV_headings variable at the beginning of the [co
 
 ```python
 headings = {
-  'Asset_id'           : False,
-  'App name'           : False,
-  'App title'          : False,
-  'Category'           : False,
-  'Image'              : False,
-  'Url'                : True,
-  'UE Version'         : False,
-  'Compatible Versions': False,
-  'Review'             : False,
-  'Developer'          : False,
-  'Description'        : False,
-  'Uid'                : False,
-  'Creation Date'      : False,
-  'Update Date'        : False,
-  'Status'             : False,
-  # Modified Fields when added into the file (mainly from extras data)
-  'Date Added'         : True,
-  'Price'              : False,
-  'Old Price'          : False,
-  'On Sale'            : False,
-  'Purchased'          : False,
-  'Supported Versions' : False,
-  'Page title'         : False,
-  'Error'              : True,
-  # User Fields
-  'Comment'            : True,
-  'Stars'              : True,
-  'Asset Folder'       : True,
-  'Must Buy'           : True,
-  'Test result'        : True,
-  'Installed Folder'   : True,
-  'Alternative'        : True
+    'Asset_id'           : False,  # ! important: Do not Rename => this field is used as main key for each asset
+    'App name'           : False,
+    'App title'          : False,
+    'Category'           : False,
+    'Image'              : False,
+    'Url'                : False,
+    'UE Version'         : False,
+    'Compatible Versions': False,
+    'Review'             : False,
+    'Developer'          : False,
+    'Description'        : False,
+    'Uid'                : False,
+    'Creation Date'      : False,
+    'Update Date'        : False,
+    'Status'             : False,
+    # Modified Fields when added into the file (mainly from extras data)
+    'Date Added'         : True,
+    'Price'              : False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+    'Old Price'          : False,  # ! important: always place it after the Price field in the list
+    'On Sale'            : False,  # ! important: always place it after the Old Price field in the list
+    'Purchased'          : False,
+    # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
+    'Supported Versions' : False,
+    'Page title'         : False,
+    'Error'              : False,
+    # User Fields
+    'Comment'            : True,
+    'Stars'              : True,
+    'Asset Folder'       : True,
+    'Must Buy'           : True,
+    'Test result'        : True,
+    'Installed Folder'   : True,
+    'Alternative'        : True
 }
 ```
 
