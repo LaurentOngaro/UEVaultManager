@@ -25,6 +25,42 @@ from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 # todo custom formatter for cli logger (clean info, highlighted error/warning)
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
 
+# The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
+CSV_headings = {
+    'Asset_id'           : False,  # ! important: Do not Rename => this field is used as main key for each asset
+    'App name'           : False,
+    'App title'          : False,
+    'Category'           : False,
+    'Image'              : False,
+    'Url'                : False,
+    'UE Version'         : False,
+    'Compatible Versions': False,
+    'Review'             : False,
+    'Developer'          : False,
+    'Description'        : False,
+    'Uid'                : False,
+    'Creation Date'      : False,
+    'Update Date'        : False,
+    'Status'             : False,
+    # Modified Fields when added into the file (mainly from extras data)
+    'Date Added'         : True,
+    'Price'              : False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+    'Old Price'          : False,  # ! important: always place it after the Price field in the list
+    'On Sale'            : False,  # ! important: always place it after the Old Price field in the list
+    'Purchased'          : False,
+    'Supported Versions' : False,
+    'Page title'         : False,
+    'Error'              : False,
+    # User Fields
+    'Comment'            : True,
+    'Stars'              : True,
+    'Asset Folder'       : True,
+    'Must Buy'           : True,
+    'Test result'        : True,
+    'Installed Folder'   : True,
+    'Alternative'        : True
+}
+
 
 class UEVaultManagerCLI:
 
@@ -55,6 +91,18 @@ class UEVaultManagerCLI:
             print(json.dumps(data, indent=2, sort_keys=True))
         else:
             print(json.dumps(data))
+
+    def _create_output_file_backup(self, filename: str):
+        file_src = filename
+        if self.core.create_output_backup:
+            try:
+                # make a backup of the existing file
+                file_name_no_ext, file_ext = os.path.splitext(file_src)
+                file_backup = f'{file_name_no_ext}.BACKUP_{datetime.now().strftime(self.core.default_datetime_format)}{file_ext}'
+                shutil.copy(file_src, file_backup)
+                self.logger.info(f'Existing output file has been copied to {file_backup}')
+            except FileNotFoundError:
+                self.logger.info(f'No previous file has been found')
 
     def auth(self, args):
         if args.auth_delete:
@@ -154,42 +202,9 @@ class UEVaultManagerCLI:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
             items.extend(na_items)
 
-        no_data_value = '0'
+        no_data_value = 0
         no_data_text = 'N.A.'
-        # Note: The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
-        headings = {
-            'Asset_id': False,  # ! important: Do not Rename => this field is used as main key for each asset
-            'App name': False,
-            'App title': False,
-            'Category': False,
-            'Image': False,
-            'Url': False,
-            'UE Version': False,
-            'Compatible Versions': False,
-            'Review': False,
-            'Developer': False,
-            'Description': False,
-            'Uid': False,
-            'Creation Date': False,
-            'Update Date': False,
-            'Status': False,
-            # Modified Fields when added into the file (mainly from extras data)
-            'Date Added': True,
-            'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-            'Old Price': False,  # ! important: always place it after the Price field in the list
-            'On Sale': False,  # ! important: always place it after the Old Price field in the list
-            'Purchased': False,
-            'Supported Versions': False,
-            'Page title': False,
-            # Modified Fields when added into the file
-            'Comment': True,
-            'Stars': True,
-            'Asset Folder': True,
-            'Must Buy': True,
-            'Test result': True,
-            'Installed Folder': True,
-            'Alternative': True
-        }
+
         # sort assets by name
         items = sorted(items, key=lambda x: x.app_title.lower())
 
@@ -209,7 +224,7 @@ class UEVaultManagerCLI:
                 self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
                 continue
 
-            record = [''] * (len(headings.items()))  # create a list of empty string
+            record = [''] * (len(CSV_headings.items()))  # create a list of empty string
             metadata = item.metadata
             uid = metadata['id']
             category = metadata['categories'][0]['path']
@@ -229,8 +244,8 @@ class UEVaultManagerCLI:
             try:
                 extras_data = item.extras_data
             except AttributeError as e:
-                self.logger.warning(f'Error getting extra data for {item.app_name} : {e}')
-                extras_data=self.core.egs.create_empty_assets_extras({item.app_name})
+                self.logger.warning(f'Error getting extra data for {item.app_name} : {e!r}')
+                extras_data = self.core.egs.create_empty_assets_extras({item.app_name})
 
             if self.core.verbose_mode:
                 self.logger.info(f'Saving asset {cpt}/{cpt_max} {item.app_name}: id={asset_id} category={category}')
@@ -258,6 +273,7 @@ class UEVaultManagerCLI:
                     , no_data_value  # 'Old Price'
                     , no_data_value  # 'On Sale'
                     , False  # 'Purchased'
+                    , self.core.egs.ErrorCode.NO_ERROR.value  # 'Error'
                     # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
                     , no_data_text  # 'supported versions'
                     , no_data_text  # 'page title'
@@ -276,7 +292,7 @@ class UEVaultManagerCLI:
 
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json):
-            self.create_output_file_backup(args.output)
+            self._create_output_file_backup(args.output)
 
         if args.csv or args.tsv:
             if args.output:
@@ -290,8 +306,8 @@ class UEVaultManagerCLI:
                             asset_id = record['Asset_id']
                             items_in_file[asset_id] = record
                         output.close()
-                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration) as error:
-                    self.logger.warning(f'Could not read data from the file {args.output}.\nError:{error}')
+                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration) as e:
+                    self.logger.warning(f'Could not read data from the file {args.output}.\nError:{e!r}')
 
                 # write the content of the file to keep some data
                 output = open(file_src, 'w', encoding='utf-8')
@@ -299,7 +315,7 @@ class UEVaultManagerCLI:
                 output = stdout
             try:
                 writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
-                writer.writerow(headings.keys())
+                writer.writerow(CSV_headings.keys())
                 asset_id = ''
                 cpt = 0
                 for asset in sorted(assets.items()):
@@ -315,7 +331,7 @@ class UEVaultManagerCLI:
                             price = float(no_data_value)
                             old_price = float(no_data_value)
                             on_sale = no_data_value
-                            for key, keep_value_in_file in headings.items():
+                            for key, keep_value_in_file in CSV_headings.items():
                                 if keep_value_in_file:
                                     record[index] = items_in_file[asset_id][key]
                                 # Get the old price in the previous file
@@ -326,8 +342,8 @@ class UEVaultManagerCLI:
                                         old_price = float(
                                             items_in_file[asset_id][key]
                                         )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
-                                    except Exception as error:
-                                        self.logger.warning(f'Price values can not be converted for asset {asset_id}.\nError:{error}')
+                                    except Exception as e:
+                                        self.logger.warning(f'Price values can not be converted for asset {asset_id}.\nError:{e!r}')
                                 index += 1
                             # compute the price related fields
                             if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
@@ -336,8 +352,8 @@ class UEVaultManagerCLI:
                             record[price_index + 2] = on_sale
                         writer.writerow(record)
                         cpt += 1
-                    except (OSError, UnicodeEncodeError, TypeError) as error:
-                        self.logger.error(f'Could not write record for {asset_id} into {args.output}.\nError:{error}')
+                    except (OSError, UnicodeEncodeError, TypeError) as e:
+                        self.logger.error(f'Could not write record for {asset_id} into {args.output}.\nError:{e!r}')
 
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
@@ -359,18 +375,6 @@ class UEVaultManagerCLI:
             print(f' * {asset.app_title.strip()} (App name: {asset.app_name} | Version: {version})')
 
         print(f'\nTotal: {len(items)}')
-
-    def create_output_file_backup(self, filename: str):
-        file_src = filename
-        if self.core.create_output_backup:
-            try:
-                # make a backup of the existing file
-                file_name_no_ext, file_ext = os.path.splitext(file_src)
-                file_backup = f'{file_name_no_ext}.BACKUP_{datetime.now().strftime(self.core.default_datetime_format)}{file_ext}'
-                shutil.copy(file_src, file_backup)
-                self.logger.info(f'Existing output file has been copied to {file_backup}')
-            except FileNotFoundError:
-                self.logger.info(f'No previous file has been found')
 
     def list_files(self, args):
         if not args.override_manifest and not args.app_name:
@@ -863,6 +867,7 @@ def main():
     # open log file for assets if necessary
     cli.core.setup_assets_logging()
     cli.core.egs.notfound_logger = cli.core.notfound_logger
+    cli.core.egs.ignored_logger = cli.core.ignored_logger
 
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:

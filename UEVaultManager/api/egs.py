@@ -4,13 +4,21 @@
 import logging
 import re
 import urllib.parse
+from enum import Enum
 
-import inflection as inflection
 import requests
 import requests.adapters
 from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
+
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+
+
+class ErrorCode(Enum):
+    NO_ERROR = 0
+    INCONSISTANT_DATA = 1
+    PAGE_NOT_FOUND = 2
+    CONTENT_NOT_FOUND = 3
 
 
 def create_empty_assets_extras(asset_name: str) -> dict:
@@ -22,7 +30,8 @@ def create_empty_assets_extras(asset_name: str) -> dict:
         'review': 0,
         'purchased': False,
         'supported_versions': '',
-        'page_title': ''
+        'page_title': '',
+        'error': ErrorCode.NO_ERROR.value
     }
 
 
@@ -48,6 +57,7 @@ class EPCAPI:
     _artifact_service_host = 'artifact-public-service-prod.beee.live.use1a.on.epicgames.com'
     _search_url = 'www.unrealengine.com/marketplace/en-US'
     _login_url = 'www.unrealengine.com/id/login/epic'
+    ignored_logger = None
 
     def __init__(self, lc='en', cc='US', timeout=10.0):
         self.log = logging.getLogger('EPCAPI')
@@ -173,11 +183,15 @@ class EPCAPI:
         return r.json()
 
     def get_item_assets(self, platform='Windows', label='Live'):
-        r = self.session.get(
-            f'https://{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.request_timeout
-        )
-        r.raise_for_status()
-        return r.json()
+        try:
+            r = self.session.get(
+                f'https://{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.request_timeout
+            )
+            r.raise_for_status()
+            return r.json()
+        except ConnectionError as e:
+            self.log.error(f'Connexion Error when getting item asset: {e!r}')
+            exit(1)
 
     def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live'):
         r = self.session.get(
@@ -267,7 +281,7 @@ class EPCAPI:
         return records
 
     def find_asset_url(self, asset_name: str, timeout=10.0) -> []:
-        # remove the suffix _engineversion (ex _4.27) at the end of the name to have a valid search value
+        # remove the suffix _EngineVersion (ex _4.27) at the end of the name to have a valid search value
         regex = r"_[4|5]\.\d{1,2}$"
         converted_name = re.sub(regex, '', asset_name, 0)
         # Replace ' ' by '%20'
@@ -295,7 +309,7 @@ class EPCAPI:
 
         if not r.ok:
             self.log.warning(f'Error when finding the url for {asset_name}:{r.reason}')
-            return [url, asset_name_in_url]
+            return [url, asset_name_in_url, ErrorCode.PAGE_NOT_FOUND.value]
 
         soup = BeautifulSoup(r.content, 'html.parser')
         links = []
@@ -303,8 +317,9 @@ class EPCAPI:
 
         if "No content found" in group_elt.getText():
             self.log.info(f'{asset_name} has not been not found in marketplace.It has been added to the notfound_logger file')
-            self.notfound_logger.info(asset_name)
-            return [url, asset_name_in_url]
+            if self.ignored_logger:
+                self.ignored_logger.info(asset_name)
+            return [url, asset_name_in_url, ErrorCode.CONTENT_NOT_FOUND.value]
 
         # find all links to assets that correspond to the search
         for link in group_elt.findAll('a', attrs={'class': 'mock-ellipsis-item mock-ellipsis-item-helper ellipsis-text'}):
@@ -313,26 +328,29 @@ class EPCAPI:
         # return the first one (probably the best choice)
         asset_name_in_url = links[0].replace('/marketplace/en-US/product/', '')
         url = 'https://www.unrealengine.com' + links[0]
-        return [url, asset_name_in_url]
+        return [url, asset_name_in_url, ErrorCode.NO_ERROR.value]
 
     #  get the extras data of an asset (price, review...)
-    def get_assets_extras(self, asset_name: str, timeout=10.0) -> dict:
+    def get_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0) -> dict:
         not_found_price = 0.0
         not_found_review = 0.0
         supported_versions = ''
         page_title = ''
+        error_code = ErrorCode.NO_ERROR.value
         no_result = create_empty_assets_extras(asset_name=asset_name)
 
         # try to find the url of the asset by doing a search in the marketplace
-        asset_url, asset_name_in_url = self.find_asset_url(asset_name, timeout)
+        asset_url, asset_name_in_url, error_code = self.find_asset_url(asset_title, timeout)
         if asset_url == '' or asset_name_in_url == '':
+            no_result['error'] = error_code
             return no_result
 
         try:
             response = self.session.get(asset_url)  # when using session, we are already logged in Epic game
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            self.log.warning(f'Error when getting extras data for {asset_name}:{e}')
+            self.log.warning(f'Error when getting extras data for {asset_name}:{e!r}')
+            no_result['error'] = error_code
             return no_result
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -347,14 +365,17 @@ class EPCAPI:
         # get price
         asset_price = soup.find('span', class_='asset-price')
         if asset_price is not None:
-            inner_span_elt = asset_price.find('span')  # inner span
             try:
+                inner_span_elt = asset_price.find('span')  # inner span
                 price = inner_span_elt.text.strip('$')
                 price = price.strip('€')
                 price = float(price)
             except Exception as e:
-                self.log.warning(f'Error when getting price for {asset_name}:{e}')
-                price = not_found_price
+                self.log.warning(f'Error when getting price for {asset_name}:{e!r}')
+                if 'Free' in asset_price:
+                    price = 0.0
+                else:
+                    price = not_found_price
         else:
             self.log.debug(f'Error: price not found for {asset_name}')
             price = not_found_price
@@ -370,7 +391,7 @@ class EPCAPI:
                 pos = content.index(' out of ')
                 reviews = float(content[0:pos])
             except Exception as e:
-                self.log.warning(f'Error when getting review for {asset_name}:{e}')
+                self.log.warning(f'Error when getting review for {asset_name}:{e!r}')
                 reviews = not_found_review
         else:
             self.log.debug(f'Error: reviews not found for {asset_name}')
@@ -382,7 +403,7 @@ class EPCAPI:
             try:
                 supported_versions = title_elt.text
             except Exception as e:
-                self.log.warning(f'Error when getting Supported Engine Versions for {asset_name}:{e}')
+                self.log.warning(f'Error when getting Supported Engine Versions for {asset_name}:{e!r}')
         else:
             self.log.debug(f'Error: Supported Engine Versions not found for {asset_name}')
             reviews = not_found_review
@@ -393,7 +414,7 @@ class EPCAPI:
             try:
                 page_title = title_elt.text
             except Exception as e:
-                self.log.warning(f'Error when getting Page title for {asset_name}:{e}')
+                self.log.warning(f'Error when getting Page title for {asset_name}:{e!r}')
         else:
             self.log.debug(f'Error: Supported Page title not found for {asset_name}')
             reviews = not_found_review
@@ -406,4 +427,5 @@ class EPCAPI:
             'review': reviews,
             'purchased': purchased,
             'supported_versions': supported_versions,
+            'error': error_code
         }
