@@ -61,8 +61,8 @@ def remove_registry_value(hive, key, value, use_32bit_view=False):
     else:
         try:
             winreg.DeleteValue(k, value)
-        except Exception as e:
-            _logger.debug(f'Deleting "{key}":"{value}" failed with {repr(e)}')
+        except Exception as error:
+            _logger.debug(f'Deleting "{key}":"{value}" failed with {repr(error)}')
         winreg.CloseKey(k)
 
 
@@ -73,13 +73,13 @@ def set_registry_value(hive, key, value, data, reg_type=winreg.REG_SZ, use_32bit
 
     try:
         k = winreg.CreateKeyEx(hive, key, reserved=0, access=access)
-    except Exception as e:
-        _logger.debug(f'Failed creating/opening registry key "{key}" with {repr(e)}')
+    except Exception as error:
+        _logger.debug(f'Failed creating/opening registry key "{key}" with {repr(error)}')
     else:
         try:
             winreg.SetValueEx(k, value, 0, reg_type, data)
-        except Exception as e:
-            _logger.debug(f'Setting "{key}":"{value}" to "{data}" failed with {repr(e)}')
+        except Exception as error:
+            _logger.debug(f'Setting "{key}":"{value}" to "{data}" failed with {repr(error)}')
         winreg.CloseKey(k)
 
 

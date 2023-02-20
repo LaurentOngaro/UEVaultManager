@@ -21,8 +21,8 @@ def delete_folder(path: str, recursive=True) -> bool:
             os.removedirs(path)
         else:
             shutil.rmtree(path)
-    except Exception as e:
-        logger.error(f'Failed deleting files with {e!r}')
+    except Exception as error:
+        logger.error(f'Failed deleting files with {error!r}')
         return False
     else:
         return True
@@ -40,9 +40,9 @@ def delete_filelist(path: str, filenames: List[str], delete_root_directory: bool
 
         try:
             os.remove(os.path.join(path, _dir, _fn))
-        except Exception as e:
+        except Exception as error:
             if not silent:
-                logger.error(f'Failed deleting file {filename} with {e!r}')
+                logger.error(f'Failed deleting file {filename} with {error!r}')
             no_error = False
 
     # add intermediate directories that would have been missed otherwise
@@ -59,17 +59,17 @@ def delete_filelist(path: str, filenames: List[str], delete_root_directory: bool
         except FileNotFoundError:
             # directory has already been deleted, ignore that
             continue
-        except Exception as e:
+        except Exception as error:
             if not silent:
-                logger.error(f'Failed removing directory "{_dir}" with {e!r}')
+                logger.error(f'Failed removing directory "{_dir}" with {error!r}')
             no_error = False
 
     if delete_root_directory:
         try:
             os.rmdir(path)
-        except Exception as e:
+        except Exception as error:
             if not silent:
-                logger.error(f'Removing directory failed with {e!r}')
+                logger.error(f'Removing directory failed with {error!r}')
 
     return no_error
 
@@ -142,8 +142,8 @@ def validate_files(base_path: str, filelist: List[tuple], hash_type='sha1', larg
                     yield VerifyResult.HASH_MISMATCH, file_path, result_hash, f.tell()
                 else:
                     yield VerifyResult.HASH_MATCH, file_path, result_hash, f.tell()
-        except Exception as e:
-            logger.fatal(f'Could not verify "{file_path}"; opening failed with: {e!r}')
+        except Exception as error:
+            logger.fatal(f'Could not verify "{file_path}"; opening failed with: {error!r}')
             yield VerifyResult.OTHER_ERROR, file_path, '', 0
 
 

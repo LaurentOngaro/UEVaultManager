@@ -150,8 +150,8 @@ class DLManager(Process):
                 mc.changed -= completed_files
                 mc.unchanged |= completed_files
                 self.log.info(f'Skipping {len(completed_files)} files based on resume data.')
-            except Exception as e:
-                self.log.warning(f'Reading resume file failed: {e!r}, continuing as normal...')
+            except Exception as error:
+                self.log.warning(f'Reading resume file failed: {error!r}, continuing as normal...')
 
         # Install tags are used for selective downloading, e.g. for language packs
         additional_deletion_tasks = []
@@ -443,8 +443,8 @@ class DLManager(Process):
                 self.log.debug(f'Adding {chunk.guid_num} (active: {self.active_tasks})')
                 try:
                     self.dl_worker_queue.put(DownloaderTask(url=self.base_url + '/' + chunk.path, chunk_guid=c_guid, shm=sms), timeout=1.0)
-                except Exception as e:
-                    self.log.warning(f'Failed to add to download queue: {e!r}')
+                except Exception as error:
+                    self.log.warning(f'Failed to add to download queue: {error!r}')
                     self.chunks_to_dl.appendleft(c_guid)
                     break
 
@@ -476,9 +476,9 @@ class DLManager(Process):
                     self.writer_queue.put(WriterTask(**task.__dict__), timeout=1.0)
                     if task.flags & TaskFlags.OPEN_FILE:
                         current_file = task.filename
-                except Exception as e:
+                except Exception as error:
                     self.tasks.appendleft(task)
-                    self.log.warning(f'Adding to queue failed: {e!r}')
+                    self.log.warning(f'Adding to queue failed: {error!r}')
                     continue
 
                 try:
@@ -506,8 +506,8 @@ class DLManager(Process):
                         ),
                         timeout=1.0
                     )
-                except Exception as e:
-                    self.log.warning(f'Adding to queue failed: {e!r}')
+                except Exception as error:
+                    self.log.warning(f'Adding to queue failed: {error!r}')
                     break
 
                 if task.cleanup and not task.chunk_file:
@@ -538,14 +538,14 @@ class DLManager(Process):
                             # since the result is a subclass of the task we can simply resubmit the result object
                             self.dl_worker_queue.put(res, timeout=1.0)
                             self.active_tasks += 1
-                        except Exception as e:
-                            self.log.warning(f'Failed adding retry task to queue! {e!r}')
+                        except Exception as error:
+                            self.log.warning(f'Failed adding retry task to queue! {error!r}')
                             # If this failed for whatever reason, put the chunk at the front of the DL list
                             self.chunks_to_dl.appendleft(res.chunk_guid)
                 except Empty:
                     pass
-                except Exception as e:
-                    self.log.warning(f'Unhandled exception when trying to read download result queue: {e!r}')
+                except Exception as error:
+                    self.log.warning(f'Unhandled exception when trying to read download result queue: {error!r}')
 
         self.log.debug('Download result handler quitting...')
 
@@ -586,8 +586,8 @@ class DLManager(Process):
 
             except Empty:
                 continue
-            except Exception as e:
-                self.log.warning(f'Exception when trying to read writer result queue: {e!r}')
+            except Exception as error:
+                self.log.warning(f'Exception when trying to read writer result queue: {error!r}')
         self.log.debug('Writer result handler quitting...')
 
     def run(self):
@@ -772,8 +772,8 @@ class DLManager(Process):
                         ),
                         timeout=1.0
                     )
-                except Exception as e:
-                    self.log.warning(f'Failed to send status update to queue: {e!r}')
+                except Exception as error:
+                    self.log.warning(f'Failed to send status update to queue: {error!r}')
 
             time.sleep(self.update_interval)
 
@@ -803,8 +803,8 @@ class DLManager(Process):
         if self.resume_file:
             try:
                 os.remove(self.resume_file)
-            except OSError as e:
-                self.log.warning(f'Failed to remove resume file: {e!r}')
+            except OSError as error:
+                self.log.warning(f'Failed to remove resume file: {error!r}')
 
         # close up shared memory
         self.shared_memory.close()

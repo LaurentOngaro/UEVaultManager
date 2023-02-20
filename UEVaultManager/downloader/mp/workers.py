@@ -71,8 +71,8 @@ class DLWorker(Process):
                     try:
                         r = self.session.get(job.url, timeout=self.dl_timeout)
                         r.raise_for_status()
-                    except Exception as e:
-                        logger.warning(f'Chunk download for {job.chunk_guid} failed: ({e!r}), retrying...')
+                    except Exception as error:
+                        logger.warning(f'Chunk download for {job.chunk_guid} failed: ({error!r}), retrying...')
                         continue
 
                     if r.status_code != 200:
@@ -84,8 +84,8 @@ class DLWorker(Process):
                         break
                 else:
                     raise TimeoutError('Max retries reached')
-            except Exception as e:
-                logger.error(f'Job for {job.chunk_guid} failed with: {e!r}, fetching next one...')
+            except Exception as error:
+                logger.error(f'Job for {job.chunk_guid} failed with: {error!r}, fetching next one...')
                 # add failed job to result queue to be requeued
                 self.o_q.put(DownloaderTaskResult(success=False, **job.__dict__))
             except KeyboardInterrupt:
@@ -106,8 +106,8 @@ class DLWorker(Process):
                 self.shm.buf[job.shm.offset:job.shm.offset + size] = bytes(chunk.data)
                 del chunk
                 self.o_q.put(DownloaderTaskResult(success=True, size_decompressed=size, size_downloaded=compressed, **job.__dict__))
-            except Exception as e:
-                logger.warning(f'Job for {job.chunk_guid} failed with: {e!r}, fetching next one...')
+            except Exception as error:
+                logger.warning(f'Job for {job.chunk_guid} failed with: {error!r}, fetching next one...')
                 self.o_q.put(DownloaderTaskResult(success=False, **job.__dict__))
                 continue
             except KeyboardInterrupt:
@@ -196,15 +196,15 @@ class FileWorker(Process):
                     if j.flags & TaskFlags.DELETE_FILE:
                         try:
                             os.remove(full_path)
-                        except OSError as e:
-                            logger.error(f'Removing file failed: {e!r}')
+                        except OSError as error:
+                            logger.error(f'Removing file failed: {error!r}')
                             self.o_q.put(WriterTaskResult(success=False, **j.__dict__))
                             continue
 
                     try:
                         os.rename(os.path.join(self.base_path, j.old_file), full_path)
-                    except OSError as e:
-                        logger.error(f'Renaming file failed: {e!r}')
+                    except OSError as error:
+                        logger.error(f'Renaming file failed: {error!r}')
                         self.o_q.put(WriterTaskResult(success=False, **j.__dict__))
                         continue
 
@@ -218,9 +218,9 @@ class FileWorker(Process):
 
                     try:
                         os.remove(full_path)
-                    except OSError as e:
+                    except OSError as error:
                         if not j.flags & TaskFlags.SILENT:
-                            logger.error(f'Removing file failed: {e!r}')
+                            logger.error(f'Removing file failed: {error!r}')
 
                     self.o_q.put(WriterTaskResult(success=True, **j.__dict__))
                     continue
@@ -233,9 +233,9 @@ class FileWorker(Process):
                     try:
                         st = os.stat(full_path)
                         os.chmod(full_path, st.st_mode | 0o111)
-                    except OSError as e:
+                    except OSError as error:
                         if not j.flags & TaskFlags.SILENT:
-                            logger.error(f'chmod\'ing file failed: {e!r}')
+                            logger.error(f'chmod\'ing file failed: {error!r}')
 
                     self.o_q.put(WriterTaskResult(success=True, **j.__dict__))
                     continue
@@ -255,21 +255,21 @@ class FileWorker(Process):
                             if j.chunk_offset:
                                 f.seek(j.chunk_offset)
                             current_file.write(f.read(j.chunk_size))
-                except Exception as e:
-                    logger.warning(f'Something in writing a file failed: {e!r}')
+                except Exception as error:
+                    logger.warning(f'Something in writing a file failed: {error!r}')
                     self.o_q.put(WriterTaskResult(success=False, size=j.chunk_size, **j.__dict__))
                 else:
                     self.o_q.put(WriterTaskResult(success=True, size=j.chunk_size, **j.__dict__))
-            except Exception as e:
-                logger.warning(f'Job {j.filename} failed with: {e!r}, fetching next one...')
+            except Exception as error:
+                logger.warning(f'Job {j.filename} failed with: {error!r}, fetching next one...')
                 self.o_q.put(WriterTaskResult(success=False, **j.__dict__))
 
                 try:
                     if current_file:
                         current_file.close()
                         current_file = None
-                except Exception as e:
-                    logger.error(f'Closing file after error failed: {e!r}')
+                except Exception as error:
+                    logger.error(f'Closing file after error failed: {error!r}')
             except KeyboardInterrupt:
                 logger.warning('Immediate exit requested, quitting...')
                 if current_file:

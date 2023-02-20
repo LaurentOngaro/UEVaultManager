@@ -75,22 +75,22 @@ class LGDLFS:
                 try:
                     self.log.debug(f'Renaming "{_f}"')
                     os.rename(os.path.join(self.path, 'manifests', 'old', _f), os.path.join(self.path, 'manifests', _f))
-                except Exception as e:
-                    self.log.warning(f'Renaming manifest file "{_f}" failed: {e!r}')
+                except Exception as error:
+                    self.log.warning(f'Renaming manifest file "{_f}" failed: {error!r}')
 
             # remove "old" folder
             try:
                 os.removedirs(os.path.join(self.path, 'manifests', 'old'))
-            except Exception as e:
+            except Exception as error:
                 self.log.warning(f'Removing "{os.path.join(self.path, "manifests", "old")}" folder failed: '
-                                 f'{e!r}, please remove manually')
+                                 f'{error!r}, please remove manually')
 
         # try loading config
         try:
             self.config.read(self.config_path)
-        except Exception as e:
+        except Exception as error:
             self.log.error(f'Unable to read configuration file, please ensure that file is valid! '
-                           f'(Error: {repr(e)})')
+                           f'(Error: {repr(error)})')
             self.log.warning('Continuing with blank config in safe-mode...')
             self.config.read_only = True
 
@@ -146,16 +146,16 @@ class LGDLFS:
             try:
                 _meta = json.load(open(os.path.join(self.path, 'metadata', gm_file)))
                 self._assets_metadata[_meta['app_name']] = _meta
-            except Exception as e:
-                self.log.debug(f'Loading asset meta file "{gm_file}" failed: {e!r}')
+            except Exception as error:
+                self.log.debug(f'Loading asset meta file "{gm_file}" failed: {error!r}')
 
         # load existing app extras data
         for gm_file in os.listdir(os.path.join(self.path, 'extras')):
             try:
                 _extras = json.load(open(os.path.join(self.path, 'extras', gm_file)))
                 self._assets_extras_data[_extras['asset_name']] = _extras
-            except Exception as e:
-                self.log.debug(f'Loading asset extras file "{gm_file}" failed: {e!r}')
+            except Exception as error:
+                self.log.debug(f'Loading asset extras file "{gm_file}" failed: {error!r}')
 
         # load auto-aliases if enabled
         self.aliases = dict()
@@ -165,8 +165,8 @@ class LGDLFS:
                 for app_name, aliases in _j.items():
                     for alias in aliases:
                         self.aliases[alias] = app_name
-            except Exception as e:
-                self.log.debug(f'Loading aliases failed with {e!r}')
+            except Exception as error:
+                self.log.debug(f'Loading aliases failed with {error!r}')
 
     @property
     def userdata(self):
@@ -176,8 +176,8 @@ class LGDLFS:
         try:
             self._user_data = json.load(open(os.path.join(self.path, 'user.json')))
             return self._user_data
-        except Exception as e:
-            self.log.debug(f'Failed to load user data: {e!r}')
+        except Exception as error:
+            self.log.debug(f'Failed to load user data: {error!r}')
             return None
 
     @userdata.setter
@@ -201,8 +201,8 @@ class LGDLFS:
         try:
             self._entitlements = json.load(open(os.path.join(self.path, 'entitlements.json')))
             return self._entitlements
-        except Exception as e:
-            self.log.debug(f'Failed to load entitlements data: {e!r}')
+        except Exception as error:
+            self.log.debug(f'Failed to load entitlements data: {error!r}')
             return None
 
     @entitlements.setter
@@ -219,8 +219,8 @@ class LGDLFS:
             try:
                 tmp = json.load(open(os.path.join(self.path, 'assets.json')))
                 self._assets = {k: [AppAsset.from_json(j) for j in v] for k, v in tmp.items()}
-            except Exception as e:
-                self.log.debug(f'Failed to load assets data: {e!r}')
+            except Exception as error:
+                self.log.debug(f'Failed to load assets data: {error!r}')
                 return None
 
         return self._assets
@@ -309,8 +309,8 @@ class LGDLFS:
         for f in os.listdir(os.path.join(self.path, 'tmp')):
             try:
                 os.remove(os.path.join(self.path, 'tmp', f))
-            except Exception as e:
-                self.log.warning(f'Failed to delete file "{f}": {e!r}')
+            except Exception as error:
+                self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
     def clean_metadata(self, app_names_to_keep):
         for f in os.listdir(os.path.join(self.path, 'metadata')):
@@ -318,8 +318,8 @@ class LGDLFS:
             if app_name not in app_names_to_keep:
                 try:
                     os.remove(os.path.join(self.path, 'metadata', f))
-                except Exception as e:
-                    self.log.warning(f'Failed to delete file "{f}": {e!r}')
+                except Exception as error:
+                    self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
     def clean_extras(self, app_names_to_keep):
         for f in os.listdir(os.path.join(self.path, 'extras')):
@@ -327,15 +327,15 @@ class LGDLFS:
             if app_name not in app_names_to_keep:
                 try:
                     os.remove(os.path.join(self.path, 'extras', f))
-                except Exception as e:
-                    self.log.warning(f'Failed to delete file "{f}": {e!r}')
+                except Exception as error:
+                    self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
     def clean_manifests(self):
         for f in os.listdir(os.path.join(self.path, 'manifests')):
             try:
                 os.remove(os.path.join(self.path, 'manifests', f))
-            except Exception as e:
-                self.log.warning(f'Failed to delete file "{f}": {e!r}')
+            except Exception as error:
+                self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
     def save_config(self):
         # do not save if in read-only mode or file hasn't changed
@@ -363,8 +363,8 @@ class LGDLFS:
 
         try:
             self._update_info = json.load(open(os.path.join(self.path, 'version.json')))
-        except Exception as e:
-            self.log.debug(f'Failed to load cached update data: {e!r}')
+        except Exception as error:
+            self.log.debug(f'Failed to load cached update data: {error!r}')
             self._update_info = dict(last_update=0, data=None)
 
         return self._update_info
@@ -378,8 +378,8 @@ class LGDLFS:
     def get_cached_sdl_data(self, app_name):
         try:
             return json.load(open(os.path.join(self.path, 'tmp', f'{app_name}.json')))
-        except Exception as e:
-            self.log.debug(f'Failed to load cached SDL data: {e!r}')
+        except Exception as error:
+            self.log.debug(f'Failed to load cached SDL data: {error!r}')
             return None
 
     def set_cached_sdl_data(self, app_name, sdl_version, sdl_data):
@@ -427,8 +427,8 @@ class LGDLFS:
 
         try:
             self._ue_assets_cache_data = json.load(open(os.path.join(self.path, 'ue_assets_cache_data.json')))
-        except Exception as e:
-            self.log.debug(f'Failed to UE assets last update data: {e!r}')
+        except Exception as error:
+            self.log.debug(f'Failed to UE assets last update data: {error!r}')
             self._ue_assets_cache_data = dict(last_update=0, ue_assets_count=0)
 
         return self._ue_assets_cache_data

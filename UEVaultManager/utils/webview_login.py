@@ -97,8 +97,8 @@ class MockLauncher:
         self.destroy_on_load = True
         try:
             self.callback_result = self.callback_code(exchange_code)
-        except Exception as error:
-            logger.error(f'Logging in via exchange-code failed with {error!r}')
+        except Exception as _error:
+            logger.error(f'Logging in via exchange-code failed with {_error!r}')
         finally:
             # We cannot destroy the browser from here,
             # so we'll load a small goodbye site first.
@@ -120,8 +120,8 @@ class MockLauncher:
             exchange_code = self.callback_sid(sid)
             if exchange_code:
                 self.callback_result = self.callback_code(exchange_code)
-        except Exception as error:
-            logger.error(f'SID login failed with {error!r}')
+        except Exception as _error:
+            logger.error(f'SID login failed with {_error!r}')
         finally:
             logger.debug('Starting browser logout...')
             self.window.load_url(logout_url)
