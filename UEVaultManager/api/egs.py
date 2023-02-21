@@ -31,7 +31,7 @@ def create_empty_assets_extras(asset_name: str) -> dict:
         'purchased': False,
         'supported_versions': '',
         'page_title': '',
-        'error': ErrorCode.NO_ERROR.value
+        'error': ErrorCode.NO_ERROR.name
     }
 
 
@@ -305,7 +305,7 @@ class EPCAPI:
 
         if not r.ok:
             self.log.warning(f'Can not find the url for {asset_name}:{r.reason}')
-            return [url, asset_name_in_url, ErrorCode.PAGE_NOT_FOUND.value]
+            return [url, asset_name_in_url, ErrorCode.PAGE_NOT_FOUND.name]
 
         soup = BeautifulSoup(r.content, 'html.parser')
         links = []
@@ -315,7 +315,7 @@ class EPCAPI:
             self.log.info(f'{asset_name} has not been not found in marketplace.It has been added to the notfound_logger file')
             if self.ignored_logger:
                 self.ignored_logger.info(asset_name)
-            return [url, asset_name_in_url, ErrorCode.CONTENT_NOT_FOUND.value]
+            return [url, asset_name_in_url, ErrorCode.CONTENT_NOT_FOUND.name]
 
         # find all links to assets that correspond to the search
         for link in group_elt.findAll('a', attrs={'class': 'mock-ellipsis-item mock-ellipsis-item-helper ellipsis-text'}):
@@ -324,7 +324,7 @@ class EPCAPI:
         # return the first one (probably the best choice)
         asset_name_in_url = links[0].replace('/marketplace/en-US/product/', '')
         url = 'https://www.unrealengine.com' + links[0]
-        return [url, asset_name_in_url, ErrorCode.NO_ERROR.value]
+        return [url, asset_name_in_url, ErrorCode.NO_ERROR.name]
 
     #  get the extras data of an asset (price, review...)
     def get_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0) -> dict:

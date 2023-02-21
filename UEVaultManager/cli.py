@@ -324,7 +324,7 @@ class UEVaultManagerCLI:
                                 index += 1
                             # compute the price related fields
                             if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
-                                on_sale = 1 if price > old_price else 0
+                                on_sale = True if price > old_price else False
                             record[price_index + 1] = old_price
                             record[price_index + 2] = on_sale
                         writer.writerow(record)

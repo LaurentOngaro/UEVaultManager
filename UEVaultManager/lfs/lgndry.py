@@ -445,6 +445,6 @@ class LGDLFS:
         return self._ue_assets_cache_data
 
     # Set UE assets metadata cache data
-    def set_ue_assets_cache_data(self, ue_assets_count):
-        self._ue_assets_cache_data = dict(last_update=datetime.now().timestamp(), ue_assets_count=ue_assets_count)
+    def set_ue_assets_cache_data(self, ue_assets_count: int, last_update_date):
+        self._ue_assets_cache_data = dict(last_update_date, ue_assets_count=ue_assets_count)
         json.dump(self._ue_assets_cache_data, open(os.path.join(self.path, 'ue_assets_cache_data.json'), 'w'), indent=2, sort_keys=True)
