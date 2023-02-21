@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 from requests import session, __version__
 from requests.exceptions import HTTPError, ConnectionError
 
-from UEVaultManager.api.egs import EPCAPI, ErrorCode
+from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.api.lgd import LGDAPI
 from UEVaultManager.lfs.egl import EPCLFS
 from UEVaultManager.lfs.lgndry import LGDLFS
@@ -54,7 +54,7 @@ CSV_headings = {
     # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
     'Supported Versions': False,
     'Page title': False,
-    'Error': False,
+    'Grab result': False,
     # User Fields
     'Comment': True,
     'Stars': True,
@@ -449,8 +449,8 @@ class AppCore:
             app_title = apps[name].app_title
 
             if _process_extras:
-                # we use title  because it's less ambiguous than a name when searching an asset
-                eg_extras = self.egs.get_assets_extras(name, app_title)
+                # we use title because it's less ambiguous than a name when searching an asset
+                eg_extras = self.egs.get_assets_extras(asset_name=name, asset_title=app_title, verbose_mode=self.verbose_mode)
                 self.lgd.set_item_extras(name, eg_extras)
                 # compute process time and average in s
                 end_time = datetime.now()
@@ -474,7 +474,7 @@ class AppCore:
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
                 if eg_extras['page_title'] != '' and eg_extras['page_title'] != app_title:
                     self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
-                    eg_extras['error'] = ErrorCode.INCONSISTANT_DATA.value
+                    eg_extras['grab_result'] = GrabResult.INCONSISTANT_DATA.name
                     if self.bad_data_logger:
                         self.bad_data_logger.info(name)
 
@@ -596,7 +596,7 @@ class AppCore:
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
 
         self.use_threads = len(fetch_list) > 5
-
+        # self.use_threads = False  # debug only
         if fetch_list:
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
@@ -811,7 +811,8 @@ class AppCore:
         if force_refresh or date_diff > self.ue_assets_max_cache_duration:
             self.cache_is_invalidate = True
             self.lgd.set_ue_assets_cache_data(last_update=date_now, ue_assets_count=assets_count)
-            self.log.info(f'Data cache is outdated. Cache age is {str(timedelta(seconds=date_diff))}')
+            if not force_refresh:
+                self.log.info(f'Data cache is outdated. Cache age is {date_diff:.1f} s OR {str(timedelta(seconds=date_diff))}')
         else:
             self.log.info(f'Data cache is still valid. Cache age is {str(timedelta(seconds=date_diff))}')
 

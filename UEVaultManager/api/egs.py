@@ -14,7 +14,7 @@ from requests.auth import HTTPBasicAuth
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 
 
-class ErrorCode(Enum):
+class GrabResult(Enum):
     NO_ERROR = 0
     INCONSISTANT_DATA = 1
     PAGE_NOT_FOUND = 2
@@ -31,7 +31,7 @@ def create_empty_assets_extras(asset_name: str) -> dict:
         'purchased': False,
         'supported_versions': '',
         'page_title': '',
-        'error': ErrorCode.NO_ERROR.name
+        'grab_result': GrabResult.NO_ERROR.name
     }
 
 
@@ -305,7 +305,7 @@ class EPCAPI:
 
         if not r.ok:
             self.log.warning(f'Can not find the url for {asset_name}:{r.reason}')
-            return [url, asset_name_in_url, ErrorCode.PAGE_NOT_FOUND.name]
+            return [url, asset_name_in_url, GrabResult.PAGE_NOT_FOUND.name]
 
         soup = BeautifulSoup(r.content, 'html.parser')
         links = []
@@ -315,7 +315,7 @@ class EPCAPI:
             self.log.info(f'{asset_name} has not been not found in marketplace.It has been added to the notfound_logger file')
             if self.ignored_logger:
                 self.ignored_logger.info(asset_name)
-            return [url, asset_name_in_url, ErrorCode.CONTENT_NOT_FOUND.name]
+            return [url, asset_name_in_url, GrabResult.CONTENT_NOT_FOUND.name]
 
         # find all links to assets that correspond to the search
         for link in group_elt.findAll('a', attrs={'class': 'mock-ellipsis-item mock-ellipsis-item-helper ellipsis-text'}):
@@ -324,10 +324,10 @@ class EPCAPI:
         # return the first one (probably the best choice)
         asset_name_in_url = links[0].replace('/marketplace/en-US/product/', '')
         url = 'https://www.unrealengine.com' + links[0]
-        return [url, asset_name_in_url, ErrorCode.NO_ERROR.name]
+        return [url, asset_name_in_url, GrabResult.NO_ERROR.name]
 
     #  get the extras data of an asset (price, review...)
-    def get_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0) -> dict:
+    def get_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
         not_found_price = 0.0
         not_found_review = 0.0
         supported_versions = ''
@@ -337,46 +337,68 @@ class EPCAPI:
         # try to find the url of the asset by doing a search in the marketplace
         asset_url, asset_name_in_url, error_code = self.find_asset_url(asset_title, timeout)
         if asset_url == '' or asset_name_in_url == '':
-            no_result['error'] = error_code
+            no_result['grab_result'] = error_code
             return no_result
-
         try:
             response = self.session.get(asset_url)  # when using session, we are already logged in Epic game
             response.raise_for_status()
+            self.log.info(f'Grabbing extras data for {asset_name}')
         except requests.exceptions.RequestException as error:
             self.log.warning(f'Can not get extras data for {asset_name}:{error!r}')
-            no_result['error'] = error_code
+            no_result['grab_result'] = error_code
             return no_result
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup_logged = BeautifulSoup(response.text, 'html.parser')
+
+        price = not_found_price
+        search_for_price = True
 
         # check if already purchased
         purchased = False
-        purchased_elt = soup.find('div', class_='purchase')
-        if purchased_elt is not None and 'Open in Launcher' in purchased_elt.getText():
-            self.log.info(f'{asset_name} as already been purchased')
-            purchased = True
+        purchased_elt = soup_logged.find('div', class_='purchase')
+        if purchased_elt is not None:
+            if 'Free' in purchased_elt.getText():
+                # free price when logged
+                price = 0.0
+                search_for_price = False
+                if verbose_mode:
+                    self.log.info(f'{asset_name} is free (check 1)')
+            elif 'Open in Launcher' in purchased_elt.getText():
+                # purchased asset
+                purchased = True
+                if verbose_mode:
+                    self.log.info(f'{asset_name} as already been purchased')
+                # grab the price on a non logged soup (price will be available on that page only)
+                try:
+                    response = requests.get(asset_url)  # not using session, so not logged in Epic game
+                    response.raise_for_status()
+                    soup_not_logged = BeautifulSoup(response.text, 'html.parser')
+                    purchased_elt = soup_not_logged.find('div', class_='purchase')
+                except requests.exceptions.RequestException as error:
+                    pass
 
-        # get price
-        asset_price = soup.find('span', class_='asset-price')
-        if asset_price is not None:
-            try:
-                inner_span_elt = asset_price.find('span')  # inner span
-                price = inner_span_elt.text.strip('$')
-                price = price.strip('€')
-                price = float(price)
-            except Exception as error:
-                if 'Free' in asset_price:
-                    price = 0.0
+        if search_for_price and purchased_elt is not None:
+            if 'Sign in to Download' in purchased_elt.getText():
+                # free price when logged or not
+                price = 0.0
+                if verbose_mode:
+                    self.log.info(f'{asset_name} is free (check 2)')
+            else:
+                # get price using the logged or the not logged soup
+                asset_price = purchased_elt.find('span', class_='save-discount')
+                if asset_price is not None:
+                    try:
+                        # asset price when logged
+                        price = asset_price.text.strip('$')
+                        price = price.strip('€')
+                        price = float(price)
+                    except Exception as error:
+                        self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
                 else:
-                    self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
-                    price = not_found_price
-        else:
-            self.log.debug(f'price not found for {asset_name}')
-            price = not_found_price
+                    self.log.debug(f'Price not found for {asset_name}')
 
         # get review
-        reviews_elt = soup.find('div', class_='asset-detail-rating')
+        reviews_elt = soup_logged.find('div', class_='asset-detail-rating')
         if reviews_elt is not None:
             reviews_elt = reviews_elt.find('div', class_='rating-board__pop__title')
         if reviews_elt is not None:
@@ -384,16 +406,16 @@ class EPCAPI:
                 inner_span_elt = reviews_elt.find('span')
                 content = inner_span_elt.text
                 pos = content.index(' out of ')
-                reviews = float(content[0:pos])
+                review = float(content[0:pos])
             except Exception as error:
                 self.log.warning(f'Can not find the review for {asset_name}:{error!r}')
-                reviews = not_found_review
+                review = not_found_review
         else:
             self.log.debug(f'reviews not found for {asset_name}')
-            reviews = not_found_review
+            review = not_found_review
 
         # get Supported Engine Versions
-        title_elt = soup.find('span', class_='ue-version')
+        title_elt = soup_logged.find('span', class_='ue-version')
         if title_elt is not None:
             try:
                 supported_versions = title_elt.text
@@ -401,10 +423,10 @@ class EPCAPI:
                 self.log.warning(f'Can not find the Supported Engine Versions for {asset_name}:{error!r}')
         else:
             self.log.debug(f'Can not find the Supported Engine Versions for {asset_name}')
-            reviews = not_found_review
+            review = not_found_review
 
         # get page title
-        title_elt = soup.find('h1', class_='post-title')
+        title_elt = soup_logged.find('h1', class_='post-title')
         if title_elt is not None:
             try:
                 page_title = title_elt.text
@@ -412,15 +434,16 @@ class EPCAPI:
                 self.log.warning(f'Can not find the Page title for {asset_name}:{error!r}')
         else:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
-            reviews = not_found_review
+            review = not_found_review
+        self.log.info(f'GRAB results: asset_name_in_url={asset_name_in_url} purchased={purchased} price={price} review={review}')
         return {
             'asset_name': asset_name,
             'asset_url': asset_url,
             'asset_name_in_url': asset_name_in_url,
             'page_title': page_title,
             'price': price,
-            'review': reviews,
+            'review': review,
             'purchased': purchased,
             'supported_versions': supported_versions,
-            'error': error_code
+            'grab_result': error_code
         }

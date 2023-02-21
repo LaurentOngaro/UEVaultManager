@@ -169,7 +169,7 @@ class UEVaultManagerCLI:
         else:
             self.logger.info('Getting asset list... (this may take a while)')
 
-        items = self.core.get_asset_list(platform='Windows', filter_category=args.category, force_refresh= args.force_refresh)
+        items = self.core.get_asset_list(platform='Windows', filter_category=args.category, force_refresh=args.force_refresh)
 
         if args.include_non_asset:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
@@ -220,6 +220,17 @@ class UEVaultManagerCLI:
                 self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
                 extras_data = self.core.egs.create_empty_assets_extras({item.app_name})
 
+            try:
+                asset_url = extras_data['asset_url']
+                review = extras_data['review']
+                price = extras_data['price']
+                purchased = extras_data['purchased']
+                supported_versions = extras_data['supported_versions']
+                page_title = extras_data['page_title']
+                grab_result = extras_data['grab_result']
+            except KeyError as error:
+                self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
+
             if self.core.verbose_mode:
                 self.logger.info(f'Saving asset {cpt}/{cpt_max} {item.app_name}: id={asset_id} category={category}')
             try:
@@ -230,10 +241,10 @@ class UEVaultManagerCLI:
                     , item.app_title  # 'App title'
                     , category  # 'Category'
                     , thumbnail_url  # 'Image' with 488 height
-                    , extras_data['asset_url']  # 'Url'
+                    , asset_url  # 'Url'
                     , item.app_version('Windows')  # 'UE Version'
                     , compatible_versions  # compatible_versions
-                    , extras_data['review']  # 'Review'
+                    , review  # 'Review'
                     , metadata['developer']  # 'Developer'
                     , metadata['description']  # 'Description'
                     , uid  # 'Uid'
@@ -242,14 +253,14 @@ class UEVaultManagerCLI:
                     , metadata['status']  # 'status'
                     # Modified Fields when added into the file
                     , date_added  # 'Date Added'
-                    , extras_data['price']  # 'Price'
+                    , price  # 'Price'
                     , no_data_value  # 'Old Price'
                     , False  # 'On Sale'
-                    , extras_data['purchased']  # 'Purchased'
+                    , purchased  # 'Purchased'
                     # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
-                    , extras_data['supported_versions']  # 'supported versions'
-                    , extras_data['page_title']  # 'page title'
-                    , extras_data['error']  # 'Error'
+                    , supported_versions  # 'supported versions'
+                    , page_title  # 'page title'
+                    , grab_result  # 'grab result'
                     # Modified Fields when added into the file
                     , no_data_text  # 'Comment'
                     , no_data_text  # 'Stars'
@@ -692,7 +703,9 @@ def main():
     parser.add_argument('-d', '--debug', dest='debug', action='store_true', help='Set loglevel to debug')
     parser.add_argument('-y', '--yes', dest='yes', action='store_true', help='Default to yes for all prompts')
     parser.add_argument('-V', '--version', dest='version', action='store_true', help='Print version and exit')
-    parser.add_argument('-c', '--config-file', dest='config_file', action='store', metavar='<path/name>', help='Overwrite the default configuration file name to use')
+    parser.add_argument(
+        '-c', '--config-file', dest='config_file', action='store', metavar='<path/name>', help='Overwrite the default configuration file name to use'
+    )
     parser.add_argument('-J', '--pretty-json', dest='pretty_json', action='store_true', help='Pretty-print JSON. Improve readability')
     parser.add_argument(
         '-A',
@@ -787,7 +800,7 @@ def main():
     status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
 
     clean_parser.add_argument(
-        '-d,'
+        '-m,'
         '--delete-metadata', dest='delete_metadata', action='store_true', help='Also delete metadata files. They are kept by default'
     )
     clean_parser.add_argument(

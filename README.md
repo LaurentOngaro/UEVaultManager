@@ -157,14 +157,14 @@ This will fetch a list of asset available on your account, the first time may ta
 ## Usage
 
 ````
-usage: UEVaultManager [-h] [-H] [-v] [-y] [-V] [-J] [-A <seconds>] <command> ...
+usage: UEVaultManager [-h] [-H] [-d] [-y] [-V] [-c <file>] [-J] [-A <seconds>] <command> ...
 
 exemple: 
   
   UEVaultManager list --csv -c "plugin" --output "D:\testing\list.csv"
   
   Will list all the assets of the marketplace that have "plugin" it their category field (on the marketplace) and save the result using a csv format 
-  into the ""D:\testing\list.csv" file 
+  into the "D:\testing\list.csv" file 
 
 optional arguments:
   -h, --help            Show this help message and exit
@@ -212,7 +212,7 @@ usage: legendary cleanup [-h] [--delete-manifests]
 
 optional arguments:
   -h, --help                Show this help message and exit
-  -d, --delete-metadata     Also Delete metadata files. They are kept by default
+  -m, --delete-metadata     Also delete metadata files. They are kept by default
   -e, --delete-extras-data  Also delete extras data files. They are kept by default'
 
 
@@ -387,7 +387,7 @@ headings = {
     # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
     'Supported Versions' : False,
     'Page title'         : False,
-    'Error'              : False,
+    'Grab result'        : False,
     # User Fields
     'Comment'            : True,
     'Stars'              : True,
@@ -447,11 +447,11 @@ good idea.
 
 ### possible values in the error Field
 
-The "Error" field of each asset contains a value that indicate how the process has run.
+The "Grab result" field of each asset contains a value that indicate how the process has run.
 These code are defined by the following enum at the beginning of the [api/egs.py](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/api/egs.py) file:
 
 ```pyhton
-class ErrorCode(Enum):
+class GrabResult(Enum):
     NO_ERROR = 0
     INCONSISTANT_DATA = 1
     PAGE_NOT_FOUND = 2
