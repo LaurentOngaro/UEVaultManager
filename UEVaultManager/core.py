@@ -82,7 +82,7 @@ class AppCore:
         self.egs = EPCAPI(timeout=timeout)
         self.lgd = LGDLFS(config_file=override_config)
         self.egl = EPCLFS()
-        self.lgdapi = LGDAPI()
+        self.lgd_api = LGDAPI()
 
         # on non-Windows load the programdata path from config
         if os.name != 'nt':
@@ -338,7 +338,7 @@ class AppCore:
         cached = self.lgd.get_cached_version()
         version_info = cached['data']
         if force or not version_info or (datetime.now().timestamp() - cached['last_update']) > 24 * 3600:
-            version_info = self.lgdapi.get_version_information()
+            version_info = self.lgd_api.get_version_information()
             self.lgd.set_cached_version(version_info)
 
         web_version = version_info['release_info']['version']

@@ -141,6 +141,7 @@ class FileWorker(Process):
 
         last_filename = ''
         current_file = None
+        # noinspection PyTypeChecker
         j = None
         while True:
             try:

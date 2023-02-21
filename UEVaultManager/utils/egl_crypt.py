@@ -78,6 +78,7 @@ def add_round_key(s, k):
 
 
 # learned from http://cs.ucsb.edu/~koc/cs178/projects/JT/aes.c
+# noinspection PyPep8
 xtime = lambda a: (((a << 1) ^ 0x1B) & 0xFF) if (a & 0x80) else (a << 1)
 
 
@@ -196,6 +197,7 @@ class AES:
 
             # XOR with equivalent word from previous iteration.
             word = xor_bytes(word, key_columns[-iteration_size])
+            # noinspection PyTypeChecker
             key_columns.append(word)
 
         # Group keywords in 4x4 byte matrices.

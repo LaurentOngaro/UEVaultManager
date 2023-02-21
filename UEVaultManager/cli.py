@@ -244,7 +244,7 @@ class UEVaultManagerCLI:
                     , date_added  # 'Date Added'
                     , extras_data['price']  # 'Price'
                     , no_data_value  # 'Old Price'
-                    , no_data_value  # 'On Sale'
+                    , False  # 'On Sale'
                     , extras_data['purchased']  # 'Purchased'
                     # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
                     , extras_data['supported_versions']  # 'supported versions'
@@ -279,7 +279,7 @@ class UEVaultManagerCLI:
                             asset_id = record['Asset_id']
                             items_in_file[asset_id] = record
                         output.close()
-                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration) as error:
+                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
                     self.logger.warning(f'Could not read data from the file {args.output}')
 
                 # write the content of the file to keep some data
@@ -808,7 +808,9 @@ def main():
             _hidden_commands = {'download', 'update', 'repair', 'get-token', 'verify-asset', 'list-assets'}
             # Print the help for all the subparsers. Thanks stackoverflow!
             print('Individual command help:')
+            # noinspection PyProtectedMember,PyUnresolvedReferences
             subparsers = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+            # noinspection PyUnresolvedReferences
             for choice, subparser in subparsers.choices.items():
                 if choice in _hidden_commands:
                     continue

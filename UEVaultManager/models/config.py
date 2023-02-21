@@ -8,21 +8,21 @@ class LGDConf(configparser.ConfigParser):
     def __init__(self, *args, **kwargs):
         self.modified = False
         self.read_only = False
-        self.modtime = None
+        self.mod_time = None
         super().__init__(*args, **kwargs)
         self.optionxform = str
 
-    def read(self, filename) -> []:
+    def read(self, filename, **kwargs):
         # if config file exists, save modification time
         if os.path.exists(filename):
-            self.modtime = int(os.stat(filename).st_mtime)
+            self.mod_time = int(os.stat(filename).st_mtime)
 
         return super().read(filename)
 
     def write(self, *args, **kwargs):
         self.modified = False
         super().write(*args, **kwargs)
-        self.modtime = int(time.time())
+        self.mod_time = int(time.time())
 
     def set(self, section, option, value=None):
         if self.read_only:

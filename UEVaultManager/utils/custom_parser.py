@@ -1,6 +1,7 @@
 import argparse
 
 
+# noinspection PyUnresolvedReferences,PyProtectedMember
 class HiddenAliasSubparsersAction(argparse._SubParsersAction):
     def add_parser(self, name, **kwargs):
         # set prog from the existing prefix
