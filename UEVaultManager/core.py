@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from hashlib import sha1
 from locale import getlocale, LC_CTYPE
 from platform import system
-from threading import current_thread
+from threading import current_thread, enumerate as thread_enumerate
 from urllib.parse import urlparse
 
 from requests import session, __version__
@@ -426,7 +426,7 @@ class AppCore:
     def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[App], Dict[str, List[App]]):
 
         def fetch_asset_meta(name: str) -> bool:
-            if name in currently_fetching or not fetch_list.get(name):
+            if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()):
                 return False
 
             thread_data = ''
@@ -621,9 +621,10 @@ class AppCore:
                 # item not found in app, ignore and pass to next one
                 continue
 
-            # retry if the asset is still in fetch list
-            if fetch_list.get(app_name) and not currently_fetching.get(app_name):
+            # retry if the asset is still in fetch list (with active fetcher treads)
+            if fetch_list.get(app_name) and (not currently_fetching.get(app_name) or 'Asset_Fetcher' not in thread_enumerate()):
                 self.log.info(f'Fetching metadata for {app_name} is still no done, retrying')
+                del currently_fetching[app_name]
                 fetch_asset_meta(app_name)
 
             is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
