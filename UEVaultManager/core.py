@@ -423,7 +423,7 @@ class AppCore:
             self.get_asset_list(True, platform=platform)
         return self.lgd.get_item_meta(app_name)
 
-    def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
+    def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[App], Dict[str, List[App]]):
 
         def fetch_asset_meta(name: str) -> bool:
             if name in currently_fetching or not fetch_list.get(name):
@@ -534,7 +534,7 @@ class AppCore:
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 1')
 
         # check if we must refresh ue asset metadata cache
-        self.check_for_ue_assets_updates(self.ue_assets_count)
+        self.check_for_ue_assets_updates(self.ue_assets_count, force_refresh)
         force_refresh = self.cache_is_invalidate
         if force_refresh:
             self.log.info(f'!! Assets metadata will be updated !!\n')
@@ -796,7 +796,7 @@ class AppCore:
         return r.content if r.status_code == 200 else None
 
     # Check if the UE assets metadata cache must be updated
-    def check_for_ue_assets_updates(self, assets_count: int):
+    def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False):
         self.cache_is_invalidate = False
         cached = self.lgd.get_ue_assets_cache_data()
         cached_assets_count = cached['ue_assets_count']
@@ -806,11 +806,11 @@ class AppCore:
 
         if not cached_assets_count or cached_assets_count != assets_count:
             self.log.info(f'New assets are available. {assets_count} available VS {cached_assets_count} in cache')
-            self.lgd.set_ue_assets_cache_data(ue_assets_count=assets_count, last_update_date=cached['last_update'])
+            self.lgd.set_ue_assets_cache_data(last_update=cached['last_update'], ue_assets_count=assets_count)
 
-        if date_diff > self.ue_assets_max_cache_duration:
+        if force_refresh or date_diff > self.ue_assets_max_cache_duration:
             self.cache_is_invalidate = True
-            self.lgd.set_ue_assets_cache_data(ue_assets_count=assets_count, last_update_date=date_now)
+            self.lgd.set_ue_assets_cache_data(last_update=date_now, ue_assets_count=assets_count)
             self.log.info(f'Data cache is outdated. Cache age is {str(timedelta(seconds=date_diff))}')
         else:
             self.log.info(f'Data cache is still valid. Cache age is {str(timedelta(seconds=date_diff))}')

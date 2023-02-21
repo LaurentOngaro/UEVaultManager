@@ -169,7 +169,7 @@ class UEVaultManagerCLI:
         else:
             self.logger.info('Getting asset list... (this may take a while)')
 
-        items = self.core.get_asset_list(platform='Windows', filter_category=args.category)
+        items = self.core.get_asset_list(platform='Windows', filter_category=args.category, force_refresh= args.force_refresh)
 
         if args.include_non_asset:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
@@ -644,6 +644,10 @@ class UEVaultManagerCLI:
             self.logger.debug('Removing app extras data...')
             self.core.lgd.clean_extras()
 
+        # delete log and backup
+        self.logger.debug('Removing logs and backups...')
+        self.core.lgd.clean_logs_and_backups()
+
         self.logger.debug('Removing manifests...')
         self.core.lgd.clean_manifests()
 
@@ -685,11 +689,11 @@ def main():
 
     # general arguments
     parser.add_argument('-H', '--full-help', dest='full_help', action='store_true', help='Show full help (including individual command help)')
-    parser.add_argument('-v', '--debug', dest='debug', action='store_true', help='Set loglevel to debug')
+    parser.add_argument('-d', '--debug', dest='debug', action='store_true', help='Set loglevel to debug')
     parser.add_argument('-y', '--yes', dest='yes', action='store_true', help='Default to yes for all prompts')
     parser.add_argument('-V', '--version', dest='version', action='store_true', help='Print version and exit')
-    parser.add_argument('-c', '--config-file', dest='config_file', action='store', metavar='<path/name>', help=argparse.SUPPRESS)
-    parser.add_argument('-J', '--pretty-json', dest='pretty_json', action='store_true', help='Pretty-print JSON')
+    parser.add_argument('-c', '--config-file', dest='config_file', action='store', metavar='<path/name>', help='Overwrite the default configuration file name to use')
+    parser.add_argument('-J', '--pretty-json', dest='pretty_json', action='store_true', help='Pretty-print JSON. Improve readability')
     parser.add_argument(
         '-A',
         '--api-timeout',
@@ -755,7 +759,7 @@ def main():
     list_parser.add_argument('--csv', dest='csv', action='store_true', help='List assets in CSV format')
     list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='List assets in TSV format')
     list_parser.add_argument('--json', dest='json', action='store_true', help='List assets in JSON format')
-    list_parser.add_argument('--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
+    list_parser.add_argument('-f', '--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
     list_parser.add_argument(
         '-c',
         '--category',
@@ -765,7 +769,7 @@ def main():
         help='Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial'
     )
     list_parser.add_argument(
-        '-o', '--output', dest='output', metavar='<output>', action='store', help='The file name (with path) where the list should be written'
+        '-o', '--output', dest='output', metavar='<path/name>', action='store', help='The file name (with path) where the list should be written'
     )
 
     list_files_parser.add_argument(
@@ -777,7 +781,7 @@ def main():
     list_files_parser.add_argument(
         '--hashlist', dest='hashlist', action='store_true', help='Output file hash list in hashCheck/sha1sum -c compatible format'
     )
-    list_files_parser.add_argument('--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
+    list_files_parser.add_argument('-f', '--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
 
     status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not login')
     status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
@@ -786,10 +790,14 @@ def main():
         '-d,'
         '--delete-metadata', dest='delete_metadata', action='store_true', help='Also delete metadata files. They are kept by default'
     )
+    clean_parser.add_argument(
+        '-e,'
+        '--delete-extras-data', dest='delete_extras_data', action='store_true', help='Also delete extras data files. They are kept by default'
+    )
 
     info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
     info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
-    info_parser.add_argument('--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
+    info_parser.add_argument('-f', '--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
 
     get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
     get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')

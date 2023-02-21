@@ -67,27 +67,27 @@ class LGDLFS:
                 os.makedirs(os.path.join(self.path, f))
 
         # if "old" folder exists migrate files and remove it
-        if os.path.exists(os.path.join(self.path, 'manifests', 'old')):
+        if os.path.exists(os.path.join(self.path, self.manifests_folder, 'old')):
             self.log.info('Migrating manifest files from old folders to new, please wait...')
             # remove unversioned manifest files
-            for _f in os.listdir(os.path.join(self.path, 'manifests')):
+            for _f in os.listdir(os.path.join(self.path, self.manifests_folder)):
                 if '.manifest' not in _f:
                     continue
                 if '_' not in _f or (_f.startswith('UE_') and _f.count('_') < 2):
                     self.log.debug(f'Deleting "{_f}" ...')
-                    os.remove(os.path.join(self.path, 'manifests', _f))
+                    os.remove(os.path.join(self.path, self.manifests_folder, _f))
 
             # move files from "old" to the base folder
-            for _f in os.listdir(os.path.join(self.path, 'manifests', 'old')):
+            for _f in os.listdir(os.path.join(self.path, self.manifests_folder, 'old')):
                 try:
                     self.log.debug(f'Renaming "{_f}"')
-                    os.rename(os.path.join(self.path, 'manifests', 'old', _f), os.path.join(self.path, 'manifests', _f))
+                    os.rename(os.path.join(self.path, self.manifests_folder, 'old', _f), os.path.join(self.path, self.manifests_folder, _f))
                 except Exception as error:
                     self.log.warning(f'Renaming manifest file "{_f}" failed: {error!r}')
 
             # remove "old" folder
             try:
-                os.removedirs(os.path.join(self.path, 'manifests', 'old'))
+                os.removedirs(os.path.join(self.path, self.manifests_folder, 'old'))
             except Exception as error:
                 self.log.warning(f'Removing "{os.path.join(self.path, "manifests", "old")}" folder failed: '
                                  f'{error!r}, please remove manually')
@@ -254,7 +254,7 @@ class LGDLFS:
             fname = clean_filename(f'{app_name}_{platform}_{version}')
         else:
             fname = clean_filename(f'{app_name}_{version}')
-        return os.path.join(self.path, 'manifests', f'{fname}.manifest')
+        return os.path.join(self.path, self.manifests_folder, f'{fname}.manifest')
 
     def load_manifest(self, app_name, version, platform='Windows'):
         try:
@@ -313,40 +313,46 @@ class LGDLFS:
     def get_item_app_names(self):
         return sorted(self._assets_metadata.keys())
 
-    def get_tmp_path(self):
-        return os.path.join(self.path, 'tmp')
-
     def clean_tmp_data(self):
-        for f in os.listdir(os.path.join(self.path, 'tmp')):
+        for f in os.listdir(os.path.join(self.path, self.tmp_folder)):
             try:
-                os.remove(os.path.join(self.path, 'tmp', f))
+                os.remove(os.path.join(self.path, self.tmp_folder, f))
             except Exception as error:
                 self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
     def clean_metadata(self, app_names_to_keep):
-        for f in os.listdir(os.path.join(self.path, 'metadata')):
+        for f in os.listdir(os.path.join(self.path, self.metadata_folder)):
             app_name = f.rpartition('.')[0]
             if app_name not in app_names_to_keep:
                 try:
-                    os.remove(os.path.join(self.path, 'metadata', f))
+                    os.remove(os.path.join(self.path, self.metadata_folder, f))
                 except Exception as error:
                     self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
     def clean_extras(self, app_names_to_keep):
-        for f in os.listdir(os.path.join(self.path, 'extras')):
+        for f in os.listdir(os.path.join(self.path, self.extras_folder)):
             app_name = f.rpartition('.')[0]
             if app_name not in app_names_to_keep:
                 try:
-                    os.remove(os.path.join(self.path, 'extras', f))
+                    os.remove(os.path.join(self.path, self.extras_folder, f))
                 except Exception as error:
                     self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
     def clean_manifests(self):
-        for f in os.listdir(os.path.join(self.path, 'manifests')):
+        for f in os.listdir(os.path.join(self.path, self.manifests_folder)):
             try:
-                os.remove(os.path.join(self.path, 'manifests', f))
+                os.remove(os.path.join(self.path, self.manifests_folder, f))
             except Exception as error:
                 self.log.warning(f'Failed to delete file "{f}": {error!r}')
+
+    def clean_logs_and_backups(self):
+        for f in os.listdir(self.path):
+            file_name_no_ext, file_ext = os.path.splitext(f)
+            if '.log' in file_ext or '.bak' in file_ext:
+                try:
+                    os.remove(self.path, f)
+                except Exception as error:
+                    self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
     def save_config(self):
         # do not save if in read-only mode or file hasn't changed
@@ -388,7 +394,7 @@ class LGDLFS:
 
     def get_cached_sdl_data(self, app_name):
         try:
-            return json.load(open(os.path.join(self.path, 'tmp', f'{app_name}.json')))
+            return json.load(open(os.path.join(self.path, self.tmp_folder, f'{app_name}.json')))
         except Exception as error:
             self.log.debug(f'Failed to load cached SDL data: {error!r}')
             return None
@@ -396,7 +402,12 @@ class LGDLFS:
     def set_cached_sdl_data(self, app_name, sdl_version, sdl_data):
         if not app_name or not sdl_data:
             return
-        json.dump(dict(version=sdl_version, data=sdl_data), open(os.path.join(self.path, 'tmp', f'{app_name}.json'), 'w'), indent=2, sort_keys=True)
+        json.dump(
+            dict(version=sdl_version, data=sdl_data),
+            open(os.path.join(self.path, self.tmp_folder, f'{app_name}.json'), 'w'),
+            indent=2,
+            sort_keys=True
+        )
 
     def generate_aliases(self):
         self.log.debug('Generating list of aliases...')
@@ -445,6 +456,6 @@ class LGDLFS:
         return self._ue_assets_cache_data
 
     # Set UE assets metadata cache data
-    def set_ue_assets_cache_data(self, ue_assets_count: int, last_update_date):
-        self._ue_assets_cache_data = dict(last_update_date, ue_assets_count=ue_assets_count)
+    def set_ue_assets_cache_data(self, last_update: float, ue_assets_count: int):
+        self._ue_assets_cache_data = dict(last_update=last_update, ue_assets_count=ue_assets_count)
         json.dump(self._ue_assets_cache_data, open(os.path.join(self.path, 'ue_assets_cache_data.json'), 'w'), indent=2, sort_keys=True)

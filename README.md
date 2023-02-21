@@ -169,10 +169,12 @@ exemple:
 optional arguments:
   -h, --help            Show this help message and exit
   -H, --full-help       Show full help (including individual command help)
-  -v, --debug           Set loglevel to debug
+  -d, --debug           Set loglevel to debug
   -y, --yes             Default to yes for all prompts
   -V, --version         Print version and exit
-  -J, --pretty-json     Pretty-print JSON
+  -c, --config-file     Overwrite the default configuration file name to use
+  -J, --pretty-json     Pretty-print JSON. Improve readability
+
   -A <seconds>, --api-timeout <seconds>
                         API HTTP request timeout (default: 10 seconds)
 
@@ -209,8 +211,9 @@ Command: cleanup
 usage: legendary cleanup [-h] [--delete-manifests]
 
 optional arguments:
-  -h, --help            Show this help message and exit
-  -d, --delete-metadata Also Delete metadata files. They are kept by default
+  -h, --help                Show this help message and exit
+  -d, --delete-metadata     Also Delete metadata files. They are kept by default
+  -e, --delete-extras-data  Also delete extras data files. They are kept by default'
 
 
 Command: info
@@ -225,7 +228,7 @@ optional arguments:
   -h, --help            Show this help message and exit
   --offline             Only print info available offline
   --json                Output information in JSON format
-  --force-refresh       Force a refresh of all asset metadata
+  -f, --force-refresh   Force a refresh of all asset metadata
 
 Command: list
 usage: UEVaultManager list [-h] [--csv]
@@ -237,7 +240,7 @@ optional arguments:
   --csv                 List asset in CSV format
   --tsv                 List asset in TSV format
   --json                List asset in JSON format
-  --force-refresh       Force a refresh of all asset metadata
+  -f, --force-refresh   Force a refresh of all asset metadata
   -c, --category        Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial
   -o, --output          The file name (with path) where the list should be written to
 
@@ -259,7 +262,7 @@ optional arguments:
   --json                Output in JSON format
   --hashlist            Output file hash list in hashcheck/sha1sum -c
                         compatible format
-  --force-refresh       Force a refresh of all asset metadata
+  -f, --force-refresh   Force a refresh of all asset metadata
 
 
 Command: status
