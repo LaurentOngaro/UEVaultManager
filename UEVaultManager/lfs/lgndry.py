@@ -4,7 +4,6 @@ import json
 import logging
 import os
 from collections import defaultdict
-from datetime import datetime
 from pathlib import Path
 from time import time
 
@@ -160,13 +159,14 @@ class LGDLFS:
             except Exception as error:
                 self.log.debug(f'Loading asset meta file "{gm_file}" failed: {error!r}')
 
+        # done when asset metadata is parsed to allow filtering
         # load existing app extras data
-        for gm_file in os.listdir(os.path.join(self.path, 'extras')):
-            try:
-                _extras = json.load(open(os.path.join(self.path, 'extras', gm_file)))
-                self._assets_extras_data[_extras['asset_name']] = _extras
-            except Exception as error:
-                self.log.debug(f'Loading asset extras file "{gm_file}" failed: {error!r}')
+        # for gm_file in os.listdir(os.path.join(self.path, self.extras_folder)):
+        #    try:
+        #        _extras = json.load(open(os.path.join(self.path, self.extras_folder, gm_file)))
+        #        self._assets_extras_data[_extras['asset_name']] = _extras
+        #    except Exception as error:
+        #        self.log.debug(f'Loading asset extras file "{gm_file}" failed: {error!r}')
 
         # load auto-aliases if enabled
         self.aliases = dict()
@@ -292,11 +292,16 @@ class LGDLFS:
             os.remove(meta_file)
 
     def get_item_extras(self, app_name: str):
-        # note: self._assets_extras_data is filled ay the start of the list command by reading all the json files in the extras folder
-        return self._assets_extras_data.get(app_name, None)
+        gm_file = app_name + '.json'
+        extras = self._assets_extras_data.get(app_name, None)
+        extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
+        if os.path.exists(extras_file):
+            extras = json.load(open(os.path.join(self.path, self.extras_folder, gm_file)))
+            self._assets_extras_data[extras['asset_name']] = extras
+        return extras
 
     def set_item_extras(self, app_name: str, extras: dict):
-        extras_file = os.path.join(self.path, 'extras', f'{app_name}.json')
+        extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
         self.log.debug(f'--- SAVING {len(extras)} extras data for {app_name} in {extras_file}')
         self._assets_extras_data[app_name] = extras
         json.dump(extras, open(extras_file, 'w'), indent=2, sort_keys=True)
@@ -306,7 +311,7 @@ class LGDLFS:
             raise ValueError(f'Item {app_name} does not exist in extras data DB!')
 
         del self._assets_extras_data[app_name]
-        extras_file = os.path.join(self.path, 'extras', f'{app_name}.json')
+        extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
         if os.path.exists(extras_file):
             os.remove(extras_file)
 
@@ -350,7 +355,7 @@ class LGDLFS:
             file_name_no_ext, file_ext = os.path.splitext(f)
             if '.log' in file_ext or '.bak' in file_ext:
                 try:
-                    os.remove(self.path, f)
+                    os.remove(os.path.join(self.path, f))
                 except Exception as error:
                     self.log.warning(f'Failed to delete file "{f}": {error!r}')
 
