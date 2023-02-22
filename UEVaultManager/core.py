@@ -403,10 +403,6 @@ class AppCore:
         except StopIteration:
             raise ValueError
 
-    def asset_valid(self, app_name) -> bool:
-        # EGL sync is only supported for Windows titles so this is fine
-        return any(i.app_name == app_name for i in self.lgd.assets['Windows'])
-
     def asset_available(self, item: App, platform='Windows') -> bool:
         # Just say yes for Origin titles
         if item.third_party_store:
@@ -446,43 +442,40 @@ class AppCore:
                 self.lgd.set_item_meta(app.app_name, app)
                 apps[name] = app
 
-            app_title = apps[name].app_title
-
             if _process_extras:
                 # we use title because it's less ambiguous than a name when searching an asset
-                eg_extras = self.egs.get_assets_extras(asset_name=name, asset_title=app_title, verbose_mode=self.verbose_mode)
-                self.lgd.set_item_extras(name, eg_extras)
-                # compute process time and average in s
-                end_time = datetime.now()
-                process_time = (end_time - start_time).total_seconds()
-                self.process_time_average['time'] += process_time
-                self.process_time_average['count'] += 1
-
-                try:
-                    if name in fetch_list:
-                        del fetch_list[name]
-                        if self.verbose_mode:
-                            self.log.info(f'Removing {name} from the metadata update\n===Found {eg_extras["asset_name_in_url"]}')
-                        if not self.use_threads:
-                            process_average = self.process_time_average['time'] / self.process_time_average['count']
-                            self.log.info(f'===Time Average={process_average:.3f} s # ({(len(fetch_list) * process_average):.3f} s time left)')
-
-                except Exception as error:
-                    self.log.info(f'Removing {name} from the metadata update list failed with {error!r}')
-                    return False
+                eg_extras = self.egs.get_assets_extras(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
+                self.lgd.set_item_extras(app_name=name, extras=eg_extras, update_global_dict=True)
 
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
-                if eg_extras['page_title'] != '' and eg_extras['page_title'] != app_title:
+                if eg_extras['page_title'] != '' and eg_extras['page_title'] != apps[name].app_title:
                     self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
                     eg_extras['grab_result'] = GrabResult.INCONSISTANT_DATA.name
                     if self.bad_data_logger:
                         self.bad_data_logger.info(name)
 
+            # compute process time and average in s
+            end_time = datetime.now()
+            process_time = (end_time - start_time).total_seconds()
+            self.process_time_average['time'] += process_time
+            self.process_time_average['count'] += 1
+
+            if fetch_list.get(name):
+                del fetch_list[name]
+                if self.verbose_mode:
+                    self.log.info(f'Removed {name} from the metadata update')
+
+            if currently_fetching.get(name):
                 del currently_fetching[name]
-                self.log.info(
-                    f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
-                )
-                return True
+
+            if not self.use_threads:
+                process_average = self.process_time_average['time'] / self.process_time_average['count']
+                self.log.info(f'===Time Average={process_average:.3f} s # ({(len(fetch_list) * process_average):.3f} s time left)')
+
+            self.log.info(
+                f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
+            )
+            return True
 
         _ret = []
         meta_updated = False
@@ -556,15 +549,14 @@ class AppCore:
                 self.log.info(f'Checking {app_name}....')
 
             item_metadata = self.lgd.get_item_meta(app_name)
-            item_extras_data = self.lgd.get_item_extras(app_name)
-
             asset_updated = False
+
             if not item_metadata:
                 self.log.info(f'Metadata for {app_name} are missing. It Will be ADDED to the FETCH list')
             else:
                 category = str(item_metadata.metadata['categories'][0]['path']).lower()
                 if filter_category and filter_category.lower() not in category:
-                    self.log.debug(
+                    self.log.info(
                         f'{app_name} has been FILTERED by category ({filter_category} not in {category}).It has been added to the ignored_logger file'
                     )
                     if self.ignored_logger:
@@ -577,11 +569,14 @@ class AppCore:
                 apps[app_name] = item_metadata
                 self.log.debug(f'{app_name} has been ADDED to the apps list')
 
-            if not item_extras_data:
-                self.log.info(f'Extras Data for {app_name} are missing. It Will be ADDED to the FETCH list')
+            # get extras data only in not filtered
+            if force_refresh or asset_updated:
+                process_extras = True
+            else:
+                # will read the extras data from file if necessary and put in the global dict
+                process_extras = self.lgd.get_item_extras(app_name) is None
 
-            process_meta = not item_metadata or force_refresh or (item_metadata and asset_updated)
-            process_extras = not item_extras_data or force_refresh
+            process_meta = not item_metadata or force_refresh or asset_updated
 
             if update_assets and (process_extras or process_meta):
                 self.log.debug(f'Scheduling metadata and extras update for {app_name}')
@@ -594,13 +589,12 @@ class AppCore:
             # end while i < len(valid_items):
 
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
-
         self.use_threads = len(fetch_list) > 5
-        # self.use_threads = False  # debug only
+        # self.use_threads = False  # test only
         if fetch_list:
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
-                # note:  unreal engine API limits the number of connection to 16. So no more threads than 16 !
+                # note:  unreal engine API limits the number of connection to 16. So no more than 16 threads !
                 with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() + 2), thread_name_prefix="Asset_Fetcher") as executor:
                     executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)
 
@@ -624,11 +618,19 @@ class AppCore:
             # retry if the asset is still in fetch list (with active fetcher treads)
             if fetch_list.get(app_name) and (not currently_fetching.get(app_name) or 'Asset_Fetcher' not in thread_enumerate()):
                 self.log.info(f'Fetching metadata for {app_name} is still no done, retrying')
-                del currently_fetching[app_name]
+                if currently_fetching.get(app_name):
+                    del currently_fetching[app_name]
                 fetch_asset_meta(app_name)
 
-            is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
-            is_a_mod = any(i['path'] == 'mods' for i in app_item.metadata.get('categories', []))
+            try:
+                is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
+                is_a_mod = any(i['path'] == 'mods' for i in app_item.metadata.get('categories', []))
+            except (KeyError, IndexError):
+                self.log.debug(f'{app_name} has no metadata. adding to fetch list (again)')
+                fetch_list[app_name] = (app_name, item.namespace, item.catalog_item_id, True, True)
+                _ret.append(app_item)
+                continue
+
             has_valid_platform = platform in app_assets
             is_still_fetching = (app_name in fetch_list) or (app_name in currently_fetching)
 
@@ -646,9 +648,14 @@ class AppCore:
         self.update_aliases(force=meta_updated)
 
         if meta_updated:
+            # delete old files
             self._prune_metadata()
-            self._prune_extras_data()
-
+            self._save_metadata(_ret)
+        #  meta_updated = True  # test only
+        if meta_updated:
+            # save new ones
+            self._prune_extras_data(update_global_dict=False)
+            self._save_extras_data(self.lgd.assets_extras_data, update_global_dict=False)
         return _ret
 
     # end def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
@@ -662,14 +669,22 @@ class AppCore:
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
             self.lgd.delete_item_meta(app_name)
 
-    def _prune_extras_data(self):
+    def _prune_extras_data(self, update_global_dict: True):
         # compile list of assets without assets, then delete their extras data
         available_assets = set()
         available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
         for app_name in self.lgd.get_item_app_names():
             self.log.debug(f'Removing old/unused extras data for "{app_name}"')
-            self.lgd.delete_item_extras(app_name)
+            self.lgd.delete_item_extras(app_name, update_global_dict=update_global_dict)
+
+    def _save_metadata(self, assets):
+        for app in assets:
+            self.lgd.set_item_meta(app.app_name, app)
+
+    def _save_extras_data(self, extras: dict, update_global_dict: True):
+        for app_name, eg_extras in extras.items():
+            self.lgd.set_item_extras(app_name=app_name, extras=eg_extras, update_global_dict=update_global_dict)
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
         """

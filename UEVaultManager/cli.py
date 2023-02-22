@@ -16,6 +16,8 @@ from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from sys import exit, stdout, platform as sys_platform
 
+from UEVaultManager.api.egs import create_empty_assets_extras
+
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
@@ -214,12 +216,20 @@ class UEVaultManagerCLI:
 
             date_added = datetime.now().strftime(self.core.default_datetime_format)
 
+            extras_data = create_empty_assets_extras(item.app_name)
+
             try:
                 extras_data = self.core.lgd.get_item_extras(item.app_name)
             except AttributeError as error:
                 self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
-                extras_data = self.core.egs.create_empty_assets_extras({item.app_name})
 
+            asset_url = no_data_text
+            review = no_data_value
+            price = no_data_value
+            purchased = False
+            supported_versions = no_data_text
+            page_title = no_data_text
+            grab_result = no_data_value
             try:
                 asset_url = extras_data['asset_url']
                 review = extras_data['review']

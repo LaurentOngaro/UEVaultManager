@@ -31,9 +31,9 @@ class LGDLFS:
         # EGS asset data
         self._assets = None
         # EGS metadata
-        self._assets_metadata = dict()
+        self.assets_metadata = dict()
         # additional infos (price, review...)
-        self._assets_extras_data = dict()
+        self.assets_extras_data = dict()
         # UEVaultManager update check info
         self._update_info = None
         # UE assets metadata cache data
@@ -155,7 +155,7 @@ class LGDLFS:
         for gm_file in os.listdir(os.path.join(self.path, 'metadata')):
             try:
                 _meta = json.load(open(os.path.join(self.path, 'metadata', gm_file)))
-                self._assets_metadata[_meta['app_name']] = _meta
+                self.assets_metadata[_meta['app_name']] = _meta
             except Exception as error:
                 self.log.debug(f'Loading asset meta file "{gm_file}" failed: {error!r}')
 
@@ -272,51 +272,50 @@ class LGDLFS:
 
     def get_item_meta(self, app_name):
         # note: self._assets_metadata is filled ay the start of the list command by reading all the json files in the metadata folder
-        if _meta := self._assets_metadata.get(app_name, None):
+        if _meta := self.assets_metadata.get(app_name, None):
             return App.from_json(_meta)  # create an object from the App class using the json data
         return None
 
     def set_item_meta(self, app_name, meta):
         json_meta = meta.__dict__
-        self._assets_metadata[app_name] = json_meta
+        self.assets_metadata[app_name] = json_meta
         meta_file = os.path.join(self.path, 'metadata', f'{app_name}.json')
         json.dump(json_meta, open(meta_file, 'w'), indent=2, sort_keys=True)
 
     def delete_item_meta(self, app_name: str):
-        if app_name not in self._assets_metadata:
+        if app_name not in self.assets_metadata:
             raise ValueError(f'Item {app_name} does not exist in metadata DB!')
 
-        del self._assets_metadata[app_name]
+        del self.assets_metadata[app_name]
         meta_file = os.path.join(self.path, 'metadata', f'{app_name}.json')
         if os.path.exists(meta_file):
             os.remove(meta_file)
 
     def get_item_extras(self, app_name: str):
         gm_file = app_name + '.json'
-        extras = self._assets_extras_data.get(app_name, None)
+        extras = self.assets_extras_data.get(app_name, None)
         extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
         if os.path.exists(extras_file):
             extras = json.load(open(os.path.join(self.path, self.extras_folder, gm_file)))
-            self._assets_extras_data[extras['asset_name']] = extras
+            self.assets_extras_data[extras['asset_name']] = extras
         return extras
 
-    def set_item_extras(self, app_name: str, extras: dict):
+    def set_item_extras(self, app_name: str, extras: dict, update_global_dict: True):
         extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
         self.log.debug(f'--- SAVING {len(extras)} extras data for {app_name} in {extras_file}')
-        self._assets_extras_data[app_name] = extras
         json.dump(extras, open(extras_file, 'w'), indent=2, sort_keys=True)
+        if update_global_dict:
+            self.assets_extras_data[app_name] = extras
 
-    def delete_item_extras(self, app_name: str):
-        if app_name not in self._assets_extras_data:
-            raise ValueError(f'Item {app_name} does not exist in extras data DB!')
-
-        del self._assets_extras_data[app_name]
+    def delete_item_extras(self, app_name: str, update_global_dict: True):
+        if update_global_dict and self.assets_extras_data.get(app_name):
+            del self.assets_extras_data[app_name]
         extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
         if os.path.exists(extras_file):
             os.remove(extras_file)
 
     def get_item_app_names(self):
-        return sorted(self._assets_metadata.keys())
+        return sorted(self.assets_metadata.keys())
 
     def clean_tmp_data(self):
         for f in os.listdir(os.path.join(self.path, self.tmp_folder)):
@@ -422,7 +421,7 @@ class LGDLFS:
         collisions = set()
         alias_map = defaultdict(set)
 
-        for app_name in self._assets_metadata.keys():
+        for app_name in self.assets_metadata.keys():
             item = self.get_item_meta(app_name)
             if item.is_dlc:
                 continue
