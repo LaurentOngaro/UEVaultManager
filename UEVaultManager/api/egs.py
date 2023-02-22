@@ -294,9 +294,6 @@ class EPCAPI:
         for entry in entry_list:
             converted_name = converted_name.replace(entry, '')
 
-        # debug only
-        # converted_name = 'heretic'  # 5/5
-        # converted_name = 'cursed-king'  # 4.25/5
         url = ''
         asset_name_in_url = ''
         search_url_root = f'https://{self._search_url}/assets?keywords='
