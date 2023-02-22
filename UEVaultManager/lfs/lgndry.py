@@ -68,7 +68,7 @@ class LGDLFS:
         # if "old" folder exists migrate files and remove it
         if os.path.exists(os.path.join(self.path, self.manifests_folder, 'old')):
             self.log.info('Migrating manifest files from old folders to new, please wait...')
-            # remove unversioned manifest files
+            # remove not versioned manifest files
             for _f in os.listdir(os.path.join(self.path, self.manifests_folder)):
                 if '.manifest' not in _f:
                     continue
@@ -251,10 +251,10 @@ class LGDLFS:
 
     def _get_manifest_filename(self, app_name, version, platform=None):
         if platform:
-            fname = clean_filename(f'{app_name}_{platform}_{version}')
+            file_name = clean_filename(f'{app_name}_{platform}_{version}')
         else:
-            fname = clean_filename(f'{app_name}_{version}')
-        return os.path.join(self.path, self.manifests_folder, f'{fname}.manifest')
+            file_name = clean_filename(f'{app_name}_{version}')
+        return os.path.join(self.path, self.manifests_folder, f'{file_name}.manifest')
 
     def load_manifest(self, app_name, version, platform='Windows'):
         try:
