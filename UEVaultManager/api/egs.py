@@ -371,7 +371,7 @@ class EPCAPI:
                     response.raise_for_status()
                     soup_not_logged = BeautifulSoup(response.text, 'html.parser')
                     purchased_elt = soup_not_logged.find('div', class_='purchase')
-                except requests.exceptions.RequestException as error:
+                except requests.exceptions.RequestException:
                     pass
 
         if search_for_price and purchased_elt is not None:
