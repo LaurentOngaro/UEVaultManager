@@ -171,6 +171,9 @@ class UEVaultManagerCLI:
         else:
             self.logger.info('Getting asset list... (this may take a while)')
 
+        if args.filter_category:
+            self.logger.info(f'The String "{args.filter_category}" will be search in Assets category')
+
         items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
 
         if args.include_non_asset:
@@ -194,7 +197,12 @@ class UEVaultManagerCLI:
             #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
             #   app_name is unique because it includes the unreal version
             #   we use asset_id as key because we don't want to have several entries for the same asset
-            asset_id = item.asset_infos['Windows'].asset_id
+            #   some asset won't have asset_infos (mainly when using the -T option), in that case we use the app_title as asset_id
+            if item.asset_infos.get('Windows'):
+                asset_id = item.asset_infos['Windows'].asset_id
+            else:
+                asset_id = item.app_title
+
             if assets.get(asset_id):
                 self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
                 continue
@@ -205,8 +213,12 @@ class UEVaultManagerCLI:
             category = metadata['categories'][0]['path']
 
             separator = ','
-            tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata['releaseInfo']]
-            compatible_versions = separator.join(tmp_list)
+            try:
+                tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata['releaseInfo']]
+                compatible_versions = separator.join(tmp_list)
+            except TypeError as error:
+                self.logger.warning(f'Error getting compatibleApps {item.app_name} : {error!r}')
+                compatible_versions = no_data_text
 
             thumbnail_url = ''
             try:
@@ -216,12 +228,12 @@ class UEVaultManagerCLI:
 
             date_added = datetime.now().strftime(self.core.default_datetime_format)
 
-            extras_data = create_empty_assets_extras(item.app_name)
-
             try:
                 extras_data = self.core.lgd.get_item_extras(item.app_name)
             except AttributeError as error:
                 self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
+            if extras_data is None:
+                extras_data = create_empty_assets_extras(item.app_name)
 
             asset_url = no_data_text
             review = no_data_value
@@ -238,7 +250,7 @@ class UEVaultManagerCLI:
                 supported_versions = extras_data['supported_versions']
                 page_title = extras_data['page_title']
                 grab_result = extras_data['grab_result']
-            except KeyError as error:
+            except (TypeError, KeyError) as error:
                 self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
 
             if self.core.verbose_mode:
@@ -769,12 +781,7 @@ def main():
     auth_parser.add_argument('--disable-webview', dest='no_webview', action='store_true', help='Do not use embedded browser for login')
 
     list_parser.add_argument(
-        '-T',
-        '--third-party',
-        dest='include_non_asset',
-        action='store_true',
-        default=False,
-        help='Include assets that are not installable.'
+        '-T', '--third-party', dest='include_non_asset', action='store_true', default=False, help='Include assets that are not installable.'
     )
     list_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in in CSV format')
     list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in in TSV format')

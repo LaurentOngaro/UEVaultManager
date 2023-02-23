@@ -557,7 +557,7 @@ class AppCore:
                 category = str(item_metadata.metadata['categories'][0]['path']).lower()
                 if filter_category and filter_category.lower() not in category:
                     self.log.info(
-                        f'{app_name} has been FILTERED by category ({filter_category} not in {category}).It has been added to the ignored_logger file'
+                        f'{app_name} has been FILTERED by category ("{filter_category}" text not found in "{category}").It has been added to the ignored_logger file'
                     )
                     if self.ignored_logger:
                         self.ignored_logger.info(app_name)
@@ -567,7 +567,7 @@ class AppCore:
                     continue
                 asset_updated = any(item_metadata.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
                 apps[app_name] = item_metadata
-                self.log.debug(f'{app_name} has been ADDED to the apps list')
+                self.log.debug(f'{app_name} has been ADDED to the apps list with asset_updated={asset_updated}')
 
             # get extras data only in not filtered
             if force_refresh or asset_updated:
