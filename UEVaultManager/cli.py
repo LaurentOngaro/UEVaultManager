@@ -16,9 +16,8 @@ from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from sys import exit, stdout, platform as sys_platform
 
-from UEVaultManager.api.egs import create_empty_assets_extras
-
 from UEVaultManager import __version__, __codename__
+from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.utils.cli import strtobool, check_and_create_path
@@ -78,6 +77,103 @@ class UEVaultManagerCLI:
         self.create_file_backup(self.core.ignored_assets_filename_log)
         self.create_file_backup(self.core.notfound_assets_filename_log)
         self.create_file_backup(self.core.bad_data_assets_filename_log)
+
+    def create_record_from_data(self, item, assets, no_data_text, no_data_value):
+        # notes:
+        #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
+        #   app_name is unique because it includes the unreal version
+        #   we use asset_id as key because we don't want to have several entries for the same asset
+        #   some asset won't have asset_infos (mainly when using the -T option), in that case we use the app_title as asset_id
+        if item.asset_infos.get('Windows'):
+            asset_id = item.asset_infos['Windows'].asset_id
+        else:
+            asset_id = item.app_title
+        if assets.get(asset_id):
+            self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
+            return 0, None
+
+        record = [''] * (len(CSV_headings.items()))  # create a list of empty string
+        metadata = item.metadata
+        uid = metadata['id']
+        category = metadata['categories'][0]['path']
+        separator = ','
+        try:
+            tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata['releaseInfo']]
+            compatible_versions = separator.join(tmp_list)
+        except TypeError as error:
+            self.logger.warning(f'Error getting compatibleApps {item.app_name} : {error!r}')
+            compatible_versions = no_data_text
+        thumbnail_url = ''
+        try:
+            thumbnail_url = metadata['keyImages'][2]['url']  # 'Image' with 488 height
+        except IndexError:
+            self.logger.debug(f'asset {item.app_name} has no image')
+        date_added = datetime.now().strftime(self.core.default_datetime_format)
+        try:
+            extras_data = self.core.lgd.get_item_extras(item.app_name)
+        except AttributeError as error:
+            self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
+        if extras_data is None:
+            extras_data = create_empty_assets_extras(item.app_name)
+        asset_url = no_data_text
+        review = no_data_value
+        price = no_data_value
+        purchased = False
+        supported_versions = no_data_text
+        page_title = no_data_text
+        grab_result = no_data_value
+        try:
+            asset_url = extras_data['asset_url']
+            review = extras_data['review']
+            price = extras_data['price']
+            purchased = extras_data['purchased']
+            supported_versions = extras_data['supported_versions']
+            page_title = extras_data['page_title']
+            grab_result = extras_data['grab_result']
+        except (TypeError, KeyError) as error:
+            self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
+        try:
+            record = (
+                # dans les infos
+                asset_id  # 'asset_id'
+                , item.app_name  # 'App name'
+                , item.app_title  # 'App title'
+                , category  # 'Category'
+                , thumbnail_url  # 'Image' with 488 height
+                , asset_url  # 'Url'
+                , item.app_version('Windows')  # 'UE Version'
+                , compatible_versions  # compatible_versions
+                , review  # 'Review'
+                , metadata['developer']  # 'Developer'
+                , metadata['description']  # 'Description'
+                , uid  # 'Uid'
+                , metadata['creationDate']  # 'Creation Date'
+                , metadata['lastModifiedDate']  # 'Update Date'
+                , metadata['status']  # 'status'
+                # Modified Fields when added into the file
+                , date_added  # 'Date Added'
+                , price  # 'Price'
+                , no_data_value  # 'Old Price'
+                , False  # 'On Sale'
+                , purchased  # 'Purchased'
+                # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
+                , supported_versions  # 'supported versions'
+                , page_title  # 'page title'
+                , grab_result  # 'grab result'
+                # Modified Fields when added into the file
+                , no_data_text  # 'Comment'
+                , no_data_text  # 'Stars'
+                , no_data_text  # 'Asset Folder'
+                , no_data_value  # 'Must Buy'
+                , no_data_text  # 'Test result
+                , no_data_text  # 'Installed Folder'
+                , no_data_text  # 'Alternative'
+            )
+
+        except TypeError:
+            self.logger.error(f'Could not create record for {item.app_name} BAD TYPE VALUE')
+
+        return asset_id, record
 
     def auth(self, args):
         if args.auth_delete:
@@ -161,6 +257,40 @@ class UEVaultManagerCLI:
             self.logger.error('Login attempt failed, please see log for details.')
 
     def list_assets(self, args):
+
+        def update_and_merge_record(_asset, _asset_id, _record, _items_in_file, _no_data_value):
+            _asset_id = _asset[0]
+            _record = list(_asset[1])
+            # merge data from the items in the file (if exists) and those get by the application
+            # items_in_file is a dict of dict
+            if _items_in_file.get(_asset_id):
+                # loops through its columns
+                index = 0
+                price_index = 0
+                _price = float(_no_data_value)
+                old_price = float(_no_data_value)
+                on_sale = _no_data_value
+                for key, keep_value_in_file in CSV_headings.items():
+                    if keep_value_in_file:
+                        _record[index] = _items_in_file[_asset_id][key]
+                    # Get the old price in the previous file
+                    if key == 'Price':
+                        price_index = index
+                        try:
+                            _price = float(_record[price_index])
+                            old_price = float(
+                                _items_in_file[_asset_id][key]
+                            )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                        except Exception as _error:
+                            self.logger.warning(f'Price values can not be converted for asset {_asset_id}\nError:{_error!r}')
+                    index += 1
+                # compute the price related fields
+                if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
+                    on_sale = True if _price > old_price else False
+                _record[price_index + 1] = old_price
+                _record[price_index + 2] = on_sale
+            return _asset_id, _record
+
         self.logger.info('Logging in...')
         if not self.core.login():
             self.logger.error('Login failed, cannot continue!')
@@ -193,108 +323,12 @@ class UEVaultManagerCLI:
         cpt_max = len(items)
         for item in items:
             cpt += 1
-            # notes:
-            #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
-            #   app_name is unique because it includes the unreal version
-            #   we use asset_id as key because we don't want to have several entries for the same asset
-            #   some asset won't have asset_infos (mainly when using the -T option), in that case we use the app_title as asset_id
-            if item.asset_infos.get('Windows'):
-                asset_id = item.asset_infos['Windows'].asset_id
-            else:
-                asset_id = item.app_title
-
-            if assets.get(asset_id):
-                self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
-                continue
-
-            record = [''] * (len(CSV_headings.items()))  # create a list of empty string
-            metadata = item.metadata
-            uid = metadata['id']
-            category = metadata['categories'][0]['path']
-
-            separator = ','
-            try:
-                tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata['releaseInfo']]
-                compatible_versions = separator.join(tmp_list)
-            except TypeError as error:
-                self.logger.warning(f'Error getting compatibleApps {item.app_name} : {error!r}')
-                compatible_versions = no_data_text
-
-            thumbnail_url = ''
-            try:
-                thumbnail_url = metadata['keyImages'][2]['url']  # 'Image' with 488 height
-            except IndexError:
-                self.logger.debug(f'asset {item.app_name} has no image')
-
-            date_added = datetime.now().strftime(self.core.default_datetime_format)
-
-            try:
-                extras_data = self.core.lgd.get_item_extras(item.app_name)
-            except AttributeError as error:
-                self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
-            if extras_data is None:
-                extras_data = create_empty_assets_extras(item.app_name)
-
-            asset_url = no_data_text
-            review = no_data_value
-            price = no_data_value
-            purchased = False
-            supported_versions = no_data_text
-            page_title = no_data_text
-            grab_result = no_data_value
-            try:
-                asset_url = extras_data['asset_url']
-                review = extras_data['review']
-                price = extras_data['price']
-                purchased = extras_data['purchased']
-                supported_versions = extras_data['supported_versions']
-                page_title = extras_data['page_title']
-                grab_result = extras_data['grab_result']
-            except (TypeError, KeyError) as error:
-                self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
+            asset_id, record = self.create_record_from_data(item, assets, no_data_text, no_data_value)
+            if record is not None:
+                assets[asset_id] = record
 
             if self.core.verbose_mode:
-                self.logger.info(f'Saving asset {cpt}/{cpt_max} {item.app_name}: id={asset_id} category={category}')
-            try:
-                record = (
-                    # dans les infos
-                    asset_id  # 'asset_id'
-                    , item.app_name  # 'App name'
-                    , item.app_title  # 'App title'
-                    , category  # 'Category'
-                    , thumbnail_url  # 'Image' with 488 height
-                    , asset_url  # 'Url'
-                    , item.app_version('Windows')  # 'UE Version'
-                    , compatible_versions  # compatible_versions
-                    , review  # 'Review'
-                    , metadata['developer']  # 'Developer'
-                    , metadata['description']  # 'Description'
-                    , uid  # 'Uid'
-                    , metadata['creationDate']  # 'Creation Date'
-                    , metadata['lastModifiedDate']  # 'Update Date'
-                    , metadata['status']  # 'status'
-                    # Modified Fields when added into the file
-                    , date_added  # 'Date Added'
-                    , price  # 'Price'
-                    , no_data_value  # 'Old Price'
-                    , False  # 'On Sale'
-                    , purchased  # 'Purchased'
-                    # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
-                    , supported_versions  # 'supported versions'
-                    , page_title  # 'page title'
-                    , grab_result  # 'grab result'
-                    # Modified Fields when added into the file
-                    , no_data_text  # 'Comment'
-                    , no_data_text  # 'Stars'
-                    , no_data_text  # 'Asset Folder'
-                    , no_data_value  # 'Must Buy'
-                    , no_data_text  # 'Test result
-                    , no_data_text  # 'Installed Folder'
-                    , no_data_text  # 'Alternative'
-                )
-            except TypeError:
-                self.logger.error(f'Could not create record for {item.app_name} BAD TYPE VALUE')
-            assets[asset_id] = record
+                self.logger.info(f'CSV Record created from data: {cpt}/{cpt_max} id={asset_id}')
 
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
@@ -313,7 +347,7 @@ class UEVaultManagerCLI:
                             items_in_file[asset_id] = record
                         output.close()
                 except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
-                    self.logger.warning(f'Could not read data from the file {args.output}')
+                    self.logger.warning(f'Could not read CSV record from the file {args.output}')
 
                 # write the content of the file to keep some data
                 if not check_and_create_path(file_src):
@@ -330,40 +364,11 @@ class UEVaultManagerCLI:
                 cpt = 0
                 for asset in sorted(assets.items()):
                     try:
-                        asset_id = asset[0]
-                        record = list(asset[1])
-                        # merge data from the items in the file (if exists) and those get by the application
-                        # items_in_file is a dict of dict
-                        if items_in_file.get(asset_id):
-                            # loops through its columns
-                            index = 0
-                            price_index = 0
-                            price = float(no_data_value)
-                            old_price = float(no_data_value)
-                            on_sale = no_data_value
-                            for key, keep_value_in_file in CSV_headings.items():
-                                if keep_value_in_file:
-                                    record[index] = items_in_file[asset_id][key]
-                                # Get the old price in the previous file
-                                if key == 'Price':
-                                    price_index = index
-                                    try:
-                                        price = float(record[price_index])
-                                        old_price = float(
-                                            items_in_file[asset_id][key]
-                                        )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
-                                    except Exception as error:
-                                        self.logger.warning(f'Price values can not be converted for asset {asset_id}\nError:{error!r}')
-                                index += 1
-                            # compute the price related fields
-                            if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
-                                on_sale = True if price > old_price else False
-                            record[price_index + 1] = old_price
-                            record[price_index + 2] = on_sale
+                        asset_id, record = update_and_merge_record(asset, asset_id, record, items_in_file, no_data_value)
                         writer.writerow(record)
                         cpt += 1
                     except (OSError, UnicodeEncodeError, TypeError) as error:
-                        self.logger.error(f'Could not write record for {asset_id} into {args.output}\nError:{error!r}')
+                        self.logger.error(f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}')
 
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
