@@ -79,6 +79,7 @@ class UEVaultManagerCLI:
         self.create_file_backup(self.core.bad_data_assets_filename_log)
 
     def create_asset_from_data(self, item, asset_id, no_data_text, no_data_value):
+        record = {}
         metadata = item.metadata
         uid = metadata['id']
         category = metadata['categories'][0]['path']
@@ -278,6 +279,37 @@ class UEVaultManagerCLI:
                 _csv_record[price_index + 2] = on_sale
             return _csv_record
 
+        def update_and_merge_json_record_data(_asset, _items_in_file, _no_data_value) -> dict:
+            _asset_id = _asset[0]
+            _json_record = _asset[1]
+
+            # merge data from the items in the file (if exists) and those get by the application
+            # items_in_file is a dict of dict
+            if _items_in_file.get(_asset_id):
+                # loops through its columns
+                _price = float(_no_data_value)
+                old_price = float(_no_data_value)
+                on_sale = _no_data_value
+                for key, keep_value_in_file in CSV_headings.items():
+                    if keep_value_in_file and _items_in_file[_asset_id].get(key):
+                        _json_record[key] = _items_in_file[_asset_id][key]
+
+                # Get the old price in the previous file
+                try:
+                    _price = float(_json_record['Price'])
+                    old_price = float(
+                        _items_in_file[_asset_id]['Price']
+                    )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                except Exception as _error:
+                    self.logger.warning(f'Price values can not be converted for asset {_asset_id}\nError:{_error!r}')
+
+                # compute the price related fields
+                if isinstance(old_price, int) or isinstance(old_price, float):
+                    on_sale = True if _price > old_price else False
+                _json_record['Old Price'] = old_price
+                _json_record['On Sale'] = on_sale
+            return _json_record
+
         self.logger.info('Logging in...')
         if not self.core.login():
             self.logger.error('Login failed, cannot continue!')
@@ -365,10 +397,14 @@ class UEVaultManagerCLI:
                 writer.writerow(CSV_headings.keys())
                 cpt = 0
                 for asset in sorted(assets_to_output.items()):
+                    asset_id = asset[0]
                     try:
-                        csv_record_merged = update_and_merge_csv_record_data(asset, assets_in_file, no_data_value)
-                        writer.writerow(csv_record_merged)
+                        if len(assets_in_file) > 0:
+                            csv_record_merged = update_and_merge_csv_record_data(asset, assets_in_file, no_data_value)
+                        else:
+                            csv_record_merged = asset
                         cpt += 1
+                        writer.writerow(csv_record_merged)
                     except (OSError, UnicodeEncodeError, TypeError) as error:
                         self.logger.error(f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}')
             except OSError:
@@ -386,13 +422,9 @@ class UEVaultManagerCLI:
                 # If the output file exists, we read its content to keep some data
                 try:
                     with open(file_src, 'r', encoding='utf-8') as output:
-                        records = json.load(output)
-                        # get the data (it's a dict)
-                        for record in records:
-                            asset_id = record['Asset_id']
-                            assets_in_file[asset_id] = record
+                        assets_in_file = json.load(output)
                         output.close()
-                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
+                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration, json.decoder.JSONDecodeError):
                     self.logger.warning(f'Could not read Json record from the file {args.output}')
 
                 # write the content of the file to keep some data
@@ -406,21 +438,26 @@ class UEVaultManagerCLI:
             # end if args.output:
 
             try:
-                asset_id = ''
                 cpt = 0
-                output.write("{\n")
+                json_content = {}
+                # output.write("{\n")
                 for asset in sorted(assets_to_output.items()):
+                    asset_id = asset[0]
+                    if len(assets_in_file) > 0:
+                        json_record_merged = update_and_merge_json_record_data(asset, assets_in_file, no_data_value)
+                    else:
+                        json_record_merged = asset[1]
+            #      output.write(",\n")
                     try:
-                        output.write("{\n")
-                        asset_id, record = update_and_merge_csv_record_data(asset, asset_id, assets_in_file, no_data_value)
-                        json.dump(record, output, indent=4)
-                        output.write("},\n")
+                        asset_id = json_record_merged['Asset_id']
+                        json_content[asset_id] = json_record_merged
                         cpt += 1
                     except (OSError, UnicodeEncodeError, TypeError) as error:
                         self.logger.error(f'Could not write Json record for {asset_id} into {args.output}\nError:{error!r}')
+
+                json.dump(json_content, output, indent=2)
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
-            output.write("}\n")
 
             output.close()
             self.logger.info(
