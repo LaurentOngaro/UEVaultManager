@@ -78,21 +78,7 @@ class UEVaultManagerCLI:
         self.create_file_backup(self.core.notfound_assets_filename_log)
         self.create_file_backup(self.core.bad_data_assets_filename_log)
 
-    def create_record_from_data(self, item, assets, no_data_text, no_data_value):
-        # notes:
-        #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
-        #   app_name is unique because it includes the unreal version
-        #   we use asset_id as key because we don't want to have several entries for the same asset
-        #   some asset won't have asset_infos (mainly when using the -T option), in that case we use the app_title as asset_id
-        if item.asset_infos.get('Windows'):
-            asset_id = item.asset_infos['Windows'].asset_id
-        else:
-            asset_id = item.app_title
-        if assets.get(asset_id):
-            self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
-            return 0, None
-
-        record = [''] * (len(CSV_headings.items()))  # create a list of empty string
+    def create_asset_from_data(self, item, asset_id, no_data_text, no_data_value):
         metadata = item.metadata
         uid = metadata['id']
         category = metadata['categories'][0]['path']
@@ -109,6 +95,7 @@ class UEVaultManagerCLI:
         except IndexError:
             self.logger.debug(f'asset {item.app_name} has no image')
         date_added = datetime.now().strftime(self.core.default_datetime_format)
+        extras_data = None
         try:
             extras_data = self.core.lgd.get_item_extras(item.app_name)
         except AttributeError as error:
@@ -133,7 +120,7 @@ class UEVaultManagerCLI:
         except (TypeError, KeyError) as error:
             self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
         try:
-            record = (
+            values = (
                 # dans les infos
                 asset_id  # 'asset_id'
                 , item.app_name  # 'App name'
@@ -169,9 +156,9 @@ class UEVaultManagerCLI:
                 , no_data_text  # 'Installed Folder'
                 , no_data_text  # 'Alternative'
             )
-
+            record = dict(zip(CSV_headings.keys(), values))
         except TypeError:
-            self.logger.error(f'Could not create record for {item.app_name} BAD TYPE VALUE')
+            self.logger.error(f'Could not create record for {item.app_name}')
 
         return asset_id, record
 
@@ -258,9 +245,9 @@ class UEVaultManagerCLI:
 
     def list_assets(self, args):
 
-        def update_and_merge_record(_asset, _asset_id, _record, _items_in_file, _no_data_value):
+        def update_and_merge_csv_record_data(_asset, _items_in_file, _no_data_value) -> []:
             _asset_id = _asset[0]
-            _record = list(_asset[1])
+            _csv_record = list(_asset[1].values())  # we need a list for the CSV comparison, not a dict
             # merge data from the items in the file (if exists) and those get by the application
             # items_in_file is a dict of dict
             if _items_in_file.get(_asset_id):
@@ -272,12 +259,12 @@ class UEVaultManagerCLI:
                 on_sale = _no_data_value
                 for key, keep_value_in_file in CSV_headings.items():
                     if keep_value_in_file:
-                        _record[index] = _items_in_file[_asset_id][key]
+                        _csv_record[index] = _items_in_file[_asset_id][key]
                     # Get the old price in the previous file
                     if key == 'Price':
                         price_index = index
                         try:
-                            _price = float(_record[price_index])
+                            _price = float(_csv_record[price_index])
                             old_price = float(
                                 _items_in_file[_asset_id][key]
                             )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
@@ -287,9 +274,9 @@ class UEVaultManagerCLI:
                 # compute the price related fields
                 if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
                     on_sale = True if _price > old_price else False
-                _record[price_index + 1] = old_price
-                _record[price_index + 2] = on_sale
-            return _asset_id, _record
+                _csv_record[price_index + 1] = old_price
+                _csv_record[price_index + 2] = on_sale
+            return _csv_record
 
         self.logger.info('Logging in...')
         if not self.core.login():
@@ -316,19 +303,33 @@ class UEVaultManagerCLI:
         # sort assets by name in reverse (to have the latest version first
         items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
 
+        # use a dict to store records and avoid duplicates (asset with the same asset_id and a different asset_name)
+        assets_to_output = {}
         # create a minimal and full dict of data from existing assets
-        items_in_file = {}
-        assets = {}
+        assets_in_file = {}
+
         cpt = 0
         cpt_max = len(items)
         for item in items:
             cpt += 1
-            asset_id, record = self.create_record_from_data(item, assets, no_data_text, no_data_value)
-            if record is not None:
-                assets[asset_id] = record
+            # notes:
+            #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
+            #   app_name is unique because it includes the unreal version
+            #   we use asset_id as key because we don't want to have several entries for the same asset
+            #   some asset won't have asset_infos (mainly when using the -T option), in that case we use the app_title as asset_id
+            if item.asset_infos.get('Windows'):
+                asset_id = item.asset_infos['Windows'].asset_id
+            else:
+                asset_id = item.app_title
+
+            if assets_to_output.get(asset_id):
+                self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
+            else:
+                asset_id, asset = self.create_asset_from_data(item, asset_id, no_data_text, no_data_value)  # asset is a dict
+                assets_to_output[asset_id] = asset
 
             if self.core.verbose_mode:
-                self.logger.info(f'CSV Record created from data: {cpt}/{cpt_max} id={asset_id}')
+                self.logger.info(f'Asset id={asset_id} has been created from data. Done {cpt}/{cpt_max} items')
 
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
@@ -340,11 +341,11 @@ class UEVaultManagerCLI:
                 # If the output file exists, we read its content to keep some data
                 try:
                     with open(file_src, 'r', encoding='utf-8') as output:
-                        csv_reader = csv.DictReader(output)
+                        csv_file_content = csv.DictReader(output)
                         # get the data (it's a dict)
-                        for record in csv_reader:
-                            asset_id = record['Asset_id']
-                            items_in_file[asset_id] = record
+                        for csv_record in csv_file_content:
+                            asset_id = csv_record['Asset_id']
+                            assets_in_file[asset_id] = csv_record
                         output.close()
                 except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
                     self.logger.warning(f'Could not read CSV record from the file {args.output}')
@@ -353,23 +354,23 @@ class UEVaultManagerCLI:
                 if not check_and_create_path(file_src):
                     self.logger.critical(f'Could not create folder for {file_src}')
                     self.core.clean_exit(1)
-
+                # reopen file for writing
                 output = open(file_src, 'w', encoding='utf-8')
             else:
                 output = stdout
+            # end if args.output:
+
             try:
                 writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
                 writer.writerow(CSV_headings.keys())
-                asset_id = ''
                 cpt = 0
-                for asset in sorted(assets.items()):
+                for asset in sorted(assets_to_output.items()):
                     try:
-                        asset_id, record = update_and_merge_record(asset, asset_id, record, items_in_file, no_data_value)
-                        writer.writerow(record)
+                        csv_record_merged = update_and_merge_csv_record_data(asset, assets_in_file, no_data_value)
+                        writer.writerow(csv_record_merged)
                         cpt += 1
                     except (OSError, UnicodeEncodeError, TypeError) as error:
                         self.logger.error(f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}')
-
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
             output.close()
@@ -377,13 +378,58 @@ class UEVaultManagerCLI:
                 f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions)\nOperation Finished\n======\n'
             )
             return
+        # end if args.csv or args.tsv:
 
         if args.json:
-            _out = []
-            for asset in items:
-                _j = vars(asset)
-                _out.append(_j)
+            if args.output:
+                file_src = args.output
+                # If the output file exists, we read its content to keep some data
+                try:
+                    with open(file_src, 'r', encoding='utf-8') as output:
+                        records = json.load(output)
+                        # get the data (it's a dict)
+                        for record in records:
+                            asset_id = record['Asset_id']
+                            assets_in_file[asset_id] = record
+                        output.close()
+                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
+                    self.logger.warning(f'Could not read Json record from the file {args.output}')
 
+                # write the content of the file to keep some data
+                if not check_and_create_path(file_src):
+                    self.logger.critical(f'Could not create folder for {file_src}')
+                    self.core.clean_exit(1)
+                # reopen file for writing
+                output = open(file_src, 'w', encoding='utf-8')
+            else:
+                output = stdout
+            # end if args.output:
+
+            try:
+                asset_id = ''
+                cpt = 0
+                output.write("{\n")
+                for asset in sorted(assets_to_output.items()):
+                    try:
+                        output.write("{\n")
+                        asset_id, record = update_and_merge_csv_record_data(asset, asset_id, assets_in_file, no_data_value)
+                        json.dump(record, output, indent=4)
+                        output.write("},\n")
+                        cpt += 1
+                    except (OSError, UnicodeEncodeError, TypeError) as error:
+                        self.logger.error(f'Could not write Json record for {asset_id} into {args.output}\nError:{error!r}')
+            except OSError:
+                self.logger.error(f'Could not write list result to {args.output}')
+            output.write("}\n")
+
+            output.close()
+            self.logger.info(
+                f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions)\nOperation Finished\n======\n'
+            )
+            return
+        # end if args.json:
+
+        # here, no other output has been done before, so we print the asset in a quick format to the console
         print('\nAvailable UE Assets:')
         for asset in items:
             version = asset.app_version('Windows')

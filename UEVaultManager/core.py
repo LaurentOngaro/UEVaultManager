@@ -625,7 +625,7 @@ class AppCore:
             try:
                 is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
                 is_a_mod = any(i['path'] == 'mods' for i in app_item.metadata.get('categories', []))
-            except (KeyError, IndexError,AttributeError):
+            except (KeyError, IndexError, AttributeError):
                 self.log.debug(f'{app_name} has no metadata. adding to fetch list (again)')
                 fetch_list[app_name] = (app_name, item.namespace, item.catalog_item_id, True, True)
                 _ret.append(app_item)
