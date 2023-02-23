@@ -736,14 +736,12 @@ def main():
     list_parser = subparsers.add_parser('list', aliases=('list-assets',), hide_aliases=True, help='List available assets')
     list_files_parser = subparsers.add_parser('list-files', help='List files in manifest')
     status_parser = subparsers.add_parser('status', help='Show UEVaultManager status information')
-    verify_parser = subparsers.add_parser('verify', help='Verify a asset\'s local files', aliases=('verify-asset',), hide_aliases=True)
 
     # hidden commands have no help text
     get_token_parser = subparsers.add_parser('get-token')
 
     # Positional arguments
     list_files_parser.add_argument('app_name', nargs='?', metavar='<App Name>', help='Name of the app (optional)')
-    verify_parser.add_argument('app_name', help='Name of the app', metavar='<App Name>')
     info_parser.add_argument('app_name_or_manifest', help='App name or manifest path/URI', metavar='<App Name/Manifest URI>')
 
     # Flags
