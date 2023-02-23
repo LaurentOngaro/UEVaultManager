@@ -161,7 +161,7 @@ usage: UEVaultManager [-h] [-H] [-d] [-y] [-V] [-c <file>] [-J] [-A <seconds>] <
 
 exemple: 
   
-  UEVaultManager list --csv -c "plugin" --output "D:\testing\list.csv"
+  UEVaultManager list --csv -fc "plugin" --output "D:\testing\list.csv"
   
   Will list all the assets of the marketplace that have "plugin" it their category field (on the marketplace) and save the result using a csv format 
   into the "D:\testing\list.csv" file 
@@ -190,7 +190,7 @@ Commands:
 Individual command help:
 
 Command: auth
-usage: UEVaultManager auth [-h] [--import] [--code <exchange code>]
+usage: UEVaultManager auth [-h] [--import] [--code <exchange code>] [--token <exchange token>]
                       [--sid <session id>] [--delete] [--disable-webview]
 
 optional arguments:
@@ -208,7 +208,7 @@ optional arguments:
 
 
 Command: cleanup
-usage: legendary cleanup [-h] [--delete-manifests]
+usage: legendary cleanup [-h] [--delete-metadata] [--delete-extras-data]
 
 optional arguments:
   -h, --help                Show this help message and exit
@@ -231,18 +231,19 @@ optional arguments:
   -f, --force-refresh   Force a refresh of all asset metadata
 
 Command: list
-usage: UEVaultManager list [-h] [--csv]
+usage: UEVaultManager list [-h] [----third-party] [--csv]
                       [--tsv] [--json] [--force-refresh] 
-                      [--category <text_to_search>] [--output <file_name_with_path>] 
+                      [--filter-category <text_to_search>] [--output <file_name_with_path>] 
 
 optional arguments:
-  -h, --help            Show this help message and exit
-  --csv                 List asset in CSV format
-  --tsv                 List asset in TSV format
-  --json                List asset in JSON format
-  -f, --force-refresh   Force a refresh of all asset metadata
-  -c, --category        Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial
-  -o, --output          The file name (with path) where the list should be written to
+  -h, --help              Show this help message and exit
+  -T, --third-party       Include assets that are not installable
+  --csv                   List asset in CSV format
+  --tsv                   List asset in TSV format
+  --json                  List asset in JSON format
+  -f, --force-refresh     Force a refresh of all asset metadata
+  -fc, --filter-category  Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial
+  -o, --output            The file name (with path) where the list should be written to
 
 
 

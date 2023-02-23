@@ -171,7 +171,7 @@ class UEVaultManagerCLI:
         else:
             self.logger.info('Getting asset list... (this may take a while)')
 
-        items = self.core.get_asset_list(platform='Windows', filter_category=args.category, force_refresh=args.force_refresh)
+        items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
 
         if args.include_non_asset:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
@@ -771,21 +771,19 @@ def main():
     list_parser.add_argument(
         '-T',
         '--third-party',
-        '--include-non-installable',
         dest='include_non_asset',
         action='store_true',
         default=False,
-        help='Include apps that are not installable (e.g. that have to be activated on Origin)'
+        help='Include assets that are not installable.'
     )
-    list_parser.add_argument('--csv', dest='csv', action='store_true', help='List assets in CSV format')
-    list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='List assets in TSV format')
-    list_parser.add_argument('--json', dest='json', action='store_true', help='List assets in JSON format')
+    list_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in in CSV format')
+    list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in in TSV format')
+    list_parser.add_argument('--json', dest='json', action='store_true', help='Output in in JSON format')
     list_parser.add_argument('-f', '--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
     list_parser.add_argument(
-        '-c',
-        '--category',
-        metavar='<category>',
-        dest='category',
+        '-fc',
+        '--filter-category',
+        dest='filter_category',
         action='store',
         help='Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial'
     )
