@@ -2,23 +2,35 @@
 
 ## A free and open-source Epic Games Assets Manager for Unreal Engine
 
-_*An Epic Launcher alternative available on all Windows/Linux/MacOs*_
+_An Epic Launcher Asset management alternative available on all Platforms_
 
 UEVaultManager is an open-source assets manager that can list assets and their data from the Epic Games Marketplace.
+It's developed Python, so it can run on any platform that support this language.
 
 Its main purpose is to list the assets (with or without user login), filter (optional) and save the list into a file that can be reused later as a
 data source (for instance in an Excel sheet).
 
 In future versions, this application will also offer a GUI, and will be able to read directly the result file, display and edit the assets list.
 
-Please read the [config file](#config-file) and [cli usage](#usage) sections before creating an issue to avoid invalid reports.
+Please read the [config file](#config-file) and [cli usage](#usage) sections before creating an issue to avoid invalid issu reports.
 
-or [create an issue on GitHub](https://github.com/LaurentOngaro/UEVaultManager/issues/new/choose), so we can fix it!
+### Notes: 
 
-**Note:** UEVaultManager is currently a CLI (command-line interface) application without a graphical user interface (GUI),
+UEVaultManager is currently a CLI (command-line interface) application without a graphical user interface (GUI),
 it has to be run from a terminal (e.g. a Linux Shell, a PowerShell or a Dos Console)
 
-**Implemented Features:**
+If you find a problem with this app, please note that it's a free app, and it 's made on my spare time. 
+So be patient and comprehensive, you can try to solve it by your own means if possible.
+
+If you're stuck, you can [create an issue on GitHub](https://github.com/LaurentOngaro/UEVaultManager/issues/new/choose), so I'll be aware of, and I'll try to fix it, as quick as I can.
+
+_**All bug reports, PR, ideas, improvement suggestions, code correction... are welcome !**_
+
+Released under [GNU General Public License v3.0](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/LICENSE)
+
+**THIS TOOL IS PROVIDED AS IT IS. NO WARRANTY . AND, PLEASE, NO COMPLAIN . THANKS**
+
+### Implemented Features:
 
 - Authenticating with Epic's service
 - Listing and getting data about assets
@@ -26,26 +38,29 @@ it has to be run from a terminal (e.g. a Linux Shell, a PowerShell or a Dos Cons
   - extras data grabbed from the marketplace page of an asset : price, review, purchased or not...
 - Using a cache system to avoid getting data using API calls and web scrapping each time the app is run. The delay of cache conservation can
   be set in the configuration file
-- Filtering the asset list by category before their listing (via the -c | --category optional arguments)
+- Filtering the asset list by category before their listing (via the -fc | --filter-category optional arguments)
 - Saving the resulting list in a csv or a json file (via the -o | --output optional arguments)
 - Adding (and saving) comments, personal note... on each asset (NO GUI yet, must be done directly in the result files)
 - Saving the metadata and the extras data in individual json files (one for each asset) in sub-folders of the config folder
 - Persisting user data for each asset (see the [Output file](#the-output-file) section below)
 
-**Planned Features:**
+### Planned Features
 
 - Simple GUI for managing assets (WIP)
 - editing all the assets data using a GUI (WIP)
 - Install and download assets into Unreal VaultCache or projects folders
 
-**Special thanks:**
+### Special thanks
 
-This code is mainly a lighter version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some addition regarding the listing
-and the
-management of unreal engine marketplace assets.
-Thanks to the Legendary team for the fantastic work on their tool.
+At its start, this code was mainly a lighter and improved version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some addition regarding the listing
+and the management of unreal engine marketplace assets.
+So Thanks to the Legendary team for the fantastic work on their tool !!
 
-## Requirements
+Till now, without it and its server REST API, This app won't be able to use the Epic API, specially the authentication part.
+
+## How to run/install
+
+### Requirements
 
 - Linux, Windows (8.1+), or macOS (12.0+)
   + 32-bit operating systems are not supported
@@ -56,16 +71,14 @@ Thanks to the Legendary team for the fantastic work on their tool.
   + (optional) `pywebview` for webview-based login
   + (optional) `setuptools` and `wheel` for setup/building
 
-## How to run/install
-
-#### Prerequisites
+### Prerequisites
 
 - To prevent problems with permissions during installation, please upgrade your `pip` by running `python -m pip install -U pip --user`.
 - Install python3.9, setuptools, wheel, and requests
 
 > **Tip:** You may need to replace `python` in the above command with `python3` on Linux/macOS.
 
-### Directly from the repo (for dev/testing)
+### Directly from the repo 
 
 #### Windows example
 
@@ -132,7 +145,7 @@ Note that on Linux glibc >= 2.25 is required, so older distributions such as Ubu
 
 To log in:
 
-````
+````bash
 UEVaultManager auth
 ````
 
@@ -148,7 +161,7 @@ Note that this will log you out of the Epic Launcher.
 
 Listing your asset
 
-````
+````bash
 UEVaultManager list
 ````
 
@@ -183,9 +196,9 @@ Commands:
     auth                Authenticate with the Epic Games Store
     cleanup             Remove old temporary, metadata, and manifest files
     info                Prints info about specified app name or manifest
-    list                List available assets
+    list                List available assets. It could take some time.
     list-files          List files in manifest
-    status              Show UEVaultManager status information
+    status              Show UEVaultManager status information. Will update the assets list and could take some time.
 
 Individual command help:
 
@@ -331,7 +344,7 @@ If a file name is missing, empty or set to '' the corresponding log feature will
 - ignored assets file log
   - file is defined by the setting: 'ignored_assets_filename_log (default is ~/.config/ignored_assets.log)'
   - each asset listed in the file has been ignored during the process. Possible reasons are: not a UE asset, not an asset, asset filtered by
-    category (-c option)
+    category (-fc option)
 - not found assets log
   - file is defined by the setting: 'notfound_assets_filename_log (default is ~/.config/notfound_assets.log)'
   - each asset listed in the file has not been found during the grabbing process (extras data). Possible reasons are: invalid, obsolete or removed
@@ -411,7 +424,7 @@ Each asset will also have its data saved in to different json files:
 
 Note:
 
-- filtering data (using the -c optional arguments) occurs BEFORE saving extras data
+- filtering data (using the -fc optional arguments) occurs BEFORE saving extras data
 - some "extras" json files can be missing where the corresponding "metadata" json file is present, that's because some data could have not been
   grabbed or the asset page not found during the process.
 - the grabbing processing for extras data is using a text based search, so the analysed asset page could be the bad one and results could be taken for
