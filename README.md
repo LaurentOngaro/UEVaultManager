@@ -169,7 +169,7 @@ This will fetch a list of asset available on your account, the first time may ta
 
 ## Usage
 
-````
+```text
 usage: UEVaultManager [-h] [-H] [-d] [-y] [-V] [-c <file>] [-J] [-A <seconds>] <command> ...
 
 exemple: 
@@ -287,9 +287,11 @@ optional arguments:
   --offline             Only print offline status information, do not login
   --json                Show status in JSON format
 
-````
+```
 
-## Config folder
+## Configuration 
+
+### Config folder
 
 Configuration file, log files and results files are stored by default in the data folder of the app.
 
@@ -298,13 +300,13 @@ The <data folder> location is:
 - for Linux: `~/.config/UEVaultManager/`
 - for Windows: `C:\users\<you_login_name>\.config\UEVaultManager\`
 
-## Config file
+### Config file
 
 UEVaultManager supports some settings in its config file `<data folder>/config.ini`:
 
 This is an example of this file content and the settings you can change:
 
-````ini
+```ini
 [UEVaultManager]
 log_level = debug
 ; locale override, must be in RFC 1766 format (e.g. "en-US")
@@ -331,7 +333,7 @@ ue_assets_max_cache_duration = 1296000
 ignored_assets_filename_log = ~/.config/ignored_assets.log
 notfound_assets_filename_log = ~/.config/notfound_assets.log
 bad_data_assets_filename_log = ~/.config/bad_data_assets.log
-````
+```
 
 ## Output Format and file
 
