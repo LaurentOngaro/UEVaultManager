@@ -5,14 +5,14 @@
 _An Epic Launcher Asset management alternative available on all Platforms_
 
 UEVaultManager is an open-source assets manager that can list assets and their data from the Epic Games Marketplace.
-It's developed Python, so it can run on any platform that support this language.
+It's developed in Python, so it can run on any platform that support this language.
 
 Its main purpose is to list the assets (with or without user login), filter (optional) and save the list into a file that can be reused later as a
-data source (for instance in an Excel sheet).
+data source (in an Excel sheet for instance).
 
 In future versions, this application will also offer a GUI, and will be able to read directly the result file, display and edit the assets list.
 
-Please read the [config file](#config-file) and [cli usage](#usage) sections before creating an issue to avoid invalid issu reports.
+Please read the [config file](#config-file) and [cli usage](#usage) sections before creating an issue to avoid invalid issue reports.
 
 ### Notes: 
 
@@ -35,24 +35,31 @@ Released under [GNU General Public License v3.0](https://github.com/LaurentOngar
 - Authenticating with Epic's service
 - Listing and getting data about assets
   - all the metadata that were already downloaded before by legendary: name, title, id, description, UE versions...
-  - extras data grabbed from the marketplace page of an asset : price, review, purchased or not...
+  - **extras data grabbed from the marketplace page of an asset : price, review, tags, purchased or not...**
 - Using a cache system to avoid getting data using API calls and web scrapping each time the app is run. The delay of cache conservation can
   be set in the configuration file
-- Filtering the asset list by category before their listing (via the -fc | --filter-category optional arguments)
-- Saving the resulting list in a csv or a json file (via the -o | --output optional arguments)
-- Adding (and saving) comments, personal note... on each asset (NO GUI yet, must be done directly in the result files)
+- **Filtering the asset list by category before their listing (via the -fc | --filter-category optional arguments)**
+- **Saving the resulting list in a csv or a json file (via the -o | --output optional arguments)**
 - Saving the metadata and the extras data in individual json files (one for each asset) in sub-folders of the config folder
-- Persisting user data for each asset (see the [Output file](#the-output-file) section below)
+- Preserving user data for each asset (see the [Output file](#the-output-file) section below). 
+  - Some fiels in the result file (comments, personal note...) will be protected and not overwritten by a future data update.
 
 ### Planned Features
 
-- Simple GUI for managing assets (WIP)
-- editing all the assets data using a GUI (WIP)
-- Install and download assets into Unreal VaultCache or projects folders
+#### WIP
+
+- Use an alternative url as source of data for the asset. Currently, the url is grabbed from the result page when searching the marketplace for the title of the asset.
+- Grabbing tags and saving in the asset marketplace 
+- Simple GUI for managing assets
+- Editing all the assets data using a GUI
+
+#### Not for now
+
+- Install and download assets into Unreal Engine VaultCache or into a project folder (Same feature as in Epic Game launcher)
 
 ### Special thanks
 
-At its start, this code was mainly a lighter and improved version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some addition regarding the listing
+This code was mainly a lighter, cleaned and improved version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some addition regarding the listing
 and the management of unreal engine marketplace assets.
 So Thanks to the Legendary team for the fantastic work on their tool !!
 
@@ -63,16 +70,17 @@ Till now, without it and its server REST API, This app won't be able to use the 
 ### Requirements
 
 - Linux, Windows (8.1+), or macOS (12.0+)
-  + 32-bit operating systems are not supported
-- python 3.9+ (64-bit)
-  + (Windows) `pythonnet` is not yet compatible with 3.10+, use 3.9 if you plan to install `pywebview`
+  - 32-bit operating systems are not supported
 - PyPI packages:
-  + `requests`
-  + (optional) `pywebview` for webview-based login
-  + (optional) `setuptools` and `wheel` for setup/building
+  - `requests`
+  - (optional) `setuptools` and `wheel` for setup/building
+  - (optional but recommended) `pywebview` for webview-based login
 
 ### Prerequisites
 
+- Be sure that pip is installed by running 
+  - for Linux or macOS (12.0+): `sudo apt install python3-pip` or `python -m ensurepip` or `python3 -m ensurepip` (depending on you os version)
+  - for Windows: `python -m ensurepip`
 - To prevent problems with permissions during installation, please upgrade your `pip` by running `python -m pip install -U pip --user`.
 - Install python3.9, setuptools, wheel, and requests
 
@@ -90,18 +98,18 @@ Till now, without it and its server REST API, This app won't be able to use the 
 
 ```batchfile
 git clone https://github.com/LaurentOngaro/UEVaultManager.git
+python3 -m pip install bs4
 cd UEVaultManager
 pip install .
 ```
 
 #### Ubuntu 20.04 example
 
-NOT TESTED BUT SHOULD RUN FINE
-
 Ubuntu 20.04's standard repositories include everything needed to install UEVaultManager:
 
 ````bash
 sudo apt install python3 python3-requests python3-setuptools-git
+python3 -m pip install bs4
 git clone https://github.com/LaurentOngaro/UEVaultManager.git
 cd UEVaultManager
 pip install .
@@ -113,8 +121,6 @@ the command:
 ```bash
 echo 'export PATH=$PATH:~/.local/bin' >> ~/.profile && source ~/.profile
 ```
-
-If the `UEVaultManager` executable is not available after installation, you may need to configure your `PATH` correctly.
 
 ### Direct installation (any)
 
@@ -143,7 +149,7 @@ Note that on Linux glibc >= 2.25 is required, so older distributions such as Ubu
 
 **Tip:** When using PowerShell with the standalone executable, you may need to replace `UEVaultManager` with `.\UEVaultManager` in the commands below.
 
-To log in:
+### log in:
 
 ````bash
 UEVaultManager auth
@@ -152,20 +158,29 @@ UEVaultManager auth
 If the pywebview package is installed (that is done by the installation process), this should open a new window with the Epic Login.
 
 Otherwise, authentication is a little finicky since we have to go through the Epic website and manually copy a code.
-The login page should open in your browser and after logging in you should be presented with a JSON response that contains a code ("
-authorizationCode"), just copy the code into the terminal and hit enter.
+The login page should open in your browser and after logging in you should be presented with a JSON response that contains a code ("authorizationCode"), just copy the code into the terminal and hit enter.
 
 Alternatively you can use the `--import` flag to import the authentication from the Epic Games Launcher
 
 Note that this will log you out of the Epic Launcher.
 
-Listing your asset
+### Listing your asset
 
 ````bash
 UEVaultManager list
 ````
 
 This will fetch a list of asset available on your account, the first time may take a while depending on how many asset you have.
+
+### Saving the list into a CSV file
+
+````bash
+UEVaultManager list -o "c:/ue_asset_list.csv"
+````
+
+You can edit some data in this file
+You can update the data in the file by running the same command again.
+Your changes could be preserved, depending on what fields (aka. columns) has been changed (see [the output file section](#the-output-file) bellow).
 
 ## Usage
 
@@ -293,7 +308,7 @@ optional arguments:
 
 ### Config folder
 
-Configuration file, log files and results files are stored by default in the data folder of the app.
+Configuration file, log files and results files are stored by default in the <data folder> of the app.
 
 The <data folder> location is:
 
@@ -341,7 +356,7 @@ bad_data_assets_filename_log = ~/.config/bad_data_assets.log
 
 3 different log files could be used during the process
 Use the config file to set their file name (and path).
-If a file name is missing, empty or set to '' the corresponding log feature will be disabled
+If a file name is missing, empty or set to '' the corresponding log feature will be disabled.
 
 - ignored assets file log
   - file is defined by the setting: 'ignored_assets_filename_log (default is ~/.config/ignored_assets.log)'
@@ -445,14 +460,13 @@ the wrong asset.
 
 To limit this error, a text comparison is done between the asset title in the metadata and the title in the asset page.
 If the values are different, the asset name is added to the file pointed by the "bad_data_assets_filename_log" value of the config file and its "
-error" field will contain a value different from 0. Each value correspond to a specific error code (
-see [error code](#possible-values-in-the-error-field) bellow)
+error" field will contain a value different from 0. Each value correspond to a specific error code (see [error code](#possible-values-in-the-error-field) bellow)
 
 To fix that, the search of the correct url for the asset must be done and validated manually.
 
 Once validated, the correct URL could be added into the result file, inside the Url field.
 As this field is marked as "protected", it won't be overwritten on the next data update and will be used as a source url for the page to be grabbed
-instead of making a new search for the asset page
+instead of making a new search for the asset page. (THIS IS STILL TO BE DONE / TODO)
 
 **Please Note that the user is responsable for respecting the attended format of the result file when modifying its content.
 Breaking its structure will probably result in losing the data the user has modified in the file when the application will be executed next time.**
