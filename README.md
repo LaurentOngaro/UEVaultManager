@@ -14,15 +14,16 @@ In future versions, this application will also offer a GUI, and will be able to 
 
 Please read the [config file](#config-file) and [cli usage](#usage) sections before creating an issue to avoid invalid issue reports.
 
-### Notes: 
+### Notes:
 
 UEVaultManager is currently a CLI (command-line interface) application without a graphical user interface (GUI),
 it has to be run from a terminal (e.g. a Linux Shell, a PowerShell or a Dos Console)
 
-If you find a problem with this app, please note that it's a free app, and it 's made on my spare time. 
+If you find a problem with this app, please note that it's a free app, and it 's made on my spare time.
 So be patient and comprehensive, you can try to solve it by your own means if possible.
 
-If you're stuck, you can [create an issue on GitHub](https://github.com/LaurentOngaro/UEVaultManager/issues/new/choose), so I'll be aware of, and I'll try to fix it, as quick as I can.
+If you're stuck, you can [create an issue on GitHub](https://github.com/LaurentOngaro/UEVaultManager/issues/new/choose), so I'll be aware of, and I'll
+try to fix it, as quick as I can.
 
 _**All bug reports, PR, ideas, improvement suggestions, code correction... are welcome !**_
 
@@ -41,15 +42,16 @@ Released under [GNU General Public License v3.0](https://github.com/LaurentOngar
 - **Filtering the asset list by category before their listing (via the -fc | --filter-category optional arguments)**
 - **Saving the resulting list in a csv or a json file (via the -o | --output optional arguments)**
 - Saving the metadata and the extras data in individual json files (one for each asset) in sub-folders of the config folder
-- Preserving user data for each asset (see the [Output file](#the-output-file) section below). 
+- Preserving user data for each asset (see the [Output file](#the-output-file) section below).
   - Some fiels in the result file (comments, personal note...) will be protected and not overwritten by a future data update.
 
 ### Planned Features
 
 #### WIP
 
-- Use an alternative url as source of data for the asset. Currently, the url is grabbed from the result page when searching the marketplace for the title of the asset.
-- Grabbing tags and saving in the asset marketplace 
+- Use an alternative url as source of data for the asset. Currently, the url is grabbed from the result page when searching the marketplace for the
+  title of the asset.
+- Grabbing tags and saving in the asset marketplace
 - Simple GUI for managing assets
 - Editing all the assets data using a GUI
 
@@ -59,11 +61,27 @@ Released under [GNU General Public License v3.0](https://github.com/LaurentOngar
 
 ### Special thanks
 
-This code was mainly a lighter, cleaned and improved version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some addition regarding the listing
+#### Legendary team
+
+<img src="https://repository-images.githubusercontent.com/249938026/80b18f80-96c7-11ea-9183-0a8c96e7cada" height="50" alt="jetbrains LOGO">
+
+This code was mainly a lighter, cleaned and improved version of the [Legendary](https://github.com/derrod/legendary) tool code base, with some
+addition regarding the listing
 and the management of unreal engine marketplace assets.
 So Thanks to the Legendary team for the fantastic work on their tool !!
 
 Till now, without it and its server REST API, This app won't be able to use the Epic API, specially the authentication part.
+
+#### Jetbrains
+
+<img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.png" height="50" alt="jetbrains LOGO">
+
+I intensively use JetBrains software for developing all my projects.
+
+Thanks to JetBrains for their support on this project through
+their [License Program For non-commercial open source development](https://www.jetbrains.com/community/opensource/#support)
+
+They tools are great ! If you don't know them, you should give them a try.
 
 ## How to run/install
 
@@ -78,7 +96,7 @@ Till now, without it and its server REST API, This app won't be able to use the 
 
 ### Prerequisites
 
-- Be sure that pip is installed by running 
+- Be sure that pip is installed by running
   - for Linux or macOS (12.0+): `sudo apt install python3-pip` or `python -m ensurepip` or `python3 -m ensurepip` (depending on you os version)
   - for Windows: `python -m ensurepip`
 - To prevent problems with permissions during installation, please upgrade your `pip` by running `python -m pip install -U pip --user`.
@@ -86,7 +104,7 @@ Till now, without it and its server REST API, This app won't be able to use the 
 
 > **Tip:** You may need to replace `python` in the above command with `python3` on Linux/macOS.
 
-### Directly from the repo 
+### Directly from the repo
 
 #### Windows example
 
@@ -158,7 +176,8 @@ UEVaultManager auth
 If the pywebview package is installed (that is done by the installation process), this should open a new window with the Epic Login.
 
 Otherwise, authentication is a little finicky since we have to go through the Epic website and manually copy a code.
-The login page should open in your browser and after logging in you should be presented with a JSON response that contains a code ("authorizationCode"), just copy the code into the terminal and hit enter.
+The login page should open in your browser and after logging in you should be presented with a JSON response that contains a code ("
+authorizationCode"), just copy the code into the terminal and hit enter.
 
 Alternatively you can use the `--import` flag to import the authentication from the Epic Games Launcher
 
@@ -304,7 +323,7 @@ optional arguments:
 
 ```
 
-## Configuration 
+## Configuration
 
 ### Config folder
 
@@ -390,7 +409,8 @@ before overwriting the result file.
 These are the fields (or column headings) that will be written in that order into the CSV file (or the names of the fields ins the Json file).
 The value is False if its content is not preserved, and True if it is preserved (and can be used to store persistant data).
 
-These value are defined by the CSV_headings variable at the beginning of the [core.py](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/core.py) file:
+These value are defined by the CSV_headings variable at the beginning of
+the [core.py](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/core.py) file:
 
 ```python
 headings = {
@@ -460,7 +480,8 @@ the wrong asset.
 
 To limit this error, a text comparison is done between the asset title in the metadata and the title in the asset page.
 If the values are different, the asset name is added to the file pointed by the "bad_data_assets_filename_log" value of the config file and its "
-error" field will contain a value different from 0. Each value correspond to a specific error code (see [error code](#possible-values-in-the-error-field) bellow)
+error" field will contain a value different from 0. Each value correspond to a specific error code (
+see [error code](#possible-values-in-the-error-field) bellow)
 
 To fix that, the search of the correct url for the asset must be done and validated manually.
 
@@ -478,7 +499,8 @@ good idea.
 ### possible values in the error Field
 
 The "Grab result" field of each asset contains a value that indicate how the process has run.
-These code are defined by the following enum at the beginning of the [api/egs.py](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/api/egs.py) file:
+These code are defined by the following enum at the beginning of
+the [api/egs.py](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/api/egs.py) file:
 
 ```pyhton
 class GrabResult(Enum):
