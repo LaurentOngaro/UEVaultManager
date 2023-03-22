@@ -144,8 +144,6 @@ echo 'export PATH=$PATH:~/.local/bin' >> ~/.profile && source ~/.profile
 
 #### Python Package on [pypi](https://pypi.org) (any)
 
-**NOT DONE FOR NOW / TODO**
-
 ```bash
 pip install UEVaultManager
 ```

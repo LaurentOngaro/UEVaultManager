@@ -55,6 +55,6 @@ setup(
         'Operating System :: Microsoft',
         'Intended Audience :: End Users/Desktop',
         'Topic :: Games/Entertainment',
-        'Development Status :: 0.9 - beta',
+        'Development Status :: 4 - Beta',
     ]
 )
