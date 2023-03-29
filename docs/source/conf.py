@@ -3,12 +3,8 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-import glob
 import os
-import re
 import sys
-from UEVaultManager import __name__, __version__, __license__, __author__, __author_email__, __copyright__, __description__
-from UEVaultManager.core import AppCore
 
 docs_src_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, docs_src_path)
@@ -63,12 +59,10 @@ autodoc_default_options = {
 }
 
 # General information about the project.
-project = __name__
-_full_version = __version__
-author = __author__
-copyright = __copyright__
-
-nitpick_ignore = [("py:obj", "UEVaultManager.core.AppCore.update_notice_enabled"), ("py:obj", "UEVaultManager.core.AppCore.update_check_enabled")]
+project = 'UEVaultManager'
+author = 'Laurent Ongaro'
+copyright = '2023 Laurent Ongaro'
+_full_version = '1.0.0'
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
