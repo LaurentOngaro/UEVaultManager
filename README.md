@@ -1,4 +1,4 @@
-# Welcome to UEVaultManager
+Welcome to UEVaultManager
 =======
 
 **UEVaultManager** is an open-source assets manager that can list assets and
