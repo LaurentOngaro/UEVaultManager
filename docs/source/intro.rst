@@ -1,5 +1,6 @@
 UEVaultManager
 ==============
+.. _intro:
 
 A free and open-source Epic Games Assets Manager for Unreal Engine
 ------------------------------------------------------------------
@@ -18,8 +19,7 @@ as a data source (in an Excel sheet for instance).
 In future versions, this application will also offer a GUI, and will be
 able to read directly the result file, display and edit the assets list.
 
-Please read the `config file <#config-file>`__ and `cli
-usage <#usage>`__ sections before creating an issue to avoid invalid
+Please read the :doc:`configuration` and :doc:`usage` sections before creating an issue to avoid invalid
 issue reports.
 
 Notes:
@@ -66,8 +66,7 @@ Implemented Features:
    –output optional arguments)**
 -  Saving the metadata and the extras data in individual json files (one
    for each asset) in sub-folders of the config folder
--  Preserving user data for each asset (see the `Output
-   file <#the-output-file>`__ section below).
+-  Preserving user data for each asset (see the :doc:`output` section).
 
    -  Some fiels in the result file (comments, personal note…) will be
       protected and not overwritten by a future data update.

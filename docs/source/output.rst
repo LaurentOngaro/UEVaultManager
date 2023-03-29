@@ -1,5 +1,6 @@
 Output Format and file
 ----------------------
+.. _output:
 
 Log files and debug
 ~~~~~~~~~~~~~~~~~~~
@@ -30,10 +31,8 @@ or set to ’’ the corresponding log feature will be disabled.
       (default is ~/.config/bad_data_assets.log)’
    -  each asset listed has different value in extras data and metadata.
       Reasons is: ambiguous asset name that leaded to an invalid search
-      result during the grabbing process. See the `how to fix invalid
-      search result during the grabbing
-      process <#how-to-fix-invalid-search-result-during-the-grabbing-process>`__
-      section bellow
+      result during the grabbing process. See the :ref:`how-to-fix-invalid-search-result-during-the-grabbing-process`
+      section.
 
 The output file
 ~~~~~~~~~~~~~~~
@@ -123,10 +122,10 @@ Note:
    not been grabbed or the asset page not found during the process.
 -  the grabbing processing for extras data is using a text based search,
    so the analysed asset page could be the bad one and results could be
-   taken for another asset. See the `how to fix invalid search result
-   during the grabbing
-   process <#how-to-fix-invalid-search-result-during-the-grabbing-process>`__
-   section bellow
+   taken for another asset. See the :ref:`how-to-fix-invalid-search-result-during-the-grabbing-process`
+   section.
+
+.. _how-to-fix-invalid-search-result-during-the-grabbing-process:
 
 how to fix invalid search result during the grabbing process
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -146,8 +145,7 @@ in the metadata and the title in the asset page. If the values are
 different, the asset name is added to the file pointed by the
 “bad_data_assets_filename_log” value of the config file and its ” error”
 field will contain a value different from 0. Each value correspond to a
-specific error code ( see `error
-code <#possible-values-in-the-error-field>`__ bellow)
+specific error code (see :ref:`possible-values-in-the-error-field`)
 
 To fix that, the search of the correct url for the asset must be done
 and validated manually.
@@ -167,6 +165,8 @@ Making a backup before any manual modification is certainly a good idea.
 Using a tool (e.g. a linter) to check if the structure of the file (json
 or CSV) is still correct before running the application again is also a
 very good idea.
+
+.. _possible-values-in-the-error-field:
 
 possible values in the error Field
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

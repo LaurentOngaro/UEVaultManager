@@ -1,5 +1,6 @@
 Usage
 -----
+.. _usage:
 
 .. code:: console
 

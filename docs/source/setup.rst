@@ -1,5 +1,6 @@
 How to run/install
 ------------------
+.. _setup:
 
 Requirements
 ~~~~~~~~~~~~

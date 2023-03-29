@@ -1,11 +1,10 @@
 Quickstart
 ----------
+.. _quickstart:
 
 **Tip:** When using PowerShell with the standalone executable, you may
 need to replace ``UEVaultManager`` with ``.\UEVaultManager`` in the
 commands below.
-
-.. _installation:
 
 Installation
 ~~~~~~~~~~~~
@@ -56,5 +55,4 @@ Saving the list into a CSV file
 
 You can edit some data in this file You can update the data in the file
 by running the same command again. Your changes could be preserved,
-depending on what fields (aka. columns) has been changed (see `the
-output file section <output>`__ bellow).
+depending on what fields (aka. columns) has been changed (see :doc:`output` section).

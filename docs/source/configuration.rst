@@ -1,5 +1,6 @@
 Configuration
 -------------
+.. _configuration:
 
 Config folder
 ~~~~~~~~~~~~~
