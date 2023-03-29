@@ -1,0 +1,7 @@
+requests==2.28.2
+setuptools==67.4.0
+beautifulsoup4~=4.11.2
+future~=0.18.3
+inflection~=0.5.1
+pywebview==4.0.2
+UEVaultManager
