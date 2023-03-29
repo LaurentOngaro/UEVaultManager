@@ -62,7 +62,7 @@ autodoc_default_options = {
 project = 'UEVaultManager'
 author = 'Laurent Ongaro'
 copyright = '2023 Laurent Ongaro'
-_full_version = '1.0.0'
+_full_version = '1.0.1'
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
