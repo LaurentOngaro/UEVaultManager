@@ -1,7 +1,7 @@
 Welcome to UEVaultManager
 =========================
 
-|pypi| |py_versions| |codecov| |docs| |tests| |style|
+|pypi| |py_versions| |github| |docs|
 
 .. |pypi| image:: https://img.shields.io/pypi/v/uevaultmanager.svg
     :target: https://pypi.python.org/pypi/uevaultmanager
@@ -11,14 +11,15 @@ Welcome to UEVaultManager
     :target: https://pypi.python.org/pypi/uevaultmanager
     :alt: Supported Python Versions
 
+.. |github| image:: https://img.shields.io/pypi/pyversions/uevaultmanager.svg
+    :target: https://github.com/LaurentOngaro/UEVaultManager
+
 .. |docs| image:: https://readthedocs.org/projects/uevaultmanager/badge/?version=latest
    :target:  https://uevaultmanager.readthedocs.io/en/latest/?badge=latest
 
-.. |style| image:: https://github.com/kiwi-lang/uevaultmanager/actions/workflows/style.yml/badge.svg?branch=master
-   :target: https://github.com/kiwi-lang/uevaultmanager/actions/workflows/style.yml
 
 **UEVaultManager** is an open-source assets manager that can list assets and
-their data from the Epic Games Marketplace. It’s developed in Python, so
+their data from the Epic Games Marketplace. It is developed in Python, so
 it can run on any platform that support this language.
 
 Its main purpose is to list the assets (with or without user login),
