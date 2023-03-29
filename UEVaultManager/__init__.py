@@ -1,8 +1,8 @@
 """UEVaultManager"""
 
 __name__ = 'UEVaultManager'
-__version__ = '1.0.1'
-__codename__ = 'Dragon+'
+__version__ = '1.0.2'
+__codename__ = 'Dragon+2'
 __author__ = 'Laurent Ongaro'
 __author_email__ = 'laurent@gameamea.com'
 __description__ = 'Free and open-source replacement for the Epic Games Launcher application, mainly to manage the assets for Unreal Engine'

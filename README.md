@@ -1,13 +1,22 @@
-Welcome to UEVaultManager’s documentation!
+Welcome to UEVaultManager
 ==========================================
 
-**UEVaultManager** is an open-source assets manager that can list assets and their data from the Epic Games Marketplace. It’s developed in Python, so
+| pypi                                                                                                                 | py_versions                                                                                                          | github                                                                                                                         | docs                                                                                                                               |
+|----------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| [![Current PyPi Version](https://img.shields.io/pypi/v/uevaultmanager)](https://pypi.python.org/pypi/uevaultmanager) | [![py_versions](https://img.shields.io/pypi/pyversions/uevaultmanager)](https://pypi.python.org/pypi/uevaultmanager) | [![github](https://img.shields.io/github/v/tag/LaurentOngaro/uevaultmanager)](https://github.com/LaurentOngaro/UEVaultManager) | [![docs](https://img.shields.io/readthedocs/uevaultmanager/latest)](https://uevaultmanager.readthedocs.io/en/latest/?badge=latest) |
+
+**UEVaultManager** is an open-source assets manager that can list assets and
+their data from the Epic Games Marketplace. It is developed in Python, so
 it can run on any platform that support this language.
 
-Its main purpose is to list the assets (with or without user login), filter (optional) and save the list into a file that can be reused later as a
-data source (in an Excel sheet for instance).
+Its main purpose is to list the assets (with or without user login),
+filter (optional) and save the list into a file that can be reused later
+as a data source (in an Excel sheet for instance).
 
-Note: This project is under active development.
+**This project is under active development**
+
+To go further, dive into [the documentation](https://uevaultmanager.readthedocs.io/en/latest/index.html) or just go
+for [a quickstart](https://uevaultmanager.readthedocs.io/en/latest/quickstart.html)
 
 Contents:
 
