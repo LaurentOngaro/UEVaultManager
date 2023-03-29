@@ -12,7 +12,7 @@ if sys.version_info < (3, 9):
 
 with open("README.md", "r") as fh:
     long_description_l = fh.readlines()
-    del long_description_l[2:5]  # remove discord/twitter link and logo
+    del long_description_l[4:10]  # keep only description text
     long_description = ''.join(long_description_l)
 
 setup(

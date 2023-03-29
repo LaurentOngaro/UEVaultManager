@@ -114,7 +114,7 @@ They tools are great ! If you don't know them, you should give them a try.
 3. open a command prompt or a terminal from this folder.
 4. run the following commands:
 
-```batchfile
+```sh
 git clone https://github.com/LaurentOngaro/UEVaultManager.git
 python3 -m pip install bs4
 cd UEVaultManager
@@ -125,18 +125,18 @@ pip install .
 
 Ubuntu 20.04's standard repositories include everything needed to install UEVaultManager:
 
-````bash
+```sh
 sudo apt install python3 python3-requests python3-setuptools-git
 python3 -m pip install bs4
 git clone https://github.com/LaurentOngaro/UEVaultManager.git
 cd UEVaultManager
 pip install .
-````
+```
 
 If the `UEVaultManager` executable is not available after installation, you may need to configure your `PATH` correctly. You can do this by running
 the command:
 
-```bash
+```sh
 echo 'export PATH=$PATH:~/.local/bin' >> ~/.profile && source ~/.profile
 ```
 
@@ -144,7 +144,7 @@ echo 'export PATH=$PATH:~/.local/bin' >> ~/.profile && source ~/.profile
 
 #### Python Package on [pypi](https://pypi.org) (any)
 
-```bash
+```sh
 pip install UEVaultManager
 ```
 
@@ -167,9 +167,9 @@ Note that on Linux glibc >= 2.25 is required, so older distributions such as Ubu
 
 ### log in:
 
-````bash
+```sh
 UEVaultManager auth
-````
+```
 
 If the pywebview package is installed (that is done by the installation process), this should open a new window with the Epic Login.
 
@@ -183,17 +183,17 @@ Note that this will log you out of the Epic Launcher.
 
 ### Listing your asset
 
-````bash
+```sh
 UEVaultManager list
-````
+```
 
 This will fetch a list of asset available on your account, the first time may take a while depending on how many asset you have.
 
 ### Saving the list into a CSV file
 
-````bash
+```sh
 UEVaultManager list -o "c:/ue_asset_list.csv"
-````
+```
 
 You can edit some data in this file
 You can update the data in the file by running the same command again.
@@ -500,7 +500,7 @@ The "Grab result" field of each asset contains a value that indicate how the pro
 These code are defined by the following enum at the beginning of
 the [api/egs.py](https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/api/egs.py) file:
 
-```pyhton
+```python
 class GrabResult(Enum):
     NO_ERROR = 0
     INCONSISTANT_DATA = 1

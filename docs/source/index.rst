@@ -1,22 +1,31 @@
-Welcome to Lumache's documentation!
-===================================
 
-**Lumache** (/lu'make/) is a Python library for cooks and food lovers
-that creates recipes mixing random ingredients.
-It pulls data from the `Open Food Facts database <https://world.openfoodfacts.org/>`_
-and offers a *simple* and *intuitive* API.
+Welcome to UEVaultManager's documentation!
+==========================================
+.. UEVaultManager documentation master file, created by
+   sphinx-quickstart on Tue Mar 28 10:41:30 2023.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
-Check out the :doc:`usage` section for further information, including
-how to :ref:`installation` the project.
+
+**UEVaultManager** is an open-source assets manager that can list assets and
+their data from the Epic Games Marketplace. It’s developed in Python, so
+it can run on any platform that support this language.
+
+Its main purpose is to list the assets (with or without user login),
+filter (optional) and save the list into a file that can be reused later
+as a data source (in an Excel sheet for instance).
+
 
 .. note::
-
    This project is under active development.
 
-Contents
---------
-
 .. toctree::
+   :maxdepth: 2
+   :caption: Contents:
 
+   intro
+   quickstart
+   setup
    usage
-   api
+   configuration
+   output
