@@ -3,18 +3,18 @@ Welcome to UEVaultManager
 
 |pypi| |py_versions| |github| |docs|
 
-.. |pypi| image:: https://img.shields.io/pypi/v/uevaultmanager.svg
+.. |pypi| image:: https://img.shields.io/pypi/v/uevaultmanager
     :target: https://pypi.python.org/pypi/uevaultmanager
     :alt: Current PyPi Version
 
-.. |py_versions| image:: https://img.shields.io/pypi/pyversions/uevaultmanager.svg
+.. |py_versions| image:: https://img.shields.io/pypi/pyversions/uevaultmanager
     :target: https://pypi.python.org/pypi/uevaultmanager
     :alt: Supported Python Versions
 
-.. |github| image:: https://img.shields.io/pypi/pyversions/uevaultmanager.svg
+.. |github| image:: https://img.shields.io/github/v/tag/LaurentOngaro/uevaultmanager
     :target: https://github.com/LaurentOngaro/UEVaultManager
 
-.. |docs| image:: https://readthedocs.org/projects/uevaultmanager/badge/?version=latest
+.. |docs| image:: https://img.shields.io/readthedocs/uevaultmanager/latest
    :target:  https://uevaultmanager.readthedocs.io/en/latest/?badge=latest
 
 
