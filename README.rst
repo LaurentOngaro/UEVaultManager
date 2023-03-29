@@ -28,4 +28,4 @@ as a data source (in an Excel sheet for instance).
 
 **This project is under active development**
 
-To go further, dive into the [documentation](docs/build/html/index.html) or just go for a [quickstart](docs/build/html/quickstart.html)
+To go further, dive into `the documentation <https://uevaultmanager.readthedocs.io/en/latest/index.html>` or just go for `a quickstart <https://uevaultmanager.readthedocs.io/en/latest/quickstart.html>`
