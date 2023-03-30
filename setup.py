@@ -1,22 +1,19 @@
 # !/usr/bin/env python
 # coding: utf-8
 
-import os
 import sys
+from pathlib import Path
 
 from setuptools import setup
 
-from UEVaultManager import __name__, __version__, __license__, __author__, __author_email__, __copyright__, __description__,__url__
+from UEVaultManager import __name__, __version__, __license__, __author__, __author_email__, __copyright__, __description__, __url__
 
 if sys.version_info < (3, 9):
     sys.exit('python 3.9 or higher is required for UEVaultManager')
 
-root_path = os.path.dirname(os.path.abspath(__file__))
-readme_path = os.path.abspath(os.path.join(root_path, 'README.md'))
-
-with open(readme_path, 'r') as fh:
-    long_description_l = fh.readlines()
-    long_description = ''.join(long_description_l[8:16])  # keep only description text
+this_directory = Path(__file__).parent
+__long_description__ = (this_directory / "README.md").read_text()
+# __long_description__ = ''.join(__long_description__[8:16])  # keep only description text
 
 setup(
     name=__name__,
@@ -26,6 +23,7 @@ setup(
     author_email=__author_email__,
     copyright=__copyright__,
     description=__description__,
+    long_description=__long_description__,
     url=__url__,
     packages=[
         'UEVaultManager',  #
