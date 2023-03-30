@@ -45,7 +45,3 @@ Contents:
   * [possible values in the error Field](https://uevaultmanager.readthedocs.io/en/latest/output.html#possible-values-in-the-error-field)
 
 [Next](https://uevaultmanager.readthedocs.io/en/latest/intro.html "UEVaultManager")
-
-* * *
-
-© Copyright 2023 Laurent Ongaro.
