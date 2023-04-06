@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import subprocess
+import tkinter as tk
 import webbrowser
 from collections import namedtuple
 from datetime import datetime
@@ -15,6 +16,9 @@ from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from sys import exit, stdout, platform as sys_platform
+from tkinter import ttk
+
+import pandas as pd
 
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras
@@ -447,7 +451,7 @@ class UEVaultManagerCLI:
                         json_record_merged = update_and_merge_json_record_data(asset, assets_in_file, no_data_value)
                     else:
                         json_record_merged = asset[1]
-            #      output.write(",\n")
+                    #      output.write(",\n")
                     try:
                         asset_id = json_record_merged['Asset_id']
                         json_content[asset_id] = json_record_merged
@@ -803,6 +807,126 @@ class UEVaultManagerCLI:
             return
         self.logger.info(f'Exchange code: {token["code"]}')
 
+    def edit_list(self, args):
+
+        class DataTable(tk.Frame):
+
+            def __init__(self, parent, file_name='', file_format='csv'):
+                tk.Frame.__init__(self, parent)
+                self.parent = parent
+                self.data = {}
+                self.table = None
+                self.pages = []
+                self.current_page = 0
+                self.file_name = file_name
+                self.file_format = file_format
+
+            def initialize_table(self):
+                self.pages = [self.data[i:i + 20] for i in range(0, len(self.data), 20)]
+                self.table = ttk.Treeview(self, columns=list(self.pages[self.current_page].columns), show="headings")
+                self.table.bind("<Double-Button-1>", self.edit_cell)
+                for column in self.table["columns"]:
+                    self.table.heading(column, text=column)
+                self.load_current_page()
+
+                # Add horizontal scrollbar
+                scrollbar = ttk.Scrollbar(self, orient="horizontal", command=self.table.xview)
+                self.table.configure(xscrollcommand=scrollbar.set)
+                scrollbar.pack(side="bottom", fill="x")
+
+                # Limit window width to 1200 pixels
+                self.parent.maxsize(1200, self.parent.winfo_screenheight())
+                self.table.pack(side="left", fill="both", expand=True)
+
+            def load_current_page(self):
+                self.clear_table()
+                page_data = self.pages[self.current_page]
+                for index, row in page_data.iterrows():
+                    self.table.insert("", "end", values=list(row))
+
+            def next_page(self):
+                if self.current_page < len(self.pages) - 1:
+                    self.current_page += 1
+                    self.load_current_page()
+
+            def prev_page(self):
+                if self.current_page > 0:
+                    self.current_page -= 1
+                    self.load_current_page()
+
+            def clear_table(self):
+                self.data.delete(*self.table.get_children())
+
+            def edit_cell(self, event):
+                row = self.table.identify_row(event.y)
+                column = self.table.identify_column(event.x)
+                cell_value = self.table.item(row)["values"][int(column[1:])]
+                entry = tk.Entry(self.table, justify="center")
+                entry.insert(0, cell_value)
+                entry.focus()
+                entry.bind("<Return>", lambda l_event, l_row=row, l_column=column, l_entry=entry: self.save_cell(l_event, l_row, l_column, l_entry))
+                entry.bind("<Escape>", lambda l_event, l_entry=entry: self.cancel_edit(l_event, l_entry))
+                self.table.update_idletasks()
+                cell_rect = self.table.bbox(row, column)
+                entry.place(x=cell_rect[0], y=cell_rect[1], width=cell_rect[2] - cell_rect[0], height=cell_rect[3] - cell_rect[1])
+
+            def save_cell(self, event, row, column, entry):
+                new_value = entry.get()
+                self.data.iloc[int(row), int(column[1:])] = new_value
+                self.table.item(row, values=list(self.data.iloc[int(row)]))
+                entry.destroy()
+
+            def cancel_edit(self, event, entry):
+                entry.destroy()
+
+            def load_data(self):
+                try:
+                    if self.file_name.format == 'csv':
+                        # Read CSV file
+                        self.data = pd.read_csv(self.file_name)
+                    elif self.file_name.format == 'json':
+                        # Read Json file
+                        self.data = pd.read_json(self.file_name)
+                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
+                    self.logger.warning(f'Could not read data from the file {self.file_name}')
+
+                self.pages = [self.data[i:i + 20] for i in range(0, len(self.data), 20)]
+                self.current_page = 0
+
+            def reload_data(self):
+                self.load_data()
+                self.load_current_page()
+
+            def save_data(self):
+                self.data.to_csv(self.file_name, index=False)
+
+        if args.input:
+            # Create root window
+            root = tk.Tk()
+            root.title("Editable Data Table")
+
+            if args.csv or args.tsv:
+                file_format = 'csv'
+            elif args.json:
+                file_format = 'json'
+
+            # Create data table
+            table = DataTable(root, args.input, file_format)
+            table.pack(side="top", fill="both", expand=True)
+            table.reload_data()
+            table.initialize_table()
+
+            # Create reload and save buttons
+            reload_button = ttk.Button(root, text="Reload", command=table.reload_data)
+            save_button = ttk.Button(root, text="Save", command=table.save_data)
+            reload_button.pack(side="left", padx=10, pady=10)
+            save_button.pack(side="left", padx=10, pady=10)
+
+            # Start application
+            root.mainloop()
+        else:
+            self.logger.error('The file to read data from must be precised using the --input command option')
+
 
 def main():
     parser = argparse.ArgumentParser(description=f'UEVaultManager v{__version__} - "{__codename__}"')
@@ -836,6 +960,7 @@ def main():
     list_parser = subparsers.add_parser('list', aliases=('list-assets',), hide_aliases=True, help='List available assets')
     list_files_parser = subparsers.add_parser('list-files', help='List files in manifest')
     status_parser = subparsers.add_parser('status', help='Show UEVaultManager status information')
+    edit_parser = subparsers.add_parser('edit', aliases=('edit-assets',), hide_aliases=True, help='Edit the assets list file')
 
     # hidden commands have no help text
     get_token_parser = subparsers.add_parser('get-token')
@@ -916,6 +1041,13 @@ def main():
     get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
     get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
 
+    edit_parser.add_argument(
+        '-i', '--input', dest='input', metavar='<path/name>', action='store', help='The file name (with path) where the list should be read from'
+    )
+    edit_parser.add_argument('--csv', dest='csv', action='store_true', help='Input file is in CSV format')
+    edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
+    edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
+
     args, extra = parser.parse_known_args()
 
     if args.version:
@@ -995,6 +1127,8 @@ def main():
             cli.cleanup(args)
         elif args.subparser_name == 'get-token':
             cli.get_token(args)
+        elif args.subparser_name in {'edit', 'edit-assets'}:
+            cli.edit_list(args)
     except KeyboardInterrupt:
         cli.logger.info('Command was aborted via KeyboardInterrupt, cleaning up...')
 
