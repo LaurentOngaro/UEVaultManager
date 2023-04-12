@@ -5,3 +5,5 @@ future~=0.18.3
 pywebview==4.0.2
 UEVaultManager~=1.0.5
 pandas~=2.0.0
+pandastable~=0.13.1
+Pillow~=9.5.0
