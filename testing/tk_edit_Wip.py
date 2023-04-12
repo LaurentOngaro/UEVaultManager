@@ -1,3 +1,19 @@
+"""
+working file for the GUI integration in UEVaultManager
+
+Things to be done:
+- fix the edit_cell window
+- add columns filtering to the table. See tk_tablefilter_ex.py
+- add pagination info in a new frame. See tk_tablefilter_ex.py
+- check the TODOs
+- in edit_row_window, implement the prev and next buttons
+- split the code into several files.
+- Extract the classes in separate files
+- migrate the code into the UEVaultManager code base
+- document the new features
+- update the PyPi package
+"""
+
 import tkinter as tk
 import webbrowser
 import os
@@ -287,14 +303,16 @@ class EditRowWindow(tk.Toplevel):
             self.save_change()
 
     def prev_asset(self):
+        # TODO
         todo_message()
 
     def next_asset(self):
+        # TODO
         todo_message()
 
 
 class EditCellWindow(tk.Tk):
-
+    # TODO
     def __init__(self, title: str, geometry: str, icon: str):
         super().__init__()
 
