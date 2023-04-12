@@ -2,9 +2,8 @@
 working file for the GUI integration in UEVaultManager
 
 Things to be done:
-- fix the edit_cell window
-- add columns filtering to the table. See tk_tablefilter_ex.py
-- add pagination info in a new frame. See tk_tablefilter_ex.py
+- add columns filtering to the table. See tk_table_filter_ex.py
+- add pagination info in a new frame. See tk_table_filter_ex.py
 - check the TODOs
 - in edit_row_window, implement the prev and next buttons
 - split the code into several files.
@@ -12,13 +11,20 @@ Things to be done:
 - migrate the code into the UEVaultManager code base
 - document the new features
 - update the PyPi package
+
+Bugs to confirm:
+- save to file only save the current page
+
+Bugs to fix:
+- save to file only save the current page
+
 """
 
 import tkinter as tk
 import webbrowser
 import os
 from io import BytesIO
-from tkinter import filedialog as fd
+from tkinter import filedialog as fd, messagebox
 from tkinter import ttk
 from tkinter.messagebox import showinfo
 from urllib.parse import quote_plus
@@ -73,10 +79,15 @@ class EditableTable(Table):
         self.current_page = 0
         self.total_pages = 0
         self.data = None
+        self.must_save = False
         self.edit_row_window = None
-        self.edited_entries = None
-        self.edited_row_index = None
+        self.edit_row_entries = None
+        self.edit_row_index = None
+
         self.edit_cell_window = None
+        self.edit_cell_row_index = None
+        self.edit_cell_col_index = None
+        self.edit_cell_entry = None
 
         self.load_data()
         Table.__init__(self, container_frame, dataframe=self.data, **kwargs)
@@ -99,6 +110,12 @@ class EditableTable(Table):
         if self.current_page > 0:
             self.show_page(self.current_page - 1)
 
+    def first_page(self):
+        self.show_page(0)
+
+    def last_page(self):
+        self.show_page(self.total_pages - 1)
+
     def load_data(self):
         self.data = pd.read_csv(self.file)
         self.total_pages = (len(self.data) - 1) // self.rows_per_page + 1
@@ -108,25 +125,23 @@ class EditableTable(Table):
         self.show_page(self.current_page)
 
     def save_data(self):
+        self.must_save = False
         self.model.df.to_csv(self.file, index=False)
 
     def edit_row(self):
         row_selected = self.getSelectedRow()
         if row_selected is None:
             return
+
+        title = 'Edit current row values'
         width = 900
         height = 980  # 780
-
         # window is displayed at mouse position
         x = self.master.winfo_rootx()
         y = self.master.winfo_rooty()
 
         edit_row_window = EditRowWindow(
-            self.master,
-            title='Edit current row values',
-            geometry=f'{width}x{height}+{x}+{y}',
-            icon='../UEVaultManager/assets/main.ico',
-            editable_table=self
+            self.master, title=title, geometry=f'{width}x{height}+{x}+{y}', icon='../UEVaultManager/assets/main.ico', editable_table=self
         )
         edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
@@ -134,6 +149,7 @@ class EditableTable(Table):
         edit_row_window.row_frame.columnconfigure(0, weight=0)
         edit_row_window.row_frame.columnconfigure(1, weight=1)
 
+        # get and display the row data
         row_data = self.model.df.iloc[row_selected].to_dict()
         entries = {}
         image_url = ''
@@ -183,51 +199,79 @@ class EditableTable(Table):
 
         edit_row_window.preview_frame.canvas.create_image(100, 100, anchor="center", image=image_preview)
 
-        self.edited_entries = entries
-        self.edited_row_index = row_selected
+        self.edit_row_entries = entries
+        self.edit_row_index = row_selected
         self.edit_row_window = edit_row_window
 
     def save_row(self):
-        if self.edited_entries is None or self.edited_row_index is None:
+        if self.edit_row_entries is None or self.edit_row_index is None:
             return
 
-        entries = self.edited_entries
-        row_index = self.edited_row_index
-        print(f'row_index={row_index}')
-        for key, entry in entries.items():
-            # print(f'row_index={row_index} key={key} value={value}')
+        for key, entry in self.edit_row_entries.items():
             try:
                 # get value for an entry tk widget
                 value = entry.get()
             except TypeError:
                 # get value for a text tk widget
                 value = entry.get('1.0', 'end')
-            self.model.df.at[row_index, key] = value
+            self.model.df.at[self.edit_row_index, key] = value
 
-        self.edited_entries = None
-        self.edited_row_index = None
+        self.edit_row_entries = None
+        self.edit_row_index = None
         self.redraw()
+        self.must_save = True
         self.edit_row_window.close_window()
 
     def edit_cell(self, event):
-        row_clicked = self.get_row_clicked(event)
-        col_clicked = self.get_col_clicked(event)
-        if row_clicked is None or col_clicked is None:
+        row_index = self.get_row_clicked(event)
+        col_index = self.get_col_clicked(event)
+        if row_index is None or col_index is None:
             return
-        col_name = self.model.df.columns[col_clicked]
-        cell_value = self.model.df.iat[row_clicked, col_clicked]
 
-        self.edit_cell_window = EditCellWindow(title='Edit current cell value', geometry='300x80', icon='')
+        title = 'Edit current cell values'
+        width = 300
+        height = 80
+        # window is displayed at mouse position
+        x = self.master.winfo_rootx()
+        y = self.master.winfo_rooty()
 
-        ttk.Label(self.edit_cell_window, text=col_name).grid(row=0, column=0)
-        entry = ttk.Entry(self.edit_cell_window)
+        edit_cell_window = EditCellWindow(
+            self.master, title=title, geometry=f'{width}x{height}+{x}+{y}', icon='../UEVaultManager/assets/main.ico', editable_table=self
+        )
+        edit_cell_window.grab_set()
+        edit_cell_window.minsize(width, height)
+
+        # get and display the cell data
+        col_name = self.model.df.columns[col_index]
+        cell_value = self.model.df.iat[row_index, col_index]
+        ttk.Label(edit_cell_window.row_frame, text=col_name).pack(side=tk.LEFT)
+        entry = ttk.Entry(edit_cell_window.row_frame)
         entry.insert(0, cell_value)
-        entry.grid(row=0, column=1, sticky=tk.W)
+        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-    def save_cell(self, row_index, col_index, entry):
-        self.model.df.iat[row_index, col_index] = entry.get()
+        self.edit_cell_entry = entry
+        self.edit_cell_row_index = row_index
+        self.edit_cell_col_index = col_index
+        self.edit_cell_window = edit_cell_window
+
+    def save_cell(self):
+        if self.edit_cell_row_index is None or self.edit_cell_col_index is None or self.edit_cell_entry is None:
+            return
+
+        try:
+            # get value for an entry tk widget
+            value = self.edit_cell_entry.get()
+        except TypeError:
+            # get value for a text tk widget
+            value = self.edit_cell_entry.get('1.0', 'end')
+        self.model.df.iat[self.edit_cell_row_index, self.edit_cell_col_index] = value
+
+        self.edit_cell_entry = None
+        self.edit_cell_row_index = None
+        self.edit_cell_col_index = None
         self.redraw()
-        self.edit_cell_window.destroy()
+        self.must_save = True
+        self.edit_cell_window.close_window()
 
 
 class EditRowWindow(tk.Toplevel):
@@ -241,7 +285,7 @@ class EditRowWindow(tk.Toplevel):
         if icon != '':
             self.iconbitmap(icon)
 
-        # the photoimage is stored here to avoid garbage collection
+        # the photoimage is stored is the variable to avoid garbage collection
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.image_preview = None
 
@@ -311,10 +355,10 @@ class EditRowWindow(tk.Toplevel):
         todo_message()
 
 
-class EditCellWindow(tk.Tk):
+class EditCellWindow(tk.Toplevel):
     # TODO
-    def __init__(self, title: str, geometry: str, icon: str):
-        super().__init__()
+    def __init__(self, parent, title: str, geometry: str, icon: str, editable_table):
+        super().__init__(parent)
 
         self.title(title)
         self.geometry(geometry)
@@ -325,8 +369,41 @@ class EditCellWindow(tk.Tk):
         self.attributes('-toolwindow', True)
         self.resizable(True, False)
 
-        ttk.Button(self, text='Save Changes', command=todo_message).pack(ipadx=20, ipady=3, fill=tk.X, side=tk.LEFT)
-        ttk.Button(self, text='Cancel', command=todo_message).pack(ipadx=20, ipady=3, fill=tk.X, side=tk.RIGHT)
+        # create the data frame
+        self.row_frame = self.RowFrame(self, editable_table)
+        self.row_frame['padding'] = 5
+
+        # create the button frame
+        self.button_frame = self.ButtonFrame(self)
+        self.button_frame['padding'] = 5
+
+    class RowFrame(ttk.Frame):
+
+        def __init__(self, container, editable_table):
+            super().__init__(container)
+            self.editable_table = editable_table
+            self.pack(ipadx=5, ipady=5, fill=tk.X)
+
+    class ButtonFrame(ttk.Frame):
+
+        def __init__(self, container):
+            super().__init__(container)
+            self.button_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
+            self.pack(ipadx=5, ipady=5, fill=tk.X)
+            ttk.Button(self, text='Cancel', command=container.close_window).pack(**self.button_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**self.button_def_options, side=tk.RIGHT)
+
+    def close_window(self):
+        self.destroy()
+
+    def save_change(self):
+        self.row_frame.editable_table.save_cell()
+
+    def on_key_press(self, event):
+        if event.keysym == 'Escape':
+            self.close_window()
+        elif event.keysym == 'Return':
+            self.save_change()
 
 
 class AppWindow(tk.Tk):
@@ -356,6 +433,7 @@ class AppWindow(tk.Tk):
         self.button_frame = self.ButtonFrame(self)
 
         self.bind('<Key>', self.on_key_press)
+        self.protocol("WM_DELETE_WINDOW", self.on_close())
 
     class TableFrame(ttk.Frame):
 
@@ -373,15 +451,22 @@ class AppWindow(tk.Tk):
             self.pack(padx=5, pady=5, ipadx=5, ipady=5, fill=tk.X)
             editable = container.table_frame.editable_table
 
+            ttk.Button(container, text='First Page', command=editable.first_page).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Prev Page', command=editable.prev_page).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Next Page', command=editable.next_page).pack(**self.button_def_options, side=tk.LEFT)
+            ttk.Button(container, text='Last Page', command=editable.last_page).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Edit Row', command=editable.edit_row).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Reload Content', command=editable.reload_data).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Save Changes', command=container.save_changes).pack(**self.button_def_options, side=tk.LEFT)
+            ttk.Button(container, text='Save File', command=container.save_changes).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Load a file', command=container.select_file).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Quit', command=container.close_window).pack(**self.button_def_options, side=tk.RIGHT)
+            ttk.Button(container, text='Quit', command=container.on_close).pack(**self.button_def_options, side=tk.RIGHT)
 
-    def close_window(self):
+    def on_close(self):
+        if self.table_frame.editable_table.must_save:
+            if messagebox.askokcancel(
+                "Quitter l'application", "Des modifications on été effectuées. Voulez-vous les enregistrer dans le fichier source ?"
+            ):
+                self.save_changes()
         self.quit()
 
     def save_changes(self):
@@ -389,7 +474,7 @@ class AppWindow(tk.Tk):
 
     def on_key_press(self, event):
         if event.keysym == 'Escape':
-            self.close_window()
+            self.on_close()
         elif event.keysym == 'Return':
             self.table_frame.editable_table.edit_row()
 
@@ -401,6 +486,7 @@ class AppWindow(tk.Tk):
         showinfo(title=appTitle, message=f'The file {filename} as been read')
         self.table_frame.editable_table.file = filename
         self.table_frame.editable_table.load_data()
+        self.table_frame.editable_table.show_page(0)
 
 
 if __name__ == '__main__':
