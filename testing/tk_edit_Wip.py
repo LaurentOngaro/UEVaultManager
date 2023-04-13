@@ -45,6 +45,24 @@ def todo_message():
     showinfo(title=appTitle, message=msg)
 
 
+def convert_to_bool(x):
+    try:
+        if str(x).lower() in ('1', '1.0', 'true', 'yes', 'y', 't'):
+            return True
+        else:
+            return False
+    except ValueError:
+        return False
+
+
+# convert x to a datetime using the format in csv_datetime_format
+def convert_to_datetime(x):
+    try:
+        return datetime.datetime.strptime(x, csv_datetime_format)
+    except ValueError:
+        return ''
+
+
 class WebImage:
 
     def __init__(self, url):
@@ -77,11 +95,18 @@ class WebImage:
 class EditableTable(Table):
 
     def __init__(self, container_frame=None, file=None, **kwargs):
+        self.container_frame = container_frame
         self.file = file
-        self.rows_per_page = 35
+
+        self.rows_per_page = 32
         self.current_page = 0
         self.total_pages = 0
+        self.pagination_enabled = True
+
         self.data = None
+        # Initialize filtered DataFrame
+        self.data_filtered = None
+
         self.must_save = False
         self.edit_row_window = None
         self.edit_row_entries = None
@@ -93,17 +118,26 @@ class EditableTable(Table):
         self.edit_cell_entry = None
 
         self.load_data()
-        Table.__init__(self, container_frame, dataframe=self.data, **kwargs,showtoolbar=True, showstatusbar=True)
+        Table.__init__(self, container_frame, dataframe=self.data, **kwargs, showtoolbar=True, showstatusbar=True)
         # self.bind('<Double-Button-1>', self.edit_row)
         self.bind('<Double-Button-1>', self.edit_cell)
 
-    def show_page(self, page):
-        start = page * self.rows_per_page
-        end = start + self.rows_per_page
-        data = self.data.iloc[start:end]
-        self.updateModel(TableModel(data))
+    def show_page(self, page=None):
+        if page is None:
+            page = self.current_page
+        if self.pagination_enabled:
+            # Calculate start and end rows for current page
+            self.current_page = page
+            start = page * self.rows_per_page
+            end = start + self.rows_per_page
+            # Update table with data for current page
+            self.model.df = self.data.iloc[start:end]
+        else:
+            # Update table with all data
+            self.model.df = self.data_filtered
+            self.current_page = 0
+        # self.updateModel(TableModel(data))
         self.redraw()
-        self.current_page = page
 
     def next_page(self):
         if self.current_page < self.total_pages - 1:
@@ -119,24 +153,13 @@ class EditableTable(Table):
     def last_page(self):
         self.show_page(self.total_pages - 1)
 
+    def toggle_pagination(self):
+        # Toggle pagination on/off and update table
+        self.pagination_enabled = not self.pagination_enabled
+        # Update table with data for current page or all data if pagination is disabled
+        self.show_page()
+
     def load_data(self):
-
-        def bool_convert(x):
-            try:
-                if str(x).lower in ('1', '1.0', 'true', 'yes', 'y', 't'):
-                    return True
-                else:
-                    return False
-            except ValueError:
-                return False
-
-        # convert x to a datetime using the format in csv_datetime_format
-        def date_convert(x):
-            try:
-                return datetime.datetime.strptime(x, csv_datetime_format)
-            except ValueError:
-                return ''
-
         csv_options = {
             'dtype': {
                 'Asset_id': str,  #
@@ -146,10 +169,10 @@ class EditableTable(Table):
                 'Review': float,  #
                 'Price': float,  #
                 'Old Price': float,  #
-                'On Sale': bool_convert,  #
-                'Purchased': bool_convert,  #
-                'Must Buy': bool_convert,  #
-                'Date Added': date_convert,  #
+                'On Sale': convert_to_bool,  #
+                'Purchased': convert_to_bool,  #
+                'Must Buy': convert_to_bool,  #
+                'Date Added': convert_to_datetime,  #
             },
             'on_bad_lines': 'warn',
             'encoding': "utf-8",
@@ -164,6 +187,8 @@ class EditableTable(Table):
                 self.data[col] = pd.to_datetime(self.data[col], format='ISO8601')
             except ValueError as error:
                 print(f'Could not convert column "{col}" to datetime. Error: {error}')
+
+        self.data_filtered = self.data
 
     def reload_data(self):
         self.load_data()
@@ -380,13 +405,13 @@ class EditRowWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            self.button_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
+            button_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
             self.pack(ipadx=5, ipady=5, fill=tk.X)
 
-            ttk.Button(self, text='Prev Asset', command=container.prev_asset).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(self, text='Next Asset', command=container.next_asset).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(self, text='Cancel', command=container.close_window).pack(**self.button_def_options, side=tk.RIGHT)
-            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**self.button_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Prev Asset', command=container.prev_asset).pack(**button_def_options, side=tk.LEFT)
+            ttk.Button(self, text='Next Asset', command=container.next_asset).pack(**button_def_options, side=tk.LEFT)
+            ttk.Button(self, text='Cancel', command=container.close_window).pack(**button_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**button_def_options, side=tk.RIGHT)
 
     def close_window(self):
         self.destroy()
@@ -410,7 +435,7 @@ class EditRowWindow(tk.Toplevel):
 
 
 class EditCellWindow(tk.Toplevel):
-    # TODO
+
     def __init__(self, parent, title: str, geometry: str, icon: str, editable_table):
         super().__init__(parent)
 
@@ -442,10 +467,10 @@ class EditCellWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            self.button_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
+            button_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
             self.pack(ipadx=5, ipady=5, fill=tk.X)
-            ttk.Button(self, text='Cancel', command=container.close_window).pack(**self.button_def_options, side=tk.RIGHT)
-            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**self.button_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Cancel', command=container.close_window).pack(**button_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**button_def_options, side=tk.RIGHT)
 
     def close_window(self):
         self.destroy()
@@ -501,21 +526,40 @@ class AppWindow(tk.Tk):
         def __init__(self, container):
             super().__init__(container)
 
-            self.button_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.BOTH, 'expand': False}
+            button_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.BOTH, 'expand': False}
             self.pack(padx=5, pady=5, ipadx=5, ipady=5, fill=tk.X)
             editable = container.table_frame.editable_table
 
-            ttk.Button(container, text='Zoom In', command=editable.zoom_in).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Zoom Out', command=editable.zoom_out).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='First Page', command=editable.first_page).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Prev Page', command=editable.prev_page).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Next Page', command=editable.next_page).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Last Page', command=editable.last_page).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Edit Row', command=editable.edit_row).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Reload Content', command=editable.reload_data).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Save to File', command=container.save_changes).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Load a file', command=container.select_file).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Quit', command=container.on_close).pack(**self.button_def_options, side=tk.RIGHT)
+            btn_zoom_in = ttk.Button(container, text='Zoom In', command=editable.zoom_in)
+            btn_zoom_in.pack(**button_def_options, side=tk.LEFT)
+            btn_zoom_out = ttk.Button(container, text='Zoom Out', command=editable.zoom_out)
+            btn_zoom_out.pack(**button_def_options, side=tk.LEFT)
+            btn_toggle_pagination = ttk.Button(container, text='Toggle Pagination', command=container.toggle_pagination)
+            btn_toggle_pagination.pack(**button_def_options, side=tk.LEFT)
+            btn_first_page = ttk.Button(container, text='First Page', command=editable.first_page)
+            btn_first_page.pack(**button_def_options, side=tk.LEFT)
+            btn_prev_page = ttk.Button(container, text='Prev Page', command=editable.prev_page)
+            btn_prev_page.pack(**button_def_options, side=tk.LEFT)
+            btn_next_page = ttk.Button(container, text='Next Page', command=editable.next_page)
+            btn_next_page.pack(**button_def_options, side=tk.LEFT)
+            btn_last_page = ttk.Button(container, text='Last Page', command=editable.last_page)
+            btn_last_page.pack(**button_def_options, side=tk.LEFT)
+            btn_edit_row = ttk.Button(container, text='Edit Row', command=editable.edit_row)
+            btn_edit_row.pack(**button_def_options, side=tk.LEFT)
+            btn_reload_data = ttk.Button(container, text='Reload Content', command=editable.reload_data)
+            btn_reload_data.pack(**button_def_options, side=tk.LEFT)
+            btn_save_changes = ttk.Button(container, text='Save to File', command=container.save_changes)
+            btn_save_changes.pack(**button_def_options, side=tk.LEFT)
+            btn_select_file = ttk.Button(container, text='Load a file', command=container.select_file)
+            btn_select_file.pack(**button_def_options, side=tk.LEFT)
+            btn_on_close = ttk.Button(container, text='Quit', command=container.on_close)
+            btn_on_close.pack(**button_def_options, side=tk.RIGHT)
+
+            # store the buttons that need to be disabled when the pagination is disabled
+            self.btn_first_page = btn_first_page
+            self.btn_prev_page = btn_prev_page
+            self.btn_next_page = btn_next_page
+            self.btn_last_page = btn_last_page
 
     def on_close(self):
         if self.table_frame.editable_table.must_save:
@@ -543,6 +587,22 @@ class AppWindow(tk.Tk):
         self.table_frame.editable_table.file = filename
         self.table_frame.editable_table.load_data()
         self.table_frame.editable_table.show_page(0)
+
+    def toggle_pagination(self):
+        self.table_frame.editable_table.toggle_pagination()
+        if not self.table_frame.editable_table.pagination_enabled:
+            # Disable prev/next buttons when pagination is disabled
+            self.button_frame.btn_first_page.config(state=tk.DISABLED)
+            self.button_frame.btn_prev_page.config(state=tk.DISABLED)
+            self.button_frame.btn_next_page.config(state=tk.DISABLED)
+            self.button_frame.btn_last_page.config(state=tk.DISABLED)
+        else:
+            # Enable prev/next buttons when pagination is enabled
+            self.button_frame.btn_first_page.config(state=tk.NORMAL)
+            self.button_frame.btn_prev_page.config(state=tk.NORMAL)
+            self.button_frame.btn_next_page.config(state=tk.NORMAL)
+            self.button_frame.btn_last_page.config(state=tk.NORMAL)
+        # Update table with data for current page or all data if pagination is disabled
 
 
 if __name__ == '__main__':
