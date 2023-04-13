@@ -1,16 +1,16 @@
 import tkinter as tk
+from tkinter import ttk
 import pandas as pd
 from pandastable import Table
 
 
-class Example(tk.Frame):
+class EditableTable(tk.Frame):
 
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
-        self.main = self.master
-        self.main.geometry('600x400+200+100')
-        self.main.title('Table app')
+        self.master.geometry('600x400+200+100')
+        self.master.title('Table app')
         self.currentPage = 0
         self.rowsPerPage = 10
         self.paginationEnabled = True
@@ -18,8 +18,11 @@ class Example(tk.Frame):
         # Load data from CSV file
         self.df = pd.read_csv('../results/list.csv')
 
+        # Initialize filtered DataFrame
+        self.df_filtered = self.df
+
         # Create frame for table
-        f = tk.Frame(self.main)
+        f = tk.Frame(self.master)
         f.pack(fill=tk.BOTH, expand=1)
 
         # Create table to display data
@@ -27,12 +30,24 @@ class Example(tk.Frame):
         self.table.show()
 
         # Add buttons for pagination
-        self.prevButton = tk.Button(self.main, text='Previous', command=self.prevPage)
+        self.prevButton = tk.Button(self.master, text='Previous', command=self.prev_page)
         self.prevButton.pack(side=tk.LEFT)
-        tk.Label(self.main, textvariable=self.currentPage).pack(side=tk.LEFT)
-        self.nextButton = tk.Button(self.main, text='Next', command=self.nextPage)
+        tk.Label(self.master, textvariable=self.currentPage).pack(side=tk.LEFT)
+        self.nextButton = tk.Button(self.master, text='Next', command=self.next_page)
         self.nextButton.pack(side=tk.LEFT)
-        tk.Button(self.main, text='Toggle Pagination', command=self.togglePagination).pack(side=tk.LEFT)
+        tk.Button(self.master, text='Toggle Pagination', command=self.toggle_pagination).pack(side=tk.LEFT)
+
+        # Add Combobox for selecting column names
+        self.columnCombobox = ttk.Combobox(self.master, values=list(self.df.columns))
+        self.columnCombobox.pack(side=tk.LEFT)
+
+        # Add Entry for entering filter value
+        self.filterValueEntry = tk.Entry(self.master)
+        self.filterValueEntry.pack(side=tk.LEFT)
+
+        # Add Button to filter rows based on entered value
+        self.filterButton = tk.Button(self.master, text='Filter', command=self.filter_data)
+        self.filterButton.pack(side=tk.LEFT)
 
         # Update table with data for current page
         self.updateTable()
@@ -40,30 +55,30 @@ class Example(tk.Frame):
     def updateTable(self):
         if self.paginationEnabled:
             # Calculate start and end rows for current page
-            startRow = self.currentPage * self.rowsPerPage
-            endRow = startRow + self.rowsPerPage
+            start_row = self.currentPage * self.rowsPerPage
+            end_row = start_row + self.rowsPerPage
 
             # Update table with data for current page
-            self.table.model.df = self.df.iloc[startRow:endRow]
+            self.table.model.df = self.df_filtered.iloc[start_row:end_row]
             self.table.redraw()
         else:
             # Update table with all data
-            self.table.model.df = self.df
+            self.table.model.df = self.df_filtered
             self.table.redraw()
 
-    def prevPage(self):
+    def prev_page(self):
         # Go to previous page if not on first page
         if self.currentPage > 0:
             self.currentPage -= 1
             self.updateTable()
 
-    def nextPage(self):
+    def next_page(self):
         # Go to next page if not on last page
         if (self.currentPage + 1) * self.rowsPerPage < len(self.df):
             self.currentPage += 1
             self.updateTable()
 
-    def togglePagination(self):
+    def toggle_pagination(self):
         # Toggle pagination on/off and update table
         self.paginationEnabled = not self.paginationEnabled
         if not self.paginationEnabled:
@@ -81,6 +96,25 @@ class Example(tk.Frame):
         # Update table with data for current page or all data if pagination is disabled
         self.updateTable()
 
+    def filter_data(self):
+        # Get selected column and entered value
+        selected_column = self.columnCombobox.get()
+        filter_value = self.filterValueEntry.get()
 
-app = Example(tk.Tk())
+        if selected_column and filter_value:
+            # Filter DataFrame based on selected column and entered value
+            self.df_filtered = self.df[self.df[selected_column].astype(str).str.contains(filter_value)]
+
+            # Reset current page to 0
+            self.currentPage = 0
+
+            # Update table with filtered data
+            self.updateTable()
+        else:
+            # If no column/value is selected or entered, show the original data
+            self.df_filtered = self.df
+            self.updateTable()
+
+
+app = EditableTable(tk.Tk())
 app.mainloop()
