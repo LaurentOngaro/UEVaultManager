@@ -334,7 +334,7 @@ class UEVaultManagerCLI:
             items.extend(na_items)
 
         no_data_value = 0
-        no_data_text = 'N.A.'
+        no_data_text = 'N/A'
 
         # sort assets by name in reverse (to have the latest version first
         items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
