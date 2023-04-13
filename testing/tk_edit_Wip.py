@@ -6,6 +6,8 @@ Things to be done:
 - add pagination info in a new frame. See tk_table_filter_ex.py
 - check the TODOs
 - in edit_row_window, implement the prev and next buttons
+- save and load for tcsv files
+- save and load for json files
 - split the code into several files.
 - Extract the classes in separate files
 - migrate the code into the UEVaultManager code base
@@ -19,7 +21,7 @@ Bugs to fix:
 - save to file only save the current page
 
 """
-
+import datetime
 import tkinter as tk
 import webbrowser
 import os
@@ -35,6 +37,7 @@ from pandastable import Table, TableModel
 from PIL import ImageTk, Image
 
 appTitle = 'UEVM Gui'
+csv_datetime_format = '%y-%m-%d %H:%M:%S'
 
 
 def todo_message():
@@ -90,7 +93,7 @@ class EditableTable(Table):
         self.edit_cell_entry = None
 
         self.load_data()
-        Table.__init__(self, container_frame, dataframe=self.data, **kwargs)
+        Table.__init__(self, container_frame, dataframe=self.data, **kwargs,showtoolbar=True, showstatusbar=True)
         # self.bind('<Double-Button-1>', self.edit_row)
         self.bind('<Double-Button-1>', self.edit_cell)
 
@@ -117,16 +120,67 @@ class EditableTable(Table):
         self.show_page(self.total_pages - 1)
 
     def load_data(self):
-        self.data = pd.read_csv(self.file)
+
+        def bool_convert(x):
+            try:
+                if str(x).lower in ('1', '1.0', 'true', 'yes', 'y', 't'):
+                    return True
+                else:
+                    return False
+            except ValueError:
+                return False
+
+        # convert x to a datetime using the format in csv_datetime_format
+        def date_convert(x):
+            try:
+                return datetime.datetime.strptime(x, csv_datetime_format)
+            except ValueError:
+                return ''
+
+        csv_options = {
+            'dtype': {
+                'Asset_id': str,  #
+                'App name': str,  #
+            },
+            'converters': {
+                'Review': float,  #
+                'Price': float,  #
+                'Old Price': float,  #
+                'On Sale': bool_convert,  #
+                'Purchased': bool_convert,  #
+                'Must Buy': bool_convert,  #
+                'Date Added': date_convert,  #
+            },
+            'on_bad_lines': 'warn',
+            'encoding': "utf-8",
+        }
+        self.data = pd.read_csv(self.file, **csv_options)
         self.total_pages = (len(self.data) - 1) // self.rows_per_page + 1
+
+        # note "date added" does not use the same format as the other date columns
+        date_to_convert = ['Creation Date', 'Update Date']
+        for col in date_to_convert:
+            try:
+                self.data[col] = pd.to_datetime(self.data[col], format='ISO8601')
+            except ValueError as error:
+                print(f'Could not convert column "{col}" to datetime. Error: {error}')
 
     def reload_data(self):
         self.load_data()
         self.show_page(self.current_page)
 
     def save_data(self):
+        data = self.data.iloc[0:-1]
+        self.updateModel(TableModel(data))  # needed to ,restore all the data and not only the current page
+        self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=csv_datetime_format)
+        self.show_page(self.current_page)
         self.must_save = False
-        self.model.df.to_csv(self.file, index=False)
+
+    def zoom_in(self):
+        todo_message()
+
+    def zoom_out(self):
+        todo_message()
 
     def edit_row(self):
         row_selected = self.getSelectedRow()
@@ -451,13 +505,15 @@ class AppWindow(tk.Tk):
             self.pack(padx=5, pady=5, ipadx=5, ipady=5, fill=tk.X)
             editable = container.table_frame.editable_table
 
+            ttk.Button(container, text='Zoom In', command=editable.zoom_in).pack(**self.button_def_options, side=tk.LEFT)
+            ttk.Button(container, text='Zoom Out', command=editable.zoom_out).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='First Page', command=editable.first_page).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Prev Page', command=editable.prev_page).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Next Page', command=editable.next_page).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Last Page', command=editable.last_page).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Edit Row', command=editable.edit_row).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Reload Content', command=editable.reload_data).pack(**self.button_def_options, side=tk.LEFT)
-            ttk.Button(container, text='Save File', command=container.save_changes).pack(**self.button_def_options, side=tk.LEFT)
+            ttk.Button(container, text='Save to File', command=container.save_changes).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Load a file', command=container.select_file).pack(**self.button_def_options, side=tk.LEFT)
             ttk.Button(container, text='Quit', command=container.on_close).pack(**self.button_def_options, side=tk.RIGHT)
 
