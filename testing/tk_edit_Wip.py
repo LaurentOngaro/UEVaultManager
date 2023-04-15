@@ -2,7 +2,7 @@
 working file for the GUI integration in UEVaultManager
 
 Things to be done:
-- add columns filtering to the table. See tk_table_filter_ex.py
+- add columns filtering to the table. See tk_table_pagination_toggle_ex.py
 - add pagination info in a new frame. See tk_table_filter_ex.py
 - check the TODOs
 - in edit_row_window, implement the prev and next buttons
@@ -26,9 +26,9 @@ import tkinter as tk
 import webbrowser
 import os
 from io import BytesIO
-from tkinter import filedialog as fd, messagebox
+from tkinter import filedialog as fd, messagebox, filedialog
 from tkinter import ttk
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showinfo, showwarning
 from urllib.parse import quote_plus
 from urllib.request import urlopen
 
@@ -43,6 +43,11 @@ csv_datetime_format = '%y-%m-%d %H:%M:%S'
 def todo_message():
     msg = 'Not implemented yet'
     showinfo(title=appTitle, message=msg)
+
+
+def log(msg):
+    # will be replaced by a logger when integrated in UEVaultManager
+    print(msg)
 
 
 def convert_to_bool(x):
@@ -78,7 +83,7 @@ class WebImage:
             self.__image_pil = Image.open(my_picture)
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as e:
-            print(f'image could not be read from url {self.url}.\nError:{e}')
+            log(f'image could not be read from url {self.url}.\nError:{e}')
 
     def get(self):
         return self.__image_tk
@@ -88,7 +93,7 @@ class WebImage:
             self.__image_pil.thumbnail((new_width, new_height))
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as e:
-            print(f'Could notre get resized image from url {self.url}.\nError:{e}')
+            log(f'Could notre get resized image from url {self.url}.\nError:{e}')
         return self.__image_tk
 
 
@@ -186,7 +191,7 @@ class EditableTable(Table):
             try:
                 self.data[col] = pd.to_datetime(self.data[col], format='ISO8601')
             except ValueError as error:
-                print(f'Could not convert column "{col}" to datetime. Error: {error}')
+                log(f'Could not convert column "{col}" to datetime. Error: {error}')
 
         self.data_filtered = self.data
 
@@ -511,6 +516,7 @@ class AppWindow(tk.Tk):
         # create the button frame
         self.button_frame = self.ButtonFrame(self)
 
+
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close())
 
@@ -550,8 +556,12 @@ class AppWindow(tk.Tk):
             btn_reload_data.pack(**button_def_options, side=tk.LEFT)
             btn_save_changes = ttk.Button(container, text='Save to File', command=container.save_changes)
             btn_save_changes.pack(**button_def_options, side=tk.LEFT)
+            btn_export_button = tk.Button(container, text='Export Selection', command=container.export_selection)
+            btn_export_button.pack(side=tk.LEFT)
             btn_select_file = ttk.Button(container, text='Load a file', command=container.select_file)
             btn_select_file.pack(**button_def_options, side=tk.LEFT)
+            # add a sizegrip
+            ttk.Sizegrip(container).pack(side=tk.RIGHT)
             btn_on_close = ttk.Button(container, text='Quit', command=container.on_close)
             btn_on_close.pack(**button_def_options, side=tk.RIGHT)
 
@@ -602,7 +612,31 @@ class AppWindow(tk.Tk):
             self.button_frame.btn_prev_page.config(state=tk.NORMAL)
             self.button_frame.btn_next_page.config(state=tk.NORMAL)
             self.button_frame.btn_last_page.config(state=tk.NORMAL)
-        # Update table with data for current page or all data if pagination is disabled
+
+    def export_selection(self):
+        # Get selected row indices
+        selected_row_indices = self.table_frame.editable_table.multiplerowlist
+
+        if selected_row_indices:
+            # Get selected rows from filtered DataFrame
+            selected_rows = self.table_frame.editable_table.data_filtered.iloc[selected_row_indices]
+
+            # Open file dialog to select file to save exported rows
+            file_name = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                initialfile="export.csv",
+                initialdir=os.path.dirname(self.table_frame.editable_table.file),
+                filetypes=[("CSV files", "*.csv")]
+            )
+
+            if file_name:
+                # Export selected rows to the specified CSV file
+                selected_rows.to_csv(file_name, index=False)
+                showinfo(title=appTitle, message=f'Selected rows exported to "{file_name}"')
+            else:
+                showwarning(title=appTitle, message='No file has been selected')
+        else:
+            showwarning(title=appTitle, message='Select at least one row first')
 
 
 if __name__ == '__main__':
