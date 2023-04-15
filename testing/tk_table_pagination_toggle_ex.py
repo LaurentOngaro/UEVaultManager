@@ -13,8 +13,8 @@ class EditableTable(tk.Frame):
     def __init__(self, container_frame):
         tk.Frame.__init__(self, container_frame)
         self.container_frame = container_frame
-        self.master.geometry('1200x880')
-        self.master.title('Table app')
+        self.container_frame.geometry('1200x880')
+        self.container_frame.title('Table app')
         self.current_page = 0
         self.rowsPerPage = 35
         self.pagination_enabled = True
@@ -36,7 +36,6 @@ class EditableTable(tk.Frame):
         # Add buttons for pagination
         self.prevButton = tk.Button(self.master, text='Previous', command=self.prev_page)
         self.prevButton.pack(side=tk.LEFT)
-        tk.Label(self.master, textvariable=self.current_page).pack(side=tk.LEFT)
         self.nextButton = tk.Button(self.master, text='Next', command=self.next_page)
         self.nextButton.pack(side=tk.LEFT)
         tk.Button(self.master, text='Toggle Pagination', command=self.toggle_pagination).pack(side=tk.LEFT)
