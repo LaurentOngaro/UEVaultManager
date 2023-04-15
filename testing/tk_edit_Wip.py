@@ -516,7 +516,6 @@ class AppWindow(tk.Tk):
         # create the button frame
         self.button_frame = self.ButtonFrame(self)
 
-
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close())
 
@@ -532,34 +531,48 @@ class AppWindow(tk.Tk):
         def __init__(self, container):
             super().__init__(container)
 
-            button_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.BOTH, 'expand': False}
+            button_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
+            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 2, 'pady': 1, 'fill': tk.BOTH, 'expand': False}
+
             self.pack(padx=5, pady=5, ipadx=5, ipady=5, fill=tk.X)
             editable = container.table_frame.editable_table
 
-            btn_zoom_in = ttk.Button(container, text='Zoom In', command=editable.zoom_in)
+            lblf_display = ttk.LabelFrame(container, text='Display')
+            lblf_display.pack(**lblf_def_options, side=tk.LEFT)
+            btn_zoom_in = ttk.Button(lblf_display, text='Zoom In', command=editable.zoom_in)
             btn_zoom_in.pack(**button_def_options, side=tk.LEFT)
-            btn_zoom_out = ttk.Button(container, text='Zoom Out', command=editable.zoom_out)
+            btn_zoom_out = ttk.Button(lblf_display, text='Zoom Out', command=editable.zoom_out)
             btn_zoom_out.pack(**button_def_options, side=tk.LEFT)
-            btn_toggle_pagination = ttk.Button(container, text='Toggle Pagination', command=container.toggle_pagination)
+
+            lblf_pagination = ttk.LabelFrame(container, text='Pagination')
+            lblf_pagination.pack(**lblf_def_options, side=tk.LEFT)
+            btn_toggle_pagination = ttk.Button(lblf_pagination, text='Toggle Pagination', command=container.toggle_pagination)
             btn_toggle_pagination.pack(**button_def_options, side=tk.LEFT)
-            btn_first_page = ttk.Button(container, text='First Page', command=editable.first_page)
+            btn_first_page = ttk.Button(lblf_pagination, text='First Page', command=editable.first_page)
             btn_first_page.pack(**button_def_options, side=tk.LEFT)
-            btn_prev_page = ttk.Button(container, text='Prev Page', command=editable.prev_page)
+            btn_prev_page = ttk.Button(lblf_pagination, text='Prev Page', command=editable.prev_page)
             btn_prev_page.pack(**button_def_options, side=tk.LEFT)
-            btn_next_page = ttk.Button(container, text='Next Page', command=editable.next_page)
+            btn_next_page = ttk.Button(lblf_pagination, text='Next Page', command=editable.next_page)
             btn_next_page.pack(**button_def_options, side=tk.LEFT)
-            btn_last_page = ttk.Button(container, text='Last Page', command=editable.last_page)
+            btn_last_page = ttk.Button(lblf_pagination, text='Last Page', command=editable.last_page)
             btn_last_page.pack(**button_def_options, side=tk.LEFT)
-            btn_edit_row = ttk.Button(container, text='Edit Row', command=editable.edit_row)
+
+            lblf_content = ttk.LabelFrame(container, text='Content')
+            lblf_content.pack(**lblf_def_options, side=tk.LEFT)
+            btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=editable.edit_row)
             btn_edit_row.pack(**button_def_options, side=tk.LEFT)
-            btn_reload_data = ttk.Button(container, text='Reload Content', command=editable.reload_data)
+            btn_reload_data = ttk.Button(lblf_content, text='Reload Content', command=editable.reload_data)
             btn_reload_data.pack(**button_def_options, side=tk.LEFT)
-            btn_save_changes = ttk.Button(container, text='Save to File', command=container.save_changes)
+
+            lblf_files = ttk.LabelFrame(container, text='Files')
+            lblf_files.pack(**lblf_def_options, side=tk.LEFT)
+            btn_save_changes = ttk.Button(lblf_files, text='Save to File', command=container.save_changes)
             btn_save_changes.pack(**button_def_options, side=tk.LEFT)
-            btn_export_button = tk.Button(container, text='Export Selection', command=container.export_selection)
-            btn_export_button.pack(side=tk.LEFT)
-            btn_select_file = ttk.Button(container, text='Load a file', command=container.select_file)
+            btn_export_button = ttk.Button(lblf_files, text='Export Selection', command=container.export_selection)
+            btn_export_button.pack(**button_def_options, side=tk.LEFT)
+            btn_select_file = ttk.Button(lblf_files, text='Load a file', command=container.select_file)
             btn_select_file.pack(**button_def_options, side=tk.LEFT)
+
             # add a sizegrip
             ttk.Sizegrip(container).pack(side=tk.RIGHT)
             btn_on_close = ttk.Button(container, text='Quit', command=container.on_close)
@@ -573,9 +586,7 @@ class AppWindow(tk.Tk):
 
     def on_close(self):
         if self.table_frame.editable_table.must_save:
-            if messagebox.askokcancel(
-                "Quitter l'application", "Des modifications on été effectuées. Voulez-vous les enregistrer dans le fichier source ?"
-            ):
+            if messagebox.askokcancel('Exit the application', 'Changes have been made. Do you want to save them in the source file ?'):
                 self.save_changes()
         self.quit()
 
