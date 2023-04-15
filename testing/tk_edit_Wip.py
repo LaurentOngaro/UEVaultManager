@@ -2,7 +2,7 @@
 working file for the GUI integration in UEVaultManager
 
 Things to be done:
-- add columns filtering to the table. See tk_table_pagination_toggle_ex.py
+- add asset category direct selection (faster than text filtering)
 - add pagination info in a new frame. See tk_table_filter_ex.py
 - check the TODOs
 - in edit_row_window, implement the prev and next buttons
@@ -122,6 +122,9 @@ class EditableTable(Table):
         self.edit_cell_col_index = None
         self.edit_cell_entry = None
 
+        self.filter_data_column = None
+        self.filter_data_value = None
+
         self.load_data()
         Table.__init__(self, container_frame, dataframe=self.data, **kwargs, showtoolbar=True, showstatusbar=True)
         # self.bind('<Double-Button-1>', self.edit_row)
@@ -157,12 +160,6 @@ class EditableTable(Table):
 
     def last_page(self):
         self.show_page(self.total_pages - 1)
-
-    def toggle_pagination(self):
-        # Toggle pagination on/off and update table
-        self.pagination_enabled = not self.pagination_enabled
-        # Update table with data for current page or all data if pagination is disabled
-        self.show_page()
 
     def load_data(self):
         csv_options = {
@@ -205,6 +202,21 @@ class EditableTable(Table):
         self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=csv_datetime_format)
         self.show_page(self.current_page)
         self.must_save = False
+
+    def filter_data(self):
+        selected_column = self.filter_data_column
+        filter_value = self.filter_data_value
+
+        if selected_column and filter_value:
+            # Filter DataFrame based on selected column and entered value
+            self.data_filtered = self.data[self.data[selected_column].astype(str).str.contains(filter_value)]
+            self.current_page = 0
+            self.pagination_enabled = False  # disable pagination when filtering to see the result
+            self.show_page()
+        else:
+            # If no column/value is selected or entered, show the original data
+            self.data_filtered = self.data
+            self.show_page()
 
     def zoom_in(self):
         todo_message()
@@ -529,7 +541,18 @@ class AppWindow(tk.Tk):
     class ButtonFrame(ttk.Frame):
 
         def __init__(self, container):
+            # delete the temporary text in filter value entry
+            def del_filter_value_entry(e):
+                filter_value_entry.delete(0, 'end')
+
+            # run the filter and restore the default text
+            def run_filter():
+                container.filter_data(self.cbb_select_column.get(), self.filter_value_entry.get())
+                filter_value_entry.delete(0, 'end')
+                filter_value_entry.insert(0, default_search_text)
+
             super().__init__(container)
+            default_search_text = 'Search...'
 
             button_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 2, 'pady': 1, 'fill': tk.BOTH, 'expand': False}
@@ -564,6 +587,18 @@ class AppWindow(tk.Tk):
             btn_reload_data = ttk.Button(lblf_content, text='Reload Content', command=editable.reload_data)
             btn_reload_data.pack(**button_def_options, side=tk.LEFT)
 
+            lblf_filter = ttk.LabelFrame(container, text='Filter Rows')
+            lblf_filter.pack(**lblf_def_options, side=tk.LEFT)
+            cbb_select_column = ttk.Combobox(lblf_filter, values=list(editable.data.columns))
+            cbb_select_column.pack(**button_def_options, side=tk.LEFT)
+            filter_value_entry = ttk.Entry(lblf_filter, width=10)
+            filter_value_entry.insert(0, default_search_text)
+            filter_value_entry.pack(**button_def_options, side=tk.LEFT)
+            filter_value_entry.bind("<FocusIn>", del_filter_value_entry)
+
+            btn_filter_by_text = ttk.Button(lblf_filter, text='Filter', command=run_filter)
+            btn_filter_by_text.pack(**button_def_options, side=tk.LEFT)
+
             lblf_files = ttk.LabelFrame(container, text='Files')
             lblf_files.pack(**lblf_def_options, side=tk.LEFT)
             btn_save_changes = ttk.Button(lblf_files, text='Save to File', command=container.save_changes)
@@ -583,6 +618,9 @@ class AppWindow(tk.Tk):
             self.btn_prev_page = btn_prev_page
             self.btn_next_page = btn_next_page
             self.btn_last_page = btn_last_page
+            # store the controls that need to be accessible outside the class
+            self.cbb_select_column = cbb_select_column
+            self.filter_value_entry = filter_value_entry
 
     def on_close(self):
         if self.table_frame.editable_table.must_save:
@@ -609,8 +647,19 @@ class AppWindow(tk.Tk):
         self.table_frame.editable_table.load_data()
         self.table_frame.editable_table.show_page(0)
 
-    def toggle_pagination(self):
-        self.table_frame.editable_table.toggle_pagination()
+    def filter_data(self, column, value):
+        self.table_frame.editable_table.filter_data_column = column
+        self.table_frame.editable_table.filter_data_value = value
+        self.toggle_pagination(forced_value=False)
+        self.table_frame.editable_table.filter_data()
+
+    def toggle_pagination(self, forced_value=None):
+        if forced_value is not None:
+            self.table_frame.editable_table.pagination_enabled = forced_value
+        else:
+            self.table_frame.editable_table.pagination_enabled = not self.table_frame.editable_table.pagination_enabled
+        self.table_frame.editable_table.show_page()
+
         if not self.table_frame.editable_table.pagination_enabled:
             # Disable prev/next buttons when pagination is disabled
             self.button_frame.btn_first_page.config(state=tk.DISABLED)
@@ -651,5 +700,5 @@ class AppWindow(tk.Tk):
 
 
 if __name__ == '__main__':
-    main = AppWindow(title=appTitle, geometry='1200x890', icon='../UEVaultManager/assets/main.ico', file='../results/list.csv')
+    main = AppWindow(title=appTitle, geometry='1500x890', icon='../UEVaultManager/assets/main.ico', file='../results/list.csv')
     main.mainloop()
