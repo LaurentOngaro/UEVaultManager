@@ -109,7 +109,6 @@ class EditableTable(Table):
         self.pagination_enabled = True
 
         self.data = None
-        # Initialize filtered DataFrame
         self.data_filtered = None
 
         self.must_save = False
@@ -189,6 +188,14 @@ class EditableTable(Table):
                 self.data[col] = pd.to_datetime(self.data[col], format='ISO8601')
             except ValueError as error:
                 log(f'Could not convert column "{col}" to datetime. Error: {error}')
+
+        # note "date added" does not use the same format as the other date columns
+        col_as_cat = ['Category']
+        for col in col_as_cat:
+            try:
+                self.data[col].astype("category")
+            except ValueError as error:
+                log(f'Could not convert column "{col}" to category. Error: {error}')
 
         self.data_filtered = self.data
 
