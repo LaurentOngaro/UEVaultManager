@@ -36,6 +36,8 @@ class EditableTable(tk.Frame):
         # Create table to display data
         self.table = Table(self.table_frame, dataframe=self.df.iloc[0:0], showtoolbar=True, showstatusbar=True)
         self.table.show()
+
+        # Pack the table_frame
         self.table_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # Add controls for filtering by category
