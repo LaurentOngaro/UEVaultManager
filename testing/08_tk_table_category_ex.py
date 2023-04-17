@@ -81,11 +81,10 @@ class EditableTable(ttk.Frame):
         except Exception as e:
             print(f"Error showing default image {default_image_filename} cwd:{os.getcwd()}: {e}")
 
-    def __init__(self, parent):
-        ttk.Frame.__init__(self, parent)
-        self.parent = parent
-        self.master.geometry('1200x880')
-        self.master.title('Table app')
+    def __init__(self, container):
+        ttk.Frame.__init__(self, container)
+        container.geometry('1200x880')
+        container.title('Table app')
         self.currentPage = 0
         self.rowsPerPage = 35
         self.paginationEnabled = True
@@ -99,20 +98,18 @@ class EditableTable(ttk.Frame):
         # Initialize filtered DataFrame
         self.df_filtered = self.df
 
-        # Create frame for table and filter controls
-        self.table_frame = ttk.Frame(self.master)
-        self.control_frame = ttk.Frame(self.master)
-
-        # Create button to toggle filter controls visibility
-        self.toggle_button = ttk.Button(self.master, text="Show Controls", command=self.toggle_filter_controls)
-        self.toggle_button.pack(side=tk.TOP)
+        # Create frames
+        toolbar_frame = ttk.Frame(container)
+        table_frame = ttk.Frame(container)
+        control_frame = ttk.Frame(container)
+        # Pack the frames with the appropriate side option
+        toolbar_frame.pack(fill=tk.X, side=tk.TOP, anchor=tk.NW, ipadx=5, ipady=5)
+        table_frame.pack(fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, ipadx=5, ipady=5, expand=True)
+        control_frame.pack(fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW, ipadx=5, ipady=5)
 
         # Create table to display data
-        self.table = Table(self.table_frame, dataframe=self.df.iloc[0:0], showtoolbar=True, showstatusbar=True)
+        self.table = Table(table_frame, dataframe=self.df.iloc[0:0], showtoolbar=True, showstatusbar=True)
         self.table.show()
-
-        # Pack the table_frame
-        self.table_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # Bind the table to the mouse motion event
         self.table.bind('<Motion>', self.mouse_over_cell)
@@ -120,30 +117,46 @@ class EditableTable(ttk.Frame):
         # Bind the table to the mouse leave event
         self.table.bind('<Leave>', self.show_default_image)
 
-        # Create a Canvas to display the image in a popup window
-        self.image_canvas = tk.Canvas(self.control_frame, width=max_width, height=max_height, highlightthickness=0)
-        self.image_canvas.pack(side=tk.LEFT)
-        self.image_canvas.create_rectangle((0, 0), (max_width, max_height), fill='black')
-        self.show_default_image()
+        # Add pagination controls
+        prev_button = ttk.Button(toolbar_frame, text="<<", command=self.prev_page)
+        prev_button.pack(side=tk.LEFT)
+        next_button = ttk.Button(toolbar_frame, text=">>", command=self.next_page)
+        next_button.pack(side=tk.LEFT)
+        # Create button to toggle filter controls visibility
+        toggle_button = ttk.Button(toolbar_frame, text="Hide Controls", command=self.toggle_filter_controls)
+        toggle_button.pack(side=tk.RIGHT)
 
         # Add controls for filtering by category
+        lbf_filter_cat = ttk.LabelFrame(control_frame, text="Category")
+        lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
         category_options = list(self.df['Category'].cat.categories)
-        self.category_var = tk.StringVar(value=category_options[0])
-        category_menu = tk.OptionMenu(self.control_frame, self.category_var, *category_options, command=self.filter_by_category)
-        category_menu.pack(side=tk.LEFT)
+        category_var = tk.StringVar(value=category_options[0])
+        category_menu = tk.OptionMenu(lbf_filter_cat, category_var, *category_options, command=self.filter_by_category)
+        category_menu.pack(side=tk.TOP)
 
         # Add search box and button
-        self.search_var = tk.StringVar()
-        search_entry = ttk.Entry(self.control_frame, textvariable=self.search_var)
+        lbf_search = ttk.LabelFrame(control_frame, text="Search by text")
+        lbf_search.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
+        search_var = tk.StringVar()
+        search_entry = ttk.Entry(lbf_search, textvariable=search_var)
         search_entry.pack(side=tk.LEFT)
-        search_button = ttk.Button(self.control_frame, text="Search", command=self.search)
-        search_button.pack(side=tk.LEFT)
+        search_button = ttk.Button(lbf_search, text="Search", command=self.search)
+        search_button.pack(side=tk.RIGHT)
 
-        # Add pagination controls
-        self.prev_button = ttk.Button(self.control_frame, text="<<", command=self.prev_page)
-        self.prev_button.pack(side=tk.LEFT)
-        self.next_button = ttk.Button(self.control_frame, text=">>", command=self.next_page)
-        self.next_button.pack(side=tk.RIGHT)
+        # Create a Canvas to display the image
+        lbf_preview = ttk.LabelFrame(control_frame, text="Image Preview")
+        lbf_preview.pack( fill=tk.X, anchor=tk.SW, ipadx=5, ipady=5)
+        image_canvas = tk.Canvas(lbf_preview, width=max_width, height=max_height, highlightthickness=0)
+        image_canvas.pack()
+        image_canvas.create_rectangle((0, 0), (max_width, max_height), fill='black')
+
+        self.control_frame = control_frame
+        self.toggle_button = toggle_button
+        self.category_var = category_var
+        self.search_var = search_var
+        self.image_canvas = image_canvas
+
+        self.show_default_image()
 
         # Update table with data for current page
         self.update_table()
@@ -152,10 +165,10 @@ class EditableTable(ttk.Frame):
         # Toggle visibility of filter controls frame
         if self.control_frame.winfo_ismapped():
             self.control_frame.pack_forget()
-            self.toggle_button.config(text="Show Filters")
+            self.toggle_button.config(text="Show Control")
         else:
-            self.control_frame.pack(side=tk.TOP, fill=tk.BOTH)
-            self.toggle_button.config(text="Hide Filters")
+            self.control_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
+            self.toggle_button.config(text="Hide Control")
 
     def update_table(self):
         # Calculate start and end row for current page
