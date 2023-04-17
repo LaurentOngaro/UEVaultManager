@@ -143,6 +143,7 @@ cython_debug/
 .idea/
 
 # local files (binary test files, images etc.)
+cache/
 results/
 stuff/
 dist_pyinstaller/
