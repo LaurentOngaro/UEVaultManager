@@ -67,7 +67,7 @@ class EditableTable(ttk.Frame):
             new_height = min(int(image.height * ratio), max_height)
             print(f"Image size: {image.width}x{image.height} -> {new_width}x{new_height} ratio: {ratio}")
             # Resize the image
-            resize_and_show_image(image, self.image_canvas, new_height, new_width)
+            resize_and_show_image(image, self.canvas_preview, new_height, new_width)
 
         except Exception as e:
             print(f"Error showing image: {e}")
@@ -77,7 +77,7 @@ class EditableTable(ttk.Frame):
             # Load the default image
             if os.path.isfile(default_image_filename):
                 def_image = Image.open(default_image_filename)
-                resize_and_show_image(def_image, self.image_canvas, max_width, max_height)
+                resize_and_show_image(def_image, self.canvas_preview, max_width, max_height)
         except Exception as e:
             print(f"Error showing default image {default_image_filename} cwd:{os.getcwd()}: {e}")
 
@@ -85,18 +85,18 @@ class EditableTable(ttk.Frame):
         ttk.Frame.__init__(self, container)
         container.geometry('1200x880')
         container.title('Table app')
-        self.currentPage = 0
-        self.rowsPerPage = 35
-        self.paginationEnabled = True
+        self.current_page = 0
+        self.rows_per_page = 35
+        self.pagination_enabled = True
 
         # Load data from CSV file
-        self.df = pd.read_csv(file)
+        self.data = pd.read_csv(file)
 
         # Convert Category column to category dtype
-        self.df['Category'] = self.df['Category'].astype('category')
+        self.data['Category'] = self.data['Category'].astype('category')
 
         # Initialize filtered DataFrame
-        self.df_filtered = self.df
+        self.data_filtered = self.data
 
         # Create frames
         toolbar_frame = ttk.Frame(container)
@@ -108,7 +108,7 @@ class EditableTable(ttk.Frame):
         control_frame.pack(fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW, ipadx=5, ipady=5)
 
         # Create table to display data
-        self.table = Table(table_frame, dataframe=self.df.iloc[0:0], showtoolbar=True, showstatusbar=True)
+        self.table = Table(table_frame, dataframe=self.data.iloc[0:0], showtoolbar=True, showstatusbar=True)
         self.table.show()
 
         # Bind the table to the mouse motion event
@@ -123,13 +123,13 @@ class EditableTable(ttk.Frame):
         next_button = ttk.Button(toolbar_frame, text=">>", command=self.next_page)
         next_button.pack(side=tk.LEFT)
         # Create button to toggle filter controls visibility
-        toggle_button = ttk.Button(toolbar_frame, text="Hide Controls", command=self.toggle_filter_controls)
-        toggle_button.pack(side=tk.RIGHT)
+        btn_toggle_controls = ttk.Button(toolbar_frame, text="Hide Controls", command=self.toggle_filter_controls)
+        btn_toggle_controls.pack(side=tk.RIGHT)
 
         # Add controls for filtering by category
         lbf_filter_cat = ttk.LabelFrame(control_frame, text="Category")
         lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
-        category_options = list(self.df['Category'].cat.categories)
+        category_options = list(self.data['Category'].cat.categories)
         category_var = tk.StringVar(value=category_options[0])
         category_menu = tk.OptionMenu(lbf_filter_cat, category_var, *category_options, command=self.filter_by_category)
         category_menu.pack(side=tk.TOP)
@@ -145,16 +145,16 @@ class EditableTable(ttk.Frame):
 
         # Create a Canvas to display the image
         lbf_preview = ttk.LabelFrame(control_frame, text="Image Preview")
-        lbf_preview.pack( fill=tk.X, anchor=tk.SW, ipadx=5, ipady=5)
-        image_canvas = tk.Canvas(lbf_preview, width=max_width, height=max_height, highlightthickness=0)
-        image_canvas.pack()
-        image_canvas.create_rectangle((0, 0), (max_width, max_height), fill='black')
+        lbf_preview.pack(fill=tk.X, anchor=tk.SW, ipadx=5, ipady=5)
+        canvas_preview = tk.Canvas(lbf_preview, width=max_width, height=max_height, highlightthickness=0)
+        canvas_preview.pack()
+        canvas_preview.create_rectangle((0, 0), (max_width, max_height), fill='black')
 
         self.control_frame = control_frame
-        self.toggle_button = toggle_button
+        self.btn_toggle_controls = btn_toggle_controls
         self.category_var = category_var
         self.search_var = search_var
-        self.image_canvas = image_canvas
+        self.canvas_preview = canvas_preview
 
         self.show_default_image()
 
@@ -165,31 +165,31 @@ class EditableTable(ttk.Frame):
         # Toggle visibility of filter controls frame
         if self.control_frame.winfo_ismapped():
             self.control_frame.pack_forget()
-            self.toggle_button.config(text="Show Control")
+            self.btn_toggle_controls.config(text="Show Control")
         else:
             self.control_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self.toggle_button.config(text="Hide Control")
+            self.btn_toggle_controls.config(text="Hide Control")
 
     def update_table(self):
         # Calculate start and end row for current page
-        start_row = self.currentPage * self.rowsPerPage
-        end_row = start_row + self.rowsPerPage
+        start_row = self.current_page * self.rows_per_page
+        end_row = start_row + self.rows_per_page
 
         # Update table with data for current page
-        self.table.model.df = self.df_filtered.iloc[start_row:end_row]
+        self.table.model.df = self.data_filtered.iloc[start_row:end_row]
         self.table.redraw()
 
     def filter_by_category(self, category):
         # Filter dataframe by selected category
-        self.df_filtered = self.df[self.df['Category'] == category]
+        self.data_filtered = self.data[self.data['Category'] == category]
 
         # Apply search filter if search box is not empty
         search_value = self.search_var.get()
         if search_value:
-            self.df_filtered = self.df_filtered[self.df_filtered.apply(lambda row: search_value.lower() in str(row).lower(), axis=1)]
+            self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_value.lower() in str(row).lower(), axis=1)]
 
         # Reset current page to 0
-        self.currentPage = 0
+        self.current_page = 0
 
         # Update table with filtered data for current page
         self.update_table()
@@ -197,26 +197,26 @@ class EditableTable(ttk.Frame):
     def search(self):
         # Filter dataframe by search value
         search_value = self.search_var.get()
-        self.df_filtered = self.df[self.df['Category'] == self.category_var.get()]
-        self.df_filtered = self.df_filtered[self.df_filtered.apply(lambda row: search_value.lower() in str(row).lower(), axis=1)]
+        self.data_filtered = self.data[self.data['Category'] == self.category_var.get()]
+        self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_value.lower() in str(row).lower(), axis=1)]
 
         # Reset current page to 0
-        self.currentPage = 0
+        self.current_page = 0
 
         # Update table with filtered data for current page
         self.update_table()
 
     def prev_page(self):
         # Decrement current page and update table
-        if self.currentPage > 0:
-            self.currentPage -= 1
+        if self.current_page > 0:
+            self.current_page -= 1
             self.update_table()
 
     def next_page(self):
         # Increment current page and update table
-        last_page = len(self.df_filtered) // self.rowsPerPage
-        if self.currentPage < last_page:
-            self.currentPage += 1
+        last_page = len(self.data_filtered) // self.rows_per_page
+        if self.current_page < last_page:
+            self.current_page += 1
             self.update_table()
 
 
