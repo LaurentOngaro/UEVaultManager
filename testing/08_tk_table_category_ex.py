@@ -130,15 +130,15 @@ class EditableTable(ttk.Frame):
         lbf_filter_cat = ttk.LabelFrame(control_frame, text="Category")
         lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
         category_options = list(self.data['Category'].cat.categories)
-        category_var = tk.StringVar(value=category_options[0])
-        category_menu = tk.OptionMenu(lbf_filter_cat, category_var, *category_options, command=self.filter_by_category)
+        var_category = tk.StringVar(value=category_options[0])
+        category_menu = tk.OptionMenu(lbf_filter_cat, var_category, *category_options, command=self.filter_by_category)
         category_menu.pack(side=tk.TOP)
 
         # Add search box and button
         lbf_search = ttk.LabelFrame(control_frame, text="Search by text")
         lbf_search.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
-        search_var = tk.StringVar()
-        search_entry = ttk.Entry(lbf_search, textvariable=search_var)
+        var_search = tk.StringVar()
+        search_entry = ttk.Entry(lbf_search, textvariable=var_search)
         search_entry.pack(side=tk.LEFT)
         search_button = ttk.Button(lbf_search, text="Search", command=self.search)
         search_button.pack(side=tk.RIGHT)
@@ -152,8 +152,8 @@ class EditableTable(ttk.Frame):
 
         self.control_frame = control_frame
         self.btn_toggle_controls = btn_toggle_controls
-        self.category_var = category_var
-        self.search_var = search_var
+        self.var_category = var_category
+        self.var_search = var_search
         self.canvas_preview = canvas_preview
 
         self.show_default_image()
@@ -184,7 +184,7 @@ class EditableTable(ttk.Frame):
         self.data_filtered = self.data[self.data['Category'] == category]
 
         # Apply search filter if search box is not empty
-        search_value = self.search_var.get()
+        search_value = self.var_search.get()
         if search_value:
             self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_value.lower() in str(row).lower(), axis=1)]
 
@@ -196,8 +196,8 @@ class EditableTable(ttk.Frame):
 
     def search(self):
         # Filter dataframe by search value
-        search_value = self.search_var.get()
-        self.data_filtered = self.data[self.data['Category'] == self.category_var.get()]
+        search_value = self.var_search.get()
+        self.data_filtered = self.data[self.data['Category'] == self.var_category.get()]
         self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_value.lower() in str(row).lower(), axis=1)]
 
         # Reset current page to 0
