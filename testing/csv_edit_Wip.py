@@ -41,7 +41,7 @@ from PIL import ImageTk, Image
 app_title = 'UEVM Gui'
 csv_datetime_format = '%y-%m-%d %H:%M:%S'
 app_icon_filename = '../UEVaultManager/assets/main.ico'
-file = '../results/list.csv'
+csv_filename = '../results/list.csv'
 cache_folder = "../cache"
 cache_max_time = 60 * 60 * 24 * 15  # 15 days
 default_image_filename = '../UEVaultManager/assets/UEVM_200x200.png'
@@ -50,6 +50,8 @@ max_height = 150
 default_search_text = 'Search...'
 default_category_for_all = 'All'
 
+debug_mode = False
+
 
 def todo_message():
     msg = 'Not implemented yet'
@@ -57,7 +59,8 @@ def todo_message():
 
 
 def log_debug(msg):
-    return  # temp bypass
+    if not debug_mode:
+        return  # temp bypass
     # will be replaced by a logger when integrated in UEVaultManager
     print(msg)
 
@@ -83,18 +86,18 @@ def convert_to_bool(x):
 
 
 # convert x to a datetime using the format in csv_datetime_format
-def convert_to_datetime(x):
+def convert_to_datetime(value):
     try:
-        return datetime.datetime.strptime(x, csv_datetime_format)
+        return datetime.datetime.strptime(value, csv_datetime_format)
     except ValueError:
         return ''
 
 
 def resize_and_show_image(image, canvas, new_height, new_width):
     image = image.resize((new_width, new_height), Image.LANCZOS)
-    canvas.config(width=new_width, height=new_height)
+    canvas.config(width=new_width, height=new_height, image=None)
     canvas.image = ImageTk.PhotoImage(image)
-    img = canvas.create_image(0, 0, anchor=tk.NW, image=canvas.image)
+    canvas.create_image(0, 0, anchor=tk.NW, image=canvas.image)
 
 
 class WebImage:
@@ -769,6 +772,7 @@ class AppWindow(tk.Tk):
         else:
             showwarning(title=app_title, message='Select at least one row first')
 
+    # noinspection DuplicatedCode
     def mouse_over_cell(self, event):
         # Get the row and column index of the cell under the mouse pointer
         row, col = self.editable_table.get_row_clicked(event), self.editable_table.get_col_clicked(event)
@@ -786,6 +790,7 @@ class AppWindow(tk.Tk):
 
     def show_asset_image(self, img_url):
         try:
+            # noinspection DuplicatedCode
             if not os.path.isdir(cache_folder):
                 os.mkdir(cache_folder)
 
@@ -809,22 +814,23 @@ class AppWindow(tk.Tk):
             new_width = min(int(image.width * ratio), max_width)
             new_height = min(int(image.height * ratio), max_height)
             log_debug(f'Image size: {image.width}x{image.height} -> {new_width}x{new_height} ratio: {ratio}')
-            # Resize the image
+            # noinspection PyTypeChecker
             resize_and_show_image(image, self.control_frame.canvas_preview, new_height, new_width)
 
         except Exception as e:
             log_error(f"Error showing image: {e}")
 
-    def show_default_image(self):
+    def show_default_image(self, _event=None):
         try:
             # Load the default image
             if os.path.isfile(default_image_filename):
                 def_image = Image.open(default_image_filename)
+                # noinspection PyTypeChecker
                 resize_and_show_image(def_image, self.control_frame.canvas_preview, max_width, max_height)
         except Exception as e:
             log_warning(f"Error showing default image {default_image_filename} cwd:{os.getcwd()}: {e}")
 
 
 if __name__ == '__main__':
-    main = AppWindow(title=app_title, geometry='1600x890', icon=app_icon_filename, file='../results/list.csv')
+    main = AppWindow(title=app_title, geometry='1600x890', icon=app_icon_filename, file=csv_filename)
     main.mainloop()
