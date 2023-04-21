@@ -2,11 +2,12 @@
 working file for the GUI integration in UEVaultManager
 
 Things to be done:
+- in edit_row_window, implement the zoom_in and zoom_out buttons
 - add pagination info in a new frame. See tk_table_filter_ex.py
 - move quit button at right of the toolbar
 - check the TODOs
+- add features and buttons to refresh csv file by calling UEVaultManager cli
 - in edit_row_window, implement the prev and next buttons
-- in edit_row_window, implement the zoom_in and zoom_out buttons
 - Extract the classes in separate files
 - split the code into several files.
 - save and load for tcsv files
