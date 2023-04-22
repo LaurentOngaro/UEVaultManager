@@ -6,6 +6,8 @@ Bugs to confirm:
 
 Bugs to fix:
 - save to file only save the current page
+- save to file button is HS
+- if cancel after clic on "load a file", message is wrong
 
 To Do:
 - Extract the classes in separate files
@@ -46,7 +48,7 @@ debug_mode = False
 #
 app_title = 'UEVM Gui'
 app_width = 1600
-app_height = 920
+app_height = 930
 app_monitor = 1
 csv_datetime_format = '%y-%m-%d %H:%M:%S'
 app_icon_filename = '../UEVaultManager/assets/main.ico'
@@ -518,7 +520,7 @@ class EditRowWindow(tk.Toplevel):
             self.canvas.pack(anchor=tk.CENTER)
             self.canvas.create_rectangle(24, 24, 176, 176, fill='white')
 
-    def on_close(self, event=None):
+    def on_close(self, _event=None):
         current_values = self.editable_table.get_selected_row_values()
         # current_values is empty is save_button has been pressed because global variables have been cleared in save_changes()
         self.must_save = current_values and self.initial_values != current_values
@@ -593,7 +595,7 @@ class EditCellWindow(tk.Toplevel):
             ttk.Button(self, text='Cancel', command=container.on_close).pack(**pack_def_options, side=tk.RIGHT)
             ttk.Button(self, text='Save Changes', command=container.save_change).pack(**pack_def_options, side=tk.RIGHT)
 
-    def on_close(self, event=None):
+    def on_close(self, _event=None):
         current_values = self.editable_table.get_selected_cell_values()
         # current_values is empty is save_button has been pressed because global variables have been cleared in save_changes()
         self.must_save = current_values and self.initial_values != current_values
@@ -602,7 +604,7 @@ class EditCellWindow(tk.Toplevel):
                 self.save_change()
         self.close_window()
 
-    def close_window(self, event=None):
+    def close_window(self, _event=None):
         global edit_cell_window_ref
         edit_cell_window_ref = None
         self.destroy()
@@ -669,8 +671,8 @@ class AppWindow(tk.Tk):
         # Bind the table to the mouse motion event
         self.editable_table.bind('<Motion>', self.mouse_over_cell)
         # Bind the table to the mouse leave event
-        self.editable_table.bind('<Leave>', self.show_default_image)
-        self.protocol("WM_DELETE_WINDOW", self.on_close())
+        self.editable_table.bind('<Leave>', self.mouse_leave_cell)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     class ToolbarFrame(ttk.Frame):
 
@@ -886,21 +888,22 @@ class AppWindow(tk.Tk):
             showwarning(title=app_title, message='Select at least one row first')
 
     # noinspection DuplicatedCode
-    def mouse_over_cell(self, event):
+    def mouse_over_cell(self, event=None):
+        if event == None:
+            return
         # Get the row and column index of the cell under the mouse pointer
         row, col = self.editable_table.get_row_clicked(event), self.editable_table.get_col_clicked(event)
         if row is None or col is None:
             return
         col = self.editable_table.model.df.columns.get_loc('Image')
         if col:
-            # Get the image URL
             img_url = self.editable_table.model.getValueAt(row, col)
-
-            # Show the image
             self.show_asset_image(img_url)
         else:
-            # Show the default
             self.show_default_image()
+
+    def mouse_leave_cell(self, _event=None):
+        self.show_default_image()
 
     def show_asset_image(self, img_url):
         try:
