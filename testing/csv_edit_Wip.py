@@ -1,26 +1,27 @@
 """
 working file for the GUI integration in UEVaultManager
 
-Things to be done:
-- in edit_row_window, implement the zoom_in and zoom_out buttons
-- add pagination info in a new frame. See tk_table_filter_ex.py
-- move quit button at right of the toolbar
-- check the TODOs
-- add features and buttons to refresh csv file by calling UEVaultManager cli
-- in edit_row_window, implement the prev and next buttons
-- Extract the classes in separate files
-- split the code into several files.
-- save and load for tcsv files
-- save and load for json files
-- migrate the code into the UEVaultManager code base
-- document the new features
-- update the PyPi package
-
 Bugs to confirm:
 - save to file only save the current page
 
 Bugs to fix:
 - save to file only save the current page
+
+To Do:
+- Extract the classes in separate files
+- split the code into several files.
+- use image cache for the preview image in row edit window
+- in edit_row_window, implement the zoom_in and zoom_out buttons
+- add pagination info in a new frame. See tk_table_filter_ex.py
+- add more info about the current row (at least comment, review...) in the preview frame
+- check the TODOs
+- add features and buttons to refresh csv file by calling UEVaultManager cli
+- in edit_row_window, implement the prev and next buttons
+- save and load for tcsv files
+- save and load for json files
+- migrate the code into the UEVaultManager code base
+- document the new features
+- update the PyPi package
 
 """
 import datetime
@@ -67,6 +68,7 @@ table_font_size = 10
 #
 edit_cell_window_ref = None
 edit_row_window_ref = None
+
 
 # global functions
 #
@@ -499,11 +501,11 @@ class EditRowWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             self['padding'] = 5
-            default_pack_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
-            ttk.Button(self, text='Prev Asset', command=container.prev_asset).pack(**default_pack_options, side=tk.LEFT)
-            ttk.Button(self, text='Next Asset', command=container.next_asset).pack(**default_pack_options, side=tk.LEFT)
-            ttk.Button(self, text='Cancel', command=container.on_close).pack(**default_pack_options, side=tk.RIGHT)
-            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**default_pack_options, side=tk.RIGHT)
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.X}
+            ttk.Button(self, text='Prev Asset', command=container.prev_asset).pack(**pack_def_options, side=tk.LEFT)
+            ttk.Button(self, text='Next Asset', command=container.next_asset).pack(**pack_def_options, side=tk.LEFT)
+            ttk.Button(self, text='Cancel', command=container.on_close).pack(**pack_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**pack_def_options, side=tk.RIGHT)
 
     class PreviewFrame(ttk.Frame):
 
@@ -587,9 +589,9 @@ class EditCellWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             self['padding'] = 5
-            default_pack_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
-            ttk.Button(self, text='Cancel', command=container.on_close).pack(**default_pack_options, side=tk.RIGHT)
-            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**default_pack_options, side=tk.RIGHT)
+            pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
+            ttk.Button(self, text='Cancel', command=container.on_close).pack(**pack_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**pack_def_options, side=tk.RIGHT)
 
     def on_close(self, event=None):
         current_values = self.editable_table.get_selected_cell_values()
@@ -646,6 +648,7 @@ class AppWindow(tk.Tk):
         self.editable_table = None
 
         # Create frames
+        pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
         table_frame = self.TableFrame(self)
         self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=table_font_size)
 
@@ -658,9 +661,9 @@ class AppWindow(tk.Tk):
         self.control_frame = control_frame
 
         # Pack the frames with the appropriate side option
-        toolbar_frame.pack(fill=tk.X, side=tk.TOP, anchor=tk.NW, ipadx=5, ipady=5)
-        table_frame.pack(fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, ipadx=5, ipady=5, expand=True)
-        control_frame.pack(fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW, ipadx=5, ipady=5)
+        toolbar_frame.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
+        table_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
+        control_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
 
         self.bind('<Key>', self.on_key_press)
         # Bind the table to the mouse motion event
@@ -673,23 +676,28 @@ class AppWindow(tk.Tk):
 
         def __init__(self, container):
             super().__init__()
-            default_pack_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
-            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 2, 'pady': 1, 'fill': tk.BOTH, 'expand': False}
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
+            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
 
-            lblf_pagination = ttk.LabelFrame(self, text='Pagination')
-            lblf_pagination.pack(**lblf_def_options, side=tk.LEFT)
-            btn_toggle_pagination = ttk.Button(lblf_pagination, text='Toggle Pagination', command=container.toggle_pagination)
-            btn_toggle_pagination.pack(**default_pack_options, side=tk.LEFT)
-            btn_first_page = ttk.Button(lblf_pagination, text='First Page', command=container.editable_table.first_page)
-            btn_first_page.pack(**default_pack_options, side=tk.LEFT)
-            btn_prev_page = ttk.Button(lblf_pagination, text='Prev Page', command=container.editable_table.prev_page)
-            btn_prev_page.pack(**default_pack_options, side=tk.LEFT)
-            btn_next_page = ttk.Button(lblf_pagination, text='Next Page', command=container.editable_table.next_page)
-            btn_next_page.pack(**default_pack_options, side=tk.LEFT)
-            btn_last_page = ttk.Button(lblf_pagination, text='Last Page', command=container.editable_table.last_page)
-            btn_last_page.pack(**default_pack_options, side=tk.LEFT)
-            btn_toggle_controls = ttk.Button(self, text="Hide Controls", command=container.toggle_filter_controls)
-            btn_toggle_controls.pack(side=tk.RIGHT)
+            lblf_display = ttk.LabelFrame(self, text='Display')
+            lblf_display.pack(side=tk.LEFT, **lblf_def_options)
+            btn_toggle_pagination = ttk.Button(lblf_display, text='Toggle Pagination', command=container.toggle_pagination)
+            btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
+            btn_first_page = ttk.Button(lblf_display, text='First Page', command=container.editable_table.first_page)
+            btn_first_page.pack(**pack_def_options, side=tk.LEFT)
+            btn_prev_page = ttk.Button(lblf_display, text='Prev Page', command=container.editable_table.prev_page)
+            btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
+            btn_next_page = ttk.Button(lblf_display, text='Next Page', command=container.editable_table.next_page)
+            btn_next_page.pack(**pack_def_options, side=tk.LEFT)
+            btn_last_page = ttk.Button(lblf_display, text='Last Page', command=container.editable_table.last_page)
+            btn_last_page.pack(**pack_def_options, side=tk.LEFT)
+
+            lblf_options = ttk.LabelFrame(self, text='Options')
+            lblf_options.pack(side=tk.RIGHT, **lblf_def_options)
+            btn_on_close = ttk.Button(lblf_options, text='Quit', command=container.on_close)
+            btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
+            btn_toggle_controls = ttk.Button(lblf_options, text="Hide Controls", command=container.toggle_filter_controls)
+            btn_toggle_controls.pack(**pack_def_options, side=tk.RIGHT)
 
             # store the buttons that need to be disabled when the pagination is disabled
             self.btn_first_page = btn_first_page
@@ -715,50 +723,49 @@ class AppWindow(tk.Tk):
         def __init__(self, container):
             super().__init__()
 
-            default_pack_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
-            default_grid_options = {'ipadx': 2, 'ipady': 2, 'sticky': tk.NW}
-            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 2, 'pady': 1, 'fill': tk.BOTH, 'expand': False}
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
+            grid_def_options = {'ipadx': 2, 'ipady': 2, 'sticky': tk.NW}
+            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 0, 'pady': 0, 'fill': tk.BOTH, 'expand': False}
 
             lblf_display = ttk.LabelFrame(self, text='Display')
             lblf_display.pack(**lblf_def_options)
             btn_zoom_in = ttk.Button(lblf_display, text='Expand Cols', command=container.editable_table.expand_cols)
-            btn_zoom_in.pack(**default_pack_options, side=tk.LEFT)
+            btn_zoom_in.pack(**pack_def_options, side=tk.LEFT)
             btn_zoom_out = ttk.Button(lblf_display, text='Shrink Cols', command=container.editable_table.shrink_cols)
-            btn_zoom_out.pack(**default_pack_options, side=tk.LEFT)
+            btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_content = ttk.LabelFrame(self, text='Content')
             lblf_content.pack(**lblf_def_options)
             btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=container.editable_table.edit_record)
-            btn_edit_row.pack(**default_pack_options, side=tk.LEFT)
+            btn_edit_row.pack(**pack_def_options, side=tk.LEFT)
             btn_reload_data = ttk.Button(lblf_content, text='Reload Content', command=container.editable_table.reload_data)
-            btn_reload_data.pack(**default_pack_options, side=tk.LEFT)
+            btn_reload_data.pack(**pack_def_options, side=tk.LEFT)
 
-            # Add controls for searching
             lbf_filter_cat = ttk.LabelFrame(self, text="Search and Filter")
             lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
             categories = list(container.editable_table.data['Category'].cat.categories)
             var_category = tk.StringVar(value=categories[0])
             categories.insert(0, default_category_for_all)
             opt_category = ttk.Combobox(lbf_filter_cat, textvariable=var_category, values=categories)
-            opt_category.grid(row=0, column=0, **default_grid_options)
+            opt_category.grid(row=0, column=0, **grid_def_options)
             var_search = tk.StringVar(value=default_search_text)
             entry_search = ttk.Entry(lbf_filter_cat, textvariable=var_search)
-            entry_search.grid(row=0, column=1, **default_grid_options)
+            entry_search.grid(row=0, column=1, **grid_def_options)
             entry_search.bind("<FocusIn>", self.del_entry_search)
 
             btn_filter_by_text = ttk.Button(lbf_filter_cat, text='Search', command=container.search)
-            btn_filter_by_text.grid(row=1, column=0, **default_grid_options)
+            btn_filter_by_text.grid(row=1, column=0, **grid_def_options)
             btn_reset_search = ttk.Button(lbf_filter_cat, text='Reset', command=container.reset_search)
-            btn_reset_search.grid(row=1, column=1, **default_grid_options)
+            btn_reset_search.grid(row=1, column=1, **grid_def_options)
 
             lblf_files = ttk.LabelFrame(self, text='Files')
             lblf_files.pack(**lblf_def_options)
             btn_save_change = ttk.Button(lblf_files, text='Save to File', command=container.save_change)
-            btn_save_change.pack(**default_pack_options, side=tk.LEFT)
+            btn_save_change.pack(**pack_def_options, side=tk.LEFT)
             btn_export_button = ttk.Button(lblf_files, text='Export Selection', command=container.export_selection)
-            btn_export_button.pack(**default_pack_options, side=tk.LEFT)
+            btn_export_button.pack(**pack_def_options, side=tk.LEFT)
             btn_select_file = ttk.Button(lblf_files, text='Load a file', command=container.select_file)
-            btn_select_file.pack(**default_pack_options, side=tk.LEFT)
+            btn_select_file.pack(**pack_def_options, side=tk.LEFT)
 
             # Create a Canvas to preview the asset image
             lbf_preview = ttk.LabelFrame(self, text="Image Preview")
@@ -770,8 +777,6 @@ class AppWindow(tk.Tk):
             lblf_bottom = ttk.Frame(self)
             lblf_bottom.pack(**lblf_def_options)
             ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
-            btn_on_close = ttk.Button(lblf_bottom, text='Quit', command=container.on_close)
-            btn_on_close.pack(**default_pack_options, side=tk.RIGHT)
 
             # store the controls that need to be accessible outside the class
             self.entry_search = entry_search
@@ -886,8 +891,8 @@ class AppWindow(tk.Tk):
         row, col = self.editable_table.get_row_clicked(event), self.editable_table.get_col_clicked(event)
         if row is None or col is None:
             return
-        # Check if the mouse is over the "img_url" column
-        if self.editable_table.model.df.columns[col] == 'Image':
+        col = self.editable_table.model.df.columns.get_loc('Image')
+        if col:
             # Get the image URL
             img_url = self.editable_table.model.getValueAt(row, col)
 
