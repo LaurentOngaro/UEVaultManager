@@ -2,11 +2,8 @@
 working file for the GUI integration in UEVaultManager
 
 Bugs to confirm:
-- save to file only save the current page
 
 Bugs to fix:
-- save to file only save the current page
-- save to file button is HS
 
 To Do:
 - Extract the classes in separate files
@@ -279,8 +276,8 @@ class EditableTable(Table):
         self.show_page(self.current_page)
 
     def save_data(self):
-        data = self.data.iloc[0:-1]
-        self.updateModel(TableModel(data))  # needed to ,restore all the data and not only the current page
+        data = self.data.iloc[0:len(self.data)]
+        self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
         self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=csv_datetime_format)
         self.show_page(self.current_page)
         self.must_save = False
