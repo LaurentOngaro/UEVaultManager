@@ -21,135 +21,27 @@ To Do:
 - update the PyPi package
 
 """
-import datetime
 import time
-import tkinter as tk
 import webbrowser
 import os
 import pandas as pd
 import requests
 from io import BytesIO
 from tkinter import filedialog as fd, messagebox, filedialog, ttk
-from tkinter.messagebox import showinfo, showwarning
-from urllib.parse import quote_plus
-from urllib.request import urlopen
+from tkinter.messagebox import showwarning
 from screeninfo import get_monitors
 from pandastable import Table, TableModel
-from PIL import ImageTk, Image
 
-debug_mode = False
-
-# settings that can be store in a config file later
-#
-app_title = 'UEVM Gui'
-app_width = 1600
-app_height = 930
-app_monitor = 1
-csv_datetime_format = '%y-%m-%d %H:%M:%S'
-app_icon_filename = '../UEVaultManager/assets/main.ico'
-csv_filename = '../results/list.csv'
-
-cache_folder = "../cache"
-cache_max_time = 60 * 60 * 24 * 15  # 15 days
-
-default_image_filename = '../UEVaultManager/assets/UEVM_200x200.png'
-preview_max_width = 150
-preview_max_height = 150
-
-default_search_text = 'Search...'
-default_category_for_all = 'All'
-
-table_font_size = 10
-expand_columns_factor = 20
-contract_columns_factor = 20
+from testing.modules.Functions import *
+from testing.modules.WebImage import WebImage
 
 # global variables
 #
-edit_cell_window_ref: ttk.Frame
-edit_row_window_ref: ttk.Frame
+# edit_cell_window_ref: EditCellWindow
+# edit_row_window_ref: EditRowWindow
 
-
-# global functions
-#
-def todo_message():
-    msg = 'Not implemented yet'
-    showinfo(title=app_title, message=msg)
-
-
-def log_info(msg):
-    # will be replaced by a logger when integrated in UEVaultManager
-    print(msg)
-
-
-def log_debug(msg):
-    if not debug_mode:
-        return  # temp bypass
-    # will be replaced by a logger when integrated in UEVaultManager
-    print(msg)
-
-
-def log_warning(msg):
-    # will be replaced by a logger when integrated in UEVaultManager
-    print(msg)
-
-
-def log_error(msg):
-    # will be replaced by a logger when integrated in UEVaultManager
-    print(msg)
-
-
-def convert_to_bool(x):
-    try:
-        if str(x).lower() in ('1', '1.0', 'true', 'yes', 'y', 't'):
-            return True
-        else:
-            return False
-    except ValueError:
-        return False
-
-
-# convert x to a datetime using the format in csv_datetime_format
-def convert_to_datetime(value):
-    try:
-        return datetime.datetime.strptime(value, csv_datetime_format)
-    except ValueError:
-        return ''
-
-
-def resize_and_show_image(image, canvas, new_height, new_width):
-    image = image.resize((new_width, new_height), Image.LANCZOS)
-    canvas.config(width=new_width, height=new_height, image=None)
-    canvas.image = ImageTk.PhotoImage(image)
-    canvas.create_image(0, 0, anchor=tk.NW, image=canvas.image)
-
-
-class WebImage:
-
-    def __init__(self, url):
-        if url is None or url == '':
-            return
-        self.__image_pil = None
-        self.__image_tk = None
-        self.url = url
-        encoded_url = quote_plus(url, safe='/:&')
-        try:
-            my_page = urlopen(encoded_url)
-            my_picture = BytesIO(my_page.read())
-            self.__image_pil = Image.open(my_picture)
-            self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
-        except Exception as error:
-            log_warning(f'image could not be read from url {self.url}.\nError:{error}')
-
-    def get(self):
-        return self.__image_tk
-
-    def get_resized(self, new_width, new_height):
-        try:
-            self.__image_pil.thumbnail((new_width, new_height))
-            self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
-        except Exception as error:
-            log_warning(f'Could notre get resized image from url {self.url}.\nError:{error}')
-        return self.__image_tk
+edit_cell_window_ref = ttk.Frame
+edit_row_window_ref = ttk.Frame
 
 
 class EditableTable(Table):
@@ -343,7 +235,13 @@ class EditableTable(Table):
 
         global edit_row_window_ref
         edit_row_window_ref = edit_row_window
+        self.display_record(row_selected)
 
+    def display_record(self, row_selected=None):
+        global edit_row_window_ref
+        edit_row_window = edit_row_window_ref
+        if row_selected is None or edit_row_window is None:
+            return
         # get and display the row data
         row_data = self.model.df.iloc[row_selected].to_dict()
         entries = {}
@@ -406,6 +304,22 @@ class EditableTable(Table):
         self.redraw()
         self.must_save = True
         self.edit_row_window.close_window()
+
+    def move_to_next_record(self):
+        row_selected = self.getSelectedRow()
+        if row_selected is None or row_selected == self.model.df.shape[0] - 1:
+            return
+        self.setSelectedRow(row_selected + 1)
+        self.redraw()
+        self.display_record(row_selected + 1)
+
+    def move_to_prev_record(self):
+        row_selected = self.getSelectedRow()
+        if row_selected is None or row_selected == 0:
+            return
+        self.setSelectedRow(row_selected - 1)
+        self.redraw()
+        self.display_record(row_selected - 1)
 
     def get_selected_cell_values(self):
         if self.edit_cell_entry is None:
@@ -551,12 +465,10 @@ class EditRowWindow(tk.Toplevel):
             self.save_change()
 
     def prev_asset(self):
-        # TODO
-        todo_message()
+        self.editable_table.move_to_prev_record()
 
     def next_asset(self):
-        # TODO
-        todo_message()
+        self.editable_table.move_to_next_record()
 
 
 class EditCellWindow(tk.Toplevel):
