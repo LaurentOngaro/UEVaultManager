@@ -7,13 +7,11 @@ Bugs to confirm:
 Bugs to fix:
 - save to file only save the current page
 - save to file button is HS
-- if cancel after clic on "load a file", message is wrong
 
 To Do:
 - Extract the classes in separate files
 - split the code into several files.
 - use image cache for the preview image in row edit window
-- in edit_row_window, implement the zoom_in and zoom_out buttons
 - add pagination info in a new frame. See tk_table_filter_ex.py
 - add more info about the current row (at least comment, review...) in the preview frame
 - check the TODOs
@@ -65,11 +63,13 @@ default_search_text = 'Search...'
 default_category_for_all = 'All'
 
 table_font_size = 10
+expand_columns_factor = 20
+contract_columns_factor = 20
 
 # global variables
 #
-edit_cell_window_ref = None
-edit_row_window_ref = None
+edit_cell_window_ref: ttk.Frame
+edit_row_window_ref: ttk.Frame
 
 
 # global functions
@@ -296,11 +296,20 @@ class EditableTable(Table):
         self.data_filtered = self.data
         self.show_page(0)
 
-    def expand_cols(self):
-        todo_message()
+    def expand_columns(self):
+        self.expandColumns(factor=expand_columns_factor)
 
-    def shrink_cols(self):
-        todo_message()
+    def contract_columns(self):
+        self.contractColumns(factor=contract_columns_factor)
+
+    def autofit_columns(self):
+        self.autoResizeColumns()
+
+    def zoom_in(self):
+        self.zoomIn()
+
+    def zoom_out(self):
+        self.zoomOut()
 
     def get_selected_row_values(self):
         if self.edit_row_entries is None or self.edit_row_index is None:
@@ -529,7 +538,7 @@ class EditRowWindow(tk.Toplevel):
                 self.save_change()
         self.close_window()
 
-    def close_window(self, event=None):
+    def close_window(self, _event=None):
         global edit_row_window_ref
         edit_row_window_ref = None
         self.destroy()
@@ -681,18 +690,31 @@ class AppWindow(tk.Tk):
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
 
+            lblf_pages = ttk.LabelFrame(self, text='Pagination')
+            lblf_pages.pack(side=tk.LEFT, **lblf_def_options)
+            btn_toggle_pagination = ttk.Button(lblf_pages, text='Toggle Pagination', command=container.toggle_pagination)
+            btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
+            btn_first_page = ttk.Button(lblf_pages, text='First Page', command=container.editable_table.first_page)
+            btn_first_page.pack(**pack_def_options, side=tk.LEFT)
+            btn_prev_page = ttk.Button(lblf_pages, text='Prev Page', command=container.editable_table.prev_page)
+            btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
+            btn_next_page = ttk.Button(lblf_pages, text='Next Page', command=container.editable_table.next_page)
+            btn_next_page.pack(**pack_def_options, side=tk.LEFT)
+            btn_last_page = ttk.Button(lblf_pages, text='Last Page', command=container.editable_table.last_page)
+            btn_last_page.pack(**pack_def_options, side=tk.LEFT)
+
             lblf_display = ttk.LabelFrame(self, text='Display')
             lblf_display.pack(side=tk.LEFT, **lblf_def_options)
-            btn_toggle_pagination = ttk.Button(lblf_display, text='Toggle Pagination', command=container.toggle_pagination)
-            btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
-            btn_first_page = ttk.Button(lblf_display, text='First Page', command=container.editable_table.first_page)
-            btn_first_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_prev_page = ttk.Button(lblf_display, text='Prev Page', command=container.editable_table.prev_page)
-            btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_next_page = ttk.Button(lblf_display, text='Next Page', command=container.editable_table.next_page)
-            btn_next_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_last_page = ttk.Button(lblf_display, text='Last Page', command=container.editable_table.last_page)
-            btn_last_page.pack(**pack_def_options, side=tk.LEFT)
+            btn_expand = ttk.Button(lblf_display, text='Expand Cols', command=container.editable_table.expand_columns)
+            btn_expand.pack(**pack_def_options, side=tk.LEFT)
+            btn_shrink = ttk.Button(lblf_display, text='Shrink Cols', command=container.editable_table.contract_columns)
+            btn_shrink.pack(**pack_def_options, side=tk.LEFT)
+            btn_autofit = ttk.Button(lblf_display, text="Autofit Cols", command=container.editable_table.autofit_columns)
+            btn_autofit.pack(**pack_def_options, side=tk.LEFT)
+            btn_zoom_in = ttk.Button(lblf_display, text="Zoom In", command=container.editable_table.zoom_in)
+            btn_zoom_in.pack(**pack_def_options, side=tk.LEFT)
+            btn_zoom_out = ttk.Button(lblf_display, text="Zoom Out", command=container.editable_table.zoom_out)
+            btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_options = ttk.LabelFrame(self, text='Options')
             lblf_options.pack(side=tk.RIGHT, **lblf_def_options)
@@ -728,13 +750,6 @@ class AppWindow(tk.Tk):
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
             grid_def_options = {'ipadx': 2, 'ipady': 2, 'sticky': tk.NW}
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 0, 'pady': 0, 'fill': tk.BOTH, 'expand': False}
-
-            lblf_display = ttk.LabelFrame(self, text='Display')
-            lblf_display.pack(**lblf_def_options)
-            btn_zoom_in = ttk.Button(lblf_display, text='Expand Cols', command=container.editable_table.expand_cols)
-            btn_zoom_in.pack(**pack_def_options, side=tk.LEFT)
-            btn_zoom_out = ttk.Button(lblf_display, text='Shrink Cols', command=container.editable_table.shrink_cols)
-            btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_content = ttk.LabelFrame(self, text='Content')
             lblf_content.pack(**lblf_def_options)
@@ -813,11 +828,11 @@ class AppWindow(tk.Tk):
         filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'))
 
         filename = fd.askopenfilename(title='Choose a file to open', initialdir='./', filetypes=filetypes)
-
-        showinfo(title=app_title, message=f'The file {filename} as been read')
-        self.editable_table.file = filename
-        self.editable_table.load_data()
-        self.editable_table.show_page(0)
+        if filename and os.path.isfile(filename):
+            showinfo(title=app_title, message=f'The file {filename} as been read')
+            self.editable_table.file = filename
+            self.editable_table.load_data()
+            self.editable_table.show_page(0)
 
     def search(self):
         search_text = self.control_frame.var_search.get()
@@ -889,11 +904,11 @@ class AppWindow(tk.Tk):
 
     # noinspection DuplicatedCode
     def mouse_over_cell(self, event=None):
-        if event == None:
+        if event is None:
             return
         # Get the row and column index of the cell under the mouse pointer
         row, col = self.editable_table.get_row_clicked(event), self.editable_table.get_col_clicked(event)
-        if row is None or col is None:
+        if row is None or col is None or row >= len(self.editable_table.data):
             return
         col = self.editable_table.model.df.columns.get_loc('Image')
         if col:
