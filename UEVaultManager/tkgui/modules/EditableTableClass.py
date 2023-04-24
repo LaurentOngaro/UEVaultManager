@@ -7,7 +7,6 @@ from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.settings import *
 from pandastable import Table, TableModel
-from UEVaultManager.tkgui.modules.WebImageClass import WebImage
 
 
 class EditableTable(Table):
@@ -195,7 +194,7 @@ class EditableTable(Table):
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
 
-        edit_row_window = EditRowWindow(self.master, title=title, width=width, height=height, icon=app_icon_filename, editable_table=self)
+        edit_row_window = EditRowWindow(parent=self.master, title=title, width=width, height=height, icon=app_icon_filename, editable_table=self)
         edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
         # configure the grid
@@ -227,7 +226,6 @@ class EditableTable(Table):
                 entry.grid(row=i, column=1, sticky=tk.EW)
             elif lower_key == 'url':
                 # we add a button to open the url in an inner frame
-                asset_url = value
                 inner_frame_url = tk.Frame(edit_row_window.content_frame)
                 inner_frame_url.grid(row=i, column=1, sticky=tk.EW)
                 entry = ttk.Entry(inner_frame_url)
@@ -311,7 +309,7 @@ class EditableTable(Table):
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
-        edit_cell_window = EditCellWindow(self.master, title=title, width=width, height=height, editable_table=self)
+        edit_cell_window = EditCellWindow(parent=self.master, title=title, width=width, height=height, editable_table=self)
         edit_cell_window.grab_set()
         edit_cell_window.minsize(width, height)
         g.edit_cell_window_ref = edit_cell_window
