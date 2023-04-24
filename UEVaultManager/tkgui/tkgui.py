@@ -18,9 +18,7 @@ To Do:
 - update the PyPi package
 
 """
-import time
-import requests
-from io import BytesIO
+
 from tkinter import filedialog as fd, filedialog, messagebox
 from tkinter.messagebox import showwarning
 from UEVaultManager.tkgui.modules.EditableTableClass import *
