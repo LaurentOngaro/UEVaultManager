@@ -4,14 +4,13 @@ working file for the GUI integration in UEVaultManager
 Bugs to confirm:
 
 Bugs to fix:
+- the url column is nan
 
 To Do:
-- use image cache for the preview image in row edit window
 - add pagination info in a new frame. See tk_table_filter_ex.py
 - add more info about the current row (at least comment, review...) in the preview frame
 - check the TODOs
 - add features and buttons to refresh csv file by calling UEVaultManager cli
-- in edit_row_window, implement the prev and next buttons
 - save and load for tcsv files
 - save and load for json files
 - migrate the code into the UEVaultManager code base
