@@ -27,8 +27,8 @@ class EditCellWindow(tk.Toplevel):
         self.content_frame = self.ContentFrame(self)
         self.control_frame = self.ControlFrame(self)
 
-        self.content_frame.pack(ipadx=5, ipady=5, fill=tk.X)
-        self.control_frame.pack(ipadx=5, ipady=5, fill=tk.X)
+        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)

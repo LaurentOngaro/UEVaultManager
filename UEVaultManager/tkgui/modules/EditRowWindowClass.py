@@ -21,7 +21,6 @@ class EditRowWindow(tk.Toplevel):
         self.must_save = False
         self.initial_values = []
         self.width = width
-
         # the photoimage is stored is the variable to avoid garbage collection
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.image_preview = None
@@ -31,7 +30,7 @@ class EditRowWindow(tk.Toplevel):
         self.content_frame = self.ContentFrame(self)
         self.control_frame = self.ControlFrame(self)
 
-        self.content_frame.pack(ipadx=5, ipady=5, fill=tk.X)
+        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         self.control_frame.pack(ipadx=5, ipady=5, fill=tk.X)
 
         self.bind('<Key>', self.on_key_press)
