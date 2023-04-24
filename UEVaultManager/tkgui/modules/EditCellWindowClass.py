@@ -1,8 +1,7 @@
-import os
 import tkinter as tk
 from tkinter import messagebox, ttk
 import UEVaultManager.tkgui.modules.globals as g
-from UEVaultManager.tkgui.modules.functions import center_window_on_screen, path_from_relative_to_absolute
+from UEVaultManager.tkgui.modules.functions import center_window_on_screen
 
 
 class EditCellWindow(tk.Toplevel):

@@ -8,7 +8,7 @@ from UEVaultManager.tkgui.modules.settings import *
 
 class EditRowWindow(tk.Toplevel):
 
-    def __init__(self, parent: ttk.Frame, title: str, width=600, height=800, icon='', screen_index=0, editable_table=None):
+    def __init__(self, parent, title: str, width=600, height=800, icon='', screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
         geometry = center_window_on_screen(screen_index, height, width)

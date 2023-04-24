@@ -193,7 +193,6 @@ class EditableTable(Table):
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
-
         edit_row_window = EditRowWindow(parent=self.master, title=title, width=width, height=height, icon=app_icon_filename, editable_table=self)
         edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
