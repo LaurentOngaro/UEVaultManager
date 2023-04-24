@@ -1,8 +1,9 @@
 import datetime
+import os
 import tkinter as tk
 from tkinter.messagebox import showinfo
 from PIL import ImageTk, Image
-from testing.modules.Settings import *
+from UEVaultManager.tkgui.modules.settings import *
 
 
 # global functions
@@ -32,6 +33,7 @@ def log_warning(msg):
 def log_error(msg):
     # will be replaced by a logger when integrated in UEVaultManager
     print(msg)
+    exit(1)
 
 
 def convert_to_bool(x):
@@ -57,3 +59,11 @@ def resize_and_show_image(image, canvas, new_height, new_width):
     canvas.config(width=new_width, height=new_height, image=None)
     canvas.image = ImageTk.PhotoImage(image)
     canvas.create_image(0, 0, anchor=tk.NW, image=canvas.image)
+
+
+# Build the path of the file to reference relative to the currently running script
+def path_from_relative_to_absolute(relative_path):
+    current_script_path = os.path.abspath(__file__)
+    current_script_directory = os.path.dirname(current_script_path)
+    absolute_path = os.path.join(current_script_directory, relative_path)
+    return absolute_path

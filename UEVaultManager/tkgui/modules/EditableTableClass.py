@@ -1,0 +1,346 @@
+import UEVaultManager.tkgui.modules.globals as g
+import webbrowser
+import pandas as pd
+from tkinter import ttk
+from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
+from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
+from UEVaultManager.tkgui.modules.functions import *
+from UEVaultManager.tkgui.modules.settings import *
+from pandastable import Table, TableModel
+from UEVaultManager.tkgui.modules.WebImageClass import WebImage
+
+
+class EditableTable(Table):
+
+    def __init__(self, container_frame=None, file=None, fontsize=10, **kwargs):
+        self.container_frame = container_frame
+        self.file = file
+
+        self.rows_per_page = 35
+        self.current_page = 0
+        self.total_pages = 0
+        self.pagination_enabled = True
+
+        self.data = None
+        self.data_filtered = None
+
+        self.must_save = False
+        self.edit_row_window = None
+        self.edit_row_entries = None
+        self.edit_row_index = None
+
+        self.edit_cell_window = None
+        self.edit_cell_row_index = None
+        self.edit_cell_col_index = None
+        self.edit_cell_entry = None
+
+        self.load_data()
+        Table.__init__(self, container_frame, dataframe=self.data, showtoolbar=True, showstatusbar=True, **kwargs)
+        self.fontsize = fontsize
+        self.setFont()
+
+        # self.bind('<Double-Button-1>', self.edit_row)
+        self.bind('<Double-Button-1>', self.edit_value)
+
+    def show_page(self, page=None):
+        if page is None:
+            page = self.current_page
+        if self.pagination_enabled:
+            # Calculate start and end rows for current page
+            self.current_page = page
+            start = page * self.rows_per_page
+            end = start + self.rows_per_page
+            # Update table with data for current page
+            self.model.df = self.data.iloc[start:end]
+        else:
+            # Update table with all data
+            self.model.df = self.data_filtered
+            self.current_page = 0
+        # self.updateModel(TableModel(data))
+        self.redraw()
+
+    def next_page(self):
+        if self.current_page < self.total_pages - 1:
+            self.show_page(self.current_page + 1)
+
+    def prev_page(self):
+        if self.current_page > 0:
+            self.show_page(self.current_page - 1)
+
+    def first_page(self):
+        self.show_page(0)
+
+    def last_page(self):
+        self.show_page(self.total_pages - 1)
+
+    def load_data(self):
+        csv_options = {
+            'converters': {
+                'Asset_id': str,  #
+                'App name': str,  #
+                'Review': float,  #
+                'Price': float,  #
+                'Old Price': float,  #
+                'On Sale': convert_to_bool,  #
+                'Purchased': convert_to_bool,  #
+                'Must Buy': convert_to_bool,  #
+                'Date Added': convert_to_datetime,  #
+            },
+            'on_bad_lines': 'warn',
+            'encoding': "utf-8",
+        }
+        if not os.path.isfile(self.file):
+            log_error(f'File not found: {self.file}')
+            return
+
+        self.data = pd.read_csv(self.file, **csv_options)
+        log_debug("\nCOL TYPES AFTER LOADING CSV\n")
+        log_debug(self.data.info())
+
+        self.total_pages = (len(self.data) - 1) // self.rows_per_page + 1
+
+        for col in self.data.columns:
+            try:
+                self.data[col] = self.data[col].astype(str)
+            except ValueError as error:
+                log_error(f'Could not convert column "{col}" to string. Error: {error}')
+
+        col_to_datetime = ['Creation Date', 'Update Date']
+        # note "date added" does not use the same format as the other date columns
+        for col in col_to_datetime:
+            try:
+                self.data[col] = pd.to_datetime(self.data[col], format='ISO8601')
+            except ValueError as error:
+                log_error(f'Could not convert column "{col}" to datetime. Error: {error}')
+
+        col_as_float = ['Review', 'Price', 'Old Price']
+        for col in col_as_float:
+            try:
+                self.data[col] = self.data[col].astype(float)
+            except ValueError as error:
+                log_error(f'Could not convert column "{col}" to float. Error: {error}')
+
+        col_as_category = ['Category']
+        for col in col_as_category:
+            try:
+                self.data[col] = self.data[col].astype("category")
+            except ValueError as error:
+                log_error(f'Could not convert column "{col}" to category. Error: {error}')
+
+        log_debug("\nCOL TYPES AFTER MANUAL CONVERSION\n")
+        log_debug(self.data.info())
+
+        self.data_filtered = self.data
+
+    def reload_data(self):
+        self.load_data()
+        self.show_page(self.current_page)
+
+    def save_data(self):
+        data = self.data.iloc[0:len(self.data)]
+        self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
+        self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=csv_datetime_format)
+        self.show_page(self.current_page)
+        self.must_save = False
+
+    def search(self, category=default_category_for_all, search_text=default_search_text):
+        if category and category != default_category_for_all:
+            self.data_filtered = self.data[self.data['Category'] == category]
+        if search_text and search_text != default_search_text:
+            self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_text.lower() in str(row).lower(), axis=1)]
+        self.show_page(0)
+
+    def reset_search(self):
+        self.data_filtered = self.data
+        self.show_page(0)
+
+    def expand_columns(self):
+        self.expandColumns(factor=expand_columns_factor)
+
+    def contract_columns(self):
+        self.contractColumns(factor=contract_columns_factor)
+
+    def autofit_columns(self):
+        self.autoResizeColumns()
+
+    def zoom_in(self):
+        self.zoomIn()
+
+    def zoom_out(self):
+        self.zoomOut()
+
+    def get_selected_row_values(self):
+        if self.edit_row_entries is None or self.edit_row_index is None:
+            return {}
+        entries_values = {}
+        for key, entry in self.edit_row_entries.items():
+            try:
+                # get value for an entry tk widget
+                value = entry.get()
+            except TypeError:
+                # get value for a text tk widget
+                value = entry.get('1.0', 'end')
+            entries_values[key] = value
+        return entries_values
+
+    def edit_record(self):
+        row_selected = self.getSelectedRow()
+        if row_selected is None:
+            return
+
+        title = 'Edit current row values'
+        width = 900
+        height = 980  # 780
+        # window is displayed at mouse position
+        x = self.master.winfo_rootx()
+        y = self.master.winfo_rooty()
+
+        edit_row_window = EditRowWindow(self.master, title=title, geometry=f'{width}x{height}+{x}+{y}', icon=app_icon_filename, editable_table=self)
+        edit_row_window.grab_set()
+        edit_row_window.minsize(width, height)
+        # configure the grid
+        edit_row_window.content_frame.columnconfigure(0, weight=0)
+        edit_row_window.content_frame.columnconfigure(1, weight=1)
+
+        g.edit_row_window_ref = edit_row_window
+        self.display_record(row_selected)
+
+    def display_record(self, row_selected=None):
+        edit_row_window = g.edit_row_window_ref
+        if row_selected is None or edit_row_window is None:
+            return
+        # get and display the row data
+        row_data = self.model.df.iloc[row_selected].to_dict()
+        entries = {}
+        image_url = ''
+        for i, (key, value) in enumerate(row_data.items()):
+            from tkinter import ttk
+            ttk.Label(edit_row_window.content_frame, text=key).grid(row=i, column=0, sticky=tk.W)
+            lower_key = key.lower()
+            if lower_key == 'image':
+                image_url = value
+
+            if lower_key == 'asset_id':
+                # asset_id is readonly
+                entry = ttk.Entry(edit_row_window.content_frame)
+                entry.insert(0, value)
+                entry.grid(row=i, column=1, sticky=tk.EW)
+            elif lower_key == 'url':
+                # we add a button to open the url in an inner frame
+                asset_url = value
+                inner_frame_url = tk.Frame(edit_row_window.content_frame)
+                inner_frame_url.grid(row=i, column=1, sticky=tk.EW)
+                entry = ttk.Entry(inner_frame_url)
+                entry.insert(0, value)
+                entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                button = ttk.Button(inner_frame_url, text="Open URL", command=lambda: webbrowser.open(asset_url))
+                button.pack(side=tk.RIGHT)
+            elif lower_key in ('description', 'comment'):
+                # description and comment fields are text
+                entry = tk.Text(edit_row_window.content_frame, height=3)
+                entry.insert('1.0', value)
+                entry.grid(row=i, column=1, sticky=tk.EW)
+            else:
+                # other field is just a usual entry
+                entry = ttk.Entry(edit_row_window.content_frame)
+                entry.insert(0, value)
+                entry.grid(row=i, column=1, sticky=tk.EW)
+
+            entries[key] = entry
+
+        # image preview
+        image_preview = WebImage(image_url).get_resized(150, 150)
+        if image_preview is None:
+            # use default image
+            current_working_directory = os.path.dirname(os.getcwd())
+            image_path = os.path.join(current_working_directory, 'UEVaultManager/assets/UEVM_200x200.png')
+            image_path = os.path.normpath(image_path)
+            image_preview = tk.PhotoImage(file=image_path)
+        edit_row_window.image_preview = image_preview  # keep a reference to the image to avoid garbage collection
+        edit_row_window.preview_frame.canvas.create_image(100, 100, anchor="center", image=image_preview)
+
+        self.edit_row_entries = entries
+        self.edit_row_index = row_selected
+        self.edit_row_window = edit_row_window
+        edit_row_window.initial_values = self.get_selected_row_values()
+
+    def save_record(self):
+        for key, value in self.get_selected_row_values().items():
+            self.model.df.at[self.edit_row_index, key] = value
+        self.edit_row_entries = None
+        self.edit_row_index = None
+        self.redraw()
+        self.must_save = True
+        self.edit_row_window.close_window()
+
+    def move_to_next_record(self):
+        row_selected = self.getSelectedRow()
+        if row_selected is None or row_selected == self.model.df.shape[0] - 1:
+            return
+        self.setSelectedRow(row_selected + 1)
+        self.redraw()
+        self.display_record(row_selected + 1)
+
+    def move_to_prev_record(self):
+        row_selected = self.getSelectedRow()
+        if row_selected is None or row_selected == 0:
+            return
+        self.setSelectedRow(row_selected - 1)
+        self.redraw()
+        self.display_record(row_selected - 1)
+
+    def get_selected_cell_values(self):
+        if self.edit_cell_entry is None:
+            return None
+        return self.edit_cell_entry.get()
+
+    def edit_value(self, event):
+        row_index = self.get_row_clicked(event)
+        col_index = self.get_col_clicked(event)
+        if row_index is None or col_index is None:
+            return None
+        cell_value = self.model.df.iat[row_index, col_index]
+
+        title = 'Edit current cell values'
+        width = 300
+        height = 80
+        # window is displayed at mouse position
+        x = self.master.winfo_rootx()
+        y = self.master.winfo_rooty()
+
+        edit_cell_window = EditCellWindow(self.master, title=title, geometry=f'{width}x{height}+{x}+{y}', icon=app_icon_filename, editable_table=self)
+        edit_cell_window.grab_set()
+        edit_cell_window.minsize(width, height)
+        g.edit_cell_window_ref = edit_cell_window
+
+        # get and display the cell data
+        col_name = self.model.df.columns[col_index]
+        ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
+        entry = ttk.Entry(edit_cell_window.content_frame)
+        entry.insert(0, cell_value)
+        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        entry.focus_set()
+
+        self.edit_cell_entry = entry
+        self.edit_cell_row_index = row_index
+        self.edit_cell_col_index = col_index
+        self.edit_cell_window = edit_cell_window
+        edit_cell_window.initial_values = self.get_selected_cell_values()
+
+    def save_value(self):
+        if self.edit_cell_row_index is None or self.edit_cell_col_index is None or self.edit_cell_entry is None:
+            return
+        try:
+            # get value for an entry tk widget
+            value = self.edit_cell_entry.get()
+        except TypeError:
+            # get value for a text tk widget
+            value = self.edit_cell_entry.get('1.0', 'end')
+        self.model.df.iat[self.edit_cell_row_index, self.edit_cell_col_index] = value
+
+        self.edit_cell_entry = None
+        self.edit_cell_row_index = None
+        self.edit_cell_col_index = None
+        self.redraw()
+        self.must_save = True
+        self.edit_cell_window.close_window()

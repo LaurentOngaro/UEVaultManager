@@ -6,14 +6,14 @@ app_title = 'UEVM Gui'
 app_width = 1600
 app_height = 930
 app_monitor = 1
-csv_datetime_format = '%y-%m-%d %H:%M:%S'
-app_icon_filename = '../UEVaultManager/assets/main.ico'
-csv_filename = '../results/list.csv'
+csv_datetime_format = '%Y-%m-%d %H:%M:%S'
+app_icon_filename = '../../assets/main.ico'
+csv_filename = 'D:/Projets_Perso/03d Code Python/UEVaultManager/results/list.csv'
 
 cache_folder = "../cache"
 cache_max_time = 60 * 60 * 24 * 15  # 15 days
 
-default_image_filename = '../UEVaultManager/assets/UEVM_200x200.png'
+default_image_filename = './assets/UEVM_200x200.png'
 preview_max_width = 150
 preview_max_height = 150
 
