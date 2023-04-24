@@ -190,12 +190,12 @@ class EditableTable(Table):
 
         title = 'Edit current row values'
         width = 900
-        height = 980  # 780
+        height = 830
         # window is displayed at mouse position
-        x = self.master.winfo_rootx()
-        y = self.master.winfo_rooty()
+        # x = self.master.winfo_rootx()
+        # y = self.master.winfo_rooty()
 
-        edit_row_window = EditRowWindow(self.master, title=title, geometry=f'{width}x{height}+{x}+{y}', icon=app_icon_filename, editable_table=self)
+        edit_row_window = EditRowWindow(self.master, title=title, width=width, height=height, icon=app_icon_filename, editable_table=self)
         edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
         # configure the grid
@@ -233,7 +233,7 @@ class EditableTable(Table):
                 entry = ttk.Entry(inner_frame_url)
                 entry.insert(0, value)
                 entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-                button = ttk.Button(inner_frame_url, text="Open URL", command=lambda: webbrowser.open(asset_url))
+                button = ttk.Button(inner_frame_url, text="Open URL", command=self.open_asset_url)
                 button.pack(side=tk.RIGHT)
             elif lower_key in ('description', 'comment'):
                 # description and comment fields are text
@@ -249,20 +249,24 @@ class EditableTable(Table):
             entries[key] = entry
 
         # image preview
-        image_preview = WebImage(image_url).get_resized(150, 150)
-        if image_preview is None:
-            # use default image
-            current_working_directory = os.path.dirname(os.getcwd())
-            image_path = os.path.join(current_working_directory, 'UEVaultManager/assets/UEVM_200x200.png')
-            image_path = os.path.normpath(image_path)
-            image_preview = tk.PhotoImage(file=image_path)
-        edit_row_window.image_preview = image_preview  # keep a reference to the image to avoid garbage collection
-        edit_row_window.preview_frame.canvas.create_image(100, 100, anchor="center", image=image_preview)
+        show_asset_image(image_url=image_url, canvas_preview=edit_row_window.control_frame.canvas_preview)
 
         self.edit_row_entries = entries
         self.edit_row_index = row_selected
         self.edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_selected_row_values()
+
+    def open_asset_url(self, url=None):
+        if url is None:
+            if self.edit_row_entries is None:
+                return
+            asset_url = self.edit_row_entries['Url'].get()
+        else:
+            asset_url = url
+        log_info(f'calling open_asset_url={asset_url}')
+        if asset_url is None or asset_url == '' or asset_url == 'nan':
+            return
+        webbrowser.open(asset_url)
 
     def save_record(self):
         for key, value in self.get_selected_row_values().items():
@@ -305,10 +309,9 @@ class EditableTable(Table):
         width = 300
         height = 80
         # window is displayed at mouse position
-        x = self.master.winfo_rootx()
-        y = self.master.winfo_rooty()
-
-        edit_cell_window = EditCellWindow(self.master, title=title, geometry=f'{width}x{height}+{x}+{y}', icon=app_icon_filename, editable_table=self)
+        # x = self.master.winfo_rootx()
+        # y = self.master.winfo_rooty()
+        edit_cell_window = EditCellWindow(self.master, title=title, width=width, height=height, editable_table=self)
         edit_cell_window.grab_set()
         edit_cell_window.minsize(width, height)
         g.edit_cell_window_ref = edit_cell_window

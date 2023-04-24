@@ -2,24 +2,27 @@ import os
 import tkinter as tk
 from tkinter import messagebox, ttk
 import UEVaultManager.tkgui.modules.globals as g
+from UEVaultManager.tkgui.modules.functions import center_window_on_screen, path_from_relative_to_absolute
 
 
 class EditCellWindow(tk.Toplevel):
 
-    def __init__(self, parent, title: str, geometry: str, icon: str, editable_table):
+    def __init__(self, parent, title: str, width=600, height=400, screen_index=0, editable_table=None):
         super().__init__(parent)
-
         self.title(title)
+        geometry = center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-        if icon != '' and os.path.isfile(icon):
-            self.iconbitmap(icon)
+
+        # windows only (remove the minimize/maximize buttons and the icon)
+        self.attributes('-toolwindow', True)
+        # icon = path_from_relative_to_absolute(icon)
+        # if icon != '' and os.path.isfile(icon):
+        #     self.iconbitmap(icon)
 
         self.editable_table = editable_table
         self.must_save = False
         self.initial_values = []
 
-        # windows only (remove the minimize/maximize button)
-        self.attributes('-toolwindow', True)
         self.resizable(True, False)
 
         self.content_frame = self.ContentFrame(self)
@@ -35,13 +38,11 @@ class EditCellWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            self['padding'] = 5
 
     class ControlFrame(ttk.Frame):
 
         def __init__(self, container):
             super().__init__(container)
-            self['padding'] = 5
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
             ttk.Button(self, text='Cancel', command=container.on_close).pack(**pack_def_options, side=tk.RIGHT)
             ttk.Button(self, text='Save Changes', command=container.save_change).pack(**pack_def_options, side=tk.RIGHT)

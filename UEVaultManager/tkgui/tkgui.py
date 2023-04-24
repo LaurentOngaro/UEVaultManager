@@ -24,32 +24,19 @@ import requests
 from io import BytesIO
 from tkinter import filedialog as fd, filedialog, messagebox
 from tkinter.messagebox import showwarning
-from screeninfo import get_monitors
 from UEVaultManager.tkgui.modules.EditableTableClass import *
 from UEVaultManager.tkgui.modules.functions import *
+from UEVaultManager.tkgui.modules.functions import center_window_on_screen
 
 
 class AppWindow(tk.Tk):
 
-    def __init__(self, title: str, width: int, height: int, icon: str, file: str, screen_index=0):
+    def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file=''):
         super().__init__()
 
         self.title(title)
 
-        monitors = get_monitors()
-        if screen_index > len(monitors):
-            log_warning(f'The screen #{screen_index} is not available. Using 0 as screen index.')
-            screen_index = 0
-
-        log_info(f'The app is displayed is the center of the screen #{screen_index}.')
-
-        # Position the window in the center of the screen
-        target_screen = monitors[screen_index]
-        screen_width = target_screen.width
-        screen_height = target_screen.height
-        x = target_screen.x + (screen_width-width) // 2
-        y = target_screen.y + (screen_height-height) // 2
-        geometry: str = f'{width}x{height}+{x}+{y}'
+        geometry = center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
 
         if icon != '' and os.path.isfile(icon):
@@ -116,11 +103,11 @@ class AppWindow(tk.Tk):
             btn_zoom_out = ttk.Button(lblf_display, text="Zoom Out", command=container.editable_table.zoom_out)
             btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
-            lblf_options = ttk.LabelFrame(self, text='Options')
-            lblf_options.pack(side=tk.RIGHT, **lblf_def_options)
-            btn_on_close = ttk.Button(lblf_options, text='Quit', command=container.on_close)
+            lblf_actions = ttk.LabelFrame(self, text='Actions')
+            lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
+            btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
-            btn_toggle_controls = ttk.Button(lblf_options, text="Hide Controls", command=container.toggle_filter_controls)
+            btn_toggle_controls = ttk.Button(lblf_actions, text="Hide Controls", command=container.toggle_filter_controls)
             btn_toggle_controls.pack(**pack_def_options, side=tk.RIGHT)
 
             # store the buttons that need to be disabled when the pagination is disabled
@@ -311,60 +298,17 @@ class AppWindow(tk.Tk):
             return
         col = self.editable_table.model.df.columns.get_loc('Image')
         if col:
-            img_url = self.editable_table.model.getValueAt(row, col)
-            self.show_asset_image(img_url)
+            image_url = self.editable_table.model.getValueAt(row, col)
+            show_asset_image(image_url=image_url, canvas_preview=self.control_frame.canvas_preview)
         else:
-            self.show_default_image()
+            show_default_image(canvas_preview=self.control_frame.canvas_preview)
 
     def mouse_leave_cell(self, _event=None):
-        self.show_default_image()
-
-    def show_asset_image(self, img_url):
-        try:
-            # noinspection DuplicatedCode
-            if not os.path.isdir(cache_folder):
-                os.mkdir(cache_folder)
-
-            image_filename = os.path.join(cache_folder, os.path.basename(img_url))
-
-            # Check if the image is already cached
-            if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < cache_max_time:
-                # Load the image from the cache folder
-                image = Image.open(image_filename)
-            else:
-                response = requests.get(img_url)
-                image = Image.open(BytesIO(response.content))
-
-                with open(image_filename, "wb") as f:
-                    f.write(response.content)
-
-            # Calculate new dimensions while maintaining the aspect ratio
-            width_ratio = preview_max_width / float(image.width)
-            height_ratio = preview_max_height / float(image.height)
-            ratio = min(width_ratio, height_ratio, 1)
-            new_width = min(int(image.width * ratio), preview_max_width)
-            new_height = min(int(image.height * ratio), preview_max_height)
-            log_debug(f'Image size: {image.width}x{image.height} -> {new_width}x{new_height} ratio: {ratio}')
-            # noinspection PyTypeChecker
-            resize_and_show_image(image, self.control_frame.canvas_preview, new_height, new_width)
-
-        except Exception as error:
-            log_error(f"Error showing image: {error}")
-
-    def show_default_image(self, _event=None):
-        try:
-            # Load the default image
-            if os.path.isfile(default_image_filename):
-                def_image = Image.open(default_image_filename)
-                # noinspection PyTypeChecker
-                resize_and_show_image(def_image, self.control_frame.canvas_preview, preview_max_width, preview_max_height)
-        except Exception as error:
-            log_warning(f"Error showing default image {default_image_filename} cwd:{os.getcwd()}: {error}")
+        show_default_image(canvas_preview=self.control_frame.canvas_preview)
 
 
 if __name__ == '__main__':
     app_icon_filename = path_from_relative_to_absolute(app_icon_filename)
     csv_filename = path_from_relative_to_absolute(csv_filename)
-
-    main = AppWindow(title=app_title, width=app_width, height=app_height, icon=app_icon_filename, file=csv_filename)
+    main = AppWindow(title=app_title, width=app_width, height=app_height, icon=app_icon_filename, screen_index=0, file=csv_filename)
     main.mainloop()
