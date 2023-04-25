@@ -16,14 +16,13 @@ from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from sys import exit, stdout, platform as sys_platform
-from tkinter import ttk
-
-import pandas as pd
-
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.tkgui.tkgui import UEVMGui
+import UEVaultManager.tkgui.modules.functions as guif
+import UEVaultManager.tkgui.modules.globals as guig
 from UEVaultManager.utils.cli import strtobool, check_and_create_path
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
@@ -809,121 +808,21 @@ class UEVaultManagerCLI:
 
     def edit_list(self, args):
 
-        class DataTable(tk.Frame):
-
-            def __init__(self, parent, file_name='', file_format='csv'):
-                tk.Frame.__init__(self, parent)
-                self.parent = parent
-                self.data = {}
-                self.table = None
-                self.pages = []
-                self.current_page = 0
-                self.file_name = file_name
-                self.file_format = file_format
-
-            def initialize_table(self):
-                self.pages = [self.data[i:i + 20] for i in range(0, len(self.data), 20)]
-                self.table = ttk.Treeview(self, columns=list(self.pages[self.current_page].columns), show="headings")
-                self.table.bind("<Double-Button-1>", self.edit_cell)
-                for column in self.table["columns"]:
-                    self.table.heading(column, text=column)
-                self.load_current_page()
-
-                # Add horizontal scrollbar
-                scrollbar = ttk.Scrollbar(self, orient="horizontal", command=self.table.xview)
-                self.table.configure(xscrollcommand=scrollbar.set)
-                scrollbar.pack(side="bottom", fill="x")
-
-                # Limit window width to 1200 pixels
-                self.parent.maxsize(1200, self.parent.winfo_screenheight())
-                self.table.pack(side="left", fill="both", expand=True)
-
-            def load_current_page(self):
-                self.clear_table()
-                page_data = self.pages[self.current_page]
-                for index, row in page_data.iterrows():
-                    self.table.insert("", "end", values=list(row))
-
-            def next_page(self):
-                if self.current_page < len(self.pages) - 1:
-                    self.current_page += 1
-                    self.load_current_page()
-
-            def prev_page(self):
-                if self.current_page > 0:
-                    self.current_page -= 1
-                    self.load_current_page()
-
-            def clear_table(self):
-                self.data.delete(*self.table.get_children())
-
-            def edit_cell(self, event):
-                row = self.table.identify_row(event.y)
-                column = self.table.identify_column(event.x)
-                cell_value = self.table.item(row)["values"][int(column[1:])]
-                entry = tk.Entry(self.table, justify="center")
-                entry.insert(0, cell_value)
-                entry.focus()
-                entry.bind("<Return>", lambda l_event, l_row=row, l_column=column, l_entry=entry: self.save_cell(l_event, l_row, l_column, l_entry))
-                entry.bind("<Escape>", lambda l_event, l_entry=entry: self.cancel_edit(l_event, l_entry))
-                self.table.update_idletasks()
-                cell_rect = self.table.bbox(row, column)
-                entry.place(x=cell_rect[0], y=cell_rect[1], width=cell_rect[2] - cell_rect[0], height=cell_rect[3] - cell_rect[1])
-
-            def save_cell(self, event, row, column, entry):
-                new_value = entry.get()
-                self.data.iloc[int(row), int(column[1:])] = new_value
-                self.table.item(row, values=list(self.data.iloc[int(row)]))
-                entry.destroy()
-
-            def cancel_edit(self, event, entry):
-                entry.destroy()
-
-            def load_data(self):
-                try:
-                    if self.file_name.format == 'csv':
-                        # Read CSV file
-                        self.data = pd.read_csv(self.file_name)
-                    elif self.file_name.format == 'json':
-                        # Read Json file
-                        self.data = pd.read_json(self.file_name)
-                except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
-                    self.logger.warning(f'Could not read data from the file {self.file_name}')
-
-                self.pages = [self.data[i:i + 20] for i in range(0, len(self.data), 20)]
-                self.current_page = 0
-
-            def reload_data(self):
-                self.load_data()
-                self.load_current_page()
-
-            def save_data(self):
-                self.data.to_csv(self.file_name, index=False)
-
         if args.input:
-            # Create root window
-            root = tk.Tk()
-            root.title("Editable Data Table")
-
-            if args.csv or args.tsv:
-                file_format = 'csv'
-            elif args.json:
-                file_format = 'json'
-
-            # Create data table
-            table = DataTable(root, args.input, file_format)
-            table.pack(side="top", fill="both", expand=True)
-            table.reload_data()
-            table.initialize_table()
-
-            # Create reload and save buttons
-            reload_button = ttk.Button(root, text="Reload", command=table.reload_data)
-            save_button = ttk.Button(root, text="Save", command=table.save_data)
-            reload_button.pack(side="left", padx=10, pady=10)
-            save_button.pack(side="left", padx=10, pady=10)
-
-            # Start application
-            root.mainloop()
+            app_icon_filename = guif.path_from_relative_to_absolute(guig.s.app_icon_filename)
+            input_filename = guif.path_from_relative_to_absolute(args.input)
+            if os.path.isfile(input_filename):
+                uevm_gui = UEVMGui(
+                    title=guig.s.app_title,
+                    width=guig.s.app_width,
+                    height=guig.s.app_height,
+                    icon=app_icon_filename,
+                    screen_index=0,
+                    file=input_filename
+                )
+                uevm_gui.mainloop()
+            else:
+                self.logger.error('The file to read data from has not been found (probably the --input command option is invalid)')
         else:
             self.logger.error('The file to read data from must be precised using the --input command option')
 
