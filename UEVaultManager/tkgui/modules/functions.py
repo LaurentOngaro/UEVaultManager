@@ -4,15 +4,15 @@ import time
 import tkinter as tk
 import requests
 from io import BytesIO
-from tkinter.messagebox import showinfo
+from tkinter import messagebox
 from PIL import ImageTk, Image
 from screeninfo import get_monitors
-from UEVaultManager.tkgui.modules.settings import *
+import UEVaultManager.tkgui.modules.globals as g  # using the shortest variable name for globals for convenience
 
 
 def todo_message():
     msg = 'Not implemented yet'
-    showinfo(title=app_title, message=msg)
+    messagebox.showinfo(title=g.s.app_title, message=msg)
 
 
 def log_info(msg):
@@ -21,7 +21,7 @@ def log_info(msg):
 
 
 def log_debug(msg):
-    if not debug_mode:
+    if not g.s.debug_mode:
         return  # temp bypass
     # will be replaced by a logger when integrated in UEVaultManager
     print(msg)
@@ -51,7 +51,7 @@ def convert_to_bool(x):
 # convert x to a datetime using the format in csv_datetime_format
 def convert_to_datetime(value):
     try:
-        return datetime.datetime.strptime(value, csv_datetime_format)
+        return datetime.datetime.strptime(value, g.s.csv_datetime_format)
     except ValueError:
         return ''
 
@@ -80,8 +80,8 @@ def center_window_on_screen(screen_index, height, width):
     target_screen = monitors[screen_index]
     screen_width = target_screen.width
     screen_height = target_screen.height
-    x = target_screen.x + (screen_width-width) // 2
-    y = target_screen.y + (screen_height-height) // 2
+    x = target_screen.x + (screen_width - width) // 2
+    y = target_screen.y + (screen_height - height) // 2
     geometry: str = f'{width}x{height}+{x}+{y}'
     return geometry
 
@@ -91,13 +91,13 @@ def show_asset_image(image_url, canvas_preview=None):
         return
     try:
         # noinspection DuplicatedCode
-        if not os.path.isdir(cache_folder):
-            os.mkdir(cache_folder)
+        if not os.path.isdir(g.s.cache_folder):
+            os.mkdir(g.s.cache_folder)
 
-        image_filename = os.path.join(cache_folder, os.path.basename(image_url))
+        image_filename = os.path.join(g.s.cache_folder, os.path.basename(image_url))
 
         # Check if the image is already cached
-        if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < cache_max_time:
+        if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < g.s.cache_max_time:
             # Load the image from the cache folder
             image = Image.open(image_filename)
         else:
@@ -108,11 +108,11 @@ def show_asset_image(image_url, canvas_preview=None):
                 f.write(response.content)
 
         # Calculate new dimensions while maintaining the aspect ratio
-        width_ratio = preview_max_width / float(image.width)
-        height_ratio = preview_max_height / float(image.height)
+        width_ratio = g.s.preview_max_width / float(image.width)
+        height_ratio = g.s.preview_max_height / float(image.height)
         ratio = min(width_ratio, height_ratio, 1)
-        new_width = min(int(image.width * ratio), preview_max_width)
-        new_height = min(int(image.height * ratio), preview_max_height)
+        new_width = min(int(image.width * ratio), g.s.preview_max_width)
+        new_height = min(int(image.height * ratio), g.s.preview_max_height)
         log_debug(f'Image size: {image.width}x{image.height} -> {new_width}x{new_height} ratio: {ratio}')
         # noinspection PyTypeChecker
         resize_and_show_image(image, canvas_preview, new_height, new_width)
@@ -126,9 +126,9 @@ def show_default_image(canvas_preview=None):
         return
     try:
         # Load the default image
-        if os.path.isfile(default_image_filename):
-            def_image = Image.open(default_image_filename)
+        if os.path.isfile(g.s.default_image_filename):
+            def_image = Image.open(g.s.default_image_filename)
             # noinspection PyTypeChecker
-            resize_and_show_image(def_image, canvas_preview, preview_max_width, preview_max_height)
+            resize_and_show_image(def_image, canvas_preview, g.s.preview_max_width, g.s.preview_max_height)
     except Exception as error:
-        log_warning(f"Error showing default image {default_image_filename} cwd:{os.getcwd()}: {error}")
+        log_warning(f"Error showing default image {g.s.default_image_filename} cwd:{os.getcwd()}: {error}")

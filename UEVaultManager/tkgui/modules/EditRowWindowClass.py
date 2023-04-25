@@ -1,9 +1,8 @@
 import os
 import tkinter as tk
-import UEVaultManager.tkgui.modules.globals as g
-from tkinter import messagebox, ttk
-from UEVaultManager.tkgui.modules.functions import center_window_on_screen, path_from_relative_to_absolute
-from UEVaultManager.tkgui.modules.settings import *
+from tkinter import ttk, messagebox
+import UEVaultManager.tkgui.modules.functions as f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as g  # using the shortest variable name for globals for convenience
 
 
 class EditRowWindow(tk.Toplevel):
@@ -11,9 +10,9 @@ class EditRowWindow(tk.Toplevel):
     def __init__(self, parent, title: str, width=600, height=800, icon='', screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
-        geometry = center_window_on_screen(screen_index, height, width)
+        geometry = f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-        icon = path_from_relative_to_absolute(icon)
+        icon = f.path_from_relative_to_absolute(icon)
         if icon != '' and os.path.isfile(icon):
             self.iconbitmap(icon)
 
@@ -57,9 +56,9 @@ class EditRowWindow(tk.Toplevel):
 
             lbf_preview = ttk.LabelFrame(self, text="Image Preview")
             lbf_preview.grid(row=0, column=1, **grid_def_options)
-            canvas_preview = tk.Canvas(lbf_preview, width=preview_max_width, height=preview_max_height, highlightthickness=0)
+            canvas_preview = tk.Canvas(lbf_preview, width=g.s.preview_max_width, height=g.s.preview_max_height, highlightthickness=0)
             canvas_preview.pack()
-            canvas_preview.create_rectangle((0, 0), (preview_max_width, preview_max_height), fill='black')
+            canvas_preview.create_rectangle((0, 0), (g.s.preview_max_width, g.s.preview_max_height), fill='black')
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=2, **grid_def_options)

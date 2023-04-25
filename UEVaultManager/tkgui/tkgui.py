@@ -17,22 +17,21 @@ To Do:
 - update the PyPi package
 
 """
+import os
+import tkinter as tk
+from tkinter import filedialog as fd, filedialog, ttk, messagebox
+import UEVaultManager.tkgui.modules.functions as f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
 
-from tkinter import filedialog as fd, filedialog, messagebox
-from tkinter.messagebox import showwarning
-from UEVaultManager.tkgui.modules.EditableTableClass import *
-from UEVaultManager.tkgui.modules.functions import *
-from UEVaultManager.tkgui.modules.functions import center_window_on_screen
 
-
-class AppWindow(tk.Tk):
+class UEVMGui(tk.Tk):
 
     def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file=''):
         super().__init__()
-
         self.title(title)
 
-        geometry = center_window_on_screen(screen_index, height, width)
+        geometry = f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
 
         if icon != '' and os.path.isfile(icon):
@@ -43,7 +42,7 @@ class AppWindow(tk.Tk):
 
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
         table_frame = self.TableFrame(self)
-        self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=table_font_size)
+        self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=g.s.table_font_size)
 
         self.editable_table.show()
         self.editable_table.show_page(0)
@@ -74,7 +73,7 @@ class AppWindow(tk.Tk):
 
             lblf_pages = ttk.LabelFrame(self, text='Pagination')
             lblf_pages.pack(side=tk.LEFT, **lblf_def_options)
-            btn_toggle_pagination = ttk.Button(lblf_pages, text='Toggle Pagination', command=container.toggle_pagination)
+            btn_toggle_pagination = ttk.Button(lblf_pages, text='Disable Pagination', command=container.toggle_pagination)
             btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
             btn_first_page = ttk.Button(lblf_pages, text='First Page', command=container.show_first_page)
             btn_first_page.pack(**pack_def_options, side=tk.LEFT)
@@ -116,6 +115,7 @@ class AppWindow(tk.Tk):
             entry_page_num.bind("<FocusOut>", container.on_entry_page_num_changed)
             entry_page_num.bind("<Return>", container.on_entry_page_num_changed)
 
+            self.btn_toggle_pagination = btn_toggle_pagination
             self.btn_first_page = btn_first_page
             self.btn_prev_page = btn_prev_page
             self.btn_next_page = btn_next_page
@@ -134,7 +134,7 @@ class AppWindow(tk.Tk):
         # delete the temporary text in filter value entry
         def reset_entry_search(self, _event=None):
             self.entry_search.delete(0, 'end')
-            self.entry_search.insert(0, default_search_text)
+            self.entry_search.insert(0, g.s.default_search_text)
 
         def del_entry_search(self, _event=None):
             self.entry_search.delete(0, 'end')
@@ -142,25 +142,26 @@ class AppWindow(tk.Tk):
         def __init__(self, container):
             super().__init__()
 
-            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
             grid_def_options = {'ipadx': 2, 'ipady': 2, 'sticky': tk.NW}
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 0, 'pady': 0, 'fill': tk.BOTH, 'expand': False}
 
             lblf_content = ttk.LabelFrame(self, text='Content')
             lblf_content.pack(**lblf_def_options)
             btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=container.editable_table.edit_record)
-            btn_edit_row.pack(**pack_def_options, side=tk.LEFT)
-            btn_reload_data = ttk.Button(lblf_content, text='Reload Content', command=container.editable_table.reload_data)
-            btn_reload_data.pack(**pack_def_options, side=tk.LEFT)
+            btn_edit_row.grid(row=0, column=0, **grid_def_options)
+            btn_reload_data = ttk.Button(lblf_content, text='Reload File Content', command=container.editable_table.reload_data)
+            btn_reload_data.grid(row=0, column=1, **grid_def_options)
+            btn_rebuild_file = ttk.Button(lblf_content, text='Rebuild File Content', command=container.editable_table.rebuild_data)
+            btn_rebuild_file.grid(row=0, column=2, **grid_def_options)
 
             lbf_filter_cat = ttk.LabelFrame(self, text="Search and Filter")
             lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
             categories = list(container.editable_table.data['Category'].cat.categories)
             var_category = tk.StringVar(value=categories[0])
-            categories.insert(0, default_category_for_all)
+            categories.insert(0, g.s.default_category_for_all)
             opt_category = ttk.Combobox(lbf_filter_cat, textvariable=var_category, values=categories)
             opt_category.grid(row=0, column=0, **grid_def_options)
-            var_search = tk.StringVar(value=default_search_text)
+            var_search = tk.StringVar(value=g.s.default_search_text)
             entry_search = ttk.Entry(lbf_filter_cat, textvariable=var_search)
             entry_search.grid(row=0, column=1, **grid_def_options)
             entry_search.bind("<FocusIn>", self.del_entry_search)
@@ -172,19 +173,24 @@ class AppWindow(tk.Tk):
 
             lblf_files = ttk.LabelFrame(self, text='Files')
             lblf_files.pack(**lblf_def_options)
+            lbl_file_name = ttk.Label(lblf_files, text='Current File: ')
+            lbl_file_name.grid(row=0, column=0, columnspan=3, **grid_def_options)
+            entry_file_name_var = tk.StringVar(value=container.editable_table.file)
+            entry_file_name = ttk.Entry(lblf_files, textvariable=entry_file_name_var, state='readonly')
+            entry_file_name.grid(row=1, column=0, columnspan=3, **grid_def_options)
             btn_save_change = ttk.Button(lblf_files, text='Save to File', command=container.save_change)
-            btn_save_change.pack(**pack_def_options, side=tk.LEFT)
+            btn_save_change.grid(row=2, column=0, **grid_def_options)
             btn_export_button = ttk.Button(lblf_files, text='Export Selection', command=container.export_selection)
-            btn_export_button.pack(**pack_def_options, side=tk.LEFT)
+            btn_export_button.grid(row=2, column=1, **grid_def_options)
             btn_select_file = ttk.Button(lblf_files, text='Load a file', command=container.select_file)
-            btn_select_file.pack(**pack_def_options, side=tk.LEFT)
+            btn_select_file.grid(row=2, column=2, **grid_def_options)
 
             # Create a Canvas to preview the asset image
             lbf_preview = ttk.LabelFrame(self, text="Image Preview")
             lbf_preview.pack(**lblf_def_options, anchor=tk.SW)
-            canvas_preview = tk.Canvas(lbf_preview, width=preview_max_width, height=preview_max_height, highlightthickness=0)
+            canvas_preview = tk.Canvas(lbf_preview, width=g.s.preview_max_width, height=g.s.preview_max_height, highlightthickness=0)
             canvas_preview.pack()
-            canvas_preview.create_rectangle((0, 0), (preview_max_width, preview_max_height), fill='black')
+            canvas_preview.create_rectangle((0, 0), (g.s.preview_max_width, g.s.preview_max_height), fill='black')
 
             lblf_bottom = ttk.Frame(self)
             lblf_bottom.pack(**lblf_def_options)
@@ -195,6 +201,7 @@ class AppWindow(tk.Tk):
             self.var_category = var_category
             self.var_search = var_search
             self.canvas_preview = canvas_preview
+            self.entry_file_name_var = entry_file_name_var
 
     def on_close(self):
         if self.editable_table.must_save:
@@ -223,7 +230,7 @@ class AppWindow(tk.Tk):
 
         filename = fd.askopenfilename(title='Choose a file to open', initialdir='./', filetypes=filetypes)
         if filename and os.path.isfile(filename):
-            showinfo(title=app_title, message=f'The file {filename} as been read')
+            messagebox.showinfo(title=g.s.app_title, message=f'The file {filename} as been read')
             self.editable_table.file = filename
             self.editable_table.load_data()
             self.editable_table.show_page(0)
@@ -231,15 +238,15 @@ class AppWindow(tk.Tk):
     def search(self):
         search_text = self.control_frame.var_search.get()
         category = self.control_frame.var_category.get()
-        if search_text == default_search_text and category == default_category_for_all:
+        if search_text == g.s.default_search_text and category == g.s.default_category_for_all:
             return
         self.toggle_pagination(forced_value=False)
         self.editable_table.search(search_text=search_text, category=category)
         self.control_frame.reset_entry_search()
 
     def reset_search(self):
-        self.control_frame.var_search.set(default_search_text)
-        self.control_frame.var_category.set(default_category_for_all)
+        self.control_frame.var_search.set(g.s.default_search_text)
+        self.control_frame.var_category.set(g.s.default_category_for_all)
         self.editable_table.reset_search()
 
     def toggle_pagination(self, forced_value=None):
@@ -255,8 +262,10 @@ class AppWindow(tk.Tk):
             self.toolbar_frame.btn_next_page.config(state=tk.DISABLED)
             self.toolbar_frame.btn_last_page.config(state=tk.DISABLED)
             self.toolbar_frame.entry_page_num.config(state=tk.DISABLED)
+            self.toolbar_frame.btn_toggle_pagination.config(text="Enable  Pagination")
         else:
             self.update_page_numbers()  # will also update buttons status
+            self.toolbar_frame.btn_toggle_pagination.config(text="Disable Pagination")
 
     def show_first_page(self):
         self.editable_table.first_page()
@@ -302,11 +311,11 @@ class AppWindow(tk.Tk):
             if file_name:
                 # Export selected rows to the specified CSV file
                 selected_rows.to_csv(file_name, index=False)
-                showinfo(title=app_title, message=f'Selected rows exported to "{file_name}"')
+                messagebox.showinfo(title=g.s.app_title, message=f'Selected rows exported to "{file_name}"')
             else:
-                showwarning(title=app_title, message='No file has been selected')
+                messagebox.showwarning(title=g.s.app_title, message='No file has been selected')
         else:
-            showwarning(title=app_title, message='Select at least one row first')
+            messagebox.showwarning(title=g.s.app_title, message='Select at least one row first')
 
     # noinspection DuplicatedCode
     def on_mouse_over_cell(self, event=None):
@@ -319,12 +328,12 @@ class AppWindow(tk.Tk):
         col = self.editable_table.model.df.columns.get_loc('Image')
         if col:
             image_url = self.editable_table.model.getValueAt(row, col)
-            show_asset_image(image_url=image_url, canvas_preview=self.control_frame.canvas_preview)
+            f.show_asset_image(image_url=image_url, canvas_preview=self.control_frame.canvas_preview)
         else:
-            show_default_image(canvas_preview=self.control_frame.canvas_preview)
+            f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
 
     def on_mouse_leave_cell(self, _event=None):
-        show_default_image(canvas_preview=self.control_frame.canvas_preview)
+        f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
 
     def on_entry_page_num_changed(self, _event=None):
         page_num = 0
@@ -332,10 +341,10 @@ class AppWindow(tk.Tk):
             page_num = self.toolbar_frame.entry_page_num.get()
             page_num = int(page_num)
             page_num -= 1
-            log_debug(f'showing page {page_num}')
+            f.log_debug(f'showing page {page_num}')
             self.editable_table.show_page(page_num)
         except (ValueError, UnboundLocalError) as error:
-            log_error(f'could not convert page number {page_num} to int. Error {error!r}')
+            f.log_error(f'could not convert page number {page_num} to int. Error {error!r}')
 
     def update_page_numbers(self):
         page_num = self.editable_table.current_page + 1
@@ -356,9 +365,13 @@ class AppWindow(tk.Tk):
             self.toolbar_frame.btn_next_page.config(state=tk.DISABLED)
             self.toolbar_frame.btn_last_page.config(state=tk.DISABLED)
 
+    def update_file_name(self):
+        filename = self.editable_table.file
+        self.control_frame.entry_file_name_var.set(filename)
+
 
 if __name__ == '__main__':
-    app_icon_filename = path_from_relative_to_absolute(app_icon_filename)
-    csv_filename = path_from_relative_to_absolute(csv_filename)
-    main = AppWindow(title=app_title, width=app_width, height=app_height, icon=app_icon_filename, screen_index=0, file=csv_filename)
+    app_icon_filename = f.path_from_relative_to_absolute(g.s.app_icon_filename)
+    csv_filename = f.path_from_relative_to_absolute(g.s.csv_filename)
+    main = UEVMGui(title=g.s.app_title, width=g.s.app_width, height=g.s.app_height, icon=app_icon_filename, screen_index=0, file=csv_filename)
     main.mainloop()

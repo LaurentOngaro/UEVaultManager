@@ -1,7 +1,7 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
-import UEVaultManager.tkgui.modules.globals as g
-from UEVaultManager.tkgui.modules.functions import center_window_on_screen
+from tkinter import ttk, messagebox
+import UEVaultManager.tkgui.modules.functions as f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as g  # using the shortest variable name for globals for convenience
 
 
 class EditCellWindow(tk.Toplevel):
@@ -9,7 +9,7 @@ class EditCellWindow(tk.Toplevel):
     def __init__(self, parent, title: str, width=600, height=400, screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
-        geometry = center_window_on_screen(screen_index, height, width)
+        geometry = f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
 
         # windows only (remove the minimize/maximize buttons and the icon)
@@ -48,7 +48,7 @@ class EditCellWindow(tk.Toplevel):
 
     def on_close(self, _event=None):
         current_values = self.editable_table.get_selected_cell_values()
-        # current_values is empty is save_button has been pressed because global variables have been cleared in save_changes()
+        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changes()
         self.must_save = current_values and self.initial_values != current_values
         if self.must_save:
             if messagebox.askokcancel('Close the window', 'Changes have been made. Do you want to save them ?'):

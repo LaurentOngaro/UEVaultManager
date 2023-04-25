@@ -1,12 +1,11 @@
-import UEVaultManager.tkgui.modules.globals as g
 import webbrowser
-import pandas as pd
 from tkinter import ttk
+from tkinter.messagebox import askyesno
+import pandas as pd
+from pandastable import Table, TableModel
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.functions import *
-from UEVaultManager.tkgui.modules.settings import *
-from pandastable import Table, TableModel
 
 
 class EditableTable(Table):
@@ -138,17 +137,24 @@ class EditableTable(Table):
         self.load_data()
         self.show_page(self.current_page)
 
+    def rebuild_data(self):
+        message_box = askyesno('Rebuild data', 'Are you sure you want to rebuild the data ? It will change the content of the source file')
+        if message_box:
+            todo_message()
+            self.load_data()
+            self.show_page(self.current_page)
+
     def save_data(self):
         data = self.data.iloc[0:len(self.data)]
         self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
-        self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=csv_datetime_format)
+        self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=g.s.csv_datetime_format)
         self.show_page(self.current_page)
         self.must_save = False
 
-    def search(self, category=default_category_for_all, search_text=default_search_text):
-        if category and category != default_category_for_all:
+    def search(self, category=g.s.default_category_for_all, search_text=g.s.default_search_text):
+        if category and category != g.s.default_category_for_all:
             self.data_filtered = self.data[self.data['Category'] == category]
-        if search_text and search_text != default_search_text:
+        if search_text and search_text != g.s.default_search_text:
             self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_text.lower() in str(row).lower(), axis=1)]
         self.show_page(0)
 
@@ -157,10 +163,10 @@ class EditableTable(Table):
         self.show_page(0)
 
     def expand_columns(self):
-        self.expandColumns(factor=expand_columns_factor)
+        self.expandColumns(factor=g.s.expand_columns_factor)
 
     def contract_columns(self):
-        self.contractColumns(factor=contract_columns_factor)
+        self.contractColumns(factor=g.s.contract_columns_factor)
 
     def autofit_columns(self):
         self.autoResizeColumns()
@@ -196,7 +202,7 @@ class EditableTable(Table):
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
-        edit_row_window = EditRowWindow(parent=self.master, title=title, width=width, height=height, icon=app_icon_filename, editable_table=self)
+        edit_row_window = EditRowWindow(parent=self.master, title=title, width=width, height=height, icon=g.s.app_icon_filename, editable_table=self)
         edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
         # configure the grid
