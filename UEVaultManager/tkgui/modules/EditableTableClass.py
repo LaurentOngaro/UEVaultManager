@@ -12,7 +12,6 @@ from pandastable import Table, TableModel
 class EditableTable(Table):
 
     def __init__(self, container_frame=None, file=None, fontsize=10, **kwargs):
-        self.container_frame = container_frame
         self.file = file
 
         self.rows_per_page = 35
@@ -45,6 +44,10 @@ class EditableTable(Table):
         if page is None:
             page = self.current_page
         if self.pagination_enabled:
+            if page < 0:
+                page = 0
+            elif page >= self.total_pages:
+                page = self.total_pages - 1
             # Calculate start and end rows for current page
             self.current_page = page
             start = page * self.rows_per_page
@@ -59,7 +62,7 @@ class EditableTable(Table):
         self.redraw()
 
     def next_page(self):
-        if self.current_page < self.total_pages - 1:
+        if self.current_page <= self.total_pages:
             self.show_page(self.current_page + 1)
 
     def prev_page(self):

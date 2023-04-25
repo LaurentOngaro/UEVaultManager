@@ -7,10 +7,9 @@ Bugs to fix:
 - the url column is nan
 
 To Do:
-- add pagination info in a new frame. See tk_table_filter_ex.py
-- add more info about the current row (at least comment, review...) in the preview frame
-- check the TODOs
 - add features and buttons to refresh csv file by calling UEVaultManager cli
+- add more info about the current row (at least comment, review...) in the preview frame
+- edit users fields (comment, alternative...) in the main windows (in the preview frame ?)
 - save and load for tcsv files
 - save and load for json files
 - migrate the code into the UEVaultManager code base
@@ -42,7 +41,6 @@ class AppWindow(tk.Tk):
         self.resizable(True, False)
         self.editable_table = None
 
-        # Create frames
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
         table_frame = self.TableFrame(self)
         self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=table_font_size)
@@ -62,9 +60,9 @@ class AppWindow(tk.Tk):
 
         self.bind('<Key>', self.on_key_press)
         # Bind the table to the mouse motion event
-        self.editable_table.bind('<Motion>', self.mouse_over_cell)
+        self.editable_table.bind('<Motion>', self.on_mouse_over_cell)
         # Bind the table to the mouse leave event
-        self.editable_table.bind('<Leave>', self.mouse_leave_cell)
+        self.editable_table.bind('<Leave>', self.on_mouse_leave_cell)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     class ToolbarFrame(ttk.Frame):
@@ -78,13 +76,20 @@ class AppWindow(tk.Tk):
             lblf_pages.pack(side=tk.LEFT, **lblf_def_options)
             btn_toggle_pagination = ttk.Button(lblf_pages, text='Toggle Pagination', command=container.toggle_pagination)
             btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
-            btn_first_page = ttk.Button(lblf_pages, text='First Page', command=container.editable_table.first_page)
+            btn_first_page = ttk.Button(lblf_pages, text='First Page', command=container.show_first_page)
             btn_first_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_prev_page = ttk.Button(lblf_pages, text='Prev Page', command=container.editable_table.prev_page)
+            btn_first_page.config(state=tk.DISABLED)
+            btn_prev_page = ttk.Button(lblf_pages, text='Prev Page', command=container.show_prev_page)
             btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_next_page = ttk.Button(lblf_pages, text='Next Page', command=container.editable_table.next_page)
+            btn_prev_page.config(state=tk.DISABLED)
+            entry_page_num_var = tk.StringVar(value=container.editable_table.current_page + 1)
+            entry_page_num = ttk.Entry(lblf_pages, width=5, justify=tk.CENTER, textvariable=entry_page_num_var)
+            entry_page_num.pack(**pack_def_options, side=tk.LEFT)
+            lbl_page_count = ttk.Label(lblf_pages, text=f' / {container.editable_table.total_pages}')
+            lbl_page_count.pack(**pack_def_options, side=tk.LEFT)
+            btn_next_page = ttk.Button(lblf_pages, text='Next Page', command=container.show_next_page)
             btn_next_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_last_page = ttk.Button(lblf_pages, text='Last Page', command=container.editable_table.last_page)
+            btn_last_page = ttk.Button(lblf_pages, text='Last Page', command=container.show_last_page)
             btn_last_page.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_display = ttk.LabelFrame(self, text='Display')
@@ -107,12 +112,18 @@ class AppWindow(tk.Tk):
             btn_toggle_controls = ttk.Button(lblf_actions, text="Hide Controls", command=container.toggle_filter_controls)
             btn_toggle_controls.pack(**pack_def_options, side=tk.RIGHT)
 
-            # store the buttons that need to be disabled when the pagination is disabled
+            # Bind events for the Entry widget
+            entry_page_num.bind("<FocusOut>", container.on_entry_page_num_changed)
+            entry_page_num.bind("<Return>", container.on_entry_page_num_changed)
+
             self.btn_first_page = btn_first_page
             self.btn_prev_page = btn_prev_page
             self.btn_next_page = btn_next_page
             self.btn_last_page = btn_last_page
             self.btn_toggle_controls = btn_toggle_controls
+            self.lbl_page_count = lbl_page_count
+            self.entry_page_num = entry_page_num
+            self.entry_page_num_var = entry_page_num_var
 
     class TableFrame(ttk.Frame):
 
@@ -237,19 +248,31 @@ class AppWindow(tk.Tk):
         else:
             self.editable_table.pagination_enabled = not self.editable_table.pagination_enabled
         self.editable_table.show_page()
-
         if not self.editable_table.pagination_enabled:
             # Disable prev/next buttons when pagination is disabled
             self.toolbar_frame.btn_first_page.config(state=tk.DISABLED)
             self.toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
             self.toolbar_frame.btn_next_page.config(state=tk.DISABLED)
             self.toolbar_frame.btn_last_page.config(state=tk.DISABLED)
+            self.toolbar_frame.entry_page_num.config(state=tk.DISABLED)
         else:
-            # Enable prev/next buttons when pagination is enabled
-            self.toolbar_frame.btn_first_page.config(state=tk.NORMAL)
-            self.toolbar_frame.btn_prev_page.config(state=tk.NORMAL)
-            self.toolbar_frame.btn_next_page.config(state=tk.NORMAL)
-            self.toolbar_frame.btn_last_page.config(state=tk.NORMAL)
+            self.update_page_numbers()  # will also update buttons status
+
+    def show_first_page(self):
+        self.editable_table.first_page()
+        self.update_page_numbers()
+
+    def show_prev_page(self):
+        self.editable_table.prev_page()
+        self.update_page_numbers()
+
+    def show_next_page(self):
+        self.editable_table.next_page()
+        self.update_page_numbers()
+
+    def show_last_page(self):
+        self.editable_table.last_page()
+        self.update_page_numbers()
 
     def toggle_filter_controls(self):
         # Toggle visibility of filter controls frame
@@ -286,7 +309,7 @@ class AppWindow(tk.Tk):
             showwarning(title=app_title, message='Select at least one row first')
 
     # noinspection DuplicatedCode
-    def mouse_over_cell(self, event=None):
+    def on_mouse_over_cell(self, event=None):
         if event is None:
             return
         # Get the row and column index of the cell under the mouse pointer
@@ -300,8 +323,38 @@ class AppWindow(tk.Tk):
         else:
             show_default_image(canvas_preview=self.control_frame.canvas_preview)
 
-    def mouse_leave_cell(self, _event=None):
+    def on_mouse_leave_cell(self, _event=None):
         show_default_image(canvas_preview=self.control_frame.canvas_preview)
+
+    def on_entry_page_num_changed(self, _event=None):
+        page_num = 0
+        try:
+            page_num = self.toolbar_frame.entry_page_num.get()
+            page_num = int(page_num)
+            page_num -= 1
+            log_debug(f'showing page {page_num}')
+            self.editable_table.show_page(page_num)
+        except (ValueError, UnboundLocalError) as error:
+            log_error(f'could not convert page number {page_num} to int. Error {error!r}')
+
+    def update_page_numbers(self):
+        page_num = self.editable_table.current_page + 1
+        self.toolbar_frame.entry_page_num_var.set(page_num)
+        self.toolbar_frame.lbl_page_count.config(text=f' / {self.editable_table.total_pages}')
+        # enable all buttons by default
+        self.toolbar_frame.btn_first_page.config(state=tk.NORMAL)
+        self.toolbar_frame.btn_prev_page.config(state=tk.NORMAL)
+        self.toolbar_frame.btn_next_page.config(state=tk.NORMAL)
+        self.toolbar_frame.btn_last_page.config(state=tk.NORMAL)
+
+        if not self.editable_table.pagination_enabled:
+            self.toolbar_frame.entry_page_num.config(state=tk.NORMAL)
+        if page_num == 1:
+            self.toolbar_frame.btn_first_page.config(state=tk.DISABLED)
+            self.toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
+        elif page_num == self.editable_table.total_pages:
+            self.toolbar_frame.btn_next_page.config(state=tk.DISABLED)
+            self.toolbar_frame.btn_last_page.config(state=tk.DISABLED)
 
 
 if __name__ == '__main__':
