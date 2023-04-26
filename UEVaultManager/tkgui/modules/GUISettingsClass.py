@@ -1,5 +1,5 @@
 class GUISettings:
-
+    # todo: integrate these settings into the UEVM config file
     def __init__(self):
         self.debug_mode = False
 

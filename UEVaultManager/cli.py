@@ -19,9 +19,9 @@ from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
-from UEVaultManager.tkgui.tkgui import UEVMGui
-import UEVaultManager.tkgui.modules.functions as gui_f
-import UEVaultManager.tkgui.modules.globals as gui_g
+import UEVaultManager.tkgui.modules.UEVMGuiClass
+import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.utils.cli import strtobool, check_and_create_path
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
@@ -806,12 +806,12 @@ class UEVaultManagerCLI:
         self.logger.info(f'Exchange code: {token["code"]}')
 
     def edit_list(self, args):
-
+        pass
         if args.input:
             app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
             input_filename = gui_f.path_from_relative_to_absolute(args.input)
             if os.path.isfile(input_filename):
-                uevm_gui = UEVMGui(
+                uevm_gui = UEVaultManager.tkgui.modules.UEVMGuiClass.UEVMGui(
                     title=gui_g.s.app_title,
                     width=gui_g.s.app_width,
                     height=gui_g.s.app_height,

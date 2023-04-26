@@ -1,10 +1,8 @@
 import webbrowser
 from tkinter import ttk
 from tkinter.messagebox import askyesno
-
 import pandas as pd
 from pandastable import Table, TableModel
-
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.functions import *
@@ -78,19 +76,19 @@ class EditableTable(Table):
 
     def load_data(self):
         csv_options = {
-            'converters'  : {
-                'Asset_id'  : str,  #
-                'App name'  : str,  #
-                'Review'    : float,  #
-                'Price'     : float,  #
-                'Old Price' : float,  #
-                'On Sale'   : convert_to_bool,  #
-                'Purchased' : convert_to_bool,  #
-                'Must Buy'  : convert_to_bool,  #
+            'converters': {
+                'Asset_id': str,  #
+                'App name': str,  #
+                'Review': float,  #
+                'Price': float,  #
+                'Old Price': float,  #
+                'On Sale': convert_to_bool,  #
+                'Purchased': convert_to_bool,  #
+                'Must Buy': convert_to_bool,  #
                 'Date Added': convert_to_datetime,  #
             },
             'on_bad_lines': 'warn',
-            'encoding'    : "utf-8",
+            'encoding': "utf-8",
         }
         if not os.path.isfile(self.file):
             log_error(f'File not found: {self.file}')
