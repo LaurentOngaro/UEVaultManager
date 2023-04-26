@@ -1,7 +1,9 @@
 from io import BytesIO
 from urllib.parse import quote_plus
 from urllib.request import urlopen
+
 from PIL import ImageTk, Image
+
 from UEVaultManager.tkgui.modules.functions import log_warning
 
 

@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+
 import UEVaultManager.tkgui.modules.functions as f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as g  # using the shortest variable name for globals for convenience
 

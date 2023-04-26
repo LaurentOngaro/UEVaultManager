@@ -1,8 +1,9 @@
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
-import UEVaultManager.tkgui.modules.functions as f  # using the shortest variable name for globals for convenience
-import UEVaultManager.tkgui.modules.globals as g  # using the shortest variable name for globals for convenience
+
+import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
 class EditRowWindow(tk.Toplevel):
@@ -10,9 +11,9 @@ class EditRowWindow(tk.Toplevel):
     def __init__(self, parent, title: str, width=600, height=800, icon='', screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
-        geometry = f.center_window_on_screen(screen_index, height, width)
+        geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-        icon = f.path_from_relative_to_absolute(icon)
+        icon = gui_f.path_from_relative_to_absolute(icon)
         if icon != '' and os.path.isfile(icon):
             self.iconbitmap(icon)
 
@@ -56,9 +57,9 @@ class EditRowWindow(tk.Toplevel):
 
             lbf_preview = ttk.LabelFrame(self, text="Image Preview")
             lbf_preview.grid(row=0, column=1, **grid_def_options)
-            canvas_preview = tk.Canvas(lbf_preview, width=g.s.preview_max_width, height=g.s.preview_max_height, highlightthickness=0)
+            canvas_preview = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
             canvas_preview.pack()
-            canvas_preview.create_rectangle((0, 0), (g.s.preview_max_width, g.s.preview_max_height), fill='black')
+            canvas_preview.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=2, **grid_def_options)
@@ -86,7 +87,7 @@ class EditRowWindow(tk.Toplevel):
         self.close_window()
 
     def close_window(self, _event=None):
-        g.edit_row_window_ref = None
+        gui_g.edit_row_window_ref = None
         self.destroy()
 
     def save_change(self):

@@ -1,8 +1,10 @@
 import webbrowser
 from tkinter import ttk
 from tkinter.messagebox import askyesno
+
 import pandas as pd
 from pandastable import Table, TableModel
+
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.functions import *
@@ -76,19 +78,19 @@ class EditableTable(Table):
 
     def load_data(self):
         csv_options = {
-            'converters': {
-                'Asset_id': str,  #
-                'App name': str,  #
-                'Review': float,  #
-                'Price': float,  #
-                'Old Price': float,  #
-                'On Sale': convert_to_bool,  #
-                'Purchased': convert_to_bool,  #
-                'Must Buy': convert_to_bool,  #
+            'converters'  : {
+                'Asset_id'  : str,  #
+                'App name'  : str,  #
+                'Review'    : float,  #
+                'Price'     : float,  #
+                'Old Price' : float,  #
+                'On Sale'   : convert_to_bool,  #
+                'Purchased' : convert_to_bool,  #
+                'Must Buy'  : convert_to_bool,  #
                 'Date Added': convert_to_datetime,  #
             },
             'on_bad_lines': 'warn',
-            'encoding': "utf-8",
+            'encoding'    : "utf-8",
         }
         if not os.path.isfile(self.file):
             log_error(f'File not found: {self.file}')
@@ -141,20 +143,22 @@ class EditableTable(Table):
         message_box = askyesno('Rebuild data', 'Are you sure you want to rebuild the data ? It will change the content of the source file')
         if message_box:
             todo_message()
+            # cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
+
             self.load_data()
             self.show_page(self.current_page)
 
     def save_data(self):
         data = self.data.iloc[0:len(self.data)]
         self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
-        self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=g.s.csv_datetime_format)
+        self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=gui_g.s.csv_datetime_format)
         self.show_page(self.current_page)
         self.must_save = False
 
-    def search(self, category=g.s.default_category_for_all, search_text=g.s.default_search_text):
-        if category and category != g.s.default_category_for_all:
+    def search(self, category=gui_g.s.default_category_for_all, search_text=gui_g.s.default_search_text):
+        if category and category != gui_g.s.default_category_for_all:
             self.data_filtered = self.data[self.data['Category'] == category]
-        if search_text and search_text != g.s.default_search_text:
+        if search_text and search_text != gui_g.s.default_search_text:
             self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_text.lower() in str(row).lower(), axis=1)]
         self.show_page(0)
 
@@ -163,10 +167,10 @@ class EditableTable(Table):
         self.show_page(0)
 
     def expand_columns(self):
-        self.expandColumns(factor=g.s.expand_columns_factor)
+        self.expandColumns(factor=gui_g.s.expand_columns_factor)
 
     def contract_columns(self):
-        self.contractColumns(factor=g.s.contract_columns_factor)
+        self.contractColumns(factor=gui_g.s.contract_columns_factor)
 
     def autofit_columns(self):
         self.autoResizeColumns()
@@ -202,18 +206,20 @@ class EditableTable(Table):
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
-        edit_row_window = EditRowWindow(parent=self.master, title=title, width=width, height=height, icon=g.s.app_icon_filename, editable_table=self)
+        edit_row_window = EditRowWindow(
+            parent=self.master, title=title, width=width, height=height, icon=gui_g.s.app_icon_filename, editable_table=self
+        )
         edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
         # configure the grid
         edit_row_window.content_frame.columnconfigure(0, weight=0)
         edit_row_window.content_frame.columnconfigure(1, weight=1)
 
-        g.edit_row_window_ref = edit_row_window
+        gui_g.edit_row_window_ref = edit_row_window
         self.display_record(row_selected)
 
     def display_record(self, row_selected=None):
-        edit_row_window = g.edit_row_window_ref
+        edit_row_window = gui_g.edit_row_window_ref
         if row_selected is None or edit_row_window is None:
             return
         # get and display the row data
@@ -320,7 +326,7 @@ class EditableTable(Table):
         edit_cell_window = EditCellWindow(parent=self.master, title=title, width=width, height=height, editable_table=self)
         edit_cell_window.grab_set()
         edit_cell_window.minsize(width, height)
-        g.edit_cell_window_ref = edit_cell_window
+        gui_g.edit_cell_window_ref = edit_cell_window
 
         # get and display the cell data
         col_name = self.model.df.columns[col_index]
