@@ -8,7 +8,6 @@ import logging
 import os
 import shutil
 import subprocess
-import tkinter as tk
 import webbrowser
 from collections import namedtuple
 from datetime import datetime
@@ -21,8 +20,8 @@ from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.tkgui.tkgui import UEVMGui
-import UEVaultManager.tkgui.modules.functions as guif
-import UEVaultManager.tkgui.modules.globals as guig
+import UEVaultManager.tkgui.modules.functions as gui_f
+import UEVaultManager.tkgui.modules.globals as gui_g
 from UEVaultManager.utils.cli import strtobool, check_and_create_path
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
@@ -809,13 +808,13 @@ class UEVaultManagerCLI:
     def edit_list(self, args):
 
         if args.input:
-            app_icon_filename = guif.path_from_relative_to_absolute(guig.s.app_icon_filename)
-            input_filename = guif.path_from_relative_to_absolute(args.input)
+            app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+            input_filename = gui_f.path_from_relative_to_absolute(args.input)
             if os.path.isfile(input_filename):
                 uevm_gui = UEVMGui(
-                    title=guig.s.app_title,
-                    width=guig.s.app_width,
-                    height=guig.s.app_height,
+                    title=gui_g.s.app_title,
+                    width=gui_g.s.app_width,
+                    height=gui_g.s.app_height,
                     icon=app_icon_filename,
                     screen_index=0,
                     file=input_filename

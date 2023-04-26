@@ -20,8 +20,8 @@ To Do:
 import os
 import tkinter as tk
 from tkinter import filedialog as fd, filedialog, ttk, messagebox
-import UEVaultManager.tkgui.modules.functions as f  # using the shortest variable name for globals for convenience
-import UEVaultManager.tkgui.modules.globals as g  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
 
 
@@ -31,7 +31,7 @@ class UEVMGui(tk.Tk):
         super().__init__()
         self.title(title)
 
-        geometry = f.center_window_on_screen(screen_index, height, width)
+        geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
 
         if icon != '' and os.path.isfile(icon):
@@ -42,7 +42,7 @@ class UEVMGui(tk.Tk):
 
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
         table_frame = self.TableFrame(self)
-        self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=g.s.table_font_size)
+        self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=gui_g.s.table_font_size)
 
         self.editable_table.show()
         self.editable_table.show_page(0)
@@ -134,7 +134,7 @@ class UEVMGui(tk.Tk):
         # delete the temporary text in filter value entry
         def reset_entry_search(self, _event=None):
             self.entry_search.delete(0, 'end')
-            self.entry_search.insert(0, g.s.default_search_text)
+            self.entry_search.insert(0, gui_g.s.default_search_text)
 
         def del_entry_search(self, _event=None):
             self.entry_search.delete(0, 'end')
@@ -158,10 +158,10 @@ class UEVMGui(tk.Tk):
             lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
             categories = list(container.editable_table.data['Category'].cat.categories)
             var_category = tk.StringVar(value=categories[0])
-            categories.insert(0, g.s.default_category_for_all)
+            categories.insert(0, gui_g.s.default_category_for_all)
             opt_category = ttk.Combobox(lbf_filter_cat, textvariable=var_category, values=categories)
             opt_category.grid(row=0, column=0, **grid_def_options)
-            var_search = tk.StringVar(value=g.s.default_search_text)
+            var_search = tk.StringVar(value=gui_g.s.default_search_text)
             entry_search = ttk.Entry(lbf_filter_cat, textvariable=var_search)
             entry_search.grid(row=0, column=1, **grid_def_options)
             entry_search.bind("<FocusIn>", self.del_entry_search)
@@ -188,9 +188,9 @@ class UEVMGui(tk.Tk):
             # Create a Canvas to preview the asset image
             lbf_preview = ttk.LabelFrame(self, text="Image Preview")
             lbf_preview.pack(**lblf_def_options, anchor=tk.SW)
-            canvas_preview = tk.Canvas(lbf_preview, width=g.s.preview_max_width, height=g.s.preview_max_height, highlightthickness=0)
+            canvas_preview = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
             canvas_preview.pack()
-            canvas_preview.create_rectangle((0, 0), (g.s.preview_max_width, g.s.preview_max_height), fill='black')
+            canvas_preview.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
 
             lblf_bottom = ttk.Frame(self)
             lblf_bottom.pack(**lblf_def_options)
@@ -214,12 +214,12 @@ class UEVMGui(tk.Tk):
 
     def on_key_press(self, event):
         if event.keysym == 'Escape':
-            if g.edit_cell_window_ref:
-                g.edit_cell_window_ref.destroy()
-                g.edit_cell_window_ref = None
-            elif g.edit_row_window_ref:
-                g.edit_row_window_ref.destroy()
-                g.edit_row_window_ref = None
+            if gui_g.edit_cell_window_ref:
+                gui_g.edit_cell_window_ref.destroy()
+                gui_g.edit_cell_window_ref = None
+            elif gui_g.edit_row_window_ref:
+                gui_g.edit_row_window_ref.destroy()
+                gui_g.edit_row_window_ref = None
             else:
                 self.on_close()
         elif event.keysym == 'Return':
@@ -230,7 +230,7 @@ class UEVMGui(tk.Tk):
 
         filename = fd.askopenfilename(title='Choose a file to open', initialdir='./', filetypes=filetypes)
         if filename and os.path.isfile(filename):
-            messagebox.showinfo(title=g.s.app_title, message=f'The file {filename} as been read')
+            messagebox.showinfo(title=gui_g.s.app_title, message=f'The file {filename} as been read')
             self.editable_table.file = filename
             self.editable_table.load_data()
             self.editable_table.show_page(0)
@@ -238,15 +238,15 @@ class UEVMGui(tk.Tk):
     def search(self):
         search_text = self.control_frame.var_search.get()
         category = self.control_frame.var_category.get()
-        if search_text == g.s.default_search_text and category == g.s.default_category_for_all:
+        if search_text == gui_g.s.default_search_text and category == gui_g.s.default_category_for_all:
             return
         self.toggle_pagination(forced_value=False)
         self.editable_table.search(search_text=search_text, category=category)
         self.control_frame.reset_entry_search()
 
     def reset_search(self):
-        self.control_frame.var_search.set(g.s.default_search_text)
-        self.control_frame.var_category.set(g.s.default_category_for_all)
+        self.control_frame.var_search.set(gui_g.s.default_search_text)
+        self.control_frame.var_category.set(gui_g.s.default_category_for_all)
         self.editable_table.reset_search()
 
     def toggle_pagination(self, forced_value=None):
@@ -311,11 +311,11 @@ class UEVMGui(tk.Tk):
             if file_name:
                 # Export selected rows to the specified CSV file
                 selected_rows.to_csv(file_name, index=False)
-                messagebox.showinfo(title=g.s.app_title, message=f'Selected rows exported to "{file_name}"')
+                messagebox.showinfo(title=gui_g.s.app_title, message=f'Selected rows exported to "{file_name}"')
             else:
-                messagebox.showwarning(title=g.s.app_title, message='No file has been selected')
+                messagebox.showwarning(title=gui_g.s.app_title, message='No file has been selected')
         else:
-            messagebox.showwarning(title=g.s.app_title, message='Select at least one row first')
+            messagebox.showwarning(title=gui_g.s.app_title, message='Select at least one row first')
 
     # noinspection DuplicatedCode
     def on_mouse_over_cell(self, event=None):
@@ -328,12 +328,12 @@ class UEVMGui(tk.Tk):
         col = self.editable_table.model.df.columns.get_loc('Image')
         if col:
             image_url = self.editable_table.model.getValueAt(row, col)
-            f.show_asset_image(image_url=image_url, canvas_preview=self.control_frame.canvas_preview)
+            gui_f.show_asset_image(image_url=image_url, canvas_preview=self.control_frame.canvas_preview)
         else:
-            f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
+            gui_f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
 
     def on_mouse_leave_cell(self, _event=None):
-        f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
+        gui_f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
 
     def on_entry_page_num_changed(self, _event=None):
         page_num = 0
@@ -341,10 +341,10 @@ class UEVMGui(tk.Tk):
             page_num = self.toolbar_frame.entry_page_num.get()
             page_num = int(page_num)
             page_num -= 1
-            f.log_debug(f'showing page {page_num}')
+            gui_f.log_debug(f'showing page {page_num}')
             self.editable_table.show_page(page_num)
         except (ValueError, UnboundLocalError) as error:
-            f.log_error(f'could not convert page number {page_num} to int. Error {error!r}')
+            gui_f.log_error(f'could not convert page number {page_num} to int. Error {error!r}')
 
     def update_page_numbers(self):
         page_num = self.editable_table.current_page + 1
@@ -371,7 +371,7 @@ class UEVMGui(tk.Tk):
 
 
 if __name__ == '__main__':
-    app_icon_filename = f.path_from_relative_to_absolute(g.s.app_icon_filename)
-    csv_filename = f.path_from_relative_to_absolute(g.s.csv_filename)
-    main = UEVMGui(title=g.s.app_title, width=g.s.app_width, height=g.s.app_height, icon=app_icon_filename, screen_index=0, file=csv_filename)
+    app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+    csv_filename = gui_f.path_from_relative_to_absolute(gui_g.s.csv_filename)
+    main = UEVMGui(title=gui_g.s.app_title, width=gui_g.s.app_width, height=gui_g.s.app_height, icon=app_icon_filename, screen_index=0, file=csv_filename)
     main.mainloop()
