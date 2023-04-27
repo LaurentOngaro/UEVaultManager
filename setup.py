@@ -32,7 +32,7 @@ setup(
         'UEVaultManager.downloader.mp',  #
         'UEVaultManager.lfs',  #
         'UEVaultManager.models',  #
-        'UEVaultManager.utils'  #
+        'UEVaultManager.utils',  #
         'UEVaultManager.tkgui'  #
     ],
     entry_points=dict(console_scripts=['UEVaultManager = UEVaultManager.cli:main']),

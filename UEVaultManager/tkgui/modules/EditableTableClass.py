@@ -1,8 +1,10 @@
 import webbrowser
 from tkinter import ttk
 from tkinter.messagebox import askyesno
+
 import pandas as pd
 from pandastable import Table, TableModel
+
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.functions import *
@@ -95,8 +97,8 @@ class EditableTable(Table):
             return
 
         self.data = pd.read_csv(self.file, **csv_options)
-        log_debug("\nCOL TYPES AFTER LOADING CSV\n")
-        log_debug(self.data.info())
+        # log_debug("\nCOL TYPES AFTER LOADING CSV\n")
+        # self.data.info() # direct print info
 
         self.total_pages = (len(self.data) - 1) // self.rows_per_page + 1
 
@@ -128,8 +130,8 @@ class EditableTable(Table):
             except ValueError as error:
                 log_error(f'Could not convert column "{col}" to category. Error: {error}')
 
-        log_debug("\nCOL TYPES AFTER MANUAL CONVERSION\n")
-        log_debug(self.data.info())
+        # log_debug("\nCOL TYPES AFTER MANUAL CONVERSION\n")
+        # self.data.info() # direct print info
 
         self.data_filtered = self.data
 

@@ -9,7 +9,7 @@ class GUISettings:
         self.app_monitor = 1
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
         self.app_icon_filename = '../../assets/main.ico'
-        self.csv_filename = 'D:/Projets_Perso/03d_CodePython/UEVaultManager/results/list.csv'
+        self.csv_filename = '../../../results/list.csv'
 
         self.cache_folder = "../cache"
         self.cache_max_time = 60 * 60 * 24 * 15  # 15 days

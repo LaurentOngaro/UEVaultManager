@@ -8,35 +8,61 @@ from tkinter import messagebox
 import requests
 from PIL import ImageTk, Image
 from screeninfo import get_monitors
+from termcolor import colored
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
+def log_format_message(name, levelname, message):
+    return f'[{name}] {levelname}: {message}'
+
+
 def todo_message():
     msg = 'Not implemented yet'
+    msg = log_format_message('UEVMGui', 'info', colored(msg, 'yellow'))
+    print(msg)
+    messagebox.showinfo(title=gui_g.s.app_title, message=msg)
+
+
+def from_cli_only_message():
+    msg = 'This feature is only accessible when running these app using the UEVM cli command options. Once the UEVaultManager package installed, Type uevaultmanager -h for more help'
+    msg = log_format_message('UEVMGui', 'info', colored(msg, 'yellow'))
+    print(msg)
     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
 
 
 def log_info(msg):
-    # will be replaced by a logger when integrated in UEVaultManager
-    print(msg)
+    if gui_g.UEVM_log_ref is not None:
+        gui_g.UEVM_log_ref.log.info(msg)
+    else:
+        msg = log_format_message('UEVMGui', 'info', colored(msg, 'blue'))
+        print(msg)
 
 
 def log_debug(msg):
     if not gui_g.s.debug_mode:
-        return  # temp bypass
-    # will be replaced by a logger when integrated in UEVaultManager
-    print(msg)
+        return
+    if gui_g.UEVM_log_ref is not None:
+        gui_g.UEVM_log_ref.log.debug(msg)
+    else:
+        msg = log_format_message('UEVMGui', 'Debug', colored(msg, 'light_grey'))
+        print(msg)
 
 
 def log_warning(msg):
-    # will be replaced by a logger when integrated in UEVaultManager
-    print(msg)
+    if gui_g.UEVM_log_ref is not None:
+        gui_g.UEVM_log_ref.log.info(msg)
+    else:
+        msg = log_format_message('UEVMGui', 'Warning', colored(msg, 'orange'))
+        print(msg)
 
 
 def log_error(msg):
-    # will be replaced by a logger when integrated in UEVaultManager
-    print(msg)
+    if gui_g.UEVM_log_ref is not None:
+        gui_g.UEVM_log_ref.log.error(msg)
+    else:
+        msg = log_format_message('UEVMGui', 'Error', colored(msg, 'red', 'bold'))
+        print(msg)
     exit(1)
 
 
@@ -82,8 +108,8 @@ def center_window_on_screen(screen_index, height, width):
     target_screen = monitors[screen_index]
     screen_width = target_screen.width
     screen_height = target_screen.height
-    x = target_screen.x + (screen_width - width) // 2
-    y = target_screen.y + (screen_height - height) // 2
+    x = target_screen.x + (screen_width-width) // 2
+    y = target_screen.y + (screen_height-height) // 2
     geometry: str = f'{width}x{height}+{x}+{y}'
     return geometry
 

@@ -15,13 +15,13 @@ from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from sys import exit, stdout, platform as sys_platform
+import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.UEVMGuiClass
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
-import UEVaultManager.tkgui.modules.UEVMGuiClass
-import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
-import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.utils.cli import strtobool, check_and_create_path
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
