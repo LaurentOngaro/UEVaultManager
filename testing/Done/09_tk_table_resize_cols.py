@@ -87,6 +87,6 @@ def display_dataframe_in_tkinter_table(df):
 
 if __name__ == "__main__":
     # Replace 'file_path' with the path to your CSV file
-    file_path = '../results/list.csv'
+    file_path = '../../results/list.csv'
     df = load_csv_data(file_path)
     display_dataframe_in_tkinter_table(df)

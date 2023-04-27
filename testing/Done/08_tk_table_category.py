@@ -9,10 +9,10 @@ from PIL import Image, ImageTk
 import requests
 from io import BytesIO
 
-file = '../results/list.csv'
+file = '../../results/list.csv'
 cache_folder = "../cache"
 cache_max_time = 60 * 60 * 24 * 15  # 15 days
-default_image_filename = '../UEVaultManager/assets/UEVM_200x200.png'
+default_image_filename = '../../UEVaultManager/assets/UEVM_200x200.png'
 max_width = 150
 max_height = 150
 
