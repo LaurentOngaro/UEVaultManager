@@ -4,7 +4,9 @@
 
 ## Bugs to fix:
 
-- the format of CSV files output from UEVaultManager are not correct
+- in UEVM: the obsolete check is invalid. must check for the version ABOVE the minimal one, not only for it
+- the "rebuild file content" button launch the update but without the csv file output parameter
+- update pagination when reload or load a file
 - enlarge the label with the file name in the main window
 - the reload file content button is HS
 - the url column is nan

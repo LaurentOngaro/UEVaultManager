@@ -140,11 +140,16 @@ class LGDLFS:
                 '; use "~/" at the start of the filename to store it relatively to the user directory'
             )
             self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
+            has_changed = True
         if not self.config.has_option('UEVaultManager', 'notfound_assets_filename_log'):
             self.config.set('UEVaultManager', 'notfound_assets_filename_log', '~/.config/notfound_assets.log')
+            has_changed = True
         if not self.config.has_option('UEVaultManager', 'bad_data_assets_filename_log'):
             self.config.set('UEVaultManager', 'bad_data_assets_filename_log', '~/.config/bad_data_assets.log')
-
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'engine_version_for_obsolete_assets'):
+            self.config.set('UEVaultManager', '; Set the minimal unreal engine version to check for obsolete assets (default is 4.26)')
+            self.config.set('UEVaultManager', 'engine_version_for_obsolete_assets', '4.26')
             has_changed = True
 
         if has_changed:

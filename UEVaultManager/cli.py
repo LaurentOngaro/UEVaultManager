@@ -81,7 +81,7 @@ class UEVaultManagerCLI:
         self.create_file_backup(self.core.notfound_assets_filename_log)
         self.create_file_backup(self.core.bad_data_assets_filename_log)
 
-    def create_asset_from_data(self, item, asset_id, no_data_text, no_data_value):
+    def create_asset_from_data(self, item, asset_id, no_text_data, no_int_data, no_float_data, no_bool_true_data, no_bool_false_data):
         record = {}
         metadata = item.metadata
         uid = metadata['id']
@@ -92,7 +92,7 @@ class UEVaultManagerCLI:
             compatible_versions = separator.join(tmp_list)
         except TypeError as error:
             self.logger.warning(f'Error getting compatibleApps {item.app_name} : {error!r}')
-            compatible_versions = no_data_text
+            compatible_versions = no_text_data
         thumbnail_url = ''
         try:
             thumbnail_url = metadata['keyImages'][2]['url']  # 'Image' with 488 height
@@ -106,13 +106,14 @@ class UEVaultManagerCLI:
             self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
         if extras_data is None:
             extras_data = create_empty_assets_extras(item.app_name)
-        asset_url = no_data_text
-        review = no_data_value
-        price = no_data_value
-        purchased = False
-        supported_versions = no_data_text
-        page_title = no_data_text
-        grab_result = no_data_value
+        asset_url = no_text_data
+        review = no_int_data
+        price = no_float_data
+        purchased = no_bool_false_data
+        obsolete = no_bool_false_data
+        supported_versions = no_text_data
+        page_title = no_text_data
+        grab_result = no_int_data
         try:
             asset_url = extras_data['asset_url']
             review = extras_data['review']
@@ -121,6 +122,10 @@ class UEVaultManagerCLI:
             supported_versions = extras_data['supported_versions']
             page_title = extras_data['page_title']
             grab_result = extras_data['grab_result']
+            if self.core.engine_version_for_obsolete_assets == '' or supported_versions == '':
+                obsolete = no_bool_false_data
+            elif self.core.engine_version_for_obsolete_assets.lower() not in supported_versions.lower():
+                obsolete = no_bool_true_data
         except (TypeError, KeyError) as error:
             self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
         try:
@@ -144,21 +149,22 @@ class UEVaultManagerCLI:
                 # Modified Fields when added into the file
                 , date_added  # 'Date Added'
                 , price  # 'Price'
-                , no_data_value  # 'Old Price'
-                , False  # 'On Sale'
+                , no_float_data  # 'Old Price'
+                , no_bool_false_data  # 'On Sale'
                 , purchased  # 'Purchased'
+                , obsolete  # 'obsolete'
                 # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
                 , supported_versions  # 'supported versions'
                 , page_title  # 'page title'
                 , grab_result  # 'grab result'
                 # Modified Fields when added into the file
-                , no_data_text  # 'Comment'
-                , no_data_text  # 'Stars'
-                , no_data_text  # 'Asset Folder'
-                , no_data_value  # 'Must Buy'
-                , no_data_text  # 'Test result
-                , no_data_text  # 'Installed Folder'
-                , no_data_text  # 'Alternative'
+                , no_text_data  # 'Comment'
+                , no_float_data  # 'Stars'
+                , no_text_data  # 'Asset Folder'
+                , no_bool_false_data  # 'Must Buy'
+                , no_text_data  # 'Test result
+                , no_text_data  # 'Installed Folder'
+                , no_text_data  # 'Alternative'
             )
             record = dict(zip(CSV_headings.keys(), values))
         except TypeError:
@@ -253,28 +259,44 @@ class UEVaultManagerCLI:
             _asset_id = _asset[0]
             _csv_record = list(_asset[1].values())  # we need a list for the CSV comparison, not a dict
             # merge data from the items in the file (if exists) and those get by the application
-            # items_in_file is a dict of dict
+            price_index = 0
+            # items_in_file must be a dict of dicts
             if _items_in_file.get(_asset_id):
-                # loops through its columns
-                index = 0
-                price_index = 0
-                _price = float(_no_data_value)
-                old_price = float(_no_data_value)
-                on_sale = _no_data_value
-                for key, keep_value_in_file in CSV_headings.items():
-                    if keep_value_in_file:
-                        _csv_record[index] = _items_in_file[_asset_id][key]
-                    # Get the old price in the previous file
-                    if key == 'Price':
-                        price_index = index
-                        try:
-                            _price = float(_csv_record[price_index])
-                            old_price = float(
-                                _items_in_file[_asset_id][key]
-                            )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
-                        except Exception as _error:
-                            self.logger.warning(f'Price values can not be converted for asset {_asset_id}\nError:{_error!r}')
-                    index += 1
+                item_in_file = _items_in_file.get(_asset_id)
+                if len(item_in_file.keys()) != len(CSV_headings.keys()):
+                    self.logger.error(
+                        f'In the existing file, asset {_asset_id} has not the same number of keys as the CSV headings. This asset is ignored and its values will be overwritten'
+                    )
+                    return _csv_record
+                else:
+                    # loops through its columns
+                    index = 0
+                    price_index = 0
+                    _price = float(_no_data_value)
+                    old_price = float(_no_data_value)
+                    on_sale = _no_data_value
+                    for key, keep_value_in_file in CSV_headings.items():
+                        if item_in_file[key] is None:
+                            self.logger.error(
+                                f'In the existing file, asset {_asset_id} has no column named {key}. This asset is ignored and its values will be overwritten'
+                            )
+                            # print(f' CHECK for asset {_asset_id}')
+                            return _csv_record
+                        else:
+                            if keep_value_in_file:
+                                _csv_record[index] = item_in_file[key]
+                            # Get the old price in the previous file
+                            if key == 'Price':
+                                price_index = index
+                                try:
+                                    _price = float(_csv_record[price_index])
+                                    old_price = float(
+                                        item_in_file[key]
+                                    )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                                except Exception as _error:
+                                    self.logger.warning(f'Old Price value can not be converted for asset {_asset_id}\nError:{_error!r}')
+                        index += 1
+
                 # compute the price related fields
                 if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
                     on_sale = True if _price > old_price else False
@@ -282,7 +304,7 @@ class UEVaultManagerCLI:
                 _csv_record[price_index + 2] = on_sale
             return _csv_record
 
-        def update_and_merge_json_record_data(_asset, _items_in_file, _no_data_value) -> dict:
+        def update_and_merge_json_record_data(_asset, _items_in_file, _no_float_value, _no_bool_false_value) -> dict:
             _asset_id = _asset[0]
             _json_record = _asset[1]
 
@@ -290,9 +312,9 @@ class UEVaultManagerCLI:
             # items_in_file is a dict of dict
             if _items_in_file.get(_asset_id):
                 # loops through its columns
-                _price = float(_no_data_value)
-                old_price = float(_no_data_value)
-                on_sale = _no_data_value
+                _price = float(_no_float_value)
+                old_price = float(_no_float_value)
+                on_sale = _no_bool_false_value
                 for key, keep_value_in_file in CSV_headings.items():
                     if keep_value_in_file and _items_in_file[_asset_id].get(key):
                         _json_record[key] = _items_in_file[_asset_id][key]
@@ -304,7 +326,7 @@ class UEVaultManagerCLI:
                         _items_in_file[_asset_id]['Price']
                     )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                 except Exception as _error:
-                    self.logger.warning(f'Price values can not be converted for asset {_asset_id}\nError:{_error!r}')
+                    self.logger.warning(f'Old Price values can not be converted for asset {_asset_id}\nError:{_error!r}')
 
                 # compute the price related fields
                 if isinstance(old_price, int) or isinstance(old_price, float):
@@ -332,8 +354,11 @@ class UEVaultManagerCLI:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
             items.extend(na_items)
 
-        no_data_value = 0
-        no_data_text = ''
+        no_int_data = 0
+        no_float_value = 0.0
+        no_text_data = ''
+        no_bool_true_data = True
+        no_bool_false_data = False
 
         # sort assets by name in reverse (to have the latest version first
         items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
@@ -360,7 +385,9 @@ class UEVaultManagerCLI:
             if assets_to_output.get(asset_id):
                 self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
             else:
-                asset_id, asset = self.create_asset_from_data(item, asset_id, no_data_text, no_data_value)  # asset is a dict
+                asset_id, asset = self.create_asset_from_data(
+                    item, asset_id, no_text_data, no_int_data, no_float_value, no_bool_true_data, no_bool_false_data
+                )  # asset is a dict
                 assets_to_output[asset_id] = asset
 
             if self.core.verbose_mode:
@@ -403,9 +430,9 @@ class UEVaultManagerCLI:
                     asset_id = asset[0]
                     try:
                         if len(assets_in_file) > 0:
-                            csv_record_merged = update_and_merge_csv_record_data(asset, assets_in_file, no_data_value)
+                            csv_record_merged = update_and_merge_csv_record_data(asset, assets_in_file, no_int_data)
                         else:
-                            csv_record_merged = asset
+                            csv_record_merged = list(asset[1].values())
                         cpt += 1
                         writer.writerow(csv_record_merged)
                     except (OSError, UnicodeEncodeError, TypeError) as error:
@@ -447,7 +474,7 @@ class UEVaultManagerCLI:
                 for asset in sorted(assets_to_output.items()):
                     asset_id = asset[0]
                     if len(assets_in_file) > 0:
-                        json_record_merged = update_and_merge_json_record_data(asset, assets_in_file, no_data_value)
+                        json_record_merged = update_and_merge_json_record_data(asset, assets_in_file, no_float_value, no_bool_false_data)
                     else:
                         json_record_merged = asset[1]
                     #      output.write(",\n")
@@ -830,7 +857,7 @@ class UEVaultManagerCLI:
                 )
                 uevm_gui.mainloop()
             else:
-                self.logger.error('The file to read data from has not been found (probably the --input command option is invalid)')
+                self.logger.error('The file to read data from has not been found (probably the --input command option is invalid or missing)')
         else:
             self.logger.error('The file to read data from must be precised using the --input command option')
 
@@ -1004,6 +1031,8 @@ def main():
     cli.core.ignored_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
     cli.core.notfound_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
     cli.core.bad_data_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'bad_data_assets_filename_log', fallback='')
+
+    cli.core.engine_version_for_obsolete_assets = cli.core.lgd.config.get('UEVaultManager', 'engine_version_for_obsolete_assets', fallback='4.26')
 
     if cli.core.create_log_backup:
         cli.create_log_file_backup()

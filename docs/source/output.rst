@@ -87,6 +87,7 @@ file:
        'Old Price'          : False,  # ! important: always place it after the Price field in the list
        'On Sale'            : False,  # ! important: always place it after the Old Price field in the list
        'Purchased'          : False,
+       'Obsolete'           : True,
        # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
        'Supported Versions' : False,
        'Page title'         : False,

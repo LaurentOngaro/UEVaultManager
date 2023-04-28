@@ -51,6 +51,7 @@ CSV_headings = {
     'Old Price': False,  # ! important: always place it after the Price field in the list
     'On Sale': False,  # ! important: always place it after the Old Price field in the list
     'Purchased': False,
+    'Obsolete': True,
     # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
     'Supported Versions': False,
     'Page title': False,
@@ -137,6 +138,7 @@ class AppCore:
         # store time to process metadata and extras update
         self.process_time_average = {'time': 0.0, 'count': 0}
         self.use_threads = False
+        self.engine_version_for_obsolete_assets = '4.26'
 
     def setup_assets_logging(self):
         formatter = logging.Formatter('%(message)s')
@@ -626,9 +628,12 @@ class AppCore:
                 is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
                 is_a_mod = any(i['path'] == 'mods' for i in app_item.metadata.get('categories', []))
             except (KeyError, IndexError, AttributeError):
-                self.log.debug(f'{app_name} has no metadata. adding to fetch list (again)')
-                fetch_list[app_name] = (app_name, item.namespace, item.catalog_item_id, True, True)
-                _ret.append(app_item)
+                self.log.debug(f'{app_name} has no metadata. Adding to the fetch list (again)')
+                try:
+                    fetch_list[app_name] = (app_name, item.namespace, item.catalog_item_id, True, True)
+                    _ret.append(app_item)
+                except (KeyError, IndexError, AttributeError):
+                    self.log.debug(f'{app_name} has an invalid format. Could not been added to the fetch list')
                 continue
 
             has_valid_platform = platform in app_assets
