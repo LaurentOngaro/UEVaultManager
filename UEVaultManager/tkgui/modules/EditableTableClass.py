@@ -140,13 +140,15 @@ class EditableTable(Table):
         self.show_page(self.current_page)
 
     def rebuild_data(self):
-        message_box = askyesno('Rebuild data', 'Are you sure you want to rebuild the data ? It will change the content of the source file')
-        if message_box:
-            todo_message()
-            # cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
-
-            self.load_data()
-            self.show_page(self.current_page)
+        # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
+        if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
+            from_cli_only_message()
+        else:
+            message_box = askyesno('Rebuild data', 'Are you sure you want to rebuild the data ? It will change the content of the source file')
+            if message_box:
+                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
+                self.load_data()
+                self.show_page(self.current_page)
 
     def save_data(self):
         data = self.data.iloc[0:len(self.data)]

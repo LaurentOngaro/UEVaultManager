@@ -22,6 +22,7 @@ from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.tkgui.modules.UtilityClasses import SaferDict
 from UEVaultManager.utils.cli import strtobool, check_and_create_path
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
@@ -332,7 +333,7 @@ class UEVaultManagerCLI:
             items.extend(na_items)
 
         no_data_value = 0
-        no_data_text = 'N/A'
+        no_data_text = ''
 
         # sort assets by name in reverse (to have the latest version first
         items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
@@ -806,10 +807,18 @@ class UEVaultManagerCLI:
         self.logger.info(f'Exchange code: {token["code"]}')
 
     def edit_list(self, args):
-        pass
         if args.input:
             app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
             input_filename = gui_f.path_from_relative_to_absolute(args.input)
+            gui_g.UEVM_log_ref = self.logger
+            gui_g.UEVM_cli_ref = self
+            # args can not be used as it because it's an object that mainly run as a dict (but it's not)
+            # so we need to convert it to a dict first
+            temp_dict = vars(args)
+            # create a SaferDict object from the dict (it will avoid errors when trying to access non-existing keys)
+            gui_g.UEVM_cli_args = SaferDict({})
+            # copy the dict content to the SaferDict object
+            gui_g.UEVM_cli_args.copy_from(temp_dict)
             if os.path.isfile(input_filename):
                 uevm_gui = UEVaultManager.tkgui.modules.UEVMGuiClass.UEVMGui(
                     title=gui_g.s.app_title,
