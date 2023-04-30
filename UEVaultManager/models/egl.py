@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from UEVaultManager.utils.cli import strtobool
+from UEVaultManager.utils.cli import str_to_bool
 
 _template = {
     'AppCategories'         : ['public', 'games', 'applications'],
@@ -91,7 +91,7 @@ class EGLManifest:
         tmp.main_game_appname = json.pop('MainGameAppName', '')
         tmp.app_folder_name = json.pop('MandatoryAppFolderName', '')
         tmp.manifest_location = json.pop('ManifestLocation', '')
-        tmp.ownership_token = strtobool(json.pop('OwnershipToken', 'False'))
+        tmp.ownership_token = str_to_bool(json.pop('OwnershipToken', 'False'))
         tmp.staging_location = json.pop('StagingLocation', '')
         tmp.can_run_offline = json.pop('bCanRunOffline', True)
         tmp.is_incomplete_install = json.pop('bIsIncompleteInstall', False)

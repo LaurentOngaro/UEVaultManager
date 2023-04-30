@@ -2,14 +2,15 @@
 
 ## Bugs to confirm:
 
+- the url column contains nan
+
 ## Bugs to fix:
 
 - in UEVM: the obsolete check is invalid. must check for the version ABOVE the minimal one, not only for it
 - the "rebuild file content" button launch the update but without the csv file output parameter
 - update pagination when reload or load a file
-- enlarge the label with the file name in the main window
 - the reload file content button is HS
-- the url column is nan
+- enlarge the label with the file name in the main window
 
 ## To Do:
 
@@ -21,5 +22,6 @@
 - edit users fields (comment, alternative...) in the main windows (in the preview frame ?)
 - save and load for tcsv files
 - save and load for json files
+- update the PyPi package
 - document the new features
 - update the PyPi package

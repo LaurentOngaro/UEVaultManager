@@ -23,7 +23,7 @@ from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.tkgui.modules.UtilityClasses import SaferDict
-from UEVaultManager.utils.cli import strtobool, check_and_create_path
+from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 # todo custom formatter for cli logger (clean info, highlighted error/warning)
@@ -81,7 +81,7 @@ class UEVaultManagerCLI:
         self.create_file_backup(self.core.notfound_assets_filename_log)
         self.create_file_backup(self.core.bad_data_assets_filename_log)
 
-    def create_asset_from_data(self, item, asset_id, no_text_data, no_int_data, no_float_data, no_bool_true_data, no_bool_false_data):
+    def create_asset_from_data(self, item, asset_id, no_text_data, no_int_data, no_float_data, bool_true_data, bool_false_data):
         record = {}
         metadata = item.metadata
         uid = metadata['id']
@@ -109,8 +109,7 @@ class UEVaultManagerCLI:
         asset_url = no_text_data
         review = no_int_data
         price = no_float_data
-        purchased = no_bool_false_data
-        obsolete = no_bool_false_data
+        purchased = bool_false_data
         supported_versions = no_text_data
         page_title = no_text_data
         grab_result = no_int_data
@@ -122,12 +121,22 @@ class UEVaultManagerCLI:
             supported_versions = extras_data['supported_versions']
             page_title = extras_data['page_title']
             grab_result = extras_data['grab_result']
-            if self.core.engine_version_for_obsolete_assets == '' or supported_versions == '':
-                obsolete = no_bool_false_data
-            elif self.core.engine_version_for_obsolete_assets.lower() not in supported_versions.lower():
-                obsolete = no_bool_true_data
         except (TypeError, KeyError) as error:
             self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
+
+        if self.core.engine_version_for_obsolete_assets == '' or supported_versions == '' or supported_versions == no_text_data:
+            obsolete = bool_false_data
+        else:
+            supported_versions_list = supported_versions.lower().replace('UE_', '')
+            supported_versions_list = create_list_from_string(supported_versions_list)
+            obsolete = bool_true_data
+            for _, version in enumerate(supported_versions_list):
+                if version == '':
+                    continue
+                else:
+                    if float(self.core.engine_version_for_obsolete_assets) >= float(version):
+                        obsolete = bool_false_data
+                        break
         try:
             values = (
                 # dans les infos
@@ -150,7 +159,7 @@ class UEVaultManagerCLI:
                 , date_added  # 'Date Added'
                 , price  # 'Price'
                 , no_float_data  # 'Old Price'
-                , no_bool_false_data  # 'On Sale'
+                , bool_false_data  # 'On Sale'
                 , purchased  # 'Purchased'
                 , obsolete  # 'obsolete'
                 # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
@@ -161,7 +170,7 @@ class UEVaultManagerCLI:
                 , no_text_data  # 'Comment'
                 , no_float_data  # 'Stars'
                 , no_text_data  # 'Asset Folder'
-                , no_bool_false_data  # 'Must Buy'
+                , bool_false_data  # 'Must Buy'
                 , no_text_data  # 'Test result
                 , no_text_data  # 'Installed Folder'
                 , no_text_data  # 'Alternative'
@@ -1023,9 +1032,9 @@ def main():
         logging.getLogger('requests').setLevel(logging.WARNING)
         logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-    cli.core.create_output_backup = strtobool(cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', fallback=True))
-    cli.core.create_log_backup = strtobool(cli.core.lgd.config.get('UEVaultManager', 'create_log_backup', fallback=True))
-    cli.core.verbose_mode = strtobool(cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', fallback=False))
+    cli.core.create_output_backup = str_to_bool(cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', fallback=True))
+    cli.core.create_log_backup = str_to_bool(cli.core.lgd.config.get('UEVaultManager', 'create_log_backup', fallback=True))
+    cli.core.verbose_mode = str_to_bool(cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', fallback=False))
     cli.ue_assets_max_cache_duration = int(cli.core.lgd.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000))
 
     cli.core.ignored_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
