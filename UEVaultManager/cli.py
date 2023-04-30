@@ -268,7 +268,6 @@ class UEVaultManagerCLI:
             _asset_id = _asset[0]
             _csv_record = list(_asset[1].values())  # we need a list for the CSV comparison, not a dict
             # merge data from the items in the file (if exists) and those get by the application
-            price_index = 0
             # items_in_file must be a dict of dicts
             if _items_in_file.get(_asset_id):
                 item_in_file = _items_in_file.get(_asset_id)
@@ -842,33 +841,40 @@ class UEVaultManagerCLI:
             return
         self.logger.info(f'Exchange code: {token["code"]}')
 
-    def edit_list(self, args):
-        if args.input:
-            app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
-            input_filename = gui_f.path_from_relative_to_absolute(args.input)
-            gui_g.UEVM_log_ref = self.logger
-            gui_g.UEVM_cli_ref = self
-            # args can not be used as it because it's an object that mainly run as a dict (but it's not)
-            # so we need to convert it to a dict first
-            temp_dict = vars(args)
-            # create a SaferDict object from the dict (it will avoid errors when trying to access non-existing keys)
-            gui_g.UEVM_cli_args = SaferDict({})
-            # copy the dict content to the SaferDict object
-            gui_g.UEVM_cli_args.copy_from(temp_dict)
-            if os.path.isfile(input_filename):
-                uevm_gui = UEVaultManager.tkgui.modules.UEVMGuiClass.UEVMGui(
-                    title=gui_g.s.app_title,
-                    width=gui_g.s.app_width,
-                    height=gui_g.s.app_height,
-                    icon=app_icon_filename,
-                    screen_index=0,
-                    file=input_filename
-                )
-                uevm_gui.mainloop()
-            else:
-                self.logger.error('The file to read data from has not been found (probably the --input command option is invalid or missing)')
+    def edit_assets(self, args):
+        if not args.input:
+            input_filename = gui_g.s.csv_filename
+            self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
         else:
-            self.logger.error('The file to read data from must be precised using the --input command option')
+            input_filename = gui_f.path_from_relative_to_absolute(args.input)
+
+        # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
+        args.output = input_filename
+        args.csv = True  # force csv output
+
+        app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+        gui_g.UEVM_log_ref = self.logger
+        gui_g.UEVM_cli_ref = self
+        # args can not be used as it because it's an object that mainly run as a dict (but it's not)
+        # so we need to convert it to a dict first
+        temp_dict = vars(args)
+        # create a SaferDict object from the dict (it will avoid errors when trying to access non-existing keys)
+        gui_g.UEVM_cli_args = SaferDict({})
+        # copy the dict content to the SaferDict object
+        gui_g.UEVM_cli_args.copy_from(temp_dict)
+
+        if os.path.isfile(input_filename):
+            uevm_gui = UEVaultManager.tkgui.modules.UEVMGuiClass.UEVMGui(
+                title=gui_g.s.app_title,
+                width=gui_g.s.app_width,
+                height=gui_g.s.app_height,
+                icon=app_icon_filename,
+                screen_index=0,
+                file=input_filename
+            )
+            uevm_gui.mainloop()
+        else:
+            self.logger.error('The file to read data from has not been found (probably the --input command option is invalid or missing)')
 
 
 def main():
@@ -987,9 +993,10 @@ def main():
     edit_parser.add_argument(
         '-i', '--input', dest='input', metavar='<path/name>', action='store', help='The file name (with path) where the list should be read from'
     )
-    edit_parser.add_argument('--csv', dest='csv', action='store_true', help='Input file is in CSV format')
-    edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
-    edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
+    # not use for now
+    # edit_parser.add_argument('--csv', dest='csv', action='store_true', help='Input file is in CSV format')
+    # edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
+    # edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
 
     args, extra = parser.parse_known_args()
 
@@ -1073,7 +1080,7 @@ def main():
         elif args.subparser_name == 'get-token':
             cli.get_token(args)
         elif args.subparser_name in {'edit', 'edit-assets'}:
-            cli.edit_list(args)
+            cli.edit_assets(args)
     except KeyboardInterrupt:
         cli.logger.info('Command was aborted via KeyboardInterrupt, cleaning up...')
 

@@ -125,17 +125,21 @@ class UEVMGui(tk.Tk):
         def __init__(self, container):
             super().__init__()
 
-            grid_def_options = {'ipadx': 2, 'ipady': 2, 'sticky': tk.NW}
-            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 0, 'pady': 0, 'fill': tk.BOTH, 'expand': False}
+            grid_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.NW}
+            grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
+            lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
+            lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
 
             lblf_content = ttk.LabelFrame(self, text='Content')
             lblf_content.pack(**lblf_def_options)
             btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=container.editable_table.edit_record)
-            btn_edit_row.grid(row=0, column=0, **grid_def_options)
-            btn_reload_data = ttk.Button(lblf_content, text='Reload File Content', command=container.editable_table.reload_data)
-            btn_reload_data.grid(row=0, column=1, **grid_def_options)
-            btn_rebuild_file = ttk.Button(lblf_content, text='Rebuild File Content', command=container.editable_table.rebuild_data)
-            btn_rebuild_file.grid(row=0, column=2, **grid_def_options)
+            btn_edit_row.grid(row=0, column=0, **grid_fw_options)
+            btn_reload_data = ttk.Button(lblf_content, text='Reload File Content', command=container.reload_data)
+            btn_reload_data.grid(row=0, column=1, **grid_fw_options)
+            btn_rebuild_file = ttk.Button(lblf_content, text='Rebuild File Content', command=container.rebuild_data)
+            btn_rebuild_file.grid(row=0, column=2, **grid_fw_options)
+            lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
             lbf_filter_cat = ttk.LabelFrame(self, text="Search and Filter")
             lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
@@ -143,34 +147,35 @@ class UEVMGui(tk.Tk):
             var_category = tk.StringVar(value=categories[0])
             categories.insert(0, gui_g.s.default_category_for_all)
             opt_category = ttk.Combobox(lbf_filter_cat, textvariable=var_category, values=categories)
-            opt_category.grid(row=0, column=0, **grid_def_options)
+            opt_category.grid(row=0, column=0, **grid_fw_options)
             var_search = tk.StringVar(value=gui_g.s.default_search_text)
             entry_search = ttk.Entry(lbf_filter_cat, textvariable=var_search)
-            entry_search.grid(row=0, column=1, **grid_def_options)
+            entry_search.grid(row=0, column=1, **grid_fw_options)
             entry_search.bind("<FocusIn>", self.del_entry_search)
-
             btn_filter_by_text = ttk.Button(lbf_filter_cat, text='Search', command=container.search)
-            btn_filter_by_text.grid(row=1, column=0, **grid_def_options)
+            btn_filter_by_text.grid(row=1, column=0, **grid_fw_options)
             btn_reset_search = ttk.Button(lbf_filter_cat, text='Reset', command=container.reset_search)
-            btn_reset_search.grid(row=1, column=1, **grid_def_options)
+            btn_reset_search.grid(row=1, column=1, **grid_fw_options)
+            lbf_filter_cat.columnconfigure('all', weight=1)  # important to make the buttons expand
 
             lblf_files = ttk.LabelFrame(self, text='Files')
             lblf_files.pack(**lblf_def_options)
             lbl_file_name = ttk.Label(lblf_files, text='Current File: ')
-            lbl_file_name.grid(row=0, column=0, columnspan=3, **grid_def_options)
+            lbl_file_name.grid(row=0, column=0, columnspan=3, **grid_fw_options)
             entry_file_name_var = tk.StringVar(value=container.editable_table.file)
             entry_file_name = ttk.Entry(lblf_files, textvariable=entry_file_name_var, state='readonly')
-            entry_file_name.grid(row=1, column=0, columnspan=3, **grid_def_options)
+            entry_file_name.grid(row=1, column=0, columnspan=3, **grid_fw_options)
             btn_save_change = ttk.Button(lblf_files, text='Save to File', command=container.save_change)
-            btn_save_change.grid(row=2, column=0, **grid_def_options)
+            btn_save_change.grid(row=2, column=0, **grid_fw_options)
             btn_export_button = ttk.Button(lblf_files, text='Export Selection', command=container.export_selection)
-            btn_export_button.grid(row=2, column=1, **grid_def_options)
+            btn_export_button.grid(row=2, column=1, **grid_fw_options)
             btn_select_file = ttk.Button(lblf_files, text='Load a file', command=container.select_file)
-            btn_select_file.grid(row=2, column=2, **grid_def_options)
+            btn_select_file.grid(row=2, column=2, **grid_fw_options)
+            lblf_files.columnconfigure('all', weight=1)  # important to make the buttons expand
 
             # Create a Canvas to preview the asset image
-            lbf_preview = ttk.LabelFrame(self, text="Image Preview")
-            lbf_preview.pack(**lblf_def_options, anchor=tk.SW)
+            lbf_preview = ttk.LabelFrame(self, text="Current Row content")
+            lbf_preview.pack(**lblf_fw_options, anchor=tk.NW)
             canvas_preview = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
             canvas_preview.pack()
             canvas_preview.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
@@ -194,6 +199,7 @@ class UEVMGui(tk.Tk):
 
     def save_change(self):
         self.editable_table.save_data()
+        gui_f.message_box(f'Data Saved to {self.editable_table.file}')
 
     def on_key_press(self, event):
         if event.keysym == 'Escape':
@@ -213,7 +219,7 @@ class UEVMGui(tk.Tk):
 
         filename = fd.askopenfilename(title='Choose a file to open', initialdir='./', filetypes=filetypes)
         if filename and os.path.isfile(filename):
-            messagebox.showinfo(title=gui_g.s.app_title, message=f'The file {filename} as been read')
+            gui_f.message_box(f'The file {filename} as been read')
             self.editable_table.file = filename
             self.editable_table.load_data()
             self.editable_table.show_page(0)
@@ -294,11 +300,11 @@ class UEVMGui(tk.Tk):
             if file_name:
                 # Export selected rows to the specified CSV file
                 selected_rows.to_csv(file_name, index=False)
-                messagebox.showinfo(title=gui_g.s.app_title, message=f'Selected rows exported to "{file_name}"')
+                gui_f.message_box(f'Selected rows exported to "{file_name}"')
             else:
-                messagebox.showwarning(title=gui_g.s.app_title, message='No file has been selected')
+                gui_f.message_box('No file has been selected')
         else:
-            messagebox.showwarning(title=gui_g.s.app_title, message='Select at least one row first')
+            gui_f.message_box('Select at least one row first')
 
     # noinspection DuplicatedCode
     def on_mouse_over_cell(self, event=None):
@@ -310,8 +316,11 @@ class UEVMGui(tk.Tk):
             return
         col = self.editable_table.model.df.columns.get_loc('Image')
         if col:
-            image_url = self.editable_table.model.getValueAt(row, col)
-            gui_f.show_asset_image(image_url=image_url, canvas_preview=self.control_frame.canvas_preview)
+            try:
+                image_url = self.editable_table.model.getValueAt(row, col)
+                gui_f.show_asset_image(image_url=image_url, canvas_preview=self.control_frame.canvas_preview)
+            except IndexError:
+                gui_f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
         else:
             gui_f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
 
@@ -351,3 +360,11 @@ class UEVMGui(tk.Tk):
     def update_file_name(self):
         filename = self.editable_table.file
         self.control_frame.entry_file_name_var.set(filename)
+
+    def reload_data(self):
+        self.editable_table.reload_data()
+        gui_f.message_box(f'Data Reloaded from {self.editable_table.file}')
+
+    def rebuild_data(self):
+        self.editable_table.rebuild_data()
+        gui_f.message_box(f'Data rebuilt from {self.editable_table.file}')

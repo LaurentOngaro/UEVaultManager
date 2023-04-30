@@ -17,25 +17,39 @@ def log_format_message(name, levelname, message):
     return f'[{name}] {levelname}: {message}'
 
 
+def message_box(msg, level='info'):
+    if level == 'warning':
+        log_warning(msg)
+        messagebox.showwarning(title=gui_g.s.app_title, message=msg)
+    elif level == 'error':
+        messagebox.showerror(title=gui_g.s.app_title, message=msg)
+        log_error(msg)
+        # done in log_error
+        # exit(1)
+    else:
+        log_info(msg)
+        messagebox.showinfo(title=gui_g.s.app_title, message=msg)
+
+
 def todo_message():
     msg = 'Not implemented yet'
-    msg = log_format_message('UEVMGui', 'info', colored(msg, 'yellow'))
+    msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
     print(msg)
     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
 
 
 def from_cli_only_message():
     msg = 'This feature is only accessible when running these app using the UEVM cli command options. Once the UEVaultManager package installed, Type UEVaultManager -h for more help'
-    msg = log_format_message('UEVMGui', 'info', colored(msg, 'yellow'))
+    msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
     print(msg)
     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
 
 
 def log_info(msg):
     if gui_g.UEVM_log_ref is not None:
-        gui_g.UEVM_log_ref.log.info(msg)
+        gui_g.UEVM_log_ref.info(msg)
     else:
-        msg = log_format_message('UEVMGui', 'info', colored(msg, 'blue'))
+        msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'blue'))
         print(msg)
 
 
@@ -43,25 +57,25 @@ def log_debug(msg):
     if not gui_g.s.debug_mode:
         return
     if gui_g.UEVM_log_ref is not None:
-        gui_g.UEVM_log_ref.log.debug(msg)
+        gui_g.UEVM_log_ref.debug(msg)
     else:
-        msg = log_format_message('UEVMGui', 'Debug', colored(msg, 'light_grey'))
+        msg = log_format_message(gui_g.s.app_title, 'Debug', colored(msg, 'light_grey'))
         print(msg)
 
 
 def log_warning(msg):
     if gui_g.UEVM_log_ref is not None:
-        gui_g.UEVM_log_ref.log.info(msg)
+        gui_g.UEVM_log_ref.info(msg)
     else:
-        msg = log_format_message('UEVMGui', 'Warning', colored(msg, 'orange'))
+        msg = log_format_message(gui_g.s.app_title, 'Warning', colored(msg, 'orange'))
         print(msg)
 
 
 def log_error(msg):
     if gui_g.UEVM_log_ref is not None:
-        gui_g.UEVM_log_ref.log.error(msg)
+        gui_g.UEVM_log_ref.error(msg)
     else:
-        msg = log_format_message('UEVMGui', 'Error', colored(msg, 'red', 'bold'))
+        msg = log_format_message(gui_g.s.app_title, 'Error', colored(msg, 'red', 'bold'))
         print(msg)
     exit(1)
 

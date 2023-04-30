@@ -204,7 +204,7 @@ class EditableTable(Table):
 
         title = 'Edit current row values'
         width = 900
-        height = 830
+        height = 900
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
