@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-import UEVaultManager.tkgui.modules.functions as f  # using the shortest variable name for globals for convenience
-import UEVaultManager.tkgui.modules.globals as g  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
 class EditCellWindow(tk.Toplevel):
@@ -10,7 +10,7 @@ class EditCellWindow(tk.Toplevel):
     def __init__(self, parent, title: str, width=600, height=400, screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
-        geometry = f.center_window_on_screen(screen_index, height, width)
+        geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
 
         # windows only (remove the minimize/maximize buttons and the icon)
@@ -57,7 +57,7 @@ class EditCellWindow(tk.Toplevel):
         self.close_window()
 
     def close_window(self, _event=None):
-        g.edit_cell_window_ref = None
+        gui_g.edit_cell_window_ref = None
         self.destroy()
 
     def save_change(self):
