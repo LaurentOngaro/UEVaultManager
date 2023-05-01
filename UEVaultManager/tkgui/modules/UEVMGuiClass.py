@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog as fd, filedialog
+from tkinter.messagebox import askyesno
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -199,7 +200,7 @@ class UEVMGui(tk.Tk):
 
     def save_change(self):
         self.editable_table.save_data()
-        gui_f.message_box(f'Data Saved to {self.editable_table.file}')
+        gui_f.box_message(f'Data Saved to {self.editable_table.file}')
 
     def on_key_press(self, event):
         if event.keysym == 'Escape':
@@ -219,10 +220,11 @@ class UEVMGui(tk.Tk):
 
         filename = fd.askopenfilename(title='Choose a file to open', initialdir='./', filetypes=filetypes)
         if filename and os.path.isfile(filename):
-            gui_f.message_box(f'The file {filename} as been read')
+            gui_f.box_message(f'The file {filename} as been read')
             self.editable_table.file = filename
             self.editable_table.load_data()
             self.editable_table.show_page(0)
+            self.update_page_numbers()
 
     def search(self):
         search_text = self.control_frame.var_search.get()
@@ -300,11 +302,11 @@ class UEVMGui(tk.Tk):
             if file_name:
                 # Export selected rows to the specified CSV file
                 selected_rows.to_csv(file_name, index=False)
-                gui_f.message_box(f'Selected rows exported to "{file_name}"')
+                gui_f.box_message(f'Selected rows exported to "{file_name}"')
             else:
-                gui_f.message_box('No file has been selected')
+                gui_f.box_message('No file has been selected')
         else:
-            gui_f.message_box('Select at least one row first')
+            gui_f.box_message('Select at least one row first')
 
     # noinspection DuplicatedCode
     def on_mouse_over_cell(self, event=None):
@@ -363,8 +365,12 @@ class UEVMGui(tk.Tk):
 
     def reload_data(self):
         self.editable_table.reload_data()
-        gui_f.message_box(f'Data Reloaded from {self.editable_table.file}')
+        gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
+        self.update_page_numbers()
 
     def rebuild_data(self):
-        self.editable_table.rebuild_data()
-        gui_f.message_box(f'Data rebuilt from {self.editable_table.file}')
+        confirm = gui_f.box_yesno(f'The process will change the content of the windows and the {self.editable_table.file} file.\nAre you sure you want to continue ?')
+        if confirm:
+            self.editable_table.rebuild_data()
+            gui_f.box_message(f'Data rebuilt from {self.editable_table.file}')
+            self.update_page_numbers()

@@ -17,7 +17,7 @@ def log_format_message(name, levelname, message):
     return f'[{name}] {levelname}: {message}'
 
 
-def message_box(msg, level='info'):
+def box_message(msg, level='info'):
     if level == 'warning':
         log_warning(msg)
         messagebox.showwarning(title=gui_g.s.app_title, message=msg)
@@ -29,6 +29,10 @@ def message_box(msg, level='info'):
     else:
         log_info(msg)
         messagebox.showinfo(title=gui_g.s.app_title, message=msg)
+
+
+def box_yesno(msg):
+    messagebox.askyesno(title=gui_g.s.app_title, message=msg)
 
 
 def todo_message():
