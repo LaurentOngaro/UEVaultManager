@@ -36,6 +36,8 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        gui_g.edit_row_window_ref = self
+
     class ContentFrame(ttk.Frame):
 
         def __init__(self, container):

@@ -214,7 +214,6 @@ class EditableTable(Table):
         edit_row_window.content_frame.columnconfigure(0, weight=0)
         edit_row_window.content_frame.columnconfigure(1, weight=1)
 
-        gui_g.edit_row_window_ref = edit_row_window
         self.display_record(row_selected)
 
     def display_record(self, row_selected=None):
@@ -325,7 +324,6 @@ class EditableTable(Table):
         edit_cell_window = EditCellWindow(parent=self.master, title=title, width=width, height=height, editable_table=self)
         edit_cell_window.grab_set()
         edit_cell_window.minsize(width, height)
-        gui_g.edit_cell_window_ref = edit_cell_window
 
         # get and display the cell data
         col_name = self.model.df.columns[col_index]
