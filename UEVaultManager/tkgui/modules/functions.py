@@ -32,7 +32,7 @@ def box_message(msg, level='info'):
 
 
 def box_yesno(msg):
-    messagebox.askyesno(title=gui_g.s.app_title, message=msg)
+    return messagebox.askyesno(title=gui_g.s.app_title, message=msg)
 
 
 def todo_message():

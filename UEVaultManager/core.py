@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import time
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -485,16 +486,23 @@ class AppCore:
         # fetch asset information for Windows, all installed platforms, and the specified one
         platforms = {'Windows'}
         platforms |= {platform}
-
+        if gui_g.progress_window_ref is not None:
+            gui_g.progress_window_ref.reset(0, new_text="Fetching platforms...", new_max_value=len(platforms))
         for _platform in platforms:
             self.get_assets(update_assets=update_assets, platform=_platform)
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                return []
 
         if not self.lgd.assets:
             return _ret
 
         assets = {}
+        if gui_g.progress_window_ref is not None:
+            gui_g.progress_window_ref.reset(0, new_text="Fetching assets...", new_max_value=len(self.lgd.assets.items()))
         for _platform, _assets in self.lgd.assets.items():
             for _asset in _assets:
+                if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                    return []
                 if _asset.app_name in assets:
                     assets[_asset.app_name][_platform] = _asset
                 else:
@@ -508,8 +516,12 @@ class AppCore:
         valid_items = []
         bypass_count = 0
         self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
+        if gui_g.progress_window_ref is not None:
+            gui_g.progress_window_ref.reset(0, new_text="Indexing assets...", new_max_value=len(assets.items()))
         # note: we sort by reverse, as it the most recent version of an asset will be listed first
         for app_name, app_assets in sorted(assets.items(), reverse=True):
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                return []
             # notes:
             #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
             #   app_name is unique because it includes the unreal version
@@ -537,13 +549,16 @@ class AppCore:
             self.log.info(f"Asset metadata won't be updated\n")
 
         self.log.info(f'======\nSTARTING phase 2:asset filtering and metadata updating\n')
-
+        if gui_g.progress_window_ref is not None:
+            gui_g.progress_window_ref.reset(0, new_text="Updating metadata...", new_max_value=len(valid_items))
         # loop through valid items to check for update and filtering
         bypass_count = 0
         filtered_items = []
         currently_fetching = {}
         i = 0
         while i < len(valid_items):
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                return []
             item = valid_items[i]
             app_name = item['name']
             app_assets = item['asset']
@@ -594,6 +609,11 @@ class AppCore:
         self.use_threads = len(fetch_list) > 5
         # self.use_threads = False  # test only
         if fetch_list:
+            if gui_g.progress_window_ref is not None:
+                gui_g.progress_window_ref.reset(0, new_text="Fetching missing metadata...\nIt Could take a while !", new_max_value=0)
+                gui_g.progress_window_ref.hide_progress_bar()
+                gui_g.progress_window_ref.hide_stop_button()
+
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
                 # note:  unreal engine API limits the number of connection to 16. So no more than 16 threads !
@@ -602,9 +622,15 @@ class AppCore:
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
+        if gui_g.progress_window_ref is not None:
+            gui_g.progress_window_ref.reset(0, new_text="Checking assets data...", new_max_value=len(filtered_items))
+            gui_g.progress_window_ref.show_progress_bar()
+            gui_g.progress_window_ref.show_stop_button()
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
         while len(filtered_items) > 0:
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                return []
             item = filtered_items.pop()
             app_name = item['name']
             app_assets = item['asset']

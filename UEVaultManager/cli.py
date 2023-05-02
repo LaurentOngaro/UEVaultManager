@@ -22,6 +22,7 @@ from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.UtilityClasses import SaferDict
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
@@ -355,8 +356,23 @@ class UEVaultManagerCLI:
 
         if args.filter_category:
             self.logger.info(f'The String "{args.filter_category}" will be search in Assets category')
+            gui_g.UEVM_filter_category = args.filter_category
+        else:
+            gui_g.UEVM_filter_category = ''
 
-        items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
+        if args.gui:
+            # create and use a progress window
+            progress_window = ProgressWindow(title="Updating Assets List", width=300, height=150, max_value=200, show_start_button=False)
+            gui_g.progress_window_ref = progress_window
+            gui_g.UEVM_log_ref = self.logger
+            progress_window.set_function(self.core.get_asset_list)
+            progress_window.set_function_parameters({'filter_category': args.filter_category, 'force_refresh': args.force_refresh})
+            progress_window.start_execution()
+            progress_window.mainloop()
+            items = progress_window.get_results()
+
+        else:
+            items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
 
         if args.include_non_asset:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
@@ -378,7 +394,11 @@ class UEVaultManagerCLI:
 
         cpt = 0
         cpt_max = len(items)
+        if gui_g.progress_window_ref is not None:
+            gui_g.progress_window_ref.reset(0, new_text="Checking assets data...", new_max_value=len(items))
         for item in items:
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                return
             cpt += 1
             # notes:
             #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
@@ -434,7 +454,11 @@ class UEVaultManagerCLI:
                 writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
                 writer.writerow(CSV_headings.keys())
                 cpt = 0
+                if gui_g.progress_window_ref is not None:
+                    gui_g.progress_window_ref.reset(0, new_text="Writing assets into csv file...", new_max_value=len(assets_to_output.items()))
                 for asset in sorted(assets_to_output.items()):
+                    if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                        return
                     asset_id = asset[0]
                     try:
                         if len(assets_in_file) > 0:
@@ -451,6 +475,9 @@ class UEVaultManagerCLI:
             self.logger.info(
                 f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions)\nOperation Finished\n======\n'
             )
+            if args.gui and progress_window is not None:
+                progress_window.close_window()
+                gui_g.progress_window_ref = None
             return
         # end if args.csv or args.tsv:
 
@@ -478,8 +505,11 @@ class UEVaultManagerCLI:
             try:
                 cpt = 0
                 json_content = {}
-                # output.write("{\n")
+                if gui_g.progress_window_ref is not None:
+                    gui_g.progress_window_ref.reset(0, new_text="Writing assets into json file...", new_max_value=len(assets_to_output.items()))
                 for asset in sorted(assets_to_output.items()):
+                    if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                        return
                     asset_id = asset[0]
                     if len(assets_in_file) > 0:
                         json_record_merged = update_and_merge_json_record_data(asset, assets_in_file, no_float_value, no_bool_false_data)
@@ -496,11 +526,13 @@ class UEVaultManagerCLI:
                 json.dump(json_content, output, indent=2)
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
-
             output.close()
             self.logger.info(
                 f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions)\nOperation Finished\n======\n'
             )
+            if args.gui and progress_window is not None:
+                progress_window.close_window()
+                gui_g.progress_window_ref = None
             return
         # end if args.json:
 
@@ -509,7 +541,6 @@ class UEVaultManagerCLI:
         for asset in items:
             version = asset.app_version('Windows')
             print(f' * {asset.app_title.strip()} (App name: {asset.app_name} | Version: {version})')
-
         print(f'\nTotal: {len(items)}')
 
     def list_files(self, args):
@@ -848,16 +879,16 @@ class UEVaultManagerCLI:
         else:
             input_filename = gui_f.path_from_relative_to_absolute(args.input)
 
-        # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
-        args.output = input_filename
-        args.csv = True  # force csv output
-
         app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
         gui_g.UEVM_log_ref = self.logger
         gui_g.UEVM_cli_ref = self
         # args can not be used as it because it's an object that mainly run as a dict (but it's not)
         # so we need to convert it to a dict first
         temp_dict = vars(args)
+        # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
+        temp_dict['output'] = input_filename
+        temp_dict['csv'] = True  # force csv output
+        temp_dict['gui'] = True
         # create a SaferDict object from the dict (it will avoid errors when trying to access non-existing keys)
         gui_g.UEVM_cli_args = SaferDict({})
         # copy the dict content to the SaferDict object
@@ -949,6 +980,13 @@ def main():
     list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in in TSV format')
     list_parser.add_argument('--json', dest='json', action='store_true', help='Output in in JSON format')
     list_parser.add_argument('-f', '--force-refresh', dest='force_refresh', action='store_true', help='Force a refresh of all assets metadata')
+    list_parser.add_argument(
+        '-g',
+        '--gui',
+        dest='gui',
+        action='store_false',
+        help='Display additional informations using gui elements like dialog boxes or progress window'
+    )
     list_parser.add_argument(
         '-fc',
         '--filter-category',
