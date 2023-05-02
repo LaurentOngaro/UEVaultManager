@@ -27,12 +27,12 @@ def loop_with_delay(start=0, end=100, progress_window: ProgressWindow = None):
 if __name__ == '__main__':
     max_value = 23
     min_value = 1
-    window = ProgressWindow("progress in a loop", 300, 150, max_value=max_value)
-    window.set_function(loop_with_delay)
+    progress_window = ProgressWindow("progress in a loop", 300, 150, max_value=max_value)
+    progress_window.set_function(loop_with_delay)
     # window.set_function_parameters({min_value, max_value})  # could also be a dict
-    window.set_function_parameters({'start': min_value, 'end': max_value})  # could also be a list
+    progress_window.set_function_parameters({'start': min_value, 'end': max_value})  # could also be a list
 
-    window.start_execution()
-    window.mainloop()
-    # window.thread.join()
-    print(f'#############################\nRESULTS\n{window.execution_return_value}')
+    progress_window.start_execution()
+    progress_window.mainloop()
+    # progress_window.thread.join()
+    print(f'#############################\nRESULTS\n{progress_window.execution_return_value}')
