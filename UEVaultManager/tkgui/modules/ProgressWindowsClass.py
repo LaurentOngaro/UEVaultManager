@@ -6,9 +6,20 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
-class ProgressWindow(tk.Tk):
+class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
 
-    def __init__(self, title: str, width: 300, height: 150, icon=None, screen_index=0, max_value=100, show_start_button=True, show_stop_button=True):
+    def __init__(
+        self,
+        title: str,
+        width: 300,
+        height: 150,
+        icon=None,
+        screen_index=0,
+        max_value=100,
+        show_start_button=True,
+        show_stop_button=True,
+        show_progress=True
+    ):
         super().__init__()
         self.title(title)
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
@@ -33,7 +44,7 @@ class ProgressWindow(tk.Tk):
         self.execution_return_value = None
 
         self.content_frame = self.ContentFrame(self)
-        self.control_frame = self.ControlFrame(self, show_start_button=show_start_button, show_stop_button=show_stop_button)
+        self.control_frame = self.ControlFrame(self)
 
         self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
@@ -49,6 +60,13 @@ class ProgressWindow(tk.Tk):
             self.deactivate()
         else:
             self.activate()
+
+        if not show_progress:
+            self.hide_progress_bar()
+        if not show_start_button:
+            self.hide_start_button()
+        if not show_stop_button:
+            self.hide_stop_button()
 
     class ContentFrame(ttk.Frame):
 
@@ -86,6 +104,10 @@ class ProgressWindow(tk.Tk):
     def set_text(self, new_text):
         self.content_frame.lbl_function_name.config(text=new_text)
 
+    def set_value(self, new_value):
+        new_value = max(0, new_value)
+        self.content_frame.progress_var.set(new_value)
+
     def set_max_value(self, new_max_value):
         if new_max_value:
             self.max_value = new_max_value
@@ -101,6 +123,24 @@ class ProgressWindow(tk.Tk):
         if parameters is None:
             return
         self.execution_parameters = parameters
+
+    def hide_progress_bar(self):
+        self.content_frame.progress_bar.pack_forget()
+
+    def show_progress_bar(self):
+        self.content_frame.progress_bar.pack()
+
+    def hide_start_button(self):
+        self.control_frame.button_start.pack_forget()
+
+    def show_start_button(self):
+        self.control_frame.button_start.pack()
+
+    def hide_stop_button(self):
+        self.control_frame.button_stop.pack_forget()
+
+    def show_stop_button(self):
+        self.control_frame.button_stop.pack()
 
     def reset(self, new_value=0, new_title=None, new_text=None, new_max_value=None, new_threaded_function=None):
         if new_title is not None:
@@ -154,14 +194,17 @@ class ProgressWindow(tk.Tk):
         if self.control_frame.button_stop is not None:
             self.control_frame.button_start.config(state=tk.DISABLED)
 
-    def update_and_check(self, value) -> bool:
+    def update_and_continue(self, value=0, increment=0) -> bool:
+        if increment:
+            value = self.content_frame.progress_var.get() + increment
+        if value > self.max_value:
+            value = self.max_value
         self.content_frame.progress_var.set(value)
         return self.continue_execution
 
     def close_window(self, _event=None):
         self.stop_execution()
         self.quit()
-        gui_g.edit_cell_window_ref = None
 
     def on_key_press(self, event):
         if event.keysym == 'Escape':

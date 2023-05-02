@@ -14,7 +14,7 @@ def loop_with_delay(start=0, end=100, progress_window: ProgressWindow = None):
     result = {}
     for i in range(start, end):
         if progress_window is not None:
-            if not progress_window.update_and_check(i):
+            if not progress_window.update_and_continue(value=i):
                 break
             progress_window.set_text(f"progress {i}")
         # Add a small delay to simulate processing time
@@ -27,6 +27,7 @@ def loop_with_delay(start=0, end=100, progress_window: ProgressWindow = None):
 if __name__ == '__main__':
     max_value = 23
     min_value = 1
+    main_window = tk.Tk()
     progress_window = ProgressWindow("progress in a loop", 300, 150, max_value=max_value)
     progress_window.set_function(loop_with_delay)
     # window.set_function_parameters({min_value, max_value})  # could also be a dict
