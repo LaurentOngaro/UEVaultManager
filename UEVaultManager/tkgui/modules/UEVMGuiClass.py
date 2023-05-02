@@ -17,8 +17,13 @@ class UEVMGui(tk.Tk):
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
 
-        if icon != '' and os.path.isfile(icon):
-            self.iconbitmap(icon)
+        if icon is None:
+            self.attributes('-toolwindow', True)
+        else:
+            # windows only (remove the minimize/maximize buttons and the icon)
+            icon = gui_f.path_from_relative_to_absolute(icon)
+            if icon != '' and os.path.isfile(icon):
+                self.iconbitmap(icon)
 
         self.resizable(True, False)
         self.editable_table = None
@@ -368,7 +373,9 @@ class UEVMGui(tk.Tk):
         self.update_page_numbers()
 
     def rebuild_data(self):
-        confirm = gui_f.box_yesno(f'The process will change the content of the windows and the {self.editable_table.file} file.\nAre you sure you want to continue ?')
+        confirm = gui_f.box_yesno(
+            f'The process will change the content of the windows and the {self.editable_table.file} file.\nAre you sure you want to continue ?'
+        )
         if confirm:
             self.editable_table.rebuild_data()
             gui_f.box_message(f'Data rebuilt from {self.editable_table.file}')

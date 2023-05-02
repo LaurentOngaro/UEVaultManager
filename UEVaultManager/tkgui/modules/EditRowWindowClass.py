@@ -22,6 +22,8 @@ class EditRowWindow(tk.Toplevel):
             if icon != '' and os.path.isfile(icon):
                 self.iconbitmap(icon)
 
+        self.resizable(True, False)
+
         self.editable_table = editable_table
         self.must_save = False
         self.initial_values = []
@@ -29,8 +31,6 @@ class EditRowWindow(tk.Toplevel):
         # the photoimage is stored is the variable to avoid garbage collection
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.image_preview = None
-
-        self.resizable(True, False)
 
         self.content_frame = self.ContentFrame(self)
         self.control_frame = self.ControlFrame(self)
