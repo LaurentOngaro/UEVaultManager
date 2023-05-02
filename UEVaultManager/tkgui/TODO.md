@@ -4,8 +4,6 @@
 
 ## Bugs to fix:
 
-- update pagination when reload or load a file
-
 ## To Do:
 
 - add features and buttons to refresh csv file by calling UEVaultManager cli (WIP)

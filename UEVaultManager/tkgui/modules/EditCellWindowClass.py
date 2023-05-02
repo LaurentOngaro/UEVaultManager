@@ -21,12 +21,11 @@ class EditCellWindow(tk.Toplevel):
             icon = gui_f.path_from_relative_to_absolute(icon)
             if icon != '' and os.path.isfile(icon):
                 self.iconbitmap(icon)
+        self.resizable(True, False)
 
         self.editable_table = editable_table
         self.must_save = False
         self.initial_values = []
-
-        self.resizable(True, False)
 
         self.content_frame = self.ContentFrame(self)
         self.control_frame = self.ControlFrame(self)
