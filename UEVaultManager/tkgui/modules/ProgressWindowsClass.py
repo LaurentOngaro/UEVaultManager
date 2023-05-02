@@ -6,11 +6,9 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
-class ProgressWindow(tk.Toplevel):
+class ProgressWindow(tk.Tk):
 
-    def __init__(self, title: str, width: 300, height: 150, icon=None, screen_index=0, callable_function=None, max_value=100):
-        if callable_function is None:
-            return
+    def __init__(self, title: str, width: 300, height: 150, icon=None, screen_index=0, max_value=100, show_start_button=True, show_stop_button=True):
         super().__init__()
         self.title(title)
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
@@ -26,48 +24,115 @@ class ProgressWindow(tk.Toplevel):
 
         self.max_value = max_value
         self.continue_execution = True
-        self.called_function = callable_function
+
+        # the function to be executed in a thread
+        self.threaded_function = None
+        # the parameter of the function to be executed in a thread
+        self.execution_parameters = {}
+        # the return value of the function to be executed
+        self.execution_return_value = None
 
         self.content_frame = self.ContentFrame(self)
-        self.control_frame = self.ControlFrame(self)
+        self.control_frame = self.ControlFrame(self, show_start_button=show_start_button, show_stop_button=show_stop_button)
 
         self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
+        gui_g.progress_window_ref = self
+        self.thread = None
+
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.close_window)
 
-        self.activate()
-        gui_g.progress_window_ref = self
+        # the function can be set after the window is created
+        if self.threaded_function is None:
+            self.deactivate()
+        else:
+            self.activate()
 
     class ContentFrame(ttk.Frame):
 
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'padx': 5, 'pady': 5, 'fill': tk.X}
-            function_name_label = ttk.Label(self, text='Running function: ' + container.called_function.__name__)
-            function_name_label.pack(**pack_def_options)
+            if container.threaded_function is None:
+                lbl_function_name = ttk.Label(self, text='No callable function set Yet')
+            else:
+                lbl_function_name = ttk.Label(self, text='Running function: ' + container.threaded_function.__name__)
+            lbl_function_name.pack(**pack_def_options)
             progress_var = tk.IntVar()
             progress_bar = ttk.Progressbar(self, orient="horizontal", mode="determinate", variable=progress_var, maximum=container.max_value)
             progress_bar.pack(**pack_def_options)
             self.progress_var = progress_var
             self.progress_bar = progress_bar
+            self.lbl_function_name = lbl_function_name
 
     class ControlFrame(ttk.Frame):
 
-        def __init__(self, container):
+        def __init__(self, container, show_start_button=True, show_stop_button=True):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
-            start_button = ttk.Button(self, text="Start", command=container.start_execution)
-            start_button.pack(**pack_def_options, side=tk.LEFT)
-            stop_button = ttk.Button(self, text="Stop", command=container.stop_execution, state=tk.DISABLED)
-            stop_button.pack(**pack_def_options, side=tk.RIGHT)
-            self.stop_button = stop_button
-            self.start_button = start_button
+            self.button_start = None
+            self.button_stop = None
+            if show_start_button:
+                button_start = ttk.Button(self, text="Start", command=container.start_execution)
+                button_start.pack(**pack_def_options, side=tk.LEFT)
+                self.button_start = button_start
+            if show_stop_button:
+                button_stop = ttk.Button(self, text="Stop", command=container.stop_execution, state=tk.DISABLED)
+                button_stop.pack(**pack_def_options, side=tk.RIGHT)
+                self.button_stop = button_stop
+
+    def set_text(self, new_text):
+        self.content_frame.lbl_function_name.config(text=new_text)
+
+    def set_max_value(self, new_max_value):
+        if new_max_value:
+            self.max_value = new_max_value
+            self.content_frame.progress_bar.config(maximum=new_max_value)
+
+    def set_function(self, threaded_function):
+        if threaded_function is None:
+            return
+        self.set_text('Running function: ' + threaded_function.__name__)
+        self.threaded_function = threaded_function
+
+    def set_function_parameters(self, parameters: dict):
+        if parameters is None:
+            return
+        self.execution_parameters = parameters
+
+    def reset(self, new_value=0, new_title=None, new_text=None, new_max_value=None, new_threaded_function=None):
+        if new_title is not None:
+            self.title(new_title)
+        if new_text is not None:
+            self.set_text(new_text)
+        if new_max_value is not None:
+            self.set_max_value(new_max_value)
+        if new_threaded_function is not None:
+            self.set_function(new_threaded_function)
+        self.content_frame.progress_var.set(new_value)
+        self.continue_execution = True
+        self.activate()
+
+    def execute_function(self):
+        gui_f.log_info(f'execution of {self.threaded_function} has started')
+        if isinstance(self.execution_parameters, dict):
+            # execution_parameters is a dictionary
+            self.execution_return_value = self.threaded_function(progress_window=self, **self.execution_parameters)
+        elif isinstance(self.execution_parameters, list) or isinstance(self.execution_parameters, set):
+            # execution_parameters is a list
+            self.execution_return_value = self.threaded_function(progress_window=self, *self.execution_parameters)
+        gui_f.log_info(f'execution of {self.threaded_function} has ended')
+        self.close_window()
 
     def start_execution(self) -> None:
+        if self.threaded_function is None:
+            return
         self.continue_execution = True
-        threading.Thread(target=self.called_function).start()
+        threading.Thread(target=self.threaded_function).start()
+        self.thread = threading.Thread(target=self.execute_function)
+        self.thread.start()
         self.deactivate()
 
     def stop_execution(self) -> None:
@@ -75,23 +140,28 @@ class ProgressWindow(tk.Toplevel):
         self.activate()
 
     def activate(self) -> None:
-        self.control_frame.start_button.config(state=tk.NORMAL)
-        self.control_frame.stop_button.config(state=tk.DISABLED)
+        if self.control_frame.button_start is not None:
+            self.control_frame.button_start.config(state=tk.NORMAL)
+        if self.control_frame.button_stop is not None:
+            self.control_frame.button_stop.config(state=tk.DISABLED)
 
     def deactivate(self) -> None:
-        self.control_frame.stop_button.config(state=tk.NORMAL)
-        self.control_frame.start_button.config(state=tk.DISABLED)
+        if self.control_frame.button_start is not None:
+            self.control_frame.button_stop.config(state=tk.NORMAL)
+        if self.control_frame.button_stop is not None:
+            self.control_frame.button_start.config(state=tk.DISABLED)
 
     def update_and_check(self, value) -> bool:
         self.content_frame.progress_var.set(value)
         return self.continue_execution
 
     def close_window(self, _event=None):
+        self.stop_execution()
+        self.quit()
         gui_g.edit_cell_window_ref = None
-        self.destroy()
 
     def on_key_press(self, event):
-        if event.keysym == 'Return':
+        if event.keysym == 'Escape':
             if self.continue_execution:
                 self.deactivate()
             else:
