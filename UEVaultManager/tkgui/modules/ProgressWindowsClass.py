@@ -119,10 +119,10 @@ class ProgressWindow(tk.Tk):
         gui_f.log_info(f'execution of {self.threaded_function} has started')
         if isinstance(self.execution_parameters, dict):
             # execution_parameters is a dictionary
-            self.execution_return_value = self.threaded_function(progress_window=self, **self.execution_parameters)
+            self.execution_return_value = self.threaded_function(**self.execution_parameters)
         elif isinstance(self.execution_parameters, list) or isinstance(self.execution_parameters, set):
             # execution_parameters is a list
-            self.execution_return_value = self.threaded_function(progress_window=self, *self.execution_parameters)
+            self.execution_return_value = self.threaded_function(*self.execution_parameters)
         gui_f.log_info(f'execution of {self.threaded_function} has ended')
         self.close_window()
 
@@ -138,6 +138,9 @@ class ProgressWindow(tk.Tk):
     def stop_execution(self) -> None:
         self.continue_execution = False
         self.activate()
+
+    def get_results(self):
+        return self.execution_return_value
 
     def activate(self) -> None:
         if self.control_frame.button_start is not None:

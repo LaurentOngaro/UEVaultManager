@@ -30,7 +30,7 @@ if __name__ == '__main__':
     progress_window = ProgressWindow("progress in a loop", 300, 150, max_value=max_value)
     progress_window.set_function(loop_with_delay)
     # window.set_function_parameters({min_value, max_value})  # could also be a dict
-    progress_window.set_function_parameters({'start': min_value, 'end': max_value})  # could also be a list
+    progress_window.set_function_parameters({'progress_window': progress_window, 'start': min_value, 'end': max_value})  # could also be a list
 
     progress_window.start_execution()
     progress_window.mainloop()
