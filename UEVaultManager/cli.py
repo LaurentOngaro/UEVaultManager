@@ -362,14 +362,24 @@ class UEVaultManagerCLI:
 
         if args.gui:
             # create and use a progress window
-            progress_window = ProgressWindow(title="Updating Assets List", width=300, height=150, max_value=200, show_start_button=False)
-            gui_g.progress_window_ref = progress_window
             gui_g.UEVM_log_ref = self.logger
-            progress_window.set_function(self.core.get_asset_list)
-            progress_window.set_function_parameters({'filter_category': args.filter_category, 'force_refresh': args.force_refresh})
-            progress_window.start_execution()
+            progress_window = ProgressWindow(
+                title="Updating Assets List",
+                width=300,
+                height=150,
+                max_value=200,
+                show_start_button=False,
+                show_stop_button=True,
+                function=self.core.get_asset_list,
+                function_parameters={
+                    'filter_category': args.filter_category,
+                    'force_refresh': args.force_refresh
+                }
+            )
+            gui_g.progress_window_ref = progress_window
+            # only if a start button is displayed: progress_window.start_execution()
             progress_window.mainloop()
-            items = progress_window.get_results()
+            items = progress_window.get_result()
 
         else:
             items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
@@ -395,7 +405,7 @@ class UEVaultManagerCLI:
         cpt = 0
         cpt_max = len(items)
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(0, new_text="Checking assets data...", new_max_value=len(items))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking assets data...", new_max_value=len(items))
         for item in items:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -455,7 +465,9 @@ class UEVaultManagerCLI:
                 writer.writerow(CSV_headings.keys())
                 cpt = 0
                 if gui_g.progress_window_ref is not None:
-                    gui_g.progress_window_ref.reset(0, new_text="Writing assets into csv file...", new_max_value=len(assets_to_output.items()))
+                    gui_g.progress_window_ref.reset(
+                        new_value=0, new_text="Writing assets into csv file...", new_max_value=len(assets_to_output.items())
+                    )
                 for asset in sorted(assets_to_output.items()):
                     if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                         return
@@ -506,7 +518,9 @@ class UEVaultManagerCLI:
                 cpt = 0
                 json_content = {}
                 if gui_g.progress_window_ref is not None:
-                    gui_g.progress_window_ref.reset(0, new_text="Writing assets into json file...", new_max_value=len(assets_to_output.items()))
+                    gui_g.progress_window_ref.reset(
+                        new_value=0, new_text="Writing assets into json file...", new_max_value=len(assets_to_output.items())
+                    )
                 for asset in sorted(assets_to_output.items()):
                     if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                         return

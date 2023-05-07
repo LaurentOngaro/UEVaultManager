@@ -52,3 +52,4 @@ if __name__ == "__main__":
     )
 
     progress_window.mainloop()
+    print(f'progress_window.execution_return_value: {progress_window.get_result()}')

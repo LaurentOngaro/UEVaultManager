@@ -1,6 +1,7 @@
-import tkinter as tk
 import os
 import threading
+import queue
+import tkinter as tk
 from tkinter import ttk
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -40,7 +41,8 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
 
         self.function = function
         self.function_params = function_parameters
-        self.execution_return_value = None
+        self.function_return_value = None
+        self.result_queue = queue.Queue()
 
         self.content_frame = self.ContentFrame(self)
         self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
@@ -55,9 +57,9 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
 
         if not show_progress:
             self.hide_progress_bar()
-        if not show_start_button:
+        if self.control_frame and not show_start_button:
             self.control_frame.button_start.pack_forget()
-        if not show_stop_button:
+        if self.control_frame and not show_stop_button:
             self.control_frame.button_stop.pack_forget()
 
         # Start the execution if not control frame is present
@@ -96,6 +98,11 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
                 button_stop.pack(**pack_def_options, side=tk.RIGHT)
                 self.button_stop = button_stop
 
+    def _function_result_wrapper(self, function, *args, **kwargs):
+        gui_f.log_info(f'execution of {function.__name__} has started')
+        result = function(*args, **kwargs)
+        self.result_queue.put(result)
+
     # check if the function is still running, if not, quit the window
     def _check_for_end(self, t):
         if t.is_alive():
@@ -104,6 +111,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         else:
             # The thread has finished; clean up
             gui_f.log_debug(f'Quitting {self.__class__.__name__}')
+            self.function_return_value = self.result_queue.get()
             self.close_window()
 
     def set_text(self, new_text):
@@ -112,7 +120,6 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
     def set_value(self, new_value):
         new_value = max(0, new_value)
         self.content_frame.progress_bar["value"] = new_value
-        self.update_idletasks()
 
     def set_max_value(self, new_max_value):
         if new_max_value:
@@ -134,6 +141,26 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
     def show_progress_bar(self):
         self.content_frame.progress_bar.pack()
 
+    def hide_start_button(self):
+        if self.control_frame is None or self.control_frame.button_start is None:
+            return
+        self.control_frame.button_start.pack_forget()
+
+    def show_start_button(self):
+        if self.control_frame is None or self.control_frame.button_start is None:
+            return
+        self.control_frame.button_start.pack()
+
+    def hide_stop_button(self):
+        if self.control_frame is None or self.control_frame.button_stop is None:
+            return
+        self.control_frame.button_stop.pack_forget()
+
+    def show_stop_button(self):
+        if self.control_frame is None or self.control_frame.button_stop is None:
+            return
+        self.control_frame.button_stop.pack()
+
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None):
         if new_title is not None:
             self.title(new_title)
@@ -144,7 +171,6 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         if new_max_value is not None:
             self.set_max_value(new_max_value)
         self.continue_execution = True
-        self.activate()
 
     def start_execution(self) -> None:
         if self.function is None:
@@ -152,9 +178,8 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             return
         self.continue_execution = True
         self.deactivate()
-        gui_f.log_info(f'execution of {self.function.__name__} has started')
         # Run the function in a separate thread
-        t = threading.Thread(target=self.function, kwargs=self.function_params)
+        t = threading.Thread(target=self._function_result_wrapper, args=(self.function, self), kwargs=self.function_params)
         t.start()
         # Schedule GUI update while waiting for the thread to finish
         self.after(100, self._check_for_end, t)
@@ -163,8 +188,8 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         self.continue_execution = False
         self.activate()
 
-    def get_results(self):
-        return self.execution_return_value
+    def get_result(self):
+        return self.function_return_value
 
     def activate(self) -> None:
         if self.control_frame is None:
@@ -183,13 +208,14 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             self.control_frame.button_start.config(state=tk.DISABLED)
 
     def update_and_continue(self, value=0, increment=0) -> bool:
+        progress_bar = self.content_frame.progress_bar
         if increment:
-            value = self.content_frame.progress_bar["value"] + increment
+            value = progress_bar["value"] + increment
 
         if value > self.max_value:
             value = self.max_value
-        self.content_frame.progress_bar["value"] = value
-        self.progress.update_idletasks()
+        progress_bar["value"] = value
+        progress_bar.update_idletasks()
         self.update_idletasks()
 
         return self.continue_execution

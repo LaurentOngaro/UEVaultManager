@@ -487,7 +487,7 @@ class AppCore:
         platforms = {'Windows'}
         platforms |= {platform}
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(0, new_text="Fetching platforms...", new_max_value=len(platforms))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching platforms...", new_max_value=len(platforms))
         for _platform in platforms:
             self.get_assets(update_assets=update_assets, platform=_platform)
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
@@ -498,7 +498,7 @@ class AppCore:
 
         assets = {}
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(0, new_text="Fetching assets...", new_max_value=len(self.lgd.assets.items()))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching assets...", new_max_value=len(self.lgd.assets.items()))
         for _platform, _assets in self.lgd.assets.items():
             for _asset in _assets:
                 if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
@@ -517,7 +517,7 @@ class AppCore:
         bypass_count = 0
         self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(0, new_text="Indexing assets...", new_max_value=len(assets.items()))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Indexing assets...", new_max_value=len(assets.items()))
         # note: we sort by reverse, as it the most recent version of an asset will be listed first
         for app_name, app_assets in sorted(assets.items(), reverse=True):
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
@@ -550,7 +550,7 @@ class AppCore:
 
         self.log.info(f'======\nSTARTING phase 2:asset filtering and metadata updating\n')
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(0, new_text="Updating metadata...", new_max_value=len(valid_items))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata...", new_max_value=len(valid_items))
         # loop through valid items to check for update and filtering
         bypass_count = 0
         filtered_items = []
@@ -610,7 +610,7 @@ class AppCore:
         # self.use_threads = False  # test only
         if fetch_list:
             if gui_g.progress_window_ref is not None:
-                gui_g.progress_window_ref.reset(0, new_text="Fetching missing metadata...\nIt Could take a while !", new_max_value=0)
+                gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching missing metadata...\nIt Could take a while !", new_max_value=0)
                 gui_g.progress_window_ref.hide_progress_bar()
                 gui_g.progress_window_ref.hide_stop_button()
 
@@ -623,7 +623,7 @@ class AppCore:
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(0, new_text="Checking assets data...", new_max_value=len(filtered_items))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking assets data...", new_max_value=len(filtered_items))
             gui_g.progress_window_ref.show_progress_bar()
             gui_g.progress_window_ref.show_stop_button()
         # loop through valid and filtered items
