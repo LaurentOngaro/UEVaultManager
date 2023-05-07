@@ -19,7 +19,6 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         show_start_button=True,
         show_stop_button=True,
         show_progress=True,
-        use_thread=False
     ):
         super().__init__()
         self.title(title)
@@ -34,19 +33,11 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             if icon != '' and os.path.isfile(icon):
                 self.iconbitmap(icon)
 
-        if not tk._default_root and use_thread:
-            gui_f.log_warning('Cannot use thread for the function execution if the windows is not the Tk root window. Threading will be disabled.')
-            use_thread = False
-
         self.max_value = max_value
         self.continue_execution = True
-        self.use_thread = use_thread
 
-        # the function to be executed in a thread
-        self.execution_function = None
-        # the parameter of the function to be executed
-        self.execution_parameters = {}
-        # the return value of the function to be executed
+        self.function = None
+        self.function_params = {}
         self.execution_return_value = None
 
         self.content_frame = self.ContentFrame(self)
@@ -59,16 +50,6 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         gui_g.progress_window_ref = self
-        self.thread = None
-
-        self.bind('<Key>', self.on_key_press)
-        self.protocol("WM_DELETE_WINDOW", self.close_window)
-
-        # the function can be set after the window is created
-        if self.execution_function is None:
-            self.deactivate()
-        else:
-            self.activate()
 
         if not show_progress:
             self.hide_progress_bar()
@@ -87,17 +68,15 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'padx': 5, 'pady': 5, 'fill': tk.X}
-            if container.execution_function is None:
-                lbl_function_name = ttk.Label(self, text='No callable function set Yet')
+            if container.function is None:
+                lbl_function = ttk.Label(self, text='No callable function set Yet')
             else:
-                lbl_function_name = ttk.Label(self, text='Running function: ' + container.execution_function.__name__)
-            lbl_function_name.pack(**pack_def_options)
-            progress_var = tk.IntVar()
-            progress_bar = ttk.Progressbar(self, orient="horizontal", mode="determinate", variable=progress_var, maximum=container.max_value)
+                lbl_function = ttk.Label(self, text='Running function: ' + container.function.__name__)
+            lbl_function.pack(**pack_def_options)
+            progress_bar = ttk.Progressbar(self, orient="horizontal", mode="determinate", maximum=container.max_value)
             progress_bar.pack(**pack_def_options)
-            self.progress_var = progress_var
             self.progress_bar = progress_bar
-            self.lbl_function_name = lbl_function_name
+            self.lbl_function = lbl_function
 
     class ControlFrame(ttk.Frame):
 
@@ -116,90 +95,60 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
                 self.button_stop = button_stop
 
     def set_text(self, new_text):
-        self.content_frame.lbl_function_name.config(text=new_text)
+        self.content_frame.lbl_function.config(text=new_text)
 
     def set_value(self, new_value):
         new_value = max(0, new_value)
-        self.content_frame.progress_var.set(new_value)
+        self.content_frame.progress_bar["value"] = new_value
+        self.update_idletasks()
 
     def set_max_value(self, new_max_value):
         if new_max_value:
             self.max_value = new_max_value
-            self.content_frame.progress_bar.config(maximum=new_max_value)
+            self.content_frame.progress_bar["maximum"] = new_max_value
 
-    def set_function(self, threaded_function):
-        if threaded_function is None:
+    def set_function(self, new_function):
+        if new_function is None:
             return
-        self.set_text('Running function: ' + threaded_function.__name__)
-        self.execution_function = threaded_function
+        self.set_text('Running function: ' + new_function.__name__)
+        self.function = new_function
 
     def set_function_parameters(self, parameters: dict):
-        if parameters is None:
-            return
-        self.execution_parameters = parameters
+        self.function_params = parameters
 
     def hide_progress_bar(self):
         self.content_frame.progress_bar.pack_forget()
 
     def show_progress_bar(self):
         self.content_frame.progress_bar.pack()
-    #
-    # def hide_start_button(self):
-    #     if self.control_frame is None:
-    #         return
-    #     self.control_frame.button_start.pack_forget()
-    #
-    # def show_start_button(self):
-    #     if self.control_frame is None:
-    #         return
-    #     self.control_frame.button_start.pack()
-    #
-    # def hide_stop_button(self):
-    #     if self.control_frame is None:
-    #         return
-    #     self.control_frame.button_stop.pack_forget()
-    #
-    # def show_stop_button(self):
-    #     if self.control_frame is None:
-    #         return
-    #     self.control_frame.button_stop.pack()
 
-    def reset(self, new_value=0, new_title=None, new_text=None, new_max_value=None, new_threaded_function=None):
+    def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None):
         if new_title is not None:
             self.title(new_title)
+        if new_value is not None:
+            self.set_value(new_value)
         if new_text is not None:
             self.set_text(new_text)
         if new_max_value is not None:
             self.set_max_value(new_max_value)
-        if new_threaded_function is not None:
-            self.set_function(new_threaded_function)
-        self.content_frame.progress_var.set(new_value)
         self.continue_execution = True
         self.activate()
 
-    def execute_function(self):
-        self.deactivate()
-        self.update_idletasks()
-        gui_f.log_info(f'execution of {self.execution_function} has started')
-        if isinstance(self.execution_parameters, dict):
-            # execution_parameters is a dictionary
-            self.execution_return_value = self.execution_function(**self.execution_parameters)
-        elif isinstance(self.execution_parameters, list) or isinstance(self.execution_parameters, set):
-            # execution_parameters is a list
-            self.execution_return_value = self.execution_function(*self.execution_parameters)
-        gui_f.log_info(f'execution of {self.execution_function} has ended')
-        self.close_window()
-
     def start_execution(self) -> None:
-        if self.execution_function is None:
+        if self.function is None:
+            gui_f.log_warning('the function name to execute is not set')
             return
         self.continue_execution = True
         self.deactivate()
-        if self.use_thread:
-            self.thread = threading.Thread(target=self.execute_function)
-            self.thread.start()
-        else:
-            self.execute_function()
+        gui_f.log_info(f'execution of {self.function.__name__} has started')
+        if isinstance(self.function_params, dict):
+            # function_params is a dictionary
+            self.execution_return_value = self.function(**self.function_params)
+        elif isinstance(self.function_params, list) or isinstance(self.function_params, set):
+            # function_params is a list
+            self.execution_return_value = self.function(*self.function_params)
+        gui_f.log_info(f'execution of {self.function} has ended')
+        self.close_window()
 
     def stop_execution(self) -> None:
         self.continue_execution = False
@@ -226,19 +175,16 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
 
     def update_and_continue(self, value=0, increment=0) -> bool:
         if increment:
-            value = self.content_frame.progress_var.get() + increment
+            value = self.content_frame.progress_bar["value"] + increment
+
         if value > self.max_value:
             value = self.max_value
-        self.content_frame.progress_var.set(value)
+        self.content_frame.progress_bar["value"] = value
+        self.progress.update_idletasks()
+        self.update_idletasks()
+
         return self.continue_execution
 
     def close_window(self, _event=None):
         self.stop_execution()
         self.quit()
-
-    def on_key_press(self, event):
-        if event.keysym == 'Escape':
-            if self.continue_execution:
-                self.deactivate()
-            else:
-                self.activate()
