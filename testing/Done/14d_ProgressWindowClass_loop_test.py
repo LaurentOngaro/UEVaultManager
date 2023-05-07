@@ -25,6 +25,11 @@ def loop_with_delay(start=0, end=100, progress_window: ProgressWindow = None):
 
 
 if __name__ == '__main__':
+    main_window = tk.Tk()
+    main_window.title("Main Window")
+    main_window.geometry("300x150")
+    main_window.withdraw()
+
     max_value = 23
     min_value = 1
     main_window = tk.Tk()
@@ -34,6 +39,8 @@ if __name__ == '__main__':
     progress_window.set_function_parameters({'progress_window': progress_window, 'start': min_value, 'end': max_value})  # could also be a list
 
     progress_window.start_execution()
-    progress_window.mainloop()
+    # progress_window.mainloop()
+    main_window.mainloop()
+
     # progress_window.thread.join()
     print(f'#############################\nRESULTS\n{progress_window.execution_return_value}')
