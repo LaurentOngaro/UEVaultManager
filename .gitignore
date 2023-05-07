@@ -147,6 +147,8 @@ cache/
 results/
 stuff/
 dist_pyinstaller/
+*.BACKUP*.csv
+*.BACKUP*.json
 
 # private stuff
 .private/

@@ -623,9 +623,9 @@ class AppCore:
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking assets data...", new_max_value=len(filtered_items))
-            gui_g.progress_window_ref.show_progress_bar()
+            gui_g.progress_window_ref.show_progress_bar() # show progress bar again must be before reset
             gui_g.progress_window_ref.show_stop_button()
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking assets data...", new_max_value=len(filtered_items))
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
         while len(filtered_items) > 0:

@@ -79,6 +79,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             lbl_function.pack(**pack_def_options)
             progress_bar = ttk.Progressbar(self, orient="horizontal", mode="determinate", maximum=container.max_value)
             progress_bar.pack(**pack_def_options)
+            self.pack_def_options = pack_def_options
             self.progress_bar = progress_bar
             self.lbl_function = lbl_function
 
@@ -87,6 +88,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         def __init__(self, container, show_start_button=True, show_stop_button=True):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
+            self.pack_def_options = pack_def_options
             self.button_start = None
             self.button_stop = None
             if show_start_button:
@@ -115,16 +117,21 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             self.close_window()
 
     def set_text(self, new_text):
+        if self.content_frame is None or self.content_frame.lbl_function is None:
+            return
         self.content_frame.lbl_function.config(text=new_text)
 
     def set_value(self, new_value):
         new_value = max(0, new_value)
+        if self.content_frame is None or self.content_frame.progress_bar is None:
+            return
         self.content_frame.progress_bar["value"] = new_value
 
     def set_max_value(self, new_max_value):
-        if new_max_value:
-            self.max_value = new_max_value
-            self.content_frame.progress_bar["maximum"] = new_max_value
+        if self.content_frame is None or self.content_frame.progress_bar is None:
+            return
+        self.max_value = new_max_value
+        self.content_frame.progress_bar["maximum"] = new_max_value
 
     def set_function(self, new_function):
         if new_function is None:
@@ -139,7 +146,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         self.content_frame.progress_bar.pack_forget()
 
     def show_progress_bar(self):
-        self.content_frame.progress_bar.pack()
+        self.content_frame.progress_bar.pack(self.content_frame.pack_def_options)
 
     def hide_start_button(self):
         if self.control_frame is None or self.control_frame.button_start is None:
@@ -149,7 +156,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
     def show_start_button(self):
         if self.control_frame is None or self.control_frame.button_start is None:
             return
-        self.control_frame.button_start.pack()
+        self.control_frame.button_start.pack(self.control_frame.pack_def_options)
 
     def hide_stop_button(self):
         if self.control_frame is None or self.control_frame.button_stop is None:
@@ -159,22 +166,28 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
     def show_stop_button(self):
         if self.control_frame is None or self.control_frame.button_stop is None:
             return
-        self.control_frame.button_stop.pack()
+        self.control_frame.button_stop.pack(self.control_frame.pack_def_options)
 
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None):
-        if new_title is not None:
-            self.title(new_title)
-        if new_value is not None:
-            self.set_value(new_value)
-        if new_text is not None:
-            self.set_text(new_text)
-        if new_max_value is not None:
-            self.set_max_value(new_max_value)
+        try:
+            # sometimes the window is already destroyed
+            if new_title is not None:
+                self.title(new_title)
+            if new_text is not None:
+                self.set_text(new_text)
+            if new_value is not None:
+                self.show_progress_bar()
+                self.set_value(new_value)
+            if new_max_value is not None:
+                self.show_progress_bar()
+                self.set_max_value(new_max_value)
+        except tk.TclError:
+            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
         self.continue_execution = True
 
     def start_execution(self) -> None:
         if self.function is None:
-            gui_f.log_warning('the function name to execute is not set')
+            ggui_f.log_warning('the function name to execute is not set')
             return
         self.continue_execution = True
         self.deactivate()
@@ -208,18 +221,31 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             self.control_frame.button_start.config(state=tk.DISABLED)
 
     def update_and_continue(self, value=0, increment=0) -> bool:
-        progress_bar = self.content_frame.progress_bar
-        if increment:
-            value = progress_bar["value"] + increment
+        try:
+            # sometimes the window is already destroyed
+            progress_bar = self.content_frame.progress_bar
+            if increment:
+                value = progress_bar["value"] + increment
 
-        if value > self.max_value:
-            value = self.max_value
-        progress_bar["value"] = value
-        progress_bar.update_idletasks()
+            if value > self.max_value:
+                value = self.max_value
+            progress_bar["value"] = value
+            progress_bar.update_idletasks()
+        except tk.TclError:
+            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
+            return
         self.update_idletasks()
 
         return self.continue_execution
 
     def close_window(self, _event=None):
-        self.stop_execution()
-        self.quit()
+        try:
+            # sometimes the window is already destroyed
+            self.stop_execution()
+        except tk.TclError:
+            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
+
+        if tk._default_root:
+            self.destroy()
+        else:
+            self.quit()

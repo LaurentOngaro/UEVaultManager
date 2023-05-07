@@ -360,6 +360,7 @@ class UEVaultManagerCLI:
         else:
             gui_g.UEVM_filter_category = ''
 
+        gui_g.progress_window_ref = None
         if args.gui:
             # create and use a progress window
             gui_g.UEVM_log_ref = self.logger

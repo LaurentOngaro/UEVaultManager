@@ -377,6 +377,6 @@ class UEVMGui(tk.Tk):
             f'The process will change the content of the windows and the {self.editable_table.file} file.\nAre you sure you want to continue ?'
         )
         if confirm:
-            self.editable_table.rebuild_data()
-            gui_f.box_message(f'Data rebuilt from {self.editable_table.file}')
-            self.update_page_numbers()
+            if self.editable_table.rebuild_data():
+                gui_f.box_message(f'Data rebuilt from {self.editable_table.file}')
+                self.update_page_numbers()

@@ -138,14 +138,16 @@ class EditableTable(Table):
         self.load_data()
         self.show_page(self.current_page)
 
-    def rebuild_data(self):
+    def rebuild_data(self) -> bool:
         # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
         if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
             from_cli_only_message()
+            return False
         else:
             gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
             self.load_data()
             self.show_page(self.current_page)
+            return True
 
     def save_data(self):
         data = self.data.iloc[0:len(self.data)]
