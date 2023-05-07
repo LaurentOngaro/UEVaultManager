@@ -21,7 +21,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         show_stop_button=True,
         show_progress=True,
         function=None,
-        function_parameters={}
+        function_parameters: dict = None,
     ):
         super().__init__()
         self.title(title)
@@ -187,7 +187,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
 
     def start_execution(self) -> None:
         if self.function is None:
-            ggui_f.log_warning('the function name to execute is not set')
+            gui_f.log_warning('the function name to execute is not set')
             return
         self.continue_execution = True
         self.deactivate()
@@ -233,9 +233,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             progress_bar.update_idletasks()
         except tk.TclError:
             gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
-            return
         self.update_idletasks()
-
         return self.continue_execution
 
     def close_window(self, _event=None):
