@@ -19,6 +19,8 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         show_start_button=True,
         show_stop_button=True,
         show_progress=True,
+        function=None,
+        function_parameters={}
     ):
         super().__init__()
         self.title(title)
@@ -36,8 +38,8 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         self.max_value = max_value
         self.continue_execution = True
 
-        self.function = None
-        self.function_params = {}
+        self.function = function
+        self.function_params = function_parameters
         self.execution_return_value = None
 
         self.content_frame = self.ContentFrame(self)
@@ -60,7 +62,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
 
         # Start the execution if not control frame is present
         # important because the control frame is not present when the function is set after the window is created
-        if self.control_frame is None:
+        if self.control_frame is None or not show_start_button:
             self.start_execution()
 
     class ContentFrame(ttk.Frame):
@@ -93,6 +95,16 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
                 button_stop = ttk.Button(self, text="Stop", command=container.stop_execution, state=tk.DISABLED)
                 button_stop.pack(**pack_def_options, side=tk.RIGHT)
                 self.button_stop = button_stop
+
+    # check if the function is still running, if not, quit the window
+    def _check_for_end(self, t):
+        if t.is_alive():
+            # Schedule another check in 300 ms
+            self.after(300, self._check_for_end, t)
+        else:
+            # The thread has finished; clean up
+            gui_f.log_debug(f'Quitting {self.__class__.__name__}')
+            self.close_window()
 
     def set_text(self, new_text):
         self.content_frame.lbl_function.config(text=new_text)
@@ -141,14 +153,11 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         self.continue_execution = True
         self.deactivate()
         gui_f.log_info(f'execution of {self.function.__name__} has started')
-        if isinstance(self.function_params, dict):
-            # function_params is a dictionary
-            self.execution_return_value = self.function(**self.function_params)
-        elif isinstance(self.function_params, list) or isinstance(self.function_params, set):
-            # function_params is a list
-            self.execution_return_value = self.function(*self.function_params)
-        gui_f.log_info(f'execution of {self.function} has ended')
-        self.close_window()
+        # Run the function in a separate thread
+        t = threading.Thread(target=self.function, kwargs=self.function_params)
+        t.start()
+        # Schedule GUI update while waiting for the thread to finish
+        self.after(100, self._check_for_end, t)
 
     def stop_execution(self) -> None:
         self.continue_execution = False

@@ -1,15 +1,16 @@
 import tkinter as tk
 from tkinter import ttk
 import time
+import threading
 
 
 def create_dict(*args, **kwargs):
     result_dict = {}
     print(f"args: {args}")
     print(f"kwargs: {kwargs}")
-    max_value = kwargs.get('max_value')
+    l_max_value = kwargs.get('max_value')
     parent_window = kwargs.get('parent_window')
-    for i in range(max_value):
+    for i in range(l_max_value):
         key = f"key_{i}"
         value = f"value_{i}"
         result_dict[key] = value
@@ -64,9 +65,20 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         if self.function_name is not None:
             function = globals().get(self.function_name)
             if function:
-                function(self, **self.function_params)
-        print(f"Quitting {self.__class__.__name__} ")
-        self.quit()
+                # Run the function in a separate thread
+                t = threading.Thread(target=function, args=(self,), kwargs=self.function_params)
+                t.start()
+                # Schedule GUI update while waiting for the thread to finish
+                self.after(100, self._check_for_end, t)
+
+    def _check_for_end(self, t):
+        if t.is_alive():
+            # Schedule another check in 300 ms
+            self.after(300, self._check_for_end, t)
+        else:
+            # The thread has finished; clean up
+            print(f"Quitting {self.__class__.__name__} ")
+            self.quit()
 
     def stop_execution(self):
         print("Stop execution")
@@ -80,9 +92,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
 
 if __name__ == "__main__":
     # this code works if there is a root window or not
-    # If there is no root window the stop button and all other GUI elements are inactive
-    # because the GUI needs to be run in another thread to be updated
-
+    # The GUI issues are solved by running the function in a thread
     use_main_window = True
 
     if use_main_window:
@@ -92,13 +102,11 @@ if __name__ == "__main__":
         main_window.withdraw()
 
     max_value = 40
-    app = ProgressWindow()
-    app.set_max_value(max_value)
-    app.set_function("create_dict")
-    app.set_function_parameters({'parent_window': app, 'max_value': max_value})
+    progress_window = ProgressWindow()
+    progress_window.set_max_value(max_value)
+    progress_window.set_function("create_dict")
+    progress_window.set_function_parameters({'parent_window': progress_window, 'max_value': max_value})
 
-    if use_main_window:
-        # main_window.deiconify()
-        main_window.mainloop()
-    else:
-        app.mainloop()
+    progress_window.start_execution()
+
+    progress_window.mainloop()
