@@ -1,3 +1,4 @@
+import tkinter
 import webbrowser
 from tkinter import ttk
 
@@ -271,6 +272,24 @@ class EditableTable(Table):
         self.edit_row_index = row_selected
         self.edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_selected_row_values()
+
+    def preview_content(self, canvas: tkinter.Canvas = None, row=None, col=None):
+        if row is None or col is None or row >= len(self.data) or canvas is None:
+            return
+        col = self.model.df.columns.get_loc('Image')
+        if col:
+            try:
+                image_url = self.model.getValueAt(row, col)
+                show_asset_image(image_url=image_url, canvas=canvas)
+            except IndexError:
+                self.preview_reset(canvas)
+        else:
+            self.preview_reset(canvas)
+
+    def preview_reset(self, canvas: tkinter.Canvas = None):
+        if canvas is None:
+            return
+        show_default_image(canvas=canvas)
 
     def open_asset_url(self, url=None):
         if url is None:

@@ -132,8 +132,8 @@ def center_window_on_screen(screen_index, height, width):
     return geometry
 
 
-def show_asset_image(image_url, canvas_preview=None):
-    if canvas_preview is None or image_url == '':
+def show_asset_image(image_url, canvas=None):
+    if canvas is None or image_url == '':
         return
     try:
         # noinspection DuplicatedCode
@@ -161,20 +161,20 @@ def show_asset_image(image_url, canvas_preview=None):
         new_height = min(int(image.height * ratio), gui_g.s.preview_max_height)
         log_debug(f'Image size: {image.width}x{image.height} -> {new_width}x{new_height} ratio: {ratio}')
         # noinspection PyTypeChecker
-        resize_and_show_image(image, canvas_preview, new_height, new_width)
+        resize_and_show_image(image, canvas, new_height, new_width)
 
     except Exception as error:
         log_error(f"Error showing image: {error}")
 
 
-def show_default_image(canvas_preview=None):
-    if canvas_preview is None:
+def show_default_image(canvas=None):
+    if canvas is None:
         return
     try:
         # Load the default image
         if os.path.isfile(gui_g.s.default_image_filename):
             def_image = Image.open(gui_g.s.default_image_filename)
             # noinspection PyTypeChecker
-            resize_and_show_image(def_image, canvas_preview, gui_g.s.preview_max_width, gui_g.s.preview_max_height)
+            resize_and_show_image(def_image, canvas, gui_g.s.preview_max_width, gui_g.s.preview_max_height)
     except Exception as error:
         log_warning(f"Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error}")

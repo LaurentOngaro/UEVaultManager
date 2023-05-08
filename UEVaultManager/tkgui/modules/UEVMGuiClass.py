@@ -261,23 +261,10 @@ class UEVMGui(tk.Tk):
             return
         # Get the row and column index of the cell under the mouse pointer
         row, col = self.editable_table.get_row_clicked(event), self.editable_table.get_col_clicked(event)
-        self.preview_content(row, col)
-
-    def preview_content(self, row=None, col=None):
-        if row is None or col is None or row >= len(self.editable_table.data):
-            return
-        col = self.editable_table.model.df.columns.get_loc('Image')
-        if col:
-            try:
-                image_url = self.editable_table.model.getValueAt(row, col)
-                gui_f.show_asset_image(image_url=image_url, canvas_preview=self.control_frame.canvas_preview)
-            except IndexError:
-                gui_f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
-        else:
-            gui_f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
+        self.editable_table.preview_content(canvas=self.control_frame.canvas_preview, row=row, col=col)
 
     def on_mouse_leave_cell(self, _event=None):
-        gui_f.show_default_image(canvas_preview=self.control_frame.canvas_preview)
+        self.editable_table.preview_reset(canvas=self.control_frame.canvas_preview)
 
     def on_entry_page_num_changed(self, _event=None):
         page_num = 0
