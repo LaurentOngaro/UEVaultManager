@@ -1,4 +1,3 @@
-import tkinter
 import webbrowser
 from tkinter import ttk
 
@@ -8,6 +7,7 @@ from pandastable import Table, TableModel
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.functions import *
+from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 
 
 class EditableTable(Table):
@@ -266,30 +266,34 @@ class EditableTable(Table):
             entries[key] = entry
 
         # image preview
-        show_asset_image(image_url=image_url, canvas_preview=edit_row_window.control_frame.canvas_preview)
+        show_asset_image(image_url=image_url, image_canvas=edit_row_window.control_frame.canvas_preview)
 
         self.edit_row_entries = entries
         self.edit_row_index = row_selected
         self.edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_selected_row_values()
 
-    def preview_content(self, canvas: tkinter.Canvas = None, row=None, col=None):
-        if row is None or col is None or row >= len(self.data) or canvas is None:
+    def preview_content(self, preview_frame: TaggedLabelFrame = None, row=None, col=None):
+        if row is None or col is None or row >= len(self.data) or preview_frame is None:
+            return
+        asset_image = preview_frame.get_child_by_tag('asset_image')
+        if asset_image is None:
             return
         col = self.model.df.columns.get_loc('Image')
         if col:
             try:
                 image_url = self.model.getValueAt(row, col)
-                show_asset_image(image_url=image_url, canvas=canvas)
+                show_asset_image(image_url=image_url, image_canvas=asset_image)
             except IndexError:
-                self.preview_reset(canvas)
+                self.preview_reset(preview_frame)
         else:
-            self.preview_reset(canvas)
+            self.preview_reset(preview_frame)
 
-    def preview_reset(self, canvas: tkinter.Canvas = None):
-        if canvas is None:
+    def preview_reset(self, preview_frame: TaggedLabelFrame = None):
+        asset_image = preview_frame.get_child_by_tag('asset_image')
+        if asset_image is None:
             return
-        show_default_image(canvas=canvas)
+        show_default_image(asset_image)
 
     def open_asset_url(self, url=None):
         if url is None:

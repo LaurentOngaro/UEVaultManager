@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox, filedialog as fd
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
+from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 
 
 class UEVMGuiHiddenRoot(tk.Tk):
@@ -202,21 +203,24 @@ class UEVMGui(tk.Tk):
             lblf_files.columnconfigure('all', weight=1)  # important to make the buttons expand
 
             # Create a Canvas to preview the asset image
-            lbf_preview = ttk.LabelFrame(self, text="Current Row content")
+            lbf_preview = TaggedLabelFrame(self, text="Current Row content")
             lbf_preview.pack(**lblf_fw_options, anchor=tk.NW)
-            canvas_preview = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
-            canvas_preview.pack()
-            canvas_preview.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
+            # note : the TAG of the widget in the lbf_preview will also be used in the editable_table.preview_content method
+            # to get the widgets it needs. So they can't be changed freely
+            asset_image = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
+            lbf_preview.add_child(child=asset_image, tag='asset_image')
+            asset_image.pack()
+            asset_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
 
             lblf_bottom = ttk.Frame(self)
             lblf_bottom.pack(**lblf_def_options)
             ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
             # store the controls that need to be accessible outside the class
+            self.lbf_preview = lbf_preview
             self.entry_search = entry_search
             self.var_category = var_category
             self.var_search = var_search
-            self.canvas_preview = canvas_preview
             self.entry_file_name_var = entry_file_name_var
 
     def _open_file_dialog(self, save_mode=False):
@@ -261,10 +265,10 @@ class UEVMGui(tk.Tk):
             return
         # Get the row and column index of the cell under the mouse pointer
         row, col = self.editable_table.get_row_clicked(event), self.editable_table.get_col_clicked(event)
-        self.editable_table.preview_content(canvas=self.control_frame.canvas_preview, row=row, col=col)
+        self.editable_table.preview_content(preview_frame=self.control_frame.lbf_preview, row=row, col=col)
 
     def on_mouse_leave_cell(self, _event=None):
-        self.editable_table.preview_reset(canvas=self.control_frame.canvas_preview)
+        self.editable_table.preview_reset(preview_frame=self.control_frame.lbf_preview)
 
     def on_entry_page_num_changed(self, _event=None):
         page_num = 0
