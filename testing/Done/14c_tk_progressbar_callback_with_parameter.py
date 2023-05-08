@@ -4,8 +4,8 @@ import threading
 import time
 
 
-
 class ProgressWindow(tk.Tk):
+
     def __init__(self):
         super().__init__()
         self.title("Progress Bar Example")
