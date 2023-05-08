@@ -17,7 +17,7 @@ from platform import platform
 from sys import exit, stdout, platform as sys_platform
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-import UEVaultManager.tkgui.modules.UEVMGuiClass
+import UEVaultManager.tkgui.modules.UEVMGuiClass as gui_w  # using the shortest variable name for globals for convenience
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
@@ -355,17 +355,26 @@ class UEVaultManagerCLI:
             self.logger.info('Getting asset list... (this may take a while)')
 
         if args.filter_category:
-            self.logger.info(f'The String "{args.filter_category}" will be search in Assets category')
             gui_g.UEVM_filter_category = args.filter_category
-        else:
-            gui_g.UEVM_filter_category = ''
+
+        if gui_g.UEVM_filter_category != '' and gui_g.UEVM_filter_category != gui_g.s.default_category_for_all:
+            self.logger.info(f'The String "{gui_g.UEVM_filter_category }" will be search in Assets category')
 
         gui_g.progress_window_ref = None
+        progress_window = None
         if args.gui:
-            # create and use a progress window
+            # check if the GUI is already running
+            if gui_g.UEVM_gui_ref is None:
+                # create a fake root because ProgressWindow must always be a top level window
+                gui_g.UEVM_gui_ref = gui_w.UEVMGuiHiddenRoot()
+                uewm_gui_exists = False
+            else:
+                uewm_gui_exists = True
+            # create and use a progress window (as a top level window)
             gui_g.UEVM_log_ref = self.logger
             progress_window = ProgressWindow(
                 title="Updating Assets List",
+                quit_on_close=not uewm_gui_exists,
                 width=300,
                 height=150,
                 max_value=200,
@@ -373,13 +382,19 @@ class UEVaultManagerCLI:
                 show_stop_button=True,
                 function=self.core.get_asset_list,
                 function_parameters={
-                    'filter_category': args.filter_category,
+                    'filter_category': gui_g.UEVM_filter_category,
                     'force_refresh': args.force_refresh
                 }
             )
-            gui_g.progress_window_ref = progress_window
-            # only if a start button is displayed: progress_window.start_execution()
-            progress_window.mainloop()
+            if uewm_gui_exists:
+                # if the main gui is running, we already have a tk.mainloop running
+                # we need to constantly update the progress bar
+                while not progress_window.must_end:
+                    progress_window.update()
+            else:
+                # if the main gui is not running, we need to start a tk.mainloop
+                progress_window.mainloop()
+
             items = progress_window.get_result()
 
         else:
@@ -445,6 +460,7 @@ class UEVaultManagerCLI:
                         csv_file_content = csv.DictReader(output)
                         # get the data (it's a dict)
                         for csv_record in csv_file_content:
+                            # noinspection PyTypeChecker
                             asset_id = csv_record['Asset_id']
                             assets_in_file[asset_id] = csv_record
                         output.close()
@@ -490,7 +506,6 @@ class UEVaultManagerCLI:
             )
             if args.gui and progress_window is not None:
                 progress_window.close_window()
-                gui_g.progress_window_ref = None
             return
         # end if args.csv or args.tsv:
 
@@ -547,7 +562,6 @@ class UEVaultManagerCLI:
             )
             if args.gui and progress_window is not None:
                 progress_window.close_window()
-                gui_g.progress_window_ref = None
             return
         # end if args.json:
 
@@ -909,18 +923,17 @@ class UEVaultManagerCLI:
         # copy the dict content to the SaferDict object
         gui_g.UEVM_cli_args.copy_from(temp_dict)
 
-        if os.path.isfile(input_filename):
-            uevm_gui = UEVaultManager.tkgui.modules.UEVMGuiClass.UEVMGui(
-                title=gui_g.s.app_title,
-                width=gui_g.s.app_width,
-                height=gui_g.s.app_height,
-                icon=app_icon_filename,
-                screen_index=0,
-                file=input_filename
-            )
-            uevm_gui.mainloop()
-        else:
-            self.logger.error('The file to read data from has not been found (probably the --input command option is invalid or missing)')
+        gui_g.UEVM_gui_ref = gui_w.UEVMGui(
+            title=gui_g.s.app_title,
+            width=gui_g.s.app_width,
+            height=gui_g.s.app_height,
+            icon=app_icon_filename,
+            screen_index=0,
+            file=input_filename,
+            show_open_file_dialog=not os.path.isfile(input_filename),
+        )
+        gui_g.UEVM_gui_ref.mainloop()
+        # gui_g.UEVM_gui_ref.quit()
 
 
 def main():
@@ -999,7 +1012,7 @@ def main():
         '-g',
         '--gui',
         dest='gui',
-        action='store_false',
+        action='store_true',
         help='Display additional informations using gui elements like dialog boxes or progress window'
     )
     list_parser.add_argument(

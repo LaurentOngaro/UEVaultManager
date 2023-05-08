@@ -52,8 +52,12 @@ class EditableTable(Table):
             self.current_page = page
             start = page * self.rows_per_page
             end = start + self.rows_per_page
-            # Update table with data for current page
-            self.model.df = self.data.iloc[start:end]
+            try:
+                # Update table with data for current page
+                self.model.df = self.data.iloc[start:end]
+            except AttributeError:
+                self.redraw()
+                return
         else:
             # Update table with all data
             self.model.df = self.data_filtered
@@ -92,7 +96,7 @@ class EditableTable(Table):
             'encoding': "utf-8",
         }
         if not os.path.isfile(self.file):
-            log_error(f'File not found: {self.file}')
+            log_warning(f'File not found: {self.file}')
             return
 
         self.data = pd.read_csv(self.file, **csv_options)

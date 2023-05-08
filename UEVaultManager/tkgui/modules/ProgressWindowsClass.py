@@ -7,7 +7,8 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
-class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
+# noinspection PyProtectedMember
+class ProgressWindow(tk.Toplevel):
 
     def __init__(
         self,
@@ -22,6 +23,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         show_progress=True,
         function=None,
         function_parameters: dict = None,
+        quit_on_close=False
     ):
         super().__init__()
         self.title(title)
@@ -35,10 +37,11 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             icon = gui_f.path_from_relative_to_absolute(icon)
             if icon != '' and os.path.isfile(icon):
                 self.iconbitmap(icon)
-
+        self._thread_check_delay = 100
+        self.must_end = False
+        self.quit_on_close = quit_on_close
         self.max_value = max_value
         self.continue_execution = True
-
         self.function = function
         self.function_params = function_parameters
         self.function_return_value = None
@@ -66,6 +69,10 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         # important because the control frame is not present when the function is set after the window is created
         if self.control_frame is None or not show_start_button:
             self.start_execution()
+
+    def __del__(self):
+        gui_f.log_debug(f'Destruction of {self.__class__.__name__} object')
+        gui_g.progress_window_ref = None
 
     class ContentFrame(ttk.Frame):
 
@@ -103,18 +110,19 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
     def _function_result_wrapper(self, function, *args, **kwargs):
         gui_f.log_info(f'execution of {function.__name__} has started')
         result = function(*args, **kwargs)
+        gui_f.log_info(f'execution of {function.__name__} has ended')
         self.result_queue.put(result)
 
     # check if the function is still running, if not, quit the window
     def _check_for_end(self, t):
         if t.is_alive():
-            # Schedule another check in 300 ms
-            self.after(300, self._check_for_end, t)
+            # Schedule another check in a few ms
+            self.after(self._thread_check_delay, self._check_for_end, t)
         else:
             # The thread has finished; clean up
             gui_f.log_debug(f'Quitting {self.__class__.__name__}')
             self.function_return_value = self.result_queue.get()
-            self.close_window()
+            self.close_window(destroy_window=self.quit_on_close)  # the window is kept to allow further calls to the progress bar
 
     def set_text(self, new_text):
         if self.content_frame is None or self.content_frame.lbl_function is None:
@@ -169,6 +177,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         self.control_frame.button_stop.pack(self.control_frame.pack_def_options)
 
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None):
+        self.must_end = False
         try:
             # sometimes the window is already destroyed
             if new_title is not None:
@@ -195,7 +204,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         t = threading.Thread(target=self._function_result_wrapper, args=(self.function, self), kwargs=self.function_params)
         t.start()
         # Schedule GUI update while waiting for the thread to finish
-        self.after(100, self._check_for_end, t)
+        self.after(self._thread_check_delay, self._check_for_end, t)
 
     def stop_execution(self) -> None:
         self.continue_execution = False
@@ -236,14 +245,10 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
         self.update_idletasks()
         return self.continue_execution
 
-    def close_window(self, _event=None):
-        try:
-            # sometimes the window is already destroyed
-            self.stop_execution()
-        except tk.TclError:
-            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
-
-        if tk._default_root:
-            self.destroy()
-        else:
-            self.quit()
+    def close_window(self, destroy_window=True, _event=None):
+        self.must_end = True
+        if destroy_window:
+            if self.quit_on_close:
+                self.quit()
+            else:
+                self.destroy()

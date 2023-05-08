@@ -8,6 +8,8 @@ class GUISettings:
         self.app_height = 930
         self.app_monitor = 1
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
+        self.data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'))
+
         self.app_icon_filename = '../../assets/main.ico'
         self.csv_filename = '../../../results/list.csv'
 
