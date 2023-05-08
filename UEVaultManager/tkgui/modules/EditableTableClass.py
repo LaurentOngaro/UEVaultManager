@@ -38,7 +38,7 @@ class EditableTable(Table):
         self.setFont()
 
         # self.bind('<Double-Button-1>', self.edit_row)
-        self.bind('<Double-Button-1>', self.edit_value)
+        self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
     def show_page(self, page=None):
         if page is None:
@@ -200,7 +200,7 @@ class EditableTable(Table):
             entries_values[key] = value
         return entries_values
 
-    def edit_record(self):
+    def create_edit_record_window(self):
         row_selected = self.getSelectedRow()
         if row_selected is None:
             return
@@ -220,9 +220,9 @@ class EditableTable(Table):
         edit_row_window.content_frame.columnconfigure(0, weight=0)
         edit_row_window.content_frame.columnconfigure(1, weight=1)
 
-        self.display_record(row_selected)
+        self.edit_record(row_selected)
 
-    def display_record(self, row_selected=None):
+    def edit_record(self, row_selected=None):
         edit_row_window = gui_g.edit_row_window_ref
         if row_selected is None or edit_row_window is None:
             return
@@ -299,7 +299,7 @@ class EditableTable(Table):
             return
         self.setSelectedRow(row_selected + 1)
         self.redraw()
-        self.display_record(row_selected + 1)
+        self.edit_record(row_selected + 1)
 
     def move_to_prev_record(self):
         row_selected = self.getSelectedRow()
@@ -307,14 +307,14 @@ class EditableTable(Table):
             return
         self.setSelectedRow(row_selected - 1)
         self.redraw()
-        self.display_record(row_selected - 1)
+        self.edit_record(row_selected - 1)
 
     def get_selected_cell_values(self):
         if self.edit_cell_entry is None:
             return None
         return self.edit_cell_entry.get()
 
-    def edit_value(self, event):
+    def create_edit_cell_window(self, event):
         row_index = self.get_row_clicked(event)
         col_index = self.get_col_clicked(event)
         if row_index is None or col_index is None:

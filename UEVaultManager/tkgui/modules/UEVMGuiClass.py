@@ -74,25 +74,29 @@ class UEVMGui(tk.Tk):
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
 
-            lblf_pages = ttk.LabelFrame(self, text='Pagination')
-            lblf_pages.pack(side=tk.LEFT, **lblf_def_options)
-            btn_toggle_pagination = ttk.Button(lblf_pages, text='Disable Pagination', command=container.toggle_pagination)
+            lblf_navigation = ttk.LabelFrame(self, text='Navigation')
+            lblf_navigation.pack(side=tk.LEFT, **lblf_def_options)
+            btn_toggle_pagination = ttk.Button(lblf_navigation, text='Disable Pagination', command=container.toggle_pagination)
             btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
-            btn_first_page = ttk.Button(lblf_pages, text='First Page', command=container.show_first_page)
+            btn_first_page = ttk.Button(lblf_navigation, text='First Page', command=container.show_first_page)
             btn_first_page.pack(**pack_def_options, side=tk.LEFT)
             btn_first_page.config(state=tk.DISABLED)
-            btn_prev_page = ttk.Button(lblf_pages, text='Prev Page', command=container.show_prev_page)
+            btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.show_prev_page)
             btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
             btn_prev_page.config(state=tk.DISABLED)
             entry_page_num_var = tk.StringVar(value=container.editable_table.current_page + 1)
-            entry_page_num = ttk.Entry(lblf_pages, width=5, justify=tk.CENTER, textvariable=entry_page_num_var)
+            entry_page_num = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_page_num_var)
             entry_page_num.pack(**pack_def_options, side=tk.LEFT)
-            lbl_page_count = ttk.Label(lblf_pages, text=f' / {container.editable_table.total_pages}')
+            lbl_page_count = ttk.Label(lblf_navigation, text=f' / {container.editable_table.total_pages}')
             lbl_page_count.pack(**pack_def_options, side=tk.LEFT)
-            btn_next_page = ttk.Button(lblf_pages, text='Next Page', command=container.show_next_page)
+            btn_next_page = ttk.Button(lblf_navigation, text='Next Page', command=container.show_next_page)
             btn_next_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_last_page = ttk.Button(lblf_pages, text='Last Page', command=container.show_last_page)
+            btn_last_page = ttk.Button(lblf_navigation, text='Last Page', command=container.show_last_page)
             btn_last_page.pack(**pack_def_options, side=tk.LEFT)
+            btn_prev = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
+            btn_prev.pack(**pack_def_options, side=tk.LEFT)
+            btn_next = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
+            btn_next.pack(**pack_def_options, side=tk.RIGHT)
 
             lblf_display = ttk.LabelFrame(self, text='Display')
             lblf_display.pack(side=tk.LEFT, **lblf_def_options)
@@ -249,7 +253,7 @@ class UEVMGui(tk.Tk):
             else:
                 self.on_close()
         elif event.keysym == 'Return':
-            self.editable_table.edit_record()
+            self.editable_table.create_edit_record_window()
 
     # noinspection DuplicatedCode
     def on_mouse_over_cell(self, event=None):
@@ -257,6 +261,9 @@ class UEVMGui(tk.Tk):
             return
         # Get the row and column index of the cell under the mouse pointer
         row, col = self.editable_table.get_row_clicked(event), self.editable_table.get_col_clicked(event)
+        self.preview_content(row, col)
+
+    def preview_content(self, row=None, col=None):
         if row is None or col is None or row >= len(self.editable_table.data):
             return
         col = self.editable_table.model.df.columns.get_loc('Image')
@@ -375,6 +382,12 @@ class UEVMGui(tk.Tk):
     def show_last_page(self):
         self.editable_table.last_page()
         self.update_page_numbers()
+
+    def prev_asset(self):
+        self.editable_table.move_to_prev_record()
+
+    def next_asset(self):
+        self.editable_table.move_to_next_record()
 
     def toggle_filter_controls(self):
         # Toggle visibility of filter controls frame
