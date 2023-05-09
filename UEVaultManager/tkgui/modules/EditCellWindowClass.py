@@ -1,6 +1,6 @@
 import tkinter as tk
 import os
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -52,11 +52,11 @@ class EditCellWindow(tk.Toplevel):
             ttk.Button(self, text='Save Changes', command=container.save_change).pack(**pack_def_options, side=tk.RIGHT)
 
     def on_close(self, _event=None):
-        current_values = self.editable_table.get_selected_cell_values()
+        current_values = self.editable_table.get_edit_cell_values()
         # current_values is empty if save_button has been pressed because global variables have been cleared in save_changes()
         self.must_save = current_values and self.initial_values != current_values
         if self.must_save:
-            if messagebox.askokcancel('Close the window', 'Changes have been made. Do you want to save them ?'):
+            if gui_f.box_yesno('Changes have been made in the window. Do you want to keep them ?'):
                 self.save_change()
         self.close_window()
 
@@ -66,7 +66,7 @@ class EditCellWindow(tk.Toplevel):
 
     def save_change(self):
         self.must_save = False
-        self.editable_table.save_value()
+        self.editable_table.save_edit_cell_value()
 
     def on_key_press(self, event):
         if event.keysym == 'Escape':

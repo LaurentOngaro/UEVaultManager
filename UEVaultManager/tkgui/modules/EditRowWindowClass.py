@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -30,7 +30,7 @@ class EditRowWindow(tk.Toplevel):
         self.width = width
         # the photoimage is stored is the variable to avoid garbage collection
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
-        self.image_preview = None
+        self.canvas_image = None
 
         self.content_frame = self.ContentFrame(self)
         self.control_frame = self.ControlFrame(self)
@@ -64,9 +64,9 @@ class EditRowWindow(tk.Toplevel):
 
             lbf_preview = ttk.LabelFrame(self, text="Image Preview")
             lbf_preview.grid(row=0, column=1, **grid_def_options)
-            canvas_preview = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
-            canvas_preview.pack()
-            canvas_preview.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
+            canvas_image = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
+            canvas_image.pack()
+            canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=2, **grid_def_options)
@@ -82,14 +82,14 @@ class EditRowWindow(tk.Toplevel):
             self.columnconfigure(1, weight=2)
             self.columnconfigure(2, weight=1)
 
-            self.canvas_preview = canvas_preview
+            self.canvas_image = canvas_image
 
     def on_close(self, _event=None):
         current_values = self.editable_table.get_selected_row_values()
         # current_values is empty is save_button has been pressed because global variables have been cleared in save_changes()
         self.must_save = current_values and self.initial_values != current_values
         if self.must_save:
-            if messagebox.askokcancel('Close the window', 'Changes have been made. Do you want to save them ?'):
+            if gui_f.box_yesno('Changes have been made in the window. Do you want to keep them ?'):
                 self.save_change()
         self.close_window()
 
@@ -99,7 +99,7 @@ class EditRowWindow(tk.Toplevel):
 
     def save_change(self):
         self.must_save = False
-        self.editable_table.save_record()
+        self.editable_table.save_edit_row_record()
 
     def on_key_press(self, event):
         if event.keysym == 'Escape':

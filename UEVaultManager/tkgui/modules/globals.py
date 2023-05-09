@@ -14,7 +14,7 @@ progress_window_ref: ProgressWindow = None
 # noinspection PyTypeChecker
 UEVM_cli_ref = None  # avoid importing classes from the UEVM main app here because it can cause circular dependencies when importing the module
 # noinspection PyTypeChecker
-UEVM_gui_ref = None  # avoid importing classes from the UEVMGUI class here because it can cause circular dependencies when importing the module
+UEVM_gui_ref = None  # avoid importing classes from the UEVM GUI class here because it can cause circular dependencies when importing the module
 #  reference to the log object of the UEVM main app.
 #  If empty, log will be message printed in the console
 UEVM_log_ref = None

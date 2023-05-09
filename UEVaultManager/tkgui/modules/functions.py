@@ -102,11 +102,19 @@ def convert_to_datetime(value):
         return ''
 
 
-def resize_and_show_image(image, canvas, new_height, new_width):
-    image = image.resize((new_width, new_height), Image.LANCZOS)
-    canvas.config(width=new_width, height=new_height, image=None)
-    canvas.image = ImageTk.PhotoImage(image)
-    canvas.create_image(0, 0, anchor=tk.NW, image=canvas.image)
+# noinspection DuplicatedCode
+def resize_and_show_image(image, canvas):
+    # Resize the image while keeping the aspect ratio
+    target_height = gui_g.s.preview_max_height
+    aspect_ratio = float(image.width) / float(image.height)
+    target_width = int(target_height * aspect_ratio)
+    resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
+    tk_image = ImageTk.PhotoImage(resized_image)
+    # Calculate center coordinates
+    x = (canvas.winfo_width() - tk_image.width()) // 2
+    y = (canvas.winfo_height() - tk_image.height()) // 2
+    canvas.create_image(x, y, anchor=tk.NW, image=tk_image)
+    canvas.image = tk_image
 
 
 # Build the path of the file to reference relative to the currently running script
@@ -132,16 +140,15 @@ def center_window_on_screen(screen_index, height, width):
     return geometry
 
 
-def show_asset_image(image_url, image_canvas=None):
-    if image_canvas is None or image_url == '':
+def show_asset_image(image_url, canvas_image=None):
+    if canvas_image is None or image_url == '':
         return
     try:
+
         # noinspection DuplicatedCode
         if not os.path.isdir(gui_g.s.cache_folder):
             os.mkdir(gui_g.s.cache_folder)
-
         image_filename = os.path.join(gui_g.s.cache_folder, os.path.basename(image_url))
-
         # Check if the image is already cached
         if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < gui_g.s.cache_max_time:
             # Load the image from the cache folder
@@ -152,29 +159,20 @@ def show_asset_image(image_url, image_canvas=None):
 
             with open(image_filename, "wb") as f:
                 f.write(response.content)
-
-        # Calculate new dimensions while maintaining the aspect ratio
-        width_ratio = gui_g.s.preview_max_width / float(image.width)
-        height_ratio = gui_g.s.preview_max_height / float(image.height)
-        ratio = min(width_ratio, height_ratio, 1)
-        new_width = min(int(image.width * ratio), gui_g.s.preview_max_width)
-        new_height = min(int(image.height * ratio), gui_g.s.preview_max_height)
-        log_debug(f'Image size: {image.width}x{image.height} -> {new_width}x{new_height} ratio: {ratio}')
-        # noinspection PyTypeChecker
-        resize_and_show_image(image, image_canvas, new_height, new_width)
+        resize_and_show_image(image, canvas_image)
 
     except Exception as error:
         log_error(f"Error showing image: {error}")
 
 
-def show_default_image(image_canvas=None):
-    if image_canvas is None:
+def show_default_image(canvas_image=None):
+    if canvas_image is None:
         return
     try:
         # Load the default image
         if os.path.isfile(gui_g.s.default_image_filename):
             def_image = Image.open(gui_g.s.default_image_filename)
             # noinspection PyTypeChecker
-            resize_and_show_image(def_image, image_canvas, gui_g.s.preview_max_width, gui_g.s.preview_max_height)
+            resize_and_show_image(def_image, canvas_image)
     except Exception as error:
         log_warning(f"Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error}")

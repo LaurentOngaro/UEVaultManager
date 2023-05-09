@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog as fd
+from tkinter import ttk, filedialog as fd
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -21,12 +21,9 @@ class UEVMGui(tk.Tk):
 
     def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file='', show_open_file_dialog=False):
         super().__init__()
-        # add a logger using the logging package
         self.title(title)
-
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-
         if icon is None:
             self.attributes('-toolwindow', True)
         else:
@@ -34,14 +31,12 @@ class UEVMGui(tk.Tk):
             icon = gui_f.path_from_relative_to_absolute(icon)
             if icon != '' and os.path.isfile(icon):
                 self.iconbitmap(icon)
-
         self.resizable(True, False)
         self.editable_table = None
-
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
-        table_frame = self.TableFrame(self)
-        self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=gui_g.s.table_font_size)
 
+        table_frame = self.TableFrame(self)
+        self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=gui_g.s.table_font_size, show_statusbar=True)
         self.editable_table.show()
         self.editable_table.show_page(0)
 
@@ -51,7 +46,6 @@ class UEVMGui(tk.Tk):
         control_frame = self.ControlFrame(self)
         self.control_frame = control_frame
 
-        # Pack the frames with the appropriate side option
         toolbar_frame.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
         table_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
         control_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
@@ -59,8 +53,8 @@ class UEVMGui(tk.Tk):
         self.bind('<Key>', self.on_key_press)
         # Bind the table to the mouse motion event
         self.editable_table.bind('<Motion>', self.on_mouse_over_cell)
-        # Bind the table to the mouse leave event
         self.editable_table.bind('<Leave>', self.on_mouse_leave_cell)
+        self.editable_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         if show_open_file_dialog:
@@ -151,14 +145,14 @@ class UEVMGui(tk.Tk):
             super().__init__()
 
             # grid_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.NW}
-            # pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
             grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
-            lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
+            lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
             lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
 
             lblf_content = ttk.LabelFrame(self, text='Content')
             lblf_content.pack(**lblf_def_options)
-            btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=container.editable_table.edit_record)
+            btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=container.editable_table.create_edit_record_window)
             btn_edit_row.grid(row=0, column=0, **grid_fw_options)
             btn_reload_data = ttk.Button(lblf_content, text='Reload File Content', command=container.reload_data)
             btn_reload_data.grid(row=0, column=1, **grid_fw_options)
@@ -202,26 +196,35 @@ class UEVMGui(tk.Tk):
             btn_load_file.grid(row=2, column=2, **grid_fw_options)
             lblf_files.columnconfigure('all', weight=1)  # important to make the buttons expand
 
-            # Create a Canvas to preview the asset image
-            lbf_preview = TaggedLabelFrame(self, text="Current Row content")
-            lbf_preview.pack(**lblf_fw_options, anchor=tk.NW)
-            # note : the TAG of the widget in the lbf_preview will also be used in the editable_table.preview_content method
+            # note : the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
             # to get the widgets it needs. So they can't be changed freely
-            asset_image = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
-            lbf_preview.add_child(child=asset_image, tag='asset_image')
-            asset_image.pack()
-            asset_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
+            lbtf_quick_edit = TaggedLabelFrame(self, text="Quick Edit Custom Data")
+            lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
+            lbl_desc = ttk.Label(lbtf_quick_edit, text='Changing this values will change the values of \nthe selected row when losing focus')
+            lbl_desc.pack(**pack_def_options)
+            lbtf_quick_edit.add_child(tag='asset_url', default_content='URL', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(tag='asset_comment', default_content='Comment', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(tag='asset_test_result', default_content='Test result', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(tag='asset_alternative', default_content='Alternative', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(tag='asset_folder', default_content='Installed in')
+
+            lbt_image_preview = ttk.LabelFrame(self, text="Image Preview")
+            lbt_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
+            canvas_image = tk.Canvas(lbt_image_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
+            canvas_image.pack(side=tk.BOTTOM, expand=True, anchor=tk.CENTER)
+            canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
 
             lblf_bottom = ttk.Frame(self)
             lblf_bottom.pack(**lblf_def_options)
             ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
             # store the controls that need to be accessible outside the class
-            self.lbf_preview = lbf_preview
+            self.entry_file_name_var = entry_file_name_var
             self.entry_search = entry_search
             self.var_category = var_category
             self.var_search = var_search
-            self.entry_file_name_var = entry_file_name_var
+            self.lbtf_quick_edit = lbtf_quick_edit
+            self.canvas_image = canvas_image
 
     def _open_file_dialog(self, save_mode=False):
         # adding category to the default filename
@@ -259,16 +262,23 @@ class UEVMGui(tk.Tk):
         elif event.keysym == 'Return':
             self.editable_table.create_edit_record_window()
 
-    # noinspection DuplicatedCode
     def on_mouse_over_cell(self, event=None):
         if event is None:
             return
-        # Get the row and column index of the cell under the mouse pointer
-        row, col = self.editable_table.get_row_clicked(event), self.editable_table.get_col_clicked(event)
-        self.editable_table.preview_content(preview_frame=self.control_frame.lbf_preview, row=row, col=col)
+        canvas_image = self.control_frame.canvas_image
+        try:
+            image_url = self.editable_table.get_image_url(row=self.editable_table.get_row_clicked(event))
+            gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
+        except IndexError:
+            gui_f.show_default_image(canvas_image)
 
     def on_mouse_leave_cell(self, _event=None):
-        self.editable_table.preview_reset(preview_frame=self.control_frame.lbf_preview)
+        canvas_image = self.control_frame.canvas_image
+        gui_f.show_default_image(canvas_image=canvas_image)
+
+    def on_selection_change(self, event=None):
+        selected_row = event.widget.currentrow
+        self.editable_table.quit_edit_content(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=selected_row)
 
     def on_entry_page_num_changed(self, _event=None):
         page_num = 0
@@ -281,9 +291,28 @@ class UEVMGui(tk.Tk):
         except (ValueError, UnboundLocalError) as error:
             gui_f.log_error(f'could not convert page number {page_num} to int. Error {error!r}')
 
+    # noinspection PyUnusedLocal
+    def on_quick_edit_focus_out(self, event=None, tag=''):
+        if tag == '':
+            return
+        entry = self.control_frame.lbtf_quick_edit.get_child_by_tag(tag)
+        col = self.control_frame.lbtf_quick_edit.get_col_by_tag(tag)
+        row = self.control_frame.lbtf_quick_edit.get_row_by_tag(tag)
+        if entry is None or col < 0 or row < 0:
+            gui_f.log_debug(f'invalid values for row={row} and col={col}')
+            return
+        try:
+            # get value for an entry tk widget
+            value = entry.get()
+        except TypeError:
+            # get value for a text tk widget
+            value = entry.get('1.0', 'end')
+        if value:
+            self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
+
     def on_close(self):
         if self.editable_table.must_save:
-            if messagebox.askokcancel('Exit the application', 'Changes have been made. Do you want to save them in the source file ?'):
+            if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
                 self.save_file(show_dialog=False)
         self.quit()
 
@@ -413,15 +442,16 @@ class UEVMGui(tk.Tk):
         self.control_frame.entry_file_name_var.set(filename)
 
     def reload_data(self):
-        self.editable_table.reload_data()
-        gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
-        self.update_page_numbers()
+        if self.editable_table.must_save:
+            if gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?'):
+                self.editable_table.reload_data()
+                gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
+                self.update_page_numbers()
 
     def rebuild_data(self):
-        confirm = gui_f.box_yesno(
+        if gui_f.box_yesno(
             f'The process will change the content of the windows and the {self.editable_table.file} file.\nAre you sure you want to continue ?'
-        )
-        if confirm:
+        ):
             if self.editable_table.rebuild_data():
                 gui_f.box_message(f'Data rebuilt from {self.editable_table.file}')
                 self.update_page_numbers()
