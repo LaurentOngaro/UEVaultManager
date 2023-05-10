@@ -14,16 +14,15 @@ class EditableTable(Table):
     """
     EditableTable is a custom class that extends the pandastable.Table class, providing additional functionality
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
+    :param container_frame: The parent frame for the table.
+    :param file: The path to the CSV file containing the table data.
+    :param fontsize: The font size for the table.
+    :param show_toolbar: Whether to show the toolbar.
+    :param show_statusbar: Whether to show the status bar.
+    :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
 
     def __init__(self, container_frame=None, file=None, fontsize=10, show_toolbar=False, show_statusbar=False, **kwargs):
-        """
-        Initializes the EditableTable instance with the given container frame, file, and font size.
-        :param container_frame: The parent frame for the table.
-        :param file: The path to the CSV file containing the table data.
-        :param fontsize: The font size for the table.
-        :param kwargs: Additional keyword arguments for the pandastable.Table class.
-        """
         self._last_selected_row = -1
         self._last_selected_col = -1
 
@@ -54,10 +53,9 @@ class EditableTable(Table):
 
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
-    def _generate_cell_selection_changed_event(self):
+    def _generate_cell_selection_changed_event(self) -> None:
         """
         Creates the event bindings for the table.
-        :return:
         """
         selected_row = self.currentrow
         selected_col = self.currentcol
@@ -67,20 +65,27 @@ class EditableTable(Table):
             self._last_selected_col = selected_col
             self.event_generate('<<CellSelectionChanged>>')
 
-    def handle_left_click(self, event):
+    def handle_left_click(self, event) -> None:
+        """
+        Handles left-click events on the table.
+        :param event: The event that triggered the function call.
+        """
         super().handle_left_click(event)
         self._generate_cell_selection_changed_event()
 
-    def handle_right_click(self, event):
+    def handle_right_click(self, event) -> None:
+        """
+        Handles right-click events on the table.
+        :param event: The event that triggered the function call.
+        """
         super().handle_right_click(event)
         self._generate_cell_selection_changed_event()
 
-    def show_page(self, page=None):
+    def show_page(self, page=None) -> None:
         """
         Displays the specified page of the table data.
         :param page: The page number to display (zero-based index).
         """
-
         if page is None:
             page = self.current_page
         if self.pagination_enabled:
@@ -105,53 +110,50 @@ class EditableTable(Table):
         # self.updateModel(TableModel(data))
         self.redraw()
 
-    def next_page(self):
+    def next_page(self) -> None:
         """
         Navigates to the next page of the table data.
         """
-
         if self.current_page <= self.total_pages:
             self.show_page(self.current_page + 1)
 
-    def prev_page(self):
+    def prev_page(self) -> None:
         """
         Navigates to the previous page of the table data.
         """
-
         if self.current_page > 0:
             self.show_page(self.current_page - 1)
 
-    def first_page(self):
+    def first_page(self) -> None:
         """
         Navigates to the first page of the table data.
         """
         self.show_page(0)
 
-    def last_page(self):
+    def last_page(self) -> None:
         """
         Navigates to the last page of the table data.
         """
         self.show_page(self.total_pages - 1)
 
-    def load_data(self):
+    def load_data(self) -> None:
         """
         Loads data from the specified CSV file into the table.
         """
-
         csv_options = {
-            'converters': {
-                'Asset_id': str,  #
-                'App name': str,  #
-                'Review': float,  #
-                'Price': float,  #
-                'Old Price': float,  #
-                'On Sale': convert_to_bool,  #
-                'Purchased': convert_to_bool,  #
-                'Must Buy': convert_to_bool,  #
+            'converters'  : {
+                'Asset_id'  : str,  #
+                'App name'  : str,  #
+                'Review'    : float,  #
+                'Price'     : float,  #
+                'Old Price' : float,  #
+                'On Sale'   : convert_to_bool,  #
+                'Purchased' : convert_to_bool,  #
+                'Must Buy'  : convert_to_bool,  #
                 'Date Added': convert_to_datetime,  #
             },
             'on_bad_lines': 'warn',
-            'encoding': "utf-8",
+            'encoding'    : "utf-8",
         }
         if not os.path.isfile(self.file):
             log_warning(f'File not found: {self.file}')
@@ -196,7 +198,7 @@ class EditableTable(Table):
 
         self.data_filtered = self.data
 
-    def reload_data(self):
+    def reload_data(self) -> None:
         """
         Reloads data from the CSV file and refreshes the table display.
         """
@@ -219,7 +221,7 @@ class EditableTable(Table):
             self.show_page(self.current_page)
             return True
 
-    def save_data(self):
+    def save_data(self) -> None:
         """
         Saves the current table data to the CSV file.
         """
@@ -230,55 +232,50 @@ class EditableTable(Table):
         self.show_page(self.current_page)
         self.must_save = False
 
-    def search(self, category=gui_g.s.default_category_for_all, search_text=gui_g.s.default_search_text):
+    def search(self, category=gui_g.s.default_category_for_all, search_text=gui_g.s.default_search_text) -> None:
         """
         Searches the table data based on the provided category and search text.
         :param category: The category to filter the table data by.
         :param search_text: The text to search for in the table data.
         """
-
         if category and category != gui_g.s.default_category_for_all:
             self.data_filtered = self.data[self.data['Category'] == category]
         if search_text and search_text != gui_g.s.default_search_text:
             self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_text.lower() in str(row).lower(), axis=1)]
         self.show_page(0)
 
-    def reset_search(self):
+    def reset_search(self) -> None:
         """
         Resets the table data filtering and sorting, displaying all rows.
         """
-
         self.data_filtered = self.data
         self.show_page(0)
 
-    def expand_columns(self):
+    def expand_columns(self) -> None:
         """
         Expands the width of all columns in the table.
         """
-
         self.expandColumns(factor=gui_g.s.expand_columns_factor)
 
-    def contract_columns(self):
+    def contract_columns(self) -> None:
         """
         Contracts the width of all columns in the table.
         """
-
         self.contractColumns(factor=gui_g.s.contract_columns_factor)
 
-    def autofit_columns(self):
+    def autofit_columns(self) -> None:
         """
         Automatically resizes the columns to fit their content.
         """
-
         self.autoResizeColumns()
 
-    def zoom_in(self):
+    def zoom_in(self) -> None:
         """
         Increases the font size of the table.
         """
         self.zoomIn()
 
-    def zoom_out(self):
+    def zoom_out(self) -> None:
         """
         Decreases the font size of the table.
         """
@@ -289,7 +286,6 @@ class EditableTable(Table):
         Returns the values of the selected row in the table.
         :return: A dictionary containing the column names and their corresponding values for the selected row.
         """
-
         if self.edit_row_entries is None or self.edit_row_index is None:
             return {}
         entries_values = {}
@@ -303,11 +299,10 @@ class EditableTable(Table):
             entries_values[key] = value
         return entries_values
 
-    def create_edit_record_window(self):
+    def create_edit_record_window(self) -> None:
         """
         Creates the edit row window for the selected row in the table.
         """
-
         row_selected = self.getSelectedRow()
         if row_selected is None:
             return
@@ -329,12 +324,11 @@ class EditableTable(Table):
 
         self.edit_record(row_selected)
 
-    def edit_record(self, row_selected=None):
+    def edit_record(self, row_selected: int = None) -> None:
         """
         Edits the values of the specified row in the table.
         :param row_selected: The index of the row to edit.
         """
-
         edit_row_window = gui_g.edit_row_window_ref
         if row_selected is None or edit_row_window is None:
             return
@@ -384,11 +378,10 @@ class EditableTable(Table):
         self.edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_selected_row_values()
 
-    def save_edit_row_record(self):
+    def save_edit_row_record(self) -> None:
         """
         Saves the edited row values to the table data.
         """
-
         for key, value in self.get_selected_row_values().items():
             self.model.df.at[self.edit_row_index, key] = value
         self.edit_row_entries = None
@@ -397,7 +390,7 @@ class EditableTable(Table):
         self.must_save = True
         self.edit_row_window.close_window()
 
-    def move_to_prev_record(self):
+    def move_to_prev_record(self) -> None:
         """
         Navigates to the previous row in the table and opens the edit row window.
         """
@@ -409,11 +402,10 @@ class EditableTable(Table):
         self._generate_cell_selection_changed_event()
         self.edit_record(row_selected - 1)
 
-    def move_to_next_record(self):
+    def move_to_next_record(self) -> None:
         """
         Navigates to the next row in the table and opens the edit row window.
         """
-
         row_selected = self.getSelectedRow()
         if row_selected is None or row_selected == self.model.df.shape[0] - 1:
             return
@@ -422,7 +414,7 @@ class EditableTable(Table):
         self._generate_cell_selection_changed_event()
         self.edit_record(row_selected + 1)
 
-    def create_edit_cell_window(self, event):
+    def create_edit_cell_window(self, event) -> None:
         """
         Creates the edit cell window for the selected cell in the table.
         :param event: The event that triggered the creation of the edit cell window.
@@ -457,17 +449,16 @@ class EditableTable(Table):
         self.edit_cell_window = edit_cell_window
         edit_cell_window.initial_values = self.get_edit_cell_values()
 
-    def get_edit_cell_values(self):
+    def get_edit_cell_values(self) -> str:
         """
         Returns the values of the selected cell in the table.
         :return: The value of the selected cell.
         """
-
         if self.edit_cell_entry is None:
-            return None
+            return ''
         return self.edit_cell_entry.get()
 
-    def save_edit_cell_value(self):
+    def save_edit_cell_value(self) -> None:
         """
         Saves the edited cell value to the table data.
         """
@@ -493,7 +484,7 @@ class EditableTable(Table):
         self.redraw()
         self.edit_cell_window.close_window()
 
-    def quit_edit_content(self, quick_edit_frame: TaggedLabelFrame = None, row=None):
+    def quit_edit_content(self, quick_edit_frame: TaggedLabelFrame = None, row: int = None) -> None:
         """
         Quick edit the content some cells of the selected row.
         :param quick_edit_frame: The frame to display the cell content preview in.
@@ -501,33 +492,33 @@ class EditableTable(Table):
         """
         if row is None or row >= len(self.model.df) or quick_edit_frame is None:
             return
-
         # url
         col = self.model.df.columns.get_loc('Url')
-        url = self.model.getValueAt(row, col)
-        quick_edit_frame.set_content(tag='asset_url', content=url, row=row, col=col)
-
+        value = self.model.getValueAt(row, col)
+        quick_edit_frame.set_child_values(tag='url', content=value, row=row, col=col)
+        # stars
+        col = self.model.df.columns.get_loc('Stars')
+        value = self.model.getValueAt(row, col)
+        quick_edit_frame.set_child_values(tag='stars', content=value, row=row, col=col)
         # comment
         col = self.model.df.columns.get_loc('Comment')
-        comment = self.model.getValueAt(row, col)
-        quick_edit_frame.set_content(tag='asset_comment', content=comment, row=row, col=col)
-
+        value = self.model.getValueAt(row, col)
+        quick_edit_frame.set_child_values(tag='comment', content=value, row=row, col=col)
         # test_result
         col = self.model.df.columns.get_loc('Test result')
-        test_result = self.model.getValueAt(row, col)
-        quick_edit_frame.set_content(tag='asset_test_result', content=test_result, row=row, col=col)
-
+        value = self.model.getValueAt(row, col)
+        quick_edit_frame.set_child_values(tag='test_result', content=value, row=row, col=col)
         # alternative
         col = self.model.df.columns.get_loc('Alternative')
-        alternative = self.model.getValueAt(row, col)
-        quick_edit_frame.set_content(tag='asset_alternative', content=alternative, row=row, col=col)
-
-        # folder
+        value = self.model.getValueAt(row, col)
+        quick_edit_frame.set_child_values(tag='alternative', content=value, row=row, col=col)
+        # Installed folder
         col = self.model.df.columns.get_loc('Installed Folder')
-        folder = self.model.getValueAt(row, col)
-        quick_edit_frame.set_content(tag='asset_folder', content=folder, row=row, col=col)
+        value = self.model.getValueAt(row, col)
+        quick_edit_frame.set_child_values(tag='folder', content=value, row=row, col=col)
 
-    def quick_edit(self, quick_edit_frame: TaggedLabelFrame = None):
+    @staticmethod
+    def quick_edit(quick_edit_frame: TaggedLabelFrame = None) -> None:
         """
         Resets the cell content preview.
         :param quick_edit_frame: The frame to reset the cell content preview in.
@@ -538,7 +529,7 @@ class EditableTable(Table):
         quick_edit_frame.set_default_content('asset_alternative')
         quick_edit_frame.set_default_content('asset_folder')
 
-    def quick_edit_save_value(self, value, row=None, col=None):
+    def quick_edit_save_value(self, value: str, row: int = None, col: int = None) -> None:
         """
         Saves the cell content preview.
         :param value: The value to save.
@@ -555,7 +546,7 @@ class EditableTable(Table):
         except IndexError:
             log_warning(f'Failed to save preview value {value} at row={row} col={col}')
 
-    def get_image_url(self, row=None) -> str:
+    def get_image_url(self, row: int = None) -> str:
         """
         Returns the image URL of the selected row.
         :param row: The row index of the selected cell.
@@ -568,12 +559,11 @@ class EditableTable(Table):
         except IndexError:
             return ''
 
-    def open_asset_url(self, url=None):
+    def open_asset_url(self, url: str = None):
         """
         Opens the asset URL in a web browser.
         :param url: The URL to open.
         """
-
         if url is None:
             if self.edit_row_entries is None:
                 return

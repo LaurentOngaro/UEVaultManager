@@ -8,8 +8,12 @@ from UEVaultManager.tkgui.modules.functions import log_warning
 
 
 class WebImage:
+    """
+    Class to download an image from an url and get it as a PhotoImage
+    :param url: the url of the image to download
+    """
 
-    def __init__(self, url):
+    def __init__(self, url: str = None):
         if url is None or url == '':
             return
         self.__image_pil = None
@@ -24,10 +28,20 @@ class WebImage:
         except Exception as error:
             log_warning(f'image could not be read from url {self.url}.\nError:{error}')
 
-    def get(self):
+    def get(self) -> ImageTk.PhotoImage:
+        """
+        Get the downloaded image
+        :return: the image
+        """
         return self.__image_tk
 
-    def get_resized(self, new_width, new_height):
+    def get_resized(self, new_width: int, new_height: int) -> ImageTk.PhotoImage:
+        """
+        Get the downloaded image resized to the given size
+        :param new_width: width of the resized image
+        :param new_height: height of the resized image
+        :return:
+        """
         try:
             self.__image_pil.thumbnail((new_width, new_height))
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)

@@ -1,8 +1,9 @@
 import os
-import threading
 import queue
+import threading
 import tkinter as tk
 from tkinter import ttk
+
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 

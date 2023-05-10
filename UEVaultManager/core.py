@@ -36,7 +36,7 @@ CSV_headings = {
     'App title': False,
     'Category': False,
     'Image': False,
-    'Url': False,
+    'Url': True,  # could be kept if a better url that can be used to download the asset is found
     'UE Version': False,
     'Compatible Versions': False,
     'Review': False,

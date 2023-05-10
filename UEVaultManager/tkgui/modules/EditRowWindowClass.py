@@ -7,8 +7,18 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 
 
 class EditRowWindow(tk.Toplevel):
+    """
+    The window to edit a row
+    :param parent: the parent window
+    :param title: the title of the window
+    :param width: the width of the window
+    :param height: the height of the window
+    :param icon: the icon of the window
+    :param screen_index: the index of the screen on which the window will be displayed
+    :param editable_table: the table to edit
+    """
 
-    def __init__(self, parent, title: str, width=600, height=800, icon=None, screen_index=0, editable_table=None):
+    def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
         super().__init__(parent)
         self.title(title)
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
@@ -44,11 +54,19 @@ class EditRowWindow(tk.Toplevel):
         gui_g.edit_row_window_ref = self
 
     class ContentFrame(ttk.Frame):
+        """
+        The frame containing the editable fields
+        :param container: the parent window
+        """
 
         def __init__(self, container):
             super().__init__(container)
 
     class ControlFrame(ttk.Frame):
+        """
+        The frame containing the buttons
+        :param container: the parent window
+        """
 
         def __init__(self, container):
             super().__init__(container)
@@ -84,7 +102,11 @@ class EditRowWindow(tk.Toplevel):
 
             self.canvas_image = canvas_image
 
-    def on_close(self, _event=None):
+    def on_close(self, _event=None) -> None:
+        """
+        Event when the window is closing
+        :param _event: the event that triggered the call of this function
+        """
         current_values = self.editable_table.get_selected_row_values()
         # current_values is empty is save_button has been pressed because global variables have been cleared in save_changes()
         self.must_save = current_values and self.initial_values != current_values
@@ -93,25 +115,44 @@ class EditRowWindow(tk.Toplevel):
                 self.save_change()
         self.close_window()
 
-    def close_window(self, _event=None):
-        gui_g.edit_row_window_ref = None
-        self.destroy()
-
-    def save_change(self):
-        self.must_save = False
-        self.editable_table.save_edit_row_record()
-
-    def on_key_press(self, event):
+    def on_key_press(self, event) -> None:
+        """
+        Event when a key is pressed
+        :param event: the event that triggered the call of this function
+        """
         if event.keysym == 'Escape':
             self.on_close()
         elif event.keysym == 'Return':
             self.save_change()
 
-    def prev_asset(self):
+    def close_window(self) -> None:
+        """
+        Close the window
+        """
+        gui_g.edit_row_window_ref = None
+        self.destroy()
+
+    def save_change(self) -> None:
+        """
+        Save the changes (Wrapper)
+        """
+        self.must_save = False
+        self.editable_table.save_edit_row_record()
+
+    def prev_asset(self) -> None:
+        """
+        Go to the previous asset (Wrapper)
+        """
         self.editable_table.move_to_prev_record()
 
-    def next_asset(self):
+    def next_asset(self) -> None:
+        """
+        Go to the next asset (Wrapper)
+        """
         self.editable_table.move_to_next_record()
 
-    def open_asset_url(self):
+    def open_asset_url(self) -> None:
+        """
+        Open the asset URL (Wrapper)
+        """
         self.editable_table.open_asset_url()

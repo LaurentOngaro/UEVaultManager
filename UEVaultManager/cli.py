@@ -17,13 +17,14 @@ from platform import platform
 from sys import exit, stdout, platform as sys_platform
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+# noinspection PyPep8Naming
 import UEVaultManager.tkgui.modules.UEVMGuiClass as gui_w  # using the shortest variable name for globals for convenience
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
-from UEVaultManager.tkgui.modules.UtilityClasses import SaferDict
+from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 

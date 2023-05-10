@@ -5,7 +5,7 @@ from tkinter import ttk, filedialog as fd
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
-from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
+from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
 
 
 class UEVMGuiHiddenRoot(tk.Tk):
@@ -198,15 +198,18 @@ class UEVMGui(tk.Tk):
 
             # note : the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
             # to get the widgets it needs. So they can't be changed freely
-            lbtf_quick_edit = TaggedLabelFrame(self, text="Quick Edit Custom Data")
+            lbtf_quick_edit = TaggedLabelFrame(self, text="Quick Edit User fields")
             lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
             lbl_desc = ttk.Label(lbtf_quick_edit, text='Changing this values will change the values of \nthe selected row when losing focus')
             lbl_desc.pack(**pack_def_options)
-            lbtf_quick_edit.add_child(tag='asset_url', default_content='URL', focus_out_callback=container.on_quick_edit_focus_out)
-            lbtf_quick_edit.add_child(tag='asset_comment', default_content='Comment', focus_out_callback=container.on_quick_edit_focus_out)
-            lbtf_quick_edit.add_child(tag='asset_test_result', default_content='Test result', focus_out_callback=container.on_quick_edit_focus_out)
-            lbtf_quick_edit.add_child(tag='asset_alternative', default_content='Alternative', focus_out_callback=container.on_quick_edit_focus_out)
-            lbtf_quick_edit.add_child(tag='asset_folder', default_content='Installed in')
+            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Url', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.TEXT, tag='Comment', focus_out_callback=container.on_quick_edit_focus_out, width=10, height=4
+            )
+            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Stars', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Test_result', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Folder', default_content='Installed in')
+            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Alternative', focus_out_callback=container.on_quick_edit_focus_out)
 
             lbt_image_preview = ttk.LabelFrame(self, text="Image Preview")
             lbt_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
@@ -289,26 +292,23 @@ class UEVMGui(tk.Tk):
             gui_f.log_debug(f'showing page {page_num}')
             self.editable_table.show_page(page_num)
         except (ValueError, UnboundLocalError) as error:
-            gui_f.log_error(f'could not convert page number {page_num} to int. Error {error!r}')
+            gui_f.log_error(f'could not convert page number {page_num} to int. {error!r}')
 
     # noinspection PyUnusedLocal
     def on_quick_edit_focus_out(self, event=None, tag=''):
         if tag == '':
             return
-        entry = self.control_frame.lbtf_quick_edit.get_child_by_tag(tag)
-        col = self.control_frame.lbtf_quick_edit.get_col_by_tag(tag)
-        row = self.control_frame.lbtf_quick_edit.get_row_by_tag(tag)
-        if entry is None or col < 0 or row < 0:
+        widget = self.control_frame.lbtf_quick_edit.get_child_by_tag(tag)
+        if widget is None:
+            gui_f.log_warning(f'Could not find a widget with tag {tag}')
+            return
+        col = widget.col
+        row = widget.row
+        if col < 0 or row < 0:
             gui_f.log_debug(f'invalid values for row={row} and col={col}')
             return
-        try:
-            # get value for an entry tk widget
-            value = entry.get()
-        except TypeError:
-            # get value for a text tk widget
-            value = entry.get('1.0', 'end')
-        if value:
-            self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
+        value = widget.get_content()
+        self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
 
     def on_close(self):
         if self.editable_table.must_save:

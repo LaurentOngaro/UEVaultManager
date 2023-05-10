@@ -61,6 +61,7 @@ autodoc_default_options = {
 # General information about the project.
 project = 'UEVaultManager'
 author = 'Laurent Ongaro'
+# noinspection PyShadowingBuiltins
 copyright = '2023 Laurent Ongaro'
 _full_version = '1.0.1'
 

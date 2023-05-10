@@ -1,4 +1,8 @@
 class GUISettings:
+    """
+    This class contains all the settings for the GUI.
+    """
+
     # todo: integrate these settings into the UEVM config file
     def __init__(self):
         self.debug_mode = False

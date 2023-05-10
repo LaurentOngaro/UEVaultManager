@@ -6,6 +6,7 @@ or by the --edit command option for the UEVaultManager cli application, for inst
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
+
 if __name__ == '__main__':
     app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
     csv_filename = gui_f.path_from_relative_to_absolute(gui_g.s.csv_filename)

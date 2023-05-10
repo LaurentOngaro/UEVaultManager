@@ -9,23 +9,18 @@ class SaferDict(dict):
         """
         Returns the value associated with the given key.
         If the key does not exist, returns None.
+        :param key: the key to get
         """
         try:
             return super().__getitem__(key)
         except KeyError:
             return None
 
-    def get(self, key, default=None):
-        """
-        Returns the value associated with the given key.
-        If the key does not exist, returns the specified default value or None if no default value is provided.
-        """
-        return super().get(key, default)
-
     def __getattr__(self, key):
         """
         Returns the value associated with the given key using dot notation.
         If the key does not exist, returns None.
+        :param key: the key to get
         """
         return self.get(key)
 
@@ -33,6 +28,7 @@ class SaferDict(dict):
         """
         Deletes the key-value pair associated with the given key using dot notation.
         If the key does not exist, does nothing and does not raise an error.
+        :param key: the key to delete
         """
         try:
             del self[key]
@@ -42,13 +38,25 @@ class SaferDict(dict):
     def __setattr__(self, key, value):
         """
         Sets the value associated with the given key using dot notation.
+        :param key: the key to set
         """
         self[key] = value
 
-    def copy_from(self, source):
+    def get(self, key: str, default=None):
+        """
+        Returns the value associated with the given key.
+        If the key does not exist, returns the specified default value or None if no default value is provided.
+        :param default:
+        :param key: the key to get
+        :param
+        """
+        return super().get(key, default)
+
+    def copy_from(self, source: dict):
         """
         Copies the content of the given source dictionary into the SaferDict.
         If the source is not a dictionary, raises a TypeError.
+        :param source: the source dictionary to copy from
         """
         if not isinstance(source, dict):
             raise TypeError("source must be a dictionary")
