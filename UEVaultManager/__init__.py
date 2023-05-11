@@ -4,11 +4,11 @@ import datetime
 year = datetime.date.today().year
 
 __name__ = 'UEVaultManager'
-__version__ = '1.1.0'
+__version__ = '1.1.1.6'
 # Pegasus Seiya
 # Dragon Shiryu
 # Cygnus Hyoga
-__codename__ = 'Cygnus'
+__codename__ = 'Cygnus+1'
 # Andromeda Shun
 # Phoenix Ikki
 # Leo Aiolia

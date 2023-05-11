@@ -6,9 +6,14 @@ Welcome to UEVaultManager's documentation!
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. image:: ./assets/UEVM_200x200.png
+    :alt: UEVaultManager logo
+    :align: center
+
+
 
 **UEVaultManager** is an open-source assets manager that can list assets and
-their data from the Epic Games Marketplace. It’s developed in Python, so
+their data from the Epic Games Marketplace. It's developed in Python, so
 it can run on any platform that support this language.
 
 Its main purpose is to list the assets (with or without user login),
