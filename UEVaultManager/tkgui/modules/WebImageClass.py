@@ -1,9 +1,7 @@
 from io import BytesIO
-from urllib.parse import quote_plus
-from urllib.request import urlopen
 
+import requests
 from PIL import ImageTk, Image
-
 from UEVaultManager.tkgui.modules.functions import log_warning
 
 
@@ -14,18 +12,22 @@ class WebImage:
     """
 
     def __init__(self, url: str = None):
+        # if no URL is given, return
         if url is None or url == '':
             return
+        # initialize instance variables
         self.__image_pil = None
         self.__image_tk = None
         self.url = url
-        encoded_url = quote_plus(url, safe='/:&')
         try:
-            my_page = urlopen(encoded_url)
-            my_picture = BytesIO(my_page.read())
-            self.__image_pil = Image.open(my_picture)
+            # use requests to get the image content as bytes
+            response = requests.get(url)
+            # create a PIL.Image object from the bytes
+            self.__image_pil = Image.open(BytesIO(response.content))
+            # create a PhotoImage object from the PIL.Image
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as error:
+            # log a warning if image cannot be downloaded or opened
             log_warning(f'image could not be read from url {self.url}.\nError:{error}')
 
     def get(self) -> ImageTk.PhotoImage:
@@ -40,11 +42,14 @@ class WebImage:
         Get the downloaded image resized to the given size
         :param new_width: width of the resized image
         :param new_height: height of the resized image
-        :return:
+        :return: the resized image
         """
         try:
+            # resize the PIL.Image object in place
             self.__image_pil.thumbnail((new_width, new_height))
+            # create a PhotoImage object from the resized PIL.Image
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as error:
-            log_warning(f'Could notre get resized image from url {self.url}.\nError:{error}')
+            # log a warning if image cannot be resized
+            log_warning(f'Could not get resized image from url {self.url}.\nError:{error}')
         return self.__image_tk

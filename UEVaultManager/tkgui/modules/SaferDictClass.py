@@ -1,4 +1,3 @@
-# noinspection DuplicatedCode
 class SaferDict(dict):
     """
     A dictionary subclass that provides a safer alternative to handle non-existing keys.
@@ -11,10 +10,7 @@ class SaferDict(dict):
         If the key does not exist, returns None.
         :param key: the key to get
         """
-        try:
-            return super().__getitem__(key)
-        except KeyError:
-            return None
+        return super().get(key, None)
 
     def __getattr__(self, key):
         """
@@ -22,7 +18,7 @@ class SaferDict(dict):
         If the key does not exist, returns None.
         :param key: the key to get
         """
-        return self.get(key)
+        return super().get(key, None)
 
     def __delattr__(self, key):
         """
@@ -30,10 +26,7 @@ class SaferDict(dict):
         If the key does not exist, does nothing and does not raise an error.
         :param key: the key to delete
         """
-        try:
-            del self[key]
-        except KeyError:
-            pass
+        self.pop(key, None)
 
     def __setattr__(self, key, value):
         """
@@ -46,9 +39,8 @@ class SaferDict(dict):
         """
         Returns the value associated with the given key.
         If the key does not exist, returns the specified default value or None if no default value is provided.
-        :param default:
         :param key: the key to get
-        :param
+        :param default: the default value to return if the key doesn't exist
         """
         return super().get(key, default)
 
@@ -61,5 +53,4 @@ class SaferDict(dict):
         if not isinstance(source, dict):
             raise TypeError("source must be a dictionary")
         self.clear()
-        for key, value in source.items():
-            self[key] = value
+        self.update({k: v for k, v in source.items()})
