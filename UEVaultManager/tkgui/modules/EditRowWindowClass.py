@@ -4,6 +4,7 @@ from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from ttkbootstrap.constants import *
 
 
 class EditRowWindow(tk.Toplevel):
@@ -90,9 +91,9 @@ class EditRowWindow(tk.Toplevel):
             lblf_actions.grid(row=0, column=2, **grid_def_options)
             btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
-            bnt_save = ttk.Button(lblf_actions, text='Save Changes', command=container.save_change)
+            bnt_save = ttk.Button(lblf_actions, text='Save Changes', command=container.save_change, bootstyle=(INFO, OUTLINE))
             bnt_save.pack(**pack_def_options, side=tk.LEFT)
-            btn_on_close = ttk.Button(lblf_actions, text='Cancel', command=container.on_close)
+            btn_on_close = ttk.Button(lblf_actions, text='Cancel', command=container.on_close, bootstyle=WARNING)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
 
             # Configure the columns to take all the available width

@@ -1,14 +1,16 @@
 import os
 import tkinter as tk
-from tkinter import ttk, filedialog as fd
+from tkinter import filedialog as fd, font
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 
 
-class UEVMGuiHiddenRoot(tk.Tk):
+class UEVMGuiHiddenRoot(ttk.Window):
 
     def __init__(self):
         super().__init__()
@@ -20,10 +22,13 @@ class UEVMGuiHiddenRoot(tk.Tk):
 class UEVMGui(tk.Tk):
 
     def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file='', show_open_file_dialog=False):
+
         super().__init__()
         self.title(title)
+        self.style = ttk.Style(gui_g.s.theme)
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
+
         if icon is None:
             self.attributes('-toolwindow', True)
         else:
@@ -71,7 +76,9 @@ class UEVMGui(tk.Tk):
 
             lblf_navigation = ttk.LabelFrame(self, text='Navigation')
             lblf_navigation.pack(side=tk.LEFT, **lblf_def_options)
-            btn_toggle_pagination = ttk.Button(lblf_navigation, text='Disable Pagination', command=container.toggle_pagination)
+            btn_toggle_pagination = ttk.Button(
+                lblf_navigation, text='Disable Pagination', command=container.toggle_pagination, bootstyle=(INFO, OUTLINE)
+            )
             btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
             btn_first_page = ttk.Button(lblf_navigation, text='First Page', command=container.show_first_page)
             btn_first_page.pack(**pack_def_options, side=tk.LEFT)
@@ -108,7 +115,7 @@ class UEVMGui(tk.Tk):
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
-            btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close)
+            btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
             btn_toggle_controls = ttk.Button(lblf_actions, text="Hide Controls", command=container.toggle_filter_controls)
             btn_toggle_controls.pack(**pack_def_options, side=tk.RIGHT)

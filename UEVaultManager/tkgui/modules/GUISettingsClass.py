@@ -30,3 +30,8 @@ class GUISettings:
         self.table_font_size = 10
         self.expand_columns_factor = 20
         self.contract_columns_factor = 20
+
+        # ttkbootstrap themes:
+        # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
+        # dark themes: "darkly", "superhero", "solar", "cyborg", "vapor"
+        self.theme = 'lumen'

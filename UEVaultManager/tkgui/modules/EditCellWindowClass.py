@@ -4,6 +4,7 @@ from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from ttkbootstrap.constants import *
 
 
 class EditCellWindow(tk.Toplevel):
@@ -66,8 +67,8 @@ class EditCellWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
-            ttk.Button(self, text='Cancel', command=container.on_close).pack(**pack_def_options, side=tk.RIGHT)
-            ttk.Button(self, text='Save Changes', command=container.save_change).pack(**pack_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Cancel', command=container.on_close, bootstyle=WARNING).pack(**pack_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Save Changes', command=container.save_change, bootstyle=(INFO, OUTLINE)).pack(**pack_def_options, side=tk.RIGHT)
 
     def on_key_press(self, event) -> None:
         """
