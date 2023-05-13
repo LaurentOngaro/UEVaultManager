@@ -93,11 +93,11 @@ class EditRowWindow(tk.Toplevel):
             btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
-            bnt_save = ttk.Button(lblf_actions, text='Save Changes', command=container.save_change, bootstyle=(INFO, OUTLINE))
-            bnt_save.pack(**pack_def_options, side=tk.LEFT)
-            # noinspection PyArgumentList
-            btn_on_close = ttk.Button(lblf_actions, text='Cancel', command=container.on_close, bootstyle=WARNING)
+            btn_on_close = ttk.Button(lblf_actions, text='Close', command=container.on_close, bootstyle=WARNING)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
+            # noinspection PyArgumentList
+            bnt_save = ttk.Button(lblf_actions, text='Save Changes', command=container.save_change, bootstyle=INFO)
+            bnt_save.pack(**pack_def_options, side=tk.RIGHT)
 
             # Configure the columns to take all the available width
             self.columnconfigure(0, weight=1)

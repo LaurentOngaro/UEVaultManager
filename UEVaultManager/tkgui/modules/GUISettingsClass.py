@@ -35,4 +35,4 @@ class GUISettings:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
         # dark themes: "darkly", "superhero", "solar", "cyborg", "vapor"
         self.theme_name = 'lumen'
-        self.theme_font = ('Verdana', 9)
+        self.theme_font = ('Verdana', 8)

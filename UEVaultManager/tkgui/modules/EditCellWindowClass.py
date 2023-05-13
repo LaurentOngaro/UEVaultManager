@@ -72,9 +72,9 @@ class EditCellWindow(tk.Toplevel):
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
             # (bootstyle is not recognized by PyCharm)
             # noinspection PyArgumentList
-            ttk.Button(self, text='Cancel', command=container.on_close, bootstyle=WARNING).pack(**pack_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING).pack(**pack_def_options, side=tk.RIGHT)
             # noinspection PyArgumentList
-            ttk.Button(self, text='Save Changes', command=container.save_change, bootstyle=(INFO, OUTLINE)).pack(**pack_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Save Changes', command=container.save_change, bootstyle=INFO).pack(**pack_def_options, side=tk.RIGHT)
 
     def on_key_press(self, event) -> None:
         """
