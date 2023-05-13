@@ -1,11 +1,49 @@
 import tkinter as tk
 from tkinter import ttk
 import ttkbootstrap as ttk
+from tkinter.font import nametofont
 
 themes_list = (
     "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean", "darkly",
     "superhero", "solar", "cyborg", "vapor"
 )
+
+
+class StyledText(tk.Text):
+    """
+    A text widget with a custom style.
+    Text Style properties are copied from the current style ttk widgets.
+    """
+
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+
+        style = ttk.Style(self._root().style.theme_use())
+        bg_color = style.lookup('TEntry', 'fieldbackground', default='white')
+        fg_color = style.lookup('TEntry', 'foreground', default='black')
+        border_color = style.lookup('TEntry', 'bordercolor', default='black')
+        relief = style.lookup('TEntry', 'relief', default='flat')
+        font = self.get_default_font(style)
+        # print(f'Default font: {font}, bg_color: {bg_color}, fg_color: {fg_color}, border_color: {border_color}, font: {font}, relief: {relief}')
+        self.configure(background=bg_color, foreground=fg_color, borderwidth=1, relief=relief, font=font)
+
+    def get_default_font(self, style=None):
+        """
+        Get the default font for ttk widgets. If the default font is not found, use the TkDefaultFont.
+        :param style: ttk.Style object. If None, the current theme is used.
+        :return: The default font for ttk widgets.
+        """
+        if style is None:
+            style = ttk.Style(self._root().style.theme_use())
+
+        default_font = style.lookup("TEntry", "font")
+        if default_font == '':
+            default_font = self.cget("font")
+        if default_font == '':
+            default_font = nametofont("TkDefaultFont")
+
+        # print(f"Default font: {default_font}")
+        return default_font
 
 
 class App(tk.Tk):
@@ -136,6 +174,11 @@ class App(tk.Tk):
         # Switch
         switch = ttk.Checkbutton(widgets_frame, text="Switch")
         switch.grid(row=9, column=0, padx=5, pady=10, sticky="nsew")
+
+        # StyledText
+        text = StyledText(widgets_frame, height=5, wrap="word", width=10)
+        text.insert(tk.END, "This is the initial content of the StyledText widget.\n")
+        text.grid(row=10, column=0, padx=5, pady=(0, 10), sticky="ew")
 
         # Panedwindow
         paned = ttk.PanedWindow(container)
