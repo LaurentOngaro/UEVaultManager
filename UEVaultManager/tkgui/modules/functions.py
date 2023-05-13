@@ -6,6 +6,7 @@ from io import BytesIO
 from tkinter import messagebox
 
 import requests
+import ttkbootstrap as ttk
 from PIL import ImageTk, Image
 from screeninfo import get_monitors
 from termcolor import colored
@@ -262,3 +263,22 @@ def tag_to_label(tag: str or None) -> str:
         return ''
 
     return tag.capitalize().replace('_', ' ')
+
+
+def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
+    """
+    Set the custom style for the application
+    :return: the style object
+    """
+    style = ttk.Style(theme_name)
+    # option possible for ttk widgets:
+    # TButton, TCheckbutton, TCombobox, TEntry, TFrame, TLabel, TLabelFrame, TMenubutton, TNotebook, TProgressbar, TRadiobutton,
+    # TScale, TScrollbar, TSeparator, TSizegrip, Treeview, TPanedwindow,
+    # Horizontal.TProgressbar or Vertical.TProgressbar (depending on the orient option),
+    # Horizontal.TScale or Vertical.TScale (depending on the orient option),
+    # Horizontal.TScrollbar or Vertical.TScrollbar (depending on the orient option)
+    style.configure('TLabel', font=font, spacing=1, padding=2)
+    style.configure('TButton', font=font, spacing=1, padding=2)
+    style.configure('TEntry', font=font, spacing=1, padding=2)
+    style.configure('TFrame', font=font, spacing=1, padding=1)
+    return style

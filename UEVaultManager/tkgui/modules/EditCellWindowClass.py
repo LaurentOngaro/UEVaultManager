@@ -2,9 +2,10 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
+from ttkbootstrap.constants import *
+
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from ttkbootstrap.constants import *
 
 
 class EditCellWindow(tk.Toplevel):
@@ -22,6 +23,8 @@ class EditCellWindow(tk.Toplevel):
     def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
+        style = gui_f.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        self.style = style
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
 
@@ -67,7 +70,10 @@ class EditCellWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
+            # (bootstyle is not recognized by PyCharm)
+            # noinspection PyArgumentList
             ttk.Button(self, text='Cancel', command=container.on_close, bootstyle=WARNING).pack(**pack_def_options, side=tk.RIGHT)
+            # noinspection PyArgumentList
             ttk.Button(self, text='Save Changes', command=container.save_change, bootstyle=(INFO, OUTLINE)).pack(**pack_def_options, side=tk.RIGHT)
 
     def on_key_press(self, event) -> None:
@@ -98,6 +104,7 @@ class EditCellWindow(tk.Toplevel):
         Close the window
         """
         gui_g.edit_cell_window_ref = None
+        self.editable_table.reset_style()
         self.destroy()
 
     def save_change(self) -> None:

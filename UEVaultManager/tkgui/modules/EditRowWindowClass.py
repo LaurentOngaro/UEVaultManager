@@ -2,9 +2,10 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
+from ttkbootstrap.constants import *
+
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from ttkbootstrap.constants import *
 
 
 class EditRowWindow(tk.Toplevel):
@@ -22,9 +23,10 @@ class EditRowWindow(tk.Toplevel):
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
         super().__init__(parent)
         self.title(title)
+        style = gui_f.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        self.style = style
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-
         if icon is None:
             self.attributes('-toolwindow', True)
         else:
@@ -32,7 +34,6 @@ class EditRowWindow(tk.Toplevel):
             icon = gui_f.path_from_relative_to_absolute(icon)
             if icon != '' and os.path.isfile(icon):
                 self.iconbitmap(icon)
-
         self.resizable(True, False)
 
         self.editable_table = editable_table
@@ -91,8 +92,10 @@ class EditRowWindow(tk.Toplevel):
             lblf_actions.grid(row=0, column=2, **grid_def_options)
             btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
+            # noinspection PyArgumentList
             bnt_save = ttk.Button(lblf_actions, text='Save Changes', command=container.save_change, bootstyle=(INFO, OUTLINE))
             bnt_save.pack(**pack_def_options, side=tk.LEFT)
+            # noinspection PyArgumentList
             btn_on_close = ttk.Button(lblf_actions, text='Cancel', command=container.on_close, bootstyle=WARNING)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
 
@@ -131,6 +134,7 @@ class EditRowWindow(tk.Toplevel):
         Close the window
         """
         gui_g.edit_row_window_ref = None
+        self.editable_table.reset_style()
         self.destroy()
 
     def save_change(self) -> None:

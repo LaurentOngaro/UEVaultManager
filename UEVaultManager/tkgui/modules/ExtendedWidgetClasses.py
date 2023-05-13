@@ -2,6 +2,7 @@ import inspect
 import tkinter as tk
 from enum import Enum
 from tkinter import ttk
+from tkinter.font import nametofont
 
 from UEVaultManager.tkgui.modules.functions import log_warning, tag_to_label
 
@@ -87,6 +88,39 @@ class ExtendedWidget:
         """
         self.set_content(self.default_content)
 
+    def get_style(self) -> ttk.Style:
+        """
+        Get the ttk.Style object of the widget.
+        :return: ttk.Style object
+        """
+        try:
+            # noinspection PyUnresolvedReferences
+            style = self.winfo_toplevel().style  # only works if the widget is a child of UEVMGui,
+        except AttributeError:
+            try:
+                # noinspection PyProtectedMember
+                root = tk._default_root.style
+                style_name = root.theme_use()
+                style = root.Style(style_name)
+            except AttributeError:
+                style = None
+        return style
+
+    def get_default_font(self) -> tk.font.Font:
+        """
+        Get the default font for ttk widgets. If the default font is not found, use the TkDefaultFont.
+        :return: The default font for ttk widgets.
+        """
+        default_font = nametofont("TkDefaultFont")
+        style = self.get_style()
+        if style is not None:
+            default_font = style.lookup("TEntry", "font")
+            if default_font == '':
+                # noinspection PyUnresolvedReferences
+                default_font = self.cget("font")
+
+        return default_font
+
 
 class ExtendedEntry(ExtendedWidget, ttk.Entry):
     """
@@ -115,7 +149,7 @@ class ExtendedEntry(ExtendedWidget, ttk.Entry):
 
 class ExtendedText(ExtendedWidget, tk.Text):
     """
-    Extended widget version of a ttk.Text.
+    Extended widget version of a ttk.Text. Also add a "ttk.style" like property to the widget.
     :param master: master widget
     :param kwargs: kwargs to pass to the widget
     :return: ExtendedText instance
@@ -124,10 +158,28 @@ class ExtendedText(ExtendedWidget, tk.Text):
     def __init__(self, master=None, **kwargs):
         ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ExtendedWidget.__init__(self, **ext_args)
+
         # already made with _extract_extended_args
         # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         tk.Text.__init__(self, master, **kwargs)
         self.type: WidgetType.TEXT
+        self.update_style()
+
+    def update_style(self) -> None:
+        """
+        Update the style of the widget based on a ttk.Entry widget.
+        """
+        style = self.get_style()
+
+        if style is None:
+            return
+        # get some style from the ttk.Entry widget
+        font = self.get_default_font()
+        bg_color = style.lookup('TEntry', 'fieldbackground', default='white')
+        fg_color = style.lookup('TEntry', 'foreground', default='black')
+        relief = style.lookup('TEntry', 'relief', default='flat')
+        # border_color = style.lookup('TEntry', 'bordercolor', default='black')
+        self.configure(background=bg_color, foreground=fg_color, borderwidth=1, relief=relief, font=font)
 
     def set_content(self, content='') -> None:
         """

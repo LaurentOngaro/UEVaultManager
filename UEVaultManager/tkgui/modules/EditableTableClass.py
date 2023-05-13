@@ -6,6 +6,7 @@ from pandastable import Table, TableModel
 
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
+from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 
@@ -309,7 +310,7 @@ class EditableTable(Table):
 
         title = 'Edit current row values'
         width = 900
-        height = 900
+        height = 980
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
@@ -359,7 +360,7 @@ class EditableTable(Table):
                 button.pack(side=tk.RIGHT)
             elif lower_key in ('description', 'comment'):
                 # description and comment fields are text
-                entry = tk.Text(edit_row_window.content_frame, height=3)
+                entry = ExtendedText(edit_row_window.content_frame, height=3)
                 entry.insert('1.0', value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
             else:
@@ -574,3 +575,10 @@ class EditableTable(Table):
         if asset_url is None or asset_url == '' or asset_url == 'nan':
             return
         webbrowser.open(asset_url)
+
+    def reset_style(self) -> None:
+        """
+        Resets the table style. Usefull when style of the main ttk window has changed.
+        """
+        self.data.style.clear()
+        self.redraw()

@@ -1,13 +1,15 @@
 import os
 import tkinter as tk
-from tkinter import filedialog as fd, font
+from tkinter import filedialog as fd
+
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
+from UEVaultManager.tkgui.modules.functions import set_custom_style
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
-import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
 
 
 class UEVMGuiHiddenRoot(ttk.Window):
@@ -22,13 +24,12 @@ class UEVMGuiHiddenRoot(ttk.Window):
 class UEVMGui(tk.Tk):
 
     def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file='', show_open_file_dialog=False):
-
         super().__init__()
         self.title(title)
-        self.style = ttk.Style(gui_g.s.theme)
+        style = set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        self.style = style
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-
         if icon is None:
             self.attributes('-toolwindow', True)
         else:
@@ -76,9 +77,10 @@ class UEVMGui(tk.Tk):
 
             lblf_navigation = ttk.LabelFrame(self, text='Navigation')
             lblf_navigation.pack(side=tk.LEFT, **lblf_def_options)
-            btn_toggle_pagination = ttk.Button(
-                lblf_navigation, text='Disable Pagination', command=container.toggle_pagination, bootstyle=(INFO, OUTLINE)
-            )
+            # (bootstyle is not recognized by PyCharm)
+            # noinspection PyArgumentList
+            btn_toggle_pagination = ttk.Button(lblf_navigation, text='Disable Pagination', command=container.toggle_pagination)
+            # noinspection PyArgumentList
             btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
             btn_first_page = ttk.Button(lblf_navigation, text='First Page', command=container.show_first_page)
             btn_first_page.pack(**pack_def_options, side=tk.LEFT)
@@ -115,6 +117,7 @@ class UEVMGui(tk.Tk):
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
+            # noinspection PyArgumentList
             btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
             btn_toggle_controls = ttk.Button(lblf_actions, text="Hide Controls", command=container.toggle_filter_controls)
