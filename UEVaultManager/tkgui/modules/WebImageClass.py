@@ -2,6 +2,7 @@ from io import BytesIO
 
 import requests
 from PIL import ImageTk, Image
+
 from UEVaultManager.tkgui.modules.functions import log_warning
 
 
