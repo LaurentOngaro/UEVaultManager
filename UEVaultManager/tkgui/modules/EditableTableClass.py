@@ -1,3 +1,4 @@
+import logging
 import webbrowser
 from tkinter import ttk
 
@@ -142,19 +143,19 @@ class EditableTable(Table):
         Loads data from the specified CSV file into the table.
         """
         csv_options = {
-            'converters'  : {
-                'Asset_id'  : str,  #
-                'App name'  : str,  #
-                'Review'    : float,  #
-                'Price'     : float,  #
-                'Old Price' : float,  #
-                'On Sale'   : convert_to_bool,  #
-                'Purchased' : convert_to_bool,  #
-                'Must Buy'  : convert_to_bool,  #
+            'converters': {
+                'Asset_id': str,  #
+                'App name': str,  #
+                'Review': float,  #
+                'Price': float,  #
+                'Old Price': float,  #
+                'On Sale': convert_to_bool,  #
+                'Purchased': convert_to_bool,  #
+                'Must Buy': convert_to_bool,  #
                 'Date Added': convert_to_datetime,  #
             },
             'on_bad_lines': 'warn',
-            'encoding'    : "utf-8",
+            'encoding': "utf-8",
         }
         if not os.path.isfile(self.file):
             log_warning(f'File not found: {self.file}')
@@ -233,16 +234,32 @@ class EditableTable(Table):
         self.show_page(self.current_page)
         self.must_save = False
 
-    def search(self, category=gui_g.s.default_category_for_all, search_text=gui_g.s.default_search_text) -> None:
+    def search(self, filter_dict=None, global_search=None) -> None:
         """
-        Searches the table data based on the provided category and search text.
-        :param category: The category to filter the table data by.
-        :param search_text: The text to search for in the table data.
+        Searches the table data based on the provided filter dictionary.
+        :param filter_dict: A dictionary containing the column names as keys and filter values as the values.
+        :param global_search: The text to search for in the table data.
         """
-        if category and category != gui_g.s.default_category_for_all:
-            self.data_filtered = self.data[self.data['Category'] == category]
-        if search_text and search_text != gui_g.s.default_search_text:
-            self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: search_text.lower() in str(row).lower(), axis=1)]
+        if filter_dict is None:
+            filter_dict = {}
+        log_info(f'Filtering data with: {filter_dict} and global search: {global_search}')
+        self.data_filtered = self.data
+
+        for key, value in filter_dict.items():
+            if key == 'Category' and value == gui_g.s.default_category_for_all:
+                continue
+            # if isinstance(value, str) and value != '':
+            #     self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
+            # elif isinstance(value, bool) and value:
+            #     self.data_filtered = self.data_filtered[self.data_filtered[key]]
+            # elif isinstance(value, bool) and not value:
+            #     self.data_filtered = self.data_filtered[not self.data_filtered[key]]
+            # else:
+            #     self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: value == x)]
+            self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
+
+        if global_search and global_search != gui_g.s.default_global_search:
+            self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: global_search.lower() in str(row).lower(), axis=1)]
         self.show_page(0)
 
     def reset_search(self) -> None:

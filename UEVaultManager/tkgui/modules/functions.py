@@ -200,8 +200,8 @@ def center_window_on_screen(screen_index: int, height: int, width: int) -> str:
     target_screen = monitors[screen_index]
     screen_width = target_screen.width
     screen_height = target_screen.height
-    x = target_screen.x + (screen_width - width) // 2
-    y = target_screen.y + (screen_height - height) // 2
+    x = target_screen.x + (screen_width-width) // 2
+    y = target_screen.y + (screen_height-height) // 2
     geometry: str = f'{width}x{height}+{x}+{y}'
     return geometry
 
@@ -212,10 +212,9 @@ def show_asset_image(image_url: str, canvas_image=None) -> None:
     :param image_url: the url of the image to display
     :param canvas_image: the canvas to display the image in
     """
-    if canvas_image is None or image_url == '':
+    if canvas_image is None or image_url == '' or str(image_url).lower() == 'nan':
         return
     try:
-
         # noinspection DuplicatedCode
         if not os.path.isdir(gui_g.s.cache_folder):
             os.mkdir(gui_g.s.cache_folder)
@@ -231,7 +230,6 @@ def show_asset_image(image_url: str, canvas_image=None) -> None:
             with open(image_filename, "wb") as f:
                 f.write(response.content)
         resize_and_show_image(image, canvas_image)
-
     except Exception as error:
         log_error(f"Error showing image: {error}")
 

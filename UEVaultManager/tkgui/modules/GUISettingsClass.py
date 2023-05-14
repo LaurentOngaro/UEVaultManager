@@ -24,7 +24,7 @@ class GUISettings:
         self.preview_max_width = 150
         self.preview_max_height = 150
 
-        self.default_search_text = 'Text to search...'
+        self.default_global_search = 'Text to search...'
         self.default_category_for_all = 'All'
 
         self.table_font_size = 10
