@@ -301,8 +301,17 @@ class LGDLFS:
         extras = self.assets_extras_data.get(app_name, None)
         extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
         if os.path.exists(extras_file):
-            extras = json.load(open(os.path.join(self.path, self.extras_folder, gm_file)))
-            self.assets_extras_data[extras['asset_name']] = extras
+            try:
+                extras = json.load(open(os.path.join(self.path, self.extras_folder, gm_file)))
+                self.assets_extras_data[extras['asset_name']] = extras
+            except json.decoder.JSONDecodeError:
+                self.log.warning(f'Failed to load extras data for {app_name}!. Deleting file...')
+                # delete the file
+                try:
+                    os.remove(extras_file)
+                except Exception as error:
+                    self.log.error(f'Failed to delete extras file {extras_file}: {error!r}')
+            return None
         return extras
 
     def set_item_extras(self, app_name: str, extras: dict, update_global_dict: True):
