@@ -7,6 +7,7 @@ import time
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
+
 from datetime import datetime, timedelta
 from hashlib import sha1
 from locale import getlocale, LC_CTYPE
@@ -139,6 +140,8 @@ class AppCore:
         # store time to process metadata and extras update
         self.process_time_average = {'time': 0.0, 'count': 0}
         self.use_threads = False
+        self.thread_executor = None
+        self.thread_executor_must_stop = False
         self.engine_version_for_obsolete_assets = '4.26'
 
     def setup_assets_logging(self):
@@ -424,6 +427,12 @@ class AppCore:
 
     def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[App], Dict[str, List[App]]):
 
+        # Cancel all outstanding tasks and shut down the executor
+        def stop_executor(tasks) -> None:
+            for _, task in tasks.items():
+                task.cancel()
+            self.thread_executor.shutdown(wait=False)
+
         def fetch_asset_meta(name: str) -> bool:
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()):
                 return False
@@ -478,6 +487,9 @@ class AppCore:
             self.log.info(
                 f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
             )
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                self.thread_executor_must_stop = True
+                return False
             return True
 
         _ret = []
@@ -610,20 +622,34 @@ class AppCore:
         # self.use_threads = False  # test only
         if fetch_list:
             if gui_g.progress_window_ref is not None:
-                gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching missing metadata...\nIt Could take a while !", new_max_value=0)
-                gui_g.progress_window_ref.hide_progress_bar()
-                gui_g.progress_window_ref.hide_stop_button()
+                gui_g.progress_window_ref.reset(
+                    new_value=0, new_text="Fetching missing metadata...\nIt could take some time. Be patient.", new_max_value=len(fetch_list)
+                )
+                # gui_g.progress_window_ref.hide_progress_bar()
+                # gui_g.progress_window_ref.hide_stop_button()
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
                 # note:  unreal engine API limits the number of connection to 16. So no more than 16 threads !
-                with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() + 2), thread_name_prefix="Asset_Fetcher") as executor:
-                    executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)
+
+                # with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() - 2), thread_name_prefix="Asset_Fetcher") as executor:
+                #    executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)
+                self.thread_executor = ThreadPoolExecutor(max_workers=min(16, os.cpu_count() + 2), thread_name_prefix="Asset_Fetcher")
+                # Dictionary that maps each key to its corresponding Future object
+                futures = {}
+                for key in fetch_list.keys():
+                    # Submit the task and add its Future to the dictionary
+                    future = self.thread_executor.submit(fetch_asset_meta, key)
+                    futures[key] = future
+                    if self.thread_executor_must_stop:
+                        self.log.info(f'User stop has been pressed. Stopping running threads....')
+                        stop_executor(futures)
+                        return []
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.show_progress_bar()  # show progress bar, must be before reset
+            # gui_g.progress_window_ref.show_progress_bar()  # show progress bar, must be before reset
             gui_g.progress_window_ref.show_stop_button()
             gui_g.progress_window_ref.reset(new_value=0, new_text="Checking assets data...", new_max_value=len(filtered_items))
         # loop through valid and filtered items
