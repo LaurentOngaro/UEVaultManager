@@ -389,6 +389,7 @@ class UEVMGui(tk.Tk):
         value = widget.get_content()
         self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
 
+    # noinspection PyUnusedLocal
     def on_check_change(self, *args) -> None:
         """
         When a checkbutton is changed, launch a search

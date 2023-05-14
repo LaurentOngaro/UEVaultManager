@@ -1,4 +1,3 @@
-import logging
 import webbrowser
 from tkinter import ttk
 
