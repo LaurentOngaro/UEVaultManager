@@ -19,6 +19,7 @@ class GrabResult(Enum):
     INCONSISTANT_DATA = 1
     PAGE_NOT_FOUND = 2
     CONTENT_NOT_FOUND = 3
+    TIMEOUT = 4
 
 
 def create_empty_assets_extras(asset_name: str) -> dict:
@@ -298,8 +299,11 @@ class EPCAPI:
         asset_name_in_url = ''
         search_url_root = f'https://{self._search_url}/assets?keywords='
         search_url_full = search_url_root + converted_name
-        r = self.session.get(search_url_full, timeout=timeout)
-
+        try:
+            r = self.session.get(search_url_full, timeout=timeout)
+        except requests.exceptions.Timeout:
+            self.log.warning(f'Timeout for {asset_name}')
+            return [url, asset_name_in_url, GrabResult.TIMEOUT.name]
         if not r.ok:
             self.log.warning(f'Can not find the url for {asset_name}:{r.reason}')
             return [url, asset_name_in_url, GrabResult.PAGE_NOT_FOUND.name]

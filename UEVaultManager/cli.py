@@ -422,7 +422,7 @@ class UEVaultManagerCLI:
         cpt = 0
         cpt_max = len(items)
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking assets data...", new_max_value=len(items))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging assets data...", new_max_value=len(items))
         for item in items:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return

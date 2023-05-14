@@ -434,7 +434,7 @@ class AppCore:
             self.thread_executor.shutdown(wait=False)
 
         def fetch_asset_meta(name: str) -> bool:
-            if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()):
+            if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
 
             thread_data = ''
@@ -651,7 +651,7 @@ class AppCore:
         if gui_g.progress_window_ref is not None:
             # gui_g.progress_window_ref.show_progress_bar()  # show progress bar, must be before reset
             gui_g.progress_window_ref.show_stop_button()
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking assets data...", new_max_value=len(filtered_items))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking and Fetching assets data...", new_max_value=len(filtered_items))
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
         while len(filtered_items) > 0:
