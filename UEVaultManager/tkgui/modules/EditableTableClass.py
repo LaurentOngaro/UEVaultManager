@@ -192,10 +192,10 @@ class EditableTable(Table):
             except ValueError as error:
                 log_error(f'Could not convert column "{col}" to float. Error: {error}')
 
-        col_as_category = ['Category']
+        col_as_category = ['Category', 'Grab result']
         for col in col_as_category:
             try:
-                self.data[col] = self.data[col].astype("category")
+                self.data[col] = self.data[col].astype('category')
             except ValueError as error:
                 log_error(f'Could not convert column "{col}" to category. Error: {error}')
 
@@ -251,6 +251,8 @@ class EditableTable(Table):
 
         for key, value in filter_dict.items():
             if key == 'Category' and value == gui_g.s.default_category_for_all:
+                continue
+            if key == 'Grab result' and value == gui_g.s.default_category_for_all:
                 continue
             # if isinstance(value, str) and value != '':
             #     self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]

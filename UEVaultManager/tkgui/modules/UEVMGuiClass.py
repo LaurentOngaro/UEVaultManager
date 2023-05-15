@@ -203,6 +203,19 @@ class UEVMGui(tk.Tk):
             lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
             lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
 
+            try:
+                # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
+                categories = list(container.editable_table.data['Category'].cat.categories)
+            except (AttributeError, TypeError):
+                categories = []
+            categories.insert(0, gui_g.s.default_category_for_all)
+            try:
+                # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
+                grab_results = list(container.editable_table.data['Grab result'].cat.categories)
+            except (AttributeError, TypeError):
+                grab_results = []
+            grab_results.insert(0, gui_g.s.default_category_for_all)
+
             lblf_content = ttk.LabelFrame(self, text='Content')
             lblf_content.pack(**lblf_def_options)
             btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=container.editable_table.create_edit_record_window)
@@ -214,41 +227,61 @@ class UEVMGui(tk.Tk):
             lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
             lbf_filter_cat = ttk.LabelFrame(self, text='Search and Filter')
+            # row 0
+            cur_col = 0
+            cur_row = 0
             lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
             var_is_purchased = tk.BooleanVar(value=False)
             var_is_purchased.trace_add('write', container.on_check_change)
             ck_purchased = ttk.Checkbutton(lbf_filter_cat, text='Purchased', variable=var_is_purchased)
-            ck_purchased.grid(row=0, column=0, **grid_fw_options)
-            var_is_not_obsolete = tk.BooleanVar(value=False)
-            var_is_not_obsolete.trace_add('write', container.on_check_change)
-            ck_obsolete = ttk.Checkbutton(lbf_filter_cat, text='Not obsolete', variable=var_is_not_obsolete)
-            ck_obsolete.grid(row=0, column=1, **grid_fw_options)
-            var_grab_is_ok = tk.BooleanVar(value=False)
-            var_grab_is_ok.trace_add('write', container.on_check_change)
-            ck_grab_is_ok = ttk.Checkbutton(lbf_filter_cat, text='Grab OK', variable=var_grab_is_ok)
-            ck_grab_is_ok.grid(row=0, column=2, **grid_fw_options)
+            ck_purchased.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            cur_col += 1
             var_must_buy = tk.BooleanVar(value=False)
             var_must_buy.trace_add('write', container.on_check_change)
             ck_must_buy = ttk.Checkbutton(lbf_filter_cat, text='Must buy', variable=var_must_buy)
-            ck_must_buy.grid(row=0, column=3, **grid_fw_options)
-            try:
-                # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-                categories = list(container.editable_table.data['Category'].cat.categories)
-            except (AttributeError, TypeError):
-                categories = []
-            categories.insert(0, gui_g.s.default_category_for_all)
+            ck_must_buy.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            cur_col += 1
+            var_on_sale = tk.BooleanVar(value=False)
+            var_on_sale.trace_add('write', container.on_check_change)
+            ck_on_sale = ttk.Checkbutton(lbf_filter_cat, text='On sale', variable=var_on_sale)
+            ck_on_sale.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            cur_col += 1
+            var_is_not_obsolete = tk.BooleanVar(value=False)
+            var_is_not_obsolete.trace_add('write', container.on_check_change)
+            ck_obsolete = ttk.Checkbutton(lbf_filter_cat, text='Not obsolete', variable=var_is_not_obsolete)
+            ck_obsolete.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            # row 1
+            cur_row += 1
+            cur_col = 0
+            lbl_category = ttk.Label(lbf_filter_cat, text='Category')
+            lbl_category.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            cur_col += 1
             var_category = tk.StringVar(value=categories[0])
             opt_category = ttk.Combobox(lbf_filter_cat, textvariable=var_category, values=categories)
-            opt_category.grid(row=1, column=0, columnspan=2, **grid_fw_options)
+            opt_category.grid(row=cur_row, column=cur_col, columnspan=3, **grid_fw_options)
+            # row 2
+            cur_row += 1
+            cur_col = 0
+            lbl_grab_results = ttk.Label(lbf_filter_cat, text='Grab Result')
+            lbl_grab_results.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            cur_col += 1
+            var_grab_results = tk.StringVar(value=grab_results[0])
+            opt_grab_results = ttk.Combobox(lbf_filter_cat, textvariable=var_grab_results, values=grab_results)
+            opt_grab_results.grid(row=cur_row, column=cur_col, columnspan=3, **grid_fw_options)
+            # row 3
+            cur_row += 1
+            cur_col = 0
             var_global_search = tk.StringVar(value=gui_g.s.default_global_search)
             entry_search = ttk.Entry(lbf_filter_cat, textvariable=var_global_search)
-            entry_search.grid(row=1, column=2, columnspan=2, **grid_fw_options)
+            entry_search.grid(row=cur_row, column=cur_col, columnspan=2, **grid_fw_options)
             entry_search.bind('<FocusIn>', self.del_entry_search)
             # entry_search.bind('<FocusOut>', container.search)
-            btn_filter_by_text = ttk.Button(lbf_filter_cat, text='Filter', command=container.search)
-            btn_filter_by_text.grid(row=2, column=0, columnspan=2, **grid_fw_options)
+            cur_col += 2
+            btn_filter_by_text = ttk.Button(lbf_filter_cat, text='Apply All', command=container.search)
+            btn_filter_by_text.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            cur_col += 1
             btn_reset_search = ttk.Button(lbf_filter_cat, text='Reset All', command=container.reset_search)
-            btn_reset_search.grid(row=2, column=2, columnspan=2, **grid_fw_options)
+            btn_reset_search.grid(row=cur_row, column=cur_col, **grid_fw_options)
             lbf_filter_cat.columnconfigure('all', weight=1)  # important to make the buttons expand
 
             lblf_files = ttk.LabelFrame(self, text='Files')
@@ -298,7 +331,8 @@ class UEVMGui(tk.Tk):
             self.var_is_purchased = var_is_purchased
             self.var_is_not_obsolete = var_is_not_obsolete
             self.var_must_buy = var_must_buy
-            self.var_grab_is_ok = var_grab_is_ok
+            self.var_on_sale = var_on_sale
+            self.var_grab_results = var_grab_results
 
             self.entry_search = entry_search
             self.lbtf_quick_edit = lbtf_quick_edit
@@ -488,10 +522,11 @@ class UEVMGui(tk.Tk):
         """
         search_text = self.control_frame.var_global_search.get()
         category = self.control_frame.var_category.get()
+        grab_results = self.control_frame.var_grab_results.get()
         purchased = self.control_frame.var_is_purchased.get()
         not_obsolete = self.control_frame.var_is_not_obsolete.get()
-        var_must_buy = self.control_frame.var_must_buy.get()
-        var_grab_is_ok = self.control_frame.var_grab_is_ok.get()
+        must_buy = self.control_frame.var_must_buy.get()
+        on_sale = self.control_frame.var_on_sale.get()
         gui_g.UEVM_filter_category = category
         self.toggle_pagination(forced_value=False)
         filter_dict = {}
@@ -499,6 +534,10 @@ class UEVMGui(tk.Tk):
             filter_dict['Category'] = category
         else:
             filter_dict.pop('Category', None)
+        if grab_results:
+            filter_dict['Grab result'] = grab_results
+        else:
+            filter_dict.pop('Grab result', None)
         if purchased:
             filter_dict['Purchased'] = True
         else:
@@ -507,15 +546,14 @@ class UEVMGui(tk.Tk):
             filter_dict['Obsolete'] = False
         else:
             filter_dict.pop('Obsolete', None)
-        if var_must_buy:
+        if must_buy:
             filter_dict['Must Buy'] = True
         else:
             filter_dict.pop('Must Buy', None)
-        if var_grab_is_ok:
-            filter_dict['Grab result'] = GrabResult.NO_ERROR.name
+        if on_sale:
+            filter_dict['On Sale'] = True
         else:
-            filter_dict.pop('Test result', None)
-
+            filter_dict.pop('On Sale', None)
         self.editable_table.search(filter_dict, global_search=search_text)
         # self.control_frame.reset_entry_search()
 
