@@ -13,6 +13,7 @@ from ttkbootstrap.constants import *
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.api.egs import GrabResult
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.functions import set_custom_style
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
@@ -220,12 +221,12 @@ class UEVMGui(tk.Tk):
             ck_purchased.grid(row=0, column=0, **grid_fw_options)
             var_is_not_obsolete = tk.BooleanVar(value=False)
             var_is_not_obsolete.trace_add('write', container.on_check_change)
-            ck_obsolete = ttk.Checkbutton(lbf_filter_cat, text='Not Obsolete', variable=var_is_not_obsolete)
+            ck_obsolete = ttk.Checkbutton(lbf_filter_cat, text='Not obsolete', variable=var_is_not_obsolete)
             ck_obsolete.grid(row=0, column=1, **grid_fw_options)
-            var_result_is_ok = tk.BooleanVar(value=False)
-            var_result_is_ok.trace_add('write', container.on_check_change)
-            ck_result_is_ok = ttk.Checkbutton(lbf_filter_cat, text='Result OK', variable=var_result_is_ok)
-            ck_result_is_ok.grid(row=0, column=2, **grid_fw_options)
+            var_grab_is_ok = tk.BooleanVar(value=False)
+            var_grab_is_ok.trace_add('write', container.on_check_change)
+            ck_grab_is_ok = ttk.Checkbutton(lbf_filter_cat, text='Grab OK', variable=var_grab_is_ok)
+            ck_grab_is_ok.grid(row=0, column=2, **grid_fw_options)
             var_must_buy = tk.BooleanVar(value=False)
             var_must_buy.trace_add('write', container.on_check_change)
             ck_must_buy = ttk.Checkbutton(lbf_filter_cat, text='Must buy', variable=var_must_buy)
@@ -297,7 +298,7 @@ class UEVMGui(tk.Tk):
             self.var_is_purchased = var_is_purchased
             self.var_is_not_obsolete = var_is_not_obsolete
             self.var_must_buy = var_must_buy
-            self.var_result_is_ok = var_result_is_ok
+            self.var_grab_is_ok = var_grab_is_ok
 
             self.entry_search = entry_search
             self.lbtf_quick_edit = lbtf_quick_edit
@@ -490,7 +491,7 @@ class UEVMGui(tk.Tk):
         purchased = self.control_frame.var_is_purchased.get()
         not_obsolete = self.control_frame.var_is_not_obsolete.get()
         var_must_buy = self.control_frame.var_must_buy.get()
-        var_result_is_ok = self.control_frame.var_result_is_ok.get()
+        var_grab_is_ok = self.control_frame.var_grab_is_ok.get()
         gui_g.UEVM_filter_category = category
         self.toggle_pagination(forced_value=False)
         filter_dict = {}
@@ -510,8 +511,8 @@ class UEVMGui(tk.Tk):
             filter_dict['Must Buy'] = True
         else:
             filter_dict.pop('Must Buy', None)
-        if var_result_is_ok:
-            filter_dict['Test result'] = 'OK'
+        if var_grab_is_ok:
+            filter_dict['Grab result'] = GrabResult.NO_ERROR.name
         else:
             filter_dict.pop('Test result', None)
 

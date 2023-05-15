@@ -22,7 +22,7 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 # noinspection PyPep8Naming
 import UEVaultManager.tkgui.modules.UEVMGuiClass as gui_w  # using the shortest variable name for globals for convenience
 from UEVaultManager import __version__, __codename__
-from UEVaultManager.api.egs import create_empty_assets_extras
+from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
@@ -148,7 +148,7 @@ class UEVaultManagerCLI:
         purchased = bool_false_data
         supported_versions = no_text_data
         page_title = no_text_data
-        grab_result = no_int_data
+        grab_result = GrabResult.NO_ERROR.name
         try:
             asset_url = extras_data['asset_url']
             review = extras_data['review']
