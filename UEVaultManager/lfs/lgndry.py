@@ -1,6 +1,6 @@
 # coding: utf-8
 """
-Class definition for
+Implementation for:
 - LGDLFS: Local File System
 """
 import json

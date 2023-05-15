@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-class definition for
+Implementation for:
 - EditRowWindow: the window to edit a row
 """
 import os

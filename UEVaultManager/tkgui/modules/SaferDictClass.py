@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Class definition for :
+Implementation for:
 - SaferDict: a dictionary subclass that provides a safer alternative to handle non-existing keys
 """
 

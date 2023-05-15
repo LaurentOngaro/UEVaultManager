@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-class definition for:
+Implementation for:
 - AppCore: handles most of the lower level interaction with the downloader, lfs, and api components to make writing CLI/GUI code easier and cleaner and avoid duplication.
 - CSV_headings: contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
 """

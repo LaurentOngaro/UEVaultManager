@@ -1,8 +1,7 @@
 # coding=utf-8
 """
-Class definition for :
+Implementation for:
 - TaggedLabelFrame: a custom LabelFrame widget that allows child widgets to be identified by tags
-
 """
 import tkinter as tk
 from tkinter import ttk

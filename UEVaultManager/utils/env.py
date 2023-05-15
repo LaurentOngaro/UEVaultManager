@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Functions for environment detection.
+Environment detection functions.
 """
 import os
 import sys

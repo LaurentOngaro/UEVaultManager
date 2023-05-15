@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-class definition for
+Implementation for:
 - EditCellWindow: the window to edit a cell
 """
 import os

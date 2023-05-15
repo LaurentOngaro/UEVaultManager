@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Class definition for :
+Implementation for:
 - WebImage: class to download an image from an url and get it as a PhotoImage
 """
 from io import BytesIO

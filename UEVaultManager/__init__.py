@@ -1,5 +1,7 @@
 # coding=utf-8
-"""UEVaultManager"""
+"""
+UEVaultManager setup file.
+"""
 import datetime
 
 year = datetime.date.today().year

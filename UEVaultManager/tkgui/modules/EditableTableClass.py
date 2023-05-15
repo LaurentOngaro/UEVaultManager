@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Class definition for
+Implementation for:
 - EditableTable is a custom class that extends the pandastable.Table class, providing additional functionality
 """
 import webbrowser

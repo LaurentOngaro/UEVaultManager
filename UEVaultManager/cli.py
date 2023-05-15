@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Class definition for :
+Implementation for:
 - UEVaultManagerCLI: command line interface for UEVaultManager
 """
 import argparse
@@ -30,7 +30,6 @@ from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
-# todo custom formatter for cli logger (clean info, highlighted error/warning)
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
 
 

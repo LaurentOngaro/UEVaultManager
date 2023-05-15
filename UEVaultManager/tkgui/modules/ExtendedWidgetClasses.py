@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-class definition for
+Implementation for:
 - WidgetType: enum for the widget types
 - ExtendedWidget: base class for all widgets in the app
 - ExtendedEntry: extended entry widget

@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Functions for the CLI interface.
+CLI interface functions
 """
 import os
 

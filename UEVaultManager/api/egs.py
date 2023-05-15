@@ -1,6 +1,10 @@
-# !/usr/bin/env python
 # coding: utf-8
-
+"""
+Implementation for:
+- EPCAPI : Epic Games Client API
+- GrabResult : Enum for the result of grabbing a page.
+- create_empty_assets_extras : Creates an empty asset extras dict.
+"""
 import logging
 import re
 import urllib.parse
@@ -15,6 +19,9 @@ from UEVaultManager.models.exceptions import InvalidCredentialsError
 
 
 class GrabResult(Enum):
+    """
+    Enum for the result of grabbing a page.
+    """
     NO_ERROR = 0
     INCONSISTANT_DATA = 1
     PAGE_NOT_FOUND = 2
@@ -23,6 +30,11 @@ class GrabResult(Enum):
 
 
 def create_empty_assets_extras(asset_name: str) -> dict:
+    """
+    Creates an empty asset extras dict.
+    :param asset_name:  The name of the asset.
+    :return: The empty asset extras dict.
+     """
     return {
         'asset_name': asset_name,
         'asset_url': '',
@@ -37,6 +49,12 @@ def create_empty_assets_extras(asset_name: str) -> dict:
 
 
 class EPCAPI:
+    """
+    Epic Games Client API
+    :param lc: The language code.
+    :param cc: The country code.
+    :param timeout: The timeout for requests.
+    """
     _user_agent = 'UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit'
     _store_user_agent = 'EpicGamesLauncher/14.0.8-22004686+++Portal+Release-Live'
     # required for the oauth request
@@ -81,12 +99,20 @@ class EPCAPI:
 
         self.request_timeout = timeout if timeout > 0 else None
 
-    def get_auth_url(self):
+    def get_auth_url(self) -> str:
+        """
+        Returns the url for the oauth login.
+        :return: The url
+        """
         login_url = 'https://www.epicgames.com/id/login?redirectUrl='
         redirect_url = f'https://www.epicgames.com/id/api/redirect?clientId={self._user_basic}&responseType=code'
         return login_url + urllib.parse.quote(redirect_url)
 
-    def update_egs_params(self, egs_params):
+    def update_egs_params(self, egs_params: dict) -> None:
+        """
+        Updates the egs params.
+        :param egs_params: The egs params.
+        """
         # update user-agent
         if version := egs_params['version']:
             self._user_agent = f'UELauncher/{version} Windows/10.0.19041.1.256.64bit'
@@ -102,7 +128,12 @@ class EPCAPI:
             self._pw_basic = egs_params['client_secret']
             self._oauth_basic = HTTPBasicAuth(self._user_basic, self._pw_basic)
 
-    def resume_session(self, session):
+    def resume_session(self, session: dict) -> dict:
+        """
+        Resumes a session.
+        :param session: The session.
+        :return: The session.
+        """
         self.session.headers['Authorization'] = f'bearer {session["access_token"]}'
         r = self.session.get(f'https://{self._oauth_host}/account/api/oauth/verify', timeout=self.request_timeout)
         if r.status_code >= 500:
@@ -121,6 +152,14 @@ class EPCAPI:
     def start_session(
         self, refresh_token: str = None, exchange_token: str = None, authorization_code: str = None, client_credentials: bool = False
     ) -> dict:
+        """
+        Starts a session.
+        :param refresh_token: refresh token
+        :param exchange_token: exchange token
+        :param authorization_code: authorization code
+        :param client_credentials: client credentials
+        :return: The session.
+        """
         if refresh_token:
             params = dict(grant_type='refresh_token', refresh_token=refresh_token, token_type='eg1')
         elif exchange_token:
@@ -158,15 +197,24 @@ class EPCAPI:
 
         return j
 
-    def invalidate_session(self):  # unused
-        _ = self.session.delete(f'https://{self._oauth_host}/account/api/oauth/sessions/kill/{self.access_token}', timeout=self.request_timeout)
-
-    def get_item_token(self):
+    def get_item_token(self) -> str:
+        """
+        Gets the item token.
+        Unused but kept for the global API reference.
+        :return: The item token using json format
+        """
         r = self.session.get(f'https://{self._oauth_host}/account/api/oauth/exchange', timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
 
-    def get_ownership_token(self, namespace, catalog_item_id):
+    def get_ownership_token(self, namespace: str, catalog_item_id: str) -> bytes:
+        """
+        Gets the ownership token.
+        Unused but kept for the global API reference.
+        :param namespace:  namespace
+        :param catalog_item_id: catalog item id
+        :return: The ownership token.
+        """
         user_id = self.user.get('account_id')
         r = self.session.post(
             f'https://{self._ecommerce_host}/ecommerceintegration/api/public/'
@@ -177,20 +225,40 @@ class EPCAPI:
         r.raise_for_status()
         return r.content
 
-    def get_external_auths(self):
+    def get_external_auths(self) -> dict:
+        """
+        Gets the external auths.
+        Unused but kept for the global API reference.
+        :return: The external auths using json format.
+        """
         user_id = self.user.get('account_id')
         r = self.session.get(f'https://{self._oauth_host}/account/api/public/account/{user_id}/externalAuths', timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
 
     def get_item_assets(self, platform='Windows', label='Live'):
+        """
+        Gets the item assets.
+        :param platform: platform to get assets for
+        :param label: label of the assets
+        :return: The item assets using json format.
+        """
         r = self.session.get(
             f'https://{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.request_timeout
         )
         r.raise_for_status()
         return r.json()
 
-    def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live'):
+    def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live') -> dict:
+        """
+        Gets the item manifest.
+        :param namespace:  namespace
+        :param catalog_item_id: catalog item id
+        :param app_name: app name
+        :param platform: platform to get manifest for
+        :param label: label of the manifest
+        :return: The item manifest using json format.
+        """
         r = self.session.get(
             f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform'
             f'/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app'
@@ -200,7 +268,14 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_launcher_manifests(self, platform='Windows', label=None):
+    def get_launcher_manifests(self, platform='Windows', label: str = None) -> dict:
+        """
+        Gets the launcher manifests.
+        Unused but kept for the global API reference.
+        :param platform: platform to get manifests for
+        :param label: label of the manifests
+        :return: The launcher manifests using json format.
+        """
         r = self.session.get(
             f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/'
             f'{platform}/launcher',
@@ -210,7 +285,12 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_user_entitlements(self):
+    def get_user_entitlements(self) -> dict:
+        """
+        Gets the user entitlements.
+        Unused but kept for the global API reference.
+        :return: The user entitlements using json format.
+        """
         user_id = self.user.get('account_id')
         r = self.session.get(
             f'https://{self._entitlements_host}/entitlement/api/account/{user_id}/entitlements',
@@ -220,7 +300,14 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_item_info(self, namespace, catalog_item_id, timeout=None):
+    def get_item_info(self, namespace: str, catalog_item_id: str, timeout: int = None) -> dict:
+        """
+        Gets the item info.
+        :param namespace: Namespace of the item
+        :param catalog_item_id: Catalog item id of the item
+        :param timeout: Timeout for the request
+        :return: The item info.
+        """
         r = self.session.get(
             f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items',
             params=dict(
@@ -231,7 +318,16 @@ class EPCAPI:
         r.raise_for_status()
         return r.json().get(catalog_item_id, None)
 
-    def get_artifact_service_ticket(self, sandbox_id: str, artifact_id: str, label='Live', platform='Windows'):
+    def get_artifact_service_ticket(self, sandbox_id: str, artifact_id: str, label='Live', platform='Windows') -> dict:
+        """
+        Gets the artifact service ticket.
+        Unused but kept for the global API reference.
+        :param sandbox_id: sandbox id
+        :param artifact_id: artifact id
+        :param label: label
+        :param platform: platform to get ticket for
+        :return: The artifact service ticket using json format.
+        """
         # Based on EOS Helper Windows service implementation. Only works with anonymous EOS Helper session.
         # sandbox_id is the same as the namespace, artifact_id is the same as the app name
         r = self.session.post(
@@ -244,7 +340,16 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_item_manifest_by_ticket(self, artifact_id: str, signed_ticket: str, label='Live', platform='Windows'):
+    def get_item_manifest_by_ticket(self, artifact_id: str, signed_ticket: str, label='Live', platform='Windows') -> dict:
+        """
+        Gets the item manifest by ticket.
+        Unused but kept for the global API reference.
+        :param artifact_id: artifact id
+        :param signed_ticket: signed ticket
+        :param label: the label
+        :param platform: platform to get manifest for
+        :return: The item manifest by ticket using json format.
+        """
         # Based on EOS Helper Windows service implementation.
         r = self.session.post(
             f'https://{self._launcher_host}/launcher/api/public/assets/v2/'

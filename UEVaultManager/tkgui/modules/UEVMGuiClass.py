@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-Class definition for
+Implementation for:
 - UEVMGui the main window of the application
 - UEVMGuiHiddenRoot a hidden root window for the application
 """
@@ -97,7 +97,7 @@ class UEVMGui(tk.Tk):
 
         def __init__(self, container):
             super().__init__()
-            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
 
             lblf_navigation = ttk.LabelFrame(self, text='Navigation')
@@ -222,6 +222,14 @@ class UEVMGui(tk.Tk):
             var_is_not_obsolete.trace_add('write', container.on_check_change)
             ck_obsolete = ttk.Checkbutton(lbf_filter_cat, text='Not Obsolete', variable=var_is_not_obsolete)
             ck_obsolete.grid(row=0, column=1, **grid_fw_options)
+            var_result_is_ok = tk.BooleanVar(value=False)
+            var_result_is_ok.trace_add('write', container.on_check_change)
+            ck_result_is_ok = ttk.Checkbutton(lbf_filter_cat, text='Result OK', variable=var_result_is_ok)
+            ck_result_is_ok.grid(row=0, column=2, **grid_fw_options)
+            var_must_buy = tk.BooleanVar(value=False)
+            var_must_buy.trace_add('write', container.on_check_change)
+            ck_must_buy = ttk.Checkbutton(lbf_filter_cat, text='Must buy', variable=var_must_buy)
+            ck_must_buy.grid(row=0, column=3, **grid_fw_options)
             try:
                 # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
                 categories = list(container.editable_table.data['Category'].cat.categories)
@@ -230,24 +238,24 @@ class UEVMGui(tk.Tk):
             categories.insert(0, gui_g.s.default_category_for_all)
             var_category = tk.StringVar(value=categories[0])
             opt_category = ttk.Combobox(lbf_filter_cat, textvariable=var_category, values=categories)
-            opt_category.grid(row=1, column=0, **grid_fw_options)
+            opt_category.grid(row=1, column=0, columnspan=2, **grid_fw_options)
             var_global_search = tk.StringVar(value=gui_g.s.default_global_search)
             entry_search = ttk.Entry(lbf_filter_cat, textvariable=var_global_search)
-            entry_search.grid(row=1, column=1, **grid_fw_options)
+            entry_search.grid(row=1, column=2, columnspan=2, **grid_fw_options)
             entry_search.bind('<FocusIn>', self.del_entry_search)
             # entry_search.bind('<FocusOut>', container.search)
             btn_filter_by_text = ttk.Button(lbf_filter_cat, text='Filter', command=container.search)
-            btn_filter_by_text.grid(row=2, column=0, **grid_fw_options)
+            btn_filter_by_text.grid(row=2, column=0, columnspan=2, **grid_fw_options)
             btn_reset_search = ttk.Button(lbf_filter_cat, text='Reset All', command=container.reset_search)
-            btn_reset_search.grid(row=2, column=1, **grid_fw_options)
+            btn_reset_search.grid(row=2, column=2, columnspan=2, **grid_fw_options)
             lbf_filter_cat.columnconfigure('all', weight=1)  # important to make the buttons expand
 
             lblf_files = ttk.LabelFrame(self, text='Files')
             lblf_files.pack(**lblf_def_options)
             lbl_file_name = ttk.Label(lblf_files, text='Current File: ')
             lbl_file_name.grid(row=0, column=0, columnspan=3, **grid_fw_options)
-            entry_file_name_var = tk.StringVar(value=container.editable_table.file)
-            entry_file_name = ttk.Entry(lblf_files, textvariable=entry_file_name_var, state='readonly')
+            var_entry_file_name = tk.StringVar(value=container.editable_table.file)
+            entry_file_name = ttk.Entry(lblf_files, textvariable=var_entry_file_name, state='readonly')
             entry_file_name.grid(row=1, column=0, columnspan=3, **grid_fw_options)
             btn_save_file = ttk.Button(lblf_files, text='Save to File', command=container.save_file)
             btn_save_file.grid(row=2, column=0, **grid_fw_options)
@@ -283,12 +291,15 @@ class UEVMGui(tk.Tk):
             ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
             # store the controls that need to be accessible outside the class
-            self.entry_file_name_var = entry_file_name_var
-            self.entry_search = entry_search
+            self.var_entry_file_name = var_entry_file_name
             self.var_category = var_category
             self.var_global_search = var_global_search
             self.var_is_purchased = var_is_purchased
             self.var_is_not_obsolete = var_is_not_obsolete
+            self.var_must_buy = var_must_buy
+            self.var_result_is_ok = var_result_is_ok
+
+            self.entry_search = entry_search
             self.lbtf_quick_edit = lbtf_quick_edit
             self.canvas_image = canvas_image
 
@@ -478,6 +489,8 @@ class UEVMGui(tk.Tk):
         category = self.control_frame.var_category.get()
         purchased = self.control_frame.var_is_purchased.get()
         not_obsolete = self.control_frame.var_is_not_obsolete.get()
+        var_must_buy = self.control_frame.var_must_buy.get()
+        var_result_is_ok = self.control_frame.var_result_is_ok.get()
         gui_g.UEVM_filter_category = category
         self.toggle_pagination(forced_value=False)
         filter_dict = {}
@@ -493,6 +506,14 @@ class UEVMGui(tk.Tk):
             filter_dict['Obsolete'] = False
         else:
             filter_dict.pop('Obsolete', None)
+        if var_must_buy:
+            filter_dict['Must Buy'] = True
+        else:
+            filter_dict.pop('Must Buy', None)
+        if var_result_is_ok:
+            filter_dict['Test result'] = 'OK'
+        else:
+            filter_dict.pop('Test result', None)
 
         self.editable_table.search(filter_dict, global_search=search_text)
         # self.control_frame.reset_entry_search()
@@ -611,7 +632,7 @@ class UEVMGui(tk.Tk):
         Update the file name in the control frame
         """
         filename = self.editable_table.file
-        self.control_frame.entry_file_name_var.set(filename)
+        self.control_frame.var_entry_file_name.set(filename)
 
     def reload_data(self) -> None:
         """

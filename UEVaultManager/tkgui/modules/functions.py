@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-utility functions and tools
+Utilities functions and tools
 """
 import datetime
 import os

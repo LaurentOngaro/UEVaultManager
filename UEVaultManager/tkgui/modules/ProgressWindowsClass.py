@@ -1,6 +1,7 @@
 # coding=utf-8
 """
-This module contains the ProgressWindow class, which is a window that can be used to display the progress of a function
+Implementation for:
+- ProgressWindow: window to display the progress of a function
 """
 import os
 import queue

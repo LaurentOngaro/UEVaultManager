@@ -1,8 +1,7 @@
 # coding=utf-8
 """
-Class definition for:
+Implementation for:
 - MockLauncher: a mock launcher to handle the webview login
-function definition for :
 - do_webview_login() : launch the webview login
 """
 import json
