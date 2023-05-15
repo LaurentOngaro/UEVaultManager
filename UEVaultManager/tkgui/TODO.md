@@ -6,7 +6,6 @@
 
 ## To Do:
 
-- add direct options for filtering assets (obsolete, purchased, must buy...)
 - save and load for tcsv files
 - save and load for json files
 - update the PyPi package

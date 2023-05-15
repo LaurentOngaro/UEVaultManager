@@ -1,5 +1,8 @@
 # coding: utf-8
-
+"""
+Class definition for
+- LGDLFS: Local File System
+"""
 import json
 import logging
 import os
@@ -15,6 +18,10 @@ from .utils import clean_filename
 
 
 class LGDLFS:
+    """
+    Class to handle all local filesystem related tasks
+    :param config_file: Path to config file to use instead of default
+    """
 
     def __init__(self, config_file=None):
         self.log = logging.getLogger('LGDLFS')
@@ -210,26 +217,6 @@ class LGDLFS:
             os.remove(os.path.join(self.path, 'user.json'))
 
     @property
-    def entitlements(self):
-        if self._entitlements is not None:
-            return self._entitlements
-
-        try:
-            self._entitlements = json.load(open(os.path.join(self.path, 'entitlements.json')))
-            return self._entitlements
-        except Exception as error:
-            self.log.debug(f'Failed to load entitlements data: {error!r}')
-            return None
-
-    @entitlements.setter
-    def entitlements(self, entitlements):
-        if entitlements is None:
-            raise ValueError('Entitlements is none!')
-
-        self._entitlements = entitlements
-        json.dump(entitlements, open(os.path.join(self.path, 'entitlements.json'), 'w'), indent=2, sort_keys=True)
-
-    @property
     def assets(self):
         if self._assets is None:
             try:
@@ -254,26 +241,23 @@ class LGDLFS:
             sort_keys=True
         )
 
-    def _get_manifest_filename(self, app_name, version, platform=None):
-        if platform:
-            file_name = clean_filename(f'{app_name}_{platform}_{version}')
-        else:
-            file_name = clean_filename(f'{app_name}_{version}')
-        return os.path.join(self.path, self.manifests_folder, f'{file_name}.manifest')
-
-    def load_manifest(self, app_name, version, platform='Windows'):
-        try:
-            return open(self._get_manifest_filename(app_name, version, platform), 'rb').read()
-        except FileNotFoundError:  # all other errors should propagate
-            self.log.debug(f'Loading manifest failed, retrying without platform in filename...')
-            try:
-                return open(self._get_manifest_filename(app_name, version), 'rb').read()
-            except FileNotFoundError:  # all other errors should propagate
-                return None
-
-    def save_manifest(self, app_name, manifest_data, version, platform='Windows'):
-        with open(self._get_manifest_filename(app_name, version, platform), 'wb') as f:
-            f.write(manifest_data)
+    def delete_folder(self, folder: str, list_of_items_to_keep=None) -> bool:
+        """
+        Delete all the files in a folder that are not in the list_of_items_to_keep list
+        :param folder: The folder to clean
+        :param list_of_items_to_keep: The list of items to keep
+        """
+        if list_of_items_to_keep is None:
+            list_of_items_to_keep = []
+        for f in os.listdir(os.path.join(self.path, folder)):
+            app_name = f.rpartition('.')[0]
+            if list_of_items_to_keep is None or app_name not in list_of_items_to_keep:
+                try:
+                    os.remove(os.path.join(self.path, folder, f))
+                except Exception as error:
+                    self.log.warning(f'Failed to delete file "{f}": {error!r}')
+                    return False
+        return True
 
     def get_item_meta(self, app_name):
         # note: self._assets_metadata is filled ay the start of the list command by reading all the json files in the metadata folder
@@ -296,7 +280,12 @@ class LGDLFS:
         if os.path.exists(meta_file):
             os.remove(meta_file)
 
-    def get_item_extras(self, app_name: str):
+    def get_item_extras(self, app_name: str) -> dict:
+        """
+        Get the extras data for an app
+        :param app_name: The app name
+        :return: The extras data
+        """
         gm_file = app_name + '.json'
         extras = self.assets_extras_data.get(app_name, None)
         extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
@@ -311,17 +300,28 @@ class LGDLFS:
                     os.remove(extras_file)
                 except Exception as error:
                     self.log.error(f'Failed to delete extras file {extras_file}: {error!r}')
-            return None
+                return {}
         return extras
 
-    def set_item_extras(self, app_name: str, extras: dict, update_global_dict: True):
+    def set_item_extras(self, app_name: str, extras: dict, update_global_dict: True) -> None:
+        """
+        Save the extras data for an app
+        :param app_name: The app name
+        :param extras: The extras data
+        :param update_global_dict: Update the global dict with the new data
+        """
         extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
         self.log.debug(f'--- SAVING {len(extras)} extras data for {app_name} in {extras_file}')
         json.dump(extras, open(extras_file, 'w'), indent=2, sort_keys=True)
         if update_global_dict:
             self.assets_extras_data[app_name] = extras
 
-    def delete_item_extras(self, app_name: str, update_global_dict: True):
+    def delete_item_extras(self, app_name: str, update_global_dict: True) -> None:
+        """
+        Delete the extras data for an app
+        :param app_name: The app name
+        :param update_global_dict: Update the global dict with the new data
+        """
         if update_global_dict and self.assets_extras_data.get(app_name):
             del self.assets_extras_data[app_name]
         extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
@@ -331,39 +331,36 @@ class LGDLFS:
     def get_item_app_names(self):
         return sorted(self.assets_metadata.keys())
 
-    def clean_tmp_data(self):
-        for f in os.listdir(os.path.join(self.path, self.tmp_folder)):
-            try:
-                os.remove(os.path.join(self.path, self.tmp_folder, f))
-            except Exception as error:
-                self.log.warning(f'Failed to delete file "{f}": {error!r}')
+    def clean_tmp_data(self) -> None:
+        """
+        Delete all the files in the tmp folder
+        """
+        self.delete_folder(self.tmp_folder)
 
-    def clean_metadata(self, app_names_to_keep):
-        for f in os.listdir(os.path.join(self.path, self.metadata_folder)):
-            app_name = f.rpartition('.')[0]
-            if app_name not in app_names_to_keep:
-                try:
-                    os.remove(os.path.join(self.path, self.metadata_folder, f))
-                except Exception as error:
-                    self.log.warning(f'Failed to delete file "{f}": {error!r}')
+    def clean_metadata(self, app_names_to_keep: list) -> None:
+        """
+        Delete all the metadata files that are not in the app_names_to_keep list
+        :param app_names_to_keep: The list of app names to keep
+        """
+        self.delete_folder(self.metadata_folder, app_names_to_keep)
 
-    def clean_extras(self, app_names_to_keep):
-        for f in os.listdir(os.path.join(self.path, self.extras_folder)):
-            app_name = f.rpartition('.')[0]
-            if app_name not in app_names_to_keep:
-                try:
-                    os.remove(os.path.join(self.path, self.extras_folder, f))
-                except Exception as error:
-                    self.log.warning(f'Failed to delete file "{f}": {error!r}')
+    def clean_extras(self, app_names_to_keep: list) -> None:
+        """
+        Delete all the metadata files that are not in the app_names_to_keep list
+        :param app_names_to_keep: The list of app names to keep
+        """
+        self.delete_folder(self.extras_folder, app_names_to_keep)
 
-    def clean_manifests(self):
-        for f in os.listdir(os.path.join(self.path, self.manifests_folder)):
-            try:
-                os.remove(os.path.join(self.path, self.manifests_folder, f))
-            except Exception as error:
-                self.log.warning(f'Failed to delete file "{f}": {error!r}')
+    def clean_manifests(self) -> None:
+        """
+        Delete all the metadata files that are not in the app_names_to_keep list
+        """
+        self.delete_folder(self.manifests_folder)
 
-    def clean_logs_and_backups(self):
+    def clean_logs_and_backups(self) -> None:
+        """
+        Delete all the log and backup files
+        """
         for f in os.listdir(self.path):
             file_name_no_ext, file_ext = os.path.splitext(f)
             if '.log' in file_ext or '.bak' in file_ext:
@@ -409,23 +406,6 @@ class LGDLFS:
             return
         self._update_info = dict(last_update=time(), data=version_data)
         json.dump(self._update_info, open(os.path.join(self.path, 'version.json'), 'w'), indent=2, sort_keys=True)
-
-    def get_cached_sdl_data(self, app_name):
-        try:
-            return json.load(open(os.path.join(self.path, self.tmp_folder, f'{app_name}.json')))
-        except Exception as error:
-            self.log.debug(f'Failed to load cached SDL data: {error!r}')
-            return None
-
-    def set_cached_sdl_data(self, app_name, sdl_version, sdl_data):
-        if not app_name or not sdl_data:
-            return
-        json.dump(
-            dict(version=sdl_version, data=sdl_data),
-            open(os.path.join(self.path, self.tmp_folder, f'{app_name}.json'), 'w'),
-            indent=2,
-            sort_keys=True
-        )
 
     def generate_aliases(self):
         self.log.debug('Generating list of aliases...')
