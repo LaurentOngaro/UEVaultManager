@@ -10,10 +10,23 @@
 ############################
 
 # Name of website
-title: My Website
+title: UE VaultManager
 
 # Your name to show in the footer
-author: Some Person
+author: Laurent Ongaro
+
+# Certains paramètres de configuration ne peuvent pas être modifiés pour les sites GitHub Pages.
+# lsi: false
+# safe: true
+# source: [your repo's top level directory]
+# incremental: false
+# highlighter: rouge
+# gist:
+#   noscript: false
+# kramdown:
+#   math_engine: mathjax
+#   syntax_highlighter: rouge
+
 
 ###############################################
 # --- List of links in the navigation bar --- #
