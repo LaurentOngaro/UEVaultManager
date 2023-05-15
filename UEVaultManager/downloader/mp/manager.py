@@ -200,7 +200,7 @@ class DLManager(Process):
 
         if file_prefix_filter or file_exclude_filter or file_install_tag:
             self.log.info(f'Remaining files after filtering: {len(mc.added) + len(mc.changed)}')
-            # correct install size after filtering
+            # correct instalation size after filtering
             analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements if fm.filename in mc.added)
 
         if mc.removed:
@@ -231,7 +231,7 @@ class DLManager(Process):
         for fm in fmlist:
             self.hash_map[fm.filename] = fm.sha_hash.hex()
 
-            # chunks of unchanged files are not downloaded so we can skip them
+            # chunks of unchanged files are not downloaded, so we can skip them
             if fm.filename in mc.unchanged:
                 analysis_res.unchanged += fm.file_size
                 continue

@@ -16,7 +16,7 @@ def blob_to_num(in_str):
     It's essentially %03d for each char concatenated to a string.
     ...instead of just putting the fucking number in the JSON...
 
-    Also it's still little endian so we have to bitshift it.
+    Also, it's still little endian, so we have to bitshift it.
 
     """
     num = 0

@@ -1,3 +1,8 @@
+# coding=utf-8
+"""
+class definition for
+- EditCellWindow: the window to edit a cell
+"""
 import os
 import tkinter as tk
 from tkinter import ttk

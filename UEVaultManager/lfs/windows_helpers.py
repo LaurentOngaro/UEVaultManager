@@ -1,3 +1,7 @@
+# coding=utf-8
+"""
+Windows specific helper functions for registry access.
+"""
 import ctypes
 import logging
 import winreg

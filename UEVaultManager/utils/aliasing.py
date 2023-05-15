@@ -1,3 +1,7 @@
+# coding=utf-8
+"""
+Application aliases for the Epic Games Store.
+"""
 from string import ascii_lowercase, digits
 
 # Aliases generated:
@@ -16,26 +20,26 @@ from string import ascii_lowercase, digits
 
 allowed_characters = ascii_lowercase + digits
 roman = {
-    'i'    : '1',
-    'ii'   : '2',
-    'iii'  : '3',
-    'iv'   : '4',
-    'v'    : '5',
-    'vi'   : '6',
-    'vii'  : '7',
-    'viii' : '8',
-    'ix'   : '9',
-    'x'    : '10',
-    'xi'   : '11',
-    'xii'  : '12',
-    'xiii' : '13',
-    'xiv'  : '14',
-    'xv'   : '15',
-    'xvi'  : '16',
-    'xvii' : '17',
+    'i': '1',
+    'ii': '2',
+    'iii': '3',
+    'iv': '4',
+    'v': '5',
+    'vi': '6',
+    'vii': '7',
+    'viii': '8',
+    'ix': '9',
+    'x': '10',
+    'xi': '11',
+    'xii': '12',
+    'xiii': '13',
+    'xiv': '14',
+    'xv': '15',
+    'xvi': '16',
+    'xvii': '17',
     'xviii': '18',
-    'xix'  : '19',
-    'xx'   : '20'
+    'xix': '19',
+    'xx': '20'
 }
 
 
@@ -49,7 +53,7 @@ def generate_aliases(game_name, item_folder=None, split_words=True, app_name=Non
     # filter out empty parts
     game_parts = [p for p in game_parts if p]
 
-    _aliases = [game_name.lower().strip(), ' '.join(game_parts), ''.join(game_parts), ''.join(roman.get(p, p) for p in game_parts), ]
+    _aliases = [game_name.lower().strip(), ' '.join(game_parts), ''.join(game_parts), ''.join(roman.get(p, p) for p in game_parts)]
 
     # single word abbreviation
     try:

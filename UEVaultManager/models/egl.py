@@ -1,3 +1,4 @@
+# coding=utf-8
 from copy import deepcopy
 
 from UEVaultManager.utils.cli import str_to_bool

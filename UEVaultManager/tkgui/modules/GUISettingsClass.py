@@ -1,3 +1,10 @@
+# coding=utf-8
+"""
+class definition:
+- GUISettings: class containing all the settings for the GUI
+"""
+
+
 class GUISettings:
     """
     This class contains all the settings for the GUI.

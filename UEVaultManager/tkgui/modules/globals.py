@@ -1,3 +1,7 @@
+# coding=utf-8
+"""
+global variables and references to global objects
+"""
 import UEVaultManager.tkgui.modules.EditCellWindowClass as EditCellWindow
 import UEVaultManager.tkgui.modules.EditRowWindowClass as EditRowWindow
 from UEVaultManager.tkgui.modules.GUISettingsClass import GUISettings

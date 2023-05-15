@@ -1,6 +1,8 @@
-#!/usr/bin/env python
-# coding: utf-8
-
+# coding=utf-8
+"""
+Class definition for :
+- UEVaultManagerCLI: command line interface for UEVaultManager
+"""
 import argparse
 import csv
 import json
@@ -33,13 +35,21 @@ logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=loggin
 
 
 class UEVaultManagerCLI:
+    """
+    Command line interface for UEVaultManager
+    :param override_config: path to a config file to use instead of the default one
+    :param api_timeout: timeout for API requests
+    """
 
     def __init__(self, override_config=None, api_timeout=None):
         self.core = AppCore(override_config, timeout=api_timeout)
         self.logger = logging.getLogger('Cli')
         self.logging_queue = None
 
-    def setup_threaded_logging(self):
+    def setup_threaded_logging(self) -> QueueListener:
+        """
+        Setup logging for the CLI
+        """
         self.logging_queue = MPQueue(-1)
         handler = logging.StreamHandler()
         formatter = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
@@ -48,7 +58,12 @@ class UEVaultManagerCLI:
         ql.start()
         return ql
 
-    def _resolve_aliases(self, name):
+    def _resolve_aliases(self, name: str) -> str:
+        """
+        Resolve an alias
+        :param name: name to resolve
+        :return: real name
+        """
         # make sure aliases exist if not yet created
         self.core.update_aliases(force=False)
         name = name.strip()
@@ -62,7 +77,11 @@ class UEVaultManagerCLI:
         else:
             print(json.dumps(data))
 
-    def create_file_backup(self, file_src):
+    def create_file_backup(self, file_src: str) -> None:
+        """
+        Create a backup of a file
+        :param file_src: path to the file to back up
+        """
         # make a backup of the existing file
 
         # for files defined relatively to the config folder
@@ -78,12 +97,28 @@ class UEVaultManagerCLI:
         except FileNotFoundError:
             self.logger.info(f'File {file_src} has not been found')
 
-    def create_log_file_backup(self):
+    def create_log_file_backup(self) -> None:
+        """
+        Create a backup of the log files
+        """
         self.create_file_backup(self.core.ignored_assets_filename_log)
         self.create_file_backup(self.core.notfound_assets_filename_log)
         self.create_file_backup(self.core.bad_data_assets_filename_log)
 
-    def create_asset_from_data(self, item, asset_id, no_text_data, no_int_data, no_float_data, bool_true_data, bool_false_data):
+    def create_asset_from_data(
+        self, item, asset_id: str, no_text_data: str, no_int_data: int, no_float_data: float, bool_true_data: bool, bool_false_data: bool
+    ) -> (str, dict):
+        """
+        Create a dict containing all the data for an asset
+        :param item: item to get data from
+        :param asset_id: id of the asset
+        :param no_text_data: text to use if no text data is found
+        :param no_int_data: int value to use if no int data is found
+        :param no_float_data: float value to use if no float data is found
+        :param bool_true_data: bool (True) value to use if no bool data is found
+        :param bool_false_data: bool (False) value to use if no bool data is found
+        :return: (asset_id, dict containing all the data for an asset)
+        """
         record = {}
         metadata = item.metadata
         uid = metadata['id']
@@ -183,7 +218,11 @@ class UEVaultManagerCLI:
 
         return asset_id, record
 
-    def auth(self, args):
+    def auth(self, args) -> None:
+        """
+        Handle authentication
+        :param args: options passed to the command
+        """
         if args.auth_delete:
             self.core.lgd.invalidate_userdata()
             self.logger.info('User data deleted.')
@@ -264,9 +303,20 @@ class UEVaultManagerCLI:
         else:
             self.logger.error('Login attempt failed, please see log for details.')
 
-    def list_assets(self, args):
+    def list_assets(self, args) -> None:
+        """
+        List assets in the vault
+        :param args: options passed to the command
+        """
 
         def update_and_merge_csv_record_data(_asset, _items_in_file, _no_data_value) -> []:
+            """
+            Updates the data of the asset with the data from the items in the file
+            :param _asset: asset to update
+            :param _items_in_file: list of items in the file
+            :param _no_data_value: value to use when no data is available
+            :return: list of values to be written in the CSV file
+            """
             _asset_id = _asset[0]
             _csv_record = list(_asset[1].values())  # we need a list for the CSV comparison, not a dict
             # merge data from the items in the file (if exists) and those get by the application
@@ -314,7 +364,15 @@ class UEVaultManagerCLI:
                 _csv_record[price_index + 2] = on_sale
             return _csv_record
 
-        def update_and_merge_json_record_data(_asset, _items_in_file, _no_float_value, _no_bool_false_value) -> dict:
+        def update_and_merge_json_record_data(_asset, _items_in_file, _no_float_value: float, _no_bool_false_value: bool) -> dict:
+            """
+            Updates the data of the asset with the data from the items in the file
+            :param _asset: asset to update
+            :param _items_in_file: list of items in the file
+            :param _no_float_value:  value to use when no float data is available
+            :param _no_bool_false_value: value (False) to use when no bool data is available
+            :return:
+            """
             _asset_id = _asset[0]
             _json_record = _asset[1]
 
@@ -574,6 +632,11 @@ class UEVaultManagerCLI:
         print(f'\nTotal: {len(items)}')
 
     def list_files(self, args):
+        """
+        List files for a given app name or manifest url/path
+        :param args: options passed to the command
+        :return:
+        """
         if not args.override_manifest and not args.app_name:
             print('You must provide either a manifest url/path or app name!')
             return
@@ -622,7 +685,11 @@ class UEVaultManagerCLI:
                 # use the log output so this isn't included when piping file list into file
                 self.logger.info(f'Install tags: {", ".join(sorted(install_tags))}')
 
-    def status(self, args):
+    def status(self, args) -> None:
+        """
+        Print the information about the vault and the assets available
+        :param args: options passed to the command
+        """
         if not args.offline:
             try:
                 if not self.core.login():
@@ -658,7 +725,11 @@ class UEVaultManagerCLI:
             # prevent update message on close
             self.core.update_available = False
 
-    def info(self, args):
+    def info(self, args) -> None:
+        """
+        Print information about a given app name or manifest url/path
+        :param args: options passed to the command
+        """
         name_or_path = args.app_name_or_manifest
         app_name = manifest_uri = None
         if os.path.exists(name_or_path) or name_or_path.startswith('http'):
@@ -805,7 +876,11 @@ class UEVaultManagerCLI:
 
         if not args.json:
 
-            def print_info_item(local_item: InfoItem):
+            def print_info_item(local_item: InfoItem) -> None:
+                """
+                Prints an info item to the console
+                :param local_item:  The info item to print
+                """
                 if local_item.value is None:
                     print(f'- {local_item.name}: (None)')
                 elif isinstance(local_item.value, list):
@@ -851,7 +926,11 @@ class UEVaultManagerCLI:
                     json_out[key] = None
             return self._print_json(json_out, args.pretty_json)
 
-    def cleanup(self, args):
+    def cleanup(self, args) -> None:
+        """
+        Cleans up the local assets data folders and logs
+        :param args: options passed to the command
+        """
         before = self.core.lgd.get_dir_size()
 
         # delete metadata
@@ -877,7 +956,11 @@ class UEVaultManagerCLI:
         after = self.core.lgd.get_dir_size()
         self.logger.info(f'Cleanup complete! Removed {(before - after) / 1024 / 1024:.02f} MiB.')
 
-    def get_token(self, args):
+    def get_token(self, args) -> None:
+        """
+        Gets the access token for the current user
+        :param args: options passed to the command
+        """
         if not self.core.login(force_refresh=args.bearer):
             self.logger.error('Login failed!')
             return
@@ -902,7 +985,11 @@ class UEVaultManagerCLI:
             return
         self.logger.info(f'Exchange code: {token["code"]}')
 
-    def edit_assets(self, args):
+    def edit_assets(self, args) -> None:
+        """
+        Edit assets in the database using a GUI
+        :param args: options passed to the command
+        """
         if not args.input:
             input_filename = gui_g.s.csv_filename
             self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
@@ -938,6 +1025,9 @@ class UEVaultManagerCLI:
 
 
 def main():
+    """
+    Main function
+    """
     parser = argparse.ArgumentParser(description=f'UEVaultManager v{__version__} - "{__codename__}"')
     parser.register('action', 'parsers', HiddenAliasSubparsersAction)
 

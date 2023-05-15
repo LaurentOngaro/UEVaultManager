@@ -1,3 +1,10 @@
+# coding=utf-8
+"""
+Class definition for :
+- SaferDict: a dictionary subclass that provides a safer alternative to handle non-existing keys
+"""
+
+
 class SaferDict(dict):
     """
     A dictionary subclass that provides a safer alternative to handle non-existing keys.

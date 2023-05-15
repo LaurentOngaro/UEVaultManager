@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 GUI module for UEVaultManager
 this can be run directly by executing this script

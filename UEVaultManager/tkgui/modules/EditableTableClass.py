@@ -1,3 +1,8 @@
+# coding=utf-8
+"""
+Class definition for
+- EditableTable is a custom class that extends the pandastable.Table class, providing additional functionality
+"""
 import webbrowser
 from tkinter import ttk
 

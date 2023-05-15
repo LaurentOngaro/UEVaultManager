@@ -50,7 +50,7 @@ def write_fstring(bio, string):
 
 
 def get_chunk_dir(version):
-    # The lowest version I've ever seen was 12 (Unreal Tournament), but for completeness sake leave all of them in
+    # The lowest version I've ever seen was 12 (Unreal Tournament), but for completeness’s sake leave all of them in
     if version >= 15:
         return 'ChunksV4'
     elif version >= 6:
@@ -251,7 +251,7 @@ class ManifestMeta:
     def build_id(self):
         if self._build_id:
             return self._build_id
-        # this took a while to figure out and get right and I'm still not sure if it'll work for all games :x
+        # this took a while to figure out and get right, and I'm still not sure if it'll work for all games :x
         s = hashlib.sha1()
         s.update(struct.pack('<I', self.app_id))
         s.update(self.app_name.encode('utf-8'))
@@ -419,7 +419,7 @@ class CDL:
         for chunk in _cdl.elements:
             chunk.guid = struct.unpack('<IIII', bio.read(16))
 
-        # hash is a 64 bit integer, no idea how it's calculated but we don't need to know that.
+        # hash is a 64-bit integer, no idea how it's calculated, but we don't need to know that.
         for chunk in _cdl.elements:
             chunk.hash = struct.unpack('<Q', bio.read(8))[0]
 

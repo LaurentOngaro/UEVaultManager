@@ -1,3 +1,14 @@
+# coding=utf-8
+"""
+class definition for
+- WidgetType: enum for the widget types
+- ExtendedWidget: base class for all widgets in the app
+- ExtendedEntry: extended entry widget
+- ExtendedText: extended text widget
+- ExtendedLabel: extended label widget
+- ExtendedCheckButton: extended checkbutton widget
+"""
+
 import inspect
 import tkinter as tk
 from enum import Enum

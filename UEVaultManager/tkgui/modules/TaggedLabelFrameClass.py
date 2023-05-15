@@ -1,3 +1,9 @@
+# coding=utf-8
+"""
+Class definition for :
+- TaggedLabelFrame: a custom LabelFrame widget that allows child widgets to be identified by tags
+
+"""
 import tkinter as tk
 from tkinter import ttk
 
@@ -47,14 +53,12 @@ class TaggedLabelFrame(ttk.LabelFrame):
         label.pack(side=tk.LEFT, **self.pack_options)
 
         widget_class = {
-            WidgetType.ENTRY      : (lambda **kwargs: ExtendedEntry)(master=frame, tag=tag, default_content=default_content, height=height,
-                                                                     width=width),
-            WidgetType.TEXT       :
-                (lambda **kwargs: ExtendedText)(master=frame, wrap=tk.WORD, tag=tag, default_content=default_content, height=height, width=width),
-            WidgetType.LABEL      : (lambda **kwargs: ExtendedLabel)(master=frame, tag=tag, default_content=default_content, height=height,
-                                                                     width=width),
+            WidgetType.ENTRY: (lambda **kwargs: ExtendedEntry)(master=frame, tag=tag, default_content=default_content, height=height, width=width),
+            WidgetType.TEXT:
+            (lambda **kwargs: ExtendedText)(master=frame, wrap=tk.WORD, tag=tag, default_content=default_content, height=height, width=width),
+            WidgetType.LABEL: (lambda **kwargs: ExtendedLabel)(master=frame, tag=tag, default_content=default_content, height=height, width=width),
             WidgetType.CHECKBUTTON:
-                (lambda **kwargs: ExtendedCheckButton)(master=frame, tag=tag, default_content=default_content, height=height, width=width)
+            (lambda **kwargs: ExtendedCheckButton)(master=frame, tag=tag, default_content=default_content, height=height, width=width)
         }.get(widget_type)
         if widget_class is None:
             log_error(f'Invalid widget type: {widget_type}')

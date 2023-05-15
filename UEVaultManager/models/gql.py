@@ -1,3 +1,4 @@
+# coding=utf-8
 # GQL queries needed for the EGS API
 
 uplay_codes_query = '''

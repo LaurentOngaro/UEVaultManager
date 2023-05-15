@@ -1,3 +1,7 @@
+# coding=utf-8
+"""
+utility functions and tools
+"""
 import datetime
 import os
 import time

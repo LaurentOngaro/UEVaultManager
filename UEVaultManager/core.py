@@ -1,5 +1,9 @@
-# coding: utf-8
-
+# coding=utf-8
+"""
+class definition for:
+- AppCore: handles most of the lower level interaction with the downloader, lfs, and api components to make writing CLI/GUI code easier and cleaner and avoid duplication.
+- CSV_headings: contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
+"""
 import json
 import logging
 import os
@@ -77,6 +81,8 @@ class AppCore:
     AppCore handles most of the lower level interaction with
     the downloader, lfs, and api components to make writing CLI/GUI
     code easier and cleaner and avoid duplication.
+    :param override_config: path to a config file to use instead of the default
+    :param timeout: timeout in seconds for requests
     """
     _egl_version = '11.0.1-14907503+++Portal+Release-Live'
 
@@ -144,7 +150,10 @@ class AppCore:
         self.thread_executor_must_stop = False
         self.engine_version_for_obsolete_assets = '4.26'
 
-    def setup_assets_logging(self):
+    def setup_assets_logging(self) -> None:
+        """
+        Setup logging for ignored, not found and bad data assets
+        """
         formatter = logging.Formatter('%(message)s')
         message = f"-----\n{datetime.now().strftime(self.default_datetime_format)} Log Started\n-----\n"
 
@@ -328,17 +337,34 @@ class AppCore:
         self.logged_in = True
         return True
 
-    def update_check_enabled(self):
+    def update_check_enabled(self) -> bool:
+        """
+        Returns whether update checks are enabled or not
+        :return: True if update checks are enabled, False otherwise
+        """
         return not self.lgd.config.getboolean('UEVaultManager', 'disable_update_check', fallback=False)
 
-    def update_notice_enabled(self):
+    def update_notice_enabled(self) -> bool:
+        """
+        Returns whether update notices are enabled or not
+        :return: True if update notices are enabled, False otherwise
+        """
         if self.force_show_update:
             return True
         return not self.lgd.config.getboolean('UEVaultManager', 'disable_update_notice', fallback=not is_windows_mac_or_pyi())
 
-    def check_for_updates(self, force=False):
+    def check_for_updates(self, force=False) -> None:
+        """
+        Checks for updates and sets the update_available flag accordingly
+        :param force: force update check
+        """
 
         def version_tuple(v):
+            """
+            Converts a version string to a tuple of ints
+            :param v: version string
+            :return:  tuple of ints
+            """
             return tuple(map(int, (v.split('.'))))
 
         cached = self.lgd.get_cached_version()
@@ -356,8 +382,11 @@ class AppCore:
 
         self.apply_lgd_config(version_info)
 
-    def apply_lgd_config(self, version_info=None):
-        """Applies configuration options returned by update API"""
+    def apply_lgd_config(self, version_info=None) -> None:
+        """
+        Applies configuration options returned by update API
+        :param version_info: version info dict
+        """
         if not version_info:
             version_info = self.lgd.get_cached_version()['data']
         # if cached data is invalid
@@ -375,15 +404,29 @@ class AppCore:
         if lgd_config := version_info.get('legendary_config'):
             self.webview_killswitch = lgd_config.get('webview_killswitch', False)
 
-    def get_update_info(self):
+    def get_update_info(self) -> dict:
+        """
+        Returns update info dict
+        :return: update info dict
+        """
         return self.lgd.get_cached_version()['data'].get('release_info')
 
-    def update_aliases(self, force=False):
+    def update_aliases(self, force=False) -> None:
+        """
+        Updates aliases if enabled
+        :param force: force alias update
+        """
         _aliases_enabled = not self.lgd.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False)
         if _aliases_enabled and (force or not self.lgd.aliases):
             self.lgd.generate_aliases()
 
     def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
+        """
+        Returns a list of assets for the given platform.
+        :param update_assets: if True, always fetches a new list of assets from the server
+        :param platform: platform to fetch assets for
+        :return: list of AppAsset objects
+        """
         # do not save and always fetch list when platform is overridden
         if not self.lgd.assets or update_assets or platform not in self.lgd.assets:
             # if not logged in, return empty list
@@ -400,7 +443,14 @@ class AppCore:
 
         return self.lgd.assets[platform]
 
-    def get_asset(self, app_name, platform='Windows', update=False) -> AppAsset:
+    def get_asset(self, app_name: str, platform='Windows', update=False) -> AppAsset:
+        """
+        Returns an AppAsset object for the given app name and platform
+        :param app_name: app name to get
+        :param platform: platform to get asset for
+        :param update: force update of asset list
+        :return: AppAsset object
+        """
         if update or platform not in self.lgd.assets:
             self.get_assets(update_assets=True, platform=platform)
 
@@ -410,6 +460,12 @@ class AppCore:
             raise ValueError
 
     def asset_available(self, item: App, platform='Windows') -> bool:
+        """
+        Returns whether an asset is available for the given item and platform
+        :param item: item to check
+        :param platform:
+        :return: True if asset is available, False otherwise
+        """
         # Just say yes for Origin titles
         if item.third_party_store:
             return True
@@ -421,19 +477,43 @@ class AppCore:
             return False
 
     def get_item(self, app_name, update_meta=False, platform='Windows') -> App:
+        """
+        Returns an App object
+        :param app_name: name to get
+        :param update_meta: force update of metadata
+        :param platform: platform to get app for
+        :return: App object
+        """
         if update_meta:
             self.get_asset_list(True, platform=platform)
         return self.lgd.get_item_meta(app_name)
 
     def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[App], Dict[str, List[App]]):
+        """
+        Returns a list of all available assets for the given platform
+        :param update_assets: force update of asset list
+        :param platform: platform to get assets for
+        :param filter_category: filter by category
+        :param force_refresh: force refresh of asset list
+        :return: Assets list
+        """
 
         # Cancel all outstanding tasks and shut down the executor
         def stop_executor(tasks) -> None:
+            """
+            Cancel all outstanding tasks and shut down the executor
+            :param tasks: tasks to cancel
+            """
             for _, task in tasks.items():
                 task.cancel()
             self.thread_executor.shutdown(wait=False)
 
         def fetch_asset_meta(name: str) -> bool:
+            """
+            Fetches asset metadata for the given app name and adds it to the list of assets
+            :param name: app name
+            :return: True if successful, False otherwise
+            """
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
 
@@ -717,7 +797,10 @@ class AppCore:
 
     # end def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
 
-    def _prune_metadata(self):
+    def _prune_metadata(self) -> None:
+        """
+        Compile a list of assets without assets, then delete their metadata
+        """
         # compile list of assets without assets, then delete their metadata
         available_assets = set()
         available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
@@ -726,8 +809,11 @@ class AppCore:
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
             self.lgd.delete_item_meta(app_name)
 
-    def _prune_extras_data(self, update_global_dict: True):
-        # compile list of assets without assets, then delete their extras data
+    def _prune_extras_data(self, update_global_dict: True) -> None:
+        """
+        Compile a list of assets without assets, then delete their extras data
+        :param update_global_dict:  if True, update the global dict
+        """
         available_assets = set()
         available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
@@ -735,11 +821,20 @@ class AppCore:
             self.log.debug(f'Removing old/unused extras data for "{app_name}"')
             self.lgd.delete_item_extras(app_name, update_global_dict=update_global_dict)
 
-    def _save_metadata(self, assets):
+    def _save_metadata(self, assets) -> None:
+        """
+        Save the metadata for the given assets
+        :param assets:  List of assets to save
+        """
         for app in assets:
             self.lgd.set_item_meta(app.app_name, app)
 
-    def _save_extras_data(self, extras: dict, update_global_dict: True):
+    def _save_extras_data(self, extras: dict, update_global_dict: True) -> None:
+        """
+        Save the extras data for the given assets
+        :param extras: Dict of extras data to save
+        :param update_global_dict: if True, update the global dict
+        """
         for app_name, eg_extras in extras.items():
             self.lgd.set_item_extras(app_name=app_name, extras=eg_extras, update_global_dict=update_global_dict)
 
@@ -775,24 +870,25 @@ class AppCore:
         self.update_aliases(force=True)
         return _ret
 
-    def get_app_environment(self, app_name) -> dict:
-        # get environment overrides from config
-        env = dict()
-        if 'default.env' in self.lgd.config:
-            env |= {k: v for k, v in self.lgd.config['default.env'].items() if v and not k.startswith(';')}
-        if f'{app_name}.env' in self.lgd.config:
-            env |= {k: v for k, v in self.lgd.config[f'{app_name}.env'].items() if v and not k.startswith(';')}
-
-        return env
-
     @staticmethod
     def load_manifest(data: bytes) -> Manifest:
+        """
+        Load a manifest
+        :param data: Bytes object to load the manifest from
+        :return: Manifest object
+        """
         if data[0:1] == b'{':
             return JSONManifest.read_all(data)
         else:
             return Manifest.read_all(data)
 
     def get_cdn_urls(self, item, platform='Windows'):
+        """
+        Get the CDN URLs
+        :param item: Item to get the CDN URLs for
+        :param platform: Platform to get the CDN URLs for
+        :return: List of CDN URLs
+        """
         m_api_r = self.egs.get_item_manifest(item.namespace, item.catalog_item_id, item.app_name, platform)
 
         # never seen this outside the launcher itself, but if it happens: PANIC!
@@ -816,6 +912,13 @@ class AppCore:
         return manifest_urls, base_urls, manifest_hash
 
     def get_cdn_manifest(self, item, platform='Windows', disable_https=False):
+        """
+        Get the CDN manifest
+        :param item: Item to get the CDN manifest for
+        :param platform: Platform to get the CDN manifest for
+        :param disable_https: Disable HTTPS for the manifest URLs
+        :return: list of base URLs, manifest hash
+        """
         manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(item, platform)
         if not manifest_urls:
             raise ValueError('No manifest URLs returned by API')
@@ -847,7 +950,12 @@ class AppCore:
 
         return manifest_bytes, base_urls
 
-    def get_uri_manifest(self, uri):
+    def get_uri_manifest(self, uri: str) -> (bytes, List[str]):
+        """
+        Get the manifest
+        :param uri: URI to get the manifest from
+        :return:  Manifest data and base URLs
+        """
         if uri.startswith('http'):
             r = self.egs.unauth_session.get(uri)
             r.raise_for_status()
@@ -860,16 +968,13 @@ class AppCore:
 
         return new_manifest_data, base_urls
 
-    def get_delta_manifest(self, base_url, old_build_id, new_build_id):
-        """Get optimized delta manifest (doesn't seem to exist for most games)"""
-        if old_build_id == new_build_id:
-            return None
-
-        r = self.egs.unauth_session.get(f'{base_url}/Deltas/{new_build_id}/{old_build_id}.delta')
-        return r.content if r.status_code == 200 else None
-
     # Check if the UE assets metadata cache must be updated
-    def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False):
+    def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False) -> None:
+        """
+        Check if the UE assets metadata cache must be updated
+        :param assets_count: assets count from the API
+        :param force_refresh: force the refresh of the cache
+        """
         self.cache_is_invalidate = False
         cached = self.lgd.get_ue_assets_cache_data()
         cached_assets_count = cached['ue_assets_count']
@@ -889,8 +994,11 @@ class AppCore:
         else:
             self.log.info(f'Data cache is still valid. Cache age is {str(timedelta(seconds=date_diff))}')
 
-    def clean_exit(self, code=0):
-        """ Do cleanup, config saving, and exit. """
+    def clean_exit(self, code=0) -> None:
+        """
+        Do cleanup, config saving, and quit
+        :param code: exit code
+        """
         self.lgd.save_config()
         logging.shutdown()
         exit(code)

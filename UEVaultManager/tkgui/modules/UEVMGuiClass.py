@@ -1,3 +1,9 @@
+# coding=utf-8
+"""
+Class definition for
+- UEVMGui the main window of the application
+- UEVMGuiHiddenRoot a hidden root window for the application
+"""
 import os
 import tkinter as tk
 from tkinter import filedialog as fd
@@ -172,11 +178,19 @@ class UEVMGui(tk.Tk):
         """
 
         # delete the temporary text in filter value entry
-        def reset_entry_search(self, _event=None):
+        def reset_entry_search(self, _event=None) -> None:
+            """
+            Reset the search entry to the default text.
+            :param _event: 
+            """
             self.entry_search.delete(0, 'end')
             self.entry_search.insert(0, gui_g.s.default_global_search)
 
-        def del_entry_search(self, _event=None):
+        def del_entry_search(self, _event=None) -> None:
+            """
+            Delete the text in the search entry.
+            :param _event:
+            """
             self.entry_search.delete(0, 'end')
 
         def __init__(self, container):

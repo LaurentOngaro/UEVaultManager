@@ -1,8 +1,17 @@
+# coding=utf-8
+"""
+Class definitions for:
+- HiddenAliasSubparsersAction: Subclass of argparse._SubParsersAction that hides aliases from the help output.
+"""
 import argparse
 
 
 # noinspection PyUnresolvedReferences,PyProtectedMember
 class HiddenAliasSubparsersAction(argparse._SubParsersAction):
+    """
+    Subclass of argparse._SubParsersAction that hides aliases from the help output.
+    """
+
     def add_parser(self, name, **kwargs):
         # set prog from the existing prefix
         if kwargs.get('prog') is None:

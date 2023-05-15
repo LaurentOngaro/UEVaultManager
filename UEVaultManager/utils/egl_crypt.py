@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Stripped down version of https://github.com/boppreh/aes which is in turn based
 on https://github.com/bozhu/AES-Python with ECB decryption added.
