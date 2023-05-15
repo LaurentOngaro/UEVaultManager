@@ -383,6 +383,12 @@ class EPCAPI:
         return records
 
     def find_asset_url(self, asset_name: str, timeout=10.0) -> []:
+        """
+        Find the asset url from the asset name by searching the asset name in the unreal engine marketplace
+        :param asset_name: asset name to search
+        :param timeout: timeout for the request
+        :return: (The asset url, the asset name , the grab result code)
+        """
         # remove the suffix _EngineVersion (ex _4.27) at the end of the name to have a valid search value
         regex = r"_[4|5]\.\d{1,2}$"
         converted_name = re.sub(regex, '', asset_name, 0)
@@ -434,6 +440,14 @@ class EPCAPI:
 
     #  get the extras data of an asset (price, review...)
     def get_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
+        """
+        Get the extras data of an asset (price, review...)
+        :param asset_name: name of the asset
+        :param asset_title: title of the asset
+        :param timeout: connection timeout
+        :param verbose_mode: verbose mode
+        :return: a dict with the extras data
+        """
         not_found_price = 0.0
         not_found_review = 0.0
         supported_versions = ''
