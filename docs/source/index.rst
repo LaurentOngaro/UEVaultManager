@@ -6,7 +6,7 @@ Welcome to UEVaultManager's documentation!
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. image:: ./assets/UEVM_200x200.png
+.. image:: https://laurentongaro.github.io/UEVaultManager/statics/UEVM_200x200.png
     :alt: UEVaultManager logo
     :align: center
 

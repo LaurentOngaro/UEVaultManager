@@ -1,3 +1,10 @@
+# coding=utf-8
+"""
+Class definition for:
+- MockLauncher: a mock launcher to handle the webview login
+function definition for :
+- do_webview_login() : launch the webview login
+"""
 import json
 import logging
 import os
@@ -24,7 +31,7 @@ except Exception as error:
 login_url = 'https://www.epicgames.com/id/login'
 sid_url = 'https://www.epicgames.com/id/api/redirect?'
 logout_url = f'https://www.epicgames.com/id/logout?productName=epic-games&redirectUrl={login_url}'
-goodbye_url = 'https://legendary.gl/goodbye'
+goodbye_url = 'https://laurentongaro.github.io/UEVaultManager/statics/goodbye/index.html'
 window_js = '''
 window.ue = {
     signinprompt: {
@@ -50,6 +57,11 @@ sid_req.send();
 
 
 class MockLauncher:
+    """
+    Mock launcher to handle the webview login.
+    :param callback_sid: callback function to handle the SID login
+    :param callback_code: callback function to handle the exchange code
+    """
 
     def __init__(self, callback_sid, callback_code):
         self.callback_sid = callback_sid
@@ -59,7 +71,10 @@ class MockLauncher:
         self.destroy_on_load = False
         self.callback_result = None
 
-    def on_loaded(self):
+    def on_loaded(self) -> None:
+        """
+        Callback function called when the login page is loaded.
+        """
         url = self.window.get_current_url()
         logger.debug(f'Loaded url: {url.partition("?")[0]}')
 
@@ -78,14 +93,27 @@ class MockLauncher:
         elif 'logout' in url:
             self.inject_js = True
 
-    def nop(self, *args, **kwargs):
+    def nop(self, *args, **kwargs) -> None:
+        """
+        No operation function.
+        :param args: arguments
+        :param kwargs: keyword arguments
+        """
         return
 
     @staticmethod
-    def open_url_external(url):
+    def open_url_external(url: str) -> None:
+        """
+        Open the given url in the default browser.
+        :param url: url to open
+        """
         webbrowser.open(url)
 
-    def set_exchange_code(self, exchange_code):
+    def set_exchange_code(self, exchange_code: str) -> None:
+        """
+        Callback function called when the exchange code is received.
+        :param exchange_code: exchange code
+        """
         self.inject_js = False
         logger.debug('Got exchange code (stage 1)!')
         # The default Windows webview retains cookies, GTK/Qt do not. Therefore, we can
@@ -104,14 +132,21 @@ class MockLauncher:
             # so we'll load a small goodbye site first.
             self.window.load_url(goodbye_url)
 
-    def trigger_sid_exchange(self):
+    def trigger_sid_exchange(self) -> None:
+        """
+        Trigger the SID exchange.
+        """
         # check if code-based login hasn't already set the destroying flag
         if not self.destroy_on_load:
             logger.debug('Injecting SID JS')
             # inject JS to get SID API response and call our API
             self.window.evaluate_js(get_sid_js)
 
-    def login_sid(self, sid_json):
+    def login_sid(self, sid_json: str) -> None:
+        """
+        Login with the given SID.
+        :param sid_json: SID json
+        """
         # Try SID login, then log out
         try:
             j = json.loads(sid_json)
@@ -127,7 +162,12 @@ class MockLauncher:
             self.window.load_url(logout_url)
 
 
-def do_webview_login(callback_sid=None, callback_code=None):
+def do_webview_login(callback_sid=None, callback_code=None) -> None:
+    """
+    Open a webview window to log in to Epic Games.
+    :param callback_sid: callback function to handle the SID login
+    :param callback_code: callback function to handle the exchange code
+    """
     api = MockLauncher(callback_sid=callback_sid, callback_code=callback_code)
     url = login_url
 
