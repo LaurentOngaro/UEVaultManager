@@ -291,9 +291,9 @@ defaults:
 exclude:
   - CHANGELOG.md
   - LICENSE
-  - README.md
   - screenshot.png
   - docs/
+  - TODO.md
 
 plugins:
   - jekyll-paginate
