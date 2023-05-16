@@ -115,6 +115,7 @@ Usage
       -h, --help            Show this help message and exit
       --offline             Only print offline status information, do not login
       --json                Show status in JSON format
+      -g,  --gui            Display the output in a windows instead of using the console
 
 
   Command: edit

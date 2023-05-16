@@ -2,7 +2,6 @@
 """
 Implementation for:
 - UEVMGui the main window of the application
-- UEVMGuiHiddenRoot a hidden root window for the application
 """
 import os
 import tkinter as tk
@@ -16,19 +15,6 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.functions import set_custom_style
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
-
-
-class UEVMGuiHiddenRoot(ttk.Window):
-    """
-    This class is used to create a hidden root window for the application.
-    Usefull for creating a window that is not visible to the user, but still has the ability to child windows
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.title('UEVMGui Hidden window')
-        self.geometry('100x150')
-        self.withdraw()
 
 
 class UEVMGui(tk.Tk):
@@ -140,13 +126,20 @@ class UEVMGui(tk.Tk):
             btn_zoom_out = ttk.Button(lblf_display, text='Zoom Out', command=container.editable_table.zoom_out)
             btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
+            lblf_commands = ttk.LabelFrame(self, text='Cli commands')
+            lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
+            # noinspection PyArgumentList
+            btn_status = ttk.Button(lblf_commands, text='Run Status', command=container.run_cli_status)
+            btn_status.pack(**pack_def_options, side=tk.LEFT)
+
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
             # noinspection PyArgumentList
+            btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Controls', command=container.toggle_controls_pane)
+            btn_toggle_controls.pack(**pack_def_options, side=tk.LEFT)
+            # noinspection PyArgumentList
             btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
-            btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Controls', command=container.toggle_controls_pane)
-            btn_toggle_controls.pack(**pack_def_options, side=tk.RIGHT)
 
             # Bind events for the Entry widget
             entry_page_num.bind('<FocusOut>', container.on_entry_page_num_changed)
@@ -705,3 +698,13 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(f'Data rebuilt from {self.editable_table.file}')
                 self.update_page_numbers()
                 self.update_category_var()
+
+    @staticmethod
+    def run_cli_status() -> None:
+        """
+        Execute the 'status' command and display the result in DisplayContentWindow
+        """
+        gui_g.UEVM_cli_args['offline'] = True  # we don't need an update of the data
+        if gui_g.display_content_window_ref is None or not gui_g.display_content_window_ref.winfo_viewable():
+            # we display the window only if it is not already displayed
+            gui_g.UEVM_cli_ref.status(gui_g.UEVM_cli_args)

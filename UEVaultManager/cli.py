@@ -18,19 +18,21 @@ from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from sys import exit, stdout
+
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
-import UEVaultManager.tkgui.modules.UEVMGuiClass as gui_w  # using the shortest variable name for globals for convenience
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
-from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
-from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
-from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
+from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
+from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
+from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
+from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
+from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
@@ -419,7 +421,7 @@ class UEVaultManagerCLI:
             # check if the GUI is already running
             if gui_g.UEVM_gui_ref is None:
                 # create a fake root because ProgressWindow must always be a top level window
-                gui_g.UEVM_gui_ref = gui_w.UEVMGuiHiddenRoot()
+                gui_g.UEVM_gui_ref = UEVMGuiHiddenRoot()
                 uewm_gui_exists = False
             else:
                 uewm_gui_exists = True
@@ -681,7 +683,7 @@ class UEVaultManagerCLI:
 
     def status(self, args) -> None:
         """
-        Print the information about the vault and the assets available
+        Print the information about the vault and the available assets
         :param args: options passed to the command
         """
         if not args.offline:
@@ -700,8 +702,6 @@ class UEVaultManagerCLI:
         else:
             user_name = self.core.uevmlfs.userdata['displayName']
 
-        assets_available = len(self.core.get_asset_list(update_assets=not args.offline))
-
         cache_information = self.core.uevmlfs.get_ue_assets_cache_data()
         update_information = self.core.uevmlfs.get_cached_version()
         last_update = update_information.get('last_update', '')
@@ -714,26 +714,43 @@ class UEVaultManagerCLI:
 
         json_content = {
             'Epic account': user_name,  #
-            'Assets available': assets_available,  #
             'Last data update': last_update,
             'Last cache update': last_cache_update,
             'Config directory': self.core.uevmlfs.path,
             'Platform': f'{platform()} ({os.name})',
             'Current version': f'{__version__} - {__codename__}',
-            'Update available': 'yes' if self.core.update_available else 'no'
         }
-        # if True and update_information is not None: # debug only
-        if self.core.update_available and update_information is not None:
-            json_content['Update info'] = '\n\n'
-            json_content['New version'] = f'{update_information["version"]} - {update_information["codename"]}'
-            json_content['Release summary'] = update_information['summary']
-            json_content['Release Url'] = update_information['release_url']
-            json_content['Update recommendation'] = update_information['severity']
+        if not args.offline:
+            assets_available = len(self.core.get_asset_list(update_assets=not args.offline))
+            json_content['Assets available'] = assets_available
+            json_content['Update available'] = 'yes' if self.core.update_available else 'no'
+
+            if self.core.update_available and update_information is not None:
+                json_content['Update info'] = '\n\n'
+                json_content['New version'] = f'{update_information["version"]} - {update_information["codename"]}'
+                json_content['Release summary'] = update_information['summary']
+                json_content['Release Url'] = update_information['release_url']
+                json_content['Update recommendation'] = update_information['severity']
 
         if args.json:
             return self._print_json(json_content, args.pretty_json)
 
-        json_print_key_val(json_content)
+        if args.gui:
+            # check if the GUI is already running
+            if gui_g.UEVM_gui_ref is None:
+                # create a fake root because DisplayContentWindow must always be a top level window
+                gui_g.UEVM_gui_ref = UEVMGuiHiddenRoot()
+                uewm_gui_exists = False
+            else:
+                uewm_gui_exists = True
+            if gui_g.display_content_window_ref is None:
+                _ = DisplayContentWindow(title='UEVM: status command output', quit_on_close=not uewm_gui_exists)
+
+            json_print_key_val(json_content, output_on_gui=True)
+            if not uewm_gui_exists:
+                gui_g.UEVM_gui_ref.mainloop()
+        else:
+            json_print_key_val(json_content)
 
         # prevent update message on close
         self.core.update_available = False
@@ -1012,19 +1029,11 @@ class UEVaultManagerCLI:
         app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
         gui_g.UEVM_log_ref = self.logger
         gui_g.UEVM_cli_ref = self
-        # args can not be used as it because it's an object that mainly run as a dict (but it's not)
-        # so we need to convert it to a dict first
-        temp_dict = vars(args)
-        # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
-        temp_dict['output'] = input_filename
-        temp_dict['csv'] = True  # force csv output
-        temp_dict['gui'] = True
-        # create a SaferDict object from the dict (it will avoid errors when trying to access non-existing keys)
-        gui_g.UEVM_cli_args = SaferDict({})
-        # copy the dict content to the SaferDict object
-        gui_g.UEVM_cli_args.copy_from(temp_dict)
 
-        gui_g.UEVM_gui_ref = gui_w.UEVMGui(
+        # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
+        gui_f.init_gui_args(args, additional_args={'output': input_filename})
+
+        gui_g.UEVM_gui_ref = UEVMGui(
             title=gui_g.s.app_title,
             width=gui_g.s.app_width,
             height=gui_g.s.app_height,
@@ -1143,7 +1152,7 @@ def main():
 
     status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not login')
     status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
-
+    status_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
     clean_parser.add_argument(
         '-m,'
         '--delete-metadata', dest='delete_metadata', action='store_true', help='Also delete metadata files. They are kept by default'

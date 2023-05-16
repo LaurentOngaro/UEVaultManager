@@ -16,6 +16,7 @@ from screeninfo import get_monitors
 from termcolor import colored
 
 from UEVaultManager.tkgui.modules import globals as gui_g
+from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 
 
 def log_format_message(name: str, levelname: str, message: str) -> str:
@@ -318,7 +319,27 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
     result = '\n'.join(_process(json_obj))
 
     if print_result:
-        if output_on_gui and gui_g.UEVM_print_output_ref is not None:
-            gui_g.UEVM_print_output_ref.print(result)
+        if output_on_gui and gui_g.display_content_window_ref is not None:
+            gui_g.display_content_window_ref.display(result)
         else:
             print(result)
+
+
+def init_gui_args(args, additional_args=None) -> None:
+    """
+    Initialize the GUI arguments using the CLI arguments
+    :param args:
+    :param additional_args: dict of additional arguments to add
+    """
+
+    # args can not be used as it because it's an object that mainly run as a dict (but it's not)
+    # so we need to convert it to a dict first
+    temp_dict = vars(args)
+    temp_dict['csv'] = True  # force csv output
+    temp_dict['gui'] = True
+    if additional_args is not None:
+        temp_dict.update(additional_args)
+    # create a SaferDict object from the dict (it will avoid errors when trying to access non-existing keys)
+    gui_g.UEVM_cli_args = SaferDict({})
+    # copy the dict content to the SaferDict object
+    gui_g.UEVM_cli_args.copy_from(temp_dict)

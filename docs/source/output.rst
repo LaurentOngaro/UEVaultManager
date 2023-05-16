@@ -185,3 +185,4 @@ file:
        INCONSISTANT_DATA = 1
        PAGE_NOT_FOUND = 2
        CONTENT_NOT_FOUND = 3
+       TIMEOUT = 4
