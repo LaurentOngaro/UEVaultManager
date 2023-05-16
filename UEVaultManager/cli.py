@@ -10,24 +10,27 @@ import logging
 import os
 import shutil
 import subprocess
+import time
 import webbrowser
 from collections import namedtuple
 from datetime import datetime
 from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
-from sys import exit, stdout, platform as sys_platform
+from sys import exit, stdout
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
 import UEVaultManager.tkgui.modules.UEVMGuiClass as gui_w  # using the shortest variable name for globals for convenience
 from UEVaultManager import __version__, __codename__
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult
+from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
+from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
@@ -67,7 +70,7 @@ class UEVaultManagerCLI:
         self.core.update_aliases(force=False)
         name = name.strip()
         # resolve alias (if any) to real app name
-        return self.core.lgd.config.get(section='UEVaultManager.aliases', option=name, fallback=self.core.lgd.aliases.get(name.lower(), name))
+        return self.core.uevmlfs.config.get(section='UEVaultManager.aliases', option=name, fallback=self.core.uevmlfs.aliases.get(name.lower(), name))
 
     @staticmethod
     def _print_json(data, pretty=False):
@@ -84,7 +87,7 @@ class UEVaultManagerCLI:
         # make a backup of the existing file
 
         # for files defined relatively to the config folder
-        file_src = file_src.replace('~/.config', self.core.lgd.path)
+        file_src = file_src.replace('~/.config', self.core.uevmlfs.path)
 
         if not file_src:
             return
@@ -137,7 +140,7 @@ class UEVaultManagerCLI:
         date_added = datetime.now().strftime(self.core.default_datetime_format)
         extras_data = None
         try:
-            extras_data = self.core.lgd.get_item_extras(item.app_name)
+            extras_data = self.core.uevmlfs.get_item_extras(item.app_name)
         except AttributeError as error:
             self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
         if extras_data is None:
@@ -228,7 +231,7 @@ class UEVaultManagerCLI:
         :param args: options passed to the command
         """
         if args.auth_delete:
-            self.core.lgd.invalidate_userdata()
+            self.core.uevmlfs.invalidate_userdata()
             self.logger.info('User data deleted.')
             return
 
@@ -244,7 +247,7 @@ class UEVaultManagerCLI:
             pass
         except InvalidCredentialsError:
             self.logger.error('Stored credentials were found but were no longer valid. Continuing with login...')
-            self.core.lgd.invalidate_userdata()
+            self.core.uevmlfs.invalidate_userdata()
 
         # Force an update check and notice in case there are API changes
         self.core.check_for_updates(force=True)
@@ -255,7 +258,7 @@ class UEVaultManagerCLI:
             try:
                 if self.core.auth_import():
                     self.logger.info('Successfully imported login session from EGS!')
-                    self.logger.info(f'Now logged in as user "{self.core.lgd.userdata["displayName"]}"')
+                    self.logger.info(f'Now logged in as user "{self.core.uevmlfs.userdata["displayName"]}"')
                     return
                 else:
                     self.logger.warning('Login session from EGS seems to no longer be valid.')
@@ -285,7 +288,7 @@ class UEVaultManagerCLI:
                     auth_code = auth_code.strip('"')
             else:
                 if do_webview_login(callback_code=self.core.auth_ex_token):
-                    self.logger.info(f'Successfully logged in as "{self.core.lgd.userdata["displayName"]}" via WebView')
+                    self.logger.info(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}" via WebView')
                 else:
                     self.logger.error('WebView login attempt failed, please see log for details.')
                 return
@@ -301,9 +304,9 @@ class UEVaultManagerCLI:
             return
 
         if exchange_token and self.core.auth_ex_token(exchange_token):
-            self.logger.info(f'Successfully logged in as "{self.core.lgd.userdata["displayName"]}"')
+            self.logger.info(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}"')
         elif auth_code and self.core.auth_code(auth_code):
-            self.logger.info(f'Successfully logged in as "{self.core.lgd.userdata["displayName"]}"')
+            self.logger.info(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}"')
         else:
             self.logger.error('Login attempt failed, please see log for details.')
 
@@ -691,30 +694,49 @@ class UEVaultManagerCLI:
             # if automatic checks are off force an update here
             self.core.check_for_updates(force=True)
 
-        if not self.core.lgd.userdata:
+        if not self.core.uevmlfs.userdata:
             user_name = '<not logged in>'
             args.offline = True
         else:
-            user_name = self.core.lgd.userdata['displayName']
+            user_name = self.core.uevmlfs.userdata['displayName']
 
         assets_available = len(self.core.get_asset_list(update_assets=not args.offline))
-        if args.json:
-            return self._print_json(dict(account=user_name, assets_available=assets_available, config_directory=self.core.lgd.path), args.pretty_json)
 
-        print(f'Epic account: {user_name}')
-        print(f'Assets available: {assets_available}')
-        print(f'Config directory: {self.core.lgd.path}')
-        print(f'Platform (System): {platform()} ({os.name})')
-        print(f'\nUEVaultManager version: {__version__} - "{__codename__}"')
-        print(f'Update available: {"yes" if self.core.update_available else "no"}')
-        if self.core.update_available:
-            if update_info := self.core.get_update_info():
-                print(f'- New version: {update_info["version"]} - "{update_info["name"]}"')
-                print(f'- Release summary:\n{update_info["summary"]}\n- Release URL: {update_info["gh_url"]}')
-                if update_info['critical']:
-                    print('! This update is recommended as it fixes major issues.')
-            # prevent update message on close
-            self.core.update_available = False
+        cache_information = self.core.uevmlfs.get_ue_assets_cache_data()
+        update_information = self.core.uevmlfs.get_cached_version()
+        last_update = update_information.get('last_update', '')
+        update_information = update_information.get('data', None)
+        last_cache_update = cache_information.get('last_update', '')
+        if last_update != '':
+            last_update = time.strftime("%x", time.localtime(last_update))
+        if last_cache_update != '':
+            last_cache_update = time.strftime("%x", time.localtime(last_cache_update))
+
+        json_content = {
+            'Epic account': user_name,  #
+            'Assets available': assets_available,  #
+            'Last data update': last_update,
+            'Last cache update': last_cache_update,
+            'Config directory': self.core.uevmlfs.path,
+            'Platform': f'{platform()} ({os.name})',
+            'Current version': f'{__version__} - {__codename__}',
+            'Update available': 'yes' if self.core.update_available else 'no'
+        }
+        # if True and update_information is not None: # debug only
+        if self.core.update_available and update_information is not None:
+            json_content['Update info'] = '\n\n'
+            json_content['New version'] = f'{update_information["version"]} - {update_information["codename"]}'
+            json_content['Release summary'] = update_information['summary']
+            json_content['Release Url'] = update_information['release_url']
+            json_content['Update recommendation'] = update_information['severity']
+
+        if args.json:
+            return self._print_json(json_content, args.pretty_json)
+
+        json_print_key_val(json_content)
+
+        # prevent update message on close
+        self.core.update_available = False
 
     def info(self, args) -> None:
         """
@@ -922,29 +944,29 @@ class UEVaultManagerCLI:
         Cleans up the local assets data folders and logs
         :param args: options passed to the command
         """
-        before = self.core.lgd.get_dir_size()
+        before = self.core.uevmlfs.get_dir_size()
 
         # delete metadata
         if args.delete_metadata:
             self.logger.debug('Removing app metadata...')
-            self.core.lgd.clean_metadata()
+            self.core.uevmlfs.clean_metadata()
 
         # delete extras data
         if args.delete_extras_data:
             self.logger.debug('Removing app extras data...')
-            self.core.lgd.clean_extras()
+            self.core.uevmlfs.clean_extras()
 
         # delete log and backup
         self.logger.debug('Removing logs and backups...')
-        self.core.lgd.clean_logs_and_backups()
+        self.core.uevmlfs.clean_logs_and_backups()
 
         self.logger.debug('Removing manifests...')
-        self.core.lgd.clean_manifests()
+        self.core.uevmlfs.clean_manifests()
 
         self.logger.debug('Removing tmp data')
-        self.core.lgd.clean_tmp_data()
+        self.core.uevmlfs.clean_tmp_data()
 
-        after = self.core.lgd.get_dir_size()
+        after = self.core.uevmlfs.get_dir_size()
         self.logger.info(f'Cleanup complete! Removed {(before - after) / 1024 / 1024:.02f} MiB.')
 
     def get_token(self, args) -> None:
@@ -1179,7 +1201,7 @@ def main():
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
     ql = cli.setup_threaded_logging()
 
-    conf_log_level = cli.core.lgd.config.get('UEVaultManager', 'log_level', fallback='info')
+    conf_log_level = cli.core.uevmlfs.config.get('UEVaultManager', 'log_level', fallback='info')
     if conf_log_level == 'debug' or args.debug:
         cli.core.verbose_mode = True
         logging.getLogger().setLevel(level=logging.DEBUG)
@@ -1187,16 +1209,16 @@ def main():
         logging.getLogger('requests').setLevel(logging.WARNING)
         logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-    cli.core.create_output_backup = str_to_bool(cli.core.lgd.config.get('UEVaultManager', 'create_output_backup', fallback=True))
-    cli.core.create_log_backup = str_to_bool(cli.core.lgd.config.get('UEVaultManager', 'create_log_backup', fallback=True))
-    cli.core.verbose_mode = str_to_bool(cli.core.lgd.config.get('UEVaultManager', 'verbose_mode', fallback=False))
-    cli.ue_assets_max_cache_duration = int(cli.core.lgd.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000))
+    cli.core.create_output_backup = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'create_output_backup', fallback=True))
+    cli.core.create_log_backup = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'create_log_backup', fallback=True))
+    cli.core.verbose_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'verbose_mode', fallback=False))
+    cli.ue_assets_max_cache_duration = int(cli.core.uevmlfs.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000))
 
-    cli.core.ignored_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
-    cli.core.notfound_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
-    cli.core.bad_data_assets_filename_log = cli.core.lgd.config.get('UEVaultManager', 'bad_data_assets_filename_log', fallback='')
+    cli.core.ignored_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
+    cli.core.notfound_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
+    cli.core.bad_data_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'bad_data_assets_filename_log', fallback='')
 
-    cli.core.engine_version_for_obsolete_assets = cli.core.lgd.config.get('UEVaultManager', 'engine_version_for_obsolete_assets', fallback='4.26')
+    cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get('UEVaultManager', 'engine_version_for_obsolete_assets', fallback='4.26')
 
     if cli.core.create_log_backup:
         cli.create_log_file_backup()
@@ -1245,18 +1267,11 @@ def main():
     if not disable_update_message and cli.core.update_available and cli.core.update_notice_enabled():
         if update_info := cli.core.get_update_info():
             print(f'\nAn update available!')
-            print(f'- New version: {update_info["version"]} - "{update_info["name"]}"')
-            print(f'- Release summary:\n{update_info["summary"]}\n- Release URL: {update_info["gh_url"]}')
-            if update_info['critical']:
+            print(f'- New version: {update_info["version"]} - "{update_info["codename"]}"')
+            print(f'- Release summary:\n{update_info["summary"]}')
+            if update_info['severity'] == UpdateSeverity.HIGH.name:
                 print('! This update is recommended as it fixes major issues.')
-            elif 'downloads' in update_info:
-                dl_platform = 'windows'
-                if sys_platform == 'darwin':
-                    dl_platform = 'macos'
-                elif sys_platform == 'linux':
-                    dl_platform = 'linux'
-
-                print(f'\n- Download URL: {update_info["downloads"][dl_platform]}')
+                print(f'\n- Release URL: {update_info["release_url"]}')
 
     cli.core.clean_exit()
     ql.stop()

@@ -15,7 +15,7 @@ from PIL import ImageTk, Image
 from screeninfo import get_monitors
 from termcolor import colored
 
-import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules import globals as gui_g
 
 
 def log_format_message(name: str, levelname: str, message: str) -> str:
@@ -284,3 +284,41 @@ def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
     style.configure('TEntry', font=font, spacing=1, padding=2)
     style.configure('TFrame', font=font, spacing=1, padding=1)
     return style
+
+
+def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=False) -> None:
+    """
+    Pretty prints a JSON object in a simple 'key: value' format.
+    :param json_obj:  The JSON object to print.
+    :param indent: The number of spaces to indent each level.
+    :param print_result: Determines whether to print the result.
+    :param output_on_gui: Determines whether to print the result on the GUI.
+    :return: The pretty printed JSON object.
+    """
+
+    def _process(obj, level=0):
+        lines = []
+        indent_str = ' ' * indent * level
+
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if isinstance(value, (dict, list)):
+                    lines.append(f'{indent_str}{key}:')
+                    lines.extend(_process(value, level + 1))
+                else:
+                    lines.append(f'{indent_str}{key}: {value}')
+        elif isinstance(obj, list):
+            for item in obj:
+                lines.extend(_process(item, level))
+        else:
+            lines.append(f'{indent_str}{obj}')
+
+        return lines
+
+    result = '\n'.join(_process(json_obj))
+
+    if print_result:
+        if output_on_gui and gui_g.UEVM_print_output_ref is not None:
+            gui_g.UEVM_print_output_ref.print(result)
+        else:
+            print(result)

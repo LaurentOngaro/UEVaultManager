@@ -13,7 +13,6 @@ from ttkbootstrap.constants import *
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import GrabResult
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.functions import set_custom_style
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
@@ -203,19 +202,9 @@ class UEVMGui(tk.Tk):
             lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
             lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
 
-            try:
-                # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-                categories = list(container.editable_table.data['Category'].cat.categories)
-            except (AttributeError, TypeError):
-                categories = []
-            categories.insert(0, gui_g.s.default_category_for_all)
-            try:
-                # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-                grab_results = list(container.editable_table.data['Grab result'].cat.categories)
-            except (AttributeError, TypeError):
-                grab_results = []
-            grab_results.insert(0, gui_g.s.default_category_for_all)
-
+            cat_vars = container.update_category_var()
+            grab_results = cat_vars['grab_results']
+            categories = cat_vars['categories']
             lblf_content = ttk.LabelFrame(self, text='Content')
             lblf_content.pack(**lblf_def_options)
             btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=container.editable_table.create_edit_record_window)
@@ -675,6 +664,25 @@ class UEVMGui(tk.Tk):
         filename = self.editable_table.file
         self.control_frame.var_entry_file_name.set(filename)
 
+    def update_category_var(self) -> dict:
+        """
+        Update the category variable with the current categories in the data
+        :return: a dict with the new categories list as value and the key is the name of the variable.
+        """
+        try:
+            # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
+            categories = list(self.editable_table.data['Category'].cat.categories)
+        except (AttributeError, TypeError):
+            categories = []
+        categories.insert(0, gui_g.s.default_category_for_all)
+        try:
+            # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
+            grab_results = list(self.editable_table.data['Grab result'].cat.categories)
+        except (AttributeError, TypeError):
+            grab_results = []
+        grab_results.insert(0, gui_g.s.default_category_for_all)
+        return {'categories': categories, 'grab_results': grab_results}
+
     def reload_data(self) -> None:
         """
         Reload the data from the file
@@ -684,6 +692,7 @@ class UEVMGui(tk.Tk):
                 self.editable_table.reload_data()
                 gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
                 self.update_page_numbers()
+                self.update_category_var()
 
     def rebuild_data(self) -> None:
         """
@@ -695,3 +704,4 @@ class UEVMGui(tk.Tk):
             if self.editable_table.rebuild_data():
                 gui_f.box_message(f'Data rebuilt from {self.editable_table.file}')
                 self.update_page_numbers()
+                self.update_category_var()

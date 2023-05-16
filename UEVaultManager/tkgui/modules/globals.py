@@ -22,6 +22,8 @@ UEVM_gui_ref = None  # avoid importing classes from the UEVM GUI class here beca
 #  reference to the log object of the UEVM main app.
 #  If empty, log will be message printed in the console
 UEVM_log_ref = None
+#  reference to the Text Widget to use when printing text in GUI instead of console
+UEVM_print_output_ref = None
 
 # global variables
 # noinspection PyTypeChecker

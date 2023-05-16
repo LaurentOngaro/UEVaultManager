@@ -130,26 +130,6 @@ class EPCAPI:
         redirect_url = f'https://www.epicgames.com/id/api/redirect?clientId={self._user_basic}&responseType=code'
         return login_url + urllib.parse.quote(redirect_url)
 
-    def update_egs_params(self, egs_params: dict) -> None:
-        """
-        Updates the egs params.
-        :param egs_params: The egs params.
-        """
-        # update user-agent
-        if version := egs_params['version']:
-            self._user_agent = f'UELauncher/{version} Windows/10.0.19041.1.256.64bit'
-            self._store_user_agent = f'EpicGamesLauncher/{version}'
-            self.session.headers['User-Agent'] = self._user_agent
-            self.unauth_session.headers['User-Agent'] = self._user_agent
-        # update label
-        if label := egs_params['label']:
-            self._label = label
-        # update client credentials
-        if 'client_id' in egs_params and 'client_secret' in egs_params:
-            self._user_basic = egs_params['client_id']
-            self._pw_basic = egs_params['client_secret']
-            self._oauth_basic = HTTPBasicAuth(self._user_basic, self._pw_basic)
-
     def resume_session(self, session: dict) -> dict:
         """
         Resumes a session.

@@ -23,9 +23,9 @@ from requests import session, __version__
 from requests.exceptions import HTTPError, ConnectionError
 
 from UEVaultManager.api.egs import EPCAPI, GrabResult
-from UEVaultManager.api.lgd import LGDAPI
+from UEVaultManager.api.uevm import UEVMAPI
 from UEVaultManager.lfs.egl import EPCLFS
-from UEVaultManager.lfs.lgndry import LGDLFS
+from UEVaultManager.lfs.uevmlfs import UEVMLFS
 from UEVaultManager.models.app import *
 from UEVaultManager.models.exceptions import *
 from UEVaultManager.models.json_manifest import JSONManifest
@@ -89,23 +89,23 @@ class AppCore:
     def __init__(self, override_config=None, timeout=10.0):
         self.log = logging.getLogger('Core')
         self.egs = EPCAPI(timeout=timeout)
-        self.lgd = LGDLFS(config_file=override_config)
+        self.uevmlfs = UEVMLFS(config_file=override_config)
         self.egl = EPCLFS()
-        self.lgd_api = LGDAPI()
+        self.uevm_api = UEVMAPI()
 
         # on non-Windows load the programdata path from config
         if os.name != 'nt':
-            self.egl.programdata_path = self.lgd.config.get('UEVaultManager', 'egl_programdata', fallback=None)
+            self.egl.programdata_path = self.uevmlfs.config.get('UEVaultManager', 'egl_programdata', fallback=None)
             if self.egl.programdata_path and not os.path.exists(self.egl.programdata_path):
                 self.log.error(f'Config EGL path ("{self.egl.programdata_path}") is invalid! Disabling sync...')
                 self.egl.programdata_path = None
-                self.lgd.config.remove_option('UEVaultManager', 'egl_programdata')
-                self.lgd.save_config()
+                self.uevmlfs.config.remove_option('UEVaultManager', 'egl_programdata')
+                self.uevmlfs.save_config()
 
         self.local_timezone = datetime.now().astimezone().tzinfo
         self.language_code, self.country_code = ('en', 'US')
 
-        if locale := self.lgd.config.get('UEVaultManager', 'locale', fallback=getlocale(LC_CTYPE)[0]):
+        if locale := self.uevmlfs.config.get('UEVaultManager', 'locale', fallback=getlocale(LC_CTYPE)[0]):
             try:
                 self.language_code, self.country_code = locale.split('-' if '-' in locale else '_')
                 self.log.debug(f'Set locale to {self.language_code}-{self.country_code}')
@@ -158,7 +158,7 @@ class AppCore:
         message = f"-----\n{datetime.now().strftime(self.default_datetime_format)} Log Started\n-----\n"
 
         if self.ignored_assets_filename_log != '':
-            ignored_assets_filename_log = self.ignored_assets_filename_log.replace('~/.config', self.lgd.path)
+            ignored_assets_filename_log = self.ignored_assets_filename_log.replace('~/.config', self.uevmlfs.path)
             if check_and_create_path(ignored_assets_filename_log):
                 ignored_assets_handler = logging.FileHandler(ignored_assets_filename_log, mode='w')
                 ignored_assets_handler.setFormatter(formatter)
@@ -167,7 +167,7 @@ class AppCore:
                 self.ignored_logger.info(message)
 
         if self.notfound_assets_filename_log != '':
-            notfound_assets_filename_log = self.notfound_assets_filename_log.replace('~/.config', self.lgd.path)
+            notfound_assets_filename_log = self.notfound_assets_filename_log.replace('~/.config', self.uevmlfs.path)
             if check_and_create_path(notfound_assets_filename_log):
                 notfound_assets_handler = logging.FileHandler(notfound_assets_filename_log, mode='w')
                 notfound_assets_handler.setFormatter(formatter)
@@ -176,7 +176,7 @@ class AppCore:
                 self.notfound_logger.info(message)
 
         if self.bad_data_assets_filename_log != '':
-            bad_data_assets_filename_log = self.bad_data_assets_filename_log.replace('~/.config', self.lgd.path)
+            bad_data_assets_filename_log = self.bad_data_assets_filename_log.replace('~/.config', self.uevmlfs.path)
             if check_and_create_path(bad_data_assets_filename_log):
                 bad_data_assets_handler = logging.FileHandler(bad_data_assets_filename_log, mode='w')
                 bad_data_assets_handler.setFormatter(formatter)
@@ -229,7 +229,7 @@ class AppCore:
         Handles authentication via authorization code (either retrieved manually or automatically)
         """
         try:
-            self.lgd.userdata = self.egs.start_session(authorization_code=code)
+            self.uevmlfs.userdata = self.egs.start_session(authorization_code=code)
             return True
         except Exception as error:
             self.log.error(f'Logging in failed with {error!r}, please try again.')
@@ -240,7 +240,7 @@ class AppCore:
         Handles authentication via exchange token (either retrieved manually or automatically)
         """
         try:
-            self.lgd.userdata = self.egs.start_session(exchange_token=code)
+            self.uevmlfs.userdata = self.egs.start_session(exchange_token=code)
             return True
         except Exception as error:
             self.log.error(f'Logging in failed with {error!r}, please try again.')
@@ -269,7 +269,7 @@ class AppCore:
             raise ValueError('No login session in config')
         refresh_token = re_data['Token']
         try:
-            self.lgd.userdata = self.egs.start_session(refresh_token=refresh_token)
+            self.uevmlfs.userdata = self.egs.start_session(refresh_token=refresh_token)
             return True
         except Exception as error:
             self.log.error(f'Logging in failed with {error!r}, please try again.')
@@ -281,10 +281,10 @@ class AppCore:
 
         raises ValueError if no existing credentials or InvalidCredentialsError if the API return an error
         """
-        if not self.lgd.userdata:
+        if not self.uevmlfs.userdata:
             raise ValueError('No saved credentials')
-        elif self.logged_in and self.lgd.userdata['expires_at']:
-            dt_exp = datetime.fromisoformat(self.lgd.userdata['expires_at'][:-1])
+        elif self.logged_in and self.uevmlfs.userdata['expires_at']:
+            dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
             dt_now = datetime.utcnow()
             td = dt_now - dt_exp
 
@@ -300,11 +300,9 @@ class AppCore:
                 self.check_for_updates()
             except Exception as error:
                 self.log.warning(f'Checking for UEVaultManager updates failed: {error!r}')
-        else:
-            self.apply_lgd_config()
 
-        if self.lgd.userdata['expires_at'] and not force_refresh:
-            dt_exp = datetime.fromisoformat(self.lgd.userdata['expires_at'][:-1])
+        if self.uevmlfs.userdata['expires_at'] and not force_refresh:
+            dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
             dt_now = datetime.utcnow()
             td = dt_now - dt_exp
 
@@ -312,7 +310,7 @@ class AppCore:
             if dt_exp > dt_now and abs(td.total_seconds()) > 600:
                 self.log.info('Trying to re-use existing login session...')
                 try:
-                    self.egs.resume_session(self.lgd.userdata)
+                    self.egs.resume_session(self.uevmlfs.userdata)
                     self.logged_in = True
                     return True
                 except InvalidCredentialsError as error:
@@ -324,16 +322,16 @@ class AppCore:
 
         try:
             self.log.info('Logging in...')
-            userdata = self.egs.start_session(self.lgd.userdata['refresh_token'])
+            userdata = self.egs.start_session(self.uevmlfs.userdata['refresh_token'])
         except InvalidCredentialsError:
             self.log.error('Stored credentials are no longer valid! Please login again.')
-            self.lgd.invalidate_userdata()
+            self.uevmlfs.invalidate_userdata()
             return False
         except (HTTPError, ConnectionError) as error:
             self.log.error(f'HTTP request for login failed: {error!r}, please try again later.')
             return False
 
-        self.lgd.userdata = userdata
+        self.uevmlfs.userdata = userdata
         self.logged_in = True
         return True
 
@@ -342,7 +340,7 @@ class AppCore:
         Returns whether update checks are enabled or not
         :return: True if update checks are enabled, False otherwise
         """
-        return not self.lgd.config.getboolean('UEVaultManager', 'disable_update_check', fallback=False)
+        return not self.uevmlfs.config.getboolean('UEVaultManager', 'disable_update_check', fallback=False)
 
     def update_notice_enabled(self) -> bool:
         """
@@ -351,7 +349,7 @@ class AppCore:
         """
         if self.force_show_update:
             return True
-        return not self.lgd.config.getboolean('UEVaultManager', 'disable_update_notice', fallback=not is_windows_mac_or_pyi())
+        return not self.uevmlfs.config.getboolean('UEVaultManager', 'disable_update_notice', fallback=not is_windows_mac_or_pyi())
 
     def check_for_updates(self, force=False) -> None:
         """
@@ -367,58 +365,31 @@ class AppCore:
             """
             return tuple(map(int, (v.split('.'))))
 
-        cached = self.lgd.get_cached_version()
+        cached = self.uevmlfs.get_cached_version()
         version_info = cached['data']
         if force or not version_info or (datetime.now().timestamp() - cached['last_update']) > 24 * 3600:
-            version_info = self.lgd_api.get_version_information()
-            self.lgd.set_cached_version(version_info)
+            version_info = self.uevm_api.get_version_information()
+            self.uevmlfs.set_cached_version(version_info)
 
-        web_version = version_info['release_info']['version']
-
+        web_version = version_info['version']
         self.update_available = version_tuple(web_version) > version_tuple(__version__)
-        # version check is disabled because it's checking for Legendary
-        # TODO: check UEVaultManager updates instead
         self.update_available = False
-
-        self.apply_lgd_config(version_info)
-
-    def apply_lgd_config(self, version_info=None) -> None:
-        """
-        Applies configuration options returned by update API
-        :param version_info: version info dict
-        """
-        if not version_info:
-            version_info = self.lgd.get_cached_version()['data']
-        # if cached data is invalid
-        if not version_info:
-            self.log.debug('No cached UEVaultManager config to apply.')
-            return
-
-        if 'egl_config' in version_info:
-            self.egs.update_egs_params(version_info['egl_config'])
-            self._egl_version = version_info['egl_config'].get('version', self._egl_version)
-            for data_key in version_info['egl_config'].get('data_keys', []):
-                if data_key not in self.egl.data_keys:
-                    self.egl.data_keys.append(data_key)
-
-        if lgd_config := version_info.get('legendary_config'):
-            self.webview_killswitch = lgd_config.get('webview_killswitch', False)
 
     def get_update_info(self) -> dict:
         """
         Returns update info dict
         :return: update info dict
         """
-        return self.lgd.get_cached_version()['data'].get('release_info')
+        return self.uevmlfs.get_cached_version()['data']
 
     def update_aliases(self, force=False) -> None:
         """
         Updates aliases if enabled
         :param force: force alias update
         """
-        _aliases_enabled = not self.lgd.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False)
-        if _aliases_enabled and (force or not self.lgd.aliases):
-            self.lgd.generate_aliases()
+        _aliases_enabled = not self.uevmlfs.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False)
+        if _aliases_enabled and (force or not self.uevmlfs.aliases):
+            self.uevmlfs.generate_aliases()
 
     def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
         """
@@ -428,20 +399,20 @@ class AppCore:
         :return: list of AppAsset objects
         """
         # do not save and always fetch list when platform is overridden
-        if not self.lgd.assets or update_assets or platform not in self.lgd.assets:
+        if not self.uevmlfs.assets or update_assets or platform not in self.uevmlfs.assets:
             # if not logged in, return empty list
             if not self.egs.user:
                 return []
 
-            assets = self.lgd.assets.copy() if self.lgd.assets else dict()
+            assets = self.uevmlfs.assets.copy() if self.uevmlfs.assets else dict()
 
             assets.update({platform: [AppAsset.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
 
             # only save (and write to disk) if there were changes
-            if self.lgd.assets != assets:
-                self.lgd.assets = assets
+            if self.uevmlfs.assets != assets:
+                self.uevmlfs.assets = assets
 
-        return self.lgd.assets[platform]
+        return self.uevmlfs.assets[platform]
 
     def get_asset(self, app_name: str, platform='Windows', update=False) -> AppAsset:
         """
@@ -451,11 +422,11 @@ class AppCore:
         :param update: force update of asset list
         :return: AppAsset object
         """
-        if update or platform not in self.lgd.assets:
+        if update or platform not in self.uevmlfs.assets:
             self.get_assets(update_assets=True, platform=platform)
 
         try:
-            return next(i for i in self.lgd.assets[platform] if i.app_name == app_name)
+            return next(i for i in self.uevmlfs.assets[platform] if i.app_name == app_name)
         except StopIteration:
             raise ValueError
 
@@ -486,7 +457,7 @@ class AppCore:
         """
         if update_meta:
             self.get_asset_list(True, platform=platform)
-        return self.lgd.get_item_meta(app_name)
+        return self.uevmlfs.get_item_meta(app_name)
 
     def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[App], Dict[str, List[App]]):
         """
@@ -531,13 +502,13 @@ class AppCore:
             if _process_meta:
                 eg_meta = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
                 app = App(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
-                self.lgd.set_item_meta(app.app_name, app)
+                self.uevmlfs.set_item_meta(app.app_name, app)
                 apps[name] = app
 
             if _process_extras:
                 # we use title because it's less ambiguous than a name when searching an asset
                 eg_extras = self.egs.get_assets_extras(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
-                self.lgd.set_item_extras(app_name=name, extras=eg_extras, update_global_dict=True)
+                self.uevmlfs.set_item_extras(app_name=name, extras=eg_extras, update_global_dict=True)
 
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
                 if eg_extras['page_title'] != '' and eg_extras['page_title'] != apps[name].app_title:
@@ -585,13 +556,13 @@ class AppCore:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return []
 
-        if not self.lgd.assets:
+        if not self.uevmlfs.assets:
             return _ret
 
         assets = {}
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching assets...", new_max_value=len(self.lgd.assets.items()))
-        for _platform, _assets in self.lgd.assets.items():
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching assets...", new_max_value=len(self.uevmlfs.assets.items()))
+        for _platform, _assets in self.uevmlfs.assets.items():
             for _asset in _assets:
                 if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                     return []
@@ -657,7 +628,7 @@ class AppCore:
             if self.verbose_mode:
                 self.log.info(f'Checking {app_name}....')
 
-            item_metadata = self.lgd.get_item_meta(app_name)
+            item_metadata = self.uevmlfs.get_item_meta(app_name)
             asset_updated = False
 
             if not item_metadata:
@@ -683,7 +654,7 @@ class AppCore:
                 process_extras = True
             else:
                 # will read the extras data from file if necessary and put in the global dict
-                process_extras = self.lgd.get_item_extras(app_name) is None
+                process_extras = self.uevmlfs.get_item_extras(app_name) is None
 
             process_meta = not item_metadata or force_refresh or asset_updated
 
@@ -796,7 +767,7 @@ class AppCore:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extras data files...", new_max_value=len(_ret))
             # save new ones
             self._prune_extras_data(update_global_dict=False)
-            self._save_extras_data(self.lgd.assets_extras_data, update_global_dict=False)
+            self._save_extras_data(self.uevmlfs.assets_extras_data, update_global_dict=False)
         return _ret
 
     # end def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
@@ -809,9 +780,9 @@ class AppCore:
         available_assets = set()
         available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
-        for app_name in self.lgd.get_item_app_names():
+        for app_name in self.uevmlfs.get_item_app_names():
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
-            self.lgd.delete_item_meta(app_name)
+            self.uevmlfs.delete_item_meta(app_name)
 
     def _prune_extras_data(self, update_global_dict: True) -> None:
         """
@@ -821,9 +792,9 @@ class AppCore:
         available_assets = set()
         available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
-        for app_name in self.lgd.get_item_app_names():
+        for app_name in self.uevmlfs.get_item_app_names():
             self.log.debug(f'Removing old/unused extras data for "{app_name}"')
-            self.lgd.delete_item_extras(app_name, update_global_dict=update_global_dict)
+            self.uevmlfs.delete_item_extras(app_name, update_global_dict=update_global_dict)
 
     def _save_metadata(self, assets) -> None:
         """
@@ -833,7 +804,7 @@ class AppCore:
         for app in assets:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
-            self.lgd.set_item_meta(app.app_name, app)
+            self.uevmlfs.set_item_meta(app.app_name, app)
 
     def _save_extras_data(self, extras: dict, update_global_dict: True) -> None:
         """
@@ -844,7 +815,7 @@ class AppCore:
         for app_name, eg_extras in extras.items():
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
-            self.lgd.set_item_extras(app_name=app_name, extras=eg_extras, update_global_dict=update_global_dict)
+            self.uevmlfs.set_item_extras(app_name=app_name, extras=eg_extras, update_global_dict=update_global_dict)
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
         """
@@ -865,11 +836,11 @@ class AppCore:
             if lib_item['appName'] in ignore:
                 continue
 
-            item = self.lgd.get_item_meta(lib_item['appName'])
+            item = self.uevmlfs.get_item_meta(lib_item['appName'])
             if not item or force_refresh:
                 eg_meta = self.egs.get_item_info(lib_item['namespace'], lib_item['catalogItemId'])
                 item = App(app_name=lib_item['appName'], app_title=eg_meta['title'], metadata=eg_meta)
-                self.lgd.set_item_meta(item.app_name, item)
+                self.uevmlfs.set_item_meta(item.app_name, item)
 
             if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])):
                 _ret.append(item)
@@ -984,7 +955,7 @@ class AppCore:
         :param force_refresh: force the refresh of the cache
         """
         self.cache_is_invalidate = False
-        cached = self.lgd.get_ue_assets_cache_data()
+        cached = self.uevmlfs.get_ue_assets_cache_data()
         cached_assets_count = cached['ue_assets_count']
 
         date_now = datetime.now().timestamp()
@@ -992,11 +963,11 @@ class AppCore:
 
         if not cached_assets_count or cached_assets_count != assets_count:
             self.log.info(f'New assets are available. {assets_count} available VS {cached_assets_count} in cache')
-            self.lgd.set_ue_assets_cache_data(last_update=cached['last_update'], ue_assets_count=assets_count)
+            self.uevmlfs.set_ue_assets_cache_data(last_update=cached['last_update'], ue_assets_count=assets_count)
 
         if force_refresh or date_diff > self.ue_assets_max_cache_duration:
             self.cache_is_invalidate = True
-            self.lgd.set_ue_assets_cache_data(last_update=date_now, ue_assets_count=assets_count)
+            self.uevmlfs.set_ue_assets_cache_data(last_update=date_now, ue_assets_count=assets_count)
             if not force_refresh:
                 self.log.info(f'Data cache is outdated. Cache age is {date_diff:.1f} s OR {str(timedelta(seconds=date_diff))}')
         else:
@@ -1007,6 +978,6 @@ class AppCore:
         Do cleanup, config saving, and quit
         :param code: exit code
         """
-        self.lgd.save_config()
+        self.uevmlfs.save_config()
         logging.shutdown()
         exit(code)
