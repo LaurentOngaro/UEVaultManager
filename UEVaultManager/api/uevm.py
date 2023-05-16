@@ -8,9 +8,9 @@ Imlementations for:
 import logging
 import re
 from enum import Enum
+from platform import system
 
 import requests
-from platform import system
 from packaging import version
 
 from UEVaultManager import __version__

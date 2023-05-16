@@ -8,10 +8,8 @@ import json
 import logging
 import os
 import time
-import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
-
 from datetime import datetime, timedelta
 from hashlib import sha1
 from locale import getlocale, LC_CTYPE
@@ -22,6 +20,7 @@ from urllib.parse import urlparse
 from requests import session, __version__
 from requests.exceptions import HTTPError, ConnectionError
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.api.uevm import UEVMAPI
 from UEVaultManager.lfs.egl import EPCLFS
