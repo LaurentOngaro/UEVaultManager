@@ -7,21 +7,21 @@ import datetime
 year = datetime.date.today().year
 
 __name__ = 'UEVaultManager'
-__version__ = '1.1.1.7'
-# Pegasus Seiya
-# Dragon Shiryu
-# Cygnus Hyoga
-__codename__ = 'Cygnus+1'
-# Andromeda Shun
-# Phoenix Ikki
-# Leo Aiolia
-# Virgo Shaka
-# Libra Dohko
-# Scorpio Milo
-# Sagittarius Aiolos
-# Capricorn Shura
-# Aquarius Camus
-# Pisces Aphrodite
+__version__ = '1.3.0'
+# 0 Pegasus Seiya
+# 1 Dragon Shiryu
+# 2 Cygnus Hyoga
+# 3 Andromeda Shun
+__codename__ = 'Andromeda'
+# 4 Phoenix Ikki
+# 5 Leo Aiolia
+# 5 Virgo Shaka
+# 6 Libra Dohko
+# 7 Scorpio Milo
+# 8 Sagittarius Aiolos
+# 9 Capricorn Shura
+# 10 Aquarius Camus
+# 11 Pisces Aphrodite
 __author__ = 'Laurent Ongaro'
 __author_email__ = 'laurent@gameamea.com'
 __description__ = 'Free and open-source replacement for the Epic Games Launcher application, mainly to manage the assets for Unreal Engine'
