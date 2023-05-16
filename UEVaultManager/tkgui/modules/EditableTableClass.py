@@ -71,21 +71,6 @@ class EditableTable(Table):
             self._last_selected_col = selected_col
             self.event_generate('<<CellSelectionChanged>>')
 
-    def colorize(self, row, col, item=None, fg=None, bg=None, focus=None):
-        """
-        Overrides the colorize method of the pandastable.Table class to colorize rows based on the value of the Price
-        :param row:
-        :param col:
-        :param item:
-        :param fg:
-        :param bg:
-        :param focus:
-        :return:
-        """
-        if row < len(self.model.data) and self.model.data.iloc[row]['On Sale']:
-            bg = 'green'
-        return super().colorize(row, col, item, fg, bg, focus)
-
     def handle_left_click(self, event) -> None:
         """
         Handles left-click events on the table.
