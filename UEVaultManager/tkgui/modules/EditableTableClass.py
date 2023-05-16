@@ -258,7 +258,7 @@ class EditableTable(Table):
         self.show_page(self.current_page)
         self.must_save = False
 
-    def search(self, filter_dict=None, global_search=None) -> None:
+    def apply_filters(self, filter_dict=None, global_search=None) -> None:
         """
         Searches the table data based on the provided filter dictionary.
         :param filter_dict: A dictionary containing the column names as keys and filter values as the values.
@@ -274,16 +274,13 @@ class EditableTable(Table):
                 continue
             if key == 'Grab result' and value == gui_g.s.default_category_for_all:
                 continue
-            # if key == 'On Sale' and value:
-            #     self.data_filtered = self.data_filtered[self.data_filtered['Price'] > self.data_filtered['Discount Price']]
-            # else:
-            #     self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
+            self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
 
         if global_search and global_search != gui_g.s.default_global_search:
             self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: global_search.lower() in str(row).lower(), axis=1)]
         self.show_page(0)
 
-    def reset_search(self) -> None:
+    def reset_filters(self) -> None:
         """
         Resets the table data filtering and sorting, displaying all rows.
         """
@@ -306,7 +303,12 @@ class EditableTable(Table):
         """
         Automatically resizes the columns to fit their content.
         """
-        self.autoResizeColumns()
+        # note:
+        # autoResizeColumns() will not resize table with more than 30 columns
+        # same limit without settings the limit in adjustColumnWidths()
+        # self.autoResizeColumns()
+        self.adjustColumnWidths(limit=len(self.data.columns))
+        self.redraw()
 
     def zoom_in(self) -> None:
         """

@@ -266,10 +266,10 @@ class UEVMGui(tk.Tk):
             entry_search.bind('<FocusIn>', self.del_entry_search)
             # entry_search.bind('<FocusOut>', container.search)
             cur_col += 2
-            btn_filter_by_text = ttk.Button(lbf_filter_cat, text='Apply All', command=container.search)
+            btn_filter_by_text = ttk.Button(lbf_filter_cat, text='Apply All', command=container.apply_filters)
             btn_filter_by_text.grid(row=cur_row, column=cur_col, **grid_fw_options)
             cur_col += 1
-            btn_reset_search = ttk.Button(lbf_filter_cat, text='Reset All', command=container.reset_search)
+            btn_reset_search = ttk.Button(lbf_filter_cat, text='Reset All', command=container.reset_filters)
             btn_reset_search.grid(row=cur_row, column=cur_col, **grid_fw_options)
             lbf_filter_cat.columnconfigure('all', weight=1)  # important to make the buttons expand
 
@@ -445,7 +445,7 @@ class UEVMGui(tk.Tk):
         :param args:
         """
         if not self.do_not_launch_search:
-            self.search()
+            self.apply_filters()
 
     def on_close(self) -> None:
         """
@@ -504,7 +504,7 @@ class UEVMGui(tk.Tk):
         else:
             gui_f.box_message('Select at least one row first')
 
-    def search(self, _event=None) -> None:
+    def apply_filters(self, _event=None) -> None:
         """
         Search for a string in the table
         :param _event: Event
@@ -542,13 +542,13 @@ class UEVMGui(tk.Tk):
         else:
             filter_dict.pop('Must Buy', None)
         if on_sale:
-            filter_dict['On Sale'] = True
+            filter_dict['On sale'] = True
         else:
-            filter_dict.pop('On Sale', None)
-        self.editable_table.search(filter_dict, global_search=search_text)
+            filter_dict.pop('On sale', None)
+        self.editable_table.apply_filters(filter_dict, global_search=search_text)
         # self.control_frame.reset_entry_search()
 
-    def reset_search(self) -> None:
+    def reset_filters(self) -> None:
         """
         Reset the search controls to their default values
         """
@@ -559,7 +559,7 @@ class UEVMGui(tk.Tk):
         self.control_frame.var_is_purchased.set(False)
         self.control_frame.var_is_not_obsolete.set(False)
         self.do_not_launch_search = False
-        self.editable_table.reset_search()
+        self.editable_table.reset_filters()
 
     def toggle_pagination(self, forced_value=None) -> None:
         """
