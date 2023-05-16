@@ -49,11 +49,11 @@ class EditRowWindow(tk.Toplevel):
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.canvas_image = None
 
-        self.content_frame = self.ContentFrame(self)
         self.control_frame = self.ControlFrame(self)
+        self.content_frame = self.ContentFrame(self)
 
-        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         self.control_frame.pack(ipadx=5, ipady=5, fill=tk.X)
+        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -77,7 +77,7 @@ class EditRowWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.X}
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.X, 'anchor': tk.NW}
             grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
 
             lblf_navigation = ttk.LabelFrame(self, text='Navigation')

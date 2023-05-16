@@ -348,9 +348,9 @@ class EditableTable(Table):
         if row_selected is None:
             return
 
-        title = 'Edit current row values'
+        title = 'Edit current row'
         width = 900
-        height = 980
+        height = 1000
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
