@@ -57,19 +57,29 @@ class EditableTable(tk.Frame):
         self.grab_result_combobox.pack(side=tk.LEFT, padx=(0, 10))
         self.grab_result_combobox.bind("<<ComboboxSelected>>", self.apply_filters)
 
+        # Create 'On Sale' filter
+        self.create_on_sale_filter(filter_frame)
+
         # Create 'Reset filters' button
         reset_button = tk.Button(filter_frame, text="Reset Filters", command=self.reset_filters)
         reset_button.pack(side=tk.LEFT, padx=(10, 0))
 
+    def create_on_sale_filter(self, filter_frame):
+        self.on_sale_var = tk.BooleanVar()
+        on_sale_checkbutton = tk.Checkbutton(filter_frame, text="On Sale", variable=self.on_sale_var, command=self.apply_filters)
+        on_sale_checkbutton.pack(side=tk.LEFT, padx=(10, 0))
+
     def reset_filters(self):
         self.category_combobox.set('')
         self.grab_result_combobox.set('')
+        self.on_sale_var.set(False)
         self.df_filtered = self.df
         self.update_table()
 
     def apply_filters(self, event=None):
         category_filter = self.category_combobox.get()
         grab_result_filter = self.grab_result_combobox.get()
+        on_sale_filter = self.on_sale_var.get()
 
         self.df_filtered = self.df
 
@@ -78,6 +88,9 @@ class EditableTable(tk.Frame):
 
         if grab_result_filter:
             self.df_filtered = self.df_filtered[self.df_filtered['Grab result'] == grab_result_filter]
+
+        if on_sale_filter:
+            self.df_filtered = self.df_filtered[self.df_filtered['Price'] > self.df_filtered['Discount']]
 
         self.update_table()
 
