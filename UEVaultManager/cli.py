@@ -146,17 +146,22 @@ class UEVaultManagerCLI:
         review = no_int_data
         price = no_float_data
         purchased = bool_false_data
+        discount_price = no_float_data
         supported_versions = no_text_data
         page_title = no_text_data
         grab_result = GrabResult.NO_ERROR.name
+        on_sale = bool_false_data
+
         try:
             asset_url = extras_data['asset_url']
             review = extras_data['review']
             price = extras_data['price']
+            discount_price = extras_data['discount_price']
             purchased = extras_data['purchased']
             supported_versions = extras_data['supported_versions']
             page_title = extras_data['page_title']
             grab_result = extras_data['grab_result']
+            on_sale = extras_data['on_sale']
         except (TypeError, KeyError) as error:
             self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
 
@@ -180,36 +185,36 @@ class UEVaultManagerCLI:
                 , item.app_name  # 'App name'
                 , item.app_title  # 'App title'
                 , category  # 'Category'
-                , thumbnail_url  # 'Image' with 488 height
-                , asset_url  # 'Url'
                 , item.app_version('Windows')  # 'UE Version'
-                , compatible_versions  # compatible_versions
                 , review  # 'Review'
                 , metadata['developer']  # 'Developer'
                 , metadata['description']  # 'Description'
-                , uid  # 'Uid'
-                , metadata['creationDate']  # 'Creation Date'
-                , metadata['lastModifiedDate']  # 'Update Date'
                 , metadata['status']  # 'status'
-                # Modified Fields when added into the file
-                , date_added  # 'Date Added'
-                , price  # 'Price'
-                , no_float_data  # 'Old Price'
-                , bool_false_data  # 'On Sale'
+                , discount_price  # 'Discount Price'
+                , on_sale  # 'On Sale'
                 , purchased  # 'Purchased'
                 , obsolete  # 'obsolete'
-                # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
                 , supported_versions  # 'supported versions'
-                , page_title  # 'page title'
                 , grab_result  # 'grab result'
-                # Modified Fields when added into the file
+                , price  # 'Price'
+                , no_float_data  # 'Old Price'
+                # User Fields
                 , no_text_data  # 'Comment'
                 , no_float_data  # 'Stars'
-                , no_text_data  # 'Asset Folder'
                 , bool_false_data  # 'Must Buy'
                 , no_text_data  # 'Test result
                 , no_text_data  # 'Installed Folder'
                 , no_text_data  # 'Alternative'
+                , no_text_data  # 'Asset Folder'
+                # less important fields
+                , page_title  # 'page title'
+                , thumbnail_url  # 'Image' with 488 height
+                , asset_url  # 'Url'
+                , compatible_versions  # compatible_versions
+                , date_added  # 'Date Added'
+                , metadata['creationDate']  # 'Creation Date'
+                , metadata['lastModifiedDate']  # 'Update Date'
+                , uid  # 'Uid'
             )
             record = dict(zip(CSV_headings.keys(), values))
         except TypeError:
@@ -333,9 +338,8 @@ class UEVaultManagerCLI:
                     price_index = 0
                     _price = float(_no_data_value)
                     old_price = float(_no_data_value)
-                    on_sale = _no_data_value
                     for key, keep_value_in_file in CSV_headings.items():
-                        if item_in_file[key] is None:
+                        if item_in_file.get(key, None) is None:
                             self.logger.error(
                                 f'In the existing file, asset {_asset_id} has no column named {key}. This asset is ignored and its values will be overwritten'
                             )
@@ -356,11 +360,7 @@ class UEVaultManagerCLI:
                                     self.logger.warning(f'Old Price value can not be converted for asset {_asset_id}\nError:{_error!r}')
                         index += 1
 
-                # compute the price related fields
-                if price_index > 0 and (isinstance(old_price, int) or isinstance(old_price, float)):
-                    on_sale = True if _price > old_price else False
                 _csv_record[price_index + 1] = old_price
-                _csv_record[price_index + 2] = on_sale
             return _csv_record
 
         def update_and_merge_json_record_data(_asset, _items_in_file, _no_float_value: float, _no_bool_false_value: bool) -> dict:
@@ -381,7 +381,6 @@ class UEVaultManagerCLI:
                 # loops through its columns
                 _price = float(_no_float_value)
                 old_price = float(_no_float_value)
-                on_sale = _no_bool_false_value
                 for key, keep_value_in_file in CSV_headings.items():
                     if keep_value_in_file and _items_in_file[_asset_id].get(key):
                         _json_record[key] = _items_in_file[_asset_id][key]
@@ -394,12 +393,7 @@ class UEVaultManagerCLI:
                     )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                 except Exception as _error:
                     self.logger.warning(f'Old Price values can not be converted for asset {_asset_id}\nError:{_error!r}')
-
-                # compute the price related fields
-                if isinstance(old_price, int) or isinstance(old_price, float):
-                    on_sale = True if _price > old_price else False
                 _json_record['Old Price'] = old_price
-                _json_record['On Sale'] = on_sale
             return _json_record
 
         self.logger.info('Logging in...')
@@ -412,11 +406,9 @@ class UEVaultManagerCLI:
         else:
             self.logger.info('Getting asset list... (this may take a while)')
 
-        if args.filter_category:
+        if args.filter_category and args.filter_category != gui_g.s.default_category_for_all:
             gui_g.UEVM_filter_category = args.filter_category
-
-        if gui_g.UEVM_filter_category != '' and gui_g.UEVM_filter_category != gui_g.s.default_category_for_all:
-            self.logger.info(f'The String "{gui_g.UEVM_filter_category }" will be search in Assets category')
+            self.logger.info(f'The String "{args.filter_category}" will be search in Assets category')
 
         gui_g.progress_window_ref = None
         progress_window = None

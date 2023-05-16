@@ -65,42 +65,42 @@ file:
 
 .. code:: python
 
-   headings = {
-       'Asset_id'           : False,  # ! important: Do not Rename => this field is used as main key for each asset
-       'App name'           : False,
-       'App title'          : False,
-       'Category'           : False,
-       'Image'              : False,
-       'Url'                : False,
-       'UE Version'         : False,
-       'Compatible Versions': False,
-       'Review'             : False,
-       'Developer'          : False,
-       'Description'        : False,
-       'Uid'                : False,
-       'Creation Date'      : False,
-       'Update Date'        : False,
-       'Status'             : False,
-       # Modified Fields when added into the file (mainly from extras data)
-       'Date Added'         : True,
-       'Price'              : False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-       'Old Price'          : False,  # ! important: always place it after the Price field in the list
-       'On Sale'            : False,  # ! important: always place it after the Old Price field in the list
-       'Purchased'          : False,
-       'Obsolete'           : True,
-       # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
-       'Supported Versions' : False,
-       'Page title'         : False,
-       'Grab result'        : False,
-       # User Fields
-       'Comment'            : True,
-       'Stars'              : True,
-       'Asset Folder'       : True,
-       'Must Buy'           : True,
-       'Test result'        : True,
-       'Installed Folder'   : True,
-       'Alternative'        : True
-   }
+  CSV_headings = {
+      'Asset_id': False,  # ! important: Do not Rename => this field is used as main key for each asset
+      'App name': False,
+      'App title': False,
+      'Category': False,
+      'UE Version': False,
+      'Review': False,
+      'Developer': False,
+      'Description': False,
+      'Status': False,
+      'Discount Price': False,
+      'On sale': False,
+      'Purchased': False,
+      'Obsolete': True,
+      'Supported Versions': False,
+      'Grab result': False,
+      'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+      'Old Price': False,  # ! important: always place it after the Price field in the list
+      # User Fields
+      'Comment': True,
+      'Stars': True,
+      'Must Buy': True,
+      'Test result': True,
+      'Installed Folder': True,
+      'Alternative': True,
+      'Asset Folder': True,
+      # less important fields
+      'Page title': False,
+      'Image': False,
+      'Url': True,  # could be kept if a better url that can be used to download the asset is found
+      'Compatible Versions': False,
+      'Date Added': True,
+      'Creation Date': False,
+      'Update Date': False,
+      'Uid': False
+  }
 
 The individual json files
 ~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -71,6 +71,21 @@ class EditableTable(Table):
             self._last_selected_col = selected_col
             self.event_generate('<<CellSelectionChanged>>')
 
+    def colorize(self, row, col, item=None, fg=None, bg=None, focus=None):
+        """
+        Overrides the colorize method of the pandastable.Table class to colorize rows based on the value of the Price
+        :param row:
+        :param col:
+        :param item:
+        :param fg:
+        :param bg:
+        :param focus:
+        :return:
+        """
+        if row < len(self.model.data) and self.model.data.iloc[row]['On Sale']:
+            bg = 'green'
+        return super().colorize(row, col, item, fg, bg, focus)
+
     def handle_left_click(self, event) -> None:
         """
         Handles left-click events on the table.
@@ -153,7 +168,6 @@ class EditableTable(Table):
                 'Review': float,  #
                 'Price': float,  #
                 'Old Price': float,  #
-                'On Sale': convert_to_bool,  #
                 'Purchased': convert_to_bool,  #
                 'Must Buy': convert_to_bool,  #
                 'Date Added': convert_to_datetime,  #
@@ -174,30 +188,36 @@ class EditableTable(Table):
         for col in self.data.columns:
             try:
                 self.data[col] = self.data[col].astype(str)
-            except ValueError as error:
+            except (KeyError, ValueError) as error:
                 log_error(f'Could not convert column "{col}" to string. Error: {error}')
 
-        col_to_datetime = ['Creation Date', 'Update Date']
+        col_to_convert = ['Creation Date', 'Update Date']
         # note "date added" does not use the same format as the other date columns
-        for col in col_to_datetime:
-            try:
-                self.data[col] = pd.to_datetime(self.data[col], format='ISO8601')
-            except ValueError as error:
-                log_error(f'Could not convert column "{col}" to datetime. Error: {error}')
+        for col in col_to_convert:
+            col_type = self.data.get(col, None)
+            if col_type is not None:
+                try:
+                    self.data[col] = pd.to_datetime(self.data[col], format='ISO8601')
+                except (KeyError, ValueError) as error:
+                    log_error(f'Could not convert column "{col}" to datetime. Error: {error}')
 
-        col_as_float = ['Review', 'Price', 'Old Price']
-        for col in col_as_float:
-            try:
-                self.data[col] = self.data[col].astype(float)
-            except ValueError as error:
-                log_error(f'Could not convert column "{col}" to float. Error: {error}')
+        col_to_convert = ['Review', 'Price', 'Old Price', 'Discount Price']
+        for col in col_to_convert:
+            col_type = self.data.get(col, None)
+            if col_type is not None:
+                try:
+                    self.data[col] = self.data[col].astype(float)
+                except (KeyError, ValueError) as error:
+                    log_error(f'Could not convert column "{col}" to float. Error: {error}')
 
-        col_as_category = ['Category', 'Grab result']
-        for col in col_as_category:
-            try:
-                self.data[col] = self.data[col].astype('category')
-            except ValueError as error:
-                log_error(f'Could not convert column "{col}" to category. Error: {error}')
+        col_to_convert = ['Category', 'Grab result']
+        for col in col_to_convert:
+            col_type = self.data.get(col, None)
+            if col_type is not None:
+                try:
+                    self.data[col] = self.data[col].astype('category')
+                except (KeyError, ValueError) as error:
+                    log_error(f'Could not convert column "{col}" to category. Error: {error}')
 
         # log_debug("\nCOL TYPES AFTER MANUAL CONVERSION\n")
         # self.data.info() # direct print info
@@ -254,15 +274,10 @@ class EditableTable(Table):
                 continue
             if key == 'Grab result' and value == gui_g.s.default_category_for_all:
                 continue
-            # if isinstance(value, str) and value != '':
-            #     self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
-            # elif isinstance(value, bool) and value:
-            #     self.data_filtered = self.data_filtered[self.data_filtered[key]]
-            # elif isinstance(value, bool) and not value:
-            #     self.data_filtered = self.data_filtered[not self.data_filtered[key]]
+            # if key == 'On Sale' and value:
+            #     self.data_filtered = self.data_filtered[self.data_filtered['Price'] > self.data_filtered['Discount Price']]
             # else:
-            #     self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: value == x)]
-            self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
+            #     self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
 
         if global_search and global_search != gui_g.s.default_global_search:
             self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: global_search.lower() in str(row).lower(), axis=1)]

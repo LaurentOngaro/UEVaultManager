@@ -527,14 +527,14 @@ class UEVMGui(tk.Tk):
         not_obsolete = self.control_frame.var_is_not_obsolete.get()
         must_buy = self.control_frame.var_must_buy.get()
         on_sale = self.control_frame.var_on_sale.get()
-        gui_g.UEVM_filter_category = category
+        gui_g.UEVM_filter_category = category if category != gui_g.s.default_category_for_all else ''
         self.toggle_pagination(forced_value=False)
         filter_dict = {}
         if category != gui_g.s.default_category_for_all:
             filter_dict['Category'] = category
         else:
             filter_dict.pop('Category', None)
-        if grab_results:
+        if grab_results != gui_g.s.default_category_for_all:
             filter_dict['Grab result'] = grab_results
         else:
             filter_dict.pop('Grab result', None)
@@ -544,8 +544,10 @@ class UEVMGui(tk.Tk):
             filter_dict.pop('Purchased', None)
         if not_obsolete:
             filter_dict['Obsolete'] = False
+            filter_dict['Status'] = 'active'
         else:
             filter_dict.pop('Obsolete', None)
+            filter_dict.pop('Status', None)
         if must_buy:
             filter_dict['Must Buy'] = True
         else:

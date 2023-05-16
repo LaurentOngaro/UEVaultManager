@@ -40,11 +40,13 @@ def create_empty_assets_extras(asset_name: str) -> dict:
         'asset_url': '',
         'asset_name_in_url': '',
         'price': 0,
+        'discount_price': 0,
         'review': 0,
         'purchased': False,
         'supported_versions': '',
         'page_title': '',
-        'grab_result': GrabResult.NO_ERROR.name
+        'grab_result': GrabResult.NO_ERROR.name,
+        'on_sale': False
     }
 
 
@@ -98,6 +100,26 @@ class EPCAPI:
         self.country_code = cc
 
         self.request_timeout = timeout if timeout > 0 else None
+
+    def _extract_price_from_elt(self, dom_elt=None, asset_name='NO NAME') -> float:
+        """
+        Extracts the price from a BeautifulSoup element.
+        :param dom_elt: The BeautifulSoup element.
+        :param asset_name: The name of the asset (for display purpose only).
+        :return: The price.
+        """
+        if dom_elt is None or dom_elt == '':
+            self.log.debug(f'Price not found for {asset_name}')
+            return 0.0
+        price = 0.0
+        try:
+            # asset base price when logged
+            price = dom_elt.text.strip('$')
+            price = price.strip('€')
+            price = float(price)
+        except Exception as error:
+            self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
+        return price
 
     def get_auth_url(self) -> str:
         """
@@ -300,7 +322,7 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_item_info(self, namespace: str, catalog_item_id: str, timeout: int = None) -> dict:
+    def get_item_info(self, namespace: str, catalog_item_id: str, timeout: float = None) -> dict:
         """
         Gets the item info.
         :param namespace: Namespace of the item
@@ -360,7 +382,12 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_library_items(self, include_metadata=True):
+    def get_library_items(self, include_metadata=True) -> list:
+        """
+        Gets the library items.
+        :param include_metadata: Whether to include metadata
+        :return: The library items
+        """
         records = []
         r = self.session.get(
             f'https://{self._library_host}/library/api/public/items', params=dict(includeMetadata=include_metadata), timeout=self.request_timeout
@@ -471,6 +498,8 @@ class EPCAPI:
         soup_logged = BeautifulSoup(response.text, 'html.parser')
 
         price = not_found_price
+        discount_price = not_found_price
+
         search_for_price = True
 
         # check if already purchased
@@ -505,17 +534,26 @@ class EPCAPI:
                     self.log.info(f'{asset_name} is free (check 2)')
             else:
                 # get price using the logged or the not logged soup
-                asset_price = purchased_elt.find('span', class_='save-discount')
-                if asset_price is not None:
-                    try:
-                        # asset price when logged
-                        price = asset_price.text.strip('$')
-                        price = price.strip('€')
-                        price = float(price)
-                    except Exception as error:
-                        self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
+                # notes:
+                #   when not discounted
+                #       base-price is not available
+                #       price is 'save-discount'
+                #       discount-price is 0.0
+                #   when discounted
+                #       price is 'base-price'
+                #       discount-price is 'save-discount'
+                elt = purchased_elt.find('span', class_='save-discount')
+                current_price = self._extract_price_from_elt(elt, asset_name)
+                elt = purchased_elt.find('span', class_='base-price')
+                base_price = self._extract_price_from_elt(elt, asset_name)
+                if elt is not None:
+                    # discounted
+                    price = base_price
+                    discount_price = current_price
                 else:
-                    self.log.debug(f'Price not found for {asset_name}')
+                    # not discounted
+                    price = current_price
+                    discount_price = current_price
 
         # get review
         reviews_elt = soup_logged.find('div', class_='asset-detail-rating')
@@ -555,15 +593,19 @@ class EPCAPI:
         else:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
             review = not_found_review
-        self.log.info(f'GRAB results: asset_name_in_url={asset_name_in_url} purchased={purchased} price={price} review={review}')
+        on_sale = 0.0 < discount_price < price and price > 0.0
+
+        self.log.info(f'GRAB results: asset_name_in_url={asset_name_in_url} on_sale={on_sale} purchased={purchased} price={price} review={review}')
         return {
             'asset_name': asset_name,
             'asset_url': asset_url,
             'asset_name_in_url': asset_name_in_url,
             'page_title': page_title,
             'price': price,
+            'discount_price': discount_price,
             'review': review,
             'purchased': purchased,
             'supported_versions': supported_versions,
-            'grab_result': error_code
+            'grab_result': error_code,
+            'on_sale': on_sale
         }

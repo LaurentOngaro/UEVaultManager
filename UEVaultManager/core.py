@@ -40,36 +40,36 @@ CSV_headings = {
     'App name': False,
     'App title': False,
     'Category': False,
-    'Image': False,
-    'Url': True,  # could be kept if a better url that can be used to download the asset is found
     'UE Version': False,
-    'Compatible Versions': False,
     'Review': False,
     'Developer': False,
     'Description': False,
-    'Uid': False,
-    'Creation Date': False,
-    'Update Date': False,
     'Status': False,
-    # Modified Fields when added into the file (mainly from extras data)
-    'Date Added': True,
-    'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-    'Old Price': False,  # ! important: always place it after the Price field in the list
-    'On Sale': False,  # ! important: always place it after the Old Price field in the list
+    'Discount Price': False,
+    'On sale': False,
     'Purchased': False,
     'Obsolete': True,
-    # Extracted from page, can be compared with value in metadata. Coud be used to if check data grabbing if OK
     'Supported Versions': False,
-    'Page title': False,
     'Grab result': False,
+    'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
+    'Old Price': False,  # ! important: always place it after the Price field in the list
     # User Fields
     'Comment': True,
     'Stars': True,
-    'Asset Folder': True,
     'Must Buy': True,
     'Test result': True,
     'Installed Folder': True,
-    'Alternative': True
+    'Alternative': True,
+    'Asset Folder': True,
+    # less important fields
+    'Page title': False,
+    'Image': False,
+    'Url': True,  # could be kept if a better url that can be used to download the asset is found
+    'Compatible Versions': False,
+    'Date Added': True,
+    'Creation Date': False,
+    'Update Date': False,
+    'Uid': False
 }
 
 # ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
@@ -785,11 +785,15 @@ class AppCore:
         self.update_aliases(force=meta_updated)
 
         if meta_updated:
+            if gui_g.progress_window_ref is not None:
+                gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata files...", new_max_value=len(_ret))
             # delete old files
             self._prune_metadata()
             self._save_metadata(_ret)
         #  meta_updated = True  # test only
         if meta_updated:
+            if gui_g.progress_window_ref is not None:
+                gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extras data files...", new_max_value=len(_ret))
             # save new ones
             self._prune_extras_data(update_global_dict=False)
             self._save_extras_data(self.lgd.assets_extras_data, update_global_dict=False)
@@ -827,6 +831,8 @@ class AppCore:
         :param assets:  List of assets to save
         """
         for app in assets:
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                return
             self.lgd.set_item_meta(app.app_name, app)
 
     def _save_extras_data(self, extras: dict, update_global_dict: True) -> None:
@@ -836,6 +842,8 @@ class AppCore:
         :param update_global_dict: if True, update the global dict
         """
         for app_name, eg_extras in extras.items():
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                return
             self.lgd.set_item_extras(app_name=app_name, extras=eg_extras, update_global_dict=update_global_dict)
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
