@@ -325,6 +325,18 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
             print(result)
 
 
+def custom_print(text='', keep_mode=True) -> None:
+    """
+    Print the given text on the GUI if it's available, otherwise print it on the console²
+    :param text: the text to print
+    :param keep_mode: whether to keep the existing content when adding a new one
+    """
+    if gui_g.display_content_window_ref is not None:
+        gui_g.display_content_window_ref.display(text=text, keep_mode=keep_mode)
+    else:
+        print(text)
+
+
 def init_gui_args(args, additional_args=None) -> None:
     """
     Initialize the GUI arguments using the CLI arguments

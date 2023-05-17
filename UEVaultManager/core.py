@@ -17,9 +17,9 @@ from platform import system
 from threading import current_thread, enumerate as thread_enumerate
 from urllib.parse import urlparse
 
-from requests import session, __version__
+from requests import session
 from requests.exceptions import HTTPError, ConnectionError
-
+from UEVaultManager import __version__ as UEVM_version
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.api.uevm import UEVMAPI
@@ -371,8 +371,7 @@ class AppCore:
             self.uevmlfs.set_cached_version(version_info)
 
         web_version = version_info['version']
-        self.update_available = version_tuple(web_version) > version_tuple(__version__)
-        self.update_available = False
+        self.update_available = version_tuple(web_version) > version_tuple(UEVM_version)
 
     def get_update_info(self) -> dict:
         """

@@ -71,7 +71,7 @@ Usage
     -h, --help                Show this help message and exit
     --offline                 Only print info available offline
     --json                    Output information in JSON format
-    -f, --force-refresh       Force a refresh of all asset metadata
+    -f, --force-refresh       Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
 
   Command: list
     usage: UEVaultManager list [-h] [----third-party] [--csv]
@@ -84,7 +84,7 @@ Usage
       --csv                   List asset in CSV format
       --tsv                   List asset in TSV format
       --json                  List asset in JSON format
-      -f,  --force-refresh    Force a refresh of all asset metadata
+      -f,  --force-refresh    Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
       -g,  --gui              Display additional informations using gui elements like dialog boxes or progress window
       -fc, --filter-category  Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive
                                 and can be partial
@@ -105,7 +105,7 @@ Usage
       --tsv                 Output in TSV format
       --json                Output in JSON format
       --hashlist            Output file hash list in hashcheck/sha1sum -c compatible format
-      -f, --force-refresh   Force a refresh of all asset metadata
+      -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
 
 
   Command: status
@@ -116,6 +116,7 @@ Usage
       --offline             Only print offline status information, do not login
       --json                Show status in JSON format
       -g,  --gui            Display the output in a windows instead of using the console
+      -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
 
 
   Command: edit

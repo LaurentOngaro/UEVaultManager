@@ -54,7 +54,7 @@ class DisplayContentWindow(tk.Toplevel):
                 self.iconbitmap(icon)
         self.resizable(True, False)
         self.quit_on_close = quit_on_close
-
+        self.keep_existing = False  # whether to keep the existing content when adding a new one
         self.content_frame = self.ContentFrame(self)
         self.control_frame = self.ControlFrame(self)
 
@@ -124,13 +124,20 @@ class DisplayContentWindow(tk.Toplevel):
         else:
             self.destroy()
 
-    def display(self, content: str) -> None:
+    def display(self, content=None, keep_mode=True) -> None:
         """
         Display the content in the window
         :param content: the text to print
+        :param keep_mode: whether to keep the existing content when adding a new one
         """
-        self.content_frame.text_content.delete('1.0', tk.END)
-        self.content_frame.text_content.insert(tk.END, content)
+        self.keep_existing = not keep_mode
+        if content is None or content == '':
+            return
+        if self.keep_existing:
+            self.content_frame.text_content.insert(tk.END, content)
+        else:
+            self.content_frame.text_content.delete('1.0', tk.END)
+            self.content_frame.text_content.insert(tk.END, content)
 
     def clean(self) -> None:
         """

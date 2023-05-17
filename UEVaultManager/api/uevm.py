@@ -13,7 +13,7 @@ from platform import system
 import requests
 from packaging import version
 
-from UEVaultManager import __version__
+from UEVaultManager import __version__ as UEVM_version
 
 
 class UpdateSeverity(Enum):
@@ -66,7 +66,7 @@ class UEVMAPI:
     Class for interacting with the UEVaultManager API.
     """
     _package_name = 'UEVaultManager'
-    _user_agent = f'{_package_name}/{__version__} ({system()})'
+    _user_agent = f'{_package_name}/{UEVM_version} ({system()})'
 
     def __init__(self):
         self.session = requests.session()
@@ -90,7 +90,7 @@ class UEVMAPI:
         try:
             pypi_version = data['info']['version']
             pypi_codename = extract_codename(data['info']['description'])
-            severity = str(extract_severity(__version__, pypi_version).name)
+            severity = str(extract_severity(UEVM_version, pypi_version).name)
             release_url = data['info']['release_url']
             summary = data['info']['summary']
         except KeyError:

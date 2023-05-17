@@ -9,7 +9,7 @@ import logging
 import os
 import webbrowser
 
-from UEVaultManager import __version__
+from UEVaultManager import __version__ as UEVM_version
 
 logger = logging.getLogger('WebViewHelper')
 webview_available = True
@@ -179,7 +179,7 @@ def do_webview_login(callback_sid=None, callback_code=None) -> None:
 
     logger.info('Opening Epic Games login window...')
     # Open logout URL first to remove existing cookies, then redirect to log in.
-    window = webview.create_window(f'UEVaultManager {__version__} - Epic Games Account Login', url=url, width=768, height=1024, js_api=api)
+    window = webview.create_window(f'UEVaultManager {UEVM_version} - Epic Games Account Login', url=url, width=768, height=1024, js_api=api)
     api.window = window
     window.events.loaded += api.on_loaded
 
