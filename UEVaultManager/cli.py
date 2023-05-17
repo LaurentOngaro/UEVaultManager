@@ -18,26 +18,101 @@ from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from sys import exit, stdout
-from UEVaultManager.tkgui.modules.functions import custom_print  # simplier way to use the custom_print function
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
 from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_codename
-
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
-from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
+from UEVaultManager.tkgui.modules.functions import custom_print  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
-from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
+from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
+from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
+from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
+
+
+def init_gui_args(args, additional_args=None) -> None:
+    """
+    Initialize the GUI arguments using the CLI arguments
+    :param args:
+    :param additional_args: dict of additional arguments to add
+    """
+
+    # args can not be used as it because it's an object that mainly run as a dict (but it's not)
+    # so we need to convert it to a dict first
+    temp_dict = vars(args)
+    temp_dict['csv'] = True  # force csv output
+    temp_dict['gui'] = True
+    if additional_args is not None:
+        temp_dict.update(additional_args)
+    # create a SaferDict object from the dict (it will avoid errors when trying to access non-existing keys)
+    gui_g.UEVM_cli_args = SaferDict({})
+    # copy the dict content to the SaferDict object
+    gui_g.UEVM_cli_args.copy_from(temp_dict)
+
+
+def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWindow):
+    """
+    Initialize the progress window
+    :param args: args of the command line
+    :param logger: logger to use
+    :param callback: callback function to call while progress updating
+    :return: (True if the UEVMGui window already existed | False, ProgressWindow)
+    """
+    gui_g.UEVM_log_ref = logger
+
+    # check if the GUI is already running
+    if gui_g.UEVM_gui_ref is None:
+        # create a fake root because ProgressWindow must always be a top level window
+        gui_g.UEVM_gui_ref = UEVMGuiHiddenRoot()
+        uewm_gui_exists = False
+    else:
+        uewm_gui_exists = True
+    force_refresh = str_to_bool(args.get('force_refresh', False))
+    window = ProgressWindow(
+        title="Updating Assets List",
+        quit_on_close=not uewm_gui_exists,
+        width=300,
+        height=150,
+        max_value=200,
+        show_start_button=False,
+        show_stop_button=True,
+        function=callback,
+        function_parameters={
+            'filter_category': gui_g.UEVM_filter_category,
+            'force_refresh': force_refresh,
+        }
+    )
+    return uewm_gui_exists, window
+
+
+def init_display_window(logger=None) -> (bool, DisplayContentWindow):
+    """
+    Initialize the display window
+    :param logger: logger to use
+    :return: (True if the UEVMGui window already existed | False, DisplayContentWindow)
+    """
+    gui_g.UEVM_log_ref = logger
+
+    # check if the GUI is already running
+    if gui_g.UEVM_gui_ref is None:
+        # create a fake root because DisplayContentWindow must always be a top level window
+        gui_g.UEVM_gui_ref = UEVMGuiHiddenRoot()
+        uewm_gui_exists = False
+    else:
+        uewm_gui_exists = True
+    if gui_g.display_content_window_ref is None:
+        gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM: status command output', quit_on_close=not uewm_gui_exists)
+    return uewm_gui_exists, gui_g.display_content_window_ref
 
 
 class UEVaultManagerCLI:
@@ -82,56 +157,6 @@ class UEVaultManagerCLI:
             print(json.dumps(data, indent=2, sort_keys=True))
         else:
             print(json.dumps(data))
-
-    def _init_progress_window(self, args) -> (bool, ProgressWindow):
-        """
-        Initialize the progress window
-        :return: (True if the UEVMGui window already existed | False, ProgressWindow)
-        """
-        gui_g.UEVM_log_ref = self.logger
-
-        # check if the GUI is already running
-        if gui_g.UEVM_gui_ref is None:
-            # create a fake root because ProgressWindow must always be a top level window
-            gui_g.UEVM_gui_ref = UEVMGuiHiddenRoot()
-            uewm_gui_exists = False
-        else:
-            uewm_gui_exists = True
-        # create and use a progress window (as a top level window)
-
-        window = ProgressWindow(
-            title="Updating Assets List",
-            quit_on_close=not uewm_gui_exists,
-            width=300,
-            height=150,
-            max_value=200,
-            show_start_button=False,
-            show_stop_button=True,
-            function=self.core.get_asset_list,
-            function_parameters={
-                'filter_category': gui_g.UEVM_filter_category,
-                'force_refresh': args.force_refresh
-            }
-        )
-        return uewm_gui_exists, window
-
-    def _init_display_window(self) -> (bool, ProgressWindow):
-        """
-        Initialize the display window
-        :return: (True if the UEVMGui window already existed | False, DisplayContentWindow)
-        """
-        gui_g.UEVM_log_ref = self.logger
-
-        # check if the GUI is already running
-        if gui_g.UEVM_gui_ref is None:
-            # create a fake root because DisplayContentWindow must always be a top level window
-            gui_g.UEVM_gui_ref = UEVMGuiHiddenRoot()
-            uewm_gui_exists = False
-        else:
-            uewm_gui_exists = True
-        if gui_g.display_content_window_ref is None:
-            window = DisplayContentWindow(title='UEVM: status command output', quit_on_close=not uewm_gui_exists)
-        return uewm_gui_exists, window
 
     def create_file_backup(self, file_src: str) -> None:
         """
@@ -470,7 +495,7 @@ class UEVaultManagerCLI:
         gui_g.progress_window_ref = None
         progress_window = None
         if args.gui:
-            uewm_gui_exists, progress_window = self._init_progress_window(args)
+            uewm_gui_exists, progress_window = init_progress_window(args=args, logger=self.logger, callback=self.core.get_asset_list)
             if uewm_gui_exists:
                 # if the main gui is running, we already have a tk.mainloop running
                 # we need to constantly update the progress bar
@@ -713,7 +738,7 @@ class UEVaultManagerCLI:
                 self.logger.info(f'Install tags: {", ".join(sorted(install_tags))}')
 
         if args.gui:
-            uewm_gui_exists, _ = self._init_display_window()
+            uewm_gui_exists, _ = init_display_window(self.logger)
             custom_print(content, keep_mode=False)  # as it, next print will not keep the content
             if not uewm_gui_exists:
                 gui_g.UEVM_gui_ref.mainloop()
@@ -775,7 +800,7 @@ class UEVaultManagerCLI:
             return self._print_json(json_content, args.pretty_json)
 
         if args.gui:
-            uewm_gui_exists = self._init_display_window()
+            uewm_gui_exists, _ = init_display_window(self.logger)
             json_print_key_val(json_content, output_on_gui=True)
             if not uewm_gui_exists:
                 gui_g.UEVM_gui_ref.mainloop()
@@ -950,12 +975,14 @@ class UEVaultManagerCLI:
                 elif isinstance(local_item.value, dict):
                     custom_print(f'- {local_item.name}:')
                     for k, v in local_item.value.items():
-                        custom_print(' + ', k, ':', v)
+                        custom_print(f' + {k} : {v}')
                 else:
                     custom_print(f'- {local_item.name}: {local_item.value}')
 
             if args.gui:
-                uewm_gui_exists, _ = self._init_display_window()
+                uewm_gui_exists, _ = init_display_window(self.logger)
+            else:
+                uewm_gui_exists = False
 
             if info_items.get('asset'):
                 custom_print('\nAsset Information:')
@@ -973,7 +1000,7 @@ class UEVaultManagerCLI:
             if not any(info_items.values()):
                 custom_print('No asset information available.')
             custom_print(keep_mode=False)  # as it, next print will not keep the content
-            if not uewm_gui_exists:
+            if args.gui and not uewm_gui_exists:
                 gui_g.UEVM_gui_ref.mainloop()
         else:
             json_out = dict(asset=dict(), install=dict(), manifest=dict())
@@ -1067,7 +1094,7 @@ class UEVaultManagerCLI:
         gui_g.UEVM_cli_ref = self
 
         # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
-        gui_f.init_gui_args(args, additional_args={'output': input_filename})
+        init_gui_args(args, additional_args={'output': input_filename})
 
         gui_g.UEVM_gui_ref = UEVMGui(
             title=gui_g.s.app_title,
@@ -1107,6 +1134,13 @@ def main():
         default=10,
         metavar='<seconds>',
         help='API HTTP request timeout (default: 10 seconds)'
+    )
+    parser.add_argument(
+        '-g',
+        '--gui',
+        dest='gui',
+        action='store_true',
+        help='Display additional informations using gui elements like dialog boxes or progress window'
     )
 
     # all the commands
@@ -1230,9 +1264,7 @@ def main():
         action='store_true',
         help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
     )
-    info_parser.add_argument(
-        '-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console'
-    )
+    info_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
     get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
     get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
@@ -1245,16 +1277,21 @@ def main():
     # edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
     # edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
 
+    # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
+
+    uewm_gui_exists = False
 
     if args.version:
         print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
         exit(0)
 
     if not args.subparser_name or args.full_help:
-        custom_print(keep_mode=False, text=parser.format_help())
-
         if args.full_help:
+            if args.gui:
+                uewm_gui_exists, _ = init_display_window()
+            custom_print(keep_mode=False, text=parser.format_help())
+
             # Commands that should not be shown in full help/list of commands (e.g. aliases)
             _hidden_commands = {'download', 'update', 'repair', 'get-token', 'verify-asset', 'list-assets'}
             # Print the help for all the subparsers. Thanks stackoverflow!
@@ -1274,6 +1311,9 @@ def main():
                 custom_print(text='Follow https://github.com/LaurentOngaro/UEVaultManager#readme to set it up properly')
                 subprocess.Popen(['cmd', '/K', 'echo>nul'])
         custom_print(keep_mode=False)
+
+        if args.gui and not uewm_gui_exists:
+            gui_g.UEVM_gui_ref.mainloop()
         return
 
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)

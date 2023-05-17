@@ -16,7 +16,6 @@ from screeninfo import get_monitors
 from termcolor import colored
 
 from UEVaultManager.tkgui.modules import globals as gui_g
-from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 
 
 def log_format_message(name: str, levelname: str, message: str) -> str:
@@ -335,23 +334,3 @@ def custom_print(text='', keep_mode=True) -> None:
         gui_g.display_content_window_ref.display(content=text, keep_mode=keep_mode)
     else:
         print(text)
-
-
-def init_gui_args(args, additional_args=None) -> None:
-    """
-    Initialize the GUI arguments using the CLI arguments
-    :param args:
-    :param additional_args: dict of additional arguments to add
-    """
-
-    # args can not be used as it because it's an object that mainly run as a dict (but it's not)
-    # so we need to convert it to a dict first
-    temp_dict = vars(args)
-    temp_dict['csv'] = True  # force csv output
-    temp_dict['gui'] = True
-    if additional_args is not None:
-        temp_dict.update(additional_args)
-    # create a SaferDict object from the dict (it will avoid errors when trying to access non-existing keys)
-    gui_g.UEVM_cli_args = SaferDict({})
-    # copy the dict content to the SaferDict object
-    gui_g.UEVM_cli_args.copy_from(temp_dict)
