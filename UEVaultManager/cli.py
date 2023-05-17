@@ -954,6 +954,9 @@ class UEVaultManagerCLI:
                 else:
                     custom_print(f'- {local_item.name}: {local_item.value}')
 
+            if args.gui:
+                uewm_gui_exists, _ = self._init_display_window()
+
             if info_items.get('asset'):
                 custom_print('\nAsset Information:')
                 for info_item in info_items['asset']:
@@ -970,6 +973,8 @@ class UEVaultManagerCLI:
             if not any(info_items.values()):
                 custom_print('No asset information available.')
             custom_print(keep_mode=False)  # as it, next print will not keep the content
+            if not uewm_gui_exists:
+                gui_g.UEVM_gui_ref.mainloop()
         else:
             json_out = dict(asset=dict(), install=dict(), manifest=dict())
             if info_items.get('asset'):
@@ -1225,6 +1230,9 @@ def main():
         action='store_true',
         help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
     )
+    info_parser.add_argument(
+        '-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console'
+    )
 
     get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
     get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
@@ -1240,11 +1248,11 @@ def main():
     args, extra = parser.parse_known_args()
 
     if args.version:
-        custom_print(is_last=True, text=f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
+        print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
         exit(0)
 
     if not args.subparser_name or args.full_help:
-        custom_print(is_last=True, text=parser.format_help())
+        custom_print(keep_mode=False, text=parser.format_help())
 
         if args.full_help:
             # Commands that should not be shown in full help/list of commands (e.g. aliases)
@@ -1265,7 +1273,7 @@ def main():
                 custom_print(text='Please note that this is not the intended way to run UEVaultManager.')
                 custom_print(text='Follow https://github.com/LaurentOngaro/UEVaultManager#readme to set it up properly')
                 subprocess.Popen(['cmd', '/K', 'echo>nul'])
-        custom_print(is_last=True)
+        custom_print(keep_mode=False)
         return
 
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
