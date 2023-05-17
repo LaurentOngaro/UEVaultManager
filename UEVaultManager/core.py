@@ -19,8 +19,9 @@ from urllib.parse import urlparse
 
 from requests import session
 from requests.exceptions import HTTPError, ConnectionError
-from UEVaultManager import __version__ as UEVM_version
+
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager import __version__ as UEVM_version
 from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.api.uevm import UEVMAPI
 from UEVaultManager.lfs.egl import EPCLFS
