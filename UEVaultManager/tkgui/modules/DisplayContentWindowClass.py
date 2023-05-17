@@ -28,7 +28,7 @@ class DisplayContentWindow(tk.Toplevel):
 
     """
 
-    def __init__(self, title: str, width: int = 400, height: int = 430, icon=None, screen_index=0, quit_on_close=False):
+    def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index=0, quit_on_close=False):
         super().__init__()
         self.title(title)
         style = gui_f.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
@@ -124,21 +124,21 @@ class DisplayContentWindow(tk.Toplevel):
         else:
             self.destroy()
 
-    def display(self, content=None, keep_mode=True) -> None:
+    def display(self, content='', keep_mode=True) -> None:
         """
         Display the content in the window. By default, ie. keep_mode==True, each new call adds the content to the existing content with a new line.
         :param content: the text to print
         :param keep_mode: whether to keep the existing content when a new one is added
         """
-        self.keep_existing = keep_mode
-        if content is None or content == '':
-            return
+
         if self.keep_existing:
             content += '\n'
             self.content_frame.text_content.insert(tk.END, content)
         else:
             self.content_frame.text_content.delete('1.0', tk.END)
             self.content_frame.text_content.insert(tk.END, content)
+        # set the mode at the end to allow using display() to be used to change the mode for the next call
+        self.keep_existing = keep_mode
 
     def clean(self) -> None:
         """

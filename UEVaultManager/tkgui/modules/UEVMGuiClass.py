@@ -127,10 +127,16 @@ class UEVMGui(tk.Tk):
             btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_commands = ttk.LabelFrame(self, text='Cli commands')
+            app_name = '24Animat923330e63f16V1'  # TODO: get it from the current row
             lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
-            # noinspection PyArgumentList
-            btn_status = ttk.Button(lblf_commands, text='Run Status', command=container.run_cli_status)
+            btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_cli_command('print_help'))
+            btn_help.pack(**pack_def_options, side=tk.LEFT)
+            btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_cli_command('status'))
             btn_status.pack(**pack_def_options, side=tk.LEFT)
+            btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_cli_command('info', app_name))
+            btn_info.pack(**pack_def_options, side=tk.LEFT)
+            btn_info = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_cli_command('list_files', app_name))
+            btn_info.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
@@ -700,11 +706,25 @@ class UEVMGui(tk.Tk):
                 self.update_category_var()
 
     @staticmethod
-    def run_cli_status() -> None:
+    def run_cli_command(command_name='', app_name='') -> None:
         """
         Execute the 'status' command and display the result in DisplayContentWindow
+        :param command_name: the name of the command to execute
         """
-        gui_g.UEVM_cli_args['offline'] = True  # we don't need an update of the data
+        if command_name == '':
+            return
+        # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands
+        # set default options for the cli command to execute
+        gui_g.UEVM_cli_args['gui'] = True
+        gui_g.UEVM_cli_args['full_help'] = True
+        gui_g.UEVM_cli_args['csv'] = False  # mandatory for displaying the result in the DisplayContentWindow
+        gui_g.UEVM_cli_args['tcsv'] = False  # mandatory for displaying the result in the DisplayContentWindow
+        gui_g.UEVM_cli_args['json'] = False  # mandatory for displaying the result in the DisplayContentWindow
+
+        if app_name != '':
+            gui_g.UEVM_cli_args['app_name'] = app_name
+
         if gui_g.display_content_window_ref is None or not gui_g.display_content_window_ref.winfo_viewable():
             # we display the window only if it is not already displayed
-            gui_g.UEVM_cli_ref.status(gui_g.UEVM_cli_args)
+            function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
+            function_to_call(gui_g.UEVM_cli_args)
