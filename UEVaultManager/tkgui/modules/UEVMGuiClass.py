@@ -127,15 +127,14 @@ class UEVMGui(tk.Tk):
             btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_commands = ttk.LabelFrame(self, text='Cli commands')
-            app_name = '24Animat923330e63f16V1'  # TODO: get it from the current row
             lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
             btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_cli_command('print_help'))
             btn_help.pack(**pack_def_options, side=tk.LEFT)
             btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_cli_command('status'))
             btn_status.pack(**pack_def_options, side=tk.LEFT)
-            btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_cli_command('info', app_name))
+            btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_cli_command('info'))
             btn_info.pack(**pack_def_options, side=tk.LEFT)
-            btn_info = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_cli_command('list_files', app_name))
+            btn_info = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_cli_command('list_files'))
             btn_info.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
@@ -705,14 +704,17 @@ class UEVMGui(tk.Tk):
                 self.update_page_numbers()
                 self.update_category_var()
 
-    @staticmethod
-    def run_cli_command(command_name='', app_name='') -> None:
+    def run_cli_command(self, command_name='') -> None:
         """
         Execute the 'status' command and display the result in DisplayContentWindow
         :param command_name: the name of the command to execute
         """
         if command_name == '':
             return
+        row = self.editable_table.getSelectedRow()
+        col = self.editable_table.model.df.columns.get_loc('App name')
+        app_name = self.editable_table.model.getValueAt(row, col)
+
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands
         # set default options for the cli command to execute
         gui_g.UEVM_cli_args['gui'] = True
