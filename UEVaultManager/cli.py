@@ -687,9 +687,10 @@ class UEVaultManagerCLI:
         manifest = self.core.load_manifest(manifest_data)
         files = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
 
+        content = ''
         if args.hashlist:
             for fm in files:
-                custom_print(f'{fm.hash.hex()} *{fm.filename}')
+                content += f'{fm.hash.hex()} *{fm.filename}\n'
         elif args.csv or args.tsv:
             writer = csv.writer(stdout, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
             writer.writerow(['path', 'hash', 'size', 'install_tags'])
@@ -699,17 +700,25 @@ class UEVaultManagerCLI:
                 dict(filename=fm.filename, sha_hash=fm.hash.hex(), install_tags=fm.install_tags, file_size=fm.file_size, flags=fm.flags)
                 for fm in files
             ]
+            print(content)
             return self._print_json(_files, args.pretty_json)
         else:
             install_tags = set()
             for fm in files:
-                custom_print(fm.filename)
+                content += fm.filename + '\n'
                 for t in fm.install_tags:
                     install_tags.add(t)
             if install_tags:
                 # use the log output so this isn't included when piping file list into file
                 self.logger.info(f'Install tags: {", ".join(sorted(install_tags))}')
-        custom_print(keep_mode=False)  # as it, next print will not keep the content
+
+        if args.gui:
+            uewm_gui_exists, _ = self._init_display_window()
+            custom_print(content, keep_mode=False)  # as it, next print will not keep the content
+            if not uewm_gui_exists:
+                gui_g.UEVM_gui_ref.mainloop()
+        else:
+            print(content)
 
     def status(self, args) -> None:
         """
@@ -1150,13 +1159,6 @@ def main():
         help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
     )
     list_parser.add_argument(
-        '-g',
-        '--gui',
-        dest='gui',
-        action='store_true',
-        help='Display additional informations using gui elements like dialog boxes or progress window'
-    )
-    list_parser.add_argument(
         '-fc',
         '--filter-category',
         dest='filter_category',
@@ -1165,6 +1167,13 @@ def main():
     )
     list_parser.add_argument(
         '-o', '--output', dest='output', metavar='<path/name>', action='store', help='The file name (with path) where the list should be written'
+    )
+    list_parser.add_argument(
+        '-g',
+        '--gui',
+        dest='gui',
+        action='store_true',
+        help='Display additional informations using gui elements like dialog boxes or progress window'
     )
 
     list_files_parser.add_argument(
@@ -1183,10 +1192,12 @@ def main():
         action='store_true',
         help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
     )
+    list_files_parser.add_argument(
+        '-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console'
+    )
 
     status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not login')
     status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
-    status_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
     status_parser.add_argument(
         '-f',
         '--force-refresh',
@@ -1194,6 +1205,7 @@ def main():
         action='store_true',
         help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
     )
+    status_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
     clean_parser.add_argument(
         '-m,'

@@ -85,10 +85,10 @@ Usage
       --tsv                   List asset in TSV format
       --json                  List asset in JSON format
       -f,  --force-refresh    Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
-      -g,  --gui              Display additional informations using gui elements like dialog boxes or progress window
       -fc, --filter-category  Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive
                                 and can be partial
       -o, --output            The file name (with path) where the list should be written to
+      -g,  --gui              Display additional informations using gui elements like dialog boxes or progress window
 
 
   Command: list-files
@@ -96,32 +96,33 @@ Usage
                           [--hashlist] [--force-refresh] [<App Name>]
 
     positional arguments:
-      <App Name>            Name of the app (optional)
+      <App Name>              Name of the app (optional)
 
     optional arguments:
-      -h, --help            Show this help message and exit
-      --manifest <uri>      Manifest URL or path to use instead of the CDN one
-      --csv                 Output in CSV format
-      --tsv                 Output in TSV format
-      --json                Output in JSON format
-      --hashlist            Output file hash list in hashcheck/sha1sum -c compatible format
-      -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      -h, --help              Show this help message and exit
+      --manifest <uri>        Manifest URL or path to use instead of the CDN one
+      --csv                   Output in CSV format
+      --tsv                   Output in TSV format
+      --json                  Output in JSON format
+      --hashlist              Output file hash list in hashcheck/sha1sum -c compatible format
+      -f, --force-refresh     Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      -g,  --gui              Display the output in a windows instead of using the console
 
 
   Command: status
     usage: UEVaultManager status [-h] [--offline] [--json]
 
     optional arguments:
-      -h, --help            Show this help message and exit
-      --offline             Only print offline status information, do not login
-      --json                Show status in JSON format
-      -g,  --gui            Display the output in a windows instead of using the console
-      -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      -h, --help              Show this help message and exit
+      --offline               Only print offline status information, do not login
+      --json                  Show status in JSON format
+      -f, --force-refresh     Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      -g,  --gui              Display the output in a windows instead of using the console
 
 
   Command: edit
     usage: UEVaultManager edit [-h] [--input]
 
     optional arguments:
-      -h, --help            Show this help message and exit
-      -i, --input           The file name (with path) where the list should be read from
+      -h, --help              Show this help message and exit
+      -i, --input             The file name (with path) where the list should be read from
