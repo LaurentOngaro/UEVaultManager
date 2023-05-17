@@ -13,6 +13,7 @@ from platform import system
 import requests
 from packaging import version
 
+# noinspection PyPep8Naming
 from UEVaultManager import __version__ as UEVM_version
 
 

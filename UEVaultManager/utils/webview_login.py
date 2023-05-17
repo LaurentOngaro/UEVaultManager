@@ -9,6 +9,7 @@ import logging
 import os
 import webbrowser
 
+# noinspection PyPep8Naming
 from UEVaultManager import __version__ as UEVM_version
 
 logger = logging.getLogger('WebViewHelper')

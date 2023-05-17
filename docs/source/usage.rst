@@ -22,6 +22,7 @@ Usage
     -c, --config-file   Overwrite the default configuration file name to use
     -J, --pretty-json   Pretty-print JSON. Improve readability
     -A <seconds>, --api-timeout <seconds>   API HTTP request timeout (default: 10 seconds)
+    -g,  --gui          Display the help in a windows instead of using the console
 
   Commands:
       <command>
@@ -55,9 +56,9 @@ Usage
     usage: legendary cleanup [-h] [--delete-metadata] [--delete-extras-data]
 
     optional arguments:
-      -h, --help                  Show this help message and exit
-      -m, --delete-metadata       Also delete metadata files. They are kept by default
-      -e, --delete-extras-data    Also delete extras data files. They are kept by default'
+      -h, --help                Show this help message and exit
+      -m, --delete-metadata     Also delete metadata files. They are kept by default
+      -e, --delete-extras-data  Also delete extras data files. They are kept by default'
 
 
   Command: info
@@ -67,11 +68,12 @@ Usage
     positional arguments:
       <App Name/Manifest URI> App name or manifest path/URI
 
-  optional arguments:
-    -h, --help                Show this help message and exit
-    --offline                 Only print info available offline
-    --json                    Output information in JSON format
-    -f, --force-refresh       Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+    optional arguments:
+      -h, --help              Show this help message and exit
+      --offline               Only print info available offline
+      --json                  Output information in JSON format
+      -f, --force-refresh     Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      -g,  --gui              Display the output in a windows instead of using the console
 
   Command: list
     usage: UEVaultManager list [-h] [----third-party] [--csv]
@@ -96,33 +98,33 @@ Usage
                           [--hashlist] [--force-refresh] [<App Name>]
 
     positional arguments:
-      <App Name>              Name of the app (optional)
+      <App Name>            Name of the app (optional)
 
     optional arguments:
-      -h, --help              Show this help message and exit
-      --manifest <uri>        Manifest URL or path to use instead of the CDN one
-      --csv                   Output in CSV format
-      --tsv                   Output in TSV format
-      --json                  Output in JSON format
-      --hashlist              Output file hash list in hashcheck/sha1sum -c compatible format
-      -f, --force-refresh     Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
-      -g,  --gui              Display the output in a windows instead of using the console
+      -h, --help            Show this help message and exit
+      --manifest <uri>      Manifest URL or path to use instead of the CDN one
+      --csv                 Output in CSV format
+      --tsv                 Output in TSV format
+      --json                Output in JSON format
+      --hashlist            Output file hash list in hashcheck/sha1sum -c compatible format
+      -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      -g,  --gui            Display the output in a windows instead of using the console
 
 
   Command: status
     usage: UEVaultManager status [-h] [--offline] [--json]
 
     optional arguments:
-      -h, --help              Show this help message and exit
-      --offline               Only print offline status information, do not login
-      --json                  Show status in JSON format
-      -f, --force-refresh     Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
-      -g,  --gui              Display the output in a windows instead of using the console
+      -h, --help            Show this help message and exit
+      --offline             Only print offline status information, do not login
+      --json                Show status in JSON format
+      -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      -g,  --gui            Display the output in a windows instead of using the console
 
 
   Command: edit
     usage: UEVaultManager edit [-h] [--input]
 
     optional arguments:
-      -h, --help              Show this help message and exit
-      -i, --input             The file name (with path) where the list should be read from
+      -h, --help            Show this help message and exit
+      -i, --input           The file name (with path) where the list should be read from
