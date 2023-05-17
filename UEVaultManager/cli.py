@@ -815,7 +815,7 @@ class UEVaultManagerCLI:
         Print information about a given app name or manifest url/path
         :param args: options passed to the command
         """
-        name_or_path = args.app_name_or_manifest
+        name_or_path = args.app_name_or_manifest or args.app_name
         app_name = manifest_uri = None
         if os.path.exists(name_or_path) or name_or_path.startswith('http'):
             manifest_uri = name_or_path
@@ -1108,6 +1108,46 @@ class UEVaultManagerCLI:
         gui_g.UEVM_gui_ref.mainloop()
         # gui_g.UEVM_gui_ref.quit()
 
+    @staticmethod
+    def print_help(args, parser=None) -> None:
+        """
+        Prints the help for the command
+        :param args:
+        :param parser: command line parser. If not provided, gui_g.UEVM_parser_ref will be used
+        """
+        if parser is None:
+            parser = gui_g.UEVM_parser_ref
+        if parser is None:
+            return
+
+        if args.full_help:
+            if args.gui:
+                uewm_gui_exists, _ = init_display_window()
+            custom_print(keep_mode=False, text=parser.format_help())
+
+            # Commands that should not be shown in full help/list of commands (e.g. aliases)
+            _hidden_commands = {'download', 'update', 'repair', 'get-token', 'verify-asset', 'list-assets'}
+            # Print the help for all the subparsers. Thanks stackoverflow!
+            custom_print(text='Individual command help:')
+            # noinspection PyProtectedMember,PyUnresolvedReferences
+            subparsers = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+            # noinspection PyUnresolvedReferences
+            for choice, subparser in subparsers.choices.items():
+                if choice in _hidden_commands:
+                    continue
+                custom_print(text=f'\nCommand: {choice}')
+                custom_print(text=subparser.format_help())
+        elif os.name == 'nt':
+            from UEVaultManager.lfs.windows_helpers import double_clicked
+            if double_clicked():
+                custom_print(text='Please note that this is not the intended way to run UEVaultManager.')
+                custom_print(text='Follow https://github.com/LaurentOngaro/UEVaultManager#readme to set it up properly')
+                subprocess.Popen(['cmd', '/K', 'echo>nul'])
+        custom_print(keep_mode=False)  # as it, next print will not keep the content
+
+        if args.gui and not uewm_gui_exists:
+            gui_g.UEVM_gui_ref.mainloop()
+
 
 def main():
     """
@@ -1142,6 +1182,7 @@ def main():
         action='store_true',
         help='Display additional informations using gui elements like dialog boxes or progress window'
     )
+    gui_g.UEVM_parser_ref = parser
 
     # all the commands
     subparsers = parser.add_subparsers(title='Commands', dest='subparser_name', metavar='<command>')
@@ -1286,37 +1327,11 @@ def main():
         print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
         exit(0)
 
+    cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
     if not args.subparser_name or args.full_help:
-        if args.full_help:
-            if args.gui:
-                uewm_gui_exists, _ = init_display_window()
-            custom_print(keep_mode=False, text=parser.format_help())
-
-            # Commands that should not be shown in full help/list of commands (e.g. aliases)
-            _hidden_commands = {'download', 'update', 'repair', 'get-token', 'verify-asset', 'list-assets'}
-            # Print the help for all the subparsers. Thanks stackoverflow!
-            custom_print(text='Individual command help:')
-            # noinspection PyProtectedMember,PyUnresolvedReferences
-            subparsers = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
-            # noinspection PyUnresolvedReferences
-            for choice, subparser in subparsers.choices.items():
-                if choice in _hidden_commands:
-                    continue
-                custom_print(text=f'\nCommand: {choice}')
-                custom_print(text=subparser.format_help())
-        elif os.name == 'nt':
-            from UEVaultManager.lfs.windows_helpers import double_clicked
-            if double_clicked():
-                custom_print(text='Please note that this is not the intended way to run UEVaultManager.')
-                custom_print(text='Follow https://github.com/LaurentOngaro/UEVaultManager#readme to set it up properly')
-                subprocess.Popen(['cmd', '/K', 'echo>nul'])
-        custom_print(keep_mode=False)
-
-        if args.gui and not uewm_gui_exists:
-            gui_g.UEVM_gui_ref.mainloop()
+        cli.print_help(args=args, parser=parser)
         return
 
-    cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
     ql = cli.setup_threaded_logging()
 
     conf_log_level = cli.core.uevmlfs.config.get('UEVaultManager', 'log_level', fallback='info')
