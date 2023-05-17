@@ -307,7 +307,7 @@ class EditableTable(Table):
         """
         self.zoomOut()
 
-    def get_selected_row_values(self) -> dict:
+    def get_edited_row_values(self) -> dict:
         """
         Returns the values of the selected row in the table.
         :return: A dictionary containing the column names and their corresponding values for the selected row.
@@ -402,13 +402,13 @@ class EditableTable(Table):
         self.edit_row_entries = entries
         self.edit_row_index = row_selected
         self.edit_row_window = edit_row_window
-        edit_row_window.initial_values = self.get_selected_row_values()
+        edit_row_window.initial_values = self.get_edited_row_values()
 
     def save_edit_row_record(self) -> None:
         """
         Saves the edited row values to the table data.
         """
-        for key, value in self.get_selected_row_values().items():
+        for key, value in self.get_edited_row_values().items():
             self.model.df.at[self.edit_row_index, key] = value
         self.edit_row_entries = None
         self.edit_row_index = None

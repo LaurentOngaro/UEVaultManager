@@ -116,7 +116,7 @@ class EditRowWindow(tk.Toplevel):
         Event when the window is closing
         :param _event: the event that triggered the call of this function
         """
-        current_values = self.editable_table.get_selected_row_values()
+        current_values = self.editable_table.get_edited_row_values()
         # current_values is empty is save_button has been pressed because global variables have been cleared in save_changes()
         self.must_save = current_values and self.initial_values != current_values
         if self.must_save:
