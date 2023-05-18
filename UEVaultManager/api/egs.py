@@ -161,6 +161,7 @@ class EPCAPI:
         :param authorization_code: authorization code
         :param client_credentials: client credentials
         :return: The session.
+        :raise: ValueError,InvalidCredentialsError
         """
         if refresh_token:
             params = dict(grant_type='refresh_token', refresh_token=refresh_token, token_type='eg1')
@@ -302,13 +303,13 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_item_info(self, namespace: str, catalog_item_id: str, timeout: float = None) -> dict:
+    def get_item_info(self, namespace: str, catalog_item_id: str, timeout: float = None) -> (dict, int):
         """
         Gets the item info.
         :param namespace: Namespace of the item
         :param catalog_item_id: Catalog item id of the item
         :param timeout: Timeout for the request
-        :return: The item info.
+        :return: (The item info, status code)
         """
         r = self.session.get(
             f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items',
@@ -318,7 +319,7 @@ class EPCAPI:
             timeout=timeout or self.request_timeout
         )
         r.raise_for_status()
-        return r.json().get(catalog_item_id, None)
+        return r.json().get(catalog_item_id, None), r.status_code
 
     def get_artifact_service_ticket(self, sandbox_id: str, artifact_id: str, label='Live', platform='Windows') -> dict:
         """
