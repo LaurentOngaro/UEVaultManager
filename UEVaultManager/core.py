@@ -248,7 +248,11 @@ class AppCore:
             return False
 
     def auth_import(self) -> bool:
-        """Import refresh token from EGL installation and use it for logging in"""
+        """
+        Import refresh token from EGL installation and use it for logging in
+        :return: True if successful, False otherwise
+        :raises ValueError
+        """
         self.egl.read_config()
         remember_me_data = self.egl.config.get('RememberMe', 'Data')
         raw_data = b64decode(remember_me_data)
@@ -279,8 +283,9 @@ class AppCore:
     def login(self, force_refresh=False) -> bool:
         """
         Attempts logging in with existing credentials.
-
-        raises ValueError if no existing credentials or InvalidCredentialsError if the API return an error
+        :param force_refresh: if True, force a refresh of the session
+        :return: True if successful, False otherwise
+        :raises ValueError if no existing credentials or InvalidCredentialsError if the API return an error
         """
         if not self.uevmlfs.userdata:
             raise ValueError('No saved credentials')
@@ -421,6 +426,7 @@ class AppCore:
         :param platform: platform to get asset for
         :param update: force update of asset list
         :return: AppAsset object
+        :raises ValueError: if no asset is found for the given app name and platform
         """
         if update or platform not in self.uevmlfs.assets:
             self.get_assets(update_assets=True, platform=platform)
@@ -500,7 +506,11 @@ class AppCore:
             name, namespace, catalog_item_id, _process_meta, _process_extras = fetch_list[name]
 
             if _process_meta:
-                eg_meta = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
+                eg_meta, status_code = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
+                if status_code != 200:
+                    self.log.warning(f'Failed to fetch metadata for {name}: reponse code = {status_code}')
+                    return False
+
                 app = App(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
                 self.uevmlfs.set_item_meta(app.app_name, app)
                 apps[name] = app
@@ -681,11 +691,11 @@ class AppCore:
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
-                # note:  unreal engine API limits the number of connection to 16. So no more than 16 threads !
+                # note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
 
                 # with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() - 2), thread_name_prefix="Asset_Fetcher") as executor:
                 #    executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)
-                self.thread_executor = ThreadPoolExecutor(max_workers=min(16, os.cpu_count() + 2), thread_name_prefix="Asset_Fetcher")
+                self.thread_executor = ThreadPoolExecutor(max_workers=min(15, os.cpu_count() + 2), thread_name_prefix="Asset_Fetcher")
                 # Dictionary that maps each key to its corresponding Future object
                 futures = {}
                 for key in fetch_list.keys():
@@ -705,21 +715,26 @@ class AppCore:
             gui_g.progress_window_ref.reset(new_value=0, new_text="Checking and Fetching assets data...", new_max_value=len(filtered_items))
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
+        fetch_try_count = {}
+        fetch_try_limit = 3
         while len(filtered_items) > 0:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return []
             item = filtered_items.pop()
             app_name = item['name']
             app_assets = item['asset']
+            if fetch_try_count.get(app_name):
+                fetch_try_count[app_name] += 1
+            else:
+                fetch_try_count[app_name] = 1
             if self.verbose_mode:
-                self.log.info(f'Checking {app_name}. Still {len(filtered_items)} assets to check')
+                self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name] }. Still {len(filtered_items)} assets to check')
             try:
                 app_item = apps.get(app_name)
             except (KeyError, IndexError):
                 self.log.debug(f'{app_name} has not been found int the app list. Bypassing')
                 # item not found in app, ignore and pass to next one
                 continue
-
             # retry if the asset is still in fetch list (with active fetcher treads)
             if fetch_list.get(app_name) and (not currently_fetching.get(app_name) or 'Asset_Fetcher' not in thread_enumerate()):
                 self.log.info(f'Fetching metadata for {app_name} is still no done, retrying')
@@ -727,6 +742,9 @@ class AppCore:
                     del currently_fetching[app_name]
                 fetch_asset_meta(app_name)
 
+            if fetch_try_count[app_name] > fetch_try_limit:
+                self.log.error(f'Fetching metadata for {app_name} has failed {fetch_try_limit} times. Skipping')
+                continue
             try:
                 is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
                 is_a_mod = any(i['path'] == 'mods' for i in app_item.metadata.get('categories', []))
@@ -838,7 +856,10 @@ class AppCore:
 
             item = self.uevmlfs.get_item_meta(lib_item['appName'])
             if not item or force_refresh:
-                eg_meta = self.egs.get_item_info(lib_item['namespace'], lib_item['catalogItemId'])
+                eg_meta, status_code = self.egs.get_item_info(lib_item['namespace'], lib_item['catalogItemId'])
+                if status_code != 200:
+                    self.log.warning(f'Failed to fetch metadata for {lib_item["appName"]}: reponse code = {status_code}')
+                    continue
                 item = App(app_name=lib_item['appName'], app_title=eg_meta['title'], metadata=eg_meta)
                 self.uevmlfs.set_item_meta(item.app_name, item)
 
@@ -897,6 +918,7 @@ class AppCore:
         :param platform: Platform to get the CDN manifest for
         :param disable_https: Disable HTTPS for the manifest URLs
         :return: list of base URLs, manifest hash
+        :raises ValueError
         """
         manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(item, platform)
         if not manifest_urls:
