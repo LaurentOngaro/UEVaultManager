@@ -5,17 +5,12 @@ CLI interface functions
 import os
 
 
-def get_boolean_choice(prompt, default=True):
+def get_boolean_choice(prompt: str, default=True) -> bool:
     """
     Prompts the user with a yes/no question and returns a boolean value based on their choice.
-
-    Args:
-        prompt (str): The question prompt.
-        default (bool, optional): The default choice. Defaults to True.
-
-    Returns:
-        bool: True if the user chooses yes, False if they choose no.
-
+    :param prompt: The question prompt.
+    :param default: The default choice. Defaults to True.
+    :return: True if the user chooses yes, False if they choose no.
     """
     yn = 'Y/n' if default else 'y/N'
 
@@ -28,20 +23,15 @@ def get_boolean_choice(prompt, default=True):
         return False
 
 
-def get_int_choice(prompt, default=None, min_choice=None, max_choice=None, return_on_invalid=False):
+def get_int_choice(prompt: str, default=None, min_choice=None, max_choice=None, return_on_invalid=False) -> any:
     """
     Prompts the user to enter an integer choice within a specified range.
-
-    Args:
-        prompt (str): The question prompt.
-        default (int, optional): The default choice. Defaults to None.
-        min_choice (int, optional): The minimum allowed choice. Defaults to None.
-        max_choice (int, optional): The maximum allowed choice. Defaults to None.
-        return_on_invalid (bool, optional): Determines whether to return None on an invalid choice. Defaults to False.
-
-    Returns:
-        int or None: The user's integer choice or None if return_on_invalid is True.
-
+    :param prompt: The question prompt.
+    :param default: The default choice. Defaults to None.
+    :param min_choice: The minimum allowed choice. Defaults to None.
+    :param max_choice: The maximum allowed choice. Defaults to None.
+    :param return_on_invalid: Determines whether to return None on an invalid choice. Defaults to False.
+    :return: The user's integer choice or None if return_on_invalid is True.
     """
     if default is not None:
         prompt = f'{prompt} [{default}]: '
@@ -75,23 +65,15 @@ def get_int_choice(prompt, default=None, min_choice=None, max_choice=None, retur
             return choice
 
 
-def str_to_bool(val):
+def str_to_bool(val: str) -> bool:
     """
     Convert a string representation of truth to a boolean value.
-
     True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
     are 'n', 'no', 'f', 'false', 'off', and '0'. Raises ValueError if
     'val' is anything else.
-
-    Args:
-        val (str): The string representation of truth.
-
-    Returns:
-        bool: True or False based on the string representation of truth.
-
-    Raises:
-        ValueError: If the input value is not a valid truth representation.
-
+    :param val: The string representation of truth.
+    :return: True or False based on the string representation of truth.
+    :raises ValueError: If the input value is not a valid truth representation.
     """
     val = val.lower()
     if val in ('y', 'yes', 't', 'true', 'on', '1'):
@@ -102,16 +84,25 @@ def str_to_bool(val):
         raise ValueError('Invalid truth value %r' % (val,))
 
 
+def str_is_bool(val: str) -> bool:
+    """
+    Check if a string could be a boolean value.
+    Boolean values are 'y', 'yes', 't', 'true', 'on', '1', 'n', 'no', 'f', 'false', 'off', and '0'.
+    :param val: The string representation of truth.
+    :return: True if the string could be a boolean value, False otherwise.
+    """
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1', 'n', 'no', 'f', 'false', 'off', '0'):
+        return True
+    else:
+        return False
+
+
 def check_and_create_path(full_file_name: str) -> bool:
     """
     Checks if the given file path exists and creates it if it doesn't.
-
-    Args:
-        full_file_name (str): The full path of the file.
-
-    Returns:
-        bool: True if the path exists or is successfully created, False otherwise.
-
+    :param full_file_name: The full path of the file.
+    :return: True if the path exists or is successfully created, False otherwise.
     """
     # Split the file path and name
     file_path, file_name = os.path.split(full_file_name)
@@ -126,48 +117,35 @@ def check_and_create_path(full_file_name: str) -> bool:
     return True
 
 
-def convert_string_to_float_list(string, increment=0.01):
+def convert_string_to_float_list(string: str, increment=0.01) -> list:
     """
     Converts a string in the format 'start - end' to a list of float values.
-
-    Args:
-        string (str): The string in the format 'start - end'.
-        increment: The increment between each float value. Defaults to 0.1.
-
-    Returns:
-        list: A list of float values between the start and end values (inclusive).
+    :param string: The string in the format 'start - end'.
+    :param increment: The increment between each float value. Defaults to 0.1.
+    :return: A list of float values between the start and end values (inclusive).
     """
     start, end = map(float, string.split('-'))
     return [round(i, 2) for i in float_range(start, end, increment)]
 
 
-def float_range(start, stop, step):
+def float_range(start: float, stop: float, step: float) -> iter:
     """
     Generator function that yields a sequence of floating-point numbers from start to stop (inclusive) with a given step size.
-
-    Args:
-        start (float): The starting value of the sequence.
-        stop (float): The ending value of the sequence.
-        step (float): The step size between each number in the sequence.
-
-    Yields:
-        float: The next floating-point number in the sequence.
+    :param start: The starting value of the sequence.
+    :param stop: The ending value of the sequence.
+    :param step: The step size between each number in the sequence.
+    :return: (yield) The next floating-point number in the sequence.
     """
     while start <= stop:
         yield start
         start += step
 
 
-def create_list_from_string(string):
+def create_list_from_string(string: str) -> list:
     """
     Creates a list from a string using ',' as a separator. If an item contains a '-', it is converted into a string of float values.
-
-    Args:
-        string (str): The input string.
-
-    Returns:
-        list: The resulting list.
-
+    :param  string: The input string.
+    :return: The resulting list.
     """
     items = string.split(',')
     result_str = ''
