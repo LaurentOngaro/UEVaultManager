@@ -54,8 +54,8 @@ class SaferDict(dict):
     def copy_from(self, source: dict):
         """
         Copies the content of the given source dictionary into the SaferDict.
-        If the source is not a dictionary, raises a TypeError.
         :param source: the source dictionary to copy from
+        :raises TypeError: if the source is not a dictionary
         """
         if not isinstance(source, dict):
             raise TypeError("source must be a dictionary")
