@@ -283,6 +283,9 @@ def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
     style.configure('TButton', font=font, spacing=1, padding=2)
     style.configure('TEntry', font=font, spacing=1, padding=2)
     style.configure('TFrame', font=font, spacing=1, padding=1)
+    style.configure('TCombobox', font=font, spacing=1, padding=1)
+    style.configure('TLabelFrame', font=font, spacing=1, padding=1)
+
     return style
 
 
