@@ -31,7 +31,7 @@ from UEVaultManager.tkgui.modules.functions import custom_print  # simplier way 
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
-from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string
+from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string, str_is_bool
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
@@ -77,7 +77,7 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
-    force_refresh = str_to_bool(args.get('force_refresh', False))
+    force_refresh = True if args.force_refresh else False
     window = ProgressWindow(
         title="Updating Assets List",
         quit_on_close=not uewm_gui_exists,
@@ -257,7 +257,7 @@ class UEVaultManagerCLI:
                 if version == '':
                     continue
                 else:
-                    if float(self.core.engine_version_for_obsolete_assets) >= float(version):
+                    if float(self.core.engine_version_for_obsolete_assets) <= float(version):
                         obsolete = bool_false_data
                         break
         try:
@@ -429,7 +429,10 @@ class UEVaultManagerCLI:
                             return _csv_record
                         else:
                             if keep_value_in_file:
-                                _csv_record[index] = item_in_file[key]
+                                value = item_in_file[key]
+                                if str_is_bool(value):
+                                    value = str_to_bool(value)
+                                _csv_record[index] = value
                             # Get the old price in the previous file
                             if key == 'Price':
                                 price_index = index
@@ -859,7 +862,9 @@ class UEVaultManagerCLI:
                 self.logger.info('Asset not installed and offline mode enabled, cannot load manifest.')
         elif item:
             # entitlements = self.core.egs.get_user_entitlements()
-            egl_meta = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
+            egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
+            if status_code != 200:
+                self.logger.warning(f'Failed to fetch metadata for {item.app_name}: reponse code = {status_code}')
             item.metadata = egl_meta
             # Get manifest if asset exists for current platform
             if 'Windows' in item.asset_infos:
@@ -1119,6 +1124,7 @@ class UEVaultManagerCLI:
             parser = gui_g.UEVM_parser_ref
         if parser is None:
             return
+        uewm_gui_exists = False
 
         if args.full_help:
             if args.gui:
@@ -1320,8 +1326,6 @@ def main():
 
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
-
-    uewm_gui_exists = False
 
     if args.version:
         print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')

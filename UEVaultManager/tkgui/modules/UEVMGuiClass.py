@@ -688,9 +688,9 @@ class UEVMGui(tk.Tk):
         if self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?'):
                 self.editable_table.reload_data()
-                gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
-                self.update_page_numbers()
-                self.update_category_var()
+        gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
+        self.update_page_numbers()
+        self.update_category_var()
 
     def rebuild_data(self) -> None:
         """

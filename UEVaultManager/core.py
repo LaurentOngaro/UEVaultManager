@@ -49,7 +49,7 @@ CSV_headings = {
     'Discount Price': False,
     'On sale': False,
     'Purchased': False,
-    'Obsolete': True,
+    'Obsolete': False,
     'Supported Versions': False,
     'Grab result': False,
     'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
