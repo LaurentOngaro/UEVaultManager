@@ -11,7 +11,7 @@ from pathlib import Path
 from time import time
 
 from UEVaultManager.models.app import *
-from UEVaultManager.models.config import LGDConf
+from UEVaultManager.models.config import AppConf
 from UEVaultManager.utils.aliasing import generate_aliases
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 from .utils import clean_filename
@@ -47,7 +47,7 @@ class UEVMLFS:
         self._ue_assets_cache_data = None
 
         # Config with item specific settings (e.g. start parameters, env variables)
-        self.config = LGDConf(comment_prefixes='/', allow_no_value=True)
+        self.config = AppConf(comment_prefixes='/', allow_no_value=True)
 
         # Folders used by the app
         self.manifests_folder = 'manifests'
