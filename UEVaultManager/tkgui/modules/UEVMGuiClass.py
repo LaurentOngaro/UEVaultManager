@@ -49,7 +49,8 @@ class UEVMGui(tk.Tk):
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
         table_frame = self.TableFrame(self)
-        self.editable_table = EditableTable(container_frame=table_frame, file=file, fontsize=gui_g.s.table_font_size, show_statusbar=True)
+        self.editable_table = EditableTable(container_frame=table_frame, file=file, rows_per_page=36, show_statusbar=True)
+        self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
         self.editable_table.show()
         self.editable_table.show_page(0)
 
@@ -58,10 +59,14 @@ class UEVMGui(tk.Tk):
         self.toolbar_frame = toolbar_frame
         control_frame = self.ControlFrame(self)
         self.control_frame = control_frame
+        options_frame = self.OptionsFrame(self)
+        self.options_frame = options_frame
 
         toolbar_frame.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
         table_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
         control_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
+        # not displayed at start
+        # options_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
 
         self.bind('<Key>', self.on_key_press)
         # Bind the table to the mouse motion event
@@ -140,6 +145,9 @@ class UEVMGui(tk.Tk):
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
             # noinspection PyArgumentList
+            btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_pane, state=tk.DISABLED)
+            btn_toggle_options.pack(**pack_def_options, side=tk.LEFT)
+            # noinspection PyArgumentList
             btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Controls', command=container.toggle_controls_pane)
             btn_toggle_controls.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
@@ -155,6 +163,7 @@ class UEVMGui(tk.Tk):
             self.btn_prev_page = btn_prev_page
             self.btn_next_page = btn_next_page
             self.btn_last_page = btn_last_page
+            self.btn_toggle_options = btn_toggle_options
             self.btn_toggle_controls = btn_toggle_controls
             self.lbl_page_count = lbl_page_count
             self.entry_page_num = entry_page_num
@@ -174,22 +183,6 @@ class UEVMGui(tk.Tk):
         The ControlFrame is a container for the filter controls.
         :param container: The parent container.
         """
-
-        # delete the temporary text in filter value entry
-        def reset_entry_search(self, _event=None) -> None:
-            """
-            Reset the search entry to the default text.
-            :param _event: 
-            """
-            self.entry_search.delete(0, 'end')
-            self.entry_search.insert(0, gui_g.s.default_global_search)
-
-        def del_entry_search(self, _event=None) -> None:
-            """
-            Delete the text in the search entry.
-            :param _event:
-            """
-            self.entry_search.delete(0, 'end')
 
         def __init__(self, container):
             super().__init__()
@@ -324,6 +317,57 @@ class UEVMGui(tk.Tk):
             self.entry_search = entry_search
             self.lbtf_quick_edit = lbtf_quick_edit
             self.canvas_image = canvas_image
+
+        def reset_entry_search(self, _event=None) -> None:
+            """
+            Reset the search entry to the default text.
+            :param _event:
+            """
+            self.entry_search.delete(0, 'end')
+            self.entry_search.insert(0, gui_g.s.default_global_search)
+
+        def del_entry_search(self, _event=None) -> None:
+            """
+            Delete the text in the search entry.
+            :param _event:
+            """
+            self.entry_search.delete(0, 'end')
+
+    class OptionsFrame(ttk.Frame):
+        """
+        This class is used to create the toolbar frame
+        :param container: The parent container
+        """
+
+        def __init__(self, container):
+            super().__init__()
+            # pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
+            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
+            grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
+
+            lblf_options = ttk.LabelFrame(self, text='Command Options')
+            lblf_options.pack(side=tk.TOP, **lblf_def_options)
+            # row 0
+            cur_col = 0
+            cur_row = 0
+            force_refresh_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('force', False))
+            force_refresh_var.trace_add('write', lambda name, index, mode: gui_g.set_args_force_refresh(force_refresh_var.get()))
+            ck_force_refresh = ttk.Checkbutton(lblf_options, text='Force refresh', variable=force_refresh_var)
+            ck_force_refresh.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            # row 1
+            cur_row += 1
+            cur_col = 0
+            offline_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('offli', False))
+            offline_var.trace_add('write', lambda name, index, mode: gui_g.set_args_offline(offline_var.get()))
+            ck_offline = ttk.Checkbutton(lblf_options, text='Offline Mode', variable=offline_var)
+            ck_offline.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            # row 2
+            cur_row += 1
+            cur_col = 0
+            debug_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('debug', False))
+            debug_var.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(debug_var.get()))
+            ck_debug = ttk.Checkbutton(lblf_options, text='Debug mode', variable=debug_var)
+            ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
     def _open_file_dialog(self, save_mode=False) -> str:
         """
@@ -623,15 +667,32 @@ class UEVMGui(tk.Tk):
 
     def toggle_controls_pane(self) -> None:
         """
-        Toggle the visibility of the controls on the right side of the table
+        Toggle the visibility of the controls pane on the right side of the table
         """
         # Toggle visibility of filter controls frame
         if self.control_frame.winfo_ismapped():
             self.control_frame.pack_forget()
             self.toolbar_frame.btn_toggle_controls.config(text='Show Control')
+            self.toolbar_frame.btn_toggle_options.config(state=tk.NORMAL)
+
         else:
             self.control_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
             self.toolbar_frame.btn_toggle_controls.config(text='Hide Control')
+            self.toolbar_frame.btn_toggle_options.config(state=tk.DISABLED)
+
+    def toggle_options_pane(self) -> None:
+        """
+        Toggle the visibility of the Options pane on the right side of the table
+        """
+        # Toggle visibility of filter controls frame
+        if self.options_frame.winfo_ismapped():
+            self.options_frame.pack_forget()
+            self.toolbar_frame.btn_toggle_options.config(text='Show Options')
+            self.toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
+        else:
+            self.options_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
+            self.toolbar_frame.btn_toggle_options.config(text='Hide Options')
+            self.toolbar_frame.btn_toggle_controls.config(state=tk.DISABLED)
 
     def update_page_numbers(self) -> None:
         """

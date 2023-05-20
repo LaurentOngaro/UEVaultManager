@@ -36,3 +36,28 @@ UEVM_cli_args: SaferDict = None
 UEVM_filter_category = ''
 
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
+
+
+# options that can be changed in the GUI
+def set_args_force_refresh(value: bool) -> None:
+    """
+    Set the value of the argument force_refresh. Mandadory fot the associated ttk.ckbutton to work
+    :param value: True or False
+    """
+    UEVM_cli_args['force_refresh'] = value
+
+
+def set_args_debug(value: bool) -> None:
+    """
+    Set the value of the argument debug. Mandadory fot the associated ttk.ckbutton to work
+    :param value: True or False
+    """
+    UEVM_cli_args['debug'] = value
+
+
+def set_args_offline(value: bool) -> None:
+    """
+    Set the value of the argument offline. Mandadory fot the associated ttk.ckbutton to work
+    :param value:  True or False
+    """
+    UEVM_cli_args['offline'] = value

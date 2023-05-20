@@ -7,7 +7,7 @@ import webbrowser
 from tkinter import ttk
 
 import pandas as pd
-from pandastable import Table, TableModel
+from pandastable import Table, TableModel, config
 
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
@@ -28,7 +28,7 @@ class EditableTable(Table):
     :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
 
-    def __init__(self, container_frame=None, file=None, fontsize=10, show_toolbar=False, show_statusbar=False, **kwargs):
+    def __init__(self, container_frame=None, file=None, rows_per_page=36, show_toolbar=False, show_statusbar=False, **kwargs):
         self._last_selected_row = -1
         self._last_selected_col = -1
 
@@ -36,7 +36,7 @@ class EditableTable(Table):
         self.must_save = False
 
         self.pagination_enabled = True
-        self.rows_per_page = 35
+        self.rows_per_page = rows_per_page
         self.current_page = 0
         self.total_pages = 0
 
@@ -54,9 +54,6 @@ class EditableTable(Table):
 
         self.load_data()
         Table.__init__(self, container_frame, dataframe=self.data, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
-        self.fontsize = fontsize
-        self.setFont()
-
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
     def _generate_cell_selection_changed_event(self) -> None:
@@ -70,6 +67,102 @@ class EditableTable(Table):
             self._last_selected_row = selected_row
             self._last_selected_col = selected_col
             self.event_generate('<<CellSelectionChanged>>')
+
+    def cell_gradient_color(self, col_names=None, cmap='sunset', alpha=1) -> None:
+        """
+        Creates a gradient color for the cells os specified columns. The gradient depends on the cell value between min and max values for that column.
+        :param col_names: The names of the columns to create a gradient color for.
+        :param cmap: name of the colormap to use
+        :param alpha: alpha value for the color
+        """
+        # import pylab as plt
+        # cmaps = sorted(m for m in plt.cm.datad if not m.endswith("_r"))
+        # print(cmaps)
+        # possible cmaps:
+        # 'Accent', 'Blues', 'BrBG', 'BuGn', 'BuPu', 'CMRmap', 'Dark2', 'GnBu', 'Greens', 'Greys', 'OrRd', 'Oranges', 'PRGn', 'Paired', 'Pastel1',
+        #  'Pastel2', 'PiYG', 'PuBu', 'PuBuGn', 'PuOr', 'PuRd', 'Purples', 'RdBu', 'RdGy', 'RdPu', 'RdYlBu', 'RdYlGn', 'Reds', 'Set1', 'Set2', 'Set3',
+        #  'Spectral', 'Wistia', 'YlGn', 'YlGnBu', 'YlOrBr', 'YlOrRd', 'afmhot', 'autumn', 'binary', 'bone', 'brg', 'bwr', 'cool', 'coolwarm', 'copper',
+        #  'cubehelix', 'flag', 'gist_earth', 'gist_gray', 'gist_heat', 'gist_ncar', 'gist_rainbow', 'gist_stern', 'gist_yarg', 'gnuplot', 'gnuplot2',
+        #  'gray', 'hot', 'hsv', 'jet', 'nipy_spectral', 'ocean', 'pink', 'prism', 'rainbow', 'seismic', 'spring', 'summer', 'tab10', 'tab20', 'tab20b',
+        #  'tab20c', 'terrain', 'winter'
+
+        if col_names is None:
+            return
+        df = self.model.df
+        for colname in col_names:
+            x = df[colname]
+            clrs = self.values_to_colors(x, cmap, alpha)
+            clrs = pd.Series(clrs, index=df.index)
+            rc = self.rowcolors
+            rc[colname] = clrs
+
+    def cell_is_color(self, col_names=None, color='green', value_to_check='True') -> None:
+        """
+        Set the cell color for the specified columns and the cell with a given value.
+        :param col_names: The names of the columns to create a gradient color for.
+        :param color: The color to set the cell to.
+        :param value_to_check: The value to check for.
+        """
+
+        if col_names is None:
+            return
+
+        for col_name in col_names:
+            mask = self.model.df[col_name] == value_to_check
+            self.setColorByMask(col=col_name, mask=mask, clr=color)
+
+    def cell_is_not_color(self, col_names=None, color='grey', value_to_check='False') -> None:
+        """
+        Set the cell color for the specified columns and the cell with NOT a given value.
+        :param col_names: The names of the columns to create a gradient color for.
+        :param color: The color to set the cell to.
+        :param value_to_check: The value to check for.
+        """
+
+        if col_names is None:
+            return
+
+        for col_name in col_names:
+            mask = self.model.df[col_name] != value_to_check
+            self.setColorByMask(col=col_name, mask=mask, clr=color)
+
+    def row_is_color(self, col_names=None, color='green', value_to_check='True') -> None:
+        """
+        Set the row color for the specified columns and the rows with a given value.
+        :param col_names: The names of the columns to check for the value.
+        :param color: The color to set the row to.
+        :param value_to_check: The value to check for.
+        """
+
+        if col_names is None:
+            return
+
+        for col_name in col_names:
+            mask = self.model.df[col_name] == value_to_check
+            row_indices = mask[mask].index
+            if len(row_indices) > 0:  # Check if there are any row indices
+                self.setRowColors(rows=row_indices, clr=color)
+
+    def set_preferences(self, default_pref=None) -> None:
+        """
+        Initializes the table styling.
+        :param default_pref: The default preferences to apply to the table.
+        """
+        # remove the warning: "A value is trying to be set on a copy of a slice from a DataFrame"
+        # when sorting the table with pagination enabled
+        # see: https://stackoverflow.com/questions/20625582/how-to-deal-with-settingwithcopywarning-in-pandas
+        pd.options.mode.chained_assignment = None
+
+        if default_pref is not None:
+            config.apply_options(default_pref, self)
+
+        self.cell_gradient_color(col_names=['Review'], cmap='Set3', alpha=1)
+        self.cell_is_color(col_names=['Purchased', 'On sale'], color='lightgreen', value_to_check='True')
+        self.cell_is_color(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
+        self.cell_is_not_color(col_names=['Status'], color='#555555', value_to_check='ACTIVE')
+        # self.row_is_color(col_names=['Status'], color='#555555', value_to_check='SUNSET')
+
+        self.redraw()
 
     def handle_left_click(self, event) -> None:
         """

@@ -70,7 +70,6 @@ file:
       'App name': False,
       'App title': False,
       'Category': False,
-      'UE Version': False,
       'Review': False,
       'Developer': False,
       'Description': False,
@@ -99,6 +98,7 @@ file:
       'Date Added': True,
       'Creation Date': False,
       'Update Date': False,
+      'UE Version': False,
       'Uid': False
   }
 

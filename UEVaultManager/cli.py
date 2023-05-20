@@ -232,6 +232,7 @@ class UEVaultManagerCLI:
         supported_versions = no_text_data
         page_title = no_text_data
         grab_result = GrabResult.NO_ERROR.name
+        asset_folder = 'Marketplace'  # by default the asset are from the "MarketPlace"
         on_sale = bool_false_data
 
         try:
@@ -267,7 +268,6 @@ class UEVaultManagerCLI:
                 , item.app_name  # 'App name'
                 , item.app_title  # 'App title'
                 , category  # 'Category'
-                , item.app_version('Windows')  # 'UE Version'
                 , review  # 'Review'
                 , metadata['developer']  # 'Developer'
                 , metadata['description']  # 'Description'
@@ -287,7 +287,7 @@ class UEVaultManagerCLI:
                 , no_text_data  # 'Test result
                 , no_text_data  # 'Installed Folder'
                 , no_text_data  # 'Alternative'
-                , no_text_data  # 'Asset Folder'
+                , asset_folder  # 'Asset Folder'
                 # less important fields
                 , page_title  # 'page title'
                 , thumbnail_url  # 'Image' with 488 height
@@ -296,6 +296,7 @@ class UEVaultManagerCLI:
                 , date_added  # 'Date Added'
                 , metadata['creationDate']  # 'Creation Date'
                 , metadata['lastModifiedDate']  # 'Update Date'
+                , item.app_version('Windows')  # 'UE Version'
                 , uid  # 'Uid'
             )
             record = dict(zip(CSV_headings.keys(), values))
@@ -443,6 +444,14 @@ class UEVaultManagerCLI:
                                     )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                                 except Exception as _error:
                                     self.logger.warning(f'Old Price value can not be converted for asset {_asset_id}\nError:{_error!r}')
+                            if key == 'Asset folder':
+                                # all the folders when the asset came from are stored in a comma separated list
+                                folder_list = item_in_file[key].split(',')
+                                # add the new folder to the list without duplicates
+                                if _csv_record[index] not in folder_list:
+                                    folder_list.append(_csv_record[index])
+                                # update the list in the CSV record
+                                _csv_record[index] = ','.join(folder_list)
                         index += 1
 
                 _csv_record[price_index + 1] = old_price
@@ -487,7 +496,7 @@ class UEVaultManagerCLI:
             self.core.clean_exit(1)
 
         if args.force_refresh:
-            self.logger.info('Refreshing asset list, this may take a while...')
+            self.logger.info('force_refresh option is active ...\nRefreshing asset list, this will take several minutes to acheived depending on the internet connection...')
         else:
             self.logger.info('Getting asset list... (this may take a while)')
 
