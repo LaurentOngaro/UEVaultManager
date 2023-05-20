@@ -1,14 +1,14 @@
 # coding=utf-8
 """
 Implementation for:
-- LGDConf: ConfigParser subclass that saves modification time of config file
+- AppConf: ConfigParser subclass that saves modification time of config file
 """
 import configparser
 import os
 import time
 
 
-class LGDConf(configparser.ConfigParser):
+class AppConf(configparser.ConfigParser):
     """
     ConfigParser subclass that saves modification time of config file
     :param args: arguments
