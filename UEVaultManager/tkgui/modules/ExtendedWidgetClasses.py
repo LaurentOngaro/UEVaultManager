@@ -280,6 +280,8 @@ class ExtendedCheckButton(ExtendedWidget):
         self._check_label = check_label
 
         self.set_label(text)
+        # noinspection PyTypeChecker
+        # keep "bad" type to keep compatible signatures with overriden methods
         self.set_content(self.default_content)
 
         if change_state_on_click:
@@ -321,6 +323,7 @@ class ExtendedCheckButton(ExtendedWidget):
         self._lbl_text.bind(sequence, command, add=True)
         self._check_label.bind(sequence, command, add=True)
 
+    # noinspection PyUnusedLocal
     def switch_state(self, event=None) -> bool:
         """
         Switches the state of the checkbutton
@@ -345,6 +348,8 @@ class ExtendedCheckButton(ExtendedWidget):
         """
         try:
             if type(content) is bool:
+                # noinspection PyTypeChecker
+                # keep "bad" type to keep compatible signatures with overriden methods
                 self._var.set(content)
             elif (content.lower() == 'true') or (content == '1'):
                 self._var.set(True)

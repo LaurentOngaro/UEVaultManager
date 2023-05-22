@@ -427,7 +427,7 @@ class UEVMGui(tk.Tk):
     def _change_navigation_state(self, state: str) -> None:
         """
         Change the state of the navigation buttons
-        :param state: tk.NORMAL or tk.DISABLED
+        :param state: 'normal' or 'disabled'
         """
         self.toolbar_frame.btn_first_page.config(state=state)
         self.toolbar_frame.btn_prev_page.config(state=state)
@@ -518,6 +518,7 @@ class UEVMGui(tk.Tk):
         value = widget.get_content()
         self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
 
+    # noinspection PyUnusedLocal
     def on_switch_edit_flag(self, event=None, tag='') -> None:
         """
         When the focus leaves a quick edit widget, save the value
