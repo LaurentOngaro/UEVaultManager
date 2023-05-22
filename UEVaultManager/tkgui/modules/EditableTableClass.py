@@ -3,12 +3,15 @@
 Implementation for:
 - EditableTable is a custom class that extends the pandastable.Table class, providing additional functionality
 """
+import io
 import webbrowser
 from tkinter import ttk
 
 import pandas as pd
+from pandas.errors import EmptyDataError
 from pandastable import Table, TableModel, config
 
+from UEVaultManager.models.csv import create_emty_csv_row, CSV_headings
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText
@@ -34,6 +37,10 @@ class EditableTable(Table):
 
         self.file = file
         self.must_save = False
+        self.must_rebuild = False
+        self.container_frame = container_frame
+        self.show_toolbar = show_toolbar
+        self.show_statusbar = show_statusbar
 
         self.pagination_enabled = True
         self.rows_per_page = rows_per_page
@@ -55,6 +62,18 @@ class EditableTable(Table):
         self.load_data()
         Table.__init__(self, container_frame, dataframe=self.data, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
+
+    def colorRows(self) -> None:
+        """
+        Colors the rows of the table based on the values in the 'Status' column.
+        Overrides the colorRows() method of the pandastable.Table class to trap the KeyError exception.
+        """
+        try:
+            super().colorRows()
+            # TODO : reapply color with when page is changed
+        except KeyError as error:
+            log_debug(f'Error in colorRows(): {error!r}')
+            pass
 
     def _generate_cell_selection_changed_event(self) -> None:
         """
@@ -108,6 +127,8 @@ class EditableTable(Table):
             return
 
         for col_name in col_names:
+            if col_name not in self.model.df.columns:
+                continue
             mask = self.model.df[col_name] == value_to_check
             self.setColorByMask(col=col_name, mask=mask, clr=color)
 
@@ -123,8 +144,22 @@ class EditableTable(Table):
             return
 
         for col_name in col_names:
+            if col_name not in self.model.df.columns:
+                continue
             mask = self.model.df[col_name] != value_to_check
             self.setColorByMask(col=col_name, mask=mask, clr=color)
+
+    def setColorByMask(self, col, mask, clr):
+        """Color individual cells in a column using a mask."""
+
+        if len(self.rowcolors) == 0:
+            self.resetColors()
+        rc = self.rowcolors
+        if col not in rc.columns:
+            # HS rc[col] = pd.Series(self.data, copy=True)
+            rc[col] = pd.Series()
+        rc[col] = rc[col].where(-mask, clr)
+        return
 
     def row_is_color(self, col_names=None, color='green', value_to_check='True') -> None:
         """
@@ -138,6 +173,8 @@ class EditableTable(Table):
             return
 
         for col_name in col_names:
+            if col_name not in self.model.df.columns:
+                continue
             mask = self.model.df[col_name] == value_to_check
             row_indices = mask[mask].index
             if len(row_indices) > 0:  # Check if there are any row indices
@@ -145,7 +182,7 @@ class EditableTable(Table):
 
     def set_preferences(self, default_pref=None) -> None:
         """
-        Initializes the table styling.
+        Initializes the table preferences.
         :param default_pref: The default preferences to apply to the table.
         """
         # remove the warning: "A value is trying to be set on a copy of a slice from a DataFrame"
@@ -156,7 +193,12 @@ class EditableTable(Table):
         if default_pref is not None:
             config.apply_options(default_pref, self)
 
-        self.cell_gradient_color(col_names=['Review'], cmap='Set3', alpha=1)
+    def set_colors(self) -> None:
+        """
+        Initializes the colors of some cells depending on their values.
+        """
+        if self.model.df.get('Review', None) is not None:
+            self.cell_gradient_color(col_names=['Review'], cmap='Set3', alpha=1)
         self.cell_is_color(col_names=['Purchased', 'On sale'], color='lightgreen', value_to_check='True')
         self.cell_is_color(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
         self.cell_is_not_color(col_names=['Status'], color='#555555', value_to_check='ACTIVE')
@@ -245,10 +287,10 @@ class EditableTable(Table):
                 'App name': str,  #
                 'Review': float,  #
                 'Price': float,  #
-                'Old Price': float,  #
+                'Old price': float,  #
                 'Purchased': convert_to_bool,  #
-                'Must Buy': convert_to_bool,  #
-                'Date Added': convert_to_datetime,  #
+                'Must buy': convert_to_bool,  #
+                'Date added': convert_to_datetime,  #
             },
             'on_bad_lines': 'warn',
             'encoding': "utf-8",
@@ -257,29 +299,46 @@ class EditableTable(Table):
             log_warning(f'File not found: {self.file}')
             return
 
-        self.data = pd.read_csv(self.file, **csv_options)
+        self.must_rebuild = False
+        try:
+            self.data = pd.read_csv(self.file, **csv_options)
+        except EmptyDataError:
+            # will create an empty row with the correct columns
+            str_data = ','.join(str(value) for value in CSV_headings.keys())  # column names
+            str_data += '\n'
+            str_data += create_emty_csv_row(return_as_string=True)  # dummy row
+            self.data = pd.read_csv(io.StringIO(str_data))
+            self.must_rebuild = True
+
+        self.init_data_format()
+
         # log_debug("\nCOL TYPES AFTER LOADING CSV\n")
-        # self.data.info() # direct print info
+        self.data.info()  # direct print info
 
         self.total_pages = (len(self.data) - 1) // self.rows_per_page + 1
+        self.data_filtered = self.data
 
+    def init_data_format(self) -> None:
+        """
+        Initializes the data format for the table.
+        """
         for col in self.data.columns:
             try:
                 self.data[col] = self.data[col].astype(str)
             except (KeyError, ValueError) as error:
                 log_error(f'Could not convert column "{col}" to string. Error: {error}')
 
-        col_to_convert = ['Creation Date', 'Update Date']
+        col_to_convert = ['Creation date', 'Update date']
         # note "date added" does not use the same format as the other date columns
         for col in col_to_convert:
             col_type = self.data.get(col, None)
             if col_type is not None:
                 try:
-                    self.data[col] = pd.to_datetime(self.data[col], format='ISO8601')
+                    self.data[col] = pd.to_datetime(self.data[col], format='ISO8601', errors='ignore')
                 except (KeyError, ValueError) as error:
                     log_error(f'Could not convert column "{col}" to datetime. Error: {error}')
 
-        col_to_convert = ['Review', 'Price', 'Old Price', 'Discount Price']
+        col_to_convert = ['Review', 'Price', 'Old price', 'Discount price']
         for col in col_to_convert:
             col_type = self.data.get(col, None)
             if col_type is not None:
@@ -321,6 +380,7 @@ class EditableTable(Table):
             return False
         else:
             gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
+            self.current_page = 0
             self.load_data()
             self.show_page(self.current_page)
             return True
@@ -611,30 +671,39 @@ class EditableTable(Table):
         """
         if row is None or row >= len(self.model.df) or quick_edit_frame is None:
             return
-        # url
+        # Url
         col = self.model.df.columns.get_loc('Url')
-        value = self.model.getValueAt(row, col)
-        quick_edit_frame.set_child_values(tag='url', content=value, row=row, col=col)
-        # stars
-        col = self.model.df.columns.get_loc('Stars')
-        value = self.model.getValueAt(row, col)
-        quick_edit_frame.set_child_values(tag='stars', content=value, row=row, col=col)
-        # comment
+        value = self.model.getValueAt(row=row, col=col)
+        quick_edit_frame.set_child_values(tag='Url', content=value, row=row, col=col)
+        # Comment
         col = self.model.df.columns.get_loc('Comment')
-        value = self.model.getValueAt(row, col)
-        quick_edit_frame.set_child_values(tag='comment', content=value, row=row, col=col)
-        # test_result
+        value = self.model.getValueAt(row=row, col=col)
+        quick_edit_frame.set_child_values(tag='Comment', content=value, row=row, col=col)
+        # Stars
+        col = self.model.df.columns.get_loc('Stars')
+        value = self.model.getValueAt(row=row, col=col)
+        quick_edit_frame.set_child_values(tag='Stars', content=value, row=row, col=col)
+        # Test
         col = self.model.df.columns.get_loc('Test result')
-        value = self.model.getValueAt(row, col)
-        quick_edit_frame.set_child_values(tag='test_result', content=value, row=row, col=col)
-        # alternative
+        value = self.model.getValueAt(row=row, col=col)
+        quick_edit_frame.set_child_values(tag='Test result', content=value, row=row, col=col)
+        # Must buy
+        col = self.model.df.columns.get_loc('Must buy')
+        value = self.model.getValueAt(row=row, col=col)
+        log_info(f'DEBUG set_child_values Value: {value}')
+        quick_edit_frame.set_child_values(tag='Must buy', content=value, row=row, col=col)
+        # Alternative
         col = self.model.df.columns.get_loc('Alternative')
-        value = self.model.getValueAt(row, col)
-        quick_edit_frame.set_child_values(tag='alternative', content=value, row=row, col=col)
-        # Installed folder
-        col = self.model.df.columns.get_loc('Installed Folder')
-        value = self.model.getValueAt(row, col)
-        quick_edit_frame.set_child_values(tag='folder', content=value, row=row, col=col)
+        value = self.model.getValueAt(row=row, col=col)
+        quick_edit_frame.set_child_values(tag='Alternative', content=value, row=row, col=col)
+        # Installed
+        col = self.model.df.columns.get_loc('Installed folder')
+        value = self.model.getValueAt(row=row, col=col)
+        quick_edit_frame.set_child_values(tag='Installed folder', content=value, row=row, col=col)
+        # Origin
+        col = self.model.df.columns.get_loc('Origin')
+        value = self.model.getValueAt(row=row, col=col)
+        quick_edit_frame.set_child_values(tag='Origin', content=value, row=row, col=col)
 
     @staticmethod
     def quick_edit(quick_edit_frame: TaggedLabelFrame = None) -> None:
@@ -642,11 +711,14 @@ class EditableTable(Table):
         Resets the cell content preview.
         :param quick_edit_frame: The frame to reset the cell content preview in.
         """
-        quick_edit_frame.set_default_content('asset_url')
-        quick_edit_frame.set_default_content('asset_comment')
-        quick_edit_frame.set_default_content('asset_test_result')
-        quick_edit_frame.set_default_content('asset_alternative')
-        quick_edit_frame.set_default_content('asset_folder')
+        quick_edit_frame.set_default_content('Url')
+        quick_edit_frame.set_default_content('Comments')
+        quick_edit_frame.set_default_content('Stars')
+        quick_edit_frame.set_default_content('Test result')
+        quick_edit_frame.set_default_content('Must buy')
+        quick_edit_frame.set_default_content('Installed folder')
+        quick_edit_frame.set_default_content('Origin')
+        quick_edit_frame.set_default_content('Alternative')
 
     def quick_edit_save_value(self, value: str, row: int = None, col: int = None) -> None:
         """
@@ -690,7 +762,8 @@ class EditableTable(Table):
         else:
             asset_url = url
         log_info(f'calling open_asset_url={asset_url}')
-        if asset_url is None or asset_url == '' or asset_url == 'nan':
+        if asset_url is None or asset_url == '' or asset_url == gui_g.s.empty_cell:
+            log_info('asset URL is empty for this asset')
             return
         webbrowser.open(asset_url)
 

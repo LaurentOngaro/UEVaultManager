@@ -29,7 +29,7 @@ class UEVMGui(tk.Tk):
     :param show_open_file_dialog: If True, the open file dialog will be shown at startup
     """
 
-    def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file='', show_open_file_dialog=False):
+    def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file='', show_open_file_dialog=False, rebuild_data=False):
         super().__init__()
         self.title(title)
         style = set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
@@ -49,8 +49,12 @@ class UEVMGui(tk.Tk):
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
         table_frame = self.TableFrame(self)
+
+        # gui_g.UEVM_gui_ref = self  # important ! Must be donne before any use of a ProgressWindow. If not, an UEVMGuiHiddenRootClass will be created and the ProgressWindow still be displayed after the init
         self.editable_table = EditableTable(container_frame=table_frame, file=file, rows_per_page=36, show_statusbar=True)
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
+
+        # done in the rebuild_data() method
         self.editable_table.show()
         self.editable_table.show_page(0)
 
@@ -61,6 +65,7 @@ class UEVMGui(tk.Tk):
         self.control_frame = control_frame
         options_frame = self.OptionsFrame(self)
         self.options_frame = options_frame
+        self.editable_table.set_colors()
 
         toolbar_frame.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
         table_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
@@ -79,6 +84,18 @@ class UEVMGui(tk.Tk):
             if self.load_file() == '':
                 gui_f.log_error(f'This application could not run without a file to read data from')
                 self.quit()
+
+        # Quick edit the first row
+        self.editable_table.quit_edit_content(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=0)
+
+        if rebuild_data or self.editable_table.must_rebuild:
+            if gui_f.box_okcancel('Data are invalid or empty. They will be rebuilt from sources files. Do you want to continue ?'):
+                if not self.editable_table.rebuild_data():
+                    gui_f.log_error(f'Rebuild data error. This application could not run without a file to read from or some data to build from it')
+                    self.destroy()  # self.quit() won't work here
+                    return
+            else:
+                self.destroy()  # self.quit() won't work here
 
     class ToolbarFrame(ttk.Frame):
         """
@@ -177,6 +194,7 @@ class UEVMGui(tk.Tk):
 
         def __init__(self, container):
             super().__init__(container)
+            self.container = container
 
     class ControlFrame(ttk.Frame):
         """
@@ -242,7 +260,7 @@ class UEVMGui(tk.Tk):
             # row 2
             cur_row += 1
             cur_col = 0
-            lbl_grab_results = ttk.Label(lbf_filter_cat, text='Grab Result')
+            lbl_grab_results = ttk.Label(lbf_filter_cat, text='Grab result')
             lbl_grab_results.grid(row=cur_row, column=cur_col, **grid_fw_options)
             cur_col += 1
             var_grab_results = tk.StringVar(value=grab_results[0])
@@ -290,8 +308,12 @@ class UEVMGui(tk.Tk):
                 widget_type=WidgetType.TEXT, tag='Comment', focus_out_callback=container.on_quick_edit_focus_out, width=10, height=4
             )
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Stars', focus_out_callback=container.on_quick_edit_focus_out)
-            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Test_result', focus_out_callback=container.on_quick_edit_focus_out)
-            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Folder', default_content='Installed in')
+            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Test result', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.CHECKBUTTON, tag='Must buy', text='', click_on_callback=container.on_switch_edit_flag, default_content=False
+            )
+            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Installed folder', default_content='Installed in')
+            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Origin', focus_out_callback=container.on_quick_edit_focus_out)
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Alternative', focus_out_callback=container.on_quick_edit_focus_out)
 
             lbt_image_preview = ttk.LabelFrame(self, text='Image Preview')
@@ -336,10 +358,10 @@ class UEVMGui(tk.Tk):
     class OptionsFrame(ttk.Frame):
         """
         This class is used to create the toolbar frame
-        :param container: The parent container
+        :param _container: The parent container
         """
 
-        def __init__(self, container):
+        def __init__(self, _container):
             super().__init__()
             # pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
@@ -369,15 +391,18 @@ class UEVMGui(tk.Tk):
             ck_debug = ttk.Checkbutton(lblf_options, text='Debug mode', variable=debug_var)
             ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
-    def _open_file_dialog(self, save_mode=False) -> str:
+    def _open_file_dialog(self, save_mode=False, filename=None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from
         :param save_mode: if True, the dialog will be in saving mode, else in loading mode
+        :param filename: the default filename to use
         :return: the chosen filename
         """
         # adding category to the default filename
-        initial_dir = os.path.dirname(gui_g.s.csv_filename)
-        default_filename = os.path.basename(gui_g.s.csv_filename)  # remove dir
+        if not filename:
+            filename = gui_g.s.default_filename
+        initial_dir = os.path.dirname(filename)
+        default_filename = os.path.basename(filename)  # remove dir
         default_ext = os.path.splitext(default_filename)[1]  # get extension
         default_filename = os.path.splitext(default_filename)[0]  # get filename without extension
         try:
@@ -387,6 +412,8 @@ class UEVMGui(tk.Tk):
             category = None
         if category and category != gui_g.s.default_category_for_all:
             default_filename = default_filename + '_' + category + default_ext
+        else:
+            default_filename = default_filename + default_ext
         if save_mode:
             filename = fd.asksaveasfilename(
                 title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
@@ -480,6 +507,26 @@ class UEVMGui(tk.Tk):
         value = widget.get_content()
         self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
 
+    def on_switch_edit_flag(self, _event=None, tag='') -> None:
+        """
+        When the focus leaves a quick edit widget, save the value
+        :param _event:
+        :param tag: tag of the widget that triggered the event
+        """
+        if tag == '':
+            return
+        widget = self.control_frame.lbtf_quick_edit.get_child_by_tag(tag)
+        if widget is None or widget.widget_type != WidgetType.CHECKBUTTON:
+            gui_f.log_warning(f'Could not find a CHECKBUTTON widget with tag {tag}')
+            return
+        col = widget.col
+        row = widget.row
+        if col is None or row is None or col < 0 or row < 0:
+            gui_f.log_debug(f'invalid values for row={row} and col={col}')
+            return
+        value = widget.switch_state()
+        self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
+
     # noinspection PyUnusedLocal
     def on_check_change(self, *args) -> None:
         """
@@ -493,7 +540,7 @@ class UEVMGui(tk.Tk):
         """
         When the window is closed, check if there are unsaved changes and ask the user if he wants to save them
         """
-        if self.editable_table.must_save:
+        if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
                 self.save_file(show_dialog=False)
         self.quit()
@@ -503,7 +550,7 @@ class UEVMGui(tk.Tk):
         Load a file
         :return: the name of the file that was loaded
         """
-        filename = self._open_file_dialog()
+        filename = self._open_file_dialog(filename=self.editable_table.file)
         if filename and os.path.isfile(filename):
             self.editable_table.file = filename
             self.editable_table.load_data()
@@ -519,7 +566,7 @@ class UEVMGui(tk.Tk):
         :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file
         """
         if show_dialog:
-            filename = self._open_file_dialog(save_mode=True)
+            filename = self._open_file_dialog(filename=self.editable_table.file, save_mode=True)
             if filename:
                 self.editable_table.file = filename
         else:
@@ -539,7 +586,7 @@ class UEVMGui(tk.Tk):
         selected_row_indices = self.editable_table.multiplerowlist
         if selected_row_indices:
             selected_rows = self.editable_table.data_filtered.iloc[selected_row_indices]
-            filename = self._open_file_dialog(save_mode=True)
+            filename = self._open_file_dialog(save_mode=True, filename=self.editable_table.file)
             if filename:
                 selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
@@ -580,9 +627,9 @@ class UEVMGui(tk.Tk):
             filter_dict.pop('Obsolete', None)
             filter_dict.pop('Status', None)
         if must_buy:
-            filter_dict['Must Buy'] = True
+            filter_dict['Must buy'] = True
         else:
-            filter_dict.pop('Must Buy', None)
+            filter_dict.pop('Must buy', None)
         if on_sale:
             filter_dict['On sale'] = True
         else:
@@ -746,12 +793,13 @@ class UEVMGui(tk.Tk):
         """
         Reload the data from the file
         """
-        if self.editable_table.must_save:
-            if gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?'):
-                self.editable_table.reload_data()
-        gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
-        self.update_page_numbers()
-        self.update_category_var()
+        if not self.editable_table.must_save or (
+            self.editable_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
+        ):
+            self.editable_table.reload_data()
+            gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
+            self.update_page_numbers()
+            self.update_category_var()
 
     def rebuild_data(self) -> None:
         """
