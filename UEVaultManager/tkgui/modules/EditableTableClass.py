@@ -63,18 +63,6 @@ class EditableTable(Table):
         Table.__init__(self, container_frame, dataframe=self.data, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
-    def colorRows(self) -> None:
-        """
-        Colors the rows of the table based on the values in the 'Status' column.
-        Overrides the colorRows() method of the pandastable.Table class to trap the KeyError exception.
-        """
-        try:
-            super().colorRows()
-            # TODO : reapply color with when page is changed
-        except KeyError as error:
-            log_debug(f'Error in colorRows(): {error!r}')
-            pass
-
     def _generate_cell_selection_changed_event(self) -> None:
         """
         Creates the event bindings for the table.
