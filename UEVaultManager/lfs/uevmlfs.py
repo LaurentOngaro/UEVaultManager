@@ -248,7 +248,7 @@ class UEVMLFS:
     def assets(self, assets) -> None:
         """
         Set the assets data
-        :param assets: data
+        :param assets: assets
         :raises ValueError: If assets is None
         """
         if assets is None:
