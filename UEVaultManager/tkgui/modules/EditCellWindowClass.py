@@ -74,12 +74,15 @@ class EditCellWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
+            grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
             # (bootstyle is not recognized by PyCharm)
+            ttk.Label(self, text='Respect the initial format when changing a value').grid(row=0, column=0, columnspan=2, **grid_def_options)
             # noinspection PyArgumentList
-            ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING).pack(**pack_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Save Changes', command=container.save_change, bootstyle=INFO).grid(row=1, column=0, **grid_def_options)
             # noinspection PyArgumentList
-            ttk.Button(self, text='Save Changes', command=container.save_change, bootstyle=INFO).pack(**pack_def_options, side=tk.RIGHT)
+            ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING).grid(row=1, column=1, **grid_def_options)
+            self.columnconfigure('all', weight=1)
+            self.rowconfigure('all', weight=1)
 
     def on_key_press(self, event) -> None:
         """

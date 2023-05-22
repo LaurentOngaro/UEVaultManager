@@ -596,7 +596,7 @@ class EditableTable(Table):
 
         title = 'Edit current cell values'
         width = 300
-        height = 90
+        height = 110
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
