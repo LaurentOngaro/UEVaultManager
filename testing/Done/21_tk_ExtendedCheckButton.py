@@ -1,3 +1,4 @@
+# coding=utf-8
 import os.path
 import tkinter as tk
 from tkinter import ttk

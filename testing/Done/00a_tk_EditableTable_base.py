@@ -10,14 +10,14 @@ class EditableTable(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
-        self.master.geometry('1200x880')
-        self.master.title('Table app')
+        self.parent.geometry('1200x880')
+        self.parent.title('Table app')
         self.currentPage = 0
         self.rowsPerPage = 35
         self.paginationEnabled = True
         self.df = pd.read_csv(file)
         self.df_filtered = self.df
-        f = tk.Frame(self.master)
+        f = tk.Frame(self.parent)
         f.pack(fill=tk.BOTH, expand=1)
         self.table = Table(f, dataframe=self.df.iloc[0:0], showtoolbar=True, showstatusbar=True)
         self.table.show()
