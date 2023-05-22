@@ -746,7 +746,8 @@ class AppCore:
 
         self.update_aliases(force=meta_updated)
 
-        # meta_updated = false  # debug only
+        if gui_g.s.never_update_data_files:
+            meta_updated = False
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata files...", new_max_value=len(_ret))

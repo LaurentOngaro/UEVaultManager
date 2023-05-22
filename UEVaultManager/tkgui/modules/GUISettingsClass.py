@@ -12,6 +12,8 @@ class GUISettings:
 
     def __init__(self):
         self.debug_mode = False
+        # speed the update process by not updating the metadata files
+        self.never_update_data_files = False  # Debug only
 
         self.app_title = 'UEVM Gui'
         self.app_width = 1600
