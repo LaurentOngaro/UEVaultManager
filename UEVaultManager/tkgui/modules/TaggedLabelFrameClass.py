@@ -6,8 +6,9 @@ Implementation for:
 import tkinter as tk
 from tkinter import ttk
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import WidgetType, ExtendedEntry, ExtendedText, ExtendedLabel, ExtendedCheckButton
-from UEVaultManager.tkgui.modules.functions import log_error, tag_to_label
+from UEVaultManager.tkgui.modules.functions import log_error, tag_to_label, log_warning, path_from_relative_to_absolute
 
 
 class TaggedLabelFrame(ttk.LabelFrame):
@@ -30,48 +31,54 @@ class TaggedLabelFrame(ttk.LabelFrame):
         tag: str,
         widget_type: WidgetType.ENTRY,
         default_content=None,
-        height=None,
         width=None,
+        height=None,
+        text='',
         layout_option='',
-        focus_out_callback=None
+        focus_out_callback=None,
+        click_on_callback=None
     ) -> None:
         """
         Adds a child widget to the LabelFrame and associates it with the given tag.
+        Note: we can not use command parameter to manage callback here because it should be transmited
+        to the parent widget and in that case tag won't be available as an indentificator
         :param tag: Tag to search for (case-insensitive)
         :param widget_type: Type of widget to add. A string value of 'text', 'checkbutton', or 'entry'
         :param width: Width of the child widget. Only used for text widgets
         :param height: Height of the child widget. Only used for text widgets
+        :param text: Text to display in the child widget.
         :param default_content: Default content of the child widget
         :param layout_option: Layout options to use. Default, full width.
         :param focus_out_callback: Callback to call when the child widget loses focus
+        :param click_on_callback: Callback to call when the child widget is clicked or checked
         """
         tag = tag.lower()
         frame = ttk.Frame(self)
         frame.pack(**self.lblf_fw_options)
         label = ttk.Label(frame, text=tag_to_label(tag))
         label.pack(side=tk.LEFT, **self.pack_options)
-
-        widget_class = {
-            WidgetType.ENTRY: (lambda **kwargs: ExtendedEntry)(master=frame, tag=tag, default_content=default_content, height=height, width=width),
-            WidgetType.TEXT:
-            (lambda **kwargs: ExtendedText)(master=frame, wrap=tk.WORD, tag=tag, default_content=default_content, height=height, width=width),
-            WidgetType.LABEL: (lambda **kwargs: ExtendedLabel)(master=frame, tag=tag, default_content=default_content, height=height, width=width),
-            WidgetType.CHECKBUTTON:
-            (lambda **kwargs: ExtendedCheckButton)(master=frame, tag=tag, default_content=default_content, height=height, width=width)
-        }.get(widget_type)
-        if widget_class is None:
+        asset_folder = path_from_relative_to_absolute(gui_g.s.assets_folder)
+        if widget_type == WidgetType.ENTRY:
+            child = ExtendedEntry(master=frame, tag=tag, default_content=default_content, height=height, width=width)
+        elif widget_type == WidgetType.TEXT:
+            child = ExtendedText(master=frame, tag=tag, default_content=default_content, wrap=tk.WORD, height=height, width=width)
+        elif widget_type == WidgetType.LABEL:
+            child = ExtendedLabel(master=frame, tag=tag, default_content=default_content)
+        elif widget_type == WidgetType.CHECKBUTTON:
+            child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, text=text, images_folder=asset_folder)
+        else:
             log_error(f'Invalid widget type: {widget_type}')
             return
 
-        child = widget_class(frame, tag=tag, default_content=default_content, height=height, width=width)
         self._tagged_child[tag] = child
-        child.reset_content()
 
         layout_option = self.pack_fw_options if layout_option == '' else layout_option
         child.pack(side=tk.LEFT, **layout_option)
 
         if focus_out_callback is not None:
             child.bind('<FocusOut>', lambda event: focus_out_callback(event=event, tag=tag))
+        if click_on_callback is not None:
+            child.bind('<Button-1>', lambda event: click_on_callback(event=event, tag=tag))
 
     def get_child_by_tag(self, tag: str):
         """
@@ -114,3 +121,5 @@ class TaggedLabelFrame(ttk.LabelFrame):
             widget.set_content(content)
             widget.row = row
             widget.col = col
+        else:
+            log_warning(f'Widget with tag {tag} not found')

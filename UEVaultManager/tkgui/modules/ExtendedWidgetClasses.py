@@ -10,6 +10,7 @@ Implementation for:
 """
 
 import inspect
+import os
 import tkinter as tk
 from enum import Enum
 from tkinter import ttk
@@ -42,6 +43,8 @@ class ExtendedWidget:
         self.col = col
         self.row = row
         self.default_content = default_content if default_content else tag_to_label(tag)
+        # can't call this here because the set_content function is specific and overridden in the derived classes
+        # self.reset_content()
 
     @staticmethod
     def _remove_extended_args(kwargs, function_signature) -> None:
@@ -136,18 +139,21 @@ class ExtendedWidget:
 class ExtendedEntry(ExtendedWidget, ttk.Entry):
     """
     Extended widget version of a ttk.Entry class.
-    :param master: master widget
+    :param master: container for the widget
     :param kwargs: kwargs to pass to the widget
     :return: ExtendedEntry instance
     """
 
     def __init__(self, master=None, **kwargs):
+        if master is None:
+            print('A container is needed to display this widget')
+            return
         ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ExtendedWidget.__init__(self, **ext_args)
         # already made with _extract_extended_args
         # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ttk.Entry.__init__(self, master, **kwargs)
-        self.type: WidgetType.ENTRY
+        self.widget_type = WidgetType.ENTRY
 
     def set_content(self, content='') -> None:
         """
@@ -161,19 +167,22 @@ class ExtendedEntry(ExtendedWidget, ttk.Entry):
 class ExtendedText(ExtendedWidget, tk.Text):
     """
     Extended widget version of a ttk.Text. Also add a "ttk.style" like property to the widget.
-    :param master: master widget
+    :param master: container for the widget
     :param kwargs: kwargs to pass to the widget
     :return: ExtendedText instance
     """
 
     def __init__(self, master=None, **kwargs):
+        if master is None:
+            print('A container is needed to display this widget')
+            return
         ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ExtendedWidget.__init__(self, **ext_args)
 
         # already made with _extract_extended_args
         # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         tk.Text.__init__(self, master, **kwargs)
-        self.type: WidgetType.TEXT
+        self.widget_type = WidgetType.TEXT
         self.update_style()
 
     def update_style(self) -> None:
@@ -218,60 +227,136 @@ class ExtendedText(ExtendedWidget, tk.Text):
 class ExtendedLabel(ExtendedWidget, ttk.Label):
     """
     Extended widget version of a ttk.Label.
-    :param master: master widget
+    :param master: container for the widget
+    :param text: Text to display next to the checkbutton
     :param kwargs: kwargs to pass to the widget
     :return: ExtendedLabel instance
     """
 
     def __init__(self, master=None, **kwargs):
+        if master is None:
+            print('A container is needed to display this widget')
+            return
         ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ExtendedWidget.__init__(self, **ext_args)
         # already made with _extract_extended_args
         # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ttk.Label.__init__(self, master, **kwargs)
-        self.type: WidgetType.LABEL
+        self.widget_type = WidgetType.LABEL
 
 
-class ExtendedCheckButton(ExtendedWidget, ttk.Checkbutton):
+class ExtendedCheckButton(ExtendedWidget):
     """
-    Extended widget version of a ttk.Checkbutton.
-    :param master: master widget
+    Create a new widget version of a ttk.Checkbutton.
+    Note: We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
+    :param master: Parent widget
+    :param text: Text to display next to the checkbutton
+    :param images_folder: Path to the folder containing the images for the checkbutton. If empty, the './assets' folder will be used
+    :param change_state_on_click: If True, the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method
     :param kwargs: kwargs to pass to the widget
     :return: ExtendedCheckButton instance
     """
 
-    def __init__(self, master=None, **kwargs):
+    def __init__(self, master, text=None, images_folder=None, change_state_on_click=True, **kwargs):
+        if master is None:
+            print('A container is needed to display this widget')
+            return
         ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ExtendedWidget.__init__(self, **ext_args)
-        # already made with _extract_extended_args
-        # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
-        ttk.Checkbutton.__init__(self, master, **kwargs)
-        self.type: WidgetType.CHECKBUTTON
+        if images_folder is None:
+            images_folder = './assets/'
+        self._img_checked = tk.PhotoImage(file=os.path.join(images_folder, 'checked_16.png'))  # Path to the checked image
+        self._img_uncheckked = tk.PhotoImage(file=os.path.join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
+        self.widget_type = WidgetType.CHECKBUTTON
         self.default_content = False
+        self._var = tk.BooleanVar(value=self.default_content)
+        frm_inner = ttk.Frame(master)
+        lbl_text = ttk.Label(frm_inner, text=text)
+        check_label = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
+        lbl_text.pack(side=tk.LEFT)
+        check_label.pack(side=tk.LEFT)
+        self._frm_inner = frm_inner
+        self._lbl_text = lbl_text
+        self._check_label = check_label
 
-    def set_content(self, content=''):
+        self.set_label(text)
+        self.set_content(self.default_content)
+
+        if change_state_on_click:
+            self.bind("<Button-1>", self.switch_state)
+
+    def _update_state(self) -> None:
         """
-        Sets the content of the widget.
+        Updates the image of the checkbutton
+        """
+        current_state = self._var.get()
+        if current_state:
+            self._check_label.config(image=self._img_checked)
+        else:
+            self._check_label.config(image=self._img_uncheckked)
+
+    def pack(self, **kwargs) -> None:
+        """
+        Packs the widget
+        :param kwargs: kwargs to pass to the widget
+        """
+        self._frm_inner.pack(**kwargs)
+
+    def grid(self, **kwargs) -> None:
+        """
+        Grids the widget
+        :param kwargs: kwargs to pass to the widget
+        """
+        self._frm_inner.grid(**kwargs)
+
+    def bind(self, sequence=None, command=None, add=True) -> None:
+        """
+        Binds a callback to the widget
+        :param sequence: Sequence to bind to
+        :param command:  function to bind
+        :param add: If True, the callback will be added to the internal callbacks
+        """
+        if not (add == "+" or add is True):
+            raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
+        self._lbl_text.bind(sequence, command, add=True)
+        self._check_label.bind(sequence, command, add=True)
+
+    def switch_state(self) -> bool:
+        """
+        Switches the state of the checkbutton
+        """
+        value = not self._var.get()
+        self._var.set(value)
+        self._update_state()
+        return value
+
+    def set_label(self, text='') -> None:
+        """
+        Sets the label of the widget
+        :param text: text to set
+        """
+        self._check_label.config(text=text)
+
+    def set_content(self, content='') -> None:
+        """
+        Sets the content of the widget. True, 'True' and '1' will be considered as True, everything else will be considered as False
         :param content: content to set
         """
         try:
-            content = str(content).capitalize()
-            if content or (content == 'True') or (content == '1'):
-                # noinspection PyUnresolvedReferences
-                self.select()
+            if type(content) is bool:
+                self._var.set(content)
+            elif (content.lower() == 'true') or (content == '1'):
+                self._var.set(True)
             else:
-                # noinspection PyUnresolvedReferences
-                self.deselect()
+                self._var.set(False)
+
+            self._update_state()
         except (AttributeError, tk.TclError) as error:
             log_warning(f'Failed to set content of {self} to {content}: {error!r}')
 
-    def get_content(self):
+    def get_content(self) -> bool:
         """
         Gets the content of the widget.
-        :return: content of the widget
+        :return: True if the checkbutton is checked, False otherwise
         """
-        try:
-            return self.instate(['selected'])
-        except (AttributeError, tk.TclError) as error:
-            log_warning(f'Failed to get content of {self}: {error!r}')
-            return None
+        return self._var.get()
