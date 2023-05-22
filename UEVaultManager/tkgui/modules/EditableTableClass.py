@@ -14,7 +14,7 @@ from pandastable import Table, TableModel, config
 from UEVaultManager.models.csv import create_emty_csv_row, CSV_headings
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
-from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText
+from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 
@@ -456,10 +456,10 @@ class EditableTable(Table):
         entries_values = {}
         for key, entry in self.edit_row_entries.items():
             try:
-                # get value for an entry tk widget
                 value = entry.get()
+            except AttributeError:
+                value = entry.get_content()  # for extendedWidgets
             except TypeError:
-                # get value for a text tk widget
                 value = entry.get('1.0', 'end')
             entries_values[key] = value
         return entries_values
@@ -526,6 +526,10 @@ class EditableTable(Table):
                 # description and comment fields are text
                 entry = ExtendedText(edit_row_window.content_frame, height=3)
                 entry.insert('1.0', value)
+                entry.grid(row=i, column=1, sticky=tk.EW)
+            elif lower_key in 'must buy':
+                # description and comment fields are text
+                entry = ExtendedCheckButton(edit_row_window.content_frame, label='')
                 entry.grid(row=i, column=1, sticky=tk.EW)
             else:
                 # other field is just a usual entry
@@ -676,7 +680,7 @@ class EditableTable(Table):
         # Must buy
         col = self.model.df.columns.get_loc('Must buy')
         value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Must buy', content=value, row=row, col=col)
+        quick_edit_frame.set_child_values(tag='Must buy', label='', content=value, row=row, col=col)
         # Alternative
         col = self.model.df.columns.get_loc('Alternative')
         value = self.model.getValueAt(row=row, col=col)

@@ -250,14 +250,14 @@ class ExtendedCheckButton(ExtendedWidget):
     Create a new widget version of a ttk.Checkbutton.
     Note: We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
     :param master: Parent widget
-    :param text: Text to display next to the checkbutton
+    :param label: Text to display next to the checkbutton
     :param images_folder: Path to the folder containing the images for the checkbutton. If empty, the './assets' folder will be used
     :param change_state_on_click: If True, the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method
     :param kwargs: kwargs to pass to the widget
     :return: ExtendedCheckButton instance
     """
 
-    def __init__(self, master, text=None, images_folder=None, change_state_on_click=True, **kwargs):
+    def __init__(self, master, label=None, images_folder=None, change_state_on_click=True, **kwargs):
         if master is None:
             print('A container is needed to display this widget')
             return
@@ -271,7 +271,7 @@ class ExtendedCheckButton(ExtendedWidget):
         self.default_content = False
         self._var = tk.BooleanVar(value=self.default_content)
         frm_inner = ttk.Frame(master)
-        lbl_text = ttk.Label(frm_inner, text=text)
+        lbl_text = ttk.Label(frm_inner, text='')  # no text bydefault
         check_label = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
         lbl_text.pack(side=tk.LEFT)
         check_label.pack(side=tk.LEFT)
@@ -279,7 +279,8 @@ class ExtendedCheckButton(ExtendedWidget):
         self._lbl_text = lbl_text
         self._check_label = check_label
 
-        self.set_label(text)
+        if label is not None:
+            self.set_label(label)
         # noinspection PyTypeChecker
         # keep "bad" type to keep compatible signatures with overriden methods
         self.set_content(self.default_content)

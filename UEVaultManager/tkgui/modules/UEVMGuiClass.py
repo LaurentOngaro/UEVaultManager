@@ -310,7 +310,7 @@ class UEVMGui(tk.Tk):
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Stars', focus_out_callback=container.on_quick_edit_focus_out)
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Test result', focus_out_callback=container.on_quick_edit_focus_out)
             lbtf_quick_edit.add_child(
-                widget_type=WidgetType.CHECKBUTTON, tag='Must buy', text='', click_on_callback=container.on_switch_edit_flag, default_content=False
+                widget_type=WidgetType.CHECKBUTTON, tag='Must buy', label='', click_on_callback=container.on_switch_edit_flag, default_content=False
             )
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Installed folder', default_content='Installed in')
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Origin', focus_out_callback=container.on_quick_edit_focus_out)

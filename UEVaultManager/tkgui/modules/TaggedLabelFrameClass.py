@@ -8,7 +8,7 @@ from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import WidgetType, ExtendedEntry, ExtendedText, ExtendedLabel, ExtendedCheckButton
-from UEVaultManager.tkgui.modules.functions import log_error, tag_to_label, log_warning, path_from_relative_to_absolute
+from UEVaultManager.tkgui.modules.functions import log_error, tag_to_label, log_warning, path_from_relative_to_absolute, log_debug
 
 
 class TaggedLabelFrame(ttk.LabelFrame):
@@ -33,7 +33,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         default_content=None,
         width=None,
         height=None,
-        text='',
+        label=None,
         layout_option='',
         focus_out_callback=None,
         click_on_callback=None
@@ -46,7 +46,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param widget_type: Type of widget to add. A string value of 'text', 'checkbutton', or 'entry'
         :param width: Width of the child widget. Only used for text widgets
         :param height: Height of the child widget. Only used for text widgets
-        :param text: Text to display in the child widget.
+        :param label: Text to display in the child widget.
         :param default_content: Default content of the child widget
         :param layout_option: Layout options to use. Default, full width.
         :param focus_out_callback: Callback to call when the child widget loses focus
@@ -65,7 +65,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         elif widget_type == WidgetType.LABEL:
             child = ExtendedLabel(master=frame, tag=tag, default_content=default_content)
         elif widget_type == WidgetType.CHECKBUTTON:
-            child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, text=text, images_folder=asset_folder)
+            child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, label=label, images_folder=asset_folder)
         else:
             log_error(f'Invalid widget type: {widget_type}')
             return
@@ -96,7 +96,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         """
         return self._tagged_child
 
-    def set_default_content(self, tag: str = '') -> None:
+    def set_default_content(self, tag='') -> None:
         """
         Sets the default content of the child widget associated with the given tag.
         :param tag: Tag to search for (case-insensitive)
@@ -106,11 +106,12 @@ class TaggedLabelFrame(ttk.LabelFrame):
         if widget is not None:
             widget.set_content(widget.default_content)
 
-    def set_child_values(self, tag: str = '', content: str = '', row: int = -1, col: int = -1) -> None:
+    def set_child_values(self, tag='', content='', label=None, row=-1, col=-1) -> None:
         """
         Sets the content of the child widget associated with the given tag.
         Also sets its row and column index.
         :param tag: Tag to search for (case-insensitive)
+        :param label: Text to set (only for CheckButton widget)
         :param content: Content to set
         :param row: Row index to set
         :param col: Column index to set
@@ -121,5 +122,10 @@ class TaggedLabelFrame(ttk.LabelFrame):
             widget.set_content(content)
             widget.row = row
             widget.col = col
+            if label is not None:
+                try:
+                    widget.set_label(label)
+                except AttributeError:
+                    log_debug(f'Widget with tag {tag} does not have a set_label method')
         else:
             log_warning(f'Widget with tag {tag} not found')
