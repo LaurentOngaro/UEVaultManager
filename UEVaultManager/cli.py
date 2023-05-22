@@ -25,7 +25,8 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_codename
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult
 from UEVaultManager.api.uevm import UpdateSeverity
-from UEVaultManager.core import AppCore, CSV_headings
+from UEVaultManager.core import AppCore
+from UEVaultManager.models.csv import CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.tkgui.modules.functions import custom_print  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
@@ -232,7 +233,7 @@ class UEVaultManagerCLI:
         supported_versions = no_text_data
         page_title = no_text_data
         grab_result = GrabResult.NO_ERROR.name
-        asset_folder = 'Marketplace'  # by default the asset are from the "MarketPlace"
+        oigin = 'Marketplace'  # by default the asset are from the "MarketPlace"
         on_sale = bool_false_data
 
         try:
@@ -272,31 +273,31 @@ class UEVaultManagerCLI:
                 , metadata['developer']  # 'Developer'
                 , metadata['description']  # 'Description'
                 , metadata['status']  # 'status'
-                , discount_price  # 'Discount Price'
+                , discount_price  # 'Discount price'
                 , on_sale  # 'On Sale'
                 , purchased  # 'Purchased'
                 , obsolete  # 'obsolete'
                 , supported_versions  # 'supported versions'
-                , grab_result  # 'grab result'
+                , grab_result  # 'Grab result'
                 , price  # 'Price'
-                , no_float_data  # 'Old Price'
+                , no_float_data  # 'Old price'
                 # User Fields
                 , no_text_data  # 'Comment'
                 , no_float_data  # 'Stars'
-                , bool_false_data  # 'Must Buy'
+                , bool_false_data  # 'Must buy'
                 , no_text_data  # 'Test result
-                , no_text_data  # 'Installed Folder'
+                , no_text_data  # 'Installed folder'
                 , no_text_data  # 'Alternative'
-                , asset_folder  # 'Asset Folder'
+                , oigin  # 'Origin
                 # less important fields
                 , page_title  # 'page title'
                 , thumbnail_url  # 'Image' with 488 height
                 , asset_url  # 'Url'
                 , compatible_versions  # compatible_versions
-                , date_added  # 'Date Added'
-                , metadata['creationDate']  # 'Creation Date'
-                , metadata['lastModifiedDate']  # 'Update Date'
-                , item.app_version('Windows')  # 'UE Version'
+                , date_added  # 'Date added'
+                , metadata['creationDate']  # 'Creation date'
+                , metadata['lastModifiedDate']  # 'Update date'
+                , item.app_version('Windows')  # 'UE version'
                 , uid  # 'Uid'
             )
             record = dict(zip(CSV_headings.keys(), values))
@@ -443,8 +444,8 @@ class UEVaultManagerCLI:
                                         item_in_file[key]
                                     )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                                 except Exception as _error:
-                                    self.logger.warning(f'Old Price value can not be converted for asset {_asset_id}\nError:{_error!r}')
-                            if key == 'Asset folder':
+                                    self.logger.warning(f'Old price value can not be converted for asset {_asset_id}\nError:{_error!r}')
+                            if key == 'Origin':
                                 # all the folders when the asset came from are stored in a comma separated list
                                 folder_list = item_in_file[key].split(',')
                                 # add the new folder to the list without duplicates
@@ -486,9 +487,11 @@ class UEVaultManagerCLI:
                         _items_in_file[_asset_id]['Price']
                     )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                 except Exception as _error:
-                    self.logger.warning(f'Old Price values can not be converted for asset {_asset_id}\nError:{_error!r}')
-                _json_record['Old Price'] = old_price
+                    self.logger.warning(f'Old price values can not be converted for asset {_asset_id}\nError:{_error!r}')
+                _json_record['Old price'] = old_price
             return _json_record
+
+        output = stdout  # by default, we output to stdout
 
         self.logger.info('Logging in...')
         if not self.core.login():
@@ -496,7 +499,9 @@ class UEVaultManagerCLI:
             self.core.clean_exit(1)
 
         if args.force_refresh:
-            self.logger.info('force_refresh option is active ...\nRefreshing asset list, this will take several minutes to acheived depending on the internet connection...')
+            self.logger.info(
+                'force_refresh option is active ...\nRefreshing asset list, this will take several minutes to acheived depending on the internet connection...'
+            )
         else:
             self.logger.info('Getting asset list... (this may take a while)')
 
@@ -594,8 +599,6 @@ class UEVaultManagerCLI:
                     self.core.clean_exit(1)
                 # reopen file for writing
                 output = open(file_src, 'w', encoding='utf-8')
-            else:
-                output = stdout
             # end if args.output:
 
             try:
@@ -621,13 +624,6 @@ class UEVaultManagerCLI:
                         self.logger.error(f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}')
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
-            output.close()
-            self.logger.info(
-                f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions)\nOperation Finished\n======\n'
-            )
-            if args.gui and progress_window is not None:
-                progress_window.close_window()
-            return
         # end if args.csv or args.tsv:
 
         if args.json:
@@ -647,8 +643,6 @@ class UEVaultManagerCLI:
                     self.core.clean_exit(1)
                 # reopen file for writing
                 output = open(file_src, 'w', encoding='utf-8')
-            else:
-                output = stdout
             # end if args.output:
 
             try:
@@ -677,14 +671,28 @@ class UEVaultManagerCLI:
                 json.dump(json_content, output, indent=2)
             except OSError:
                 self.logger.error(f'Could not write list result to {args.output}')
-            output.close()
+            # end if args.json:
+
+        if args.csv or args.tsv or args.json or args.input or args.gui:
+            # close the opened file
+            if output is not None:
+                output.close()
             self.logger.info(
                 f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions)\nOperation Finished\n======\n'
             )
-            if args.gui and progress_window is not None:
+            if args.gui:
+                # During the editabletable initial rebuild_data process, the window will not close
+                # So we try to close it several times
+                max_tries = 3
+                progress_window.quit_on_close = True  # gentle quit
+                tries = 0
+                while progress_window is not None and progress_window.winfo_viewable() and tries < max_tries:
+                    progress_window.close_window()
+                    time.sleep(0.2)
+                    tries += 1
+                progress_window.quit_on_close = False  # force destroy the window
                 progress_window.close_window()
             return
-        # end if args.json:
 
         # here, no other output has been done before, so we print the asset in a quick format to the console
         print('\nAvailable UE Assets:')
@@ -1109,6 +1117,10 @@ class UEVaultManagerCLI:
 
         # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
         init_gui_args(args, additional_args={'output': input_filename})
+        rebuild = False
+        if not os.path.isfile(input_filename):
+            gui_f.create_empty_file(input_filename)
+            rebuild = True
 
         gui_g.UEVM_gui_ref = UEVMGui(
             title=gui_g.s.app_title,
@@ -1117,7 +1129,7 @@ class UEVaultManagerCLI:
             icon=app_icon_filename,
             screen_index=0,
             file=input_filename,
-            show_open_file_dialog=not os.path.isfile(input_filename),
+            rebuild_data=rebuild
         )
         gui_g.UEVM_gui_ref.mainloop()
         # gui_g.UEVM_gui_ref.quit()

@@ -74,31 +74,31 @@ file:
       'Developer': False,
       'Description': False,
       'Status': False,
-      'Discount Price': False,
+      'Discount price': False,
       'On sale': False,
       'Purchased': False,
       'Obsolete': True,
-      'Supported Versions': False,
+      'Supported versions': False,
       'Grab result': False,
       'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-      'Old Price': False,  # ! important: always place it after the Price field in the list
+      'Old price': False,  # ! important: always place it after the Price field in the list
       # User Fields
       'Comment': True,
       'Stars': True,
-      'Must Buy': True,
+      'Must buy': True,
       'Test result': True,
-      'Installed Folder': True,
+      'Installed folder': True,
       'Alternative': True,
-      'Asset Folder': True,
+      'Origin': True,
       # less important fields
       'Page title': False,
       'Image': False,
       'Url': True,  # could be kept if a better url that can be used to download the asset is found
-      'Compatible Versions': False,
-      'Date Added': True,
-      'Creation Date': False,
-      'Update Date': False,
-      'UE Version': False,
+      'Compatible versions': False,
+      'Date added': True,
+      'Creation date': False,
+      'Update date': False,
+      'UE version': False,
       'Uid': False
   }
 
