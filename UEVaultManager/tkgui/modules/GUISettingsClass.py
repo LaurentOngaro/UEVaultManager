@@ -20,13 +20,14 @@ class GUISettings:
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
         self.data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'))
 
-        self.app_icon_filename = '../../assets/main.ico'
+        self.assets_folder = '../../assets'  # must be used trought gui_f.path_from_relative_to_absolute
+        self.app_icon_filename = '../../assets/main.ico'  # must be used trought gui_f.path_from_relative_to_absolute
         self.csv_filename = '../../../results/list.csv'
 
         self.cache_folder = "../cache"
         self.cache_max_time = 60 * 60 * 24 * 15  # 15 days
 
-        self.default_image_filename = './assets/UEVM_200x200.png'
+        self.default_image_filename = './assets/UEVM_200x200.png'  # must be used trought gui_f.path_from_relative_to_absolute
         self.preview_max_width = 150
         self.preview_max_height = 150
 
@@ -36,6 +37,7 @@ class GUISettings:
         self.expand_columns_factor = 20
         self.contract_columns_factor = 20
 
+        self.empty_cell = 'nan'
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
         # dark themes: "darkly", "superhero", "solar", "cyborg", "vapor"
