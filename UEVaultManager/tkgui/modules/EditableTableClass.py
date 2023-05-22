@@ -523,13 +523,12 @@ class EditableTable(Table):
                 button = ttk.Button(inner_frame_url, text="Open URL", command=self.open_asset_url)
                 button.pack(side=tk.RIGHT)
             elif lower_key in ('description', 'comment'):
-                # description and comment fields are text
                 entry = ExtendedText(edit_row_window.content_frame, height=3)
-                entry.insert('1.0', value)
+                entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
-            elif lower_key in 'must buy':
-                # description and comment fields are text
+            elif lower_key in ('must buy', 'obsolete', 'purchased', 'on sale'):
                 entry = ExtendedCheckButton(edit_row_window.content_frame, label='')
+                entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
             else:
                 # other field is just a usual entry
