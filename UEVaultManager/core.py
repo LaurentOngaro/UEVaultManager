@@ -30,6 +30,7 @@ from UEVaultManager.models.app import *
 from UEVaultManager.models.exceptions import *
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
+from UEVaultManager.tkgui.modules.functions import box_message
 from UEVaultManager.utils.cli import check_and_create_path
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
@@ -481,6 +482,15 @@ class AppCore:
             if _process_extras:
                 # we use title because it's less ambiguous than a name when searching an asset
                 eg_extras = self.egs.get_assets_extras(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
+
+                # check for data consistency
+                if 'stomt' in app_name.lower() or 'terrainmagic' in app_name.lower():
+                    if eg_extras.get('grab_result', '') != GrabResult.NO_ERROR.name or not eg_extras.get('purchased', False):
+                        box_message(
+                            msg=f'Some results in extras data are inconsistants for {app_name}. Please check the data and try again. Exiting...',
+                            level='error'
+                        )
+
                 self.uevmlfs.set_item_extras(app_name=name, extras=eg_extras, update_global_dict=True)
 
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
@@ -736,13 +746,13 @@ class AppCore:
 
         self.update_aliases(force=meta_updated)
 
+        # meta_updated = false  # debug only
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata files...", new_max_value=len(_ret))
             # delete old files
             self._prune_metadata()
             self._save_metadata(_ret)
-        #  meta_updated = True  # test only
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extras data files...", new_max_value=len(_ret))
