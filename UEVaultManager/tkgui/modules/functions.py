@@ -51,11 +51,20 @@ def box_message(msg: str, level='info'):
 
 def box_yesno(msg: str) -> bool:
     """
-    Display a message box with the given message and return True if the user clicked on Yes, False otherwise
+    Display a YES/NO message box with the given message
     :param msg: the message to display 
     :return:  True if the user clicked on Yes, False otherwise
     """
     return messagebox.askyesno(title=gui_g.s.app_title, message=msg)
+
+
+def box_okcancel(msg: str) -> bool:
+    """
+    Display an OK/CANCEL message box with the given message
+    :param msg: the message to display
+    :return:  True if the user clicked on Yes, False otherwise
+    """
+    return messagebox.askokcancel(title=gui_g.s.app_title, message=msg)
 
 
 def todo_message() -> None:
@@ -126,6 +135,8 @@ def log_error(msg: str) -> None:
     else:
         msg = log_format_message(gui_g.s.app_title, 'Error', colored(msg, 'red', 'bold'))
         print(msg)
+    if gui_g.UEVM_gui_ref is not None:
+        gui_g.UEVM_gui_ref.quit()
     exit(1)
 
 
@@ -216,7 +227,7 @@ def show_asset_image(image_url: str, canvas_image=None) -> None:
     :param image_url: the url of the image to display
     :param canvas_image: the canvas to display the image in
     """
-    if canvas_image is None or image_url == '' or str(image_url).lower() == 'nan':
+    if canvas_image is None or image_url == '' or str(image_url).lower() == gui_g.s.empty_cell:
         return
     try:
         # noinspection DuplicatedCode
@@ -235,7 +246,7 @@ def show_asset_image(image_url: str, canvas_image=None) -> None:
                 f.write(response.content)
         resize_and_show_image(image, canvas_image)
     except Exception as error:
-        log_error(f"Error showing image: {error}")
+        log_warning(f"Error showing image: {error}")
 
 
 def show_default_image(canvas_image=None) -> None:
@@ -337,3 +348,11 @@ def custom_print(text='', keep_mode=True) -> None:
         gui_g.display_content_window_ref.display(content=text, keep_mode=keep_mode)
     else:
         print(text)
+
+
+def create_empty_file(file_path: str) -> None:
+    """
+    Create an empty file
+    :param file_path: the path of the file to create
+    """
+    open(file_path, 'a').close()
