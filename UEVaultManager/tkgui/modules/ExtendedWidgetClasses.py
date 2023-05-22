@@ -311,17 +311,14 @@ class ExtendedCheckButton(ExtendedWidget):
         """
         self._frm_inner.grid(**kwargs)
 
-    def bind(self, sequence=None, command=None, add=True) -> None:
+    def bind(self, sequence=None, command=None) -> None:
         """
         Binds a callback to the widget
         :param sequence: Sequence to bind to
         :param command:  function to bind
-        :param add: If True, the callback will be added to the internal callbacks
         """
-        if not (add == "+" or add is True):
-            raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
-        self._lbl_text.bind(sequence, command, add=True)
-        self._check_label.bind(sequence, command, add=True)
+        self._lbl_text.bind(sequence, command)
+        self._check_label.bind(sequence, command)
 
     # noinspection PyUnusedLocal
     def switch_state(self, event=None) -> bool:
@@ -329,7 +326,9 @@ class ExtendedCheckButton(ExtendedWidget):
         Switches the state of the checkbutton
         :param event: event that triggered the call
         """
-        value = not self._var.get()
+        value = bool(self._var.get())
+        # print(f'Current state: {value} event: {event}   ')
+        value = not value
         self._var.set(value)
         self._update_state()
         return value

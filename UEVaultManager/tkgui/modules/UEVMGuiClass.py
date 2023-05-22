@@ -442,10 +442,10 @@ class UEVMGui(tk.Tk):
         """
         if event.keysym == 'Escape':
             if gui_g.edit_cell_window_ref:
-                gui_g.edit_cell_window_ref.destroy()
+                gui_g.edit_cell_window_ref.quit()
                 gui_g.edit_cell_window_ref = None
             elif gui_g.edit_row_window_ref:
-                gui_g.edit_row_window_ref.destroy()
+                gui_g.edit_row_window_ref.quit()
                 gui_g.edit_row_window_ref = None
             else:
                 self.on_close()
@@ -536,7 +536,8 @@ class UEVMGui(tk.Tk):
         if col is None or row is None or col < 0 or row < 0:
             gui_f.log_debug(f'invalid values for row={row} and col={col}')
             return
-        value = widget.switch_state()
+
+        value = widget.switch_state(event=event)
         self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
 
     # noinspection PyUnusedLocal
