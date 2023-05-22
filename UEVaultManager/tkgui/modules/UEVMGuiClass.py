@@ -86,7 +86,7 @@ class UEVMGui(tk.Tk):
                 self.quit()
 
         # Quick edit the first row
-        self.editable_table.quit_edit_content(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=0)
+        self.editable_table.update_quick_edit(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=0)
 
         if rebuild_data or self.editable_table.must_rebuild:
             if gui_f.box_okcancel('Data are invalid or empty. They will be rebuilt from sources files. Do you want to continue ?'):
@@ -480,7 +480,7 @@ class UEVMGui(tk.Tk):
         :param event:
         """
         selected_row = event.widget.currentrow
-        self.editable_table.quit_edit_content(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=selected_row)
+        self.editable_table.update_quick_edit(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=selected_row)
 
     def on_entry_page_num_changed(self, _event=None) -> None:
         """

@@ -557,6 +557,7 @@ class EditableTable(Table):
         self.redraw()
         self.must_save = True
         self.edit_row_window.close_window()
+        self.update_quick_edit()
 
     def move_to_prev_record(self) -> None:
         """
@@ -651,8 +652,9 @@ class EditableTable(Table):
             log_warning(f'Failed to get content of {widget}')
         self.redraw()
         self.edit_cell_window.close_window()
+        self.update_quick_edit()
 
-    def quit_edit_content(self, quick_edit_frame: TaggedLabelFrame = None, row: int = None) -> None:
+    def update_quick_edit(self, quick_edit_frame: TaggedLabelFrame = None, row: int = None) -> None:
         """
         Quick edit the content some cells of the selected row.
         :param quick_edit_frame: The frame to display the cell content preview in.
