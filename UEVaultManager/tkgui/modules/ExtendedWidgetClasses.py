@@ -321,9 +321,10 @@ class ExtendedCheckButton(ExtendedWidget):
         self._lbl_text.bind(sequence, command, add=True)
         self._check_label.bind(sequence, command, add=True)
 
-    def switch_state(self) -> bool:
+    def switch_state(self, event=None) -> bool:
         """
         Switches the state of the checkbutton
+        :param event: event that triggered the call
         """
         value = not self._var.get()
         self._var.set(value)

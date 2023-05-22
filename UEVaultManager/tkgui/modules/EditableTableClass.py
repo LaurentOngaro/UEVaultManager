@@ -87,7 +87,7 @@ class EditableTable(Table):
             self._last_selected_col = selected_col
             self.event_generate('<<CellSelectionChanged>>')
 
-    def cell_gradient_color(self, col_names=None, cmap='sunset', alpha=1) -> None:
+    def gradient_color_cells(self, col_names=None, cmap='sunset', alpha=1) -> None:
         """
         Creates a gradient color for the cells os specified columns. The gradient depends on the cell value between min and max values for that column.
         :param col_names: The names of the columns to create a gradient color for.
@@ -107,7 +107,7 @@ class EditableTable(Table):
 
         if col_names is None:
             return
-        df = self.model.df
+        df = self.data_filtered if self.data_filtered is not None else self.model.df
         for colname in col_names:
             x = df[colname]
             clrs = self.values_to_colors(x, cmap, alpha)
@@ -115,7 +115,7 @@ class EditableTable(Table):
             rc = self.rowcolors
             rc[colname] = clrs
 
-    def cell_is_color(self, col_names=None, color='green', value_to_check='True') -> None:
+    def color_cells_if(self, col_names=None, color='green', value_to_check='True') -> None:
         """
         Set the cell color for the specified columns and the cell with a given value.
         :param col_names: The names of the columns to create a gradient color for.
@@ -125,60 +125,54 @@ class EditableTable(Table):
 
         if col_names is None:
             return
-
+        df = self.data_filtered if self.data_filtered is not None else self.model.df
         for col_name in col_names:
-            if col_name not in self.model.df.columns:
+            if col_name not in df.columns:
                 continue
-            mask = self.model.df[col_name] == value_to_check
+            mask = df[col_name] == value_to_check
             self.setColorByMask(col=col_name, mask=mask, clr=color)
 
-    def cell_is_not_color(self, col_names=None, color='grey', value_to_check='False') -> None:
+    def color_cells_if_not(self, col_names=None, color='grey', value_to_check='False') -> None:
         """
         Set the cell color for the specified columns and the cell with NOT a given value.
         :param col_names: The names of the columns to create a gradient color for.
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
         """
-
         if col_names is None:
             return
-
+        df = self.data_filtered if self.data_filtered is not None else self.model.df
         for col_name in col_names:
-            if col_name not in self.model.df.columns:
+            if col_name not in df.columns:
                 continue
-            mask = self.model.df[col_name] != value_to_check
+            mask = df[col_name] != value_to_check
             self.setColorByMask(col=col_name, mask=mask, clr=color)
 
-    def setColorByMask(self, col, mask, clr):
-        """Color individual cells in a column using a mask."""
-
-        if len(self.rowcolors) == 0:
-            self.resetColors()
-        rc = self.rowcolors
-        if col not in rc.columns:
-            # HS rc[col] = pd.Series(self.data, copy=True)
-            rc[col] = pd.Series()
-        rc[col] = rc[col].where(-mask, clr)
-        return
-
-    def row_is_color(self, col_names=None, color='green', value_to_check='True') -> None:
+    def color_rows_if(self, col_names=None, color='#55555', value_to_check='True') -> None:
         """
         Set the row color for the specified columns and the rows with a given value.
         :param col_names: The names of the columns to check for the value.
         :param color: The color to set the row to.
         :param value_to_check: The value to check for.
         """
-
         if col_names is None:
             return
+        df = self.data_filtered if self.data_filtered is not None else self.model.df
 
         for col_name in col_names:
-            if col_name not in self.model.df.columns:
+            if col_name not in df.columns:
                 continue
-            mask = self.model.df[col_name] == value_to_check
-            row_indices = mask[mask].index
+            row_indices = []
+            mask = df[col_name]
+            for i in range(min(self.rows_per_page, len(mask))):
+                try:
+                    if str(mask[i]) == value_to_check:
+                        row_indices.append(i)
+                except KeyError:
+                    log_debug(f'KeyError for row {i} in color_rows_if')
             if len(row_indices) > 0:  # Check if there are any row indices
-                self.setRowColors(rows=row_indices, clr=color)
+                self.setRowColors(rows=row_indices, clr=color, cols='all')
+            return
 
     def set_preferences(self, default_pref=None) -> None:
         """
@@ -197,13 +191,16 @@ class EditableTable(Table):
         """
         Initializes the colors of some cells depending on their values.
         """
-        if self.model.df.get('Review', None) is not None:
-            self.cell_gradient_color(col_names=['Review'], cmap='Set3', alpha=1)
-        self.cell_is_color(col_names=['Purchased', 'On sale'], color='lightgreen', value_to_check='True')
-        self.cell_is_color(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
-        self.cell_is_not_color(col_names=['Status'], color='#555555', value_to_check='ACTIVE')
-        # self.row_is_color(col_names=['Status'], color='#555555', value_to_check='SUNSET')
-
+        if not gui_g.s.use_colors_for_data:
+            self.redraw()
+            return
+        log_debug(f'set_colors')
+        self.gradient_color_cells(col_names=['Review'], cmap='Set3', alpha=1)
+        self.color_cells_if(col_names=['Purchased', 'On sale'], color='lightgreen', value_to_check='True')
+        self.color_cells_if(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
+        self.color_cells_if_not(col_names=['Status'], color='#555555', value_to_check='ACTIVE')
+        self.color_rows_if(col_names=['Status'], color='#555555', value_to_check='SUNSET')
+        self.color_rows_if(col_names=['Obsolete'], color='#777777', value_to_check='True')
         self.redraw()
 
     def handle_left_click(self, event) -> None:
@@ -242,14 +239,15 @@ class EditableTable(Table):
                 # Update table with data for current page
                 self.model.df = self.data.iloc[start:end]
             except AttributeError:
-                self.redraw()
+                # self.redraw()
+                self.set_colors()
                 return
         else:
             # Update table with all data
             self.model.df = self.data_filtered
             self.current_page = 0
-        # self.updateModel(TableModel(data))
-        self.redraw()
+        # self.redraw()
+        self.set_colors()
 
     def next_page(self) -> None:
         """
@@ -690,7 +688,6 @@ class EditableTable(Table):
         # Must buy
         col = self.model.df.columns.get_loc('Must buy')
         value = self.model.getValueAt(row=row, col=col)
-        log_info(f'DEBUG set_child_values Value: {value}')
         quick_edit_frame.set_child_values(tag='Must buy', content=value, row=row, col=col)
         # Alternative
         col = self.model.df.columns.get_loc('Alternative')
@@ -733,7 +730,7 @@ class EditableTable(Table):
             self.model.df.iat[row, col] = value
             self.redraw()
             self.must_save = True
-            log_info(f'Save preview value {value} at row={row} col={col}')
+            log_debug(f'Save preview value {value} at row={row} col={col}')
         except IndexError:
             log_warning(f'Failed to save preview value {value} at row={row} col={col}')
 

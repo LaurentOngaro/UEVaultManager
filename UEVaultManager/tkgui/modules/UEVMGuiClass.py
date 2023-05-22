@@ -424,6 +424,17 @@ class UEVMGui(tk.Tk):
             )
         return filename
 
+    def _change_navigation_state(self, state: str) -> None:
+        """
+        Change the state of the navigation buttons
+        :param state: tk.NORMAL or tk.DISABLED
+        """
+        self.toolbar_frame.btn_first_page.config(state=state)
+        self.toolbar_frame.btn_prev_page.config(state=state)
+        self.toolbar_frame.btn_next_page.config(state=state)
+        self.toolbar_frame.btn_last_page.config(state=state)
+        self.toolbar_frame.entry_page_num.config(state=state)
+
     def on_key_press(self, event) -> None:
         """
         Handle key press events
@@ -438,8 +449,8 @@ class UEVMGui(tk.Tk):
                 gui_g.edit_row_window_ref = None
             else:
                 self.on_close()
-        elif event.keysym == 'Return':
-            self.editable_table.create_edit_record_window()
+        # elif event.keysym == 'Return':
+        #    self.editable_table.create_edit_record_window()
 
     def on_mouse_over_cell(self, event=None) -> None:
         """
@@ -507,10 +518,10 @@ class UEVMGui(tk.Tk):
         value = widget.get_content()
         self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
 
-    def on_switch_edit_flag(self, _event=None, tag='') -> None:
+    def on_switch_edit_flag(self, event=None, tag='') -> None:
         """
         When the focus leaves a quick edit widget, save the value
-        :param _event:
+        :param event: event that triggered the call
         :param tag: tag of the widget that triggered the event
         """
         if tag == '':
@@ -662,11 +673,7 @@ class UEVMGui(tk.Tk):
         self.editable_table.show_page()
         if not self.editable_table.pagination_enabled:
             # Disable prev/next buttons when pagination is disabled
-            self.toolbar_frame.btn_first_page.config(state=tk.DISABLED)
-            self.toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
-            self.toolbar_frame.btn_next_page.config(state=tk.DISABLED)
-            self.toolbar_frame.btn_last_page.config(state=tk.DISABLED)
-            self.toolbar_frame.entry_page_num.config(state=tk.DISABLED)
+            self._change_navigation_state(tk.DISABLED)
             self.toolbar_frame.btn_toggle_pagination.config(text='Enable  Pagination')
         else:
             self.update_page_numbers()  # will also update buttons status
@@ -749,10 +756,7 @@ class UEVMGui(tk.Tk):
         self.toolbar_frame.entry_page_num_var.set(page_num)
         self.toolbar_frame.lbl_page_count.config(text=f' / {self.editable_table.total_pages}')
         # enable all buttons by default
-        self.toolbar_frame.btn_first_page.config(state=tk.NORMAL)
-        self.toolbar_frame.btn_prev_page.config(state=tk.NORMAL)
-        self.toolbar_frame.btn_next_page.config(state=tk.NORMAL)
-        self.toolbar_frame.btn_last_page.config(state=tk.NORMAL)
+        self._change_navigation_state(tk.NORMAL)
 
         if not self.editable_table.pagination_enabled:
             self.toolbar_frame.entry_page_num.config(state=tk.NORMAL)

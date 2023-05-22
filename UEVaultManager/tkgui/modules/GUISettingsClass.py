@@ -14,7 +14,8 @@ class GUISettings:
         self.debug_mode = False
         # speed the update process by not updating the metadata files
         self.never_update_data_files = False  # Debug only
-
+        # enable or not the cell coloring depending on otys content. Enable it could slow down data and display refreshing
+        self.use_colors_for_data = True
         self.app_title = 'UEVM Gui'
         self.app_width = 1600
         self.app_height = 935
