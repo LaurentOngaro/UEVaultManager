@@ -2,10 +2,11 @@ import ctypes as ct
 from tkinter import *
 
 
-# see https://stackoverflow.com/questions/2969870/removing-minimize-maximize-buttons-in-tkinter
 def set_toolbar_style(tk_window) -> None:
     """
-    Remove the minimize and maximize buttons from a tkinter window
+    Remove the minimize and maximize buttons from a tkinter window.
+    This version is compatible with Windows AND Non-windows OS
+    # see https://stackoverflow.com/questions/2969870/removing-minimize-maximize-buttons-in-tkinter
     :param tk_window: the tkinter window
     """
     set_window_pos = ct.windll.user32.SetWindowPos
