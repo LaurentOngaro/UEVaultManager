@@ -80,7 +80,7 @@ Planned Features
 Since version 1.4.3, the features can be listed using special Labels in the GitHub issues list.
 
 -  `planed enhancements <https://github.com/LaurentOngaro/UEVaultManager/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement>`__
--  `ascetic improvments <https://github.com/LaurentOngaro/UEVaultManager/labels/ascetic%20only`__
+-  `ascetic improvments <https://github.com/LaurentOngaro/UEVaultManager/labels/ascetic%20only>`__
 -  `ideas <https://github.com/LaurentOngaro/UEVaultManager/labels/idea>`__
 
 Special thanks
