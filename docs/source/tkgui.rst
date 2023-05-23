@@ -8,12 +8,12 @@ based on the Tkinter library.
 The GUI is designed to edit the result file of the `list` command of the application.
 I should be self explanatory. If not, please report a bug.
 
-The GUI is also available as a an option from some commands of the application.
-Usually, just add the '-g' or '--gui' option to the arguments.
+The GUI is also available as an option from some commands of the application.
+Usually, just add the '-g' or '--gui' option to the command arguments.
 Please read the :doc:`usage` sections to see what command are supported.
 
 
-The 'edit' command is always using the new GUI, so no need to add the option.
+The 'edit' command always uses the new GUI, so no need to add the option.
 
 Usage for editing
 ~~~~~~~~~~~~~~~~~
@@ -38,26 +38,26 @@ Screenshots
 The main window
 ^^^^^^^^^^^^^^^
 
-Listing of all the assets by row, as a standard data table.
+It displays a Listing of all the assets by row, as a standard data table. You can use pagination or not, filter rows, edit cells ...
 
-Color code are used to highlight the status of the asset or special cell values.
+Coloring is used to highlight the status of the asset or special cell values.
 
-Rows can be selected and edited or filtered by a search string, a category or a status
+Rows can be selected and edited or filtered by a search string, a category or a status.
 
-Double clic on a cell to open the `edit cell window`.
+Double-clic on a cell to open the `edit cell window`.
 
 Some fields are not editable, like the 'asset_id', other are editable directly by changing the value in the cell (mainly boolean and categorical values).
 
-Users fields values can be quick edited by changing their value in the `Quick Edit User Fields` panel.
+Users fields values can be quick edited by changing their value in the `Quick Edit User Fields` panel. Change will be applied on focus out of the editing widget.
 
 A new file can be created from scratch or loaded from an existing file.
 
 Data can be exported to a CSV file and saved to the current loaded file or to a new one.
 
-Data can be rebuilt from the previous stored metadata files by clicking on the `Rebuild file content` button (see the `list` command).
-It could take some time, and a progress window will be displayed and the process can be stopped.
+Data can be rebuilt from the previous stored metadata files by clicking on the `Rebuild file content` button (basicaly, it will run the `list` command in background).
+It could take some time, so a progress window will be displayed and the process can be stopped.
 
-Some commands can be executed from the toolbar and their result displayed in a new window.
+Some commands can be executed from the toolbar and their result will be displayed in a Result window.
 
 .. image:: https://i.imgur.com/UDQ9S18.png
     :alt: main window
@@ -66,7 +66,7 @@ Some commands can be executed from the toolbar and their result displayed in a n
 The Edit row window
 ^^^^^^^^^^^^^^^^^^^
 
-Change the value of all the fields of a row.
+It allows to edit the value of all the fields of a row.
 
 Note that the data are raw and not formatted as in the main window, exception for boolean values that are displayed as checkboxes.
 
@@ -80,7 +80,7 @@ The changes made to a value must respect the initial format of the field to avoi
 The Edit cell window
 ^^^^^^^^^^^^^^^^^^^^
 
-Change the value of a single cell of a row.
+It alloaw to change the value of a single cell of a row.
 
 Note that the data are raw and not formatted as in the main window, exception for boolean values that are displayed as checkboxes.
 
@@ -95,9 +95,9 @@ The changes made to a value must respect the initial format of the field to avoi
 The Result window
 ^^^^^^^^^^^^^^^^^
 
-When running a command by clicking on a button of the `Cli commands` panel, the result is displayed in a windows and can be saved in a text file.
+When running a command by clicking on a button of the `Cli commands` panel, the result is displayed in a windows and can be saved in a text file for later use.
 
-By example, this is the result a the `status` command
+For instance, this is the result of the `status` command
 
 .. image:: https://i.imgur.com/kVg2vK0.png
     :alt: cell edit window
