@@ -63,7 +63,7 @@ project = 'UEVaultManager'
 author = 'Laurent Ongaro'
 # noinspection PyShadowingBuiltins
 copyright = '2023 Laurent Ongaro'
-_full_version = '1.4.1'
+_full_version = '1.4.3'
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
