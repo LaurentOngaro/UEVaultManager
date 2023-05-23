@@ -77,20 +77,11 @@ Implemented Features:
 Planned Features
 ~~~~~~~~~~~~~~~~
 
-WIP
-^^^
+Since version 1.4.3, the features can be listed using special Labels in the GitHub issues list.
 
--  Use an alternative url as source of data for the asset. Currently,
-   the url is grabbed from the result page when searching the
-   marketplace for the title of the asset.
--  Managing several origins for the assets: Currently, only the assets present on the Epic
-   marketplace can be managed. Future releases will also allow to manage assets from local folders or mannually added to the list.
-
-Not for now
-^^^^^^^^^^^
-
-- Install and download assets into Unreal Engine VaultCache or into a
-   project folder (Same feature as in Epic Game launcher)
+-  `planed enhancements <https://github.com/LaurentOngaro/UEVaultManager/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement>`__
+-  `ascetic improvments <https://github.com/LaurentOngaro/UEVaultManager/labels/ascetic%20only`__
+-  `ideas <https://github.com/LaurentOngaro/UEVaultManager/labels/idea>`__
 
 Special thanks
 ~~~~~~~~~~~~~~
