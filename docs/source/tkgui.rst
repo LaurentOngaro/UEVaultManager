@@ -30,6 +30,7 @@ Usage for editing
 
       UEVaultManager edit --input "D:\testing\list.csv"
 
+Note : if you run the application from its sources, you can also start the new edit mode by executing the ``./UEVaultManager/tkgui/main.py`` file.
 
 Screenshots
 ~~~~~~~~~~~
