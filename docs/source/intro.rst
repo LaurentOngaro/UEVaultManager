@@ -107,7 +107,7 @@ Thanks to JetBrains for their support on this project through their
 `License Program For non-commercial open source
 development <https://www.jetbrains.com/community/opensource/#support>`__
 
-They tools are great ! If you don't know them, you should give them a
+Their tools are great ! If you don't know them, you should give them a
 try.
 
 
