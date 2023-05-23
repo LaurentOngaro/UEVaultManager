@@ -38,11 +38,5 @@ Contents:
 * [Configuration](https://uevaultmanager.readthedocs.io/en/latest/configuration.html)
   * [Config folder](https://uevaultmanager.readthedocs.io/en/latest/configuration.html#config-folder)
   * [Config file](https://uevaultmanager.readthedocs.io/en/latest/configuration.html#config-file)
-* [Output Format and file](https://uevaultmanager.readthedocs.io/en/latest/output.html)
-  * [Log files and debug](https://uevaultmanager.readthedocs.io/en/latest/output.html#log-files-and-debug)
-  * [The output file](https://uevaultmanager.readthedocs.io/en/latest/output.html#the-output-file)
-  * [The individual json files](https://uevaultmanager.readthedocs.io/en/latest/output.html#the-individual-json-files)
-  * [how to fix invalid search result during the grabbing process](https://uevaultmanager.readthedocs.io/en/latest/output.html#how-to-fix-invalid-search-result-during-the-grabbing-process)
-  * [possible values in the error Field](https://uevaultmanager.readthedocs.io/en/latest/output.html#possible-values-in-the-error-field)
 
-[Next](https://uevaultmanager.readthedocs.io/en/latest/intro.html "UEVaultManager")
+[More info](https://uevaultmanager.readthedocs.io/en/latest/intro.html "UEVaultManager")
