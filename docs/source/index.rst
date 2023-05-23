@@ -6,7 +6,7 @@ Welcome to UEVaultManager's documentation!
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. image:: ./assets/UEVM_200x200.png
+.. image:: https://i.imgur.com/Z00U0IH.png
     :alt: UEVaultManager logo
     :align: center
 
@@ -34,4 +34,4 @@ as a data source (in an Excel sheet for instance).
    usage
    configuration
    output
-..   api
+   tkgui

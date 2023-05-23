@@ -16,8 +16,7 @@ The location is:
 Config file
 ~~~~~~~~~~~
 
-UEVaultManager supports some settings in its config file
-``<data folder>/config.ini``:
+UEVaultManager supports some settings in its config file ``<data folder>/config.ini``:
 
 This is an example of this file content and the settings you can change:
 
@@ -51,3 +50,12 @@ This is an example of this file content and the settings you can change:
     bad_data_assets_filename_log = ~/.config/bad_data_assets.log
     ; Set the minimal unreal engine version to check for obsolete assets
     engine_version_for_obsolete_assets = 4.26
+
+Note that the settings for the new GUI are managed by a dedicated python file ``<python install folder>/<source folder of the package>/tkgui/modules/GuiSettingsClass.py``
+
+For instance, the location is:
+
+-  for Linux: ``~/.local/lib/python3.10/site-packages/UEVaultManager/tkgui/modules/GuiSettingsClass.py``
+-  for Windows: ``c:\python3.10\site-packages\UEVaultManager\tkgui\modules\GuiSettingsClass.py``
+
+The final path can depend on your installation.

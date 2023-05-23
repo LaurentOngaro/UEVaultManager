@@ -1,21 +1,46 @@
 # coding: utf-8
-
+"""
+UEVaultManager setup file.
+"""
+import requirements
 import sys
 from pathlib import Path
 
 import setuptools
 from setuptools import setup
 
-from UEVaultManager import __name__, __version__, __codename__, __license__, __author__, __author_email__, __copyright__, __description__, __url__
+from UEVaultManager import __name__, __version__, __codename__, __license__, __author__, __author_email__, __description__, __url__
 
 if sys.version_info < (3, 9):
     sys.exit('python 3.9 or higher is required for UEVaultManager')
 
-this_directory = Path(__file__).parent
-__long_description__ = Path.joinpath(this_directory, 'README.md').read_text()
+current_folder = Path(__file__).parent
+
+# Read __long_description__ from README.md
+######################
+__long_description__ = Path.joinpath(current_folder, 'README.md').read_text()
 # add information about the version and codename in the PyPI page because codename s not available by default
 __long_description__ += f'\n\n {__name__} ## version:{__version__} ## codename: {__codename__}'
 # __long_description__ = ''.join(__long_description__[8:16])  # keep only description text
+
+# Read requirements from the requirements.txt file
+######################
+# Note: This can cause problems with hyphenated package names.
+# It is fairly common for PyPi packages to be listed with a hyphen in their name,
+# but for all other references to them to have underscores.
+# see: https://github.com/pypa/setuptools/issues/1080
+requirements_from_file = []
+with open(Path.joinpath(current_folder, 'requirements.txt')) as fd:
+    for req in requirements.parse(fd):
+        if req.name:
+            name = req.name.replace("-", "_")
+            full_line = name + "".join(["".join(list(spec)) for spec in req.specs])
+            requirements_from_file.append(full_line)
+        else:
+            # no name meens it's a package from a source URL , e.g.:
+            # a GitHub URL doesn't have a name
+            # I am not sure what to do with this, actually, right now I just ignore it...
+            pass
 
 setup(
     name=__name__,
@@ -23,31 +48,15 @@ setup(
     license=__license__,
     author=__author__,
     author_email=__author_email__,
-    copyright=__copyright__,
     description=__description__,
     long_description=__long_description__,
     long_description_content_type='text/markdown',
     url=__url__,
     packages=setuptools.find_packages(),
-    # packages=[
-    #     'UEVaultManager',  #
-    #     'UEVaultManager.api',  #
-    #     'UEVaultManager.assets',  #
-    #     'UEVaultManager.downloader',  #
-    #     'UEVaultManager.downloader.mp',  #
-    #     'UEVaultManager.lfs',  #
-    #     'UEVaultManager.models',  #
-    #     'UEVaultManager.tkgui',  #
-    #     'UEVaultManager.utils',  #
-    # ],
     # data_files=[('', ['UEVaultManager/assets/UEVM_200x200.png','UEVaultManager/assets/main.ico'])],
     package_data={'': ['assets/*']},
     entry_points=dict(console_scripts=['UEVaultManager = UEVaultManager.cli:main']),
-    install_requires=[
-        'requests<3.0',  #
-        'setuptools',  #
-        'wheel'
-    ],
+    install_requires=requirements_from_file,
     extras_require=dict(webview=['pywebview>=3.4'], webview_gtk=[
         'pywebview>=3.4',  #
         'PyGObject'

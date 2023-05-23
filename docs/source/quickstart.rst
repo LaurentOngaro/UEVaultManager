@@ -3,7 +3,7 @@ Quickstart
 .. _quickstart:
 
 **Tip:** When using PowerShell with the standalone executable, you may
-need to replace ``UEVaultManager`` with ``.\UEVaultManager`` in the
+need to replace `UEVaultManager` with ``.\UEVaultManager`` in the
 commands below.
 
 Installation
@@ -28,10 +28,10 @@ process), this should open a new window with the Epic Login.
 Otherwise, authentication is a little finicky since we have to go
 through the Epic website and manually copy a code. The login page should
 open in your browser and after logging in you should be presented with a
-JSON response that contains a code (” authorizationCode”), just copy the
+JSON response that contains a code (`authorizationCode`), just copy the
 code into the terminal and hit enter.
 
-Alternatively you can use the ``--import`` flag to import the
+Alternatively you can use the `--import` flag to import the
 authentication from the Epic Games Launcher
 
 Note that this will log you out of the Epic Launcher.

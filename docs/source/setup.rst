@@ -11,9 +11,9 @@ Requirements
 
 -  PyPI packages:
 
-   -  ``requests``
-   -  (optional) ``setuptools`` and ``wheel`` for setup/building
-   -  (optional but recommended) ``pywebview`` for webview-based login
+   -  `requests`
+   -  (optional) `setuptools` and `wheel` for setup/building
+   -  (optional but recommended) `pywebview` for webview-based login
 
 Prerequisites
 ~~~~~~~~~~~~~
@@ -26,14 +26,14 @@ Prerequisites
    -  for Windows: ``python -m ensurepip``
 
 -  To prevent problems with permissions during installation, please
-   upgrade your ``pip`` by running
+   upgrade your `pip` by running
    ``python -m pip install -U pip --user``.
 -  Install python3.9, setuptools, wheel, and requests
 
 ..
 
-   **Tip:** You may need to replace ``python`` in the above command with
-   ``python3`` on Linux/macOS.
+   **Tip:** You may need to replace `python` in the above command with
+   `python3` on Linux/macOS.
 
 Directly from the repo
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +58,7 @@ Windows example
 Ubuntu 20.04 example
 ^^^^^^^^^^^^^^^^^^^^
 
-Ubuntu 20.04’s standard repositories include everything needed to
+Ubuntu 20.04's standard repositories include everything needed to
 install UEVaultManager:
 
 .. code:: console
@@ -69,8 +69,8 @@ install UEVaultManager:
    cd UEVaultManager
    pip install .
 
-If the ``UEVaultManager`` executable is not available after
-installation, you may need to configure your ``PATH`` correctly. You can
+If the `UEVaultManager` executable is not available after
+installation, you may need to configure your `PATH` correctly. You can
 do this by running the command:
 
 .. code:: console
@@ -89,18 +89,18 @@ Python Package on `pypi <https://pypi.org>`__ (any)
 
 ..
 
-   **Tip:** You may need to replace ``python`` in the above command with
-   ``python3`` on Linux/macOS.
+   **Tip:** You may need to replace `python` in the above command with
+   `python3` on Linux/macOS.
 
 Windows Binaries from repos
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **NOT DONE FOR NOW / TODO**
 
-Download the ``uevaultmanager`` or ``uevaultmanager.exe`` binary from
+Download the `uevaultmanager` or `uevaultmanager.exe` binary from
 `the latest
 release <https://github.com/LaurentOngaro/UEVaultManager/releases/latest>`__
-and move it to somewhere in your ``$PATH``/``%PATH%``. Don’t forget to
+and move it to somewhere in your `$PATH` or `%PATH%`. Don't forget to
 ``chmod +x`` it on Linux/macOS.
 
 The Windows .exe and Linux/macOS executable were created with

@@ -7,28 +7,28 @@ Log files and debug
 
 3 different log files could be used during the process Use the config
 file to set their file name (and path). If a file name is missing, empty
-or set to ’’ the corresponding log feature will be disabled.
+or set to '' the corresponding log feature will be disabled.
 
 -  ignored assets file log
 
-   -  file is defined by the setting: ‘ignored_assets_filename_log
-      (default is ~/.config/ignored_assets.log)’
+   -  file is defined by the setting: `ignored_assets_filename_log`
+      (default is ``~/.config/ignored_assets.log``)
    -  each asset listed in the file has been ignored during the process.
       Possible reasons are: not a UE asset, not an asset, asset filtered
       by category (-fc option)
 
 -  not found assets log
 
-   -  file is defined by the setting: ‘notfound_assets_filename_log
-      (default is ~/.config/notfound_assets.log)’
+   -  file is defined by the setting: `notfound_assets_filename_log`
+      (default is ``~/.config/notfound_assets.log``)
    -  each asset listed in the file has not been found during the
       grabbing process (extras data). Possible reasons are: invalid,
       obsolete or removed from the marketplace
 
 -  bad data assets log
 
-   -  file is defined by the setting: ‘bad_data_assets_filename_log
-      (default is ~/.config/bad_data_assets.log)’
+   -  file is defined by the setting: `bad_data_assets_filename_log`
+      (default is ``~/.config/bad_data_assets.log``)
    -  each asset listed has different value in extras data and metadata.
       Reasons is: ambiguous asset name that leaded to an invalid search
       result during the grabbing process. See the :ref:`how-to-fix-invalid-search-result-during-the-grabbing-process`
@@ -42,14 +42,14 @@ has been launched. This is done by default. But it can also be saved in
 a csv or a json file for a future use.
 
 The script use a (hardcoded) boolean value to know if the content of the
-field is “protected” and must be preserved before overwriting an
+field is `protected` and must be preserved before overwriting an
 existing output file.
 
 This feature goal is to avoid overwriting data that could have been
 manually changed by the user in the output file between successive runs.
 As it, if the user manually change the content of some data in the file,
-by adding a comment for instance, this data WON’T be overwritten. Also
-Note that if ``create_output_backup = true`` is set in the config file,
+by adding a comment for instance, this data WON'T be overwritten. Also
+Note that if `create_output_backup = true` is set in the config file,
 the app will create a backup of the output file suffixed by a timestamp
 before overwriting the result file.
 
@@ -108,18 +108,18 @@ The individual json files
 Each asset will also have its data saved in to different json files:
 
 -  the folder ``<data folder>/metadata``: contains a json file for each
-   asset (identified by its ‘asset_id’) to store its metadata (get from
+   asset (identified by its `asset_id`) to store its metadata (get from
    a call to the epic API)
 -  the folder ``<data folder>/extras``: contains a json file for each
-   asset (identified by its ‘asset_id’) to store its ‘extras data’
+   asset (identified by its `asset_id`) to store its ''extras data''
    (grabbed from the marketplace page of the asset)
 
 Note:
 
 -  filtering data (using the -fc optional arguments) occurs BEFORE
    saving extras data
--  some “extras” json files can be missing where the corresponding
-   “metadata” json file is present, that’s because some data could have
+-  some `extras` json files can be missing where the corresponding
+   `metadata` json file is present, that's because some data could have
    not been grabbed or the asset page not found during the process.
 -  the grabbing processing for extras data is using a text based search,
    so the analysed asset page could be the bad one and results could be
@@ -136,7 +136,7 @@ The grabbing processing for extras data is using a text based search
 this search is taken as the corresponding asset. When the asset name,
 which must be converted to be used as a search keyword, is ambiguous,
 the search could provide several results or even a wrong result (an
-asset that don’t correspond).
+asset that don't correspond).
 
 So, in that case, the asset page that is analyzed could be the bad one
 and grabbed data could be taken for the wrong asset.
@@ -144,7 +144,7 @@ and grabbed data could be taken for the wrong asset.
 To limit this error, a text comparison is done between the asset title
 in the metadata and the title in the asset page. If the values are
 different, the asset name is added to the file pointed by the
-“bad_data_assets_filename_log” value of the config file and its ” error”
+`bad_data_assets_filename_log` value of the config file and its `error`
 field will contain a value different from 0. Each value correspond to a
 specific error code (see :ref:`possible-values-in-the-error-field`)
 
@@ -152,7 +152,7 @@ To fix that, the search of the correct url for the asset must be done
 and validated manually.
 
 Once validated, the correct URL could be added into the result file,
-inside the Url field. As this field is marked as “protected”, it won’t
+inside the Url field. As this field is marked as `protected`, it won't
 be overwritten on the next data update and will be used as a source url
 for the page to be grabbed instead of making a new search for the asset
 page. (THIS IS STILL TO BE DONE / TODO)
@@ -172,7 +172,7 @@ very good idea.
 possible values in the error Field
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The “Grab result” field of each asset contains a value that indicate how
+The `Grab result` field of each asset contains a value that indicate how
 the process has run. These code are defined by the following enum at the
 beginning of the
 `api/egs.py <https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/api/egs.py>`__
