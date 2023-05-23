@@ -35,6 +35,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         height=None,
         label=None,
         layout_option='',
+        add_label_before=True,
         focus_out_callback=None,
         click_on_callback=None
     ) -> None:
@@ -49,14 +50,16 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param label: Text to display in the child widget.
         :param default_content: Default content of the child widget
         :param layout_option: Layout options to use. Default, full width.
+        :param add_label_before: If True, adds a label before the child widget
         :param focus_out_callback: Callback to call when the child widget loses focus
         :param click_on_callback: Callback to call when the child widget is clicked or checked
         """
         tag = tag.lower()
         frame = ttk.Frame(self)
         frame.pack(**self.lblf_fw_options)
-        label = ttk.Label(frame, text=tag_to_label(tag))
-        label.pack(side=tk.LEFT, **self.pack_options)
+        if add_label_before:
+            lbl_name = ttk.Label(frame, text=tag_to_label(tag))
+            lbl_name.pack(side=tk.LEFT, **self.pack_options)
         asset_folder = path_from_relative_to_absolute(gui_g.s.assets_folder)
         if widget_type == WidgetType.ENTRY:
             child = ExtendedEntry(master=frame, tag=tag, default_content=default_content, height=height, width=width)
