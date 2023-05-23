@@ -9,6 +9,7 @@ import tkinter as tk
 from io import BytesIO
 from tkinter import messagebox
 
+import ctypes as ct
 import requests
 import ttkbootstrap as ttk
 from PIL import ImageTk, Image
@@ -296,8 +297,51 @@ def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
     style.configure('TFrame', font=font, spacing=1, padding=1)
     style.configure('TCombobox', font=font, spacing=1, padding=1)
     style.configure('TLabelFrame', font=font, spacing=1, padding=1)
-
     return style
+
+
+def set_toolbar_style(tk_window) -> None:
+    """
+    Remove the minimize and maximize buttons from a tkinter window.
+    This version is compatible with Windows AND Non-windows OS
+    # see https://stackoverflow.com/questions/2969870/removing-minimize-maximize-buttons-in-tkinter
+    :param tk_window: the tkinter window
+    """
+    set_window_pos = ct.windll.user32.SetWindowPos
+    set_window_long = ct.windll.user32.SetWindowLongPtrW
+    get_window_long = ct.windll.user32.GetWindowLongPtrW
+    get_parent = ct.windll.user32.GetParent
+    # Identifiers
+    gwl_style = -16
+    ws_minimizebox = 131072
+    ws_maximizebox = 65536
+    swp_nozorder = 4
+    swp_nomove = 2
+    swp_nosize = 1
+    swp_framechanged = 32
+    hwnd = get_parent(tk_window.winfo_id())
+    old_style = get_window_long(hwnd, gwl_style)  # Get the style
+    new_style = old_style & ~ws_maximizebox & ~ws_minimizebox  # New style, without max/min buttons
+    set_window_long(hwnd, gwl_style, new_style)  # Apply the new style
+    set_window_pos(hwnd, 0, 0, 0, 0, 0, swp_nomove | swp_nosize | swp_nozorder | swp_framechanged)  # Updates
+
+
+def set_icon_and_minmax(tk_window, icon=None) -> None:
+    """
+    Set the icon and remove the min/max buttons of the window if no icon is provided
+    :param tk_window:
+    :param icon:
+    """
+    if icon is None:
+        # remove the min/max buttons of the window
+        # this code works on Window only
+        # tk_window.attributes('-toolwindow', True)
+        tk_window.after(300, lambda: set_toolbar_style(tk_window))
+    else:
+        # windows only (remove the minimize/maximize buttons and the icon)
+        icon = path_from_relative_to_absolute(icon)
+        if icon != '' and os.path.isfile(icon):
+            tk_window.iconbitmap(icon)
 
 
 def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=False) -> None:

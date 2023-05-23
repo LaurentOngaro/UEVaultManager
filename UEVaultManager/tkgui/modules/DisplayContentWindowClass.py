@@ -44,14 +44,7 @@ class DisplayContentWindow(tk.Toplevel):
 
         geometry = gui_f.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-
-        if icon is None:
-            self.attributes('-toolwindow', True)
-        else:
-            # windows only (remove the minimize/maximize buttons and the icon)
-            icon = gui_f.path_from_relative_to_absolute(icon)
-            if icon != '' and os.path.isfile(icon):
-                self.iconbitmap(icon)
+        gui_f.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
         self.quit_on_close = quit_on_close
         self.keep_existing = False  # whether to keep the existing content when adding a new one
