@@ -14,13 +14,18 @@ Its main purpose is to list the assets (with or without user login),
 filter (optional) and save the list into a file that can be reused later
 as a data source (in an Excel sheet for instance).
 
-**This project is under active development**
+| Hot news                                                                                                                                                                                         |                                                                                                           |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| The new version is out : Now with a GUI !<br/>Edit the data in the GUI and save it back to the file<br/>Use colors to visualize your asset status<br/>Use filters and search to find them easily | [![preview](https://i.imgur.com/dXS62o4.png)](https://uevaultmanager.readthedocs.io/en/latest/tkgui.html) |
+
+**This project is still under active development**                                                                    |
 
 To go further, dive into [the documentation](https://uevaultmanager.readthedocs.io/en/latest/index.html) or just go
 for [a quickstart](https://uevaultmanager.readthedocs.io/en/latest/quickstart.html)
 
 Contents:
 
+* [Hot new feature !](https://uevaultmanager.readthedocs.io/en/latest/tkgui.html)
 * [UEVaultManager](https://uevaultmanager.readthedocs.io/en/latest/intro.html)
   * [A free and open-source Epic Games Assets Manager for Unreal Engine](https://uevaultmanager.readthedocs.io/en/latest/intro.html#a-free-and-open-source-epic-games-assets-manager-for-unreal-engine)
   * [Known bugs and limitations](https://uevaultmanager.readthedocs.io/en/latest/intro.html#known-bugs-and-limitations)
