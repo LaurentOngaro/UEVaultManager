@@ -32,7 +32,7 @@ UEVM_parser_ref = None
 
 # global variables
 # noinspection PyTypeChecker
-UEVM_cli_args: SaferDict = None
+UEVM_cli_args: SaferDict = {}
 UEVM_filter_category = ''
 
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
