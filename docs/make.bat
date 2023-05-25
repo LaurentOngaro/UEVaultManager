@@ -23,9 +23,16 @@ if errorlevel 9009 (
 	exit /b 1
 )
 
-if "%1" == "" goto help
+if "%1" == "" goto html
+if "%1" == "help" goto help
+if "%1" == "-h" goto help
+if "%1" == "/h" goto help
 
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
+goto end
+
+:html
+%SPHINXBUILD% -M html %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 goto end
 
 :help

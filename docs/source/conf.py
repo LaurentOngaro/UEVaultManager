@@ -5,12 +5,12 @@
 
 import os
 import sys
+from UEVaultManager import __name__, __version__, __copyright__, __author__
 
 docs_src_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, docs_src_path)
 src_path = os.path.abspath(os.path.join(docs_src_path, "..", "UEVaultManager"))
 sys.path.insert(0, src_path)
-
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -59,11 +59,11 @@ autodoc_default_options = {
 }
 
 # General information about the project.
-project = 'UEVaultManager'
-author = 'Laurent Ongaro'
+project = __name__
+author = __author__
+_full_version = __version__
 # noinspection PyShadowingBuiltins
-copyright = '2023 Laurent Ongaro'
-_full_version = '1.5.2'
+copyright = __copyright__
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -104,10 +104,7 @@ default_role = "autolink"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme_options = {
-    "canonical_url": "",
-    "analytics_id": ""
-}
+html_theme_options = {"canonical_url": "", "analytics_id": ""}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
