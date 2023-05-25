@@ -1358,13 +1358,8 @@ def main():
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
 
     start_in_edit_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'start_in_edit_mode', fallback=False))
-    if start_in_edit_mode:
-        args.subparser_name = 'edit'
-        args.input = cli.core.uevmlfs.config.get('UEVaultManager', 'edit_file', fallback=None)
-        args.gui = True
-        args.input = init_gui(False)
 
-    if not args.subparser_name or args.full_help:
+    if not start_in_edit_mode and (not args.subparser_name or args.full_help):
         cli.print_help(args=args, parser=parser)
         return
 
@@ -1422,6 +1417,13 @@ def main():
             cli.edit_assets(args)
     except KeyboardInterrupt:
         cli.logger.info('Command was aborted via KeyboardInterrupt, cleaning up...')
+
+    if start_in_edit_mode:
+        args.subparser_name = 'edit'
+        args.input = cli.core.uevmlfs.config.get('UEVaultManager', 'edit_file', fallback=None)
+        args.gui = True
+        args.input = init_gui(False)
+        cli.edit_assets(args)
 
     # Disable the update message if JSON/TSV/CSV outputs are used
     disable_update_message = False
