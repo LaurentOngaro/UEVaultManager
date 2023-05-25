@@ -1415,15 +1415,14 @@ def main():
             cli.get_token(args)
         elif args.subparser_name in {'edit', 'edit-assets'}:
             cli.edit_assets(args)
+        elif start_in_edit_mode:
+            args.subparser_name = 'edit'
+            args.input = cli.core.uevmlfs.config.get('UEVaultManager', 'edit_file', fallback=None)
+            args.gui = True
+            args.input = init_gui(False)
+            cli.edit_assets(args)
     except KeyboardInterrupt:
         cli.logger.info('Command was aborted via KeyboardInterrupt, cleaning up...')
-
-    if start_in_edit_mode:
-        args.subparser_name = 'edit'
-        args.input = cli.core.uevmlfs.config.get('UEVaultManager', 'edit_file', fallback=None)
-        args.gui = True
-        args.input = init_gui(False)
-        cli.edit_assets(args)
 
     # Disable the update message if JSON/TSV/CSV outputs are used
     disable_update_message = False
