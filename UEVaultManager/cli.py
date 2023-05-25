@@ -492,6 +492,14 @@ class UEVaultManagerCLI:
                 _json_record['Old price'] = old_price
             return _json_record
 
+        if self.core.create_log_backup:
+            self.create_log_file_backup()
+
+        # open log file for assets if necessary
+        self.core.setup_assets_logging()
+        self.core.egs.notfound_logger = self.core.notfound_logger
+        self.core.egs.ignored_logger = self.core.ignored_logger
+
         output = stdout  # by default, we output to stdout
 
         self.logger.info('Logging in...')
@@ -1384,17 +1392,10 @@ def main():
 
     cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get('UEVaultManager', 'engine_version_for_obsolete_assets', fallback='4.26')
 
-    if cli.core.create_log_backup:
-        cli.create_log_file_backup()
-
-    # open log file for assets if necessary
-    cli.core.setup_assets_logging()
-    cli.core.egs.notfound_logger = cli.core.notfound_logger
-    cli.core.egs.ignored_logger = cli.core.ignored_logger
-
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
         args.yes = True
+
 
     # technically args.func() with set defaults could work (see docs on subparsers)
     # but that would require all funcs to accept args and extra...
