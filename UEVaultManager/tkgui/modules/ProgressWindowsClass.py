@@ -3,7 +3,6 @@
 Implementation for:
 - ProgressWindow: window to display the progress of a function
 """
-import os
 import queue
 import threading
 import tkinter as tk

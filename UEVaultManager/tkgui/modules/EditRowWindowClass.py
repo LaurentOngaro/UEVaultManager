@@ -3,7 +3,6 @@
 Implementation for:
 - EditRowWindow: the window to edit a row
 """
-import os
 import tkinter as tk
 from tkinter import ttk
 

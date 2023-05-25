@@ -3,7 +3,6 @@
 Implementation for:
 - EditCellWindow: the window to edit a cell
 """
-import os
 import tkinter as tk
 from tkinter import ttk
 
