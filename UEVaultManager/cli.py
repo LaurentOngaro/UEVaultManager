@@ -28,15 +28,16 @@ from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore
 from UEVaultManager.models.csv import CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.tkgui.main import init_gui
+from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.functions import custom_print  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
+from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
+from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string, str_is_bool
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
-from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
-from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
-from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
 
@@ -1168,7 +1169,9 @@ class UEVaultManagerCLI:
             from UEVaultManager.lfs.windows_helpers import double_clicked
             if double_clicked():
                 custom_print(text='Please note that this is not the intended way to run UEVaultManager.')
-                custom_print(text='Follow https://github.com/LaurentOngaro/UEVaultManager#readme to set it up properly')
+                custom_print(text='If you want to start it without arguments, you can start it in edit mode by default.')
+                custom_print(text='For that, you must set the line start_in_edit_mode=true in the configuration file.')
+                custom_print(text='More info on usage and configuration can be found in https://github.com/LaurentOngaro/UEVaultManager#readme')
                 subprocess.Popen(['cmd', '/K', 'echo>nul'])
         custom_print(keep_mode=False)  # as it, next print will not keep the content
 
@@ -1353,6 +1356,14 @@ def main():
         exit(0)
 
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
+
+    start_in_edit_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'start_in_edit_mode', fallback=False))
+    if start_in_edit_mode:
+        args.subparser_name = 'edit'
+        args.input = cli.core.uevmlfs.config.get('UEVaultManager', 'edit_file', fallback=None)
+        args.gui = True
+        args.input = init_gui(False)
+
     if not args.subparser_name or args.full_help:
         cli.print_help(args=args, parser=parser)
         return

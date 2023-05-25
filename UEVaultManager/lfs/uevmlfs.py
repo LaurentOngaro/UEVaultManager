@@ -114,6 +114,10 @@ class UEVMLFS:
             has_changed = True
 
         # Add opt-out options with explainers
+        if not self.config.has_option('UEVaultManager', 'start_in_edit_mode'):
+            self.config.set('UEVaultManager', '; start the App in Edit mode (since v1.4.4) with the GUI')
+            self.config.set('UEVaultManager', 'start_in_edit_mode', 'false')
+            has_changed = True
         if not self.config.has_option('UEVaultManager', 'disable_update_check'):
             self.config.set('UEVaultManager', '; Disables the automatic update check')
             self.config.set('UEVaultManager', 'disable_update_check', 'false')

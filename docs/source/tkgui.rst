@@ -32,6 +32,15 @@ Usage for editing
 
 Note : if you run the application from its sources, you can also start the new edit mode by executing the ``./UEVaultManager/tkgui/main.py`` file.
 
+
+Use it as default starting mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to start the application without arguments or start it in edit mode by default (aka with the new GUI).
+you can set the line start_in_edit_mode=true in the configuration file.
+In this case, the application will use the default data file.
+If the file does not exists, a new one will be created and its content will be rebuilt from scratch.
+
 Screenshots
 ~~~~~~~~~~~
 

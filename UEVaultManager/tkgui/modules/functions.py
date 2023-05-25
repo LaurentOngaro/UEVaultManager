@@ -2,14 +2,15 @@
 """
 Utilities functions and tools
 """
+import ctypes as ct
 import datetime
+import logging
 import os
 import time
 import tkinter as tk
 from io import BytesIO
 from tkinter import messagebox
 
-import ctypes as ct
 import requests
 import ttkbootstrap as ttk
 from PIL import ImageTk, Image
@@ -108,7 +109,12 @@ def log_debug(msg: str) -> None:
     if not gui_g.s.debug_mode:
         return
     if gui_g.UEVM_log_ref is not None:
-        gui_g.UEVM_log_ref.debug(msg)
+        # ensure that the debug messages will be logged even if the log level not set to DEBUG in the cli
+        log_level = gui_g.UEVM_log_ref.level
+        if log_level == logging.DEBUG:
+            gui_g.UEVM_log_ref.debug(msg)
+        else:
+            gui_g.UEVM_log_ref.info(msg)
     else:
         msg = log_format_message(gui_g.s.app_title, 'Debug', colored(msg, 'light_grey'))
         print(msg)

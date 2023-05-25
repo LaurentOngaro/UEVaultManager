@@ -28,10 +28,12 @@ This is an example of this file content and the settings you can change:
     locale = fr-FR
     ; path to the "Manifests" folder in the EGL ProgramData directory
     egl_programdata = C:/ProgramData/Epic/EpicGamesLauncher/Data/Manifests
+    ; start the App in Edit mode (since v1.4.4) with the GUI
+    start_in_edit_mode = true
     ; Disables the automatic update check
     disable_update_check = true
     ; Disables the notice about an available update on exit
-    disable_update_notice = true
+    disable_update_notice = false
     ; Disable automatically-generated aliases
     disable_auto_aliasing = false
     ; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file

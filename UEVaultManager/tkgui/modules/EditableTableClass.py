@@ -159,7 +159,10 @@ class EditableTable(Table):
                 except KeyError:
                     log_debug(f'KeyError for row {i} in color_rows_if')
             if len(row_indices) > 0:  # Check if there are any row indices
-                self.setRowColors(rows=row_indices, clr=color, cols='all')
+                try:
+                    self.setRowColors(rows=row_indices, clr=color, cols='all')
+                except KeyError:
+                    log_debug(f'KeyError for row in color_rows_if')
             return
 
     def set_preferences(self, default_pref=None) -> None:
@@ -174,6 +177,31 @@ class EditableTable(Table):
 
         if default_pref is not None:
             config.apply_options(default_pref, self)
+
+    def colorRows(self):
+        """
+        Color individual cells in column(s). Requires that the rowcolors
+        dataframe has been set. This needs to be updated if the index is reset
+        Override this method to check indexes when rebuildind data from en empty table
+        """
+        df = self.model.df
+        rc = self.rowcolors
+        rows = self.visiblerows
+        offset = rows[0]
+        idx = df.index[rows]
+
+        for col in self.visiblecols:
+            colname = df.columns[col]
+            if colname in list(rc.columns):
+                try:
+                    colors = rc[colname].loc[idx]
+                except KeyError:
+                    colors = None
+                if colors is not None:
+                    for row in rows:
+                        clr = colors.iloc[row - offset]
+                        if not pd.isnull(clr):
+                            self.drawRect(row, col, color=clr, tag='colorrect', delete=0)
 
     def set_colors(self) -> None:
         """
@@ -215,6 +243,7 @@ class EditableTable(Table):
         if page is None:
             page = self.current_page
         if self.pagination_enabled:
+            self.total_pages = min(self.total_pages, len(self.data))
             if page < 0:
                 page = 0
             elif page >= self.total_pages:
@@ -223,11 +252,14 @@ class EditableTable(Table):
             self.current_page = page
             start = page * self.rows_per_page
             end = start + self.rows_per_page
+            start = min(start, len(self.data))
+            end = min(end, len(self.data))
             try:
                 # Update table with data for current page
                 self.model.df = self.data.iloc[start:end]
             except AttributeError:
                 # self.redraw()
+                log_debug(f'AttributeError in show_page')
                 self.set_colors()
                 return
         else:
@@ -368,7 +400,7 @@ class EditableTable(Table):
             gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
             self.current_page = 0
             self.load_data()
-            self.show_page(self.current_page)
+            self.show_page(0)
             return True
 
     def save_data(self) -> None:
