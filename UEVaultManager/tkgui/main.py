@@ -6,7 +6,7 @@ or by the --edit command option for the UEVaultManager cli application, for inst
 """
 import os.path
 
-import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
 
@@ -18,11 +18,11 @@ def init_gui(open_mainwindow=True) -> str:
             Set to False for running the GUI initialization only, useful if called from cli.py
     :return: the path to the csv file to use at startup
     """
-    app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
-    csv_filename = gui_f.path_from_relative_to_absolute(gui_g.s.csv_filename)
+    app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+    csv_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.csv_filename)
     rebuild = False
     if not os.path.isfile(csv_filename):
-        gui_f.create_empty_file(csv_filename)
+        gui_fn.create_empty_file(csv_filename)
         rebuild = True
     if open_mainwindow:
         main_window = UEVMGui(

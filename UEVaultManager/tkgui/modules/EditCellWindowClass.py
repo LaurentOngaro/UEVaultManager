@@ -9,6 +9,7 @@ from tkinter import ttk
 from ttkbootstrap.constants import *
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
@@ -27,11 +28,11 @@ class EditCellWindow(tk.Toplevel):
     def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
-        style = gui_f.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         self.style = style
-        geometry = gui_f.center_window_on_screen(screen_index, height, width)
+        geometry = gui_fn.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-        gui_f.set_icon_and_minmax(self, icon)
+        gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
 
         self.editable_table = editable_table

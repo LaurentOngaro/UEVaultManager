@@ -11,6 +11,7 @@ from tkinter import ttk
 from ttkbootstrap.constants import *
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText
 
@@ -31,7 +32,7 @@ class DisplayContentWindow(tk.Toplevel):
     def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index=0, quit_on_close=False):
         super().__init__()
         self.title(title)
-        style = gui_f.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         self.style = style
         # if tk._default_root == self :
         #     style = gui_f.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
@@ -42,9 +43,9 @@ class DisplayContentWindow(tk.Toplevel):
         #
         # self.style = style
 
-        geometry = gui_f.center_window_on_screen(screen_index, height, width)
+        geometry = gui_fn.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-        gui_f.set_icon_and_minmax(self, icon)
+        gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
         self.quit_on_close = quit_on_close
         self.keep_existing = False  # whether to keep the existing content when adding a new one

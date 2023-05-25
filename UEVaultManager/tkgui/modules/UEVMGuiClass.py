@@ -11,9 +11,10 @@ import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
-from UEVaultManager.tkgui.modules.functions import set_custom_style
+from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
 
 
@@ -27,16 +28,18 @@ class UEVMGui(tk.Tk):
     :param screen_index: The screen index
     :param file: The file where the data is stored or read from
     :param show_open_file_dialog: If True, the open file dialog will be shown at startup
+
     """
 
-    def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file='', show_open_file_dialog=False, rebuild_data=False):
+    def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file='', show_open_file_dialog=False, rebuild_data=False,):
         super().__init__()
+
         self.title(title)
         style = set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         self.style = style
-        geometry = gui_f.center_window_on_screen(screen_index, height, width)
+        geometry = gui_fn.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-        gui_f.set_icon_and_minmax(self, icon)
+        gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
         self.editable_table = None
         self.do_not_launch_search = False

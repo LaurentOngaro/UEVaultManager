@@ -19,7 +19,7 @@ from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from sys import exit, stdout
 
-import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
 from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_codename
@@ -91,7 +91,7 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
         function=callback,
         function_parameters={
             'filter_category': gui_g.UEVM_filter_category,
-            'force_refresh': force_refresh,
+            'force_refresh'  : force_refresh,
         }
     )
     return uewm_gui_exists, window
@@ -806,12 +806,12 @@ class UEVaultManagerCLI:
             last_cache_update = time.strftime("%x", time.localtime(last_cache_update))
 
         json_content = {
-            'Epic account': user_name,  #
-            'Last data update': last_update,
+            'Epic account'     : user_name,  #
+            'Last data update' : last_update,
             'Last cache update': last_cache_update,
-            'Config directory': self.core.uevmlfs.path,
-            'Platform': f'{platform()} ({os.name})',
-            'Current version': f'{UEVM_version} - {UEVM_codename}',
+            'Config directory' : self.core.uevmlfs.path,
+            'Platform'         : f'{platform()} ({os.name})',
+            'Current version'  : f'{UEVM_version} - {UEVM_codename}',
         }
         if not args.offline:
             assets_available = len(self.core.get_asset_list(update_assets=args.force_refresh))
@@ -1118,9 +1118,9 @@ class UEVaultManagerCLI:
             input_filename = gui_g.s.csv_filename
             self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
         else:
-            input_filename = gui_f.path_from_relative_to_absolute(args.input)
+            input_filename = gui_fn.path_from_relative_to_absolute(args.input)
 
-        app_icon_filename = gui_f.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+        app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
         gui_g.UEVM_log_ref = self.logger
         gui_g.UEVM_cli_ref = self
 
@@ -1128,7 +1128,7 @@ class UEVaultManagerCLI:
         init_gui_args(args, additional_args={'output': input_filename})
         rebuild = False
         if not os.path.isfile(input_filename):
-            gui_f.create_empty_file(input_filename)
+            gui_fn.create_empty_file(input_filename)
             rebuild = True
 
         gui_g.UEVM_gui_ref = UEVMGui(
@@ -1395,7 +1395,6 @@ def main():
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
         args.yes = True
-
 
     # technically args.func() with set defaults could work (see docs on subparsers)
     # but that would require all funcs to accept args and extra...

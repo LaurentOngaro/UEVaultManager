@@ -9,6 +9,7 @@ import tkinter as tk
 from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
@@ -47,9 +48,9 @@ class ProgressWindow(tk.Toplevel):
     ):
         super().__init__()
         self.title(title)
-        geometry = gui_f.center_window_on_screen(screen_index, height, width)
+        geometry = gui_fn.center_window_on_screen(screen_index, height, width)
         self.geometry(geometry)
-        gui_f.set_icon_and_minmax(self, icon)
+        gui_fn.set_icon_and_minmax(self, icon)
         self._thread_check_delay = 100
         self.must_end = False
         self.quit_on_close = quit_on_close

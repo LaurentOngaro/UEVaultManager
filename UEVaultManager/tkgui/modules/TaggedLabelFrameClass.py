@@ -7,8 +7,10 @@ import tkinter as tk
 from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import WidgetType, ExtendedEntry, ExtendedText, ExtendedLabel, ExtendedCheckButton
-from UEVaultManager.tkgui.modules.functions import log_error, tag_to_label, log_warning, path_from_relative_to_absolute, log_debug
+from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import WidgetType, ExtendedWidget, ExtendedEntry, ExtendedText, ExtendedLabel, \
+    ExtendedCheckButton
+from UEVaultManager.tkgui.modules.functions import log_error, log_warning, log_debug
+from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
 
 
 class TaggedLabelFrame(ttk.LabelFrame):
@@ -58,9 +60,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
         frame = ttk.Frame(self)
         frame.pack(**self.lblf_fw_options)
         if add_label_before:
-            lbl_name = ttk.Label(frame, text=tag_to_label(tag))
+            lbl_name = ttk.Label(frame, text=ExtendedWidget.tag_to_label(tag))
             lbl_name.pack(side=tk.LEFT, **self.pack_options)
-        asset_folder = path_from_relative_to_absolute(gui_g.s.assets_folder)
         if widget_type == WidgetType.ENTRY:
             child = ExtendedEntry(master=frame, tag=tag, default_content=default_content, height=height, width=width)
         elif widget_type == WidgetType.TEXT:
@@ -68,7 +69,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         elif widget_type == WidgetType.LABEL:
             child = ExtendedLabel(master=frame, tag=tag, default_content=default_content)
         elif widget_type == WidgetType.CHECKBUTTON:
-            child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, label=label, images_folder=asset_folder)
+            child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, label=label)
         else:
             log_error(f'Invalid widget type: {widget_type}')
             return

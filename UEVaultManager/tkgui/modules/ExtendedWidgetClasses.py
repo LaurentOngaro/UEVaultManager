@@ -16,7 +16,8 @@ from enum import Enum
 from tkinter import ttk
 from tkinter.font import nametofont
 
-from UEVaultManager.tkgui.modules.functions import log_warning, tag_to_label
+from UEVaultManager.tkgui.modules.functions import log_warning
+from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
 
 
 class WidgetType(Enum):
@@ -42,7 +43,7 @@ class ExtendedWidget:
         self.tag = tag
         self.col = col
         self.row = row
-        self.default_content = default_content if default_content else tag_to_label(tag)
+        self.default_content = default_content if default_content else self.tag_to_label(tag)
         # can't call this here because the set_content function is specific and overridden in the derived classes
         # self.reset_content()
 
@@ -72,6 +73,18 @@ class ExtendedWidget:
                 continue
             result[key] = kwargs.pop(key, None)
         return result
+
+    @staticmethod
+    def tag_to_label(tag: str or None) -> str:
+        """
+        Convert a tag to a label
+        :param tag: the tag to convert
+        :return: the label
+        """
+        if tag is None:
+            return ''
+
+        return tag.capitalize().replace('_', ' ')
 
     def set_content(self, content='') -> None:
         """
@@ -263,8 +276,9 @@ class ExtendedCheckButton(ExtendedWidget):
             return
         ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ExtendedWidget.__init__(self, **ext_args)
+        # by default , images are searched in a folder named 'statics' in the directory of this file
         if images_folder is None:
-            images_folder = './assets/'
+            images_folder = path_from_relative_to_absolute('./statics/')
         self._img_checked = tk.PhotoImage(file=os.path.join(images_folder, 'checked_16.png'))  # Path to the checked image
         self._img_uncheckked = tk.PhotoImage(file=os.path.join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
         self.widget_type = WidgetType.CHECKBUTTON
