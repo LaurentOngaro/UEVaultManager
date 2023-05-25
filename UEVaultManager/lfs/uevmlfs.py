@@ -62,7 +62,7 @@ class UEVMLFS:
                 self.config_path = os.path.abspath(config_file)
             else:
                 self.config_path = os.path.join(self.path, clean_filename(config_file))
-            self.log.info(f'Using non-default config file "{self.config_path}"')
+            self.log.info(f'UEVMLFS is using non-default config file "{self.config_path}"')
         else:
             self.config_path = os.path.join(self.path, 'config.ini')
 
