@@ -1417,7 +1417,6 @@ def main():
             cli.edit_assets(args)
         elif start_in_edit_mode:
             args.subparser_name = 'edit'
-            args.input = cli.core.uevmlfs.config.get('UEVaultManager', 'edit_file', fallback=None)
             args.gui = True
             args.input = init_gui(False)
             cli.edit_assets(args)

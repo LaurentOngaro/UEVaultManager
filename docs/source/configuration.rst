@@ -5,55 +5,78 @@ Configuration
 Config folder
 ~~~~~~~~~~~~~
 
-Configuration file, log files and results files are stored by default in
-the of the app.
+Configuration file, log files and results files are stored by default in data folders in the user home directory.
 
 The location is:
 
 -  for Linux: ``~/.config/UEVaultManager/``
 -  for Windows: ``C:\users\<you_login_name>\.config\UEVaultManager\``
 
-Config file
-~~~~~~~~~~~
+Config files
+~~~~~~~~~~~~
 
-UEVaultManager supports some settings in its config file ``<data folder>/config.ini``:
+For the Cli App settings
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+UEVaultManager supports some settings in its config file ``<config folder>/config.ini``:
 
 This is an example of this file content and the settings you can change:
 
 .. code:: ini
 
     [UEVaultManager]
-    log_level = debug
-    ; locale override, must be in RFC 1766 format (e.g. "en-US")
-    locale = fr-FR
-    ; path to the "Manifests" folder in the EGL ProgramData directory
-    egl_programdata = C:/ProgramData/Epic/EpicGamesLauncher/Data/Manifests
-    ; start the App in Edit mode (since v1.4.4) with the GUI
-    start_in_edit_mode = true
-    ; Disables the automatic update check
-    disable_update_check = true
-    ; Disables the notice about an available update on exit
-    disable_update_notice = false
-    ; Disable automatically-generated aliases
-    disable_auto_aliasing = false
+    ;Set to True to start the App in Edit mode (since v1.4.4) with the GUI
+    start_in_edit_mode = False
+    ;Set to True to disable the automatic update check
+    disable_update_check = False
+    ; Set to True to disable the notice about an available update on exit
+    disable_update_notice = False
     ; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
-    create_output_backup = true
-    ; Create a backup of the log files that store asset analysis suffixed by a timestamp
+    create_output_backup = True
+    ; Set to True to create a backup of the log files that store asset analysis. It is suffixed by a timestamp
     create_log_backup = True
-    ; Print more information during long operations
-    verbose_mode = true
-    ; Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days
+    ; Set to True to print more information during long operations
+    verbose_mode = False
+    ; Delay in seconds when UE assets metadata cache will be invalidated. Default value represent 15 days
     ue_assets_max_cache_duration = 1296000
-    ; Set the file name (and path) for logging issues with assets when running the --list command
-    ; Set to  to disabled this feature
+    ; File name (and path) for logging issues with assets when running the --list command
     ; use "~/" at the start of the filename to store it relatively to the user directory
     ignored_assets_filename_log = ~/.config/ignored_assets.log
     notfound_assets_filename_log = ~/.config/notfound_assets.log
     bad_data_assets_filename_log = ~/.config/bad_data_assets.log
-    ; Set the minimal unreal engine version to check for obsolete assets
+    ; Minimal unreal engine version to check for obsolete assets (default is 4.26)
     engine_version_for_obsolete_assets = 4.26
 
-Note that the settings for the new GUI are managed by a dedicated python file ``<python install folder>/<source folder of the package>/tkgui/modules/GuiSettingsClass.py``
+
+For the GUI settings
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Since version 1.6.0, UEVaultManager also supports some settings specific to the new GUI, in a config file ``<config folder>/config_gui.ini``:
+
+This is an example of this file content and the settings you can change:
+
+.. code:: ini
+
+    [UEVaultManager]
+    ; Set to True to print debug information (GUI related only)
+    debug_mode = False
+    ; Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY
+    never_update_data_files = False
+    ; Set to True to re-open the last file at startup if no input file is given
+    reopen_last_file = True
+    ; Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing
+    use_colors_for_data = True
+    ; Last opened file name
+    last_opened_file = D:\results\list.csv
+    ; Delay in seconds when image cache will be invalidated. Default value represent 15 days
+    image_cache_max_time = 1296000
+    ; Folder (relative or absolute) to store cached data for assets (mainly preview images)
+    cache_folder = ../../../cache
+    ; Folder (relative or absolute) to store result files to read and save data from
+    results_folder = ../../../results
+
+
+Note that some other settings for the new GUI are managed by a dedicated python file ``<python install folder>/<source folder of the package>/tkgui/modules/GuiSettingsClass.py``
 
 For instance, the location is:
 

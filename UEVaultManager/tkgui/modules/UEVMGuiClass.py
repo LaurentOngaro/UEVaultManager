@@ -31,7 +31,7 @@ class UEVMGui(tk.Tk):
 
     """
 
-    def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file='', show_open_file_dialog=False, rebuild_data=False,):
+    def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file=None, show_open_file_dialog=False, rebuild_data=False,):
         super().__init__()
 
         self.title(title)
@@ -553,6 +553,9 @@ class UEVMGui(tk.Tk):
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
                 self.save_file(show_dialog=False)
+        if gui_g.s.reopen_last_file:
+            gui_g.s.last_opened_file = self.editable_table.file
+        gui_g.s.save_config_file()
         self.quit()
 
     def load_file(self) -> str:

@@ -32,34 +32,48 @@ class GUISettings:
     """
 
     def __init__(self, config_file=None):
-        self.debug_mode = False
         self.path = ''
         self.config_path = ''
         self.config = AppConf(comment_prefixes='/', allow_no_value=True)
 
-        # the following folders are relative to the current file location
-        # they must be used trought path_from_relative_to_absolute
-        self.assets_folder = gui_fn.path_from_relative_to_absolute('../../assets')
-        self.cache_folder = gui_fn.path_from_relative_to_absolute('../../../cache')
-        self.results_folder = gui_fn.path_from_relative_to_absolute('../../../results')
-
         self.init_gui_config_file(config_file)
 
-        self.app_icon_filename = os.path.join(self.assets_folder, 'main.ico')  # must be used trought path_from_relative_to_absolute
-        self.csv_filename = os.path.join(self.results_folder, 'list.csv')
-        self.default_image_filename = os.path.join(self.assets_folder, 'UEVM_200x200.png')  # must be used trought path_from_relative_to_absolute
+        # ##### start of properties stored in config file
+        # store all the properties that must be saved in config file
+        self.config_vars = {
+            'debug_mode': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'debug_mode', fallback=False)),
+            'never_update_data_files': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'never_update_data_files', fallback=False)),
+            'reopen_last_file': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'reopen_last_file', fallback=False)),
+            'use_colors_for_data': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_colors_for_data', fallback=True)),
+            'image_cache_max_time': int(self.config.get('UEVaultManager', 'image_cache_max_time', fallback=60 * 60 * 24 * 15)),
+            'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file', fallback=''),
+            'cache_folder': self.config.get('UEVaultManager', 'cache_folder', fallback='../../../cache'),
+            'results_folder': self.config.get('UEVaultManager', 'results_folder', fallback='../../../results')
+        }
 
-        # speed the update process by not updating the metadata files
-        self.never_update_data_files = False  # Debug only
-        # enable or not the cell coloring depending on otys content. Enable it could slow down data and display refreshing
-        self.use_colors_for_data = True
+        # the following folders are relative to the current file location
+        # they must be used trought path_from_relative_to_absolute
+        # following vars are not set as properties to avoid storing absolute paths in the config file
+        self.cache_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
+        self.results_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
+
+        # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING
+        self.assets_folder = gui_fn.path_from_relative_to_absolute('../../assets')
+
+        self.app_icon_filename = os.path.join(self.assets_folder, 'main.ico')
+        self.default_image_filename = os.path.join(self.assets_folder, 'UEVM_200x200.png')
+
+        if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
+            self.csv_filename = self.config_vars['last_opened_file']
+        else:
+            self.csv_filename = os.path.join(self.config_vars['results_folder'], 'list.csv')
+
         self.app_title = 'UEVM Gui'
         self.app_width = 1600
         self.app_height = 935
         self.app_monitor = 1
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
         self.data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'))
-        self.cache_max_time = 60 * 60 * 24 * 15  # 15 days
         self.preview_max_width = 150
         self.preview_max_height = 150
         self.default_global_search = 'Text to search...'
@@ -87,6 +101,82 @@ class GUISettings:
             'rowselectedcolor': '#E4DED4',  #
             'textcolor': 'black'  #
         }
+
+    def get_debug_mode(self):
+        """ Getter for debug_mode """
+        return self.config_vars['debug_mode']
+
+    def set_debug_mode(self, value):
+        """ Setter for debug_mode """
+        self.config_vars['debug_mode'] = value
+
+    def get_never_update_data_files(self):
+        """ Getter for never_update_data_files """
+        return self.config_vars['never_update_data_files']
+
+    def set_never_update_data_files(self, value):
+        """ Setter for never_update_data_files """
+        self.config_vars['never_update_data_files'] = value
+
+    def get_reopen_last_file(self):
+        """ Getter for reopen_last_file """
+        return self.config_vars['reopen_last_file']
+
+    def set_reopen_last_file(self, value):
+        """ Setter for reopen_last_file """
+        self.config_vars['reopen_last_file'] = value
+
+    def get_use_colors_for_data(self):
+        """ Getter for use_colors_for_data """
+        return self.config_vars['use_colors_for_data']
+
+    def set_use_colors_for_data(self, value):
+        """ Setter for use_colors_for_data """
+        self.config_vars['use_colors_for_data'] = value
+
+    def get_image_cache_max_time(self):
+        """ Getter for image_cache_max_time """
+        return self.config_vars['image_cache_max_time']
+
+    def set_image_cache_max_time(self, value):
+        """ Setter for image_cache_max_time """
+        self.config_vars['image_cache_max_time'] = value
+
+    def get_last_opened_file(self):
+        """ Getter for last_opened_file """
+        return self.config_vars['last_opened_file']
+
+    def set_last_opened_file(self, value):
+        """ Setter for last_opened_file """
+        self.config_vars['last_opened_file'] = value
+
+    def get_cache_folder(self):
+        """ Getter for cache_folder """
+        return self.config_vars['cache_folder']
+
+    def set_cache_folder(self, value):
+        """ Setter for cache_folder """
+        self.config_vars['cache_folder'] = value
+
+    def get_results_folder(self):
+        """ Getter for results_folder """
+        return self.config_vars['results_folder']
+
+    def set_results_folder(self, value):
+        """ Setter for results_folder """
+        self.config_vars['results_folder'] = value
+
+    # use properties for keeping transparent access to these properties
+    debug_mode = property(get_debug_mode, set_debug_mode)
+    never_update_data_files = property(get_never_update_data_files, set_never_update_data_files)
+    reopen_last_file = property(get_reopen_last_file, set_reopen_last_file)
+    use_colors_for_data = property(get_use_colors_for_data, set_use_colors_for_data)
+    image_cache_max_time = property(get_image_cache_max_time, set_image_cache_max_time)
+    last_opened_file = property(get_last_opened_file, set_last_opened_file)
+    # following vars are not set as properties to avoid storing absolute paths in the config file
+    # getter and setter could be used to store relative paths
+    # cache_folder = property(get_cache_folder, set_cache_folder)
+    # results_folder = property(get_results_folder, set_results_folder)
 
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -120,61 +210,62 @@ class GUISettings:
         if 'UEVaultManager' not in self.config:
             self.config.add_section('UEVaultManager')
             has_changed = True
-
-        # Add opt-out options with explainers
-        if not self.config.has_option('UEVaultManager', 'start_in_edit_mode'):
-            self.config.set('UEVaultManager', '; start the App in Edit mode (since v1.4.4) with the GUI')
-            self.config.set('UEVaultManager', 'start_in_edit_mode', 'false')
+        if not self.config.has_option('UEVaultManager', 'debug_mode'):
+            self.config.set('UEVaultManager', '; Set to True to print debug information (GUI related only)')
+            self.config.set('UEVaultManager', 'debug_mode', 'False')
             has_changed = True
-        if not self.config.has_option('UEVaultManager', 'disable_update_check'):
-            self.config.set('UEVaultManager', '; Disables the automatic update check')
-            self.config.set('UEVaultManager', 'disable_update_check', 'false')
+        if not self.config.has_option('UEVaultManager', 'never_update_data_files'):
+            self.config.set('UEVaultManager', '; Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY')
+            self.config.set('UEVaultManager', 'never_update_data_files', 'False')
             has_changed = True
-
-        if not self.config.has_option('UEVaultManager', 'create_output_backup'):
+        if not self.config.has_option('UEVaultManager', 'reopen_last_file'):
+            self.config.set('UEVaultManager', '; Set to True to re-open the last file at startup if no input file is given')
+            self.config.set('UEVaultManager', 'reopen_last_file', 'True')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'use_colors_for_data'):
             self.config.set(
-                'UEVaultManager',
-                '; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file'
+                'UEVaultManager', '; Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing'
             )
-            self.config.set('UEVaultManager', 'create_output_backup', 'true')
+            self.config.set('UEVaultManager', 'use_colors_for_data', 'True')
             has_changed = True
-
-        if not self.config.has_option('UEVaultManager', 'verbose_mode'):
-            self.config.set('UEVaultManager', '; Print more information during long operations')
-            self.config.set('UEVaultManager', 'verbose_mode', 'false')
+        if not self.config.has_option('UEVaultManager', 'last_opened_file'):
+            self.config.set('UEVaultManager', '; Last opened file name')
+            self.config.set('UEVaultManager', 'last_opened_file', '')
             has_changed = True
-        if not self.config.has_option('UEVaultManager', 'ue_assets_max_cache_duration'):
-            self.config.set('UEVaultManager', '; Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days')
-            self.config.set('UEVaultManager', 'ue_assets_max_cache_duration', '1296000')
+        if not self.config.has_option('UEVaultManager', 'image_cache_max_time'):
+            self.config.set('UEVaultManager', '; Delay in seconds when image cache will be invalidated. Default value represent 15 days')
+            self.config.set('UEVaultManager', 'image_cache_max_time', str(60 * 60 * 24 * 15))
             has_changed = True
-        if not self.config.has_option('UEVaultManager', 'ignored_assets_filename_log'):
-            self.config.set(
-                'UEVaultManager', '; Set the file name (and path) for logging issues with assets when running the --list command' + "\n" +
-                '; use "~/" at the start of the filename to store it relatively to the user directory'
-            )
-            self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
+        if not self.config.has_option('UEVaultManager', 'cache_folder'):
+            self.config.set('UEVaultManager', '; Folder (relative or absolute) to store cached data for assets (mainly preview images)')
+            self.config.set('UEVaultManager', 'cache_folder', '../../../cache')
             has_changed = True
-        if not self.config.has_option('UEVaultManager', 'notfound_assets_filename_log'):
-            self.config.set('UEVaultManager', 'notfound_assets_filename_log', '~/.config/notfound_assets.log')
+        if not self.config.has_option('UEVaultManager', 'results_folder'):
+            self.config.set('UEVaultManager', '; Folder (relative or absolute) to store result files to read and save data from')
+            self.config.set('UEVaultManager', 'results_folder', '../../../results')
             has_changed = True
-        if not self.config.has_option('UEVaultManager', 'bad_data_assets_filename_log'):
-            self.config.set('UEVaultManager', 'bad_data_assets_filename_log', '~/.config/bad_data_assets.log')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'engine_version_for_obsolete_assets'):
-            self.config.set('UEVaultManager', '; Set the minimal unreal engine version to check for obsolete assets (default is 4.26)')
-            self.config.set('UEVaultManager', 'engine_version_for_obsolete_assets', '4.26')
-            has_changed = True
-
         if has_changed:
-            self.save_config()
+            self.save_config_file(save_config_var=False)
 
-    def save_config(self) -> None:
+    def store_config_properties(self) -> None:
+        """
+        store the properties in the config file
+        """
+        for key, value in self.config_vars.items():
+            self.config.set('UEVaultManager', key, str(value))
+
+    def save_config_file(self, save_config_var=True) -> None:
         """
         Save the config file
         """
+        if save_config_var:
+            self.store_config_properties()
+            self.config.modified = True
+
         # do not save if in read-only mode or file hasn't changed
         if self.config.read_only or not self.config.modified:
             return
+
         # if config file has been modified externally, back-up the user-modified version before writing
         if os.path.exists(self.config_path):
             if (mod_time := int(os.stat(self.config_path).st_mtime)) != self.config.mod_time:

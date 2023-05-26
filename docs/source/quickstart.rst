@@ -53,6 +53,15 @@ Saving the list into a CSV file
 
   UEVaultManager list -o "c:/ue_asset_list.csv"
 
-You can edit some data in this file You can update the data in the file
-by running the same command again. Your changes could be preserved,
-depending on what fields (aka. columns) has been changed (see :doc:`output` section).
+You can manually edit some data in this file
+And you can update the data extrated from the Marketplace (new version, new release, desciption update...) by running the same command again.
+The changes you made manually will be preserved, depending on what fields (aka. columns) has been changed (see :doc:`output` section).
+
+Editing the list with the new GUI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: console
+
+  UEVaultManager edit -i "c:/ue_asset_list.csv"
+
+For more details, please read the :doc:`gui` section.

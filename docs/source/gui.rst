@@ -1,6 +1,6 @@
-The (new) tk Gui
+The (new) Gui
 ================
-.. _tkgui:
+.. _gui:
 
 Since the 1.1.0 version , the application provides a graphical user interface (GUI)
 based on the Tkinter library.
@@ -10,7 +10,7 @@ I should be self explanatory. If not, please report a bug.
 
 The GUI is also available as an option from some commands of the application.
 Usually, just add the '-g' or '--gui' option to the command arguments.
-Please read the :doc:`usage` sections to see what command are supported.
+Please read the :doc:`usage` section to see what command are supported.
 
 
 The 'edit' command always uses the new GUI, so no need to add the option.
@@ -72,6 +72,7 @@ Some commands can be executed from the toolbar and their result will be displaye
     :alt: main window
     :align: center
 
+
 The Edit row window
 ^^^^^^^^^^^^^^^^^^^
 
@@ -98,7 +99,6 @@ The changes made to a value must respect the initial format of the field to avoi
 .. image:: https://i.imgur.com/p6OrwLz.png
     :alt: cell edit window
     :align: center
-
 
 
 The Result window
