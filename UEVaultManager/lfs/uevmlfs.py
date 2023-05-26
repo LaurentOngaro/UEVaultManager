@@ -115,15 +115,15 @@ class UEVMLFS:
 
         # Add opt-out options with explainers
         if not self.config.has_option('UEVaultManager', 'start_in_edit_mode'):
-            self.config.set('UEVaultManager', '; start the App in Edit mode (since v1.4.4) with the GUI')
+            self.config.set('UEVaultManager', ';Set to True to start the App in Edit mode (since v1.4.4) with the GUI')
             self.config.set('UEVaultManager', 'start_in_edit_mode', 'false')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'disable_update_check'):
-            self.config.set('UEVaultManager', '; Disables the automatic update check')
+            self.config.set('UEVaultManager', ';Set to True to disable the automatic update check')
             self.config.set('UEVaultManager', 'disable_update_check', 'false')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'disable_update_notice'):
-            self.config.set('UEVaultManager', '; Disables the notice about an available update on exit')
+            self.config.set('UEVaultManager', '; Set to True to disable the notice about an available update on exit')
             self.config.set('UEVaultManager', 'disable_update_notice', 'false' if is_windows_mac_or_pyi() else 'true')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'create_output_backup'):
@@ -134,20 +134,20 @@ class UEVMLFS:
             self.config.set('UEVaultManager', 'create_output_backup', 'true')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'create_log_backup'):
-            self.config.set('UEVaultManager', ';Create a backup of the log files that store asset analysis suffixed by a timestamp')
+            self.config.set('UEVaultManager', '; Set to True to create a backup of the log files that store asset analysis. It is suffixed by a timestamp')
             self.config.set('UEVaultManager', 'create_log_backup', 'true')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'verbose_mode'):
-            self.config.set('UEVaultManager', '; Print more information during long operations')
+            self.config.set('UEVaultManager', '; Set to True to print more information during long operations')
             self.config.set('UEVaultManager', 'verbose_mode', 'false')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'ue_assets_max_cache_duration'):
-            self.config.set('UEVaultManager', '; Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days')
+            self.config.set('UEVaultManager', '; Delay in seconds when UE assets metadata cache will be invalidated. Default value represent 15 days')
             self.config.set('UEVaultManager', 'ue_assets_max_cache_duration', '1296000')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'ignored_assets_filename_log'):
             self.config.set(
-                'UEVaultManager', '; Set the file name (and path) for logging issues with assets when running the --list command' + "\n" +
+                'UEVaultManager', '; File name (and path) for logging issues with assets when running the --list command' + "\n" +
                 '; use "~/" at the start of the filename to store it relatively to the user directory'
             )
             self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
@@ -159,7 +159,7 @@ class UEVMLFS:
             self.config.set('UEVaultManager', 'bad_data_assets_filename_log', '~/.config/bad_data_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'engine_version_for_obsolete_assets'):
-            self.config.set('UEVaultManager', '; Set the minimal unreal engine version to check for obsolete assets (default is 4.26)')
+            self.config.set('UEVaultManager', '; Minimal unreal engine version to check for obsolete assets (default is 4.26)')
             self.config.set('UEVaultManager', 'engine_version_for_obsolete_assets', '4.26')
             has_changed = True
 
