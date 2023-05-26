@@ -10,15 +10,17 @@ import ttkbootstrap as ttk
 from screeninfo import get_monitors
 
 
-def path_from_relative_to_absolute(relative_path: str) -> str:
+def path_from_relative_to_absolute(path: str) -> str:
     """
     Build the path of the file to reference relative to the currently running script
-    :param relative_path: the relative path to the file
+    :param path: the relative path to the file. If the path is already absolute, it is returned as is
     :return: the absolute path of the file
     """
+    if os.path.isabs(path):
+        return path
     current_script_path = os.path.abspath(__file__)
     current_script_directory = os.path.dirname(current_script_path)
-    absolute_path = os.path.join(current_script_directory, relative_path)
+    absolute_path = os.path.join(current_script_directory, path)
     return os.path.abspath(absolute_path)
 
 

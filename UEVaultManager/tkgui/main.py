@@ -16,7 +16,7 @@ def init_gui(open_mainwindow=True) -> str:
     Main function for the GUI
     :param open_mainwindow: if True, the main window will be opened (default mode).
             Set to False for running the GUI initialization only, useful if called from cli.py
-    :return: the path to the csv file to use at startup
+    :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script
     """
     app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
     csv_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.csv_filename)
