@@ -16,6 +16,7 @@ from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton
 from UEVaultManager.tkgui.modules.functions import *
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 
 

@@ -115,3 +115,18 @@ def create_empty_file(file_path: str) -> None:
     :param file_path: the path of the file to create
     """
     open(file_path, 'a').close()
+
+
+def convert_to_bool(value) -> bool:
+    """
+    Convert a value to a boolean
+    :param value: the value to convert. If the value is not a boolean, it will be converted to a string and then to a boolean.
+    :return:
+    """
+    try:
+        if str(value).lower() in ('1', '1.0', 'true', 'yes', 'y', 't'):
+            return True
+        else:
+            return False
+    except ValueError:
+        return False

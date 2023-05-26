@@ -145,21 +145,6 @@ def log_error(msg: str) -> None:
     exit(1)
 
 
-def convert_to_bool(value) -> bool:
-    """
-    Convert a value to a boolean
-    :param value: the value to convert. If the value is not a boolean, it will be converted to a string and then to a boolean.
-    :return:
-    """
-    try:
-        if str(value).lower() in ('1', '1.0', 'true', 'yes', 'y', 't'):
-            return True
-        else:
-            return False
-    except ValueError:
-        return False
-
-
 def convert_to_datetime(value: str) -> datetime.datetime:
     """
     Convert a value to a datetime
@@ -206,7 +191,7 @@ def show_asset_image(image_url: str, canvas_image=None) -> None:
             os.mkdir(gui_g.s.cache_folder)
         image_filename = os.path.join(gui_g.s.cache_folder, os.path.basename(image_url))
         # Check if the image is already cached
-        if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < gui_g.s.cache_max_time:
+        if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < gui_g.s.image_cache_max_time:
             # Load the image from the cache folder
             image = Image.open(image_filename)
         else:
