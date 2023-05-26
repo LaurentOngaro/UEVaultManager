@@ -116,30 +116,30 @@ class UEVMLFS:
         # Add opt-out options with explainers
         if not self.config.has_option('UEVaultManager', 'start_in_edit_mode'):
             self.config.set('UEVaultManager', ';Set to True to start the App in Edit mode (since v1.4.4) with the GUI')
-            self.config.set('UEVaultManager', 'start_in_edit_mode', 'false')
+            self.config.set('UEVaultManager', 'start_in_edit_mode', 'False')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'disable_update_check'):
             self.config.set('UEVaultManager', ';Set to True to disable the automatic update check')
-            self.config.set('UEVaultManager', 'disable_update_check', 'false')
+            self.config.set('UEVaultManager', 'disable_update_check', 'False')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'disable_update_notice'):
             self.config.set('UEVaultManager', '; Set to True to disable the notice about an available update on exit')
-            self.config.set('UEVaultManager', 'disable_update_notice', 'false' if is_windows_mac_or_pyi() else 'true')
+            self.config.set('UEVaultManager', 'disable_update_notice', 'False' if is_windows_mac_or_pyi() else 'True')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'create_output_backup'):
             self.config.set(
                 'UEVaultManager',
                 '; Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file'
             )
-            self.config.set('UEVaultManager', 'create_output_backup', 'true')
+            self.config.set('UEVaultManager', 'create_output_backup', 'True')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'create_log_backup'):
             self.config.set('UEVaultManager', '; Set to True to create a backup of the log files that store asset analysis. It is suffixed by a timestamp')
-            self.config.set('UEVaultManager', 'create_log_backup', 'true')
+            self.config.set('UEVaultManager', 'create_log_backup', 'True')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'verbose_mode'):
             self.config.set('UEVaultManager', '; Set to True to print more information during long operations')
-            self.config.set('UEVaultManager', 'verbose_mode', 'false')
+            self.config.set('UEVaultManager', 'verbose_mode', 'False')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'ue_assets_max_cache_duration'):
             self.config.set('UEVaultManager', '; Delay in seconds when UE assets metadata cache will be invalidated. Default value represent 15 days')
