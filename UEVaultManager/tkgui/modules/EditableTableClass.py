@@ -314,8 +314,8 @@ class EditableTable(Table):
             'on_bad_lines': 'warn',
             'encoding': "utf-8",
         }
-        if not os.path.isfile(self.file):
-            log_warning(f'File not found: {self.file}')
+        if self.file is None or not os.path.isfile(self.file):
+            log_warning(f'File to read data from is not defined or not found: {self.file}')
             return
 
         self.must_rebuild = False
