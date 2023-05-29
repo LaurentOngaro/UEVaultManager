@@ -72,7 +72,6 @@ class DisplayContentWindow(tk.Toplevel):
 
             text_content = ExtendedText(self)
             scrollbar = ttk.Scrollbar(self)
-            scrollbar.pack(side="right", fill="y")
             scrollbar.config(command=text_content.yview)
             text_content.config(yscrollcommand=scrollbar.set)
             scrollbar.pack(side=tk.RIGHT, fill=tk.Y, **pack_def_options)
