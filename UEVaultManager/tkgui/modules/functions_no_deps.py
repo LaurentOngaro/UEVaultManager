@@ -5,6 +5,7 @@ These functions DO NOT depend on the globals.py module and be freely imported
 """
 import ctypes as ct
 import os
+import sys
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
@@ -16,12 +17,23 @@ def path_from_relative_to_absolute(path: str) -> str:
     :param path: the relative path to the file. If the path is already absolute, it is returned as is
     :return: the absolute path of the file
     """
+
     if os.path.isabs(path):
         return path
-    current_script_path = os.path.abspath(__file__)
-    current_script_directory = os.path.dirname(current_script_path)
+
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        # noinspection PyProtectedMember,PyUnresolvedReferences
+        # base_path = sys._MEIPASS
+        current_script_directory = sys._MEIPASS
+    except AttributeError:
+        # base_path = os.path.abspath(".")
+        current_script_path = os.path.abspath(__file__)
+        current_script_directory = os.path.dirname(current_script_path)
+
     absolute_path = os.path.join(current_script_directory, path)
-    return os.path.abspath(absolute_path)
+    absolute_path = os.path.abspath(absolute_path)
+    return absolute_path
 
 
 def center_window_on_screen(screen_index: int, height: int, width: int) -> str:
