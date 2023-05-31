@@ -57,7 +57,7 @@ class GUISettings:
         self.cache_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
         self.results_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
 
-        # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING
+        # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
         self.assets_folder = gui_fn.path_from_relative_to_absolute('../../assets')
 
         self.app_icon_filename = os.path.join(self.assets_folder, 'main.ico')
