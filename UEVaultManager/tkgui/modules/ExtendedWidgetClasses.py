@@ -278,7 +278,7 @@ class ExtendedCheckButton(ExtendedWidget):
         ExtendedWidget.__init__(self, **ext_args)
         # by default , images are searched in a folder named 'statics' in the directory of this file
         if images_folder is None:
-            images_folder = path_from_relative_to_absolute('./statics/')
+            images_folder = path_from_relative_to_absolute('./assets/')
         self._img_checked = tk.PhotoImage(file=os.path.join(images_folder, 'checked_16.png'))  # Path to the checked image
         self._img_uncheckked = tk.PhotoImage(file=os.path.join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
         self.widget_type = WidgetType.CHECKBUTTON
