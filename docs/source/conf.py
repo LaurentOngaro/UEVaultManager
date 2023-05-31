@@ -1,5 +1,7 @@
 # coding=utf-8
-# Configuration file for the Sphinx documentation builder.
+"""
+Configuration file for the Sphinx documentation builder.
+"""
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -8,13 +10,15 @@ import os
 import sys
 
 # add the current directory to the path, so we can import from there
+# must be done BEFORE importing UEVaultManager
 docs_src_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, docs_src_path)
 # add the parent directory to the path, so we can import from there
 src_path = os.path.abspath(os.path.join(docs_src_path, '../../'))
 sys.path.insert(0, src_path)
-print(f"docs_src_path: {docs_src_path}")
-print(f"src_path: {src_path}")
+print(f"path added docs_src_path: {docs_src_path}")
+print(f"path added src_path: {src_path}")
+
 from UEVaultManager import __name__, __version__, __copyright__, __author__
 
 # -- General configuration ---------------------------------------------------
