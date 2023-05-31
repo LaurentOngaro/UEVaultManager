@@ -11,3 +11,4 @@ termcolor>=2.3
 ttkbootstrap>=1.10
 packaging>=23
 requirements-parser>=0.2.0
+Jinja2>=3.0.2
