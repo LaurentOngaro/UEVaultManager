@@ -6,11 +6,9 @@ Implementation for:
 import tkinter as tk
 from tkinter import ttk
 
-import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import WidgetType, ExtendedWidget, ExtendedEntry, ExtendedText, ExtendedLabel, \
     ExtendedCheckButton
 from UEVaultManager.tkgui.modules.functions import log_error, log_warning, log_debug
-from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
 
 
 class TaggedLabelFrame(ttk.LabelFrame):
@@ -37,6 +35,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         height=None,
         label=None,
         layout_option='',
+        images_folder=None,
         add_label_before=True,
         focus_out_callback=None,
         click_on_callback=None
@@ -51,7 +50,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param height: Height of the child widget. Only used for text widgets
         :param label: Text to display in the child widget.
         :param default_content: Default content of the child widget
-        :param layout_option: Layout options to use. Default, full width.
+        :param layout_option: Layout options to use. Default, full width
+        :param images_folder: folder for image used by some widgets
         :param add_label_before: If True, adds a label before the child widget
         :param focus_out_callback: Callback to call when the child widget loses focus
         :param click_on_callback: Callback to call when the child widget is clicked or checked
@@ -69,9 +69,10 @@ class TaggedLabelFrame(ttk.LabelFrame):
         elif widget_type == WidgetType.LABEL:
             child = ExtendedLabel(master=frame, tag=tag, default_content=default_content)
         elif widget_type == WidgetType.CHECKBUTTON:
-            child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, label=label)
+            child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, label=label, images_folder=images_folder)
         else:
-            log_error(f'Invalid widget type: {widget_type}')
+            error = f'Invalid widget type: {widget_type}'
+            log_error(error)
             return
 
         self._tagged_child[tag] = child

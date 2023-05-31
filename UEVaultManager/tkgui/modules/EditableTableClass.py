@@ -211,7 +211,7 @@ class EditableTable(Table):
         if not gui_g.s.use_colors_for_data:
             self.redraw()
             return
-        log_debug(f'set_colors')
+        log_debug('set_colors')
         self.gradient_color_cells(col_names=['Review'], cmap='Set3', alpha=1)
         self.color_cells_if(col_names=['Purchased', 'On sale'], color='lightgreen', value_to_check='True')
         self.color_cells_if(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
@@ -260,7 +260,7 @@ class EditableTable(Table):
                 self.model.df = self.data.iloc[start:end]
             except AttributeError:
                 # self.redraw()
-                log_debug(f'AttributeError in show_page')
+                log_debug('AttributeError in show_page')
                 self.set_colors()
                 return
         else:
@@ -560,7 +560,7 @@ class EditableTable(Table):
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
             elif lower_key in ('must buy', 'obsolete', 'purchased', 'on sale'):
-                entry = ExtendedCheckButton(edit_row_window.content_frame, label='')
+                entry = ExtendedCheckButton(edit_row_window.content_frame, label='', images_folder=gui_g.s.assets_folder)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
             else:

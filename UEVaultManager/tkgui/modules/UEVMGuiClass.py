@@ -79,7 +79,7 @@ class UEVMGui(tk.Tk):
 
         if show_open_file_dialog:
             if self.load_file() == '':
-                gui_f.log_error(f'This application could not run without a file to read data from')
+                gui_f.log_error('This application could not run without a file to read data from')
                 self.quit()
 
         # Quick edit the first row
@@ -88,7 +88,7 @@ class UEVMGui(tk.Tk):
         if rebuild_data or self.editable_table.must_rebuild:
             if gui_f.box_okcancel('Data are invalid or empty. They will be rebuilt from sources files. Do you want to continue ?'):
                 if not self.editable_table.rebuild_data():
-                    gui_f.log_error(f'Rebuild data error. This application could not run without a file to read from or some data to build from it')
+                    gui_f.log_error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
             else:
@@ -307,7 +307,12 @@ class UEVMGui(tk.Tk):
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Stars', focus_out_callback=container.on_quick_edit_focus_out)
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Test result', focus_out_callback=container.on_quick_edit_focus_out)
             lbtf_quick_edit.add_child(
-                widget_type=WidgetType.CHECKBUTTON, tag='Must buy', label='', click_on_callback=container.on_switch_edit_flag, default_content=False
+                widget_type=WidgetType.CHECKBUTTON,
+                tag='Must buy',
+                label='',
+                images_folder=gui_g.s.assets_folder,
+                click_on_callback=container.on_switch_edit_flag,
+                default_content=False
             )
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Installed folder', default_content='Installed in')
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Origin', focus_out_callback=container.on_quick_edit_focus_out)
