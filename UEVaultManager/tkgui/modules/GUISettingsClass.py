@@ -200,7 +200,7 @@ class GUISettings:
         try:
             self.config.read(self.config_path)
         except Exception as error:
-            log(f'Unable to read configuration file, please ensure that file is valid! '
+            log('Unable to read configuration file, please ensure that file is valid! '
                 f'(Error: {repr(error)})')
             log('Continuing with blank config in safe-mode...')
             self.config.read_only = True
@@ -271,8 +271,7 @@ class GUISettings:
             if (mod_time := int(os.stat(self.config_path).st_mtime)) != self.config.mod_time:
                 new_filename = f'config.{mod_time}.ini'
                 log(
-                    f'Configuration file has been modified while UEVaultManager was running, '
-                    f'user-modified config will be renamed to "{new_filename}"...'
+                    f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
                 )
                 os.rename(self.config_path, os.path.join(os.path.dirname(self.config_path), new_filename))
 
