@@ -831,6 +831,9 @@ class UEVMGui(tk.Tk):
         """
         if command_name == '':
             return
+        if gui_g.UEVM_cli_ref is None:
+            gui_f.from_cli_only_message()
+            return
         row = self.editable_table.getSelectedRow()
         col = self.editable_table.model.df.columns.get_loc('App name')
         app_name = self.editable_table.model.getValueAt(row, col)
