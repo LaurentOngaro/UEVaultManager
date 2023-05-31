@@ -26,6 +26,8 @@ def path_from_relative_to_absolute(path: str) -> str:
         # noinspection PyProtectedMember,PyUnresolvedReferences
         # base_path = sys._MEIPASS
         current_script_directory = sys._MEIPASS
+        # when launched from pyinstaller, the path has been copied at the root of the folder where the script is run. So we nne to remove all the relative path indicator
+        path = os.path.basename(path)
     except AttributeError:
         # base_path = os.path.abspath(".")
         current_script_path = os.path.abspath(__file__)
@@ -33,6 +35,7 @@ def path_from_relative_to_absolute(path: str) -> str:
 
     absolute_path = os.path.join(current_script_directory, path)
     absolute_path = os.path.abspath(absolute_path)
+    # messagebox.showinfo('info', 'absolute_path: ' + absolute_path)
     return absolute_path
 
 

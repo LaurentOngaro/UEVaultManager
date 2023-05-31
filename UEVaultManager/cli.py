@@ -10,6 +10,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import time
 import webbrowser
 from collections import namedtuple
@@ -17,8 +18,6 @@ from datetime import datetime
 from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
-from sys import exit, stdout
-
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
@@ -91,7 +90,7 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
         function=callback,
         function_parameters={
             'filter_category': gui_g.UEVM_filter_category,
-            'force_refresh'  : force_refresh,
+            'force_refresh': force_refresh,
         }
     )
     return uewm_gui_exists, window
@@ -500,7 +499,7 @@ class UEVaultManagerCLI:
         self.core.egs.notfound_logger = self.core.notfound_logger
         self.core.egs.ignored_logger = self.core.ignored_logger
 
-        output = stdout  # by default, we output to stdout
+        output = sys.stdout  # by default, we output to sys.stdout
 
         self.logger.info('Logging in...')
         if not self.core.login():
@@ -746,7 +745,7 @@ class UEVaultManagerCLI:
             for fm in files:
                 content += f'{fm.hash.hex()} *{fm.filename}\n'
         elif args.csv or args.tsv:
-            writer = csv.writer(stdout, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
+            writer = csv.writer(sys.stdout, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
             writer.writerow(['path', 'hash', 'size', 'install_tags'])
             writer.writerows((fm.filename, fm.hash.hex(), fm.file_size, '|'.join(fm.install_tags)) for fm in files)
         elif args.json:
@@ -806,12 +805,12 @@ class UEVaultManagerCLI:
             last_cache_update = time.strftime("%x", time.localtime(last_cache_update))
 
         json_content = {
-            'Epic account'     : user_name,  #
-            'Last data update' : last_update,
+            'Epic account': user_name,  #
+            'Last data update': last_update,
             'Last cache update': last_cache_update,
-            'Config directory' : self.core.uevmlfs.path,
-            'Platform'         : f'{platform()} ({os.name})',
-            'Current version'  : f'{UEVM_version} - {UEVM_codename}',
+            'Config directory': self.core.uevmlfs.path,
+            'Platform': f'{platform()} ({os.name})',
+            'Current version': f'{UEVM_version} - {UEVM_codename}',
         }
         if not args.offline:
             assets_available = len(self.core.get_asset_list(update_assets=args.force_refresh))
@@ -1361,7 +1360,7 @@ def main():
 
     if args.version:
         print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
-        exit(0)
+        sys.exit(0)
 
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
 
@@ -1444,7 +1443,7 @@ def main():
 
     cli.core.clean_exit()
     ql.stop()
-    exit(0)
+    sys.exit(0)
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ Implementation for:
 import json
 import logging
 import os
+import sys
 import time
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
@@ -977,4 +978,4 @@ class AppCore:
         """
         self.uevmlfs.save_config()
         logging.shutdown()
-        exit(code)
+        sys.exit(code)

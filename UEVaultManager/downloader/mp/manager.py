@@ -4,13 +4,13 @@
 
 import logging
 import os
+import sys
 import time
 from collections import Counter, defaultdict, deque
 from logging.handlers import QueueHandler
 from multiprocessing import cpu_count, Process, Queue as MPQueue
 from multiprocessing.shared_memory import SharedMemory
 from queue import Empty
-from sys import exit
 from threading import Condition, Thread
 
 from UEVaultManager.downloader.mp.workers import DLWorker, FileWorker
@@ -813,4 +813,4 @@ class DLManager(Process):
 
         self.log.info('All done! Download manager quitting...')
         # finally, exit the process.
-        exit(0)
+        sys.exit(0)

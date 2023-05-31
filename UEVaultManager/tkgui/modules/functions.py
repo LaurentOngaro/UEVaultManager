@@ -6,6 +6,7 @@ These functions depend on the globals.py module and can generate circular depend
 import datetime
 import logging
 import os
+import sys
 import time
 import tkinter as tk
 from io import BytesIO
@@ -142,7 +143,7 @@ def log_error(msg: str) -> None:
         print(msg)
     if gui_g.UEVM_gui_ref is not None:
         gui_g.UEVM_gui_ref.quit()
-    exit(1)
+    sys.exit(1)
 
 
 def convert_to_datetime(value: str) -> datetime.datetime:
