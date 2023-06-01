@@ -89,10 +89,15 @@ def set_toolbar_style(tk_window) -> None:
     # see https://stackoverflow.com/questions/2969870/removing-minimize-maximize-buttons-in-tkinter
     :param tk_window: the tkinter window
     """
-    set_window_pos = ct.windll.user32.SetWindowPos
-    set_window_long = ct.windll.user32.SetWindowLongPtrW
-    get_window_long = ct.windll.user32.GetWindowLongPtrW
-    get_parent = ct.windll.user32.GetParent
+    try:
+        set_window_pos = ct.windll.user32.SetWindowPos
+        set_window_long = ct.windll.user32.SetWindowLongPtrW
+        get_window_long = ct.windll.user32.GetWindowLongPtrW
+        get_parent = ct.windll.user32.GetParent
+    except AttributeError:
+        # Non-windows OS
+        print('Non-windows OS detected. No need to remove the minimize and maximize buttons from the window.')
+        return
     # Identifiers
     gwl_style = -16
     ws_minimizebox = 131072
