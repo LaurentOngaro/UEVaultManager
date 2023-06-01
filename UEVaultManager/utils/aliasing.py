@@ -48,6 +48,14 @@ def _filter(local_input):
 
 
 def generate_aliases(game_name, item_folder=None, split_words=True, app_name=None):
+    """
+    Generate aliases for a game name.
+    :param game_name:
+    :param item_folder:
+    :param split_words:
+    :param app_name:
+    :return:
+    """
     # normalise and split name, then filter for legal characters
     game_parts = [_filter(p) for p in game_name.lower().split()]
     # filter out empty parts
@@ -74,7 +82,7 @@ def generate_aliases(game_name, item_folder=None, split_words=True, app_name=Non
     # include lowercase version of app name in aliases
     if app_name:
         _aliases.append(app_name.lower())
-    # include initialisms
+    # noinspection DuplicatedCode
     if len(game_parts) > 1:
         _aliases.append(''.join(p[0] for p in game_parts))
         _aliases.append(''.join(p[0] if p not in roman else p for p in game_parts))
@@ -91,6 +99,7 @@ def generate_aliases(game_name, item_folder=None, split_words=True, app_name=Non
             else:
                 new_game_parts.append(word)
 
+        # noinspection DuplicatedCode
         if len(new_game_parts) > 1:
             _aliases.append(''.join(p[0] for p in new_game_parts))
             _aliases.append(''.join(p[0] if p not in roman else p for p in new_game_parts))
