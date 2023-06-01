@@ -1376,14 +1376,15 @@ def main():
     args, extra = parser.parse_known_args()
 
     if args.version:
-        cli.print_version()
+        UEVaultManagerCLI.print_version()
+        return
 
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
 
     start_in_edit_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'start_in_edit_mode', fallback=False))
 
     if not start_in_edit_mode and (not args.subparser_name or args.full_help):
-        cli.print_help(args=args, parser=parser)
+        UEVaultManagerCLI.print_help(args=args, parser=parser)
         return
 
     ql = cli.setup_threaded_logging()

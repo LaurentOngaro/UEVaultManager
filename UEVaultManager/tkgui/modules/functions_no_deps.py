@@ -141,8 +141,20 @@ def create_empty_file(file_path: str) -> str:
     :param file_path: the path of the file to create
     :return: the path of the file
     """
-    path = os.path.dirname(file_path)
-    file = os.path.basename(file_path)
+    path, file = os.path.split(file_path)
+    path = check_and_get_folder(os.path.dirname(path))
+    file_path = os.path.normpath(os.path.join(path, file))
+    open(file_path, 'a').close()
+    return file_path
+
+
+def check_and_get_folder(folder_path: str) -> str:
+    """
+    Check if the folder exists. If not, create it or use the default one
+    :param folder_path: the path of the folder to check
+    :return: the path of the folder
+    """
+    path = folder_path
     if not os.path.exists(path):
         try:
             os.makedirs(path)
@@ -154,10 +166,11 @@ def create_empty_file(file_path: str) -> str:
                 path = os.path.expanduser('~/.config/UEVaultManager')
             if not os.path.exists(path):
                 os.makedirs(path)
-            file_path = os.path.normpath(os.path.join(path, file))
-            print(f'The following file {file_path} will be used as default')
-    open(file_path, 'a').close()
-    return file_path
+                path = os.path.normpath(path)
+            print(f'The following folder {path} will be used as default')
+
+    path = os.path.normpath(path)
+    return path
 
 
 def convert_to_bool(value) -> bool:
