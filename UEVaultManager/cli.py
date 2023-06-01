@@ -1143,11 +1143,12 @@ class UEVaultManagerCLI:
         # gui_g.UEVM_gui_ref.quit()
 
     @staticmethod
-    def print_help(args, parser=None) -> None:
+    def print_help(args, parser=None, forced=False) -> None:
         """
         Prints the help for the command
         :param args:
         :param parser: command line parser. If not provided, gui_g.UEVM_parser_ref will be used
+        :param forced: if True, the help will be printed even if the --help option is not present
         """
         if parser is None:
             parser = gui_g.UEVM_parser_ref
@@ -1155,7 +1156,7 @@ class UEVaultManagerCLI:
             return
         uewm_gui_exists = False
 
-        if args.full_help:
+        if args.full_help or forced:
             if args.gui:
                 uewm_gui_exists, _ = init_display_window()
             custom_print(keep_mode=False, text=parser.format_help())
@@ -1180,10 +1181,22 @@ class UEVaultManagerCLI:
                 custom_print(text='For that, you must set the line start_in_edit_mode=true in the configuration file.')
                 custom_print(text='More info on usage and configuration can be found in https://github.com/LaurentOngaro/UEVaultManager#readme')
                 subprocess.Popen(['cmd', '/K', 'echo>nul'])
-        custom_print(keep_mode=False)  # as it, next print will not keep the content
+        else:
+            # on non-windows systems
+            # UEVaultManagerCLI.print_help(args, parser=parser, forced=True)
+            UEVaultManagerCLI.print_version()
+            return
 
         if args.gui and not uewm_gui_exists:
             gui_g.UEVM_gui_ref.mainloop()
+
+    @staticmethod
+    def print_version():
+        """
+        Prints the version of UEVaultManager and exit
+        """
+        print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
+        sys.exit(0)
 
 
 def main():
@@ -1362,8 +1375,7 @@ def main():
     args, extra = parser.parse_known_args()
 
     if args.version:
-        print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
-        sys.exit(0)
+        cli.print_version()
 
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
 
