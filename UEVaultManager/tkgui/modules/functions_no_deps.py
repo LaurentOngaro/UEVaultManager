@@ -128,7 +128,11 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
         # windows only (remove the minimize/maximize buttons and the icon)
         icon = path_from_relative_to_absolute(icon)
         if icon != '' and os.path.isfile(icon):
-            tk_window.iconbitmap(icon)
+            try:
+                tk_window.iconbitmap(icon)
+            except Exception as error:
+                # in linux, the ico can exist but not be readable
+                print(f'Error while setting the icon: {error!r}')
 
 
 def create_empty_file(file_path: str) -> str:
