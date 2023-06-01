@@ -29,7 +29,7 @@ from UEVaultManager.models.csv import CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.tkgui.main import init_gui
 from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
-from UEVaultManager.tkgui.modules.functions import custom_print  # simplier way to use the custom_print function
+from UEVaultManager.tkgui.modules.functions import custom_print, box_message  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
@@ -458,6 +458,8 @@ class UEVaultManagerCLI:
                 _csv_record[price_index + 1] = old_price
             return _csv_record
 
+        # end update_and_merge_csv_record_data
+
         def update_and_merge_json_record_data(_asset, _items_in_file, _no_float_value: float, _no_bool_false_value: bool) -> dict:
             """
             Updates the data of the asset with the data from the items in the file
@@ -491,6 +493,8 @@ class UEVaultManagerCLI:
                 _json_record['Old price'] = old_price
             return _json_record
 
+        # end def update_and_merge_json_record_data
+
         if self.core.create_log_backup:
             self.create_log_file_backup()
 
@@ -500,6 +504,27 @@ class UEVaultManagerCLI:
         self.core.egs.ignored_logger = self.core.ignored_logger
 
         output = sys.stdout  # by default, we output to sys.stdout
+
+        if args.output:
+            file_src = args.output
+            # test if the folder is writable
+            if not check_and_create_path(file_src):
+                msg = f'Could not create folder for {file_src}. Exiting...'
+                self.logger.critical(msg)
+                if args.gui:
+                    box_message(msg)
+                self.core.clean_exit(1)
+            try:
+                # we try to open it for writing
+                with open(file_src, 'w', encoding='utf-8') as output:
+                    output.close()
+            except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
+                self.logger.warning(f'Could not read CSV record from the file {file_src}')
+                msg = f'Could not create result file {file_src}. Exiting...'
+                self.logger.critical(msg)
+                if args.gui:
+                    box_message(msg)
+                self.core.clean_exit(1)
 
         self.logger.info('Logging in...')
         if not self.core.login():
@@ -599,14 +624,7 @@ class UEVaultManagerCLI:
                             assets_in_file[asset_id] = csv_record
                         output.close()
                 except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
-                    self.logger.warning(f'Could not read CSV record from the file {args.output}')
-
-                # write the content of the file to keep some data
-                if not check_and_create_path(file_src):
-                    self.logger.critical(f'Could not create folder for {file_src}')
-                    self.core.clean_exit(1)
-                # reopen file for writing
-                output = open(file_src, 'w', encoding='utf-8')
+                    self.logger.warning(f'Could not read CSV record from the file {file_src}')
             # end if args.output:
 
             try:
@@ -644,11 +662,6 @@ class UEVaultManagerCLI:
                         output.close()
                 except (FileExistsError, OSError, UnicodeDecodeError, StopIteration, json.decoder.JSONDecodeError):
                     self.logger.warning(f'Could not read Json record from the file {args.output}')
-
-                # write the content of the file to keep some data
-                if not check_and_create_path(file_src):
-                    self.logger.critical(f'Could not create folder for {file_src}')
-                    self.core.clean_exit(1)
                 # reopen file for writing
                 output = open(file_src, 'w', encoding='utf-8')
             # end if args.output:
@@ -681,7 +694,7 @@ class UEVaultManagerCLI:
                 self.logger.error(f'Could not write list result to {args.output}')
             # end if args.json:
 
-        if args.csv or args.tsv or args.json or args.input or args.gui:
+        if args.csv or args.tsv or args.json or args.gui:
             # close the opened file
             if output is not None:
                 output.close()
@@ -733,7 +746,10 @@ class UEVaultManagerCLI:
             update_meta = args.force_refresh
             item = self.core.get_item(args.app_name, update_meta=update_meta)
             if not item:
-                self.logger.critical(f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)')
+                msg = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership). Exiting...'
+                self.logger.critical(msg)
+                if args.gui:
+                    box_message(msg)
                 self.core.clean_exit(1)
             manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
 
