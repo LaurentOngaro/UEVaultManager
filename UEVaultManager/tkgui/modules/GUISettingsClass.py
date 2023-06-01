@@ -11,7 +11,6 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.models.config import AppConf
 
-
 # NOTE : we can't import the following modules here because of circular dependencies
 # UEVaultManager.tkgui.modules.functions_no_deps
 
@@ -174,6 +173,7 @@ class GUISettings:
     use_colors_for_data = property(get_use_colors_for_data, set_use_colors_for_data)
     image_cache_max_time = property(get_image_cache_max_time, set_image_cache_max_time)
     last_opened_file = property(get_last_opened_file, set_last_opened_file)
+
     # following vars are not set as properties to avoid storing absolute paths in the config file
     # getter and setter could be used to store relative paths
     # cache_folder = property(get_cache_folder, set_cache_folder)
@@ -188,6 +188,8 @@ class GUISettings:
             self.path = os.path.join(config_path, 'UEVaultManager')
         else:
             self.path = os.path.expanduser('~/.config/UEVaultManager')
+        if not os.path.isdir(self.path):
+            os.makedirs(self.path)
         if config_file:
             if os.path.exists(config_file):
                 self.config_path = os.path.abspath(config_file)
