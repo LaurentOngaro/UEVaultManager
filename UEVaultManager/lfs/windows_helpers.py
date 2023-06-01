@@ -4,6 +4,8 @@ Windows specific helper functions for registry access.
 """
 import ctypes
 import logging
+# noinspection PyCompatibility
+# will be added in the future 3.12 release
 import winreg
 
 _logger = logging.getLogger('WindowsHelpers')
@@ -14,7 +16,14 @@ TYPE_STRING = winreg.REG_SZ
 TYPE_DWORD = winreg.REG_DWORD
 
 
-def query_registry_value(hive, key, value):
+def query_registry_value(hive, key, value) -> str:
+    """
+    Query a registry value.
+    :param hive:
+    :param key:
+    :param value:
+    :return: value data as string
+    """
     ret = None
     try:
         k = winreg.OpenKey(hive, key, reserved=0, access=winreg.KEY_READ)
@@ -30,7 +39,14 @@ def query_registry_value(hive, key, value):
     return ret
 
 
-def list_registry_values(hive, key, use_32bit_view=False):
+def list_registry_values(hive, key, use_32bit_view=False) -> list:
+    """
+    List all values in a registry key.
+    :param hive:
+    :param key:
+    :param use_32bit_view:
+    :return: list of tuples (value_name, value_data, value_type)
+    """
     ret = []
 
     access = winreg.KEY_READ
@@ -53,7 +69,14 @@ def list_registry_values(hive, key, use_32bit_view=False):
     return ret
 
 
-def remove_registry_value(hive, key, value, use_32bit_view=False):
+def remove_registry_value(hive, key, value, use_32bit_view=False) -> None:
+    """
+    Remove a registry value.
+    :param hive:
+    :param key:
+    :param value:
+    :param use_32bit_view:
+    """
     access = winreg.KEY_ALL_ACCESS
     if use_32bit_view:
         access |= winreg.KEY_WOW64_32KEY
@@ -70,7 +93,16 @@ def remove_registry_value(hive, key, value, use_32bit_view=False):
         winreg.CloseKey(k)
 
 
-def set_registry_value(hive, key, value, data, reg_type=winreg.REG_SZ, use_32bit_view=False):
+def set_registry_value(hive, key, value, data, reg_type=winreg.REG_SZ, use_32bit_view=False) -> None:
+    """
+    Set a registry value.
+    :param hive:
+    :param key:
+    :param value:
+    :param data:
+    :param reg_type:
+    :param use_32bit_view:
+    """
     access = winreg.KEY_ALL_ACCESS
     if use_32bit_view:
         access |= winreg.KEY_WOW64_32KEY
@@ -88,6 +120,9 @@ def set_registry_value(hive, key, value, data, reg_type=winreg.REG_SZ, use_32bit
 
 
 def double_clicked() -> bool:
+    """
+    Check if the application was started by a double click
+    """
     # Thanks https://stackoverflow.com/a/55476145
 
     # Load kernel32.dll
