@@ -36,7 +36,6 @@ from UEVaultManager.utils.cli import check_and_create_path
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
-
 # The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
 
 # ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
@@ -121,35 +120,31 @@ class AppCore:
         """
         Setup logging for ignored, not found and bad data assets
         """
+
+        def create_logger(logger_name: str, filename_log: str) -> None:
+            """
+            Create a logger for ignored, not found and bad data assets
+            :param logger_name:   
+            :param filename_log: 
+            :return: 
+            """
+            filename_log = filename_log.replace('~/.config', self.uevmlfs.path)
+            if check_and_create_path(filename_log):
+                handler = logging.FileHandler(filename_log, mode='w')
+                handler.setFormatter(formatter)
+                logger = logging.Logger(logger_name, 'INFO')
+                logger.addHandler(handler)
+                logger.info(message)
+
         formatter = logging.Formatter('%(message)s')
         message = f"-----\n{datetime.now().strftime(self.default_datetime_format)} Log Started\n-----\n"
 
-        if self.ignored_assets_filename_log != '':
-            ignored_assets_filename_log = self.ignored_assets_filename_log.replace('~/.config', self.uevmlfs.path)
-            if check_and_create_path(ignored_assets_filename_log):
-                ignored_assets_handler = logging.FileHandler(ignored_assets_filename_log, mode='w')
-                ignored_assets_handler.setFormatter(formatter)
-                self.ignored_logger = logging.Logger('IgnoredAssets', 'INFO')
-                self.ignored_logger.addHandler(ignored_assets_handler)
-                self.ignored_logger.info(message)
-
-        if self.notfound_assets_filename_log != '':
-            notfound_assets_filename_log = self.notfound_assets_filename_log.replace('~/.config', self.uevmlfs.path)
-            if check_and_create_path(notfound_assets_filename_log):
-                notfound_assets_handler = logging.FileHandler(notfound_assets_filename_log, mode='w')
-                notfound_assets_handler.setFormatter(formatter)
-                self.notfound_logger = logging.Logger('NotFoundAssets', 'INFO')
-                self.notfound_logger.addHandler(notfound_assets_handler)
-                self.notfound_logger.info(message)
-
-        if self.bad_data_assets_filename_log != '':
-            bad_data_assets_filename_log = self.bad_data_assets_filename_log.replace('~/.config', self.uevmlfs.path)
-            if check_and_create_path(bad_data_assets_filename_log):
-                bad_data_assets_handler = logging.FileHandler(bad_data_assets_filename_log, mode='w')
-                bad_data_assets_handler.setFormatter(formatter)
-                self.bad_data_logger = logging.Logger('BadDataAssets', 'INFO')
-                self.bad_data_logger.addHandler(bad_data_assets_handler)
-                self.bad_data_logger.info(message)
+        if self.ignored_assets_filename_log:
+            create_logger('IgnoredAssets', self.ignored_assets_filename_log)
+        if self.notfound_assets_filename_log:
+            create_logger('NotFoundAssets', self.notfound_assets_filename_log)
+        if self.bad_data_assets_filename_log:
+            create_logger('BadDataAssets', self.bad_data_assets_filename_log)
 
     def auth_sid(self, sid) -> str:
         """
