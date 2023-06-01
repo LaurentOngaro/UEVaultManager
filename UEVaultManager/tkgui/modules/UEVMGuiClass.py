@@ -726,11 +726,12 @@ class UEVMGui(tk.Tk):
         """
         self.editable_table.move_to_next_record()
 
+    # noinspection DuplicatedCode
     def toggle_controls_pane(self) -> None:
         """
-        Toggle the visibility of the controls pane on the right side of the table
+        Toggle the visibility of the controls pane
         """
-        # Toggle visibility of filter controls frame
+        # noinspection DuplicatedCode
         if self.control_frame.winfo_ismapped():
             self.control_frame.pack_forget()
             self.toolbar_frame.btn_toggle_controls.config(text='Show Control')
@@ -741,11 +742,12 @@ class UEVMGui(tk.Tk):
             self.toolbar_frame.btn_toggle_controls.config(text='Hide Control')
             self.toolbar_frame.btn_toggle_options.config(state=tk.DISABLED)
 
+    # noinspection DuplicatedCode
     def toggle_options_pane(self) -> None:
         """
-        Toggle the visibility of the Options pane on the right side of the table
+        Toggle the visibility of the Options pane
         """
-        # Toggle visibility of filter controls frame
+        # noinspection DuplicatedCode
         if self.options_frame.winfo_ismapped():
             self.options_frame.pack_forget()
             self.toolbar_frame.btn_toggle_options.config(text='Show Options')

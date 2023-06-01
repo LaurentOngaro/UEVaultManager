@@ -261,6 +261,7 @@ class ManifestMeta:
         self._build_id = b64encode(s.digest()).decode('ascii').replace('+', '-').replace('/', '_').replace('=', '')
         return self._build_id
 
+    # noinspection DuplicatedCode
     @classmethod
     def read(cls, bio):
         _meta = cls()
@@ -400,6 +401,7 @@ class CDL:
             raise ValueError(f'Invalid GUID! {hex(guid_int)}')
         return self.elements[index]
 
+    # noinspection DuplicatedCode
     @classmethod
     def read(cls, bio, manifest_version=18):
         cdl_start = bio.tell()
@@ -550,6 +552,7 @@ class FML:
             raise ValueError(f'Invalid path! {path}')
         return self.elements[index]
 
+    # noinspection DuplicatedCode
     @classmethod
     def read(cls, bio):
         fml_start = bio.tell()

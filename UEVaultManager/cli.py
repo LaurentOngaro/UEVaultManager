@@ -1196,6 +1196,7 @@ def main():
     # general arguments
     parser.add_argument('-H', '--full-help', dest='full_help', action='store_true', help='Show full help (including individual command help)')
     parser.add_argument('-d', '--debug', dest='debug', action='store_true', help='Set loglevel to debug')
+    # noinspection DuplicatedCode
     parser.add_argument('-y', '--yes', dest='yes', action='store_true', help='Default to yes for all prompts')
     parser.add_argument('-V', '--version', dest='version', action='store_true', help='Print version and exit')
     parser.add_argument(
@@ -1265,6 +1266,7 @@ def main():
     list_parser.add_argument(
         '-T', '--third-party', dest='include_non_asset', action='store_true', default=False, help='Include assets that are not installable.'
     )
+    # noinspection DuplicatedCode
     list_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in in CSV format')
     list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in in TSV format')
     list_parser.add_argument('--json', dest='json', action='store_true', help='Output in in JSON format')
@@ -1298,6 +1300,7 @@ def main():
     )
     list_files_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in CSV format')
     list_files_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in TSV format')
+    # noinspection DuplicatedCode
     list_files_parser.add_argument('--json', dest='json', action='store_true', help='Output in JSON format')
     list_files_parser.add_argument(
         '--hashlist', dest='hashlist', action='store_true', help='Output file hash list in hashCheck/sha1sum -c compatible format'
@@ -1332,7 +1335,7 @@ def main():
         '-e,'
         '--delete-extras-data', dest='delete_extras_data', action='store_true', help='Also delete extras data files. They are kept by default'
     )
-
+    # noinspection DuplicatedCode
     info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
     info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
     info_parser.add_argument(

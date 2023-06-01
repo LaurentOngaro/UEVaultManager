@@ -83,6 +83,7 @@ class Chunk:
         _sio = BytesIO(data)
         return cls.read(_sio)
 
+    # noinspection DuplicatedCode
     @classmethod
     def read(cls, bio):
         head_start = bio.tell()
