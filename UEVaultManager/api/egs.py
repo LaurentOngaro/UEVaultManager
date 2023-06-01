@@ -433,8 +433,8 @@ class EPCAPI:
 
         if "No content found" in group_elt.getText():
             self.log.info(f'{asset_name} has not been not found in marketplace.It has been added to the notfound_logger file')
-            if self.ignored_logger:
-                self.ignored_logger.info(asset_name)
+            if self.notfound_logger:
+                self.notfound_logger.info(asset_name)
             return [url, asset_name_in_url, GrabResult.CONTENT_NOT_FOUND.name]
 
         # find all links to assets that correspond to the search

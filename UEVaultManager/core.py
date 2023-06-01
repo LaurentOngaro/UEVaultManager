@@ -121,7 +121,7 @@ class AppCore:
         Setup logging for ignored, not found and bad data assets
         """
 
-        def create_logger(logger_name: str, filename_log: str) -> None:
+        def create_logger(logger_name: str, filename_log: str):
             """
             Create a logger for ignored, not found and bad data assets
             :param logger_name:   
@@ -135,16 +135,20 @@ class AppCore:
                 logger = logging.Logger(logger_name, 'INFO')
                 logger.addHandler(handler)
                 logger.info(message)
+                return logger
+            else:
+                self.log.warning(f'Unable to create logger for file: {filename_log}')
+                return None
 
         formatter = logging.Formatter('%(message)s')
         message = f"-----\n{datetime.now().strftime(self.default_datetime_format)} Log Started\n-----\n"
 
         if self.ignored_assets_filename_log:
-            create_logger('IgnoredAssets', self.ignored_assets_filename_log)
+            self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
         if self.notfound_assets_filename_log:
-            create_logger('NotFoundAssets', self.notfound_assets_filename_log)
+            self.notfound_logger = create_logger('NotFoundAssets', self.notfound_assets_filename_log)
         if self.bad_data_assets_filename_log:
-            create_logger('BadDataAssets', self.bad_data_assets_filename_log)
+            self.bad_data_logger = create_logger('BadDataAssets', self.bad_data_assets_filename_log)
 
     def auth_sid(self, sid) -> str:
         """
@@ -748,13 +752,13 @@ class AppCore:
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata files...", new_max_value=len(_ret))
-            # delete old files
+            self.log.info(f'Updating metadata files...Could take a some time')
             self._prune_metadata()
             self._save_metadata(_ret)
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extras data files...", new_max_value=len(_ret))
-            # save new ones
+            self.log.info(f'Updating extras data files...Could take a some time')
             self._prune_extras_data(update_global_dict=False)
             self._save_extras_data(self.uevmlfs.assets_extras_data, update_global_dict=False)
         return _ret
