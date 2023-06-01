@@ -1,52 +1,60 @@
 # coding=utf-8
+"""
+implementation for:
+- EGLManifest: EGL Manifest 
+"""
 from copy import deepcopy
 
 from UEVaultManager.utils.cli import str_to_bool
 
 _template = {
-    'AppCategories'         : ['public', 'games', 'applications'],
-    'AppName'               : '',
-    'AppVersionString'      : '',
-    'BaseURLs'              : [],
-    'BuildLabel'            : '',
-    'CatalogItemId'         : '',
-    'CatalogNamespace'      : '',
-    'ChunkDbs'              : [],
-    'CompatibleApps'        : [],
-    'DisplayName'           : '',
-    'FormatVersion'         : 0,
-    'FullAppName'           : '',
-    'HostInstallationGuid'  : '',
-    'InstallComponents'     : [],
-    'InstallLocation'       : '',
-    'InstallSessionId'      : '',
-    'InstallSize'           : 0,
-    'InstallTags'           : [],
-    'InstallationGuid'      : '',
-    'LaunchCommand'         : '',
-    'LaunchExecutable'      : '',
-    'MainGameAppName'       : '',
-    'MainWindowProcessName' : '',
+    'AppCategories': ['public', 'games', 'applications'],
+    'AppName': '',
+    'AppVersionString': '',
+    'BaseURLs': [],
+    'BuildLabel': '',
+    'CatalogItemId': '',
+    'CatalogNamespace': '',
+    'ChunkDbs': [],
+    'CompatibleApps': [],
+    'DisplayName': '',
+    'FormatVersion': 0,
+    'FullAppName': '',
+    'HostInstallationGuid': '',
+    'InstallComponents': [],
+    'InstallLocation': '',
+    'InstallSessionId': '',
+    'InstallSize': 0,
+    'InstallTags': [],
+    'InstallationGuid': '',
+    'LaunchCommand': '',
+    'LaunchExecutable': '',
+    'MainGameAppName': '',
+    'MainWindowProcessName': '',
     'MandatoryAppFolderName': '',
-    'ManifestLocation'      : '',
-    'OwnershipToken'        : '',
-    'PrereqIds'             : [],
-    'ProcessNames'          : [],
-    'StagingLocation'       : '',
-    'TechnicalType'         : '',
-    'VaultThumbnailUrl'     : '',
-    'VaultTitleText'        : '',
-    'bCanRunOffline'        : True,
-    'bIsApplication'        : True,
-    'bIsExecutable'         : True,
-    'bIsIncompleteInstall'  : False,
-    'bIsManaged'            : False,
-    'bNeedsValidation'      : False,
-    'bRequiresAuth'         : True
+    'ManifestLocation': '',
+    'OwnershipToken': '',
+    'PrereqIds': [],
+    'ProcessNames': [],
+    'StagingLocation': '',
+    'TechnicalType': '',
+    'VaultThumbnailUrl': '',
+    'VaultTitleText': '',
+    'bCanRunOffline': True,
+    'bIsApplication': True,
+    'bIsExecutable': True,
+    'bIsIncompleteInstall': False,
+    'bIsManaged': False,
+    'bNeedsValidation': False,
+    'bRequiresAuth': True
 }
 
 
 class EGLManifest:
+    """
+    EGL Manifest
+    """
+
     def __init__(self):
         self.app_name = None
         self.app_version_string = None
@@ -73,7 +81,12 @@ class EGLManifest:
         self.remainder = dict()
 
     @classmethod
-    def from_json(cls, json: dict):
+    def from_json(cls, json: dict) -> 'EGLManifest':
+        """
+        Create EGLManifest from json
+        :param json: json data
+        :return: EGLManifest
+        """
         json = deepcopy(json)
         tmp = cls()
         tmp.app_name = json.pop('AppName')
@@ -86,6 +99,7 @@ class EGLManifest:
         tmp.install_location = json.pop('InstallLocation', '')
         tmp.install_size = json.pop('InstallSize', 0)
         tmp.install_tags = json.pop('InstallTags', [])
+        # noinspection DuplicatedCode
         tmp.installation_guid = json.pop('InstallationGuid', '')
         tmp.launch_command = json.pop('LaunchCommand', '')
         tmp.executable = json.pop('LaunchExecutable', '')
@@ -101,8 +115,13 @@ class EGLManifest:
         return tmp
 
     def to_json(self) -> dict:
+        """
+        Convert EGLManifest to json
+        :return: json data
+        """
         out = _template.copy()
         out.update(self.remainder)
+        # noinspection DuplicatedCode
         out['AppName'] = self.app_name
         out['AppVersionString'] = self.app_version_string
         out['BaseURLs'] = self.base_urls
@@ -111,6 +130,7 @@ class EGLManifest:
         out['CatalogNamespace'] = self.namespace
         out['DisplayName'] = self.display_name
         out['InstallLocation'] = self.install_location
+        # noinspection DuplicatedCode
         out['InstallSize'] = self.install_size
         out['InstallTags'] = self.install_tags
         out['InstallationGuid'] = self.installation_guid
