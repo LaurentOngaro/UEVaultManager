@@ -695,38 +695,12 @@ class EditableTable(Table):
         """
         if row is None or row >= len(self.model.df) or quick_edit_frame is None:
             return
-        # Url
-        col = self.model.df.columns.get_loc('Url')
-        value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Url', content=value, row=row, col=col)
-        # Comment
-        col = self.model.df.columns.get_loc('Comment')
-        value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Comment', content=value, row=row, col=col)
-        # Stars
-        col = self.model.df.columns.get_loc('Stars')
-        value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Stars', content=value, row=row, col=col)
-        # Test
-        col = self.model.df.columns.get_loc('Test result')
-        value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Test result', content=value, row=row, col=col)
-        # Must buy
-        col = self.model.df.columns.get_loc('Must buy')
-        value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Must buy', label='', content=value, row=row, col=col)
-        # Alternative
-        col = self.model.df.columns.get_loc('Alternative')
-        value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Alternative', content=value, row=row, col=col)
-        # Installed
-        col = self.model.df.columns.get_loc('Installed folder')
-        value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Installed folder', content=value, row=row, col=col)
-        # Origin
-        col = self.model.df.columns.get_loc('Origin')
-        value = self.model.getValueAt(row=row, col=col)
-        quick_edit_frame.set_child_values(tag='Origin', content=value, row=row, col=col)
+
+        column_names = ['Url', 'Comment', 'Stars', 'Test result', 'Must buy', 'Alternative', 'Installed folder', 'Origin']
+        for col_name in column_names:
+            col = self.model.df.columns.get_loc(col_name)
+            value = self.model.getValueAt(row=row, col=col)
+            quick_edit_frame.set_child_values(tag=col_name, content=value, row=row, col=col)
 
     @staticmethod
     def quick_edit(quick_edit_frame: TaggedLabelFrame = None) -> None:
