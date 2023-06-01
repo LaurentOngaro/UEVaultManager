@@ -22,7 +22,7 @@ def init_gui(open_mainwindow=True) -> str:
     csv_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.csv_filename)
     rebuild = False
     if not os.path.isfile(csv_filename):
-        gui_fn.create_empty_file(csv_filename)
+        csv_filename = gui_fn.create_empty_file(csv_filename)
         rebuild = True
     if open_mainwindow:
         main_window = UEVMGui(

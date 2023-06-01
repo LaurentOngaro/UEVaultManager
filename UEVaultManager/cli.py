@@ -1118,6 +1118,7 @@ class UEVaultManagerCLI:
             self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
         else:
             input_filename = gui_fn.path_from_relative_to_absolute(args.input)
+        input_filename = os.path.normpath(input_filename)
 
         app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
         gui_g.UEVM_log_ref = self.logger
@@ -1127,7 +1128,7 @@ class UEVaultManagerCLI:
         init_gui_args(args, additional_args={'output': input_filename})
         rebuild = False
         if not os.path.isfile(input_filename):
-            gui_fn.create_empty_file(input_filename)
+            input_filename = gui_fn.create_empty_file(input_filename)
             rebuild = True
 
         gui_g.UEVM_gui_ref = UEVMGui(

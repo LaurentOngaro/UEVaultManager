@@ -68,6 +68,7 @@ class GUISettings:
         else:
             self.csv_filename = os.path.join(self.config_vars['results_folder'], 'list.csv')
 
+        self.csv_filename = os.path.normpath(self.csv_filename)
         self.app_title = 'UEVM Gui'
         self.app_width = 1600
         self.app_height = 935

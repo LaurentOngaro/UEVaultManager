@@ -131,15 +131,29 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
             tk_window.iconbitmap(icon)
 
 
-def create_empty_file(file_path: str) -> None:
+def create_empty_file(file_path: str) -> str:
     """
     Create an empty file
     :param file_path: the path of the file to create
+    :return: the path of the file
     """
     path = os.path.dirname(file_path)
+    file = os.path.basename(file_path)
     if not os.path.exists(path):
-        os.makedirs(path)
+        try:
+            os.makedirs(path)
+        except (OSError, PermissionError) as e:
+            print(f'Error while creating the directory {path}: {e}')
+            if home_dir := os.environ.get('XDG_CONFIG_HOME'):
+                path = os.path.join(home_dir, 'UEVaultManager')
+            else:
+                path = os.path.expanduser('~/.config/UEVaultManager')
+            if not os.path.exists(path):
+                os.makedirs(path)
+            file_path = os.path.normpath(os.path.join(path, file))
+            print(f'The following file {file_path} will be used as default')
     open(file_path, 'a').close()
+    return file_path
 
 
 def convert_to_bool(value) -> bool:
