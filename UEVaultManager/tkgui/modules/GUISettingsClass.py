@@ -10,6 +10,7 @@ from termcolor import colored
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.models.config import AppConf
+from UEVaultManager import __name__, __version__, __codename__
 
 # NOTE : we can't import the following modules here because of circular dependencies
 # UEVaultManager.tkgui.modules.functions_no_deps
@@ -69,7 +70,7 @@ class GUISettings:
             self.csv_filename = os.path.join(self.config_vars['results_folder'], 'list.csv')
 
         self.csv_filename = os.path.normpath(self.csv_filename)
-        self.app_title = 'UEVM Gui'
+        self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
         self.app_width = 1600
         self.app_height = 935
         self.app_monitor = 1
