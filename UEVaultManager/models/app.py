@@ -1,5 +1,11 @@
 # coding: utf-8
+"""
+implementation for:
+- AppAsset: App asset data
+- App: Combination of app asset, app metadata and app extras as stored on disk
+- VerifyResult: Result of a verification
 
+"""
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict
@@ -18,8 +24,14 @@ class AppAsset:
     namespace: str = ''
     metadata: Dict = field(default_factory=dict)
 
+    # noinspection DuplicatedCode
     @classmethod
-    def from_egs_json(cls, json):
+    def from_egs_json(cls, json) -> 'AppAsset':
+        """
+        Create AppAsset from EGS
+        :param json: data
+        :return: an AppAsset
+        """
         tmp = cls()
         tmp.app_name = json.get('appName', '')
         tmp.asset_id = json.get('assetId', '')
@@ -30,8 +42,14 @@ class AppAsset:
         tmp.metadata = json.get('metadata', {})
         return tmp
 
+    # noinspection DuplicatedCode
     @classmethod
-    def from_json(cls, json):
+    def from_json(cls, json) -> 'AppAsset':
+        """
+        Create AppAsset from json
+        :param json: data
+        :return: an AppAsset
+        """
         tmp = cls()
         tmp.app_name = json.get('app_name', '')
         tmp.asset_id = json.get('asset_id', '')
@@ -56,54 +74,96 @@ class App:
     metadata: Dict = field(default_factory=dict)
 
     def app_version(self, platform='Windows'):
+        """
+        Get app version for a given platform
+        :param platform: platform
+        :return: app version
+        """
         if platform not in self.asset_infos:
             return None
         return self.asset_infos[platform].build_version
 
     @property
-    def is_dlc(self):
+    def is_dlc(self) -> bool:
+        """
+        Check if app is a DLC
+        :return: True if DLC, False otherwise
+        """
         return self.metadata and 'mainGameItem' in self.metadata
 
     @property
     def third_party_store(self):
+        """
+        Get third party store
+        :return: third party store
+        """
         if not self.metadata:
             return None
         return self.metadata.get('customAttributes', {}).get('ThirdPartyManagedApp', {}).get('value', None)
 
     @property
     def partner_link_type(self):
+        """
+        Get partner link type
+        :return: partner link type
+        """
         if not self.metadata:
             return None
         return self.metadata.get('customAttributes', {}).get('partnerLinkType', {}).get('value', None)
 
     @property
     def partner_link_id(self):
+        """
+        Get partner link id
+        :return: partner link id
+        """
         if not self.metadata:
             return None
         return self.metadata.get('customAttributes', {}).get('partnerLinkId', {}).get('value', None)
 
     @property
-    def supports_cloud_saves(self):
+    def supports_cloud_saves(self) -> bool:
+        """
+        Check if app supports cloud saves
+        :return: True if app supports cloud saves, False otherwise
+        """
         return self.metadata and (self.metadata.get('customAttributes', {}).get('CloudSaveFolder') is not None)
 
     @property
-    def supports_mac_cloud_saves(self):
+    def supports_mac_cloud_saves(self) -> bool:
+        """
+        Check if app supports cloud saves on Mac
+        :return: True if app supports cloud saves on Mac, False otherwise
+        """
         return self.metadata and (self.metadata.get('customAttributes', {}).get('CloudSaveFolder_MAC') is not None)
 
     @property
     def catalog_item_id(self):
+        """
+        Get catalog item id
+        :return: catalog item id
+        """
         if not self.metadata:
             return None
         return self.metadata['id']
 
     @property
     def namespace(self):
+        """
+        Get namespace
+        :return: namespace
+        """
         if not self.metadata:
             return None
         return self.metadata['namespace']
 
     @classmethod
-    def from_json(cls, json):
+    def from_json(cls, json) -> 'App':
+        """
+        Create App from json
+        :param json: data
+        :return: an App
+        """
         tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''),)  # call to the class constructor
         tmp.metadata = json.get('metadata', dict())
         if 'asset_infos' in json:
@@ -123,6 +183,9 @@ class App:
 
 
 class VerifyResult(Enum):
+    """
+    Result of a verification
+    """
     HASH_MATCH = 0
     HASH_MISMATCH = 1
     FILE_MISSING = 2
