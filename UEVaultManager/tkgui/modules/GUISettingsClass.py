@@ -208,45 +208,52 @@ class GUISettings:
             log('Continuing with blank config in safe-mode...')
             self.config.read_only = True
 
-        # make sure "UEVaultManager" section exists
+        config_defaults = {
+            'debug_mode': {
+                'comment': 'Set to True to print debug information (GUI related only',
+                'value': 'False'
+            },
+            'never_update_data_files': {
+                'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
+                'value': 'False'
+            },
+            'reopen_last_file': {
+                'comment': 'Set to True to re-open the last file at startup if no input file is given',
+                'value': 'True'
+            },
+            'use_colors_for_data': {
+                'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
+                'value': 'True'
+            },
+            'last_opened_file': {
+                'comment': 'File name of the last opened file',
+                'value': ''
+            },
+            'image_cache_max_time': {
+                'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
+                'value': str(60 * 60 * 24 * 15)
+            },
+            'cache_folder': {
+                'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
+                'value': '../../../cache'
+            },
+            'results_folder': {
+                'comment': 'Folder (relative or absolute) to store result files to read and save data from',
+                'value': '../../../results'
+            },
+        }
+
         has_changed = False
         if 'UEVaultManager' not in self.config:
             self.config.add_section('UEVaultManager')
             has_changed = True
-        if not self.config.has_option('UEVaultManager', 'debug_mode'):
-            self.config.set('UEVaultManager', '; Set to True to print debug information (GUI related only)')
-            self.config.set('UEVaultManager', 'debug_mode', 'False')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'never_update_data_files'):
-            self.config.set('UEVaultManager', '; Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY')
-            self.config.set('UEVaultManager', 'never_update_data_files', 'False')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'reopen_last_file'):
-            self.config.set('UEVaultManager', '; Set to True to re-open the last file at startup if no input file is given')
-            self.config.set('UEVaultManager', 'reopen_last_file', 'True')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'use_colors_for_data'):
-            self.config.set(
-                'UEVaultManager', '; Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing'
-            )
-            self.config.set('UEVaultManager', 'use_colors_for_data', 'True')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'last_opened_file'):
-            self.config.set('UEVaultManager', '; Last opened file name')
-            self.config.set('UEVaultManager', 'last_opened_file', '')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'image_cache_max_time'):
-            self.config.set('UEVaultManager', '; Delay in seconds when image cache will be invalidated. Default value represent 15 days')
-            self.config.set('UEVaultManager', 'image_cache_max_time', str(60 * 60 * 24 * 15))
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'cache_folder'):
-            self.config.set('UEVaultManager', '; Folder (relative or absolute) to store cached data for assets (mainly preview images)')
-            self.config.set('UEVaultManager', 'cache_folder', '../../../cache')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'results_folder'):
-            self.config.set('UEVaultManager', '; Folder (relative or absolute) to store result files to read and save data from')
-            self.config.set('UEVaultManager', 'results_folder', '../../../results')
-            has_changed = True
+
+        for option, content in config_defaults.items():
+            if not self.config.has_option('UEVaultManager', option):
+                self.config.set('UEVaultManager', f';{content["comment"]}')
+                self.config.set('UEVaultManager', option, content['value'])
+                has_changed = True
+
         if has_changed:
             self.save_config_file(save_config_var=False)
 
