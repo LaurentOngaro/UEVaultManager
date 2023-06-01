@@ -131,6 +131,9 @@ def create_empty_file(file_path: str) -> None:
     Create an empty file
     :param file_path: the path of the file to create
     """
+    path = os.path.dirname(file_path)
+    if not os.path.exists(path):
+        os.makedirs(path)
     open(file_path, 'a').close()
 
 
