@@ -1185,8 +1185,6 @@ class UEVaultManagerCLI:
                 gui_g.UEVM_cli_args['output'] = input_filename
         gui_g.UEVM_gui_ref = UEVMGui(
             title=gui_g.s.app_title,
-            width=gui_g.s.app_width,
-            height=gui_g.s.app_height,
             icon=app_icon_filename,
             screen_index=0,
             file=input_filename,
