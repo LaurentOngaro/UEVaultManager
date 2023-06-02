@@ -154,11 +154,14 @@ class UEVaultManagerCLI:
         :param log_function: function to use to log
         :param message: message to log
         """
-        log_function(message)
-        if UEVaultManagerCLI.is_gui:
-            box_message(message)
+        if not UEVaultManagerCLI.is_gui:
+            log_function(message)
+            return
         if must_quit:
+            box_message(message, level='critical')
             self.core.clean_exit(1)
+        else:
+            box_message(message, level='error')
 
     def setup_threaded_logging(self) -> QueueListener:
         """
@@ -1162,6 +1165,7 @@ class UEVaultManagerCLI:
             if not is_valid:
                 message = f'Error while creating the empty result file with the given path. The following file {input_filename} will be used as default'
                 self._log_gui_wrapper(self.logger.error, message)
+                # fix invalid input/output file name in arguments to avoid futher errors in file path checks
                 args.input = input_filename
                 args.output = input_filename
                 gui_g.UEVM_cli_args['input'] = input_filename
