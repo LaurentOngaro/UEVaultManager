@@ -1046,15 +1046,15 @@ class UEVaultManagerCLI:
                 uewm_gui_exists = False
 
             if info_items.get('asset'):
-                custom_print('\nAsset Information:')
+                custom_print('Asset Information:')
                 for info_item in info_items['asset']:
                     print_info_item(info_item)
             if info_items.get('install'):
-                custom_print('\nInstallation information:')
+                custom_print('Installation information:')
                 for info_item in info_items['install']:
                     print_info_item(info_item)
             if info_items.get('manifest'):
-                custom_print('\nManifest information:')
+                custom_print('Manifest information:')
                 for info_item in info_items['manifest']:
                     print_info_item(info_item)
 
@@ -1086,29 +1086,42 @@ class UEVaultManagerCLI:
         :param args: options passed to the command
         """
         before = self.core.uevmlfs.get_dir_size()
+        uewm_gui_exists = False
+        if UEVaultManagerCLI.is_gui:
+            uewm_gui_exists, _ = init_display_window(self.logger)
 
         # delete metadata
         if args.delete_metadata:
-            self.logger.debug('Removing app metadata...')
-            self.core.uevmlfs.clean_metadata()
+            message = 'Removing app metadata...'
+            custom_print(message)
+            self.core.uevmlfs.clean_metadata(app_names_to_keep=[])
 
         # delete extras data
         if args.delete_extras_data:
-            self.logger.debug('Removing app extras data...')
-            self.core.uevmlfs.clean_extras()
+            message = 'Removing app extras data...'
+            custom_print(message)
+            self.core.uevmlfs.clean_extras(app_names_to_keep=[])
 
         # delete log and backup
-        self.logger.debug('Removing logs and backups...')
+        message = 'Removing logs and backups...'
+        custom_print(message)
         self.core.uevmlfs.clean_logs_and_backups()
 
-        self.logger.debug('Removing manifests...')
+        message = 'Removing manifests...'
+        custom_print(message)
         self.core.uevmlfs.clean_manifests()
 
-        self.logger.debug('Removing tmp data')
+        message = 'Removing tmp data...'
+        custom_print(message)
         self.core.uevmlfs.clean_tmp_data()
 
         after = self.core.uevmlfs.get_dir_size()
-        self.logger.info(f'Cleanup complete! Removed {(before - after) / 1024 / 1024:.02f} MiB.')
+        message = f'Cleanup complete! Removed {(before - after) / 1024 / 1024:.02f} MiB.'
+        self.logger.info(message)
+        custom_print(message, keep_mode=False)
+
+        if not uewm_gui_exists:
+            gui_g.UEVM_gui_ref.mainloop()
 
     def get_token(self, args) -> None:
         """

@@ -61,3 +61,19 @@ def set_args_offline(value: bool) -> None:
     :param value:  True or False
     """
     UEVM_cli_args['offline'] = value
+
+
+def set_args_delete_metadata(value: bool) -> None:
+    """
+    Set the value of the argument delete_metadata. Mandadory fot the associated ttk.ckbutton to work
+    :param value:  True or False
+    """
+    UEVM_cli_args['delete_metadata'] = value
+
+
+def set_args_delete_extras_data(value: bool) -> None:
+    """
+    Set the value of the argument delete_extras_data. Mandadory fot the associated ttk.ckbutton to work
+    :param value:  True or False
+    """
+    UEVM_cli_args['delete_extras_data'] = value

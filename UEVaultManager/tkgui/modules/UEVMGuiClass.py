@@ -77,22 +77,24 @@ class UEVMGui(tk.Tk):
         self.editable_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
-        if show_open_file_dialog:
-            if self.load_file() == '':
-                gui_f.log_error('This application could not run without a file to read data from')
-                self.quit()
-
-        # Quick edit the first row
-        self.editable_table.update_quick_edit(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=0)
-
-        if rebuild_data or self.editable_table.must_rebuild:
-            if gui_f.box_okcancel('Data are invalid or empty. They will be rebuilt from sources files. Do you want to continue ?'):
+        if not show_open_file_dialog and (rebuild_data or self.editable_table.must_rebuild):
+            if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
                 if not self.editable_table.rebuild_data():
                     gui_f.log_error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
+            elif gui_f.box_yesno('So, do you want to load another file ? If not, the application will be closed'):
+                show_open_file_dialog = True
             else:
                 self.destroy()  # self.quit() won't work here
+                gui_f.log_error('No valid file to read from. Application will be closed',)
+
+        if show_open_file_dialog:
+            if self.load_file() == '':
+                gui_f.log_error('This application could not run without a file to read data from')
+                self.quit()
+        # Quick edit the first row
+        self.editable_table.update_quick_edit(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=0)
 
     class ToolbarFrame(ttk.Frame):
         """
@@ -153,8 +155,10 @@ class UEVMGui(tk.Tk):
             btn_status.pack(**pack_def_options, side=tk.LEFT)
             btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_cli_command('info'))
             btn_info.pack(**pack_def_options, side=tk.LEFT)
-            btn_info = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_cli_command('list_files'))
-            btn_info.pack(**pack_def_options, side=tk.LEFT)
+            btn_list_files = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_cli_command('list_files'))
+            btn_list_files.pack(**pack_def_options, side=tk.LEFT)
+            btn_cleanup = ttk.Button(lblf_commands, text='Cleanup', command=lambda: container.run_cli_command('cleanup'))
+            btn_cleanup.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
@@ -381,7 +385,7 @@ class UEVMGui(tk.Tk):
             # row 1
             cur_row += 1
             cur_col = 0
-            offline_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('offli', False))
+            offline_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('offline', False))
             offline_var.trace_add('write', lambda name, index, mode: gui_g.set_args_offline(offline_var.get()))
             ck_offline = ttk.Checkbutton(lblf_options, text='Offline Mode', variable=offline_var)
             ck_offline.grid(row=cur_row, column=cur_col, **grid_fw_options)
@@ -392,6 +396,21 @@ class UEVMGui(tk.Tk):
             debug_var.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(debug_var.get()))
             ck_debug = ttk.Checkbutton(lblf_options, text='Debug mode', variable=debug_var)
             ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            # row 3
+            # delete_extras_data'] = True
+            cur_row += 1
+            cur_col = 0
+            delete_metadata_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_metadata', False))
+            delete_metadata_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_metadata(delete_metadata_var.get()))
+            ck_delete_metadata = ttk.Checkbutton(lblf_options, text='Delete metadata (cleanup)', variable=delete_metadata_var)
+            ck_delete_metadata.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            # row 4
+            cur_row += 1
+            cur_col = 0
+            delete_extras_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extras_data', False))
+            delete_extras_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extras_data(delete_extras_data_var.get()))
+            ck_delete_extras_data = ttk.Checkbutton(lblf_options, text='Delete metadata (cleanup)', variable=delete_extras_data_var)
+            ck_delete_extras_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
     def _open_file_dialog(self, save_mode=False, filename=None) -> str:
         """
@@ -828,7 +847,7 @@ class UEVMGui(tk.Tk):
 
     def run_cli_command(self, command_name='') -> None:
         """
-        Execute the 'status' command and display the result in DisplayContentWindow
+        Execute a cli command and display the result in DisplayContentWindow
         :param command_name: the name of the command to execute
         """
         if command_name == '':
@@ -839,15 +858,20 @@ class UEVMGui(tk.Tk):
         row = self.editable_table.getSelectedRow()
         col = self.editable_table.model.df.columns.get_loc('App name')
         app_name = self.editable_table.model.getValueAt(row, col)
-
-        # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands
+        # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY
         # set default options for the cli command to execute
-        gui_g.UEVM_cli_args['gui'] = True
-        gui_g.UEVM_cli_args['full_help'] = True
+        gui_g.UEVM_cli_args['gui'] = True  # mandatory for displaying the result in the DisplayContentWindow
+        # arguments for various commands
         gui_g.UEVM_cli_args['csv'] = False  # mandatory for displaying the result in the DisplayContentWindow
         gui_g.UEVM_cli_args['tcsv'] = False  # mandatory for displaying the result in the DisplayContentWindow
         gui_g.UEVM_cli_args['json'] = False  # mandatory for displaying the result in the DisplayContentWindow
+        # arguments for cleanup command
+        # now set in command options
+        # gui_g.UEVM_cli_args['delete_extras_data'] = True
+        # gui_g.UEVM_cli_args['delete_metadata'] = True
 
+        # arguments for help command
+        gui_g.UEVM_cli_args['full_help'] = True
         if app_name != '':
             gui_g.UEVM_cli_args['app_name'] = app_name
 
