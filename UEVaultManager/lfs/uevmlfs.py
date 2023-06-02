@@ -403,7 +403,7 @@ class UEVMLFS:
 
     def clean_logs_and_backups(self) -> None:
         """
-        Delete all the log and backup files
+        Delete all the log and backup files in the app folder
         """
         for f in os.listdir(self.path):
             file_name_no_ext, file_ext = os.path.splitext(f)
