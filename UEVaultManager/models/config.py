@@ -60,7 +60,7 @@ class AppConf(configparser.ConfigParser):
             self.add_section(section)
 
         self.modified = True
-        super().set(section, option, value)
+        super().set(section, option, str(value))
 
     def remove_option(self, section: str, option: str) -> bool:
         """
