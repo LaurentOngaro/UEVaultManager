@@ -500,7 +500,13 @@ class AppCore:
                     eg_extras['grab_result'] = GrabResult.INCONSISTANT_DATA.name
                     if self.bad_data_logger:
                         self.bad_data_logger.info(name)
-
+            else:
+                # if we don't process extras, we still need to add the asset to the log corresponding to their grab_result
+                eg_extras = self.uevmlfs.assets_extras_data[app_name]
+                if eg_extras['grab_result'] == GrabResult.INCONSISTANT_DATA.name and self.bad_data_logger:
+                    self.bad_data_logger.info(name)
+                if eg_extras['grab_result'] == GrabResult.CONTENT_NOT_FOUND.name and self.notfound_logger:
+                    self.notfound_logger.info(name)
             # compute process time and average in s
             end_time = datetime.now()
             process_time = (end_time - start_time).total_seconds()
@@ -526,6 +532,7 @@ class AppCore:
                 self.thread_executor_must_stop = True
                 return False
             return True
+        # end of fetch_asset_meta
 
         _ret = []
         meta_updated = False
@@ -650,7 +657,7 @@ class AppCore:
                 meta_updated = True
             i += 1
             filtered_items.append(item)
-            # end while i < len(valid_items):
+        # end while i < len(valid_items):
 
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
         self.use_threads = len(fetch_list) > 5

@@ -514,11 +514,8 @@ class UEVaultManagerCLI:
                 if args.gui:
                     box_message(msg)
                 self.core.clean_exit(1)
-            try:
-                # we try to open it for writing
-                with open(file_src, 'w', encoding='utf-8') as output:
-                    output.close()
-            except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
+            # we try to open it for writing
+            if not os.access(file_src, os.W_OK):
                 self.logger.warning(f'Could not read CSV record from the file {file_src}')
                 msg = f'Could not create result file {file_src}. Exiting...'
                 self.logger.critical(msg)
@@ -648,8 +645,8 @@ class UEVaultManagerCLI:
                         writer.writerow(csv_record_merged)
                     except (OSError, UnicodeEncodeError, TypeError) as error:
                         self.logger.error(f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}')
-            except OSError:
-                self.logger.error(f'Could not write list result to {args.output}')
+            except (OSError, ValueError) as error:
+                self.logger.error(f'Could not write list result to {args.output}: {error!r}')
         # end if args.csv or args.tsv:
 
         if args.json:
