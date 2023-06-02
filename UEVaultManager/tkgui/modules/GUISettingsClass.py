@@ -71,8 +71,6 @@ class GUISettings:
 
         self.csv_filename = os.path.normpath(self.csv_filename)
         self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
-        self.app_width = 1600
-        self.app_height = 935
         self.app_monitor = 1
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
         self.data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'))
@@ -104,6 +102,38 @@ class GUISettings:
             'textcolor': 'black'  #
         }
 
+    def get_x_pos(self):
+        """ Getter for x_pos """
+        return gui_fn.convert_to_int(self.config_vars['x_pos'])
+
+    def set_x_pos(self, value):
+        """ Setter for x_pos """
+        self.config_vars['x_pos'] = value
+
+    def get_y_pos(self):
+        """ Getter for y_pos """
+        return gui_fn.convert_to_int(self.config_vars['y_pos'])
+
+    def set_y_pos(self, value):
+        """ Setter for y_pos """
+        self.config_vars['y_pos'] = value
+
+    def get_width(self):
+        """ Getter for width """
+        return gui_fn.convert_to_int(self.config_vars['width'])
+
+    def set_width(self, value):
+        """ Setter for width """
+        self.config_vars['width'] = value
+
+    def get_height(self):
+        """ Getter for height """
+        return gui_fn.convert_to_int(self.config_vars['height'])
+
+    def set_height(self, value):
+        """ Setter for height """
+        self.config_vars['height'] = value
+
     def get_debug_mode(self):
         """ Getter for debug_mode """
         return self.config_vars['debug_mode']
@@ -114,7 +144,7 @@ class GUISettings:
 
     def get_never_update_data_files(self):
         """ Getter for never_update_data_files """
-        return self.config_vars['never_update_data_files']
+        return gui_fn.convert_to_bool(self.config_vars['never_update_data_files'])
 
     def set_never_update_data_files(self, value):
         """ Setter for never_update_data_files """
@@ -122,7 +152,7 @@ class GUISettings:
 
     def get_reopen_last_file(self):
         """ Getter for reopen_last_file """
-        return self.config_vars['reopen_last_file']
+        return gui_fn.convert_to_bool(self.config_vars['reopen_last_file'])
 
     def set_reopen_last_file(self, value):
         """ Setter for reopen_last_file """
@@ -130,7 +160,7 @@ class GUISettings:
 
     def get_use_colors_for_data(self):
         """ Getter for use_colors_for_data """
-        return self.config_vars['use_colors_for_data']
+        return gui_fn.convert_to_bool(self.config_vars['use_colors_for_data'])
 
     def set_use_colors_for_data(self, value):
         """ Setter for use_colors_for_data """
@@ -138,7 +168,7 @@ class GUISettings:
 
     def get_image_cache_max_time(self):
         """ Getter for image_cache_max_time """
-        return self.config_vars['image_cache_max_time']
+        return gui_fn.convert_to_int(self.config_vars['image_cache_max_time'])
 
     def set_image_cache_max_time(self, value):
         """ Setter for image_cache_max_time """
@@ -169,6 +199,10 @@ class GUISettings:
         self.config_vars['results_folder'] = value
 
     # use properties for keeping transparent access to these properties
+    y_pos = property(get_y_pos, set_y_pos)
+    x_pos = property(get_x_pos, set_x_pos)
+    height = property(get_height, set_height)
+    width = property(get_width, set_width)
     debug_mode = property(get_debug_mode, set_debug_mode)
     never_update_data_files = property(get_never_update_data_files, set_never_update_data_files)
     reopen_last_file = property(get_reopen_last_file, set_reopen_last_file)
@@ -209,8 +243,23 @@ class GUISettings:
                 f'(Error: {repr(error)})')
             log('Continuing with blank config in safe-mode...')
             self.config.read_only = True
-
         config_defaults = {
+            'x_pos': {
+                'comment': 'X position of the main windows. Set to 0 to center the window',
+                'value': 0
+            },
+            'y_pos': {
+                'comment': 'Y position of the main windows. Set to 0 to center the window',
+                'value': 0
+            },
+            'width': {
+                'comment': 'Width of the main windows',
+                'value': 1600
+            },
+            'height': {
+                'comment': 'Height of the main windows',
+                'value': 935
+            },
             'debug_mode': {
                 'comment': 'Set to True to print debug information (GUI related only',
                 'value': 'False'

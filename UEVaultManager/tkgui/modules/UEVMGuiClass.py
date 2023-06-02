@@ -22,25 +22,28 @@ class UEVMGui(tk.Tk):
     """
     This class is used to create the main window for the application.
     :param title: The title
-    :param width: The width
-    :param height: The height
     :param icon: The icon
     :param screen_index: The screen index
     :param file: The file where the data is stored or read from
     :param show_open_file_dialog: If True, the open file dialog will be shown at startup
-
     """
 
-    def __init__(self, title: str, width=1200, height=800, icon='', screen_index=0, file=None, show_open_file_dialog=False, rebuild_data=False,):
+    def __init__(self, title: str, icon='', screen_index=0, file=None, show_open_file_dialog=False, rebuild_data=False,):
         super().__init__()
 
         self.title(title)
         style = set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         self.style = style
-        geometry = gui_fn.center_window_on_screen(screen_index, height, width)
+        width = gui_g.s.width
+        height = gui_g.s.height
+        x_pos = gui_g.s.x_pos
+        y_pos = gui_g.s.y_pos
+        if not (x_pos and y_pos):
+            x_pos, y_pos = gui_fn.get_center_screen_positions(screen_index, width, height)
+        geometry: str = f'{width}x{height}+{x_pos}+{y_pos}'
         self.geometry(geometry)
         gui_fn.set_icon_and_minmax(self, icon)
-        self.resizable(True, False)
+        self.resizable(True, True)
         self.editable_table = None
         self.do_not_launch_search = False
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
@@ -76,6 +79,8 @@ class UEVMGui(tk.Tk):
         self.editable_table.bind('<Leave>', self.on_mouse_leave_cell)
         self.editable_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
+        self.bind("<Configure>", self.on_resize)
+        self.bind("<ButtonRelease-1>", self.on_move)
 
         if not show_open_file_dialog and (rebuild_data or self.editable_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
@@ -581,6 +586,23 @@ class UEVMGui(tk.Tk):
             gui_g.s.last_opened_file = self.editable_table.file
         gui_g.s.save_config_file()
         self.quit()
+
+    def on_resize(self, _event) -> None:
+        """
+        When the window is resized, store the new size in the settings. It will be saved when the window is closed
+        :param _event:
+        """
+        gui_g.s.width = self.winfo_width()
+        gui_g.s.height = self.winfo_height()
+
+    def on_move(self, _event) -> None:
+        """
+        When the window is moved, store the new position in the settings. It will be saved when the window is closed
+        :param _event:
+        :return:
+        """
+        gui_g.s.x_pos = self.winfo_x()
+        gui_g.s.y_pos = self.winfo_y()
 
     def load_file(self) -> str:
         """

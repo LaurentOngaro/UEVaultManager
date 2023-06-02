@@ -39,12 +39,25 @@ def path_from_relative_to_absolute(path: str) -> str:
     return absolute_path
 
 
-def center_window_on_screen(screen_index: int, height: int, width: int) -> str:
+def center_window_on_screen(screen_index: int, width: int, height: int) -> str:
     """
     Calculate the geometry of the window to display in the center of the given screen
     :param screen_index: the index of the screen to use
-    :param height: the height of the window
     :param width: the width of the window
+    :param height: the height of the window
+    :return: the geometry string to use to display the window in the center of the screen
+    """
+    x, y = get_center_screen_positions(screen_index, width, height)
+    geometry: str = f'{width}x{height}+{x}+{y}'
+    return geometry
+
+
+def get_center_screen_positions(screen_index: int, width: int, height: int) -> (int, int):
+    """
+    Return the x and y positions of the window to display in the center of the given screen
+    :param screen_index: the index of the screen to use
+    :param width: the width of the window
+    :param height: the height of the window
     :return: the geometry string to use to display the window in the center of the screen
     """
     monitors = get_monitors()
@@ -57,8 +70,7 @@ def center_window_on_screen(screen_index: int, height: int, width: int) -> str:
     screen_height = target_screen.height
     x = target_screen.x + (screen_width-width) // 2
     y = target_screen.y + (screen_height-height) // 2
-    geometry: str = f'{width}x{height}+{x}+{y}'
-    return geometry
+    return x, y
 
 
 def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
@@ -188,3 +200,16 @@ def convert_to_bool(value) -> bool:
             return False
     except ValueError:
         return False
+
+
+def convert_to_int(value) -> int:
+    """
+    Convert a value to an integer
+    :param value: the value to convert.
+    :return: the integer value or 0 if the value is not an integer
+    """
+    try:
+        value = int(value)
+        return value
+    except ValueError:
+        return 0
