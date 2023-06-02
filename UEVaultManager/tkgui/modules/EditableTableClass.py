@@ -97,12 +97,16 @@ class EditableTable(Table):
         if col_names is None:
             return
         df = self.data_filtered if self.data_filtered is not None else self.model.df
-        for colname in col_names:
-            x = df[colname]
+        for col_name in col_names:
+            try:
+                x = df[col_name]
+            except KeyError:
+                log_debug(f'gradient_color_cells: Column {col_name} not found in the table data.')
+                continue
             clrs = self.values_to_colors(x, cmap, alpha)
             clrs = pd.Series(clrs, index=df.index)
             rc = self.rowcolors
-            rc[colname] = clrs
+            rc[col_name] = clrs
 
     def color_cells_if(self, col_names=None, color='green', value_to_check='True') -> None:
         """
@@ -116,9 +120,11 @@ class EditableTable(Table):
             return
         df = self.data_filtered if self.data_filtered is not None else self.model.df
         for col_name in col_names:
-            if col_name not in df.columns:
+            try:
+                mask = df[col_name] == value_to_check
+            except KeyError:
+                log_debug(f'color_cells_if: Column {col_name} not found in the table data.')
                 continue
-            mask = df[col_name] == value_to_check
             self.setColorByMask(col=col_name, mask=mask, clr=color)
 
     def color_cells_if_not(self, col_names=None, color='grey', value_to_check='False') -> None:
@@ -132,9 +138,11 @@ class EditableTable(Table):
             return
         df = self.data_filtered if self.data_filtered is not None else self.model.df
         for col_name in col_names:
-            if col_name not in df.columns:
+            try:
+                mask = df[col_name] != value_to_check
+            except KeyError:
+                log_debug(f'color_cells_if_not: Column {col_name} not found in the table data.')
                 continue
-            mask = df[col_name] != value_to_check
             self.setColorByMask(col=col_name, mask=mask, clr=color)
 
     def color_rows_if(self, col_names=None, color='#55555', value_to_check='True') -> None:
@@ -149,10 +157,14 @@ class EditableTable(Table):
         df = self.data_filtered if self.data_filtered is not None else self.model.df
 
         for col_name in col_names:
+            row_indices = []
             if col_name not in df.columns:
                 continue
-            row_indices = []
-            mask = df[col_name]
+            try:
+                mask = df[col_name]
+            except KeyError:
+                log_debug(f'color_rows_if: Column {col_name} not found in the table data.')
+                continue
             for i in range(min(self.rows_per_page, len(mask))):
                 try:
                     if str(mask[i]) == value_to_check:
@@ -744,7 +756,7 @@ class EditableTable(Table):
             return ''
         try:
             return self.model.getValueAt(row, col=self.model.df.columns.get_loc('Image'))
-        except IndexError:
+        except (IndexError, KeyError):
             return ''
 
     def open_asset_url(self, url: str = None):
