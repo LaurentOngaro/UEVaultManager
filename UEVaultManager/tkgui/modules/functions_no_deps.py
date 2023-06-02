@@ -135,30 +135,32 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
                 print(f'Error while setting the icon: {error!r}')
 
 
-def create_empty_file(file_path: str) -> str:
+def create_empty_file(file_path: str) -> (bool, str):
     """
     Create an empty file
     :param file_path: the path of the file to create
-    :return: the path of the file
+    :return: (True if path was valid, the corrected path of the file)
     """
     path, file = os.path.split(file_path)
-    path = check_and_get_folder(os.path.dirname(path))
+    is_valid, path = check_and_get_folder(os.path.dirname(path))
     file_path = os.path.normpath(os.path.join(path, file))
     open(file_path, 'a').close()
-    return file_path
+    return is_valid, file_path
 
 
-def check_and_get_folder(folder_path: str) -> str:
+def check_and_get_folder(folder_path: str) -> (bool, str):
     """
     Check if the folder exists. If not, create it or use the default one
     :param folder_path: the path of the folder to check
-    :return: the path of the folder
+    :return: (True if path was valid, the corrected path of the folder)
     """
     path = folder_path
+    is_valid = True
     if not os.path.exists(path):
         try:
             os.makedirs(path)
         except (OSError, PermissionError) as e:
+            is_valid = False
             print(f'Error while creating the directory {path}: {e}')
             if home_dir := os.environ.get('XDG_CONFIG_HOME'):
                 path = os.path.join(home_dir, 'UEVaultManager')
@@ -170,7 +172,7 @@ def check_and_get_folder(folder_path: str) -> str:
             print(f'The following folder {path} will be used as default')
 
     path = os.path.normpath(path)
-    return path
+    return is_valid, path
 
 
 def convert_to_bool(value) -> bool:

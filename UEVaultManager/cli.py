@@ -122,23 +122,12 @@ class UEVaultManagerCLI:
     :param override_config: path to a config file to use instead of the default one
     :param api_timeout: timeout for API requests
     """
+    is_gui = False
 
     def __init__(self, override_config=None, api_timeout=None):
         self.core = AppCore(override_config, timeout=api_timeout)
         self.logger = logging.getLogger('Cli')
         self.logging_queue = None
-
-    def setup_threaded_logging(self) -> QueueListener:
-        """
-        Setup logging for the CLI
-        """
-        self.logging_queue = MPQueue(-1)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
-        handler.setFormatter(formatter)
-        ql = QueueListener(self.logging_queue, handler)
-        ql.start()
-        return ql
 
     def _resolve_aliases(self, name: str) -> str:
         """
@@ -158,6 +147,30 @@ class UEVaultManagerCLI:
             print(json.dumps(data, indent=2, sort_keys=True))
         else:
             print(json.dumps(data))
+
+    def _log_gui_wrapper(self, log_function, message: str, must_quit=False) -> None:
+        """
+        Wrapper for the log function to display a messagebox if the gui is active
+        :param log_function: function to use to log
+        :param message: message to log
+        """
+        log_function(message)
+        if UEVaultManagerCLI.is_gui:
+            box_message(message)
+        if must_quit:
+            self.core.clean_exit(1)
+
+    def setup_threaded_logging(self) -> QueueListener:
+        """
+        Setup logging for the CLI
+        """
+        self.logging_queue = MPQueue(-1)
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
+        handler.setFormatter(formatter)
+        ql = QueueListener(self.logging_queue, handler)
+        ql.start()
+        return ql
 
     def create_file_backup(self, file_src: str) -> None:
         """
@@ -327,7 +340,8 @@ class UEVaultManagerCLI:
         except ValueError:
             pass
         except InvalidCredentialsError:
-            self.logger.error('Stored credentials were found but were no longer valid. Continuing with login...')
+            message = 'Stored credentials were found but were no longer valid. Continuing with login...'
+            self._log_gui_wrapper(self.logger.error, message)
             self.core.uevmlfs.invalidate_userdata()
 
         # Force an update check and notice in case there are API changes
@@ -345,8 +359,8 @@ class UEVaultManagerCLI:
                     self.logger.warning('Login session from EGS seems to no longer be valid.')
                     self.core.clean_exit(1)
             except Exception as error:
-                self.logger.error(f'No EGS login session found, please login manually. (Exception: {error!r})')
-                self.core.clean_exit(1)
+                message = f'No EGS login session found, please login manually. (Exception: {error!r})'
+                self._log_gui_wrapper(self.logger.critical, message, True)
 
         exchange_token = ''
         auth_code = ''
@@ -371,7 +385,8 @@ class UEVaultManagerCLI:
                 if do_webview_login(callback_code=self.core.auth_ex_token):
                     self.logger.info(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}" via WebView')
                 else:
-                    self.logger.error('WebView login attempt failed, please see log for details.')
+                    message = 'WebView login attempt failed, please see log for details.'
+                    self._log_gui_wrapper(self.logger.error, message)
                 return
         elif args.session_id:
             exchange_token = self.core.auth_sid(args.session_id)
@@ -389,7 +404,8 @@ class UEVaultManagerCLI:
         elif auth_code and self.core.auth_code(auth_code):
             self.logger.info(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}"')
         else:
-            self.logger.error('Login attempt failed, please see log for details.')
+            message = 'Login attempt failed, please see log for details.'
+            self._log_gui_wrapper(self.logger.error, message)
 
     def list_assets(self, args) -> None:
         """
@@ -509,24 +525,18 @@ class UEVaultManagerCLI:
             file_src = args.output
             # test if the folder is writable
             if not check_and_create_path(file_src):
-                msg = f'Could not create folder for {file_src}. Exiting...'
-                self.logger.critical(msg)
-                if args.gui:
-                    box_message(msg)
-                self.core.clean_exit(1)
+                message = f'Could not create folder for {file_src}. Exiting...'
+                self._log_gui_wrapper(self.logger.critical, message, True)
             # we try to open it for writing
             if not os.access(file_src, os.W_OK):
                 self.logger.warning(f'Could not read CSV record from the file {file_src}')
-                msg = f'Could not create result file {file_src}. Exiting...'
-                self.logger.critical(msg)
-                if args.gui:
-                    box_message(msg)
-                self.core.clean_exit(1)
+                message = f'Could not create result file {file_src}. Exiting...'
+                self._log_gui_wrapper(self.logger.critical, message, True)
 
         self.logger.info('Logging in...')
         if not self.core.login():
-            self.logger.error('Login failed, cannot continue!')
-            self.core.clean_exit(1)
+            message = 'Login failed, cannot continue!'
+            self._log_gui_wrapper(self.logger.critical, message, True)
 
         if args.force_refresh:
             self.logger.info(
@@ -541,7 +551,7 @@ class UEVaultManagerCLI:
 
         gui_g.progress_window_ref = None
         progress_window = None
-        if args.gui:
+        if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, progress_window = init_progress_window(args=args, logger=self.logger, callback=self.core.get_asset_list)
             if uewm_gui_exists:
                 # if the main gui is running, we already have a tk.mainloop running
@@ -622,6 +632,8 @@ class UEVaultManagerCLI:
                         output.close()
                 except (FileExistsError, OSError, UnicodeDecodeError, StopIteration):
                     self.logger.warning(f'Could not read CSV record from the file {file_src}')
+                # reopen file for writing
+                output = open(file_src, 'w', encoding='utf-8')
             # end if args.output:
 
             try:
@@ -644,9 +656,12 @@ class UEVaultManagerCLI:
                         cpt += 1
                         writer.writerow(csv_record_merged)
                     except (OSError, UnicodeEncodeError, TypeError) as error:
-                        self.logger.error(f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}')
+                        message = f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}'
+                        self.logger.error(message)
             except (OSError, ValueError) as error:
-                self.logger.error(f'Could not write list result to {args.output}: {error!r}')
+                message = f'Could not write list result to {args.output}: {error!r}'
+                self._log_gui_wrapper(self.logger.error, message)
+
         # end if args.csv or args.tsv:
 
         if args.json:
@@ -684,21 +699,24 @@ class UEVaultManagerCLI:
                         json_content[asset_id] = json_record_merged
                         cpt += 1
                     except (OSError, UnicodeEncodeError, TypeError) as error:
-                        self.logger.error(f'Could not write Json record for {asset_id} into {args.output}\nError:{error!r}')
+                        message = f'Could not write Json record for {asset_id} into {args.output}\nError:{error!r}'
+                        self.logger.error(message)
 
                 json.dump(json_content, output, indent=2)
             except OSError:
-                self.logger.error(f'Could not write list result to {args.output}')
+                message = f'Could not write list result to {args.output}'
+                self._log_gui_wrapper(self.logger.error, message)
+
             # end if args.json:
 
-        if args.csv or args.tsv or args.json or args.gui:
+        if args.csv or args.tsv or args.json or UEVaultManagerCLI.is_gui:
             # close the opened file
             if output is not None:
                 output.close()
             self.logger.info(
                 f'\n======\n{cpt} assets have been printed or saved (without duplicates due to different UE versions)\nOperation Finished\n======\n'
             )
-            if args.gui:
+            if UEVaultManagerCLI.is_gui:
                 # During the editabletable initial rebuild_data process, the window will not close
                 # So we try to close it several times
                 max_tries = 3
@@ -738,16 +756,13 @@ class UEVaultManagerCLI:
         else:
             self.logger.info(f'Logging in and downloading manifest for {args.app_name}')
             if not self.core.login():
-                self.logger.error('Login failed! Cannot continue with download process.')
-                self.core.clean_exit(1)
+                message = 'Login failed! Cannot continue with download process.'
+                self._log_gui_wrapper(self.logger.critical, message, True)
             update_meta = args.force_refresh
             item = self.core.get_item(args.app_name, update_meta=update_meta)
             if not item:
-                msg = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership). Exiting...'
-                self.logger.critical(msg)
-                if args.gui:
-                    box_message(msg)
-                self.core.clean_exit(1)
+                message = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership). Exiting...'
+                self._log_gui_wrapper(self.logger.critical, message, True)
             manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
 
         manifest = self.core.load_manifest(manifest_data)
@@ -778,7 +793,7 @@ class UEVaultManagerCLI:
                 # use the log output so this isn't included when piping file list into file
                 self.logger.info(f'Install tags: {", ".join(sorted(install_tags))}')
 
-        if args.gui:
+        if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, _ = init_display_window(self.logger)
             custom_print(content, keep_mode=False)  # as it, next print will not keep the content
             if not uewm_gui_exists:
@@ -794,8 +809,8 @@ class UEVaultManagerCLI:
         if not args.offline:
             try:
                 if not self.core.login():
-                    self.logger.error('Log in failed!')
-                    self.core.clean_exit(1)
+                    message = 'Log in failed!'
+                    self._log_gui_wrapper(self.logger.critical, message, True)
             except ValueError:
                 pass
             # if automatic checks are off force an update here
@@ -840,7 +855,7 @@ class UEVaultManagerCLI:
         if args.json:
             return self._print_json(json_content, args.pretty_json)
 
-        if args.gui:
+        if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, _ = init_display_window(self.logger)
             json_print_key_val(json_content, output_on_gui=True)
             if not uewm_gui_exists:
@@ -866,8 +881,8 @@ class UEVaultManagerCLI:
         if not args.offline and not manifest_uri:
             try:
                 if not self.core.login():
-                    self.logger.error('Log in failed!')
-                    self.core.clean_exit(1)
+                    message = 'Log in failed!'
+                    self._log_gui_wrapper(self.logger.critical, message, True)
             except ValueError:
                 pass
 
@@ -1022,7 +1037,7 @@ class UEVaultManagerCLI:
                 else:
                     custom_print(f'- {local_item.name}: {local_item.value}')
 
-            if args.gui:
+            if UEVaultManagerCLI.is_gui:
                 uewm_gui_exists, _ = init_display_window(self.logger)
             else:
                 uewm_gui_exists = False
@@ -1043,7 +1058,7 @@ class UEVaultManagerCLI:
             if not any(info_items.values()):
                 custom_print('No asset information available.')
             custom_print(keep_mode=False)  # as it, next print will not keep the content
-            if args.gui and not uewm_gui_exists:
+            if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
                 gui_g.UEVM_gui_ref.mainloop()
         else:
             json_out = dict(asset=dict(), install=dict(), manifest=dict())
@@ -1098,7 +1113,8 @@ class UEVaultManagerCLI:
         :param args: options passed to the command
         """
         if not self.core.login(force_refresh=args.bearer):
-            self.logger.error('Login failed!')
+            message = 'Log in failed!'
+            self._log_gui_wrapper(self.logger.critical, message)
             return
 
         if args.bearer:
@@ -1141,9 +1157,15 @@ class UEVaultManagerCLI:
         init_gui_args(args, additional_args={'output': input_filename})
         rebuild = False
         if not os.path.isfile(input_filename):
-            input_filename = gui_fn.create_empty_file(input_filename)
+            is_valid, input_filename = gui_fn.create_empty_file(input_filename)
             rebuild = True
-
+            if not is_valid:
+                message = f'Error while creating the empty result file with the given path. The following file {input_filename} will be used as default'
+                self._log_gui_wrapper(self.logger.error, message)
+                args.input = input_filename
+                args.output = input_filename
+                gui_g.UEVM_cli_args['input'] = input_filename
+                gui_g.UEVM_cli_args['output'] = input_filename
         gui_g.UEVM_gui_ref = UEVMGui(
             title=gui_g.s.app_title,
             width=gui_g.s.app_width,
@@ -1171,7 +1193,7 @@ class UEVaultManagerCLI:
         uewm_gui_exists = False
 
         if args.full_help or forced:
-            if args.gui:
+            if UEVaultManagerCLI.is_gui:
                 uewm_gui_exists, _ = init_display_window()
             custom_print(keep_mode=False, text=parser.format_help())
 
@@ -1201,7 +1223,7 @@ class UEVaultManagerCLI:
             UEVaultManagerCLI.print_version()
             return
 
-        if args.gui and not uewm_gui_exists:
+        if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
             gui_g.UEVM_gui_ref.mainloop()
 
     @staticmethod
@@ -1425,6 +1447,11 @@ def main():
     if '-y' in extra or '--yes' in extra:
         args.yes = True
 
+    try:
+        UEVaultManagerCLI.is_gui = args.gui
+    except (AttributeError, KeyError):
+        UEVaultManagerCLI.is_gui = False
+
     # technically args.func() with set defaults could work (see docs on subparsers)
     # but that would require all funcs to accept args and extra...
     try:
@@ -1443,10 +1470,13 @@ def main():
         elif args.subparser_name == 'get-token':
             cli.get_token(args)
         elif args.subparser_name in {'edit', 'edit-assets'}:
+            args.gui = True
+            UEVaultManagerCLI.is_gui = True
             cli.edit_assets(args)
         elif start_in_edit_mode:
-            args.subparser_name = 'edit'
             args.gui = True
+            UEVaultManagerCLI.is_gui = True
+            args.subparser_name = 'edit'
             args.input = init_gui(False)
             cli.edit_assets(args)
     except KeyboardInterrupt:
