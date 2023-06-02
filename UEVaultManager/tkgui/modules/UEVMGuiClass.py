@@ -791,13 +791,13 @@ class UEVMGui(tk.Tk):
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
             categories = list(self.editable_table.data['Category'].cat.categories)
-        except (AttributeError, TypeError):
+        except (AttributeError, TypeError, KeyError):
             categories = []
         categories.insert(0, gui_g.s.default_category_for_all)
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
             grab_results = list(self.editable_table.data['Grab result'].cat.categories)
-        except (AttributeError, TypeError):
+        except (AttributeError, TypeError, KeyError):
             grab_results = []
         grab_results.insert(0, gui_g.s.default_category_for_all)
         return {'categories': categories, 'grab_results': grab_results}
