@@ -45,7 +45,7 @@ class AppConf(configparser.ConfigParser):
         super().write(*args, **kwargs)
         self.mod_time = int(time.time())
 
-    def set(self, section: str, option: str, value=str) -> None:
+    def set(self, section: str, option: str, value = None) -> None:
         """
         Set a config option
         :param section: section name in the config file. If the section does not exist, it will be created
@@ -60,9 +60,11 @@ class AppConf(configparser.ConfigParser):
             self.add_section(section)
 
         self.modified = True
-        if value is not None:
+        if value is None:
+            super().set(section, option)
+        else:
             value = str(value)
-        super().set(section, option, value)
+            super().set(section, option, value)
 
     def remove_option(self, section: str, option: str) -> bool:
         """
