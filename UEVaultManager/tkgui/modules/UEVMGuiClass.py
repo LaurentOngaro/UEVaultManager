@@ -79,8 +79,6 @@ class UEVMGui(tk.Tk):
         self.editable_table.bind('<Leave>', self.on_mouse_leave_cell)
         self.editable_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
-        self.bind("<Configure>", self.on_resize)
-        self.bind("<ButtonRelease-1>", self.on_move)
 
         if not show_open_file_dialog and (rebuild_data or self.editable_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
@@ -575,34 +573,29 @@ class UEVMGui(tk.Tk):
         if not self.do_not_launch_search:
             self.apply_filters()
 
-    def on_close(self) -> None:
+    def on_close(self, _event=None) -> None:
         """
         When the window is closed, check if there are unsaved changes and ask the user if he wants to save them
+        :param _event: the event that triggered the call of this function
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
                 self.save_file(show_dialog=False)
+        self.close_window()
+
+    def close_window(self) -> None:
+        """
+        Close the window
+        """
         if gui_g.s.reopen_last_file:
             gui_g.s.last_opened_file = self.editable_table.file
-        gui_g.s.save_config_file()
-        self.quit()
-
-    def on_resize(self, _event) -> None:
-        """
-        When the window is resized, store the new size in the settings. It will be saved when the window is closed
-        :param _event:
-        """
+        # store window geometry in config settings
         gui_g.s.width = self.winfo_width()
         gui_g.s.height = self.winfo_height()
-
-    def on_move(self, _event) -> None:
-        """
-        When the window is moved, store the new position in the settings. It will be saved when the window is closed
-        :param _event:
-        :return:
-        """
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
+        gui_g.s.save_config_file()
+        self.quit()
 
     def load_file(self) -> str:
         """

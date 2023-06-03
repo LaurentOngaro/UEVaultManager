@@ -39,19 +39,7 @@ class GUISettings:
 
         self.init_gui_config_file(config_file)
 
-        # ##### start of properties stored in config file
-        # store all the properties that must be saved in config file
-        self.config_vars = {
-            'debug_mode': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'debug_mode', fallback=False)),
-            'never_update_data_files': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'never_update_data_files', fallback=False)),
-            'reopen_last_file': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'reopen_last_file', fallback=False)),
-            'use_colors_for_data': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_colors_for_data', fallback=True)),
-            'image_cache_max_time': int(self.config.get('UEVaultManager', 'image_cache_max_time', fallback=60 * 60 * 24 * 15)),
-            'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file', fallback=''),
-            'cache_folder': self.config.get('UEVaultManager', 'cache_folder', fallback='../../../cache'),
-            'results_folder': self.config.get('UEVaultManager', 'results_folder', fallback='../../../results')
-        }
-
+        self.config_vars = self.read_config_properties()
         # the following folders are relative to the current file location
         # they must be used trought path_from_relative_to_absolute
         # following vars are not set as properties to avoid storing absolute paths in the config file
@@ -110,6 +98,9 @@ class GUISettings:
         """ Setter for x_pos """
         self.config_vars['x_pos'] = value
 
+    # used as property for keeping transparent access
+    x_pos = property(get_x_pos, set_x_pos)
+
     def get_y_pos(self):
         """ Getter for y_pos """
         return gui_fn.convert_to_int(self.config_vars['y_pos'])
@@ -117,6 +108,9 @@ class GUISettings:
     def set_y_pos(self, value):
         """ Setter for y_pos """
         self.config_vars['y_pos'] = value
+
+    # used as property for keeping transparent access
+    y_pos = property(get_y_pos, set_y_pos)
 
     def get_width(self):
         """ Getter for width """
@@ -126,6 +120,9 @@ class GUISettings:
         """ Setter for width """
         self.config_vars['width'] = value
 
+    # used as property for keeping transparent access
+    width = property(get_width, set_width)
+
     def get_height(self):
         """ Getter for height """
         return gui_fn.convert_to_int(self.config_vars['height'])
@@ -133,6 +130,9 @@ class GUISettings:
     def set_height(self, value):
         """ Setter for height """
         self.config_vars['height'] = value
+
+    # used as property for keeping transparent access
+    height = property(get_height, set_height)
 
     def get_debug_mode(self):
         """ Getter for debug_mode """
@@ -142,6 +142,9 @@ class GUISettings:
         """ Setter for debug_mode """
         self.config_vars['debug_mode'] = value
 
+    # used as property for keeping transparent access
+    debug_mode = property(get_debug_mode, set_debug_mode)
+
     def get_never_update_data_files(self):
         """ Getter for never_update_data_files """
         return gui_fn.convert_to_bool(self.config_vars['never_update_data_files'])
@@ -149,6 +152,9 @@ class GUISettings:
     def set_never_update_data_files(self, value):
         """ Setter for never_update_data_files """
         self.config_vars['never_update_data_files'] = value
+
+    # used as property for keeping transparent access
+    never_update_data_files = property(get_never_update_data_files, set_never_update_data_files)
 
     def get_reopen_last_file(self):
         """ Getter for reopen_last_file """
@@ -158,6 +164,9 @@ class GUISettings:
         """ Setter for reopen_last_file """
         self.config_vars['reopen_last_file'] = value
 
+    # used as property for keeping transparent access
+    reopen_last_file = property(get_reopen_last_file, set_reopen_last_file)
+
     def get_use_colors_for_data(self):
         """ Getter for use_colors_for_data """
         return gui_fn.convert_to_bool(self.config_vars['use_colors_for_data'])
@@ -165,6 +174,9 @@ class GUISettings:
     def set_use_colors_for_data(self, value):
         """ Setter for use_colors_for_data """
         self.config_vars['use_colors_for_data'] = value
+
+    # used as property for keeping transparent access
+    use_colors_for_data = property(get_use_colors_for_data, set_use_colors_for_data)
 
     def get_image_cache_max_time(self):
         """ Getter for image_cache_max_time """
@@ -174,6 +186,9 @@ class GUISettings:
         """ Setter for image_cache_max_time """
         self.config_vars['image_cache_max_time'] = value
 
+    # used as property for keeping transparent access
+    image_cache_max_time = property(get_image_cache_max_time, set_image_cache_max_time)
+
     def get_last_opened_file(self):
         """ Getter for last_opened_file """
         return self.config_vars['last_opened_file']
@@ -181,6 +196,9 @@ class GUISettings:
     def set_last_opened_file(self, value):
         """ Setter for last_opened_file """
         self.config_vars['last_opened_file'] = value
+
+    # used as property for keeping transparent access
+    last_opened_file = property(get_last_opened_file, set_last_opened_file)
 
     def get_cache_folder(self):
         """ Getter for cache_folder """
@@ -190,6 +208,9 @@ class GUISettings:
         """ Setter for cache_folder """
         self.config_vars['cache_folder'] = value
 
+    # not used as property to avoid storing absolute paths in the config file. Getter and setter could be used to store relative paths
+    # cache_folder = property(get_cache_folder, set_cache_folder)
+
     def get_results_folder(self):
         """ Getter for results_folder """
         return self.config_vars['results_folder']
@@ -198,21 +219,7 @@ class GUISettings:
         """ Setter for results_folder """
         self.config_vars['results_folder'] = value
 
-    # use properties for keeping transparent access to these properties
-    y_pos = property(get_y_pos, set_y_pos)
-    x_pos = property(get_x_pos, set_x_pos)
-    height = property(get_height, set_height)
-    width = property(get_width, set_width)
-    debug_mode = property(get_debug_mode, set_debug_mode)
-    never_update_data_files = property(get_never_update_data_files, set_never_update_data_files)
-    reopen_last_file = property(get_reopen_last_file, set_reopen_last_file)
-    use_colors_for_data = property(get_use_colors_for_data, set_use_colors_for_data)
-    image_cache_max_time = property(get_image_cache_max_time, set_image_cache_max_time)
-    last_opened_file = property(get_last_opened_file, set_last_opened_file)
-
-    # following vars are not set as properties to avoid storing absolute paths in the config file
-    # getter and setter could be used to store relative paths
-    # cache_folder = property(get_cache_folder, set_cache_folder)
+    # not used as property to avoid storing absolute paths in the config file. Getter and setter could be used to store relative paths
     # results_folder = property(get_results_folder, set_results_folder)
 
     def init_gui_config_file(self, config_file: str = '') -> None:
@@ -307,6 +314,30 @@ class GUISettings:
 
         if has_changed:
             self.save_config_file(save_config_var=False)
+
+    def read_config_properties(self) -> dict:
+        """
+        Read the properties from the config file
+        :return:
+        """
+        # ##### start of properties stored in config file
+        # store all the properties that must be saved in config file
+        # no need of fallback values here, they are set in the config file by default
+        config_vars = {
+            'x_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'x_pos')),
+            'y_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'y_pos')),
+            'width': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'width')),
+            'height': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'height')),
+            'debug_mode': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'debug_mode')),
+            'never_update_data_files': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'never_update_data_files')),
+            'reopen_last_file': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'reopen_last_file')),
+            'use_colors_for_data': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_colors_for_data')),
+            'image_cache_max_time': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'image_cache_max_time')),
+            'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file'),
+            'cache_folder': self.config.get('UEVaultManager', 'cache_folder'),
+            'results_folder': self.config.get('UEVaultManager', 'results_folder')
+        }
+        return config_vars
 
     def store_config_properties(self) -> None:
         """
