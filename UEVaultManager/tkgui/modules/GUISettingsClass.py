@@ -268,7 +268,7 @@ class GUISettings:
                 'value': 935
             },
             'debug_mode': {
-                'comment': 'Set to True to print debug information (GUI related only',
+                'comment': 'Set to True to print debug information (GUI related only)',
                 'value': 'False'
             },
             'never_update_data_files': {
