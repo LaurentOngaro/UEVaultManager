@@ -138,7 +138,8 @@ class EPCAPI:
         :return: The session.
         """
         self.session.headers['Authorization'] = f'bearer {session["access_token"]}'
-        r = self.session.get(f'https://{self._oauth_host}/account/api/oauth/verify', timeout=self.request_timeout)
+        url = f'https://{self._oauth_host}/account/api/oauth/verify'
+        r = self.session.get(url, timeout=self.request_timeout)
         if r.status_code >= 500:
             r.raise_for_status()
 
@@ -175,9 +176,8 @@ class EPCAPI:
         else:
             raise ValueError('At least one token type must be specified!')
 
-        r = self.session.post(
-            f'https://{self._oauth_host}/account/api/oauth/token', data=params, auth=self._oauth_basic, timeout=self.request_timeout
-        )
+        url = f'https://{self._oauth_host}/account/api/oauth/token'
+        r = self.session.post(url, data=params, auth=self._oauth_basic, timeout=self.request_timeout)
         # Only raise HTTP exceptions on server errors
         if r.status_code >= 500:
             r.raise_for_status()
@@ -207,7 +207,8 @@ class EPCAPI:
         Unused but kept for the global API reference.
         :return: The item token using json format
         """
-        r = self.session.get(f'https://{self._oauth_host}/account/api/oauth/exchange', timeout=self.request_timeout)
+        url = f'https://{self._oauth_host}/account/api/oauth/exchange'
+        r = self.session.get(url, timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
 
@@ -220,12 +221,8 @@ class EPCAPI:
         :return: The ownership token.
         """
         user_id = self.user.get('account_id')
-        r = self.session.post(
-            f'https://{self._ecommerce_host}/ecommerceintegration/api/public/'
-            f'platforms/EPIC/identities/{user_id}/ownershipToken',
-            data=dict(nsCatalogItemId=f'{namespace}:{catalog_item_id}'),
-            timeout=self.request_timeout
-        )
+        url = f'https://{self._ecommerce_host}/ecommerceintegration/api/public/platforms/EPIC/identities/{user_id}/ownershipToken'
+        r = self.session.post(url, data=dict(nsCatalogItemId=f'{namespace}:{catalog_item_id}'), timeout=self.request_timeout)
         r.raise_for_status()
         return r.content
 
@@ -236,7 +233,8 @@ class EPCAPI:
         :return: The external auths using json format.
         """
         user_id = self.user.get('account_id')
-        r = self.session.get(f'https://{self._oauth_host}/account/api/public/account/{user_id}/externalAuths', timeout=self.request_timeout)
+        url = f'https://{self._oauth_host}/account/api/public/account/{user_id}/externalAuths'
+        r = self.session.get(url, timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
 
@@ -247,9 +245,8 @@ class EPCAPI:
         :param label: label of the assets
         :return: The item assets using json format.
         """
-        r = self.session.get(
-            f'https://{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.request_timeout
-        )
+        url = f'https://{self._launcher_host}/launcher/api/public/assets/{platform}'
+        r = self.session.get(url, params=dict(label=label), timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
 
@@ -263,12 +260,8 @@ class EPCAPI:
         :param label: label of the manifest
         :return: The item manifest using json format.
         """
-        r = self.session.get(
-            f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform'
-            f'/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app'
-            f'/{app_name}/label/{label}',
-            timeout=self.request_timeout
-        )
+        url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
+        r = self.session.get(url, timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
 
@@ -280,12 +273,8 @@ class EPCAPI:
         :param label: label of the manifests
         :return: The launcher manifests using json format.
         """
-        r = self.session.get(
-            f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/'
-            f'{platform}/launcher',
-            timeout=self.request_timeout,
-            params=dict(label=label if label else self._label)
-        )
+        url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/launcher'
+        r = self.session.get(url, timeout=self.request_timeout, params=dict(label=label if label else self._label))
         r.raise_for_status()
         return r.json()
 
@@ -296,11 +285,8 @@ class EPCAPI:
         :return: The user entitlements using json format.
         """
         user_id = self.user.get('account_id')
-        r = self.session.get(
-            f'https://{self._entitlements_host}/entitlement/api/account/{user_id}/entitlements',
-            params=dict(start=0, count=5000),
-            timeout=self.request_timeout
-        )
+        url = f'https://{self._entitlements_host}/entitlement/api/account/{user_id}/entitlements'
+        r = self.session.get(url, params=dict(start=0, count=5000), timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
 
@@ -312,8 +298,9 @@ class EPCAPI:
         :param timeout: Timeout for the request
         :return: (The item info, status code)
         """
+        url = f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items'
         r = self.session.get(
-            f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items',
+            url,
             params=dict(
                 id=catalog_item_id, includeDLCDetails=True, includeMainGameDetails=True, country=self.country_code, locale=self.language_code
             ),
@@ -334,9 +321,9 @@ class EPCAPI:
         """
         # Based on EOS Helper Windows service implementation. Only works with anonymous EOS Helper session.
         # sandbox_id is the same as the namespace, artifact_id is the same as the app name
+        url = f'https://{self._artifact_service_host}/artifact-service/api/public/v1/dependency/sandbox/{sandbox_id}/artifact/{artifact_id}/ticket'
         r = self.session.post(
-            f'https://{self._artifact_service_host}/artifact-service/api/public/v1/dependency/'
-            f'sandbox/{sandbox_id}/artifact/{artifact_id}/ticket',
+            url,
             json=dict(label=label, expiresInSeconds=300, platform=platform),
             params=dict(useSandboxAwareLabel='false'),
             timeout=self.request_timeout
@@ -355,12 +342,8 @@ class EPCAPI:
         :return: The item manifest by ticket using json format.
         """
         # Based on EOS Helper Windows service implementation.
-        r = self.session.post(
-            f'https://{self._launcher_host}/launcher/api/public/assets/v2/'
-            f'by-ticket/app/{artifact_id}',
-            json=dict(platform=platform, label=label, signedTicket=signed_ticket),
-            timeout=self.request_timeout
-        )
+        url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/by-ticket/app/{artifact_id}'
+        r = self.session.post(url, json=dict(platform=platform, label=label, signedTicket=signed_ticket), timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
 
@@ -371,20 +354,16 @@ class EPCAPI:
         :return: The library items
         """
         records = []
-        r = self.session.get(
-            f'https://{self._library_host}/library/api/public/items', params=dict(includeMetadata=include_metadata), timeout=self.request_timeout
-        )
+        url = f'https://{self._library_host}/library/api/public/items'
+        r = self.session.get(url, params=dict(includeMetadata=include_metadata), timeout=self.request_timeout)
         r.raise_for_status()
         j = r.json()
         records.extend(j['records'])
 
         # Fetch remaining library entries as long as there is a cursor
+        url = f'https://{self._library_host}/library/api/public/items'
         while cursor := j['responseMetadata'].get('nextCursor', None):
-            r = self.session.get(
-                f'https://{self._library_host}/library/api/public/items',
-                params=dict(includeMetadata=include_metadata, cursor=cursor),
-                timeout=self.request_timeout
-            )
+            r = self.session.get(url, params=dict(includeMetadata=include_metadata, cursor=cursor), timeout=self.request_timeout)
             r.raise_for_status()
             j = r.json()
             records.extend(j['records'])
