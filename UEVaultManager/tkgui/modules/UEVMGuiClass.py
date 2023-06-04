@@ -98,6 +98,9 @@ class UEVMGui(tk.Tk):
                 self.quit()
         # Quick edit the first row
         self.editable_table.update_quick_edit(quick_edit_frame=self.control_frame.lbtf_quick_edit, row=0)
+        if gui_g.s.data_filters:
+            if self.load_filter(gui_g.s.data_filters):
+                self.apply_filters(save=False)
 
     class ToolbarFrame(ttk.Frame):
         """
@@ -645,26 +648,56 @@ class UEVMGui(tk.Tk):
         else:
             gui_f.box_message('Select at least one row first')
 
-    def apply_filters(self, _event=None) -> None:
+    def load_filter(self, filters: dict) -> bool:
+        """
+        Load the filters from a dictionary
+        :param filters: filters
+        :return: True if the filters were loaded, False otherwise
+        """
+        try:
+            self.do_not_launch_search = True
+            frm = self.control_frame
+
+            category = filters.get('Category', gui_g.s.default_category_for_all)
+            search_text = filters.get('Category', gui_g.s.default_global_search)
+            obsolete = filters.get('Obsolete', True)
+            # note: the "status" filter has no control associated, it's managed by the "obsolete" checkbutton
+            frm.var_grab_results.set(filters.get('Grab result', gui_g.s.default_category_for_all))
+            frm.var_is_purchased.set(filters.get('Purchased', False))
+            frm.var_is_not_obsolete.set(not obsolete)
+            frm.var_must_buy.set(filters.get('Must buy', False))
+            frm.var_on_sale.set(filters.get('On sale', False))
+            frm.var_category.set(category)
+            gui_g.UEVM_filter_category = category
+            frm.var_global_search.set(search_text)
+            self.do_not_launch_search = False
+            return True
+        except Exception as error:
+            gui_f.log_error(f'Error loading filters: {error!r}')
+            return False
+
+    def apply_filters(self, _event=None, save=True) -> None:
         """
         Search for a string in the table
         :param _event: Event
+        :param save: if True, save the filters in the config file
         """
-        search_text = self.control_frame.var_global_search.get()
-        category = self.control_frame.var_category.get()
-        grab_results = self.control_frame.var_grab_results.get()
-        purchased = self.control_frame.var_is_purchased.get()
-        not_obsolete = self.control_frame.var_is_not_obsolete.get()
-        must_buy = self.control_frame.var_must_buy.get()
-        on_sale = self.control_frame.var_on_sale.get()
+        frm = self.control_frame
+        search_text = frm.var_global_search.get()
+        category = frm.var_category.get()
+        grab_results = frm.var_grab_results.get()
+        purchased = frm.var_is_purchased.get()
+        not_obsolete = frm.var_is_not_obsolete.get()
+        must_buy = frm.var_must_buy.get()
+        on_sale = frm.var_on_sale.get()
         gui_g.UEVM_filter_category = category if category != gui_g.s.default_category_for_all else ''
         self.toggle_pagination(forced_value=False)
         filter_dict = {}
-        if category != gui_g.s.default_category_for_all:
+        if category != gui_g.s.default_category_for_all and category != '':
             filter_dict['Category'] = category
         else:
             filter_dict.pop('Category', None)
-        if grab_results != gui_g.s.default_category_for_all:
+        if grab_results != gui_g.s.default_category_for_all and grab_results != '':
             filter_dict['Grab result'] = grab_results
         else:
             filter_dict.pop('Grab result', None)
@@ -687,6 +720,9 @@ class UEVMGui(tk.Tk):
         else:
             filter_dict.pop('On sale', None)
         self.editable_table.apply_filters(filter_dict, global_search=search_text)
+        if save:
+            gui_g.s.set_data_filters(filter_dict)
+            gui_g.s.save_config_file(save_config_var=True)
         # self.control_frame.reset_entry_search()
 
     def reset_filters(self) -> None:

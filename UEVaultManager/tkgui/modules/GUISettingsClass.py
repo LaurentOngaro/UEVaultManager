@@ -3,6 +3,7 @@
 Implementation for:
 - GUISettings: class containing all the settings for the GUI
 """
+import json
 import os
 
 from termcolor import colored
@@ -89,6 +90,21 @@ class GUISettings:
             'rowselectedcolor': '#E4DED4',  #
             'textcolor': 'black'  #
         }
+
+    def get_data_filters(self):
+        """ Getter for data_filters """
+        # convert a json string to a (filters) dict
+        values_dict = json.loads(self.config_vars['data_filters'])
+        return values_dict
+
+    def set_data_filters(self, values_dict):
+        """ Setter for data_filters """
+        # convert a (filters) dict to json string
+        json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
+        self.config_vars['data_filters'] = json_str
+
+    # used as property for keeping transparent access
+    data_filters = property(get_data_filters, set_data_filters)
 
     def get_x_pos(self):
         """ Getter for x_pos """
@@ -251,6 +267,10 @@ class GUISettings:
             log('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {
+            'data_filters': {
+                'comment': 'Filters to apply to the datatable. Stored in json format',
+                'value'  : ''
+            },
             'x_pos': {
                 'comment': 'X position of the main windows. Set to 0 to center the window',
                 'value': 0
@@ -324,6 +344,7 @@ class GUISettings:
         # store all the properties that must be saved in config file
         # no need of fallback values here, they are set in the config file by default
         config_vars = {
+            'data_filters': self.config.get('UEVaultManager', 'data_filters'),
             'x_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'x_pos')),
             'y_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'y_pos')),
             'width': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'width')),
