@@ -250,8 +250,8 @@ class UEVaultManagerCLI:
         page_title = no_text_data
         grab_result = GrabResult.NO_ERROR.name
         oigin = 'Marketplace'  # by default the asset are from the "MarketPlace"
+        price_reduction=no_int_data
         on_sale = bool_false_data
-
         try:
             asset_url = extras_data['asset_url']
             review = extras_data['review']
@@ -261,6 +261,7 @@ class UEVaultManagerCLI:
             supported_versions = extras_data['supported_versions']
             page_title = extras_data['page_title']
             grab_result = extras_data['grab_result']
+            price_reduction=extras_data['price_reduction']
             on_sale = extras_data['on_sale']
         except (TypeError, KeyError) as error:
             self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
@@ -290,6 +291,7 @@ class UEVaultManagerCLI:
                 , metadata['description']  # 'Description'
                 , metadata['status']  # 'status'
                 , discount_price  # 'Discount price'
+                , price_reduction  # 'Price reduction'
                 , on_sale  # 'On Sale'
                 , purchased  # 'Purchased'
                 , obsolete  # 'obsolete'

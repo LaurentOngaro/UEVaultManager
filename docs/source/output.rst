@@ -75,6 +75,7 @@ file:
       'Description': False,
       'Status': False,
       'Discount price': False,
+      'Price reduction': False,
       'On sale': False,
       'Purchased': False,
       'Obsolete': True,

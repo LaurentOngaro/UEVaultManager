@@ -46,6 +46,7 @@ def create_empty_assets_extras(asset_name: str) -> dict:
         'supported_versions': '',
         'page_title': '',
         'grab_result': GrabResult.NO_ERROR.name,
+        'price_reduction': 0,
         'on_sale': False
     }
 
@@ -395,7 +396,7 @@ class EPCAPI:
         Find the asset url from the asset name by searching the asset name in the unreal engine marketplace
         :param asset_name: asset name to search
         :param timeout: timeout for the request
-        :return: (The asset url, the asset name , the grab result code)
+        :return: (The asset url, the asset name (converted or found), the grab result code)
         """
         # remove the suffix _EngineVersion (ex _4.27) at the end of the name to have a valid search value
         regex = r"_[4|5]\.\d{1,2}$"
@@ -415,7 +416,7 @@ class EPCAPI:
             converted_name = converted_name.replace(entry, '')
 
         url = ''
-        asset_name_in_url = ''
+        asset_name_in_url = converted_name
         search_url_root = f'https://{self._search_url}/assets?keywords='
         search_url_full = search_url_root + converted_name
         try:
@@ -464,8 +465,10 @@ class EPCAPI:
 
         # try to find the url of the asset by doing a search in the marketplace
         asset_url, asset_name_in_url, error_code = self.find_asset_url(asset_title, timeout)
-        if asset_url == '' or asset_name_in_url == '':
+        if asset_url == '' or error_code != GrabResult.NO_ERROR.name:
+            self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
             no_result['grab_result'] = error_code
+            no_result['page_title'] = asset_name_in_url
             return no_result
         try:
             response = self.session.get(asset_url)  # when using session, we are already logged in Epic game
@@ -473,7 +476,9 @@ class EPCAPI:
             self.log.info(f'Grabbing extras data for {asset_name}')
         except requests.exceptions.RequestException as error:
             self.log.warning(f'Can not get extras data for {asset_name}:{error!r}')
+            self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
             no_result['grab_result'] = error_code
+            no_result['page_title'] = asset_name_in_url
             return no_result
 
         soup_logged = BeautifulSoup(response.text, 'html.parser')
@@ -574,7 +579,8 @@ class EPCAPI:
         else:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
             review = not_found_review
-        on_sale = 0.0 < discount_price < price and price > 0.0
+        price_reduction = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int((price-discount_price) / price * 100.0)
+        on_sale = (discount_price < price) or price_reduction > 0.0
 
         self.log.info(f'GRAB results: asset_name_in_url={asset_name_in_url} on_sale={on_sale} purchased={purchased} price={price} review={review}')
         return {
@@ -588,5 +594,6 @@ class EPCAPI:
             'purchased': purchased,
             'supported_versions': supported_versions,
             'grab_result': error_code,
+            'price_reduction': price_reduction,
             'on_sale': on_sale
         }
