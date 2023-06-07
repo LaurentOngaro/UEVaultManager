@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- EditableTable is a custom class that extends the pandastable.Table class, providing additional functionality
+- EditableTable: a class that extends the pandastable.Table class, providing additional functionalities
 """
 import io
 import webbrowser
@@ -22,7 +22,7 @@ from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 
 class EditableTable(Table):
     """
-    EditableTable is a custom class that extends the pandastable.Table class, providing additional functionality
+    A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
     :param container_frame: The parent frame for the table.
     :param file: The path to the CSV file containing the table data.

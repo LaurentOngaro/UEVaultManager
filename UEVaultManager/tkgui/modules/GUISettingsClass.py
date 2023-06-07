@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- GUISettings: class containing all the settings for the GUI
+- GUISettings: a class that contains all the settings for the GUI.
 """
 import json
 import os
@@ -28,7 +28,7 @@ def log(msg: str) -> None:
 
 class GUISettings:
     """
-    This class contains all the settings for the GUI.
+    A class that contains all the settings for the GUI.
     :param config_file: Path to config file to use instead of default
 
     """

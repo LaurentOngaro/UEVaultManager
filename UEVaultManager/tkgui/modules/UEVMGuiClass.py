@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGui the main window of the application
+- UEVMGui: the main window of the application
 """
 import os
 import tkinter as tk

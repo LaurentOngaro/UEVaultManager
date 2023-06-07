@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiHiddenRoot a hidden root window for the application
+- UEVMGuiHiddenRoot: a hidden root window for the application
 """
 import ttkbootstrap as ttk
 
