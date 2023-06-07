@@ -1145,7 +1145,7 @@ class UEVaultManagerCLI:
                 account_id=self.core.egs.user['account_id']
             )
         else:
-            token = self.core.egs.get_asset_token()
+            token = self.core.egs.get_item_token()
 
         if args.json:
             if args.pretty_json:
