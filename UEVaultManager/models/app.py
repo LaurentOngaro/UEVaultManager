@@ -102,42 +102,6 @@ class App:
         return self.metadata.get('customAttributes', {}).get('ThirdPartyManagedApp', {}).get('value', None)
 
     @property
-    def partner_link_type(self):
-        """
-        Get partner link type
-        :return: partner link type
-        """
-        if not self.metadata:
-            return None
-        return self.metadata.get('customAttributes', {}).get('partnerLinkType', {}).get('value', None)
-
-    @property
-    def partner_link_id(self):
-        """
-        Get partner link id
-        :return: partner link id
-        """
-        if not self.metadata:
-            return None
-        return self.metadata.get('customAttributes', {}).get('partnerLinkId', {}).get('value', None)
-
-    @property
-    def supports_cloud_saves(self) -> bool:
-        """
-        Check if app supports cloud saves
-        :return: True if app supports cloud saves, False otherwise
-        """
-        return self.metadata and (self.metadata.get('customAttributes', {}).get('CloudSaveFolder') is not None)
-
-    @property
-    def supports_mac_cloud_saves(self) -> bool:
-        """
-        Check if app supports cloud saves on Mac
-        :return: True if app supports cloud saves on Mac, False otherwise
-        """
-        return self.metadata and (self.metadata.get('customAttributes', {}).get('CloudSaveFolder_MAC') is not None)
-
-    @property
     def catalog_item_id(self):
         """
         Get catalog item id

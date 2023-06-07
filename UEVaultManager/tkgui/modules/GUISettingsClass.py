@@ -9,9 +9,10 @@ import os
 from termcolor import colored
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
+from UEVaultManager import __name__, __version__, __codename__
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.models.config import AppConf
-from UEVaultManager import __name__, __version__, __codename__
+
 
 # NOTE : we can't import the following modules here because of circular dependencies
 # UEVaultManager.tkgui.modules.functions_no_deps

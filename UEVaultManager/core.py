@@ -36,6 +36,7 @@ from UEVaultManager.utils.cli import check_and_create_path
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
+
 # The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
 
 # ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
@@ -351,15 +352,6 @@ class AppCore:
         :return: update info dict
         """
         return self.uevmlfs.get_cached_version()['data']
-
-    def update_aliases(self, force=False) -> None:
-        """
-        Updates aliases if enabled
-        :param force: force alias update
-        """
-        _aliases_enabled = not self.uevmlfs.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False)
-        if _aliases_enabled and (force or not self.uevmlfs.aliases):
-            self.uevmlfs.generate_aliases()
 
     def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
         """
@@ -752,8 +744,6 @@ class AppCore:
 
         self.log.info(f'A total of {len(_ret)} assets have been analysed and kept in phase 3')
 
-        self.update_aliases(force=meta_updated)
-
         if gui_g.s.never_update_data_files:
             meta_updated = False
         if meta_updated:
@@ -848,8 +838,6 @@ class AppCore:
             if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])):
                 _ret.append(item)
 
-        # Force refresh to make sure these titles are included in aliasing
-        self.update_aliases(force=True)
         return _ret
 
     @staticmethod
@@ -959,7 +947,7 @@ class AppCore:
         :param force_refresh: force the refresh of the cache
         """
         self.cache_is_invalidate = False
-        cached = self.uevmlfs.get_ue_assets_cache_data()
+        cached = self.uevmlfs.get_assets_cache_info()
         cached_assets_count = cached['ue_assets_count']
 
         date_now = datetime.now().timestamp()
@@ -967,11 +955,11 @@ class AppCore:
 
         if not cached_assets_count or cached_assets_count != assets_count:
             self.log.info(f'New assets are available. {assets_count} available VS {cached_assets_count} in cache')
-            self.uevmlfs.set_ue_assets_cache_data(last_update=cached['last_update'], ue_assets_count=assets_count)
+            self.uevmlfs.set_assets_cache_info(last_update=cached['last_update'], ue_assets_count=assets_count)
 
         if force_refresh or date_diff > self.ue_assets_max_cache_duration:
             self.cache_is_invalidate = True
-            self.uevmlfs.set_ue_assets_cache_data(last_update=date_now, ue_assets_count=assets_count)
+            self.uevmlfs.set_assets_cache_info(last_update=date_now, ue_assets_count=assets_count)
             if not force_refresh:
                 self.log.info(f'Data cache is outdated. Cache age is {date_diff:.1f} s OR {str(timedelta(seconds=date_diff))}')
         else:

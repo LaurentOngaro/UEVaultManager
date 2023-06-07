@@ -27,8 +27,6 @@ def init_gui(open_mainwindow=True) -> str:
     if open_mainwindow:
         main_window = UEVMGui(
             title=gui_g.s.app_title,
-            width=gui_g.s.app_width,
-            height=gui_g.s.app_height,
             icon=app_icon_filename,
             screen_index=0,
             file=csv_filename,

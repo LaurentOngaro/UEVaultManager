@@ -60,3 +60,9 @@ def create_emty_csv_row(return_as_string=False):
     if return_as_string:
         data = ','.join(str(value) for value in data.values())
     return data
+
+
+def unused_function(my_dict):
+    # average of values in a dict
+    # https://stackoverflow.com/a/9039961
+    return sum(my_dict.values()) / len(my_dict)

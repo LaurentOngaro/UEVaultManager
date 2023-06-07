@@ -18,6 +18,7 @@ from datetime import datetime
 from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
+
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
@@ -128,18 +129,6 @@ class UEVaultManagerCLI:
         self.core = AppCore(override_config, timeout=api_timeout)
         self.logger = logging.getLogger('Cli')
         self.logging_queue = None
-
-    def _resolve_aliases(self, name: str) -> str:
-        """
-        Resolve an alias
-        :param name: name to resolve
-        :return: real name
-        """
-        # make sure aliases exist if not yet created
-        self.core.update_aliases(force=False)
-        name = name.strip()
-        # resolve alias (if any) to real app name
-        return self.core.uevmlfs.config.get(section='UEVaultManager.aliases', option=name, fallback=self.core.uevmlfs.aliases.get(name.lower(), name))
 
     @staticmethod
     def _print_json(data, pretty=False):
@@ -751,8 +740,6 @@ class UEVaultManagerCLI:
         if not args.override_manifest and not args.app_name:
             print('You must provide either a manifest url/path or app name!')
             return
-        elif args.app_name:
-            args.app_name = self._resolve_aliases(args.app_name)
 
         # check if we even need to log in
         if args.override_manifest:
@@ -827,7 +814,7 @@ class UEVaultManagerCLI:
         else:
             user_name = self.core.uevmlfs.userdata['displayName']
 
-        cache_information = self.core.uevmlfs.get_ue_assets_cache_data()
+        cache_information = self.core.uevmlfs.get_assets_cache_info()
         update_information = self.core.uevmlfs.get_cached_version()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
@@ -880,8 +867,6 @@ class UEVaultManagerCLI:
         app_name = manifest_uri = None
         if os.path.exists(name_or_path) or name_or_path.startswith('http'):
             manifest_uri = name_or_path
-        else:
-            app_name = self._resolve_aliases(name_or_path)
 
         if not args.offline and not manifest_uri:
             try:

@@ -3,12 +3,15 @@
 Implementation for:
 - UEScraper: a class that handles scraping data from the Unreal Engine Marketplace.
 """
-import json, time, random, datetime
 import concurrent.futures
+import datetime
+import json
 import os
+import random
 import tempfile
-from urllib.request import urlopen
+import time
 from itertools import chain
+from urllib.request import urlopen
 
 URL_MARKETPLACE = 'https://www.unrealengine.com/marketplace'
 # URL_ASSET_LIST = 'https://www.unrealengine.com/marketplace/api/assets'
