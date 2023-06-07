@@ -57,7 +57,7 @@ Implemented Features:
    -  all the metadata that were already downloaded before by legendary:
       name, title, id, description, UE versions...
    -  **extras data grabbed from the marketplace page of an asset :
-      price, review, tags, purchased or not...**
+      price, review, tags, owned or not...**
 
 -  Using a cache system to avoid getting data using API calls and web
    scrapping each time the app is run. The delay of cache conservation

@@ -225,7 +225,7 @@ class EditableTable(Table):
             return
         log_debug('set_colors')
         self.gradient_color_cells(col_names=['Review'], cmap='Set3', alpha=1)
-        self.color_cells_if(col_names=['Purchased', 'On sale'], color='lightgreen', value_to_check='True')
+        self.color_cells_if(col_names=['Owned', 'Discounted'], color='lightgreen', value_to_check='True')
         self.color_cells_if(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
         self.color_cells_if_not(col_names=['Status'], color='#555555', value_to_check='ACTIVE')
         self.color_rows_if(col_names=['Status'], color='#555555', value_to_check='SUNSET')
@@ -319,7 +319,7 @@ class EditableTable(Table):
                 'Review': float,  #
                 'Price': float,  #
                 'Old price': float,  #
-                'Purchased': convert_to_bool,  #
+                'Owned': convert_to_bool,  #
                 'Must buy': convert_to_bool,  #
                 'Date added': convert_to_datetime,  #
             },
@@ -571,7 +571,7 @@ class EditableTable(Table):
                 entry = ExtendedText(edit_row_window.content_frame, height=3)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
-            elif lower_key in ('must buy', 'obsolete', 'purchased', 'on sale'):
+            elif lower_key in ('must buy', 'obsolete', 'owned', 'discounted'):
                 entry = ExtendedCheckButton(edit_row_window.content_frame, label='', images_folder=gui_g.s.assets_folder)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)

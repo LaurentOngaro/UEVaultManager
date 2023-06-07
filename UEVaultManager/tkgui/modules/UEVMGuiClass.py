@@ -236,20 +236,20 @@ class UEVMGui(tk.Tk):
             cur_col = 0
             cur_row = 0
             lbf_filter_cat.pack(fill=tk.X, anchor=tk.NW, ipadx=5, ipady=5)
-            var_is_purchased = tk.BooleanVar(value=False)
-            var_is_purchased.trace_add('write', container.on_check_change)
-            ck_purchased = ttk.Checkbutton(lbf_filter_cat, text='Purchased', variable=var_is_purchased)
-            ck_purchased.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            var_is_owned = tk.BooleanVar(value=False)
+            var_is_owned.trace_add('write', container.on_check_change)
+            ck_owned = ttk.Checkbutton(lbf_filter_cat, text='Owned', variable=var_is_owned)
+            ck_owned.grid(row=cur_row, column=cur_col, **grid_fw_options)
             cur_col += 1
             var_must_buy = tk.BooleanVar(value=False)
             var_must_buy.trace_add('write', container.on_check_change)
             ck_must_buy = ttk.Checkbutton(lbf_filter_cat, text='Must buy', variable=var_must_buy)
             ck_must_buy.grid(row=cur_row, column=cur_col, **grid_fw_options)
             cur_col += 1
-            var_on_sale = tk.BooleanVar(value=False)
-            var_on_sale.trace_add('write', container.on_check_change)
-            ck_on_sale = ttk.Checkbutton(lbf_filter_cat, text='On sale', variable=var_on_sale)
-            ck_on_sale.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            var_discounted = tk.BooleanVar(value=False)
+            var_discounted.trace_add('write', container.on_check_change)
+            ck_discounted = ttk.Checkbutton(lbf_filter_cat, text='Discounted', variable=var_discounted)
+            ck_discounted.grid(row=cur_row, column=cur_col, **grid_fw_options)
             cur_col += 1
             var_is_not_obsolete = tk.BooleanVar(value=False)
             var_is_not_obsolete.trace_add('write', container.on_check_change)
@@ -342,10 +342,10 @@ class UEVMGui(tk.Tk):
             self.var_entry_file_name = var_entry_file_name
             self.var_category = var_category
             self.var_global_search = var_global_search
-            self.var_is_purchased = var_is_purchased
+            self.var_is_owned = var_is_owned
             self.var_is_not_obsolete = var_is_not_obsolete
             self.var_must_buy = var_must_buy
-            self.var_on_sale = var_on_sale
+            self.var_discounted = var_discounted
             self.var_grab_results = var_grab_results
 
             self.entry_search = entry_search
@@ -663,10 +663,10 @@ class UEVMGui(tk.Tk):
             obsolete = filters.get('Obsolete', True)
             # note: the "status" filter has no control associated, it's managed by the "obsolete" checkbutton
             frm.var_grab_results.set(filters.get('Grab result', gui_g.s.default_category_for_all))
-            frm.var_is_purchased.set(filters.get('Purchased', False))
+            frm.var_is_owned.set(filters.get('Owned', False))
             frm.var_is_not_obsolete.set(not obsolete)
             frm.var_must_buy.set(filters.get('Must buy', False))
-            frm.var_on_sale.set(filters.get('On sale', False))
+            frm.var_discounted.set(filters.get('Discounted', False))
             frm.var_category.set(category)
             gui_g.UEVM_filter_category = category
             frm.var_global_search.set(search_text)
@@ -686,10 +686,10 @@ class UEVMGui(tk.Tk):
         search_text = frm.var_global_search.get()
         category = frm.var_category.get()
         grab_results = frm.var_grab_results.get()
-        purchased = frm.var_is_purchased.get()
+        owned = frm.var_is_owned.get()
         not_obsolete = frm.var_is_not_obsolete.get()
         must_buy = frm.var_must_buy.get()
-        on_sale = frm.var_on_sale.get()
+        discounted = frm.var_discounted.get()
         gui_g.UEVM_filter_category = category if category != gui_g.s.default_category_for_all else ''
         self.toggle_pagination(forced_value=False)
         filter_dict = {}
@@ -701,10 +701,10 @@ class UEVMGui(tk.Tk):
             filter_dict['Grab result'] = grab_results
         else:
             filter_dict.pop('Grab result', None)
-        if purchased:
-            filter_dict['Purchased'] = True
+        if owned:
+            filter_dict['Owned'] = True
         else:
-            filter_dict.pop('Purchased', None)
+            filter_dict.pop('Owned', None)
         if not_obsolete:
             filter_dict['Obsolete'] = False
             filter_dict['Status'] = 'active'
@@ -715,10 +715,10 @@ class UEVMGui(tk.Tk):
             filter_dict['Must buy'] = True
         else:
             filter_dict.pop('Must buy', None)
-        if on_sale:
-            filter_dict['On sale'] = True
+        if discounted:
+            filter_dict['Discounted'] = True
         else:
-            filter_dict.pop('On sale', None)
+            filter_dict.pop('Discounted', None)
         self.editable_table.apply_filters(filter_dict, global_search=search_text)
         if save:
             gui_g.s.set_data_filters(filter_dict)
@@ -733,7 +733,7 @@ class UEVMGui(tk.Tk):
         self.control_frame.var_category.set(gui_g.s.default_category_for_all)
         gui_g.UEVM_filter_category = ''
         self.do_not_launch_search = True  # Prevent the search to be launched when the checkbuttons are changed
-        self.control_frame.var_is_purchased.set(False)
+        self.control_frame.var_is_owned.set(False)
         self.control_frame.var_is_not_obsolete.set(False)
         self.do_not_launch_search = False
         self.editable_table.reset_filters()

@@ -37,17 +37,17 @@ def create_empty_assets_extras(asset_name: str) -> dict:
      """
     return {
         'asset_name': asset_name,
-        'asset_url': '',
-        'asset_name_in_url': '',
+        'asset_slug': '',
         'price': 0,
         'discount_price': 0,
         'review': 0,
-        'purchased': False,
-        'supported_versions': '',
+        'owned': False,
+        'discount_percentage': 0,
+        'discounted': False,
+        'asset_url': '',
         'page_title': '',
+        'supported_versions': '',
         'grab_result': GrabResult.NO_ERROR.name,
-        'price_reduction': 0,
-        'on_sale': False
     }
 
 
@@ -395,17 +395,17 @@ class EPCAPI:
             converted_name = converted_name.replace(entry, '')
 
         url = ''
-        asset_name_in_url = converted_name
+        asset_slug = converted_name
         search_url_root = f'https://{self._search_url}/assets?keywords='
         search_url_full = search_url_root + converted_name
         try:
             r = self.session.get(search_url_full, timeout=timeout)
         except requests.exceptions.Timeout:
             self.log.warning(f'Timeout for {asset_name}')
-            return [url, asset_name_in_url, GrabResult.TIMEOUT.name]
+            return [url, asset_slug, GrabResult.TIMEOUT.name]
         if not r.ok:
             self.log.warning(f'Can not find the url for {asset_name}:{r.reason}')
-            return [url, asset_name_in_url, GrabResult.PAGE_NOT_FOUND.name]
+            return [url, asset_slug, GrabResult.PAGE_NOT_FOUND.name]
 
         soup = BeautifulSoup(r.content, 'html.parser')
         links = []
@@ -415,16 +415,16 @@ class EPCAPI:
             self.log.info(f'{asset_name} has not been not found in marketplace.It has been added to the notfound_logger file')
             if self.notfound_logger:
                 self.notfound_logger.info(asset_name)
-            return [url, asset_name_in_url, GrabResult.CONTENT_NOT_FOUND.name]
+            return [url, asset_slug, GrabResult.CONTENT_NOT_FOUND.name]
 
         # find all links to assets that correspond to the search
         for link in group_elt.findAll('a', attrs={'class': 'mock-ellipsis-item mock-ellipsis-item-helper ellipsis-text'}):
             links.append(link.get('href'))
 
         # return the first one (probably the best choice)
-        asset_name_in_url = links[0].replace('/marketplace/en-US/product/', '')
+        asset_slug = links[0].replace('/marketplace/en-US/product/', '')
         url = 'https://www.unrealengine.com' + links[0]
-        return [url, asset_name_in_url, GrabResult.NO_ERROR.name]
+        return [url, asset_slug, GrabResult.NO_ERROR.name]
 
     #  get the extras data of an asset (price, review...)
     def get_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
@@ -443,11 +443,11 @@ class EPCAPI:
         no_result = create_empty_assets_extras(asset_name=asset_name)
 
         # try to find the url of the asset by doing a search in the marketplace
-        asset_url, asset_name_in_url, error_code = self.find_asset_url(asset_title, timeout)
+        asset_url, asset_slug, error_code = self.find_asset_url(asset_title, timeout)
         if asset_url == '' or error_code != GrabResult.NO_ERROR.name:
             self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
             no_result['grab_result'] = error_code
-            no_result['page_title'] = asset_name_in_url
+            no_result['page_title'] = asset_slug
             return no_result
         try:
             response = self.session.get(asset_url)  # when using session, we are already logged in Epic game
@@ -457,7 +457,7 @@ class EPCAPI:
             self.log.warning(f'Can not get extras data for {asset_name}:{error!r}')
             self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
             no_result['grab_result'] = error_code
-            no_result['page_title'] = asset_name_in_url
+            no_result['page_title'] = asset_slug
             return no_result
 
         soup_logged = BeautifulSoup(response.text, 'html.parser')
@@ -467,32 +467,32 @@ class EPCAPI:
 
         search_for_price = True
 
-        # check if already purchased
-        purchased = False
-        purchased_elt = soup_logged.find('div', class_='purchase')
-        if purchased_elt is not None:
-            if 'Free' in purchased_elt.getText():
+        # check if already owned
+        owned = False
+        owned_elt = soup_logged.find('div', class_='purchase')
+        if owned_elt is not None:
+            if 'Free' in owned_elt.getText():
                 # free price when logged
                 price = 0.0
                 search_for_price = False
                 if verbose_mode:
                     self.log.info(f'{asset_name} is free (check 1)')
-            elif 'Open in Launcher' in purchased_elt.getText():
-                # purchased asset
-                purchased = True
+            elif 'Open in Launcher' in owned_elt.getText():
+                # owned asset
+                owned = True
                 if verbose_mode:
-                    self.log.info(f'{asset_name} as already been purchased')
+                    self.log.info(f'{asset_name} is already owned')
                 # grab the price on a non logged soup (price will be available on that page only)
                 try:
                     response = requests.get(asset_url)  # not using session, so not logged in Epic game
                     response.raise_for_status()
                     soup_not_logged = BeautifulSoup(response.text, 'html.parser')
-                    purchased_elt = soup_not_logged.find('div', class_='purchase')
+                    owned_elt = soup_not_logged.find('div', class_='purchase')
                 except requests.exceptions.RequestException:
                     pass
 
-        if search_for_price and purchased_elt is not None:
-            if 'Sign in to Download' in purchased_elt.getText():
+        if search_for_price and owned_elt is not None:
+            if 'Sign in to Download' in owned_elt.getText():
                 # free price when logged or not
                 price = 0.0
                 if verbose_mode:
@@ -507,9 +507,9 @@ class EPCAPI:
                 #   when discounted
                 #       price is 'base-price'
                 #       discount-price is 'save-discount'
-                elt = purchased_elt.find('span', class_='save-discount')
+                elt = owned_elt.find('span', class_='save-discount')
                 current_price = self._extract_price_from_elt(elt, asset_name)
-                elt = purchased_elt.find('span', class_='base-price')
+                elt = owned_elt.find('span', class_='base-price')
                 base_price = self._extract_price_from_elt(elt, asset_name)
                 if elt is not None:
                     # discounted
@@ -558,21 +558,21 @@ class EPCAPI:
         else:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
             review = not_found_review
-        price_reduction = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int((price-discount_price) / price * 100.0)
-        on_sale = (discount_price < price) or price_reduction > 0.0
+        discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int((price-discount_price) / price * 100.0)
+        discounted = (discount_price < price) or discount_percentage > 0.0
 
-        self.log.info(f'GRAB results: asset_name_in_url={asset_name_in_url} on_sale={on_sale} purchased={purchased} price={price} review={review}')
+        self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')
         return {
             'asset_name': asset_name,
-            'asset_url': asset_url,
-            'asset_name_in_url': asset_name_in_url,
-            'page_title': page_title,
+            'asset_slug': asset_slug,
             'price': price,
             'discount_price': discount_price,
             'review': review,
-            'purchased': purchased,
+            'owned': owned,
+            'discount_percentage': discount_percentage,
+            'discounted': discounted,
+            'asset_url': asset_url,
+            'page_title': page_title,
             'supported_versions': supported_versions,
             'grab_result': error_code,
-            'price_reduction': price_reduction,
-            'on_sale': on_sale
         }

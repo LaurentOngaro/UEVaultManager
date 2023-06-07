@@ -486,7 +486,7 @@ class AppCore:
 
                 # check for data consistency
                 if 'stomt' in app_name.lower() or 'terrainmagic' in app_name.lower():
-                    if eg_extras.get('grab_result', '') != GrabResult.NO_ERROR.name or not eg_extras.get('purchased', False):
+                    if eg_extras.get('grab_result', '') != GrabResult.NO_ERROR.name or not eg_extras.get('owned', False):
                         box_message(
                             msg=f'Some results in extras data are inconsistants for {app_name}. Please check the data and try again. Exiting...',
                             level='error'

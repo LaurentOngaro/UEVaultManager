@@ -244,25 +244,25 @@ class UEVaultManagerCLI:
         asset_url = no_text_data
         review = no_int_data
         price = no_float_data
-        purchased = bool_false_data
+        owned = bool_false_data
         discount_price = no_float_data
         supported_versions = no_text_data
         page_title = no_text_data
         grab_result = GrabResult.NO_ERROR.name
-        oigin = 'Marketplace'  # by default the asset are from the "MarketPlace"
-        price_reduction=no_int_data
-        on_sale = bool_false_data
+        origin = 'Marketplace'  # by default the asset are from the "MarketPlace"
+        discount_percentage = no_int_data
+        discounted = bool_false_data
         try:
             asset_url = extras_data['asset_url']
             review = extras_data['review']
             price = extras_data['price']
             discount_price = extras_data['discount_price']
-            purchased = extras_data['purchased']
+            owned = extras_data['owned']
             supported_versions = extras_data['supported_versions']
             page_title = extras_data['page_title']
             grab_result = extras_data['grab_result']
-            price_reduction=extras_data['price_reduction']
-            on_sale = extras_data['on_sale']
+            discount_percentage = extras_data['discount_percentage']
+            discounted = extras_data['discounted']
         except (TypeError, KeyError) as error:
             self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
 
@@ -289,13 +289,13 @@ class UEVaultManagerCLI:
                 , review  # 'Review'
                 , metadata['developer']  # 'Developer'
                 , metadata['description']  # 'Description'
-                , metadata['status']  # 'status'
+                , metadata['status']  # 'Status'
                 , discount_price  # 'Discount price'
-                , price_reduction  # 'Price reduction'
-                , on_sale  # 'On Sale'
-                , purchased  # 'Purchased'
-                , obsolete  # 'obsolete'
-                , supported_versions  # 'supported versions'
+                , discount_percentage  # 'Discount percentage'
+                , discounted  # 'Discounted'
+                , owned  # 'Owned'
+                , obsolete  # 'Obsolete'
+                , supported_versions  # 'Supported versions'
                 , grab_result  # 'Grab result'
                 , price  # 'Price'
                 , no_float_data  # 'Old price'
@@ -306,9 +306,9 @@ class UEVaultManagerCLI:
                 , no_text_data  # 'Test result
                 , no_text_data  # 'Installed folder'
                 , no_text_data  # 'Alternative'
-                , oigin  # 'Origin
+                , origin  # 'Origin
                 # less important fields
-                , page_title  # 'page title'
+                , page_title  # 'Page title'
                 , thumbnail_url  # 'Image' with 488 height
                 , asset_url  # 'Url'
                 , compatible_versions  # compatible_versions
@@ -1185,13 +1185,7 @@ class UEVaultManagerCLI:
                 args.output = input_filename
                 gui_g.UEVM_cli_args['input'] = input_filename
                 gui_g.UEVM_cli_args['output'] = input_filename
-        gui_g.UEVM_gui_ref = UEVMGui(
-            title=gui_g.s.app_title,
-            icon=app_icon_filename,
-            screen_index=0,
-            file=input_filename,
-            rebuild_data=rebuild
-        )
+        gui_g.UEVM_gui_ref = UEVMGui(title=gui_g.s.app_title, icon=app_icon_filename, screen_index=0, file=input_filename, rebuild_data=rebuild)
         gui_g.UEVM_gui_ref.mainloop()
         # gui_g.UEVM_gui_ref.quit()
 
