@@ -1,0 +1,13 @@
+[tool.vulture]
+exclude = ["*settings.py","*/docs/*.py","*/testing/*.py","*/test/*.py","*/.venv/*.py"]
+ignore_decorators = ["@app.route", "@require_*"]
+ignore_names = ["visit_*", "do_*","dummy*.py","scratch*.py"]
+make_whitelist = true
+paths = ['UEVaultManager']
+sort_by_size = true
+verbose = false
+# value for min_confidence
+# function/method/class argument, unreachable code	100%
+# import	90%
+# attribute, class, function, method, property, variable	60%
+min_confidence = 60
