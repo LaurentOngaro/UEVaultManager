@@ -160,3 +160,11 @@ def create_list_from_string(string: str) -> list:
     # remove the last comma
     result_str = result_str[:-1]
     return result_str.split(',')
+
+
+def get_max_threads() -> int:
+    """
+    Get the maximum number of threads supported by the system.
+    :return: The maximum number of threads supported by the system.
+    """
+    return min(15, os.cpu_count() + 2)
