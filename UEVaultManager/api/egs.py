@@ -58,6 +58,8 @@ class EPCAPI:
     :param cc: The country code.
     :param timeout: The timeout for requests.
     """
+    ignored_logger = None
+
     _user_agent = 'UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit'
     _store_user_agent = 'EpicGamesLauncher/14.0.8-22004686+++Portal+Release-Live'
     # required for the oauth request
@@ -77,9 +79,30 @@ class EPCAPI:
     # _store_gql_host = 'launcher.store.epicgames.com'
     _store_gql_host = 'graphql.epicgames.com'
     _artifact_service_host = 'artifact-public-service-prod.beee.live.use1a.on.epicgames.com'
-    _search_url = 'www.unrealengine.com/marketplace/en-US'
     _login_url = 'www.unrealengine.com/id/login/epic'
-    ignored_logger = None
+
+    _url_marketplace = 'www.unrealengine.com/marketplace'
+    _search_url = _url_marketplace + '/en-US'
+    # _url_asset_list = 'https://www.unrealengine.com/marketplace/api/assets'
+    _url_asset_list = _url_marketplace + '/api/assets'
+    # _url_owned_assets = 'https://www.unrealengine.com/marketplace/api/assets/vault'
+    _url_owned_assets = _url_asset_list + '/vault'
+    # _url_asset = 'https://www.unrealengine.com/marketplace/api/assets/asset'
+    _url_asset = _url_asset_list + '/asset'
+
+    # page d'un asset avec son urlSlug
+    # UE_MARKETPLACE/en-US/product/{jjd['urlSlug']}
+    # https://www.unrealengine.com/marketplace/en-US/product/cloudy-dungeon
+    #
+    # detail json d'un asset avec son id (et non pas son asset_id ou son catalog_id)
+    # UE_ASSET/{el['id']}")
+    # https://www.unrealengine.com/marketplace/api/assets/asset/5cb2a394d0c04e73891762be4cbd7216
+    #
+    # liste json des reviews d'un asset avec son id
+    # https://www.unrealengine.com/marketplace/api/review/4ede75b0f8424e37a92316e75bf64cae/reviews/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
+    #
+    # liste json des questions d'un asset avec son id
+    # https://www.unrealengine.com/marketplace/api/review/5cb2a394d0c04e73891762be4cbd7216/questions/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
 
     def __init__(self, lc='en', cc='US', timeout=10.0):
         self.log = logging.getLogger('EPCAPI')
@@ -130,6 +153,40 @@ class EPCAPI:
         login_url = 'https://www.epicgames.com/id/login?redirectUrl='
         redirect_url = f'https://www.epicgames.com/id/api/redirect?clientId={self._user_basic}&responseType=code'
         return login_url + urllib.parse.quote(redirect_url)
+
+    def get_scrap_url(self, start=0, count=1, sort_by='effectiveDate', sort_order='DESC') -> str:
+        """
+        Return the scraping URL
+        """
+        scrap_url = f'https://{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}'
+        return scrap_url
+
+    def get_scrapped_asset_count(self) -> int:
+        """
+        Return the scraping URL
+        """
+        assets_count = 0
+        url = f'https://{self._url_asset_list}'
+        r = self.session.get(url, timeout=self.request_timeout)
+        r.raise_for_status()
+        json_content = r.json()
+        try:
+            assets_count = json_content['data']['paging']['total']
+        except Exception as error:
+            self.log.warning(f'Can not get the asset count from {url}:{error!r}')
+        return assets_count
+
+    def get_scrapped_assets(self, url='') -> dict:
+        """
+        Return the scraping URL
+        """
+        json_data = {}
+        if not url:
+            return json_data
+        r = self.session.get(url, timeout=self.request_timeout)
+        r.raise_for_status()
+        json_data = r.json()
+        return json_data
 
     def resume_session(self, session: dict) -> dict:
         """
@@ -558,7 +615,9 @@ class EPCAPI:
         else:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
             review = not_found_review
-        discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int((price-discount_price) / price * 100.0)
+        discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int(
+            (price-discount_price) / price * 100.0
+        )
         discounted = (discount_price < price) or discount_percentage > 0.0
 
         self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')

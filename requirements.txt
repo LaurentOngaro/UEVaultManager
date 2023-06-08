@@ -10,5 +10,6 @@ setuptools>=67.4.0
 termcolor>=2.3
 ttkbootstrap>=1.10
 packaging>=23
-requirements-parser>=0.2.0
-Jinja2>=3.0.2
+
+UEVaultManager>=1.7.1
+Faker>=18.10.1

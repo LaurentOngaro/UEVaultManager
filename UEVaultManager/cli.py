@@ -28,6 +28,7 @@ from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore
 from UEVaultManager.models.csv import CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
 from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.functions import custom_print, box_message  # simplier way to use the custom_print function
@@ -36,7 +37,7 @@ from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string, str_is_bool
+from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string, str_is_bool, get_max_threads
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
@@ -833,8 +834,8 @@ class UEVaultManagerCLI:
             'Current version': f'{UEVM_version} - {UEVM_codename}',
         }
         if not args.offline:
-            assets_available = len(self.core.get_asset_list(update_assets=args.force_refresh))
-            json_content['Assets available'] = assets_available
+            owned_assets = len(self.core.get_asset_list(update_assets=args.force_refresh))
+            json_content['Assets owned'] = owned_assets
             json_content['Update available'] = 'yes' if self.core.update_available else 'no'
 
             if self.core.update_available and update_information is not None:
@@ -1130,7 +1131,7 @@ class UEVaultManagerCLI:
                 account_id=self.core.egs.user['account_id']
             )
         else:
-            token = self.core.egs.get_asset_token()
+            token = self.core.egs.get_item_token()
 
         if args.json:
             if args.pretty_json:
@@ -1173,6 +1174,27 @@ class UEVaultManagerCLI:
         gui_g.UEVM_gui_ref = UEVMGui(title=gui_g.s.app_title, icon=app_icon_filename, screen_index=0, file=input_filename, rebuild_data=rebuild)
         gui_g.UEVM_gui_ref.mainloop()
         # gui_g.UEVM_gui_ref.quit()
+
+    def scrap_assets(self, args) -> None:
+        """
+        Print information about a given app name or manifest url/path
+        :param args: options passed to the command
+        """
+
+        # if not args.offline:
+        #     try:
+        #         if not self.core.login():
+        #             message = 'Log in failed!'
+        #             self._log_gui_wrapper(self.logger.critical, message, True)
+        #     except ValueError:
+        #         pass
+
+        rows_per_page = gui_g.s.rows_per_page  # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
+        start = 0
+        # start = 33400  # debug only, shorter list
+        scraper = UEAssetScraper(start=start, count=rows_per_page, max_threads=get_max_threads())
+        scraper.gather_urls(empty_list_before=True)
+        scraper.save_all_to_files(save_ids=True)
 
     @staticmethod
     def print_help(args, parser=None, forced=False) -> None:
@@ -1272,10 +1294,13 @@ def main():
     auth_parser = subparsers.add_parser('auth', help='Authenticate with the Epic Games Store')
     clean_parser = subparsers.add_parser('cleanup', help='Remove old temporary, metadata, and manifest files')
     info_parser = subparsers.add_parser('info', help='Prints info about specified app name or manifest')
-    list_parser = subparsers.add_parser('list', aliases=('list-assets',), hide_aliases=True, help='List available assets')
+    list_parser = subparsers.add_parser('list', aliases=('list-assets',), hide_aliases=True, help='List owned assets')
     list_files_parser = subparsers.add_parser('list-files', help='List files in manifest')
     status_parser = subparsers.add_parser('status', help='Show UEVaultManager status information')
     edit_parser = subparsers.add_parser('edit', aliases=('edit-assets',), hide_aliases=True, help='Edit the assets list file')
+    scrap_parser = subparsers.add_parser(
+        'scrap', aliases=('scrap-assets',), hide_aliases=True, help='Scrap all the available assets on the marketplace'
+    )
 
     # hidden commands have no help text
     get_token_parser = subparsers.add_parser('get-token')
@@ -1403,6 +1428,18 @@ def main():
     # edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
     # edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
 
+    # noinspection DuplicatedCode
+    scrap_parser.add_argument(
+        '-f',
+        '--force-refresh',
+        dest='force_refresh',
+        action='store_true',
+        help='Force a refresh of all assets data. It could take some time ! If not forced, the cached data will be used'
+    )
+    scrap_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
+    # not use for now
+    # scrap_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print assets data available offline (aka. in cache or not owned)'
+
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
 
@@ -1469,6 +1506,8 @@ def main():
             args.gui = True
             UEVaultManagerCLI.is_gui = True
             cli.edit_assets(args)
+        elif args.subparser_name in {'scrap', 'scrap-assets'}:
+            cli.scrap_assets(args)
         elif start_in_edit_mode:
             args.gui = True
             UEVaultManagerCLI.is_gui = True

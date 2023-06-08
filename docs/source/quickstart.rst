@@ -43,7 +43,7 @@ Listing your asset
 
   UEVaultManager list
 
-This will fetch a list of asset available on your account, the first
+This will fetch a list of asset available on your account (only the assets you OWNED), the first
 time may take a while depending on how many asset you have.
 
 Saving the list into a CSV file

@@ -32,10 +32,9 @@ from UEVaultManager.models.exceptions import *
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.tkgui.modules.functions import box_message
-from UEVaultManager.utils.cli import check_and_create_path
+from UEVaultManager.utils.cli import check_and_create_path, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
-
 
 # The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
 
@@ -524,6 +523,7 @@ class AppCore:
                 self.thread_executor_must_stop = True
                 return False
             return True
+
         # end of fetch_asset_meta
 
         _ret = []
@@ -668,7 +668,7 @@ class AppCore:
 
                 # with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() - 2), thread_name_prefix="Asset_Fetcher") as executor:
                 #    executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)
-                self.thread_executor = ThreadPoolExecutor(max_workers=min(15, os.cpu_count() + 2), thread_name_prefix="Asset_Fetcher")
+                self.thread_executor = ThreadPoolExecutor(max_workers=get_max_threads(), thread_name_prefix="Asset_Fetcher")
                 # Dictionary that maps each key to its corresponding Future object
                 futures = {}
                 for key in fetch_list.keys():
@@ -767,8 +767,8 @@ class AppCore:
         Compile a list of assets without assets, then delete their metadata
         """
         # compile list of assets without assets, then delete their metadata
-        available_assets = set()
-        available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
+        owned_assets = set()
+        owned_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
         for app_name in self.uevmlfs.get_item_app_names():
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
@@ -779,8 +779,8 @@ class AppCore:
         Compile a list of assets without assets, then delete their extras data
         :param update_global_dict:  if True, update the global dict
         """
-        available_assets = set()
-        available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
+        owned_assets = set()
+        owned_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
         for app_name in self.uevmlfs.get_item_app_names():
             self.log.debug(f'Removing old/unused extras data for "{app_name}"')
