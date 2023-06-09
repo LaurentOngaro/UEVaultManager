@@ -74,6 +74,10 @@ class UEAssetDbHandler:
         self.db_version = VersionNum.V0  # updated in check_and_upgrade_database()
         self.check_and_upgrade_database()
 
+    def __del__(self):
+        self.logger.debug('Deleting UEAssetDbHandler and closing connection')
+        # DatabaseConnection(self.db_name).conn.close()
+
     def _get_db_version(self) -> VersionNum:
         """
         Check the database version.
@@ -245,7 +249,6 @@ class UEAssetDbHandler:
             cursor = conn.cursor()
             cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
             result = cursor.fetchone()
-            conn.close()
         return result is not None
 
     def get_row_count(self, table_name='assets') -> int:
@@ -272,12 +275,12 @@ class UEAssetDbHandler:
             cursor = conn.cursor()
             cursor.execute("INSERT INTO last_run VALUES (?,?,?,?)", (data['date'], data['files_count'], data['items_count'], data['items_ids']))
             conn.commit()
-            conn.close()
 
-    def insert_assets(self, assets) -> None:
+    def set_assets(self, assets, update_user_fields=True) -> None:
         """
-        Insert assets into the 'assets' table.
+        Insert or update assets into the 'assets' table.
         :param assets: A dictionary or a list of dictionaries representing assets.
+        :param update_user_fields: If True, the user fields will be updated with the current user data.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(VersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
@@ -286,8 +289,9 @@ class UEAssetDbHandler:
             cursor = conn.cursor()
             if not isinstance(assets, list):
                 assets = [assets]
+            # Notes: the order of columns and value must match the order of the fields in init_data() method
+            # first part: only the fields that come from the marketplace
             for asset in assets:
-                # Notes: the order of columns and value must match the order of the fields in init_data() method
                 cursor.execute(
                     """
                         INSERT OR REPLACE INTO assets (id,
@@ -320,16 +324,9 @@ class UEAssetDbHandler:
                         can_purchase,
                         owned,
                         review,
-                        review_count,
-                        comment,
-                        stars,
-                        must_buy,
-                        test_result,
-                        installed_folder,
-                        alternative,
-                        origin
+                        review_count
                     ) 
-                    VALUES (?, ?, ?, ?, ?, ?,  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         asset['id'],  #
                         asset['namespace'],  #
@@ -361,17 +358,36 @@ class UEAssetDbHandler:
                         asset['can_purchase'],  #
                         asset['owned'],  #
                         asset['review'],  #
-                        asset['review_count'],  #
-                        asset['comment'],  #
-                        asset['stars'],  #
-                        asset['must_buy'],  #
-                        asset['test_result'],  #
-                        asset['installed_folder'],  #
-                        asset['alternative'],  #
-                        asset['origin']  #
+                        asset['review_count']  #
                     )
                 )
-
+            conn.commit()
+            if update_user_fields:
+                # second part: only the fields that come from the user
+                for asset in assets:
+                    cursor.execute(
+                        """
+                        INSERT OR REPLACE INTO assets (id,
+                        comment,
+                        stars,
+                        must_buy,
+                        test_result,
+                        installed_folder,
+                        alternative,
+                        origin
+                    )
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                            asset['id'],  #
+                            asset['comment'],  #
+                            asset['stars'],  #
+                            asset['must_buy'],  #
+                            asset['test_result'],  #
+                            asset['installed_folder'],  #
+                            asset['alternative'],  #
+                            asset['origin']  #
+                        )
+                    )
             conn.commit()
 
     def get_assets(self) -> list:
@@ -399,6 +415,15 @@ class UEAssetDbHandler:
         with DatabaseConnection(self.db_name) as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
+            conn.commit()
+
+    def delete_all_assets(self) -> None:
+        """
+        Delete all assets from the 'assets' table.
+        """
+        with DatabaseConnection(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM assets WHERE 1')
             conn.commit()
 
     def update_asset(self, asset_id: str, column: str, value) -> None:
@@ -471,7 +496,7 @@ class UEAssetDbHandler:
                 fake.word()  # origin
             ]
             ue_asset.init_from_list(data=data_list)
-            self.insert_assets(ue_asset.data)
+            self.set_assets(ue_asset.data)
             assets_ids.append(assets_id)
         content = {'date': str(datetime.datetime.now()), 'files_count': 0, 'items_count': number_of_rows, 'items_ids': ','.join(assets_ids)}
         self.save_last_run(content)

@@ -1192,9 +1192,11 @@ class UEVaultManagerCLI:
         rows_per_page = gui_g.s.rows_per_page  # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
         start = 0
         # start = 33400  # debug only, shorter list
-        scraper = UEAssetScraper(start=start, count=rows_per_page, max_threads=get_max_threads())
+        scraper = UEAssetScraper(
+            start=start, count=rows_per_page, max_threads=get_max_threads(), store_in_db=True, store_in_files=True, store_ids=True
+        )
         scraper.gather_urls(empty_list_before=True)
-        scraper.save_all_to_files(save_ids=True)
+        scraper.save()
 
     @staticmethod
     def print_help(args, parser=None, forced=False) -> None:
