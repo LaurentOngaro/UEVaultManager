@@ -13,6 +13,7 @@ import time
 from itertools import chain
 
 from UEVaultManager.api.egs import EPCAPI
+from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
@@ -26,7 +27,6 @@ class UEAssetScraper:
     def __init__(self, start=0, count=100, sort_by='effectiveDate', sort_order='DESC', timeout=10.0, max_threads=8) -> None:
         """
         Initializes an instance of the AssetsParser class.
-
         :param start: An int representing the starting index for the data to retrieve. Defaults to 0.
         :param count: An int representing the number of items to retrieve per request. Defaults to 100.
         :param sort_by: A string representing the field to sort by. Defaults to 'effectiveDate'.
@@ -38,7 +38,7 @@ class UEAssetScraper:
         self.count = count
         self.sort_by = sort_by
         self.sort_order = sort_order
-        self.last_updated_filename = 'last_updated.json'
+        self.last_run_filename = 'last_run.json'
         self.urls_list_filename = 'urls_list.txt'
         self.data_folder = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
         self.max_threads = max_threads
@@ -48,10 +48,12 @@ class UEAssetScraper:
         self.assets_data = []  # the scraper assets_data. Increased on each call to get_data_from_url(). Could be huge !!
         self.assets_ids = []  # store IDs of all items
         self.urls = []  # list of all urls to scrap
-        self.log = logging.getLogger('Scraper')
-        self.log.setLevel(logging.INFO)
         self.egs = EPCAPI(timeout=timeout)
-        self.log.info(f'UEAssetScraper initialized with max_threads= {max_threads}, start= {start}, count= {count}, sort_by= {sort_by}, sort_order= {sort_order}')
+        self.logger = logging.getLogger(__name__)
+        # self.logger.setLevel(logging.DEBUG)
+        self.logger.info(
+            f'UEAssetScraper initialized with max_threads= {max_threads}, start= {start}, count= {count}, sort_by= {sort_by}, sort_order= {sort_order}'
+        )
 
     def parse_data(self, json_data: dict = None) -> []:
         """
@@ -62,73 +64,45 @@ class UEAssetScraper:
         content = []
         if json_data is None:
             return content
-        for asset in json_data['data']['elements']:
+        for asset_data in json_data['data']['elements']:
+            # make some calculation to the "raw" data
             price = 0
             discount_price = 0
             discount_percentage = 0
             average_rating = 0
             rating_total = 0
             # category_slug = ''
-            if asset["priceValue"] > 0:
+            if asset_data['priceValue'] > 0:
                 # tbh the logic here is flawed as hell lol. discount should only be set if there's a discount Epic wtf
-                price = asset['priceValue'] if asset['priceValue'] == asset['discountPriceValue'] else asset['discountPriceValue']
+                price = asset_data['priceValue'] if asset_data['priceValue'] == asset_data['discountPriceValue'] else asset_data['discountPriceValue']
                 price /= 100  # price is in cents
-                discount_percentage = asset['discountPercentage']
-                discount_price = asset['discountPriceValue']
+                discount_percentage = asset_data['discountPercentage']
+                discount_price = asset_data['discountPriceValue']
             if discount_price == 0:
                 discount_price = price
-            has_discount = price != discount_price
+            current_price_discounted = price != discount_price
             # try:
-            #     category_slug = asset["categories"][0]["path"].split('assets/')[1]
+            #     category_slug = asset_data["categories"][0]["path"].split('asset_datas/')[1]
             # except (KeyError,IndexError):
-            #     self.log.debug(f'No category_slug for {asset["title"]}')
+            #     self.logger.debug(f'No category_slug for {asset_data["title"]}')
             try:
-                average_rating = asset['rating']['averageRating']
-                rating_total = asset['rating']['total']
+                average_rating = asset_data['rating']['averageRating']
+                rating_total = asset_data['rating']['total']
             except KeyError:
-                self.log.debug(f'No rating for {asset["title"]}')
-            # try:
-            asset_dict = {
-                'id': asset['id'],
-                'namespace': asset['namespace'],
-                'catalog_item_id': asset['catalogItemId'],
-                'title': asset['title'],
-                "category": asset['categories'][0]['name'],
-                # 'category_slug': category_slug,
-                'author': asset['seller']['name'],
-                'thumbnail_url': asset['thumbnail'],
-                'current_price_discounted': has_discount,
-                'asset_slug': asset['urlSlug'],
-                'currency_code': asset['currencyCode'],
-                'description': asset['description'],
-                'technical_details': asset['technicalDetails'],
-                'long_description': asset['longDescription'],
-                'categories': asset['categories'],
-                'tags': asset['tags'],
-                'comment_rating_id': asset['commentRatingId'],
-                'rating_id': asset['ratingId'],
-                'status': asset['status'],
-                'price': price,
-                'discount': asset['discount'],
-                # 'discount_price':asset['discountPrice'],
-                # 'discount_price_value':asset[ 'discountPriceValue'],
-                'discount_price': discount_price,
-                # 'voucher_discount':asset[ 'voucherDiscount'],
-                'discount_percentage': discount_percentage,
-                'is_featured': asset['isFeatured'],
-                'is_catalog_item': asset['isCatalogItem'],
-                'is_new': asset['isNew'],
-                'free': asset['free'],
-                'discounted': asset['discounted'],
-                'can_purchase': asset['canPurchase'],
-                'owned': asset['owned'],
-                'review': average_rating,
-                'review_count': rating_total
-            }
-            content.append(asset_dict)
-            self.assets_ids.append(asset['id'])
-            # except (Exception, KeyError) as error:
-            #     self.log.warning(f'Content parsing failed for {asset["title"]}:error {error!r}')
+                self.logger.debug(f'No rating for {asset_data["title"]}')
+            asset_data['price'] = price
+            asset_data['discount_price'] = discount_price
+            asset_data['discount_percentage'] = discount_percentage
+            asset_data['current_price_discounted'] = current_price_discounted
+            asset_data['average_rating'] = average_rating
+            asset_data['rating_total'] = rating_total
+            asset_data['category'] = asset_data['categories'][0]['name']
+            # asset_data['category_slug'] = category_slug
+
+            ue_asset = UEAsset()
+            ue_asset.init_from_dict(asset_data)
+            content.append(ue_asset.data)
+            self.assets_ids.append(asset_data['id'])
         return content
 
     def gather_urls(self, empty_list_before=False, save_result=True) -> None:
@@ -147,7 +121,7 @@ class UEAssetScraper:
             start = self.start + (i * self.count)
             url = self.egs.get_scrap_url(start, self.count, self.sort_by, self.sort_order)
             self.urls.append(url)
-        self.log.info(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self.urls)} urls')
+        self.logger.info(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self.urls)} urls')
         if save_result:
             self.save_to_file(filename=self.urls_list_filename, data=self.urls, is_json=False)
 
@@ -158,7 +132,7 @@ class UEAssetScraper:
         """
         if not url:
             url = self.egs.get_scrap_url(self.start, self.count, self.sort_by, self.sort_order)
-        self.log.info(f'Parsing url {url}')
+        self.logger.info(f'Parsing url {url}')
         json_data = self.egs.get_scrapped_assets(url)
         if json_data:
             content = self.parse_data(json_data)
@@ -183,7 +157,6 @@ class UEAssetScraper:
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True) -> bool:
         """
         Saves JSON data to a file.
-
         :param data: A dictionary containing the data to save. Defaults to None. If None, the data will be used.
         :param prefix: A string representing the prefix to use for the file name. Defaults to 'assets'.
         :param filename: A string representing the file name to use. Defaults to None. If None, a file name will be generated using the prefix and the start and count properties.
@@ -208,10 +181,10 @@ class UEAssetScraper:
                 else:
                     # write data as a list in the file
                     fh.write('\n'.join(data))
-            self.log.debug(f'Data saved into {filename}')
+            self.logger.debug(f'Data saved into {filename}')
             return True
         except PermissionError as error:
-            self.log.warning(f'The following error occured when saving data into {filename}:{error!r}')
+            self.logger.warning(f'The following error occured when saving data into {filename}:{error!r}')
             return False
 
     def save_all_to_files(self, save_ids=False) -> None:
@@ -219,10 +192,9 @@ class UEAssetScraper:
         Saves all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param save_ids: A boolean indicating whether to store the store IDs extracted from the data in the self.tems_ids. Defaults to False. Could be time and memory consuming.
         """
-
         start_time = time.time()
         self.download_assets_data()
-        self.log.info(f'It took {(time.time() - start_time):.3f} seconds to download assets for {len(self.urls)} urls')
+        self.logger.info(f'It took {(time.time() - start_time):.3f} seconds to download assets for {len(self.urls)} urls')
 
         start_time = time.time()
         # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
@@ -232,10 +204,11 @@ class UEAssetScraper:
             asset_id = asset['id']
             self.save_to_file(filename=f'asset_{asset_id}.json', data=asset)
             self.files_count += 1
-        self.log.info(f'It took {(time.time() - start_time):.3f} seconds to save the data')
+        self.logger.info(f'It took {(time.time() - start_time):.3f} seconds to save the data')
 
-        filename = os.path.join(self.data_folder, self.last_updated_filename)
-        content = {'last_updated': str(datetime.datetime.now()), 'files_count': self.files_count, 'items_count': len(new_content)}
+        filename = os.path.join(self.data_folder, self.last_run_filename)
+        # note: this data have the same structure as the table last_run inside the method UEAsset.create_tables()
+        content = {'date': str(datetime.datetime.now()), 'files_count': self.files_count, 'items_count': len(new_content)}
         if save_ids:
             content['items_ids'] = self.assets_ids
         with open(filename, 'w') as fh:
@@ -243,6 +216,7 @@ class UEAssetScraper:
 
 
 if __name__ == '__main__':
+    # the following code is just for class testing purposes
     row_per_page = 36
     scraper = UEAssetScraper(count=row_per_page)
     # scraper = UEAssetScraper(start=33500, count=row_per_page, max_threads=0)  # shorter list for testing only
