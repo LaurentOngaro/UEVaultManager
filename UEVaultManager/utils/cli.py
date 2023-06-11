@@ -190,17 +190,41 @@ def convert_to_pascal_case(string: str) -> str:
     return ''.join(x.capitalize() or '_' for x in string.split('_'))
 
 
-def valid_key_for_dict(dict_to_check: dict, key: str) -> str:
+def check_and_convert_key(dict_to_check: dict, key: str) -> str:
     """
     Check if a key is valid for a dict. If not, try to convert it to snake case or pascal case.
     :param dict_to_check: dict to check where the key is valid
     :param key: key to check
-    :return: The checked key if it is valid, None otherwise.
+    :return: The checked key if it is valid, '' otherwise.
     """
-    checked_key = None
-    # if it does, use the key as is
+    checked_key = ''
+
+    # key data already "transformed" and mapped in UEAssetScrapper._parse_data()
+    # 'price':'priceValue' or 'discountPriceValue'
+    # 'discount_price' : 'discountPriceValue'
+    # 'current_price_discounted' : new value
+    # 'average_rating' :  new value
+    # 'rating_total' :  new value
+    # 'category' : ['categories'][0]['name']
+    # 'author' = ['seller']['name']
+
+    # dict of keys that could not be automatically renamed
+    manual_renaming = {'urlSlug': 'asset_slug', 'featured': 'is_featured', 'thumbnail': 'thumbnail_url'}
+    key_to_ignore = [
+        # key for data not used in the final json
+        'ownedCount', 'headerImage', 'learnThumbnail', 'klass', 'recurrence', 'voucherDiscount', 'keyImages', 'effectiveDate', 'bundle',
+        'releaseInfo', 'platforms', 'purchaseLimit', 'compatibleApps', 'tax',
+        # key data already "transformed" and mapped in UEAssetScrapper._parse_data()
+        'priceValue', 'discountPriceValue', 'seller', 'average_rating', 'rating_total', 'rating'
+    ]
+    if key in key_to_ignore:
+        return checked_key
+
+    # if the key (from the source dict) is in the target dict, uses it as is
     if key in dict_to_check.keys():
         checked_key = key
+    elif key in manual_renaming.keys():
+        checked_key = manual_renaming[key]
     else:
         # if no, try to convert the key to snake case
         snake_case_key = convert_to_snake_case(key)
@@ -212,20 +236,25 @@ def valid_key_for_dict(dict_to_check: dict, key: str) -> str:
             pascal_case_key = convert_to_pascal_case(key)
             if pascal_case_key in dict_to_check.keys():
                 checked_key = pascal_case_key
+            else:
+                # should not happen because all cases must have been treated
+                # if not the saved value will be NULL and the value from asset will be lost
+                # print(f"Key {key} not found in the dict") # debug only, will flood the console
+                return ''
     return checked_key
 
 
-def init_dict_from_data(dict_to_init: dict, dict_for_data: dict = None) -> None:
+def init_dict_from_data(target_dict: dict, source_dict: dict = None) -> None:
     """
-    Initialize a dict from another dict. If the key is not found in the dict_to_init dict, try to convert it to snake case or pascal case.
-    :param dict_to_init:  dict to initialize
-    :param dict_for_data: dict to use for data
+    Initialize a dict from another dict. If the key is not found in the target_dict dict, try to convert it to snake case or pascal case.
+    :param target_dict:  dict to initialize
+    :param source_dict: dict to use for data
     """
-    if dict_to_init == {}:
+    if target_dict == {}:
         return
-    # copy all the keys from the dict_for_data dict to the dict_to_init dict
-    for key in dict_for_data.keys():
-        # from the source dict, check if the key exists in the dict_to_init dict
-        checked_key = valid_key_for_dict(dict_to_check=dict_to_init, key=key)
+    # copy all the keys from the source_dict dict to the target_dict dict
+    for key in source_dict.keys():
+        # from the source dict, check if the key exists in the target_dict dict
+        checked_key = check_and_convert_key(dict_to_check=target_dict, key=key)
         if checked_key:
-            dict_to_init[checked_key] = dict_for_data[key]
+            target_dict[checked_key] = source_dict[key]

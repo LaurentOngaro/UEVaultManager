@@ -21,40 +21,43 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 class UEAssetScraper:
     """
     A class that handles scraping data from the Unreal Engine Marketplace.
-    It saves the data in csv files and/or in a sqlite database
+    It saves the data in json files and/or in a sqlite database
+    :param start: An int representing the starting index for the data to retrieve. Defaults to 0.
+    :param start: An int representing the ending index for the data to retrieve. Defaults to 0.
+    :param assets_per_page: An int representing the number of items to retrieve per request. Defaults to 100.
+    :param sort_by: A string representing the field to sort by. Defaults to 'effectiveDate'.
+    :param sort_order: A string representing the sort order. Defaults to 'ASC'.
+    :param timeout: A float representing the timeout for the requests. Defaults to 10.0.
+    :param max_threads: An int representing the maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
+    :param store_in_files: A boolean indicating whether to store the data in csv files. Defaults to True. Could create lots of files (1 file per asset)
+    :param store_in_db: A boolean indicating whether to store the data in a sqlite database. Defaults to True.
+    :param store_ids: A boolean indicating whether to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
+    :param use_raw_format: A boolean indicating whether to store the data in a raw format (as returned by the API) or after data have been parsed. Defaults to True.
     """
 
     def __init__(
         self,
         start=0,
-        count=100,
+        stop=0,
+        assets_per_page=100,
         sort_by='effectiveDate',
         sort_order='DESC',
         timeout=10.0,
         max_threads=8,
         store_in_files=True,
         store_in_db=True,
-        store_ids=False
+        store_ids=False,
+        use_raw_format=True
     ) -> None:
-        """
-        Initializes an instance of the AssetsParser class.
-        :param start: An int representing the starting index for the data to retrieve. Defaults to 0.
-        :param count: An int representing the number of items to retrieve per request. Defaults to 100.
-        :param sort_by: A string representing the field to sort by. Defaults to 'effectiveDate'.
-        :param sort_order: A string representing the sort order. Defaults to 'ASC'.
-        :param timeout: A float representing the timeout for the requests. Defaults to 10.0.
-        :param max_threads: An int representing the maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
-        :param store_in_files: A boolean indicating whether to store the data in csv files. Defaults to True. Could create lots of files (1 file per asset)
-        :param store_in_db: A boolean indicating whether to store the data in a sqlite database. Defaults to True.
-        :param store_ids: A boolean indicating whether to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
-        """
         self.start = start
-        self.count = count
+        self.stop = stop
+        self.assets_per_page = assets_per_page
         self.sort_by = sort_by
         self.sort_order = sort_order
         self.store_in_files = store_in_files
         self.store_in_db = store_in_db
         self.store_ids = store_ids
+        self.use_raw_format = use_raw_format
         self.last_run_filename = 'last_run.json'
         self.urls_list_filename = 'urls_list.txt'
         self.data_folder = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
@@ -69,7 +72,7 @@ class UEAssetScraper:
         self.egs = EPCAPI(timeout=timeout)
         self.logger = logging.getLogger(__name__)
         # self.logger.setLevel(logging.DEBUG)
-        message = f'UEAssetScraper initialized with max_threads= {max_threads}, start= {start}, count= {count}, sort_by= {sort_by}, sort_order= {sort_order}'
+        message = f'UEAssetScraper initialized with max_threads= {max_threads}, start= {start}, stop= {stop}, assets_per_page= {assets_per_page}, sort_by= {sort_by}, sort_order= {sort_order}'
         message += f'\nData will be saved in files in {self.data_folder}' if store_in_files else ''
         message += f'\nData will be saved in database in {self.db_name}' if store_in_db else ''
         message += f'\nAsset Ids will be saved in {self.last_run_filename} or in database' if store_ids else ''
@@ -117,8 +120,11 @@ class UEAssetScraper:
             asset_data['average_rating'] = average_rating
             asset_data['rating_total'] = rating_total
             asset_data['category'] = asset_data['categories'][0]['name']
-            # asset_data['category_slug'] = category_slug
+            asset_data['author'] = asset_data['seller']['name']
 
+            asset_data['categories'] = str(asset_data['categories'])  # convert the list to a string
+            asset_data['tags'] = str(asset_data['tags'])  # convert the list to a string
+            # asset_data['category_slug'] = category_slug
             ue_asset = UEAsset()
             ue_asset.init_from_dict(asset_data)
             content.append(ue_asset.data)
@@ -133,13 +139,16 @@ class UEAssetScraper:
             self.urls = []
         start_time = time.time()
 
-        assets_count = self.egs.get_scrapped_asset_count() - self.start
-        pages_count = int(assets_count / self.count)
-        if (assets_count % self.count) > 0:
+        if self.stop == 0:
+            self.stop = self.egs.get_scrapped_asset_count()
+
+        assets_count = self.stop - self.start
+        pages_count = int(assets_count / self.assets_per_page)
+        if (assets_count % self.assets_per_page) > 0:
             pages_count += 1
         for i in range(int(pages_count)):
-            start = self.start + (i * self.count)
-            url = self.egs.get_scrap_url(start, self.count, self.sort_by, self.sort_order)
+            start = self.start + (i * self.assets_per_page)
+            url = self.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
             self.urls.append(url)
         self.logger.info(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self.urls)} urls')
         if save_result:
@@ -151,10 +160,16 @@ class UEAssetScraper:
         :param url: The url to grab the data from. If not given, uses the url property of the class.
         """
         if not url:
-            url = self.egs.get_scrap_url(self.start, self.count, self.sort_by, self.sort_order)
+            url = self.egs.get_scrap_url(self.start, self.assets_per_page, self.sort_by, self.sort_order)
         self.logger.info(f'Parsing url {url}')
         json_data = self.egs.get_scrapped_assets(url)
         if json_data:
+            if self.store_in_files:
+                if self.use_raw_format:
+                    # store the data in a BEFORE parsing it
+                    asset_id = json_data['id']
+                    self.save_to_file(filename=f'asset_{asset_id}.json', data=json_data)
+                    self.files_count += 1
             content = self._parse_data(json_data)
             self.assets_data.append(content)
         if self.threads_count > 1:
@@ -167,6 +182,7 @@ class UEAssetScraper:
         The execution is done in parallel using threads.
         Note: if self.urls is None or empty, gather_urls() will be called first.
         """
+        start_time = time.time()
         if self.urls is None or len(self.urls) == 0:
             self.gather_urls()
         if self.max_threads > 0:
@@ -176,6 +192,11 @@ class UEAssetScraper:
         else:
             for url in self.urls:
                 self.get_data_from_url(url)
+        if self.store_in_files and self.use_raw_format:
+            message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self.urls)} urls and store the data in {self.files_count} files'
+        else:
+            message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self.urls)} urls'
+        self.logger.info(message)
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True) -> bool:
         """
@@ -198,7 +219,7 @@ class UEAssetScraper:
             filename = prefix
             if self.start > 0:
                 filename += '_' + str(self.start)
-                filename += '_' + str(self.start + self.count)
+                filename += '_' + str(self.start + self.assets_per_page)
             filename += '.json'
         filename = os.path.join(self.data_folder, filename)
         try:
@@ -220,9 +241,7 @@ class UEAssetScraper:
         :param save_ids: A boolean indicating whether to store the store IDs extracted from the data in the self.tems_ids. Defaults to False. Could be time and memory consuming.
         :param clean_database: A boolean indicating whether to clean the database before saving the data. Defaults to False.
         """
-        start_time = time.time()
         self.download_assets_data()
-        self.logger.info(f'It took {(time.time() - start_time):.3f} seconds to download assets for {len(self.urls)} urls')
 
         start_time = time.time()
         # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
@@ -233,11 +252,14 @@ class UEAssetScraper:
         content = {'date': str(datetime.datetime.now()), 'files_count': self.files_count, 'items_count': len(assets_list), 'items_ids': ''}
 
         if self.store_in_files:
-            for asset in assets_list:
-                asset_id = asset['id']
-                self.save_to_file(filename=f'asset_{asset_id}.json', data=asset)
-                self.files_count += 1
-            self.logger.info(f'It took {(time.time() - start_time):.3f} seconds to save the data in files')
+            if not self.use_raw_format:
+                # store the data in a AFTER parsing it
+                for asset in assets_list:
+                    asset_id = asset['id']
+                    self.save_to_file(filename=f'asset_{asset_id}.json', data=asset)
+                    self.files_count += 1
+                    message = f'It took {(time.time() - start_time):.3f} seconds to save the data in {self.files_count} files'
+                    self.logger.info(message)
             # save results in the last_run file
             content['files_count'] = self.files_count
             content['items_ids'] = self.assets_ids if save_ids else ''
@@ -260,14 +282,21 @@ class UEAssetScraper:
 
 if __name__ == '__main__':
     # the following code is just for class testing purposes
-    row_per_page = 36
+
+    # set the number of rows to retrieve per page
+    # As the asset are saved individually by default, this value is only use for pagination in the files that store the url
+    # it speeds up the process of requesting the asset list
+    rows_per_page = 100
+
     testing = True
 
     if testing:
+        start_row = 15000
+        stop_row = 15000 + rows_per_page
         # shorter and faster list for testing only
-        # scraper = UEAssetScraper(start=33500, count=row_per_page, max_threads=0) # for thread debugging (fewer exceptions are raised if threads are used)
-        scraper = UEAssetScraper(start=33500, count=row_per_page)
-        scraper.save(save_ids=True, clean_database=False)
+        # scraper = UEAssetScraper(start=start, stop=stop, assets_per_page=assets_per_page, max_threads=0) # for thread debugging (fewer exceptions are raised if threads are used)
+        scraper = UEAssetScraper(start=start_row, stop=stop_row, assets_per_page=rows_per_page)
+        scraper.save(save_ids=True, clean_database=True)
     else:
-        scraper = UEAssetScraper(count=row_per_page, store_in_db=True, store_in_files=True, store_ids=True)
+        scraper = UEAssetScraper(assets_per_page=rows_per_page, store_in_db=True, store_in_files=True, store_ids=True)
         scraper.save(save_ids=True, clean_database=True)

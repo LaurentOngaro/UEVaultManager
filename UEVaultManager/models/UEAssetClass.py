@@ -72,6 +72,10 @@ class UEAssetDbHandler:
         # self.logger.setLevel(logging.DEBUG)
         self.db_name = ldb_name
         self.db_version = VersionNum.V0  # updated in check_and_upgrade_database()
+        # the user fields that must be preserved when updating the database
+        # these fields are also present in the asset table and in the UEAsset.init_data() method
+        self.user_fields = ['comment', 'stars', 'must_buy', 'test_result', 'installed_folder', 'alternative', 'origin']
+
         self.check_and_upgrade_database()
 
     def __del__(self):
@@ -137,7 +141,7 @@ class UEAssetDbHandler:
                     # create the first version of the database
                     # Notes:
                     # - this table has the same structure as the json files saved inside the method UEAssetScraper.save_to_file()
-                    # - the order of columns must match the order of the fields in init_data() method
+                    # - the order of columns must match the order of the fields in UEAsset.init_data() method
                     sql = """
                     CREATE TABLE IF NOT EXISTS assets ( 
                         id TEXT PRIMARY KEY, 
@@ -203,6 +207,7 @@ class UEAssetDbHandler:
             self.logger.info(f'Upgrading database from {upgrade_from_version}')
             self.create_tables(upgrade_to_version=VersionNum.V1)
             # necessary steps to upgrade to version 2
+            # add the columns used fo user data to the "standard" marketplace columns
             with DatabaseConnection(self.db_name) as conn:
                 cursor = conn.cursor()
                 cursor.execute("PRAGMA table_info(assets)")
@@ -225,6 +230,7 @@ class UEAssetDbHandler:
                 self.logger.info(f'Database upgraded to {upgrade_from_version}')
         if upgrade_from_version == VersionNum.V2:
             # necessary steps to upgrade to version 3
+            # add the last_run table to get data about the last run of the ap
             self.create_tables(upgrade_to_version=VersionNum.V3)
             self.db_version = VersionNum.V3
             upgrade_from_version = self.db_version
@@ -289,105 +295,49 @@ class UEAssetDbHandler:
             cursor = conn.cursor()
             if not isinstance(assets, list):
                 assets = [assets]
-            # Notes: the order of columns and value must match the order of the fields in init_data() method
-            # first part: only the fields that come from the marketplace
+            # Notes: the order of columns and value must match the order of the fields in UEAsset.init_data() method
             for asset in assets:
-                cursor.execute(
-                    """
-                        INSERT OR REPLACE INTO assets (id,
-                        namespace,
-                        catalog_item_id,
-                        title,
-                        category,
-                        author,
-                        thumbnail_url,
-                        current_price_discounted,
-                        asset_slug,
-                        currency_code,
-                        description,
-                        technical_details,
-                        long_description,
-                        categories,
-                        tags,
-                        comment_rating_id,
-                        rating_id,
-                        status,
-                        price,
-                        discount,
-                        discount_price,
-                        discount_percentage,
-                        is_featured,
-                        is_catalog_item,
-                        is_new,
-                        free,
-                        discounted,
-                        can_purchase,
-                        owned,
-                        review,
-                        review_count
-                    ) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        asset['id'],  #
-                        asset['namespace'],  #
-                        asset['catalog_item_id'],  #
-                        asset['title'],  #
-                        asset["category"],  #
-                        asset['author'],  #
-                        asset['thumbnail_url'],  #
-                        asset['current_price_discounted'],  #
-                        asset['asset_slug'],  #
-                        asset['currency_code'],  #
-                        asset['description'],  #
-                        asset['technical_details'],  #
-                        asset['long_description'],  #
-                        str(asset['categories']),  # mandatory conversion to string because categories is a list
-                        str(asset['tags']),  # mandatory conversion to string because tags is a list
-                        asset['comment_rating_id'],  #
-                        asset['rating_id'],  #
-                        asset['status'],  #
-                        asset['price'],  #
-                        asset['discount'],  #
-                        asset['discount_price'],  #
-                        asset['discount_percentage'],  #
-                        asset['is_featured'],  #
-                        asset['is_catalog_item'],  #
-                        asset['is_new'],  #
-                        asset['free'],  #
-                        asset['discounted'],  #
-                        asset['can_purchase'],  #
-                        asset['owned'],  #
-                        asset['review'],  #
-                        asset['review_count']  #
+                if not update_user_fields:
+                    # set the value of the user fields to Null to avoid overwriting the user data
+                    asset.update({field: None for field in self.user_fields})
+                asset['categories'] = str(asset['categories'])  # convert the list to a string
+                asset['tags'] = str(asset['tags'])  # convert the list to a string
+                # Generate the SQL query
+                # this query will insert or update the asset if it already exists
+                # and will update the user fields
+                query = """
+                    INSERT INTO assets (
+                        id, namespace, catalog_item_id, title, category, author, thumbnail_url,
+                        current_price_discounted, asset_slug, currency_code, description,
+                        technical_details, long_description, categories, tags, comment_rating_id,
+                        rating_id, status, price, discount, discount_price, discount_percentage,
+                        is_featured, is_catalog_item, is_new, free, discounted, can_purchase,
+                        owned, review, review_count, comment, stars, must_buy, test_result,
+                        installed_folder, alternative, origin
                     )
-                )
-            conn.commit()
-            if update_user_fields:
-                # second part: only the fields that come from the user
-                for asset in assets:
-                    cursor.execute(
-                        """
-                        INSERT OR REPLACE INTO assets (id,
-                        comment,
-                        stars,
-                        must_buy,
-                        test_result,
-                        installed_folder,
-                        alternative,
-                        origin
+                    VALUES (
+                        :id, :namespace, :catalog_item_id, :title, :category, :author, :thumbnail_url,
+                        :current_price_discounted, :asset_slug, :currency_code, :description,
+                        :technical_details, :long_description, :categories, :tags, :comment_rating_id,
+                        :rating_id, :status, :price, :discount, :discount_price, :discount_percentage,
+                        :is_featured, :is_catalog_item, :is_new, :free, :discounted, :can_purchase,
+                        :owned, :review, :review_count, :comment, :stars, :must_buy, :test_result,
+                        :installed_folder, :alternative, :origin
                     )
-                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                            asset['id'],  #
-                            asset['comment'],  #
-                            asset['stars'],  #
-                            asset['must_buy'],  #
-                            asset['test_result'],  #
-                            asset['installed_folder'],  #
-                            asset['alternative'],  #
-                            asset['origin']  #
-                        )
-                    )
+                    ON CONFLICT(id) DO UPDATE SET
+                        comment = COALESCE(comment, :comment),
+                        stars = COALESCE(stars, :stars),
+                        must_buy = COALESCE(must_buy, :must_buy),
+                        test_result = COALESCE(test_result, :test_result),
+                        installed_folder = COALESCE(installed_folder, :installed_folder),
+                        alternative = COALESCE(alternative, :alternative),
+                        origin = COALESCE(origin, :origin);
+                """
+                # the COALESCE function is used to assign a new value to the comment column in case the provided value comment is not NULL.
+                # the COALESCE function returns the first non-null value in the list.
+                # Execute the SQL query
+                cursor.execute(query, asset)
+
             conn.commit()
 
     def get_assets(self) -> list:
@@ -452,7 +402,7 @@ class UEAssetDbHandler:
             assets_id = fake.uuid4()
             print(f'creating test asset # {index} with id {assets_id}')
             ue_asset = UEAsset()
-            # the order of values must match the order of the fields in init_data() method
+            # the order of values must match the order of the fields in UEAsset.init_data() method
             data_list = [
                 assets_id,  # id
                 fake.word(),  # namespace
@@ -496,7 +446,7 @@ class UEAssetDbHandler:
                 fake.word()  # origin
             ]
             ue_asset.init_from_list(data=data_list)
-            self.set_assets(ue_asset.data)
+            self.set_assets(assets=ue_asset.data, update_user_fields=True)
             assets_ids.append(assets_id)
         content = {'date': str(datetime.datetime.now()), 'files_count': 0, 'items_count': number_of_rows, 'items_ids': ','.join(assets_ids)}
         self.save_last_run(content)
@@ -587,14 +537,19 @@ class UEAsset:
 
 if __name__ == "__main__":
     # the following code is just for class testing purposes
+    clean_data = True
     db_folder = path_from_relative_to_absolute('../../../scraping/')
     db_name = os.path.join(db_folder, 'assets.db')
     check_and_create_path(db_name)
     asset_handler = UEAssetDbHandler(db_name)
-
-    rows_count = asset_handler.get_row_count()
-    print(f"Rows count: {rows_count}")
-    rows_to_create = 800 - rows_count
+    rows_to_create = 300
+    if clean_data:
+        print(f"Deleting database")
+        asset_handler.delete_all_assets()
+    else:
+        rows_count = asset_handler.get_row_count()
+        print(f"Rows count: {rows_count}")
+        rows_to_create -= rows_count
     print(f"Creating {rows_to_create} rows")
     asset_handler.generate_test_data(rows_to_create)
 

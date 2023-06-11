@@ -1193,7 +1193,7 @@ class UEVaultManagerCLI:
         start = 0
         # start = 33400  # debug only, shorter list
         scraper = UEAssetScraper(
-            start=start, count=rows_per_page, max_threads=get_max_threads(), store_in_db=True, store_in_files=True, store_ids=True
+            start=start, assets_per_page=rows_per_page, max_threads=get_max_threads(), store_in_db=True, store_in_files=True, store_ids=True
         )
         scraper.gather_urls(empty_list_before=True)
         scraper.save()
