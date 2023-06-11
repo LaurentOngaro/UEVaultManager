@@ -1,0 +1,216 @@
+{
+  "id": "26fc68a466b243f2b12602945d46130f",
+  "catalogItemId": "642213544c254a9abc161ae128a3c039",
+  "namespace": "ue",
+  "title": "10 Paint Brushes - Volume 1",
+  "recurrence": "ONCE",
+  "currencyCode": "EUR",
+  "priceValue": 1113,
+  "discountPriceValue": 1113,
+  "voucherDiscount": 0,
+  "discountPercentage": 100,
+  "keyImages": [
+    {
+      "type": "Screenshot",
+      "url": "https://cdn1.epicgames.com/ue/product/Screenshot/shot1-1920x1080-05bc9ce4617056a5277acc23fe017760.jpg",
+      "md5": "05bc9ce4617056a5277acc23fe017760",
+      "width": 1920,
+      "height": 1080,
+      "size": 1356519,
+      "uploadedDate": "2021-11-01T13:40:50.098Z"
+    },
+    {
+      "type": "Screenshot",
+      "url": "https://cdn1.epicgames.com/ue/product/Screenshot/shot2-1920x1080-86a0898abc88d8e044e0e9e1129231ec.jpg",
+      "md5": "86a0898abc88d8e044e0e9e1129231ec",
+      "width": 1920,
+      "height": 1080,
+      "size": 2090631,
+      "uploadedDate": "2021-11-01T13:40:51.088Z"
+    },
+    {
+      "type": "Screenshot",
+      "url": "https://cdn1.epicgames.com/ue/product/Screenshot/shot3-1920x1080-5a76e32ba0198d3ba65811718d1b894c.jpg",
+      "md5": "5a76e32ba0198d3ba65811718d1b894c",
+      "width": 1920,
+      "height": 1080,
+      "size": 1628427,
+      "uploadedDate": "2021-11-01T13:40:52.136Z"
+    },
+    {
+      "type": "Screenshot",
+      "url": "https://cdn1.epicgames.com/ue/product/Screenshot/shot4-1920x1080-d86a43cdd0c3676d4ca119e91691918e.jpg",
+      "md5": "d86a43cdd0c3676d4ca119e91691918e",
+      "width": 1920,
+      "height": 1080,
+      "size": 1643335,
+      "uploadedDate": "2021-11-01T13:40:53.149Z"
+    },
+    {
+      "type": "Thumbnail",
+      "url": "https://cdn1.epicgames.com/ue/product/Thumbnail/PaintBrushesVolume1_thumb-284x284-2bbc47dcb1dd19a4621cda3085a345b6.png",
+      "md5": "2bbc47dcb1dd19a4621cda3085a345b6",
+      "width": 284,
+      "height": 284,
+      "size": 197401,
+      "uploadedDate": "2021-11-01T13:40:53.884Z"
+    },
+    {
+      "type": "Featured",
+      "url": "https://cdn1.epicgames.com/ue/product/Featured/PaintBrushesVolume1_featured-894x488-8486f8e61f7c2da50c0750b25ed7fce5.png",
+      "md5": "8486f8e61f7c2da50c0750b25ed7fce5",
+      "width": 894,
+      "height": 488,
+      "size": 917047,
+      "uploadedDate": "2021-11-01T13:40:53.998Z"
+    },
+    {
+      "type": "Snapshot",
+      "url": "https://cdn1.epicgames.com/ue/product/Snapshot/shot1-1920x1080-05bc9ce4617056a5277acc23fe017760_Snapshot.jpg",
+      "md5": "60e53999516f4ae90304bd81f5e6703e",
+      "width": 150,
+      "height": 74,
+      "size": 5874,
+      "uploadedDate": "2021-11-01T13:40:50.722Z"
+    },
+    {
+      "type": "Snapshot",
+      "url": "https://cdn1.epicgames.com/ue/product/Snapshot/shot2-1920x1080-86a0898abc88d8e044e0e9e1129231ec_Snapshot.jpg",
+      "md5": "926b4c9c26cc65af80013a280b7c4a87",
+      "width": 150,
+      "height": 74,
+      "size": 7002,
+      "uploadedDate": "2021-11-01T13:40:51.782Z"
+    },
+    {
+      "type": "Snapshot",
+      "url": "https://cdn1.epicgames.com/ue/product/Snapshot/shot3-1920x1080-5a76e32ba0198d3ba65811718d1b894c_Snapshot.jpg",
+      "md5": "fa6a2baecf416a2442b096471d3de158",
+      "width": 150,
+      "height": 74,
+      "size": 6170,
+      "uploadedDate": "2021-11-01T13:40:52.787Z"
+    },
+    {
+      "type": "Snapshot",
+      "url": "https://cdn1.epicgames.com/ue/product/Snapshot/shot4-1920x1080-d86a43cdd0c3676d4ca119e91691918e_Snapshot.jpg",
+      "md5": "9a253376571107d183eea5c3676d78ba",
+      "width": 150,
+      "height": 74,
+      "size": 7121,
+      "uploadedDate": "2021-11-01T13:40:53.797Z"
+    }
+  ],
+  "effectiveDate": "2021-11-03T14:54:00.827Z",
+  "seller": {
+    "id": "o-hlr29b578gnqhk7qxx4yycxz7sdr79",
+    "noAi": false,
+    "owner": "5afda0d05ab34dd485da7f1d537fab8e",
+    "status": "ACTIVE",
+    "financeCheckExempted": false,
+    "name": "3DevSoftware",
+    "supportEmail": "support@3devsoftware.com",
+    "website": "http://www.3devsoftware.com",
+    "twitter": "https://www.twitter.com/3devsoftware"
+  },
+  "description": "Paint natural looking landscapes with this pack of 10 organic looking paint brushes/alpha textures",
+  "technicalDetails": "<p>Features:</p><ul><li>10 Organic Paint Brushes that can be used to paint any landscape or mesh using vertex painting</li><li>1 Landscape material to demonstrate landscape layers with an additional rock layer on steep surfaces</li></ul><p><br /></p><p>Texture Resolutions:</p><ul><li>10 Paint Brushes (4096 x 4096)</li><li>Texture Sets (2 at 4096x4096 and 1 at 2048x2048)</li><li>Noise texture for landscape (4096 x 4096, This includes 3 noise textures across the RGB channels)</li></ul><p><br /></p><p>Number of Unique Materials and Material Instances: 1</p><p>Number of Textures: 10 brushes, 3 texture sets, 1 noise texture (3 across all RGB channels)</p><p>Supported Development Platforms: Windows (64 Bit)</p><p>Documentation: See my <a href=hannel</a></p><p>Important/Additional Notes: This pack primarily contains the 10 organic paint brushes. The included landscape material and texture sets are for demonstration of the painting ability of these brushes. You are free to use these brushes to paint any landscape/mesh with any material and texture set (Quixel for example).</p>",
+  "longDescription": "<p>By using the textures in this pack you can paint naturally using Unreal Engines landscape painting system. Each texture has been created to allow for easy painting with a natural organic look which makes painting a landscape a lot easier. These textures can also be used with vertex painting on meshes.</p><p><br /></p><p>The pack also contains a landscape base material with 2 layers (Grass and Gravel) with an additional Rock overlay layer that only shows on steep parts of the landscape. The material shows how to implement blending between near and far UVs. There are 3 texture sets included (Grass, Gravel and Rock). The landscape material is setup to use any texture set you like using the BaseColor &#43; Normal &#43; RDA (Roughness, Displacement, AO) channel structure.</p><p><br /></p><p>The textures in this pack can be used with any material. They are to be used with the landscapes painting system as alpha textures/brushes.</p>",
+  "isFeatured": false,
+  "isCatalogItem": false,
+  "categories": [
+    {
+      "path": "assets/textures",
+      "name": "Textures"
+    }
+  ],
+  "bundle": false,
+  "releaseInfo": [
+    {
+      "id": "f00297b6c1664cadb445e5ade00cb965",
+      "appId": "PaintBru642213544c25V1",
+      "compatibleApps": [
+        "UE_4.16",
+        "UE_4.17",
+        "UE_4.18",
+        "UE_4.19",
+        "UE_4.20",
+        "UE_4.21",
+        "UE_4.22",
+        "UE_4.23",
+        "UE_4.24",
+        "UE_4.25",
+        "UE_4.26",
+        "UE_4.27",
+        "UE_5.0",
+        "UE_5.1",
+        "UE_5.2"
+      ],
+      "platform": [
+        "Windows"
+      ],
+      "dateAdded": "2021-11-01T00:00:00.000Z",
+      "versionTitle": "PaintBrushesVol1-UE416"
+    }
+  ],
+  "platforms": [
+    {
+      "key": "windows",
+      "value": "Windows 64-bit"
+    }
+  ],
+  "compatibleApps": [
+    "4.16",
+    "4.17",
+    "4.18",
+    "4.19",
+    "4.20",
+    "4.21",
+    "4.22",
+    "4.23",
+    "4.24",
+    "4.25",
+    "4.26",
+    "4.27",
+    "5.0",
+    "5.1",
+    "5.2"
+  ],
+  "urlSlug": "paint-brushes-volume-1",
+  "purchaseLimit": 1,
+  "tax": 0,
+  "tags": [
+    5076,
+    420,
+    36,
+    3973,
+    53,
+    38,
+    3974,
+    4763,
+    141,
+    63
+  ],
+  "commentRatingId": "642213544c254a9abc161ae128a3c039",
+  "ratingId": "26fc68a466b243f2b12602945d46130f",
+  "klass": "",
+  "isNew": false,
+  "free": false,
+  "discounted": false,
+  "featured": "https://cdn1.epicgames.com/ue/product/Featured/PaintBrushesVolume1_featured-894x488-8486f8e61f7c2da50c0750b25ed7fce5.png",
+  "thumbnail": "https://cdn1.epicgames.com/ue/product/Thumbnail/PaintBrushesVolume1_thumb-284x284-2bbc47dcb1dd19a4621cda3085a345b6.png",
+  "learnThumbnail": "https://cdn1.epicgames.com/ue/product/Featured/PaintBrushesVolume1_featured-894x488-8486f8e61f7c2da50c0750b25ed7fce5.png",
+  "headerImage": "https://cdn1.epicgames.com/ue/product/Screenshot/shot1-1920x1080-05bc9ce4617056a5277acc23fe017760.jpg",
+  "status": "ACTIVE",
+  "price": 11.13,
+  "discount": "€0.00",
+  "discountPrice": "€11.13",
+  "ownedCount": 0,
+  "canPurchase": true,
+  "owned": false,
+  "discount_price": 1113,
+  "discount_percentage": 100,
+  "current_price_discounted": true,
+  "average_rating": 0,
+  "rating_total": 0
+}
