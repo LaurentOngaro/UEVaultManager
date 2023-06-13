@@ -23,7 +23,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
 from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_codename
-from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult
+from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.models.csv_data import CSV_headings
@@ -256,19 +256,8 @@ class UEVaultManagerCLI:
         except (TypeError, KeyError) as error:
             self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
 
-        if self.core.engine_version_for_obsolete_assets == '' or supported_versions == '' or supported_versions == no_text_data:
-            obsolete = bool_false_data
-        else:
-            supported_versions_list = supported_versions.lower().replace('UE_', '')
-            supported_versions_list = create_list_from_string(supported_versions_list)
-            obsolete = bool_true_data
-            for _, version in enumerate(supported_versions_list):
-                if version == '':
-                    continue
-                else:
-                    if float(self.core.engine_version_for_obsolete_assets) <= float(version):
-                        obsolete = bool_false_data
-                        break
+        obsolete = is_asset_obsolete(supported_versions, self.core.engine_version_for_obsolete_assets)
+
         try:
             values = (
                 # dans les infos
@@ -1175,8 +1164,7 @@ class UEVaultManagerCLI:
         gui_g.UEVM_gui_ref.mainloop()
         # gui_g.UEVM_gui_ref.quit()
 
-    @staticmethod
-    def scrap_assets(args) -> None:
+    def scrap_assets(self, args) -> None:
         """
         Scrap assets from the Epic Games Store or from previously saved files
         :param args: options passed to the command
@@ -1192,7 +1180,8 @@ class UEVaultManagerCLI:
             store_in_db=True,
             store_in_files=True,
             store_ids=True,
-            load_from_files=load_from_files
+            load_from_files=load_from_files,
+            engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets
         )
         scraper.gather_urls(empty_list_before=True)
         scraper.save()

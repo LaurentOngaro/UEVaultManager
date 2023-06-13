@@ -16,6 +16,7 @@ from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.utils.cli import create_list_from_string
 
 
 class GrabResult(Enum):
@@ -27,6 +28,29 @@ class GrabResult(Enum):
     PAGE_NOT_FOUND = 2
     CONTENT_NOT_FOUND = 3
     TIMEOUT = 4
+
+
+def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets='4.26') -> bool:
+    """
+    :param supported_versions: The supported versions the check the obsolete status against.
+    :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete
+    :return: True if the asset is obsolete, False otherwise
+    """
+
+    if not engine_version_for_obsolete_assets or not supported_versions:
+        obsolete = False
+    else:
+        supported_versions_list = supported_versions.lower().replace('ue_', '')
+        supported_versions_list = create_list_from_string(supported_versions_list)
+        obsolete = True
+        for _, version in enumerate(supported_versions_list):
+            if version == '':
+                continue
+            else:
+                if float(engine_version_for_obsolete_assets) <= float(version):
+                    obsolete = False
+                    break
+    return obsolete
 
 
 def create_empty_assets_extras(asset_name: str) -> dict:
@@ -511,10 +535,9 @@ class EPCAPI:
         url = 'https://www.unrealengine.com' + links[0]
         return [url, asset_slug, GrabResult.NO_ERROR.name]
 
-    #  get the extras data of an asset (price, review...)
-    def get_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
+    def grab_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
         """
-        Get the extras data of an asset (price, review...)
+        Grab the extras data of an asset (price, review...) using BeautifulSoup from the marketplace
         :param asset_name: name of the asset
         :param asset_title: title of the asset
         :param timeout: connection timeout

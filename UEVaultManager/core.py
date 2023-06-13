@@ -36,6 +36,7 @@ from UEVaultManager.utils.cli import check_and_create_path, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
+# make some properties of the AppCore class accessible from outside to limit the number of imports needed
 default_datetime_format: str = '%Y-%m-%d %H:%M:%S'
 
 
@@ -469,7 +470,7 @@ class AppCore:
 
             if _process_extras:
                 # we use title because it's less ambiguous than a name when searching an asset
-                eg_extras = self.egs.get_assets_extras(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
+                eg_extras = self.egs.grab_assets_extras(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
 
                 # check for data consistency
                 if 'stomt' in app_name.lower() or 'terrainmagic' in app_name.lower():
