@@ -4,18 +4,19 @@ Implementation for:
 - UEAssetScraper: a class that handles scraping data from the Unreal Engine Marketplace.
 """
 import concurrent.futures
-import datetime
 import json
 import logging
 import os
 import random
 import time
+from datetime import datetime
 from itertools import chain
 
-from UEVaultManager.api.egs import EPCAPI
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.api.egs import EPCAPI, GrabResult
+from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.UEAssetClass import UEAsset, UEAssetDbHandler
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder
-import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
 class UEAssetScraper:
@@ -29,10 +30,12 @@ class UEAssetScraper:
     :param sort_order: A string representing the sort order. Defaults to 'ASC'.
     :param timeout: A float representing the timeout for the requests. Defaults to 10.0.
     :param max_threads: An int representing the maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
+    :param load_from_files: A boolean indicating whether to load the data from files instead of scraping it. Defaults to False. If set to True, store_in_files will be set to False and store_in_db will be set to True.
     :param store_in_files: A boolean indicating whether to store the data in csv files. Defaults to True. Could create lots of files (1 file per asset)
     :param store_in_db: A boolean indicating whether to store the data in a sqlite database. Defaults to True.
     :param store_ids: A boolean indicating whether to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
     :param use_raw_format: A boolean indicating whether to store the data in a raw format (as returned by the API) or after data have been parsed. Defaults to True.
+    :param clean_database: A boolean indicating whether to clean the database before saving the data. Defaults to False.
     """
 
     def __init__(
@@ -40,24 +43,29 @@ class UEAssetScraper:
         start=0,
         stop=0,
         assets_per_page=100,
-        sort_by='effectiveDate',
-        sort_order='DESC',
+        sort_by='effectiveDate',  # other values: 'title','currentPrice','discountPercentage'
+        sort_order='DESC',  # other values: 'ASC'
         timeout=10.0,
         max_threads=8,
         store_in_files=True,
         store_in_db=True,
         store_ids=False,
-        use_raw_format=True
+        use_raw_format=True,
+        load_from_files=False,
+        clean_database=False
     ) -> None:
         self.start = start
         self.stop = stop
         self.assets_per_page = assets_per_page
         self.sort_by = sort_by
         self.sort_order = sort_order
+        self.load_from_files = load_from_files
         self.store_in_files = store_in_files
         self.store_in_db = store_in_db
         self.store_ids = store_ids
         self.use_raw_format = use_raw_format
+        self.clean_database = clean_database
+
         self.last_run_filename = 'last_run.json'
         self.urls_list_filename = 'urls_list.txt'
         self.data_folder = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
@@ -66,16 +74,26 @@ class UEAssetScraper:
         self.threads_count = 0
 
         self.files_count = 0
-        self.assets_data = []  # the scraper assets_data. Increased on each call to get_data_from_url(). Could be huge !!
-        self.assets_ids = []  # store IDs of all items
+        self.scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
+        self.scraped_ids = []  # store IDs of all items
+        self.existing_data = {
+        }  # dictionary {ids, rows} : the data in database before scraping. Contains only minimal information (user fields, id, price)
+
         self.urls = []  # list of all urls to scrap
+
         self.egs = EPCAPI(timeout=timeout)
         self.logger = logging.getLogger(__name__)
+        self.asset_db_handler = UEAssetDbHandler(self.db_name)
+
         # self.logger.setLevel(logging.DEBUG)
+        if self.load_from_files:
+            self.store_in_files = False
+            self.store_in_db = True
         message = f'UEAssetScraper initialized with max_threads= {max_threads}, start= {start}, stop= {stop}, assets_per_page= {assets_per_page}, sort_by= {sort_by}, sort_order= {sort_order}'
-        message += f'\nData will be saved in files in {self.data_folder}' if store_in_files else ''
-        message += f'\nData will be saved in database in {self.db_name}' if store_in_db else ''
-        message += f'\nAsset Ids will be saved in {self.last_run_filename} or in database' if store_ids else ''
+        message += f'\nData will be load from files in {self.data_folder}' if self.load_from_files else ''
+        message += f'\nData will be saved in files in {self.data_folder}' if self.store_in_files else ''
+        message += f'\nData will be saved in database in {self.db_name}' if self.store_in_db else ''
+        message += f'\nAsset Ids will be saved in {self.last_run_filename} or in database' if self.store_ids else ''
         self.logger.info(message)
 
     def _parse_data(self, json_data: dict = None) -> []:
@@ -85,10 +103,15 @@ class UEAssetScraper:
         :return: A list containing the parsed data.
         """
         content = []
+        no_text_data = ''
+
         if json_data is None:
             return content
         for asset_data in json_data['data']['elements']:
             # make some calculation to the "raw" data
+            release_info = asset_data.get('releaseInfo', {})
+            id = asset_data['id']
+            existing_data = self.existing_data.get(id, None)
             price = 0
             discount_price = 0
             discount_percentage = 0
@@ -104,10 +127,6 @@ class UEAssetScraper:
             if discount_price == 0:
                 discount_price = price
             current_price_discounted = price != discount_price
-            # try:
-            #     category_slug = asset_data["categories"][0]["path"].split('asset_datas/')[1]
-            # except (KeyError,IndexError):
-            #     self.logger.debug(f'No category_slug for {asset_data["title"]}')
             try:
                 average_rating = asset_data['rating']['averageRating']
                 rating_total = asset_data['rating']['total']
@@ -121,15 +140,113 @@ class UEAssetScraper:
             asset_data['rating_total'] = rating_total
             asset_data['category'] = asset_data['categories'][0]['name']
             asset_data['author'] = asset_data['seller']['name']
+            asset_data['asset_url'] = self.egs.get_asset_url(asset_data['urlSlug'])
+            try:
+                asset_data['asset_id'] = release_info[0]['appId']  # latest release
+            except KeyError:
+                asset_data['asset_id'] = id
+            """
+            CSV fields to add for comptility with UEVaultManager scrapper
+            'Grab result': to set regarding scraping result
+            OK 'Page title': extras_data['page_title']
+            OK 'App name': same as asset_id
+            OK 'Developer': asset_data['author'] 
+            OK 'Supported versions': from Compatible versions
+            OK 'Obsolete': calculated from "Supported versions" in cli.create_asset_from_data()
+            OK 'Old price': calculated from "Price" in cli.create_asset_from_data()
+            OK 'Url': extras_data['asset_url']
+            OK 'Date added': calculated in cli.create_asset_from_data()  
+            OK 'Update date': metadata['lastModifiedDate']  
+            EMPTIED 'Compatible versions' 
+            EMPTIED 'Creation date': metadata['creationDate']  
+            EMPTIED 'UE version': item.app_version('Windows')  
+            EMPTIED 'Uid': ?
+            
+            CSV output exemple
+            {
+            'Asset_id': 'ZombieAnc4dbb87c3f71V1',
+            'App name': 'ZombieAnc4dbb87c3f71V1',
+            'App title': 'Zombie Movement and Modular Interaction Animations',
+            'Category': 'assets',
+            'Review': 4.72,
+            'Developer': 'ByteSumPi LTD',
+            'Description': 'Zombie Animations and Modular Interactions',
+            'Status': 'ACTIVE',
+            'Discount price': 19.99,
+            'Discount percentage': 0,
+            'Discounted': False,
+            'Owned': False,
+            'Obsolete': False,
+            'Supported versions': '',
+            'Grab result': 'NO_ERROR',
+            'Price': 19.99,
+            'Old price': 0.0,
+            'Comment': '',
+            'Stars': 0.0, 
+            'Must buy': False, 
+            'Test result': '',
+            'Installed folder': '',
+            'Alternative': '',
+            'Origin': 'Marketplace',
+            'Page title': '',
+            'Image': 'https://cdn1.epicgames.com/ue/product/Screenshot/Gallery31080x1920.PNG-1920x1080-aa1b1cb6f6e48ee03609d838c5b97cc1.jpg',
+            'Url': 'https://www.unrealengine.com/marketplace/en-US/product/zombie-animations-and-modular-interactions',
+            'Compatible versions': 'UE_4.26,UE_4.27,UE_5.0,UE_5.1,UE_5.2',
+            'Date added': '2023-06-12 18:03:10',
+            'Creation date': '2021-04-29T16:26:33.246Z',
+            'Update date': '2023-05-12T23:18:26.721Z',
+            'UE version': '4.23.0-17260714+++depot+UE4-UserContent-Windows',
+            'Uid': 'c4dbb87c3f7146328957da3861ae63dd'
+            }            
+            """
 
-            asset_data['categories'] = str(asset_data['categories'])  # convert the list to a string
-            asset_data['tags'] = str(asset_data['tags'])  # convert the list to a string
-            # asset_data['category_slug'] = category_slug
+            asset_data['page_title'] = asset_data['title']
+            separator = ','
+            try:
+                tmp_list = [separator.join(item.get('compatibleApps')) for item in release_info]
+                supported_versions = separator.join(tmp_list)
+            except TypeError as error:
+                self.logger.warning(f'Error getting compatibleApps for asset #{id} : {error!r}')
+                supported_versions = no_text_data
+            asset_data['supported_versions'] = supported_versions
+            asset_data['origin'] = 'Marketplace'  # by default when scrapped from marketplace
+            asset_data['obsolete'] = 0  # TODO: check if asset is obsolete see in cli.create_asset_from_data()
+            asset_data['old_price'] = existing_data.get('old_price', 0) if existing_data else 0
+            asset_data['creation_date'] = release_info[0].get('dateAdded', no_text_data) if release_info else no_text_data
+            asset_data['update_date'] = datetime.now().strftime(default_datetime_format)
+            asset_data['grab_result'] = GrabResult.NO_ERROR.name
+
+            # not pertinent, kept for compatibility with CSV format. Could be removed later after checking usage
+            # asset_data['app_name'] = asset_data['asset_id']
+            # asset_data['developer'] = asset_data['author']
+            # asset_data['compatible_versions'] = no_text_data
+            # asset_data['creation_date'] = no_text_data
+            # asset_data['ue_version'] = no_text_data
+            # asset_data['uid'] = no_text_data
+
             ue_asset = UEAsset()
             ue_asset.init_from_dict(asset_data)
             content.append(ue_asset.data)
-            self.assets_ids.append(asset_data['id'])
+            self.scraped_ids.append(asset_data['id'])
+        # end for asset_data in json_data['data']['elements']:
         return content
+
+    def _save_in_db(self, last_run_content: dict) -> None:
+        """
+        Stores the asset data in the database.
+        """
+        if not self.store_in_db:
+            return
+        # convert the list of ids to a string for the database only
+        last_run_content['scrapped_ids'] = ','.join(self.scraped_ids) if self.store_ids else ''
+
+        if self.clean_database:
+            # next line will delete all assets in the database
+            self.asset_db_handler.delete_all_assets()
+            self.asset_db_handler.set_assets(self.scraped_data, update_user_fields=True)
+        else:
+            self.asset_db_handler.set_assets(self.scraped_data, update_user_fields=False)
+        self.asset_db_handler.save_last_run(last_run_content)
 
     def gather_urls(self, empty_list_before=False, save_result=True) -> None:
         """
@@ -138,10 +255,8 @@ class UEAssetScraper:
         if empty_list_before:
             self.urls = []
         start_time = time.time()
-
-        if self.stop == 0:
+        if self.stop <= 0:
             self.stop = self.egs.get_scrapped_asset_count()
-
         assets_count = self.stop - self.start
         pages_count = int(assets_count / self.assets_per_page)
         if (assets_count % self.assets_per_page) > 0:
@@ -156,7 +271,7 @@ class UEAssetScraper:
 
     def get_data_from_url(self, url='') -> None:
         """
-        Grabs the data from the given url and stores it in the assets_data property.
+        Grabs the data from the given url and stores it in the scraped_data property.
         :param url: The url to grab the data from. If not given, uses the url property of the class.
         """
         if not url:
@@ -164,39 +279,52 @@ class UEAssetScraper:
         self.logger.info(f'Parsing url {url}')
         json_data = self.egs.get_scrapped_assets(url)
         if json_data:
-            if self.store_in_files:
-                if self.use_raw_format:
+            if self.store_in_files and self.use_raw_format:
+                for asset_data in json_data['data']['elements']:
                     # store the data in a BEFORE parsing it
-                    asset_id = json_data['id']
-                    self.save_to_file(filename=f'asset_{asset_id}.json', data=json_data)
+                    try:
+                        app_id = asset_data['releaseInfo'][0]['appId']
+                        filename = f'{app_id}.json'
+                    except KeyError:
+                        data_id = asset_data['id']
+                        filename = f'_no_appId_asset_{data_id}.json'
+                    self.save_to_file(filename=filename, data=asset_data)
                     self.files_count += 1
             content = self._parse_data(json_data)
-            self.assets_data.append(content)
+            self.scraped_data.append(content)
         if self.threads_count > 1:
             # add a delay when multiple threads are used
             time.sleep(random.uniform(1.0, 3.0))
 
-    def download_assets_data(self) -> None:
+    def get_scraped_data(self) -> None:
         """
-        Downloads the items from the URLs gathered by gather_urls() and stores them in the assets_data property.
+        Loads from files or downloads the items from the URLs and stores them in the scraped_data property.
         The execution is done in parallel using threads.
         Note: if self.urls is None or empty, gather_urls() will be called first.
         """
-        start_time = time.time()
-        if self.urls is None or len(self.urls) == 0:
-            self.gather_urls()
-        if self.max_threads > 0:
-            self.threads_count = min(self.max_threads, len(self.urls))
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count) as executor:
-                executor.map(self.get_data_from_url, self.urls)
+        # store exiting data in the existing_data property
+        self.existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.user_fields)
+
+        if self.load_from_files:
+            self.load_from_json_files()
         else:
-            for url in self.urls:
-                self.get_data_from_url(url)
-        if self.store_in_files and self.use_raw_format:
-            message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self.urls)} urls and store the data in {self.files_count} files'
-        else:
-            message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self.urls)} urls'
-        self.logger.info(message)
+            start_time = time.time()
+            if self.urls is None or len(self.urls) == 0:
+                self.gather_urls()
+            if self.max_threads > 0:
+                self.threads_count = min(self.max_threads, len(self.urls))
+                with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count) as executor:
+                    executor.map(self.get_data_from_url, self.urls)
+            else:
+                for url in self.urls:
+                    self.get_data_from_url(url)
+            if self.store_in_files and self.use_raw_format:
+                message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self.urls)} urls and store the data in {self.files_count} files'
+            else:
+                message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self.urls)} urls'
+            self.logger.info(message)
+            # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
+            self.scraped_data = list(chain.from_iterable(self.scraped_data))
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True) -> bool:
         """
@@ -208,7 +336,7 @@ class UEAssetScraper:
         :return: A boolean indicating whether the file was saved successfully.
         """
         if data is None:
-            data = self.assets_data
+            data = self.scraped_data
 
         if data is None or len(data) == 0:
             self.logger.warning('No data to save')
@@ -235,49 +363,77 @@ class UEAssetScraper:
             self.logger.warning(f'The following error occured when saving data into {filename}:{error!r}')
             return False
 
-    def save(self, save_ids=False, clean_database=False) -> None:
+    def load_from_json_files(self) -> None:
+        """
+        Load all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
+        """
+        start_time = time.time()
+        self.files_count = 0
+        self.scraped_ids = []
+        self.scraped_data = []
+
+        files = os.listdir(self.data_folder)
+        files_count = len(files)
+        # note: this data have the same structure as the table last_run inside the method UEAsset.create_tables()
+        self.logger.info(f'Loading {files_count} files from {self.data_folder}')
+        for filename in files:
+            if filename.endswith('.json'):
+                # self.logger.debug(f'Loading {filename}')
+                with open(os.path.join(self.data_folder, filename), 'r') as fh:
+                    json_data = json.load(fh)
+                    asset_data = self._parse_data(json_data)
+                    self.scraped_data.append(asset_data)
+                    if self.store_ids:
+                        self.scraped_ids.append(asset_data['id'])
+                self.files_count += 1
+        message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self.files_count} files'
+        self.logger.info(message)
+
+        # save results in the last_run file
+        content = {
+            'date': str(datetime.now()),
+            'mode': 'load',
+            'files_count': self.files_count,
+            'items_count': len(self.scraped_data),
+            'scrapped_ids': self.scraped_ids if self.store_ids else ''
+        }
+
+        filename = os.path.join(self.data_folder, self.last_run_filename)
+        with open(filename, 'w') as fh:
+            json.dump(content, fh)
+
+        self._save_in_db(last_run_content=content)
+
+    def save(self) -> None:
         """
         Saves all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
-        :param save_ids: A boolean indicating whether to store the store IDs extracted from the data in the self.tems_ids. Defaults to False. Could be time and memory consuming.
-        :param clean_database: A boolean indicating whether to clean the database before saving the data. Defaults to False.
         """
-        self.download_assets_data()
+        self.get_scraped_data()
 
         start_time = time.time()
-        # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
-        assets_list = list(chain.from_iterable(self.assets_data))
-        self.files_count = 0
 
         # note: this data have the same structure as the table last_run inside the method UEAsset.create_tables()
-        content = {'date': str(datetime.datetime.now()), 'files_count': self.files_count, 'items_count': len(assets_list), 'items_ids': ''}
+        content = {'date': str(datetime.now()), 'mode': 'save', 'files_count': 0, 'items_count': len(self.scraped_data), 'scrapped_ids': ''}
 
-        if self.store_in_files:
-            if not self.use_raw_format:
-                # store the data in a AFTER parsing it
-                for asset in assets_list:
-                    asset_id = asset['id']
-                    self.save_to_file(filename=f'asset_{asset_id}.json', data=asset)
-                    self.files_count += 1
-                    message = f'It took {(time.time() - start_time):.3f} seconds to save the data in {self.files_count} files'
-                    self.logger.info(message)
-            # save results in the last_run file
-            content['files_count'] = self.files_count
-            content['items_ids'] = self.assets_ids if save_ids else ''
+        if self.store_in_files and not self.use_raw_format:
+            # store the data in a AFTER parsing it
+            self.files_count = 0
+            for asset in self.scraped_data:
+                app_id = asset['releaseInfo']['appId']
+                self.save_to_file(filename=f'{app_id}.json', data=asset)
+                self.files_count += 1
+            message = f'It took {(time.time() - start_time):.3f} seconds to save the data in {self.files_count} files'
+            self.logger.info(message)
 
-            filename = os.path.join(self.data_folder, self.last_run_filename)
-            with open(filename, 'w') as fh:
-                json.dump(content, fh)
+        # save results in the last_run file
+        content['files_count'] = self.files_count
+        content['scrapped_ids'] = self.scraped_ids if self.store_ids else ''
 
-        if self.store_in_db:
-            content['items_ids'] = ','.join(self.assets_ids) if save_ids else ''
-            asset_db_handler = UEAssetDbHandler(self.db_name)
-            if clean_database:
-                # next line will delete all assets in the database
-                asset_db_handler.delete_all_assets()
-                asset_db_handler.set_assets(assets_list, update_user_fields=True)
-            else:
-                asset_db_handler.set_assets(assets_list, update_user_fields=False)
-            asset_db_handler.save_last_run(content)
+        filename = os.path.join(self.data_folder, self.last_run_filename)
+        with open(filename, 'w') as fh:
+            json.dump(content, fh)
+
+        self._save_in_db(last_run_content=content)
 
 
 if __name__ == '__main__':
@@ -289,14 +445,28 @@ if __name__ == '__main__':
     rows_per_page = 100
 
     testing = True
+    # disable threading is used for debugging (fewer exceptions are raised if threads are used)
 
     if testing:
+        # shorter and faster list for testing only
+        threads = 0  # set to 0 to disable threading
         start_row = 15000
         stop_row = 15000 + rows_per_page
-        # shorter and faster list for testing only
-        # scraper = UEAssetScraper(start=start, stop=stop, assets_per_page=assets_per_page, max_threads=0) # for thread debugging (fewer exceptions are raised if threads are used)
-        scraper = UEAssetScraper(start=start_row, stop=stop_row, assets_per_page=rows_per_page)
-        scraper.save(save_ids=True, clean_database=True)
+        clean_db = True
     else:
-        scraper = UEAssetScraper(assets_per_page=rows_per_page, store_in_db=True, store_in_files=True, store_ids=True)
-        scraper.save(save_ids=True, clean_database=True)
+        threads = 160  # set to 0 to disable threading
+        start_row = 0
+        stop_row = 0  # 0 means no limit
+        clean_db = False
+
+    scraper = UEAssetScraper(
+        start=start_row,
+        stop=stop_row,
+        assets_per_page=rows_per_page,
+        max_threads=threads,
+        store_in_db=True,
+        store_in_files=True,
+        store_ids=True,
+        clean_database=clean_db
+    )
+    scraper.save()

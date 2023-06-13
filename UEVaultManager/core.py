@@ -36,10 +36,7 @@ from UEVaultManager.utils.cli import check_and_create_path, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
-# The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
-
-# ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
-#  can handle to give the user more details. (Not required yet since there's no GUI so log output is fine)
+default_datetime_format: str = '%Y-%m-%d %H:%M:%S'
 
 
 class AppCore:
@@ -87,7 +84,6 @@ class AppCore:
         self.webview_killswitch = False
         self.logged_in = False
 
-        self.default_datetime_format = '%y-%m-%d %H:%M:%S'
         # UE assets metadata cache properties
         self.ue_assets_count = 0
         self.cache_is_invalidate = False
@@ -141,7 +137,7 @@ class AppCore:
                 return None
 
         formatter = logging.Formatter('%(message)s')
-        message = f"-----\n{datetime.now().strftime(self.default_datetime_format)} Log Started\n-----\n"
+        message = f"-----\n{datetime.now().strftime(default_datetime_format)} Log Started\n-----\n"
 
         if self.ignored_assets_filename_log:
             self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
@@ -791,6 +787,7 @@ class AppCore:
         Save the metadata for the given assets
         :param assets:  List of assets to save
         """
+        self.log.info('Saving metadata in files... could take some time')
         for app in assets:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -802,6 +799,7 @@ class AppCore:
         :param extras: Dict of extras data to save
         :param update_global_dict: if True, update the global dict
         """
+        self.log.info('Saving extras data in files... could take some time')
         for app_name, eg_extras in extras.items():
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return

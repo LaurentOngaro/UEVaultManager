@@ -25,8 +25,8 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_codename
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult
 from UEVaultManager.api.uevm import UpdateSeverity
-from UEVaultManager.core import AppCore
-from UEVaultManager.models.csv import CSV_headings
+from UEVaultManager.core import AppCore, default_datetime_format
+from UEVaultManager.models.csv_data import CSV_headings
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
@@ -223,7 +223,7 @@ class UEVaultManagerCLI:
             thumbnail_url = metadata['keyImages'][2]['url']  # 'Image' with 488 height
         except IndexError:
             self.logger.debug(f'asset {item.app_name} has no image')
-        date_added = datetime.now().strftime(self.core.default_datetime_format)
+        date_added = datetime.now().strftime(default_datetime_format)
         extras_data = None
         try:
             extras_data = self.core.uevmlfs.get_item_extras(item.app_name)
@@ -1175,25 +1175,24 @@ class UEVaultManagerCLI:
         gui_g.UEVM_gui_ref.mainloop()
         # gui_g.UEVM_gui_ref.quit()
 
-    def scrap_assets(self, args) -> None:
+    @staticmethod
+    def scrap_assets(args) -> None:
         """
-        Print information about a given app name or manifest url/path
+        Scrap assets from the Epic Games Store or from previously saved files
         :param args: options passed to the command
         """
-
-        # if not args.offline:
-        #     try:
-        #         if not self.core.login():
-        #             message = 'Log in failed!'
-        #             self._log_gui_wrapper(self.logger.critical, message, True)
-        #     except ValueError:
-        #         pass
-
+        load_from_files = args.offline
         rows_per_page = gui_g.s.rows_per_page  # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
-        start = 0
-        # start = 33400  # debug only, shorter list
+        start_row = 0
+        # start_row = 33400  # debug only, shorter list
         scraper = UEAssetScraper(
-            start=start, assets_per_page=rows_per_page, max_threads=get_max_threads(), store_in_db=True, store_in_files=True, store_ids=True
+            start=start_row,
+            assets_per_page=rows_per_page,
+            max_threads=get_max_threads(),
+            store_in_db=True,
+            store_in_files=True,
+            store_ids=True,
+            load_from_files=load_from_files
         )
         scraper.gather_urls(empty_list_before=True)
         scraper.save()
@@ -1438,9 +1437,10 @@ def main():
         action='store_true',
         help='Force a refresh of all assets data. It could take some time ! If not forced, the cached data will be used'
     )
+    scrap_parser.add_argument(
+        '--offline', dest='offline', action='store_true', help='Use previous saved data files (json) instead of grabing urls and scapping new data'
+    )
     scrap_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
-    # not use for now
-    # scrap_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print assets data available offline (aka. in cache or not owned)'
 
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()

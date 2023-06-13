@@ -91,7 +91,7 @@ class EPCAPI:
     _url_asset = _url_asset_list + '/asset'
 
     # page d'un asset avec son urlSlug
-    # UE_MARKETPLACE/en-US/product/{jjd['urlSlug']}
+    # _url_marketplace/en-US/product/{'urlSlug}
     # https://www.unrealengine.com/marketplace/en-US/product/cloudy-dungeon
     #
     # detail json d'un asset avec son id (et non pas son asset_id ou son catalog_id)
@@ -103,6 +103,9 @@ class EPCAPI:
     #
     # liste json des questions d'un asset avec son id
     # https://www.unrealengine.com/marketplace/api/review/5cb2a394d0c04e73891762be4cbd7216/questions/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
+    #
+    # liste json des tags courants
+    # https://www.unrealengine.com/marketplace/api/tags
 
     def __init__(self, lc='en', cc='US', timeout=10.0):
         self.log = logging.getLogger('EPCAPI')
@@ -158,8 +161,33 @@ class EPCAPI:
         """
         Return the scraping URL
         """
-        scrap_url = f'https://{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}'
-        return scrap_url
+        url = f'https://{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}'
+        # other possible filters
+        # to see the list of possible filters: https://www.unrealengine.com/marketplace/en-US/assets and use filters on the right panel
+        """
+        # can add multiple platform filters
+        # Windows, Android, Linux, Mac, PS4, Nintendo%20Switch, Win32, iOS, Xbox%20One, HTML5...
+        url += f'&platform={platform}'
+
+        # can add multiple compatibleWith filters
+        url += f'&compatibleWith=UE_5.2'
+
+        # can add multiple tag filters
+        url += f'&tag=22'
+
+        url += f'&discountPercentageRange={discount_percent}'
+        url += f'&priceRange=%5B{prince_min*100}%2C{prince_max*100}'
+        """
+        return url
+
+    def get_asset_url(self, asset_slug: str) -> str:
+        """
+        Returns the url for the asset in the marketplace.
+        :param asset_slug: The asset slug.
+        :return: The url
+        """
+        url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
+        return url
 
     def get_scrapped_asset_count(self) -> int:
         """

@@ -209,11 +209,11 @@ def check_and_convert_key(dict_to_check: dict, key: str) -> str:
     # 'author' = ['seller']['name']
 
     # dict of keys that could not be automatically renamed
-    manual_renaming = {'urlSlug': 'asset_slug', 'featured': 'is_featured', 'thumbnail': 'thumbnail_url'}
+    manual_renaming = {'urlSlug': 'asset_slug', 'thumbnail': 'thumbnail_url'}
     key_to_ignore = [
         # key for data not used in the final json
         'ownedCount', 'headerImage', 'learnThumbnail', 'klass', 'recurrence', 'voucherDiscount', 'keyImages', 'effectiveDate', 'bundle',
-        'releaseInfo', 'platforms', 'purchaseLimit', 'compatibleApps', 'tax',
+        'platforms', 'purchaseLimit', 'compatibleApps', 'tax', 'featured'
         # key data already "transformed" and mapped in UEAssetScrapper._parse_data()
         'priceValue', 'discountPriceValue', 'seller', 'average_rating', 'rating_total', 'rating'
     ]

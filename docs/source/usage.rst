@@ -135,4 +135,5 @@ Usage
     optional arguments:
       -h, --help            Show this help message and exit
       -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      --offline             Use previous saved data files (json) instead of grabing urls and scapping new data
       -g,  --gui            Display the output in a windows instead of using the console
