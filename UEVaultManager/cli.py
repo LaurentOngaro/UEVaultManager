@@ -37,7 +37,7 @@ from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string, str_is_bool, get_max_threads
+from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
@@ -193,6 +193,7 @@ class UEVaultManagerCLI:
         self.create_file_backup(self.core.notfound_assets_filename_log)
         self.create_file_backup(self.core.bad_data_assets_filename_log)
 
+    # noinspection PyUnusedLocal
     def create_asset_from_data(
         self, item, asset_id: str, no_text_data: str, no_int_data: int, no_float_data: float, bool_true_data: bool, bool_false_data: bool
     ) -> (str, dict):
@@ -499,7 +500,7 @@ class UEVaultManagerCLI:
             self.create_log_file_backup()
 
         # open log file for assets if necessary
-        self.core.setup_assets_logging()
+        self.core.setup_assets_loggers()
         self.core.egs.notfound_logger = self.core.notfound_logger
         self.core.egs.ignored_logger = self.core.ignored_logger
 

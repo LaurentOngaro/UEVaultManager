@@ -113,7 +113,7 @@ class AppCore:
         self.thread_executor_must_stop = False
         self.engine_version_for_obsolete_assets = '4.26'
 
-    def setup_assets_logging(self) -> None:
+    def setup_assets_loggers(self) -> None:
         """
         Setup logging for ignored, not found and bad data assets
         """

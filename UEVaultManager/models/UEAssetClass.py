@@ -4,7 +4,7 @@ implementation for:
 - UEAsset:  A class to represent an Unreal Engine asset
 """
 import logging
-from UEVaultManager.utils.cli import init_dict_from_data, create_list_from_string
+from UEVaultManager.utils.cli import init_dict_from_data
 
 
 class UEAsset:
