@@ -10,6 +10,7 @@ from UEVaultManager.tkgui.modules.GUISettingsClass import GUISettings
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 
+
 # references to global objects
 edit_cell_window_ref: EditCellWindow = None
 edit_row_window_ref: EditRowWindow = None
