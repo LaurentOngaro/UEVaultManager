@@ -4,19 +4,17 @@ implementation for:
 - UEAsset:  A class to represent an Unreal Engine asset
 """
 import logging
-import os
-
-from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
-from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
-from UEVaultManager.utils.cli import init_dict_from_data, check_and_create_path
+from UEVaultManager.utils.cli import init_dict_from_data, create_list_from_string
 
 
 class UEAsset:
     """
     A class to represent an Unreal Engine asset. With the EGS data and user data.
+    :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete
     """
 
-    def __init__(self):
+    def __init__(self, engine_version_for_obsolete_assets: str = '4.26'):
+        self.engine_version_for_obsolete_assets = engine_version_for_obsolete_assets
         self.data = {}
         self.user_data = {}
         self.log = logging.getLogger('UEAsset')
@@ -26,6 +24,7 @@ class UEAsset:
     def init_data(self) -> None:
         """
         Initialize the EGS data dictionary.
+        Note: the keys of self.user_data dict are initialized here
         """
         self.data = {
             'id': None,
@@ -70,10 +69,15 @@ class UEAsset:
             'installed_folder': None,
             'alternative': None,
             'origin': None,
+            'page_title': None,
+            'obsolete': None,
             'supported_versions': None,
             'creation_date': None,
             'update_date': None,
-            'grab_result': None
+            'date_added_in_db': None,
+            'grab_result': None,
+            'old_price': None
+
         }
 
     def init_from_dict(self, data: dict = None) -> None:
@@ -106,26 +110,3 @@ class UEAsset:
         tags = self.data['tags']
         tags = [str(i) for i in tags]  # convert each item to a string, if not an error will be raised
         self.data['tags'] = ','.join(tags)
-
-
-if __name__ == "__main__":
-    # the following code is just for class testing purposes
-    clean_data = True
-    db_folder = path_from_relative_to_absolute('../../../scraping/')
-    db_name = os.path.join(db_folder, 'assets.db')
-    check_and_create_path(db_name)
-    asset_handler = UEAssetDbHandler(database_name=db_name, reset_database=clean_data)
-    rows_to_create = 300
-    if clean_data:
-        print(f"Deleting database")
-        asset_handler.delete_all_assets()
-    else:
-        rows_count = asset_handler.get_row_count()
-        print(f"Rows count: {rows_count}")
-        rows_to_create -= rows_count
-    print(f"Creating {rows_to_create} rows")
-    asset_handler.generate_test_data(rows_to_create)
-
-    # Read assets
-    # asset_list = asset_handler.get_assets()
-    # print("Assets:", asset_list)

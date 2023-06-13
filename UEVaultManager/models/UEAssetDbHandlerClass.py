@@ -15,7 +15,10 @@ from enum import Enum
 
 from faker import Faker
 
+from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.UEAssetClass import UEAsset
+from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
+from UEVaultManager.utils.cli import check_and_create_path
 
 
 class VersionNum(Enum):
@@ -75,15 +78,21 @@ class UEAssetDbHandler:
         self.db_version = VersionNum.V0  # updated in check_and_upgrade_database()
         # the user fields that must be preserved when updating the database
         # these fields are also present in the asset table and in the UEAsset.init_data() method
-        # we add the price field here to store it later in the 'old-price' field when scraping data
-        self.user_fields = ['comment', 'stars', 'must_buy', 'test_result', 'installed_folder', 'alternative', 'origin', 'price', 'id']
+        # THEY WILL BE PRESERVED when parsing the asset data
+        self.user_fields = ['comment', 'stars', 'must_buy', 'test_result', 'installed_folder', 'alternative', 'origin']
+        # the field we keep for previous data. NEED TO BE SEPARATED FROM self.user_fields
+        # THEY WILL BE USED (BUT NOT FORCELY PRESERVED) when parsing the asset data
+        self.existing_data_fields = ['id', 'price', 'old_price', 'asset_url', 'grab_result', 'date_added_in_db']
+        self.existing_data_fields.extend(self.user_fields)
         if reset_database:
             self.drop_tables()
 
         self.check_and_upgrade_database()
 
     def __del__(self):
-        self.logger.debug('Deleting UEAssetDbHandler and closing connection')
+        # log could alrready be destroyed before here
+        # self.logger.debug('Deleting UEAssetDbHandler and closing connection')
+        print('Deleting UEAssetDbHandler and closing connection')
         # DatabaseConnection(self.database_name).conn.close()
 
     def _get_db_version(self) -> VersionNum:
@@ -240,10 +249,14 @@ class UEAssetDbHandler:
                     'installed_folder': 'TEXT',
                     'alternative': 'TEXT',
                     'origin': 'TEXT',
+                    'page_title': 'TEXT',
+                    'obsolete': 'BOOL',
                     'supported_versions': 'TEXT',
                     'creation_date': 'DATETIME',
                     'update_date': 'DATETIME',
+                    'date_added_in_db': 'DATETIME',
                     'grab_result': 'TEXT',
+                    'old_price': 'REAL'
                 }
             )
             self.db_version = VersionNum.V2
@@ -304,11 +317,11 @@ class UEAssetDbHandler:
             cursor.execute(query, data)
             conn.commit()
 
-    def set_assets(self, assets, update_user_fields=True) -> None:
+    def set_assets(self, assets) -> None:
         """
         Insert or update assets into the 'assets' table.
+        NOTE: the (existing) user fields data should have already been added or merged the assets dictionary
         :param assets: A dictionary or a list of dictionaries representing assets.
-        :param update_user_fields: If True, the user fields will be updated with the current user data.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(VersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
@@ -317,24 +330,24 @@ class UEAssetDbHandler:
             cursor = conn.cursor()
             if not isinstance(assets, list):
                 assets = [assets]
+            date_added_in_db = datetime.datetime.now().strftime(default_datetime_format)
             # Notes: the order of columns and value must match the order of the fields in UEAsset.init_data() method
             for asset in assets:
-                if not update_user_fields:
-                    # set the value of the user fields to Null to avoid overwriting the user data
-                    asset.update({field: None for field in self.user_fields})
+                if asset.get('date_added_in_db', None) is None:
+                    asset['date_added_in_db'] = date_added_in_db
+
                 # Generate the SQL query
                 # this query will insert or update the asset if it already exists
-                # and will update the user fields
                 query = """
-                    INSERT INTO assets (
+                    REPLACE INTO assets (
                         id, namespace, catalog_item_id, title, category, author, thumbnail_url,
                         current_price_discounted, asset_slug, currency_code, description,
                         technical_details, long_description, tags, comment_rating_id,
                         rating_id, status, price, discount, discount_price, discount_percentage,
                         is_catalog_item, is_new, free, discounted, can_purchase,
                         owned, review, review_count, asset_id, asset_url,
-                        comment, stars, must_buy, test_result, installed_folder, alternative, origin,
-                        supported_versions, creation_date, update_date, grab_result
+                        comment, stars, must_buy, test_result, installed_folder, alternative, origin, page_title,
+                        obsolete, supported_versions, creation_date, update_date, date_added_in_db, grab_result, old_price
                     )
                     VALUES (
                         :id, :namespace, :catalog_item_id, :title, :category, :author, :thumbnail_url,
@@ -343,21 +356,10 @@ class UEAssetDbHandler:
                         :rating_id, :status, :price, :discount, :discount_price, :discount_percentage,
                         :is_catalog_item, :is_new, :free, :discounted, :can_purchase,
                         :owned, :review, :review_count, :asset_id, :asset_url,
-                        :comment, :stars, :must_buy, :test_result, :installed_folder, :alternative, :origin, 
-                        :supported_versions, :creation_date, :update_date, :grab_result
+                        :comment, :stars, :must_buy, :test_result, :installed_folder, :alternative, :origin, :page_title, 
+                        :obsolete, :supported_versions, :creation_date, :update_date, :date_added_in_db, :grab_result, :old_price
                     )
-                    ON CONFLICT(id) DO UPDATE SET
-                        asset_url = COALESCE(asset_url, :asset_url),
-                        comment = COALESCE(comment, :comment),
-                        stars = COALESCE(stars, :stars),
-                        must_buy = COALESCE(must_buy, :must_buy),
-                        test_result = COALESCE(test_result, :test_result),
-                        installed_folder = COALESCE(installed_folder, :installed_folder),
-                        alternative = COALESCE(alternative, :alternative),
-                        origin = COALESCE(origin, :origin);
                 """
-                # the COALESCE function is used to assign a new value to the comment column in case the provided value comment is not NULL.
-                # the COALESCE function returns the first non-null value in the list.
                 # Execute the SQL query
                 cursor.execute(query, asset)
 
@@ -373,22 +375,23 @@ class UEAssetDbHandler:
             fields = ', '.join(fields)
         row_data = {}
         with DatabaseConnection(self.database_name) as conn:
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute(f"SELECT {fields} FROM assets")
             for row in cursor.fetchall():
-                id = row['id']
-                row_data[id] = row
+                uid = row['id']
+                row_data[uid] = dict(row)
         return row_data
 
-    def get_asset(self, asset_id: str) -> UEAsset:
+    def get_ue_asset(self, uid: str) -> UEAsset:
         """
         Get an asset from the 'assets' table.
-        :param asset_id: The ID of the asset to get.
+        :param uid: The ID of the asset to get.
         :return: an UEAsset object.
         """
         with DatabaseConnection(self.database_name) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * assets WHERE id = ?", (asset_id,))
+            cursor.execute("SELECT * assets WHERE id = ?", (uid,))
 
             row = cursor.fetchone()
             ue_asset = UEAsset()
@@ -396,14 +399,14 @@ class UEAssetDbHandler:
 
         return ue_asset
 
-    def delete_asset(self, asset_id: str) -> None:
+    def delete_asset(self, uid: str) -> None:
         """
         Delete an asset from the 'assets' table by its ID.
-        :param asset_id: The ID of the asset to delete.
+        :param uid: The ID of the asset to delete.
         """
         with DatabaseConnection(self.database_name) as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
+            cursor.execute("DELETE FROM assets WHERE id = ?", (uid,))
             conn.commit()
 
     def delete_all_assets(self) -> None:
@@ -415,16 +418,16 @@ class UEAssetDbHandler:
             cursor.execute('DELETE FROM assets WHERE 1')
             conn.commit()
 
-    def update_asset(self, asset_id: str, column: str, value) -> None:
+    def update_asset(self, uid: str, column: str, value) -> None:
         """
         Update a specific column of an asset in the 'assets' table by its ID.
-        :param asset_id: The ID of the asset to update.
+        :param uid: The ID of the asset to update.
         :param column: The name of the column
         :param value: The new value.
         """
         with DatabaseConnection(self.database_name) as conn:
             cursor = conn.cursor()
-            cursor.execute(f"UPDATE assets SET {column} = ? WHERE id = ?", (value, asset_id))
+            cursor.execute(f"UPDATE assets SET {column} = ? WHERE id = ?", (value, uid))
             conn.commit()
 
     def drop_tables(self) -> None:
@@ -491,19 +494,43 @@ class UEAssetDbHandler:
                 fake.file_path(),  # installed_folder
                 fake.sentence(),  # alternative
                 fake.word(),  # origin
+                fake.sentence(),  # page_title
+                random.choice([0, 1]),  # obsolete
                 fake.word(),  # supported_versions
                 fake.date_time(),  # creation_date
                 fake.date_time(),  # update_date
-                fake.word()  # grab_result
+                fake.date_time(),  # date_added_in_db
+                fake.word(),  # grab_result
+                random.randint(0, 1000)  # old_price
             ]
             ue_asset.init_from_list(data=data_list)
-            self.set_assets(assets=ue_asset.data, update_user_fields=True)
+            self.set_assets(assets=ue_asset.data)
             scraped_ids.append(assets_id)
         content = {
-            'date': str(datetime.datetime.now()),
+            'date': datetime.datetime.now().strftime(default_datetime_format),
             'mode': 'save',
             'files_count': 0,
             'items_count': number_of_rows,
             'scrapped_ids': ','.join(scraped_ids)
         }
         self.save_last_run(content)
+
+
+if __name__ == "__main__":
+    # the following code is just for class testing purposes
+    clean_data = True
+    db_folder = path_from_relative_to_absolute('../../../scraping/')
+    db_name = os.path.join(db_folder, 'assets.db')
+    check_and_create_path(db_name)
+    asset_handler = UEAssetDbHandler(database_name=db_name, reset_database=clean_data)
+    rows_to_create = 300
+    if not clean_data:
+        rows_count = asset_handler.get_row_count()
+        print(f"Rows count: {rows_count}")
+        rows_to_create -= rows_count
+    print(f"Creating {rows_to_create} rows")
+    asset_handler.generate_test_data(rows_to_create)
+
+    # Read assets
+    # asset_list = asset_handler.get_assets()
+    # print("Assets:", asset_list)
