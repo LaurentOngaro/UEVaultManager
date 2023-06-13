@@ -12,7 +12,13 @@ class HiddenAliasSubparsersAction(argparse._SubParsersAction):
     Subclass of argparse._SubParsersAction that hides aliases from the help output.
     """
 
-    def add_parser(self, name, **kwargs):
+    def add_parser(self, name: str, **kwargs):
+        """
+        Add a parser to the set of parsers for this action.
+        :param name: Name of the parser.
+        :param kwargs: Keyword arguments.
+        :return: The created parser.
+        """
         # set prog from the existing prefix
         if kwargs.get('prog') is None:
             kwargs['prog'] = f'{self._prog_prefix} {name}'
