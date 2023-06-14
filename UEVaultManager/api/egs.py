@@ -172,15 +172,6 @@ class EPCAPI:
             self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
         return price
 
-    def get_auth_url(self) -> str:
-        """
-        Returns the url for the oauth login.
-        :return: The url
-        """
-        login_url = 'https://www.epicgames.com/id/login?redirectUrl='
-        redirect_url = f'https://www.epicgames.com/id/api/redirect?clientId={self._user_basic}&responseType=code'
-        return login_url + urllib.parse.quote(redirect_url)
-
     def get_scrap_url(self, start=0, count=1, sort_by='effectiveDate', sort_order='DESC') -> str:
         """
         Return the scraping URL
@@ -335,84 +326,6 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_ownership_token(self, namespace: str, catalog_item_id: str) -> bytes:
-        """
-        Gets the ownership token.
-        Unused but kept for the global API reference.
-        :param namespace:  namespace
-        :param catalog_item_id: catalog item id
-        :return: The ownership token.
-        """
-        user_id = self.user.get('account_id')
-        url = f'https://{self._ecommerce_host}/ecommerceintegration/api/public/platforms/EPIC/identities/{user_id}/ownershipToken'
-        r = self.session.post(url, data=dict(nsCatalogItemId=f'{namespace}:{catalog_item_id}'), timeout=self.request_timeout)
-        r.raise_for_status()
-        return r.content
-
-    def get_external_auths(self) -> dict:
-        """
-        Gets the external auths.
-        Unused but kept for the global API reference.
-        :return: The external auths using json format.
-        """
-        user_id = self.user.get('account_id')
-        url = f'https://{self._oauth_host}/account/api/public/account/{user_id}/externalAuths'
-        r = self.session.get(url, timeout=self.request_timeout)
-        r.raise_for_status()
-        return r.json()
-
-    def get_item_assets(self, platform='Windows', label='Live'):
-        """
-        Gets the item assets.
-        :param platform: platform to get assets for
-        :param label: label of the assets
-        :return: The item assets using json format.
-        """
-        url = f'https://{self._launcher_host}/launcher/api/public/assets/{platform}'
-        r = self.session.get(url, params=dict(label=label), timeout=self.request_timeout)
-        r.raise_for_status()
-        return r.json()
-
-    def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live') -> dict:
-        """
-        Gets the item manifest.
-        :param namespace:  namespace
-        :param catalog_item_id: catalog item id
-        :param app_name: app name
-        :param platform: platform to get manifest for
-        :param label: label of the manifest
-        :return: The item manifest using json format.
-        """
-        url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
-        r = self.session.get(url, timeout=self.request_timeout)
-        r.raise_for_status()
-        return r.json()
-
-    def get_launcher_manifests(self, platform='Windows', label: str = None) -> dict:
-        """
-        Gets the launcher manifests.
-        Unused but kept for the global API reference.
-        :param platform: platform to get manifests for
-        :param label: label of the manifests
-        :return: The launcher manifests using json format.
-        """
-        url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/launcher'
-        r = self.session.get(url, timeout=self.request_timeout, params=dict(label=label if label else self._label))
-        r.raise_for_status()
-        return r.json()
-
-    def get_user_entitlements(self) -> dict:
-        """
-        Gets the user entitlements.
-        Unused but kept for the global API reference.
-        :return: The user entitlements using json format.
-        """
-        user_id = self.user.get('account_id')
-        url = f'https://{self._entitlements_host}/entitlement/api/account/{user_id}/entitlements'
-        r = self.session.get(url, params=dict(start=0, count=5000), timeout=self.request_timeout)
-        r.raise_for_status()
-        return r.json()
-
     def get_item_info(self, namespace: str, catalog_item_id: str, timeout: float = None) -> (dict, int):
         """
         Gets the item info.
@@ -431,44 +344,6 @@ class EPCAPI:
         )
         r.raise_for_status()
         return r.json().get(catalog_item_id, None), r.status_code
-
-    def get_artifact_service_ticket(self, sandbox_id: str, artifact_id: str, label='Live', platform='Windows') -> dict:
-        """
-        Gets the artifact service ticket.
-        Unused but kept for the global API reference.
-        :param sandbox_id: sandbox id
-        :param artifact_id: artifact id
-        :param label: label
-        :param platform: platform to get ticket for
-        :return: The artifact service ticket using json format.
-        """
-        # Based on EOS Helper Windows service implementation. Only works with anonymous EOS Helper session.
-        # sandbox_id is the same as the namespace, artifact_id is the same as the app name
-        url = f'https://{self._artifact_service_host}/artifact-service/api/public/v1/dependency/sandbox/{sandbox_id}/artifact/{artifact_id}/ticket'
-        r = self.session.post(
-            url,
-            json=dict(label=label, expiresInSeconds=300, platform=platform),
-            params=dict(useSandboxAwareLabel='false'),
-            timeout=self.request_timeout
-        )
-        r.raise_for_status()
-        return r.json()
-
-    def get_item_manifest_by_ticket(self, artifact_id: str, signed_ticket: str, label='Live', platform='Windows') -> dict:
-        """
-        Gets the item manifest by ticket.
-        Unused but kept for the global API reference.
-        :param artifact_id: artifact id
-        :param signed_ticket: signed ticket
-        :param label: the label
-        :param platform: platform to get manifest for
-        :return: The item manifest by ticket using json format.
-        """
-        # Based on EOS Helper Windows service implementation.
-        url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/by-ticket/app/{artifact_id}'
-        r = self.session.post(url, json=dict(platform=platform, label=label, signedTicket=signed_ticket), timeout=self.request_timeout)
-        r.raise_for_status()
-        return r.json()
 
     def get_library_items(self, include_metadata=True) -> list:
         """
