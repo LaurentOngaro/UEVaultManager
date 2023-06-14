@@ -228,9 +228,23 @@ class EPCAPI:
             self.log.warning(f'Can not get the asset count from {url}:{error!r}')
         return assets_count
 
+    def get_owned_assets(self) -> dict:
+        """
+        Return the owned assets data in json format.
+        NOTE: user must be logged in
+        :return: The json data
+        """
+        url = f'https://{self._url_owned_assets}'
+        r = self.session.get(url, timeout=self.request_timeout)
+        r.raise_for_status()
+        json_data = r.json()
+        return json_data
+
     def get_scrapped_assets(self, url='') -> dict:
         """
-        Return the scraping URL
+        Return the scrapped assets
+        :param url: The url to scrap
+        :return: The json data
         """
         json_data = {}
         if not url:

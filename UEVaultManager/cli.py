@@ -1170,6 +1170,16 @@ class UEVaultManagerCLI:
         Scrap assets from the Epic Games Store or from previously saved files
         :param args: options passed to the command
         """
+        if not args.offline:
+            try:
+                if not self.core.login():
+                    message = 'Log in failed!'
+                    self._log_gui_wrapper(self.logger.critical, message, True)
+            except ValueError:
+                pass
+            # if automatic checks are off force an update here
+            self.core.check_for_updates(force=True)
+
         load_from_files = args.offline
         rows_per_page = gui_g.s.rows_per_page  # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
         start_row = 0

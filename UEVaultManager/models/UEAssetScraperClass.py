@@ -78,6 +78,7 @@ class UEAssetScraper:
         self.files_count = 0
         self.scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
         self.scraped_ids = []  # store IDs of all items
+        self.owned_asset_ids = []  # store IDs of all owned items
         self.existing_data = {
         }  # dictionary {ids, rows} : the data in database before scraping. Contains only minimal information (user fields, id, price)
 
@@ -272,7 +273,9 @@ class UEAssetScraper:
 
             ue_asset.init_from_dict(asset_data)
             content.append(ue_asset.data)
-            print(f'Asset #{uid} added to content ue_asset.data: {ue_asset.data["old_price"]}')
+            message = f'Asset #{uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} date_added_in_db={ue_asset.data["date_added_in_db"]} discount_percentage={ue_asset.data["discount_percentage"]}'
+            self.logger.info(message)
+            # print(message) # only if run from main
             if self.store_ids:
                 try:
                     self.scraped_ids.append(uid)
@@ -319,6 +322,19 @@ class UEAssetScraper:
         if save_result:
             self.save_to_file(filename=self.urls_list_filename, data=self.urls, is_json=False)
 
+    def get_owned_assets(self) -> None:
+        """
+        Grabs the data from the given url and stores it in the scraped_data property.
+        """
+        self.logger.info(f'Getting owned assets ids')
+        json_data = self.egs.get_owned_assets()
+        if json_data:
+            for asset_data in json_data['data']['elements']:
+                try:
+                    self.owned_asset_ids.append(asset_data['id'])
+                except KeyError:
+                    self.logger.debug(f'Error getting id for asset {asset_data}')
+
     def get_data_from_url(self, url='') -> None:
         """
         Grabs the data from the given url and stores it in the scraped_data property.
@@ -328,6 +344,7 @@ class UEAssetScraper:
             url = self.egs.get_scrap_url(self.start, self.assets_per_page, self.sort_by, self.sort_order)
         self.logger.info(f'Parsing url {url}')
         json_data = self.egs.get_scrapped_assets(url)
+
         if json_data:
             if self.store_in_files and self.use_raw_format:
                 for asset_data in json_data['data']['elements']:
@@ -336,8 +353,8 @@ class UEAssetScraper:
                         app_id = asset_data['releaseInfo'][0]['appId']
                         filename = f'{app_id}.json'
                     except KeyError:
-                        data_id = asset_data['id']
-                        filename = f'_no_appId_asset_{data_id}.json'
+                        uid = asset_data['id']
+                        filename = f'_no_appId_asset_{uid}.json'
                     self.save_to_file(filename=filename, data=asset_data)
                     self.files_count += 1
             content = self._parse_data(json_data)
@@ -359,6 +376,9 @@ class UEAssetScraper:
             self.load_from_json_files()
         else:
             start_time = time.time()
+            # get the owned assets from API
+            self.get_owned_assets()
+
             if self.urls is None or len(self.urls) == 0:
                 self.gather_urls()
             if self.max_threads > 0:
