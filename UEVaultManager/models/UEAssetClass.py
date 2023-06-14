@@ -76,8 +76,8 @@ class UEAsset:
             'update_date': None,
             'date_added_in_db': None,
             'grab_result': None,
-            'old_price': None
-
+            'old_price': None,
+            'custom_attributes': None,
         }
 
     def init_from_dict(self, data: dict = None) -> None:
@@ -107,6 +107,11 @@ class UEAsset:
         """
         INPLACE Convert the tags id list of an asset_data dict to a string.
         """
-        tags = self.data['tags']
-        tags = [str(i) for i in tags]  # convert each item to a string, if not an error will be raised
-        self.data['tags'] = ','.join(tags)
+        tags = self.data.get('tags', None)
+        if not tags or tags == [] or tags == {}:
+            tags = ''
+        else:
+            tags = [str(i) for i in tags]  # convert each item to a string, if not an error will be raised when joining
+            tags = ','.join(tags)
+        self.data['tags'] = tags
+        # print(f"{self.data['asset_id']} tags converted: {tags}") # debug only

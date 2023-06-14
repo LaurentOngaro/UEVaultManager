@@ -1181,21 +1181,55 @@ class UEVaultManagerCLI:
             self.core.check_for_updates(force=True)
 
         load_from_files = args.offline
-        rows_per_page = gui_g.s.rows_per_page  # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
-        start_row = 0
-        # start_row = 33400  # debug only, shorter list
+        # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
+        # still true ?
+        # rows_per_page = gui_g.s.rows_per_page
+        rows_per_page = 100  # a bigger value will be refused by UE API
+        testing = False
+        if testing:
+            start_row = 0  # debug only, shorter list
+            # start_row = 1700  # debug only, shorter list
+            max_threads = 0  # debug only, see exceptions
+            owned_assets_only = True  # True for debug only
+        else:
+            start_row = 0
+            max_threads = get_max_threads()
+            owned_assets_only = False
         scraper = UEAssetScraper(
             start=start_row,
             assets_per_page=rows_per_page,
-            max_threads=get_max_threads(),
+            max_threads=max_threads,
             store_in_db=True,
             store_in_files=True,
             store_ids=True,
             load_from_files=load_from_files,
-            engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets
+            engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
+            egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
         )
-        scraper.gather_urls(empty_list_before=True)
-        scraper.save()
+
+        #     # test code for getting owned assets: tested and working
+        #     url = self.core.egs.get_owned_scrap_url(0, 100)
+        #     r = self.core.egs.session.get(url, timeout=self.core.egs.request_timeout)
+        #     r.raise_for_status()
+        #     json_data = r.json()
+        #     cpt = 0
+        #     if json_data:
+        #         for asset_data in json_data['data']['elements']:
+        #             try:
+        #                 uid = asset_data['id']
+        #                 # self.owned_asset_ids.append(uid)
+        #                 print(f'Asset {uid}')
+        #                 cpt += 1
+        #             except KeyError:
+        #                 self.logger.debug(f'Error getting id for asset {asset_data}')
+        #     print(f'Found {cpt} assets')
+        #     asset_count = self.core.egs.get_scrapped_asset_count()
+        #     owned_asset_count = self.core.egs.get_scrapped_asset_count(owned_assets_only=True)
+        #     print(f'Found {asset_count} assets, ({owned_asset_count} owned)')
+        #     exit(0)  # debug only
+
+        scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
+        scraper.save(owned_assets_only=owned_assets_only)
 
     @staticmethod
     def print_help(args, parser=None, forced=False) -> None:

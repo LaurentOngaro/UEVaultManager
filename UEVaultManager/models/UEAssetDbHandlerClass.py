@@ -33,7 +33,8 @@ class VersionNum(Enum):
     V1 = 1  # initial version : only the "standard" marketplace columns
     V2 = 2  # add the columns used fo user data to the "standard" marketplace columns
     V3 = 3  # add the last_run table to get data about the last run of the app
-    V4 = 4  # future version
+    V4 = 4  # add custom_attributes field to the assets table
+    V5 = 5  # future version
 
 
 class DatabaseConnection:
@@ -269,8 +270,15 @@ class UEAssetDbHandler:
             self.db_version = VersionNum.V3
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
-        if upgrade_from_version == VersionNum.V4:
+        if upgrade_from_version == VersionNum.V3:
             # necessary steps to upgrade to version 4
+            self._add_missing_columns('assets', required_columns={'custom_attributes': 'TEXT'})
+            self.db_version = VersionNum.V4
+            upgrade_from_version = self.db_version
+            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            pass
+        if upgrade_from_version == VersionNum.V4:
+            # necessary steps to upgrade to version 5
             # does not exist yet
             # do stuff here
             # self.db_version = VersionNum.V5
@@ -347,9 +355,9 @@ class UEAssetDbHandler:
                         is_catalog_item, is_new, free, discounted, can_purchase,
                         owned, review, review_count, asset_id, asset_url,
                         comment, stars, must_buy, test_result, installed_folder, alternative, origin, page_title,
-                        obsolete, supported_versions, creation_date, update_date, date_added_in_db, grab_result, old_price
-                    )
-                    VALUES (
+                        obsolete, supported_versions, creation_date, update_date, date_added_in_db, grab_result
+                        , old_price, custom_attributes
+                    ) VALUES (
                         :id, :namespace, :catalog_item_id, :title, :category, :author, :thumbnail_url,
                         :current_price_discounted, :asset_slug, :currency_code, :description,
                         :technical_details, :long_description, :tags, :comment_rating_id,
@@ -357,12 +365,15 @@ class UEAssetDbHandler:
                         :is_catalog_item, :is_new, :free, :discounted, :can_purchase,
                         :owned, :review, :review_count, :asset_id, :asset_url,
                         :comment, :stars, :must_buy, :test_result, :installed_folder, :alternative, :origin, :page_title, 
-                        :obsolete, :supported_versions, :creation_date, :update_date, :date_added_in_db, :grab_result, :old_price
+                        :obsolete, :supported_versions, :creation_date, :update_date, :date_added_in_db, :grab_result,
+                         :old_price, :custom_attributes
                     )
                 """
                 # Execute the SQL query
-                cursor.execute(query, asset)
-
+                try:
+                    cursor.execute(query, asset)
+                except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
+                    self.logger.error(f"Error while inserting/updating asset '{asset['id']}' (tags='{asset['tags']}': {error!r}")
             conn.commit()
 
     def get_assets_data(self, fields='*') -> dict:
@@ -501,7 +512,8 @@ class UEAssetDbHandler:
                 fake.date_time(),  # update_date
                 fake.date_time(),  # date_added_in_db
                 fake.word(),  # grab_result
-                random.randint(0, 1000)  # old_price
+                random.randint(0, 1000),  # old_price
+                fake.sentence(),  # custom_attributes
             ]
             ue_asset.init_from_list(data=data_list)
             self.set_assets(assets=ue_asset.data)

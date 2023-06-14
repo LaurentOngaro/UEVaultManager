@@ -7,7 +7,6 @@ Implementation for:
 """
 import logging
 import re
-import urllib.parse
 from enum import Enum
 
 import requests
@@ -24,10 +23,14 @@ class GrabResult(Enum):
     Enum for the result of grabbing a page.
     """
     NO_ERROR = 0
+    # next codes could occur only with beautifulsoup data grabbing (UEVM Version 1.X.X.X)
     INCONSISTANT_DATA = 1
     PAGE_NOT_FOUND = 2
     CONTENT_NOT_FOUND = 3
     TIMEOUT = 4
+    # next codes could occur only with API scraping only (UEVM version 2.X.X.X)
+    PARTIAL = 5  # when asset has been added when owned asset data only (less complete that "standard" asset data)
+    NO_APPID = 6  # no appid found in the data (will produce a file name like '_no_appId_asset_1e10acc0cca34d5c8ff7f0ab57e7f89f
 
 
 def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets='4.26') -> bool:
@@ -195,21 +198,35 @@ class EPCAPI:
         """
         return url
 
+    def get_owned_scrap_url(self, start=0, count=1) -> str:
+        """
+        Return the scraping URL for the owned assets
+        """
+        # 'https://www.unrealengine.com/marketplace/api/assets/vault?start=1000&count=100'
+        url = f'https://{self._url_owned_assets}?start={start}&count={count}'
+        return url
+
     def get_asset_url(self, asset_slug: str) -> str:
         """
         Returns the url for the asset in the marketplace.
         :param asset_slug: The asset slug.
         :return: The url
         """
+        if not asset_slug:
+            return ''
         url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
         return url
 
-    def get_scrapped_asset_count(self) -> int:
+    def get_scrapped_asset_count(self, owned_assets_only=False) -> int:
         """
-        Return the scraping URL
+        Return the number of assets in the marketplace.
+        :param owned_assets_only: If True, only the owned assets are counted.
         """
         assets_count = 0
-        url = f'https://{self._url_asset_list}'
+        if owned_assets_only:
+            url = f'https://{self._url_owned_assets}'
+        else:
+            url = f'https://{self._url_asset_list}'
         r = self.session.get(url, timeout=self.request_timeout)
         r.raise_for_status()
         json_content = r.json()
@@ -218,18 +235,6 @@ class EPCAPI:
         except Exception as error:
             self.log.warning(f'Can not get the asset count from {url}:{error!r}')
         return assets_count
-
-    def get_owned_assets(self) -> dict:
-        """
-        Return the owned assets data in json format.
-        NOTE: user must be logged in
-        :return: The json data
-        """
-        url = f'https://{self._url_owned_assets}'
-        r = self.session.get(url, timeout=self.request_timeout)
-        r.raise_for_status()
-        json_data = r.json()
-        return json_data
 
     def get_scrapped_assets(self, url='') -> dict:
         """
@@ -241,7 +246,7 @@ class EPCAPI:
         if not url:
             return json_data
         r = self.session.get(url, timeout=self.request_timeout)
-        r.raise_for_status()
+        # r.raise_for_status() # commented line because we want the exeptions to be raised
         json_data = r.json()
         return json_data
 
@@ -322,6 +327,33 @@ class EPCAPI:
         :return: The item token using json format
         """
         url = f'https://{self._oauth_host}/account/api/oauth/exchange'
+        r = self.session.get(url, timeout=self.request_timeout)
+        r.raise_for_status()
+        return r.json()
+
+    def get_item_assets(self, platform='Windows', label='Live'):
+        """
+        Gets the item assets.
+        :param platform: platform to get assets for
+        :param label: label of the assets
+        :return: The item assets using json format.
+        """
+        url = f'https://{self._launcher_host}/launcher/api/public/assets/{platform}'
+        r = self.session.get(url, params=dict(label=label), timeout=self.request_timeout)
+        r.raise_for_status()
+        return r.json()
+
+    def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live') -> dict:
+        """
+        Gets the item manifest.
+        :param namespace:  namespace
+        :param catalog_item_id: catalog item id
+        :param app_name: app name
+        :param platform: platform to get manifest for
+        :param label: label of the manifest
+        :return: The item manifest using json format.
+        """
+        url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
         r = self.session.get(url, timeout=self.request_timeout)
         r.raise_for_status()
         return r.json()
