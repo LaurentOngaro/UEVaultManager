@@ -3,7 +3,6 @@
 Utilities functions and tools
 These functions depend on the globals.py module and can generate circular dependencies when imported
 """
-import datetime
 import logging
 import os
 import sys
@@ -146,19 +145,6 @@ def log_error(msg: str) -> None:
     sys.exit(1)
 
 
-def convert_to_datetime(value: str) -> datetime.datetime:
-    """
-    Convert a value to a datetime
-    :param value: the value to convert. If the value is not a datetime, it will be converted to a string and then to a datetime.
-    :return: the datetime value
-    """
-    try:
-        return datetime.datetime.strptime(value, gui_g.s.csv_datetime_format)
-    except ValueError:
-        return datetime.datetime.today()
-
-
-# noinspection DuplicatedCode
 def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
     """
     Resize the given image and display it in the given canvas

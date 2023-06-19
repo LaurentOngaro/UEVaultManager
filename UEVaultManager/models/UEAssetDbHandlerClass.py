@@ -478,25 +478,6 @@ class UEAssetDbHandler:
             cursor.execute("INSERT INTO assets DEFAULT VALUES")
             conn.commit()
             uid = cursor.lastrowid
-
-        # get the column names of the 'assets' table
-        # with DatabaseConnection(self.database_name) as conn:
-        #     cursor = conn.cursor()
-        #     cursor.execute("PRAGMA table_info(assets)")
-        #     columns_info = cursor.fetchall()
-        #     column_names = [column[1] for column in columns_info]
-        # column_names_str = ', '.join(column_names)
-        # with DatabaseConnection(self.database_name) as conn:
-        #     conn.row_factory = sqlite3.Row
-        #     cursor = conn.cursor()
-        #     cursor.execute("SELECT * FROM assets WHERE id=?", (uid,))
-        #     row = cursor.fetchone()
-        # data = dict(row)
-        # data['Asset_id'] = 'dummy_row_' + str(uid)  # dummy unique Asset_id to avoid issue
-        # data['Image'] = empty_cell  # avoid displaying image warning on mouse over
-        # if return_as_string:
-        #     data = ','.join(str(value) for value in data.values())
-        #
         ue_asset = self.get_ue_asset(str(uid))
         ue_asset.asset_id = 'dummy_row_' + str(uid)  # dummy unique Asset_id to avoid issue
         ue_asset.thumbnail_url = empty_cell  # avoid displaying image warning on mouse over

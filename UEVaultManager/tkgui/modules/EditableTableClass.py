@@ -18,7 +18,7 @@ from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton
 from UEVaultManager.tkgui.modules.functions import *
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_int, convert_to_float, convert_to_datetime
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 
 
@@ -335,34 +335,17 @@ class EditableTable(Table):
         """
         Loads data from the specified CSV file into the table.
         """
-        csv_options = {
-            'converters': {
-                'Asset_id': str,  #
-                'App name': str,  #
-                'Review': float,  #
-                'Price': float,  #
-                'Old price': float,  #
-                'Discounted': convert_to_bool,  #
-                'Is new': convert_to_bool,  #
-                'Free': convert_to_bool,  #
-                'Can purchase': convert_to_bool,  #
-                'Owned': convert_to_bool,  #
-                'Obsolete': convert_to_bool,  #
-                'Date added': convert_to_datetime,  #
-            },
-            'on_bad_lines': 'warn',
-            'encoding': "utf-8",
-        }
+        csv_options = {'on_bad_lines': 'warn', 'encoding': "utf-8"}
         if self.data_source is None or not os.path.isfile(self.data_source):
             log_warning(f'File to read data from is not defined or not found: {self.data_source}')
             return
 
         self.must_rebuild = False
         if self.data_source_type == DataSourceType.FILE:
-            # TODO : test and valid this code
             try:
                 self.data = pd.read_csv(self.data_source, **csv_options)
             except EmptyDataError:
+                # TODO : test and valid this code
                 # will create an empty row with the correct columns
                 str_data = ','.join(str(value) for value in CSV_headings.keys())  # column names
                 str_data += '\n'
@@ -395,42 +378,39 @@ class EditableTable(Table):
         """
         Initializes the data format for the table.
         """
+        converters = {
+            'Category': ('category',),
+            'Grab result': ('category',),
+            'Discounted': (convert_to_bool, bool),
+            'Is new': (convert_to_bool, bool),
+            'Free': (convert_to_bool, bool),
+            'Can purchase': (convert_to_bool, bool),
+            'Owned': (convert_to_bool, bool),
+            'Obsolete': (convert_to_bool, bool),
+            'Review': (convert_to_float, float),
+            'Price': (convert_to_float, float),
+            'Old price': (convert_to_float, float),
+            'Discount price': (convert_to_float, float),
+            'Discount percentage': (convert_to_float, float),
+            'Stars': (convert_to_float, float),
+            'Review count': (convert_to_int, int),
+            'Creation date': (lambda x: convert_to_datetime(x, date_format='%Y-%m-%dT%H:%M:%S.%fZ'), pd.to_datetime),
+            'Update date': (lambda x: convert_to_datetime(x, date_format=gui_g.s.csv_datetime_format), pd.to_datetime),
+            'Date added': (lambda x: convert_to_datetime(x, date_format=gui_g.s.csv_datetime_format), pd.to_datetime),
+        }
+
         for col in self.data.columns:
-            try:
-                self.data[col] = self.data[col].astype(str)
-            except (KeyError, ValueError) as error:
-                log_error(f'Could not convert column "{col}" to string. Error: {error}')
-
-        col_to_convert = ['Creation date', 'Update date']
-        # note "date added" does not use the same format as the other date columns
-        for col in col_to_convert:
-            col_type = self.data.get(col, None)
-            if col_type is not None:
+            if col in converters:
                 try:
-                    self.data[col] = pd.to_datetime(self.data[col], format='ISO8601', errors='ignore')
+                    converter, *args = converters[col]
+                    self.data[col] = self.data[col].apply(converter, *args) if callable(converter) else self.data[col].astype(converter)
                 except (KeyError, ValueError) as error:
-                    log_error(f'Could not convert column "{col}" to datetime. Error: {error}')
-
-        col_to_convert = ['Review', 'Price', 'Old price', 'Discount price']
-        for col in col_to_convert:
-            col_type = self.data.get(col, None)
-            if col_type is not None:
+                    log_warning(f'Could not convert column "{col}" to {converter}. Error: {error}')
+            else:
                 try:
-                    self.data[col] = self.data[col].astype(float)
+                    self.data[col] = self.data[col].astype(str)
                 except (KeyError, ValueError) as error:
-                    log_warning(f'Could not convert column "{col}" to float. Error: {error}')
-
-        col_to_convert = ['Category', 'Grab result']
-        for col in col_to_convert:
-            col_type = self.data.get(col, None)
-            if col_type is not None:
-                try:
-                    self.data[col] = self.data[col].astype('category')
-                except (KeyError, ValueError) as error:
-                    log_warning(f'Could not convert column "{col}" to category. Error: {error}')
-
-        # log_debug("\nCOL TYPES AFTER MANUAL CONVERSION\n")
-        # self.data.info() # direct print info
+                    log_error(f'Could not convert column "{col}" to string. Error: {error}')
 
         self.data_filtered = self.data
 

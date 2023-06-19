@@ -6,6 +6,7 @@ These functions DO NOT depend on the globals.py module and be freely imported
 import ctypes as ct
 import os
 import sys
+import datetime
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
@@ -189,7 +190,7 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
 
 def convert_to_bool(value) -> bool:
     """
-    Convert a value to a boolean
+    Convert a value to a boolean. Useful for None values
     :param value: the value to convert. If the value is not a boolean, it will be converted to a string and then to a boolean.
     :return:
     """
@@ -198,7 +199,7 @@ def convert_to_bool(value) -> bool:
             return True
         else:
             return False
-    except ValueError:
+    except (TypeError, ValueError):
         return False
 
 
@@ -206,10 +207,39 @@ def convert_to_int(value) -> int:
     """
     Convert a value to an integer
     :param value: the value to convert.
-    :return: the integer value or 0 if the value is not an integer
+    :return: the integer value or 0 if the value is None or not an integer
     """
     try:
         value = int(value)
         return value
-    except ValueError:
+    except (TypeError, ValueError):
         return 0
+
+
+def convert_to_float(value) -> float:
+    """
+    Convert a value to a float. Useful for None values
+    :param value: the value to convert.
+    :return: the float value or 0.0 if the value is None or not a float
+    """
+    try:
+        value = float(value)
+        return value
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def convert_to_datetime(value: str, date_format='%Y-%m-%d %H:%M:%S') -> datetime.datetime:
+    """
+    Convert a value to a datetime
+    :param value: the value to convert. If the value is not a datetime, it will be converted to a string and then to a datetime.
+    :param date_format: the format of value
+    :return: the datetime value
+    """
+    default = datetime.datetime(1970, 1, 1)
+    if not value:
+        return default
+    try:
+        return datetime.datetime.strptime(value, date_format)
+    except (TypeError, ValueError):
+        return default
