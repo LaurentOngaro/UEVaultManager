@@ -13,7 +13,7 @@ from ttkbootstrap.constants import *
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable
+from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable, DataSourceType
 from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
 
@@ -23,13 +23,26 @@ class UEVMGui(tk.Tk):
     This class is used to create the main window for the application.
     :param title: The title
     :param icon: The icon
-    :param screen_index: The screen index
-    :param file: The file where the data is stored or read from
+    :param screen_index: The screen index where the window will be displayed
+    :param data_source: The source where the data is stored or read from
+    :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
     :param show_open_file_dialog: If True, the open file dialog will be shown at startup
     """
 
-    def __init__(self, title: str, icon='', screen_index=0, file=None, show_open_file_dialog=False, rebuild_data=False,):
+    def __init__(
+        self,
+        title: str,
+        icon='',
+        screen_index=0,
+        data_source_type=DataSourceType.FILE,
+        data_source=None,
+        show_open_file_dialog=False,
+        rebuild_data=False,
+    ):
         super().__init__()
+        self.data_source_type = data_source_type
+        if data_source_type == DataSourceType.SQLITE:
+            show_open_file_dialog = False
 
         self.title(title)
         style = set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
@@ -51,7 +64,14 @@ class UEVMGui(tk.Tk):
         table_frame = self.TableFrame(self)
 
         # gui_g.UEVM_gui_ref = self  # important ! Must be donne before any use of a ProgressWindow. If not, an UEVMGuiHiddenRootClass will be created and the ProgressWindow still be displayed after the init
-        self.editable_table = EditableTable(container_frame=table_frame, file=file, rows_per_page=36, show_statusbar=True)
+        # reading from CSV file version
+        # self.editable_table = EditableTable(container_frame=table_frame, data_source=data_source, rows_per_page=36, show_statusbar=True)
+
+        # reading from database file version
+        self.editable_table = EditableTable(
+            container_frame=table_frame, data_source_type=data_source_type, data_source=data_source, rows_per_page=36, show_statusbar=True
+        )
+
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
 
         # done in the rebuild_data() method
@@ -86,14 +106,16 @@ class UEVMGui(tk.Tk):
                     gui_f.log_error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
-            elif gui_f.box_yesno('So, do you want to load another file ? If not, the application will be closed'):
+            elif data_source_type == DataSourceType.FILE and gui_f.box_yesno(
+                'So, do you want to load another file ? If not, the application will be closed'
+            ):
                 show_open_file_dialog = True
             else:
                 self.destroy()  # self.quit() won't work here
-                gui_f.log_error('No valid file to read from. Application will be closed',)
+                gui_f.log_error('No valid source to read data from. Application will be closed',)
 
         if show_open_file_dialog:
-            if self.load_file() == '':
+            if self.load_data() == '':
                 gui_f.log_error('This application could not run without a file to read data from')
                 self.quit()
         # Quick edit the first row
@@ -155,15 +177,15 @@ class UEVMGui(tk.Tk):
 
             lblf_commands = ttk.LabelFrame(self, text='Cli commands')
             lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
-            btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_cli_command('print_help'))
+            btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
             btn_help.pack(**pack_def_options, side=tk.LEFT)
-            btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_cli_command('status'))
+            btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_uevm_command('status'))
             btn_status.pack(**pack_def_options, side=tk.LEFT)
-            btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_cli_command('info'))
+            btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_uevm_command('info'))
             btn_info.pack(**pack_def_options, side=tk.LEFT)
-            btn_list_files = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_cli_command('list_files'))
+            btn_list_files = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_uevm_command('list_files'))
             btn_list_files.pack(**pack_def_options, side=tk.LEFT)
-            btn_cleanup = ttk.Button(lblf_commands, text='Cleanup', command=lambda: container.run_cli_command('cleanup'))
+            btn_cleanup = ttk.Button(lblf_commands, text='Cleanup', command=lambda: container.run_uevm_command('cleanup'))
             btn_cleanup.pack(**pack_def_options, side=tk.LEFT)
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
@@ -291,17 +313,17 @@ class UEVMGui(tk.Tk):
 
             lblf_files = ttk.LabelFrame(self, text='Files')
             lblf_files.pack(**lblf_def_options)
-            lbl_file_name = ttk.Label(lblf_files, text='Current File: ')
-            lbl_file_name.grid(row=0, column=0, columnspan=3, **grid_fw_options)
-            var_entry_file_name = tk.StringVar(value=container.editable_table.file)
-            entry_file_name = ttk.Entry(lblf_files, textvariable=var_entry_file_name, state='readonly')
+            lbl_data_source = ttk.Label(lblf_files, text='Current Data Source: ')
+            lbl_data_source.grid(row=0, column=0, columnspan=3, **grid_fw_options)
+            var_entry_data_source_name = tk.StringVar(value=container.editable_table.data_source)
+            entry_file_name = ttk.Entry(lblf_files, textvariable=var_entry_data_source_name, state='readonly')
             entry_file_name.grid(row=1, column=0, columnspan=3, **grid_fw_options)
-            btn_save_file = ttk.Button(lblf_files, text='Save to File', command=container.save_file)
-            btn_save_file.grid(row=2, column=0, **grid_fw_options)
+            btn_save_data = ttk.Button(lblf_files, text='Save Data', command=container.save_data)
+            btn_save_data.grid(row=2, column=0, **grid_fw_options)
             btn_export_button = ttk.Button(lblf_files, text='Export Selection', command=container.export_selection)
             btn_export_button.grid(row=2, column=1, **grid_fw_options)
-            btn_load_file = ttk.Button(lblf_files, text='Load a file', command=container.load_file)
-            btn_load_file.grid(row=2, column=2, **grid_fw_options)
+            btn_load_data = ttk.Button(lblf_files, text='Load Data', command=container.load_data)
+            btn_load_data.grid(row=2, column=2, **grid_fw_options)
             lblf_files.columnconfigure('all', weight=1)  # important to make the buttons expand
 
             # note : the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
@@ -339,7 +361,7 @@ class UEVMGui(tk.Tk):
             ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
             # store the controls that need to be accessible outside the class
-            self.var_entry_file_name = var_entry_file_name
+            self.var_entry_data_source_name = var_entry_data_source_name
             self.var_category = var_category
             self.var_global_search = var_global_search
             self.var_is_owned = var_is_owned
@@ -583,7 +605,7 @@ class UEVMGui(tk.Tk):
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
-                self.save_file(show_dialog=False)
+                self.save_data(show_dialog=False)
         self.close_window()
 
     def close_window(self) -> None:
@@ -591,7 +613,7 @@ class UEVMGui(tk.Tk):
         Close the window
         """
         if gui_g.s.reopen_last_file:
-            gui_g.s.last_opened_file = self.editable_table.file
+            gui_g.s.last_opened_file = self.editable_table.data_source
         # store window geometry in config settings
         gui_g.s.width = self.winfo_width()
         gui_g.s.height = self.winfo_height()
@@ -600,38 +622,47 @@ class UEVMGui(tk.Tk):
         gui_g.s.save_config_file()
         self.quit()
 
-    def load_file(self) -> str:
+    def load_data(self) -> str:
         """
-        Load a file
+        Load data from the current data source
         :return: the name of the file that was loaded
         """
-        filename = self._open_file_dialog(filename=self.editable_table.file)
-        if filename and os.path.isfile(filename):
-            self.editable_table.file = filename
-            self.editable_table.load_data()
-            self.editable_table.show_page(0)
-            self.update_page_numbers()
-            self.update_file_name()
-            gui_f.box_message(f'The file {filename} as been read')
-        return filename
+        if self.editable_table.data_source_type == DataSourceType.FILE:
+            filename = self._open_file_dialog(filename=self.editable_table.data_source)
+            if filename and os.path.isfile(filename):
+                self.editable_table.data_source = filename
+                self.editable_table.load_data()
+                self.editable_table.show_page(0)
+                self.update_page_numbers()
+                self.update_data_source_name()
+                gui_f.box_message(f'The data source {filename} as been read')
+            return filename
+        else:
+            # TODO : add load_data to database feature
+            gui_f.todo_message()
+            return ''
 
-    def save_file(self, show_dialog=True) -> str:
+    def save_data(self, show_dialog=True) -> str:
         """
-        Save the data to a file
+        Save the data to the current data source
         :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file
         """
-        if show_dialog:
-            filename = self._open_file_dialog(filename=self.editable_table.file, save_mode=True)
+        if self.editable_table.data_source_type == DataSourceType.FILE:
+            if show_dialog:
+                filename = self._open_file_dialog(filename=self.editable_table.data_source, save_mode=True)
+                if filename:
+                    self.editable_table.data_source = filename
+            else:
+                filename = self.editable_table.data_source
             if filename:
-                self.editable_table.file = filename
+                self.editable_table.save_data()
+                self.update_data_source_name()
+                gui_f.box_message(f'Data Saved to {self.editable_table.data_source}')
+            return filename
         else:
-            filename = self.editable_table.file
-
-        if filename:
-            self.editable_table.save_data()
-            self.update_file_name()
-            gui_f.box_message(f'Data Saved to {self.editable_table.file}')
-        return filename
+            # TODO : add save_data to database feature
+            gui_f.todo_message()
+            return ''
 
     def export_selection(self) -> None:
         """
@@ -641,7 +672,7 @@ class UEVMGui(tk.Tk):
         selected_row_indices = self.editable_table.multiplerowlist
         if selected_row_indices:
             selected_rows = self.editable_table.data_filtered.iloc[selected_row_indices]
-            filename = self._open_file_dialog(save_mode=True, filename=self.editable_table.file)
+            filename = self._open_file_dialog(save_mode=True, filename=self.editable_table.data_source)
             if filename:
                 selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
@@ -846,12 +877,12 @@ class UEVMGui(tk.Tk):
             self.toolbar_frame.btn_next_page.config(state=tk.DISABLED)
             self.toolbar_frame.btn_last_page.config(state=tk.DISABLED)
 
-    def update_file_name(self) -> None:
+    def update_data_source_name(self) -> None:
         """
-        Update the file name in the control frame
+        Update the data source name in the control frame
         """
-        filename = self.editable_table.file
-        self.control_frame.var_entry_file_name.set(filename)
+        data_source = self.editable_table.data_source
+        self.control_frame.var_entry_data_source_name.set(data_source)
 
     def update_category_var(self) -> dict:
         """
@@ -874,29 +905,27 @@ class UEVMGui(tk.Tk):
 
     def reload_data(self) -> None:
         """
-        Reload the data from the file
+        Reload the data from the data source
         """
         if not self.editable_table.must_save or (
             self.editable_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             self.editable_table.reload_data()
-            gui_f.box_message(f'Data Reloaded from {self.editable_table.file}')
+            gui_f.box_message(f'Data Reloaded from {self.editable_table.data_source}')
             self.update_page_numbers()
             self.update_category_var()
 
     def rebuild_data(self) -> None:
         """
-        Rebuild the data from the file. Will ask for confirmation before rebuilding
+        Rebuild the data from the data source. Will ask for confirmation before rebuilding
         """
-        if gui_f.box_yesno(
-            f'The process will change the content of the windows and the {self.editable_table.file} file.\nAre you sure you want to continue ?'
-        ):
+        if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
             if self.editable_table.rebuild_data():
-                gui_f.box_message(f'Data rebuilt from {self.editable_table.file}')
+                gui_f.box_message(f'Data rebuilt from {self.editable_table.data_source}')
                 self.update_page_numbers()
                 self.update_category_var()
 
-    def run_cli_command(self, command_name='') -> None:
+    def run_uevm_command(self, command_name='') -> None:
         """
         Execute a cli command and display the result in DisplayContentWindow
         :param command_name: the name of the command to execute

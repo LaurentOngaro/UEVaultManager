@@ -8,34 +8,46 @@ import os.path
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.EditableTableClass import DataSourceType
+from UEVaultManager.tkgui.modules.functions import log_error
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
 
 
-def init_gui(open_mainwindow=True) -> str:
+def init_gui(open_mainwindow=True, use_db=False) -> str:
     """
     Main function for the GUI
     :param open_mainwindow: if True, the main window will be opened (default mode).
             Set to False for running the GUI initialization only, useful if called from cli.py
+    :param use_db: if True, the database will be used instead of the csv file
     :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script
     """
     app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
-    csv_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.csv_filename)
     rebuild = False
-    if not os.path.isfile(csv_filename):
-        _, csv_filename = gui_fn.create_empty_file(csv_filename)
-        rebuild = True
+    if use_db:
+        data_source = gui_fn.path_from_relative_to_absolute(gui_g.s.sqlite_filename)
+        data_source_type = DataSourceType.SQLITE
+        if not os.path.isfile(data_source):
+            log_error(f'Database File {data_source} not found. Exiting...')
+            exit(1)
+    else:
+        data_source_type = DataSourceType.FILE
+        data_source = gui_fn.path_from_relative_to_absolute(gui_g.s.csv_filename)
+        if not os.path.isfile(data_source):
+            _, data_source = gui_fn.create_empty_file(data_source)
+            rebuild = True
     if open_mainwindow:
         main_window = UEVMGui(
             title=gui_g.s.app_title,
             icon=app_icon_filename,
             screen_index=0,
-            file=csv_filename,
+            data_source_type=data_source_type,
+            data_source=data_source,
             rebuild_data=rebuild
         )
         main_window.mainloop()
 
-    return csv_filename
+    return data_source
 
 
 if __name__ == '__main__':
-    init_gui()
+    init_gui(open_mainwindow=True, use_db=True)

@@ -46,7 +46,7 @@ CSV_headings = {
 }
 
 
-def create_emty_csv_row(return_as_string=False):
+def create_empty_csv_row(return_as_string=False):
     """
     Create an empty row for the csv file
     :return: empty row

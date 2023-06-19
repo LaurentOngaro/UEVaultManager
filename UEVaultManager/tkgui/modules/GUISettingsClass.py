@@ -46,8 +46,8 @@ class GUISettings:
         # they must be used trought path_from_relative_to_absolute
         # following vars are not set as properties to avoid storing absolute paths in the config file
         self.cache_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
-        self.results_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
         self.scraping_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['scraping_folder'])
+        self.results_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
 
         # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
         self.assets_folder = gui_fn.path_from_relative_to_absolute('../../assets')
@@ -58,9 +58,11 @@ class GUISettings:
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename = self.config_vars['last_opened_file']
         else:
-            self.csv_filename = os.path.join(self.config_vars['results_folder'], 'list.csv')
+            self.csv_filename = os.path.normpath(self.csv_filename)
 
-        self.csv_filename = os.path.normpath(self.csv_filename)
+        self.sqlite_filename = os.path.join(self.config_vars['scraping_folder'], 'assets.db')
+        self.sqlite_filename = os.path.normpath(self.sqlite_filename)
+
         self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
         self.app_monitor = 1
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
@@ -69,7 +71,7 @@ class GUISettings:
         self.preview_max_height = 150
         self.default_global_search = 'Text to search...'
         self.default_category_for_all = 'All'
-        self.empty_cell = 'nan'
+        self.empty_cell = 'none'
         self.expand_columns_factor = 20
         self.contract_columns_factor = 20
         # ttkbootstrap themes:

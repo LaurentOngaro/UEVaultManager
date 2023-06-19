@@ -2,6 +2,7 @@
 """
 CLI interface functions
 """
+import argparse
 import os
 import re
 
@@ -190,13 +191,16 @@ def convert_to_pascal_case(string: str) -> str:
     return ''.join(x.capitalize() or '_' for x in string.split('_'))
 
 
-def check_and_convert_key(dict_to_check: dict, key: str) -> str:
+def check_and_convert_key_csv_to_sql(csv_dict_to_check: dict, key: str) -> str:
     """
     Check if a key is valid for a dict. If not, try to convert it to snake case or pascal case.
-    :param dict_to_check: dict to check where the key is valid
+    :param csv_dict_to_check: dict to search the key for
     :param key: key to check
     :return: The checked key if it is valid, '' otherwise.
     """
+    # this function is intended to convert csv column names (or json fields) to sql column names
+    # aka from to CSV_headings as set in csv_data.py to self.data.fields as set in UEAsset.init_data()
+
     checked_key = ''
 
     # key data already "transformed" and mapped in UEAssetScrapper._parse_data()
@@ -208,12 +212,14 @@ def check_and_convert_key(dict_to_check: dict, key: str) -> str:
     # 'category' : ['categories'][0]['name']
     # 'author' = ['seller']['name']
 
-    # dict of keys that could not be automatically renamed
-    manual_renaming = {'urlSlug': 'asset_slug', 'thumbnail': 'thumbnail_url'}
+    # keys that could not be automatically renamed
+    # format used: A:B => the value for key A will be renamed to B
+    manual_renamed = {'urlSlug': 'asset_slug', 'thumbnail': 'thumbnail_url', 'Image': 'thumbnail_url'}
+
     key_to_ignore = [
         # key for data not used in the final json
-        'ownedCount', 'headerImage', 'learnThumbnail', 'klass', 'recurrence', 'voucherDiscount', 'keyImages', 'effectiveDate', 'bundle',
-        'platforms', 'purchaseLimit', 'compatibleApps', 'tax', 'featured'
+        'ownedCount', 'headerImage', 'learnThumbnail', 'klass', 'recurrence', 'voucherDiscount', 'keyImages', 'effectiveDate', 'bundle', 'platforms',
+        'purchaseLimit', 'compatibleApps', 'tax', 'featured'
         # key data already "transformed" and mapped in UEAssetScrapper._parse_data()
         'priceValue', 'discountPriceValue', 'seller', 'average_rating', 'rating_total', 'rating'
     ]
@@ -221,27 +227,80 @@ def check_and_convert_key(dict_to_check: dict, key: str) -> str:
         return checked_key
 
     # if the key (from the source dict) is in the target dict, uses it as is
-    if key in dict_to_check.keys():
+    if key in csv_dict_to_check.keys():
         checked_key = key
-    elif key in manual_renaming.keys():
-        checked_key = manual_renaming[key]
+    elif key in manual_renamed.keys():
+        checked_key = manual_renamed[key]
     else:
         # if no, try to convert the key to snake case
         snake_case_key = convert_to_snake_case(key)
         # if it does, use the key as is
-        if snake_case_key in dict_to_check.keys():
+        if snake_case_key in csv_dict_to_check.keys():
             checked_key = snake_case_key
         else:
             # if no convert the key to snake case
             pascal_case_key = convert_to_pascal_case(key)
-            if pascal_case_key in dict_to_check.keys():
+            if pascal_case_key in csv_dict_to_check.keys():
                 checked_key = pascal_case_key
             else:
                 # should not happen because all cases must have been treated
                 # if not the saved value will be NULL and the value from asset will be lost
-                # print(f"Key {key} not found in the dict") # debug only, will flood the console
+                # print(f"Key {key} not found in the csv_dict_to_check") # debug only, will flood the console
                 return ''
     return checked_key
+
+
+def check_and_convert_key_sql_to_csv(sql_dict_to_check: dict, key: str) -> (str, bool):
+    """
+    Check if a key is valid for a dict. If not, try to convert it to a capitalized sentence.
+    :param sql_dict_to_check: dict to search the key for
+    :param key: key to check
+    :return: The checked key if it is valid, '' otherwise, and a boolean indicating if the key is ignored
+    """
+    # this function is intended to convert database columns names to csv column names
+    # aka from self.data.fields as set in UEAsset.init_data() to CSV_headings as set in csv_data.py
+
+    # keys that could not be automatically renamed
+    # format used: A:B => the value for key A will be renamed to B
+    manual_renamed = {
+        'asset_id': 'Asset_id',
+        'asset_url': 'Url',
+        'thumbnail_url': 'Image',
+        'date_added_in_db': 'Date added',
+        'id': 'Uid',
+        'author': 'Developer',
+        'title': 'App name'
+    }
+
+    # key for data not used in the final CSV
+    key_to_ignore = [
+        'asset_slug', 'technical_details', 'namespace', 'long_description', 'is_catalog_item', 'catalog_item_id', 'current_price_discounted',
+        'currency_code', 'tags', 'comment_rating_id', 'rating_id', 'discount', 'custom_attributes'
+    ]
+    if key in key_to_ignore:
+        return '', True  # return empty string to not copy the value and not create a new column
+
+    # key for data to ADD the final CSV that are not in CSV_headings
+    keys_to_add = ['free', 'is_new', 'can_purchase', 'discounted', 'review_count']
+
+    # if the key (from the source dict) is in the target dict, uses it as is
+    if key in sql_dict_to_check.keys():
+        checked_key = key
+    elif key in manual_renamed.keys():
+        checked_key = manual_renamed[key]
+    else:
+        # if no, try to convert the key a list a words separated by spaces and capitalize the first letter
+        sentence_key = ' '.join(x for x in key.split('_'))
+        sentence_key = sentence_key.capitalize()
+
+        if sentence_key in sql_dict_to_check.keys() or key in keys_to_add:
+            checked_key = sentence_key
+        else:
+            # should not happen because all cases must have been treated
+            # if not the saved value will be NULL and the value from asset will be lost
+            # print(f"Key {key} not found in the sql_dict_to_check") # debug only, will flood the console
+            return '', True  # return empty string to not copy the value and not create a new column
+    return checked_key, False
 
 
 def init_dict_from_data(target_dict: dict, source_dict: dict = None) -> None:
@@ -255,6 +314,21 @@ def init_dict_from_data(target_dict: dict, source_dict: dict = None) -> None:
     # copy all the keys from the source_dict dict to the target_dict dict
     for key in source_dict.keys():
         # from the source dict, check if the key exists in the target_dict dict
-        checked_key = check_and_convert_key(dict_to_check=target_dict, key=key)
+        checked_key = check_and_convert_key_csv_to_sql(csv_dict_to_check=target_dict, key=key)
         if checked_key:
             target_dict[checked_key] = source_dict[key]
+
+
+def remove_command_argument(parser: argparse, options: str) -> None:
+    """
+    Remove an argument from a command line parser.
+    :param parser: The command line parser.
+    :param options: The argument to remove.
+    """
+    for option in options:
+        # noinspection PyProtectedMember
+        for action in parser._actions:
+            if vars(action)['option_strings'][0] == option:
+                # noinspection PyProtectedMember
+                parser._handle_conflict_resolve(None, [(option, action)])
+                break

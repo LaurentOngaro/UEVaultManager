@@ -127,7 +127,8 @@ Usage
 
     optional arguments:
       -h, --help            Show this help message and exit
-      -i, --input           The file name (with path) where the list should be read from
+      -i, --input           The file name (with path) where the list should be read from (it exludes the --database option)
+      -db, --database       The sqlite file name (with path) where the list should be read from (it exludes the --input option)
 
   Command: scrap
     usage: UEVaultManager scrap [-h]

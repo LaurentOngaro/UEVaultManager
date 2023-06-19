@@ -5,13 +5,15 @@ Implementation for:
 """
 import io
 import webbrowser
+from enum import Enum
 from tkinter import ttk
 
 import pandas as pd
 from pandas.errors import EmptyDataError
 from pandastable import Table, TableModel, config
 
-from UEVaultManager.models.csv_data import create_emty_csv_row, CSV_headings
+from UEVaultManager.models.csv_data import create_empty_csv_row, CSV_headings
+from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton
@@ -20,23 +22,41 @@ from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 
 
+class DataSourceType(Enum):
+    """ An enum to represent the data source type """
+    FILE = 1
+    SQLITE = 2
+
+
 class EditableTable(Table):
     """
     A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
     :param container_frame: The parent frame for the table.
-    :param file: The path to the CSV file containing the table data.
-    :param fontsize: The font size for the table.
+    :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
+    :param data_source: The path to the source that contains the table data
+    :param rows_per_page: The number of rows to show per page.
     :param show_toolbar: Whether to show the toolbar.
     :param show_statusbar: Whether to show the status bar.
     :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
 
-    def __init__(self, container_frame=None, file=None, rows_per_page=36, show_toolbar=False, show_statusbar=False, **kwargs):
+    def __init__(
+        self,
+        container_frame=None,
+        data_source_type=DataSourceType.FILE,
+        data_source=None,
+        rows_per_page=36,
+        show_toolbar=False,
+        show_statusbar=False,
+        **kwargs
+    ):
         self._last_selected_row = -1
         self._last_selected_col = -1
 
-        self.file = file
+        self.data_source_type = data_source_type
+        self.data_source = data_source
+
         self.must_save = False
         self.must_rebuild = False
         self.container_frame = container_frame
@@ -59,7 +79,10 @@ class EditableTable(Table):
         self.edit_cell_row_index = None
         self.edit_cell_col_index = None
         self.edit_cell_entry = None
-
+        if self.data_source_type == DataSourceType.SQLITE:
+            self.db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
+        else:
+            self.db_handler = None
         self.load_data()
         Table.__init__(self, container_frame, dataframe=self.data, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
@@ -319,29 +342,48 @@ class EditableTable(Table):
                 'Review': float,  #
                 'Price': float,  #
                 'Old price': float,  #
+                'Discounted': convert_to_bool,  #
+                'Is new': convert_to_bool,  #
+                'Free': convert_to_bool,  #
+                'Can purchase': convert_to_bool,  #
                 'Owned': convert_to_bool,  #
-                'Must buy': convert_to_bool,  #
+                'Obsolete': convert_to_bool,  #
                 'Date added': convert_to_datetime,  #
             },
             'on_bad_lines': 'warn',
             'encoding': "utf-8",
         }
-        if self.file is None or not os.path.isfile(self.file):
-            log_warning(f'File to read data from is not defined or not found: {self.file}')
+        if self.data_source is None or not os.path.isfile(self.data_source):
+            log_warning(f'File to read data from is not defined or not found: {self.data_source}')
             return
 
         self.must_rebuild = False
-        try:
-            self.data = pd.read_csv(self.file, **csv_options)
-        except EmptyDataError:
-            # will create an empty row with the correct columns
-            str_data = ','.join(str(value) for value in CSV_headings.keys())  # column names
-            str_data += '\n'
-            str_data += create_emty_csv_row(return_as_string=True)  # dummy row
-            self.data = pd.read_csv(io.StringIO(str_data))
-            self.must_rebuild = True
+        if self.data_source_type == DataSourceType.FILE:
+            # TODO : test and valid this code
+            try:
+                self.data = pd.read_csv(self.data_source, **csv_options)
+            except EmptyDataError:
+                # will create an empty row with the correct columns
+                str_data = ','.join(str(value) for value in CSV_headings.keys())  # column names
+                str_data += '\n'
+                str_data += create_empty_csv_row(return_as_string=True)  # dummy row
+                self.data = pd.read_csv(io.StringIO(str_data), **csv_options)
+                self.must_rebuild = True
+        elif self.data_source_type == DataSourceType.SQLITE:
+            try:
+                data, column_names = self.db_handler.get_assets_data_for_csv(CSV_headings)
+                self.data = pd.DataFrame(data, columns=column_names)
+            except EmptyDataError:
+                # will create an empty row (in the database) with the correct columns
+                # TODO : test and valid this code
+                dummy_dict = self.db_handler.create_empty_row(return_as_string=False, empty_cell=gui_g.s.empty_cell)  # dummy row
+                self.data = pd.DataFrame(dummy_dict)
+                self.must_rebuild = True
+        else:
+            log_error(f'Unknown data source type: {self.data_source_type}')
+            return
 
-        self.init_data_format()
+        self.init_data_format()  # could take some time with lots of rows
 
         # log_debug("\nCOL TYPES AFTER LOADING CSV\n")
         # self.data.info()  # direct print info
@@ -376,7 +418,7 @@ class EditableTable(Table):
                 try:
                     self.data[col] = self.data[col].astype(float)
                 except (KeyError, ValueError) as error:
-                    log_error(f'Could not convert column "{col}" to float. Error: {error}')
+                    log_warning(f'Could not convert column "{col}" to float. Error: {error}')
 
         col_to_convert = ['Category', 'Grab result']
         for col in col_to_convert:
@@ -385,7 +427,7 @@ class EditableTable(Table):
                 try:
                     self.data[col] = self.data[col].astype('category')
                 except (KeyError, ValueError) as error:
-                    log_error(f'Could not convert column "{col}" to category. Error: {error}')
+                    log_warning(f'Could not convert column "{col}" to category. Error: {error}')
 
         # log_debug("\nCOL TYPES AFTER MANUAL CONVERSION\n")
         # self.data.info() # direct print info
@@ -423,7 +465,8 @@ class EditableTable(Table):
 
         data = self.data.iloc[0:len(self.data)]
         self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
-        self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=gui_g.s.csv_datetime_format)
+        # TODO: Test and validate this code. Must save in file OR database
+        self.model.df.to_csv(self.data_source, index=False, na_rep='N/A', date_format=gui_g.s.csv_datetime_format)
         self.show_page(self.current_page)
         self.must_save = False
 

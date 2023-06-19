@@ -31,13 +31,14 @@ from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
 from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
+from UEVaultManager.tkgui.modules.EditableTableClass import DataSourceType
 from UEVaultManager.tkgui.modules.functions import custom_print, box_message  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads
+from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads, remove_command_argument
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
@@ -1136,32 +1137,47 @@ class UEVaultManagerCLI:
         Edit assets in the database using a GUI
         :param args: options passed to the command
         """
-        if not args.input:
-            input_filename = gui_g.s.csv_filename
-            self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
+        data_source_type = DataSourceType.FILE
+        if args.database:
+            data_source = args.database
+            data_source_type = DataSourceType.SQLITE
+            self.logger.info(f'The database {data_source} will be used to read data from')
+        elif args.input:
+            data_source = args.input
+            self.logger.info(f'The file {data_source} will be used to read data from')
         else:
-            input_filename = gui_fn.path_from_relative_to_absolute(args.input)
-        input_filename = os.path.normpath(input_filename)
+            data_source = gui_g.s.csv_filename
+            self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
+
+        data_source = gui_fn.path_from_relative_to_absolute(data_source)
+        data_source = os.path.normpath(data_source)
 
         app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
         gui_g.UEVM_log_ref = self.logger
         gui_g.UEVM_cli_ref = self
 
         # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
-        init_gui_args(args, additional_args={'output': input_filename})
+        init_gui_args(args, additional_args={'output': data_source})
         rebuild = False
-        if not os.path.isfile(input_filename):
-            is_valid, input_filename = gui_fn.create_empty_file(input_filename)
+        if not os.path.isfile(data_source):
+            is_valid, data_source = gui_fn.create_empty_file(data_source)
             rebuild = True
             if not is_valid:
-                message = f'Error while creating the empty result file with the given path. The following file {input_filename} will be used as default'
+                message = f'Error while creating the empty result file with the given path. The following file {data_source} will be used as default'
                 self._log_gui_wrapper(self.logger.error, message)
                 # fix invalid input/output file name in arguments to avoid futher errors in file path checks
-                args.input = input_filename
-                args.output = input_filename
-                gui_g.UEVM_cli_args['input'] = input_filename
-                gui_g.UEVM_cli_args['output'] = input_filename
-        gui_g.UEVM_gui_ref = UEVMGui(title=gui_g.s.app_title, icon=app_icon_filename, screen_index=0, file=input_filename, rebuild_data=rebuild)
+                args.input = data_source
+                args.output = data_source
+                gui_g.UEVM_cli_args['input'] = data_source
+                gui_g.UEVM_cli_args['output'] = data_source
+        gui_g.UEVM_gui_ref = UEVMGui(
+            title=gui_g.s.app_title,
+            icon=app_icon_filename,
+            screen_index=0,
+            data_source_type=data_source_type,
+            data_source=data_source,
+            rebuild_data=rebuild
+        )
         gui_g.UEVM_gui_ref.mainloop()
         # gui_g.UEVM_gui_ref.quit()
 
@@ -1456,8 +1472,22 @@ def main():
     get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
 
     edit_parser.add_argument(
-        '-i', '--input', dest='input', metavar='<path/name>', action='store', help='The file name (with path) where the list should be read from'
+        '-i',
+        '--input',
+        dest='input',
+        metavar='<path/name>',
+        action='store',
+        help='The file name (with path) where the list should be read from (it exludes the --database option)'
     )
+    edit_parser.add_argument(
+        '-db',
+        '--database',
+        dest='database',
+        metavar='<path/name>',
+        action='store',
+        help='The sqlite file name (with path) where the list should be read from (it exludes the --input option)'
+    )
+
     # not use for now
     # edit_parser.add_argument('--csv', dest='csv', action='store_true', help='Input file is in CSV format')
     # edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
@@ -1539,6 +1569,8 @@ def main():
         elif args.subparser_name == 'get-token':
             cli.get_token(args)
         elif args.subparser_name in {'edit', 'edit-assets'}:
+            if args.database and args.input:
+                remove_command_argument(edit_parser, 'input')
             args.gui = True
             UEVaultManagerCLI.is_gui = True
             cli.edit_assets(args)

@@ -21,6 +21,13 @@ class UEAsset:
         self.log.setLevel(logging.INFO)
         self.init_data()
 
+    def __str__(self) -> str:
+        """
+        Return a string representation of the asset.
+        :return: A string representation of the asset.
+        """
+        return ','.join(str(value) for value in self.data.values())
+
     def init_data(self) -> None:
         """
         Initialize the EGS data dictionary.

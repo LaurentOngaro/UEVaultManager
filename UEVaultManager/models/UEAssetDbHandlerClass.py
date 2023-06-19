@@ -18,7 +18,7 @@ from faker import Faker
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
-from UEVaultManager.utils.cli import check_and_create_path
+from UEVaultManager.utils.cli import check_and_create_path, check_and_convert_key_sql_to_csv
 
 
 class VersionNum(Enum):
@@ -393,6 +393,114 @@ class UEAssetDbHandler:
                 uid = row['id']
                 row_data[uid] = dict(row)
         return row_data
+
+    def get_assets_data_for_csv(self, csv_headings: dict) -> (list, list):
+        """
+        Get data from all the assets in the 'assets' table for a "CSV file" like format.
+        :param csv_headings: dictionary of the CSV headings to convert column names into.
+        :return: list(rows),list (column_names)
+        """
+
+        csv_column_names = []
+        fields = """
+        asset_id, 
+        title, 
+        title as 'App title',
+        category, 
+        review, 
+        review_count, 
+        author, 
+        description,
+        status, 
+        discount_price, 
+        discount_percentage,
+        discounted, 
+        is_new, 
+        free, 
+        can_purchase,
+        owned, 
+        obsolete, 
+        supported_versions, 
+        grab_result, 
+        price, 
+        old_price,
+        comment, 
+        stars, 
+        must_buy, 
+        test_result, 
+        installed_folder, 
+        alternative, 
+        origin, 
+        page_title,
+        thumbnail_url,
+        asset_url,
+        creation_date, 
+        update_date, 
+        date_added_in_db, 
+        id
+        """
+
+        # key value to duplicate
+        # format used: A:B => the value for key B must be a duplication of the value of a key A
+        # key_to_duplicate = {'App title': 'App name'}
+        # fields += ", title as 'App name'"
+
+        # key that exists in CSV_heading but not useful or absent in the database
+        # won't be copied or will be created with a defaut value
+        # unused_keys = ['Compatible versions', 'UE version']
+        # fields += ", '' as 'Compatible versions'"
+        # fields += ", '' as 'UE version'"
+
+        with DatabaseConnection(self.database_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT {fields} FROM assets")
+            rows = cursor.fetchall()
+            db_column_names = [description[0] for description in cursor.description]
+            cursor.close()
+
+        for col in db_column_names:
+            name, is_ignored = check_and_convert_key_sql_to_csv(csv_headings, col)
+            if not is_ignored:
+                csv_column_names.append(name)
+
+        return rows, csv_column_names
+
+    def create_empty_row(self, return_as_string=True, empty_cell=''):
+        """
+        Create an empty row in the 'assets' table.
+        :param return_as_string: True to return the row as a string, False to
+        :param empty_cell: The value to use for empty cells.
+        :return: A row (dict) or a string representing the empty row.
+        """
+        # add a new row to the 'assets' table
+        with DatabaseConnection(self.database_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO assets DEFAULT VALUES")
+            conn.commit()
+            uid = cursor.lastrowid
+
+        # get the column names of the 'assets' table
+        # with DatabaseConnection(self.database_name) as conn:
+        #     cursor = conn.cursor()
+        #     cursor.execute("PRAGMA table_info(assets)")
+        #     columns_info = cursor.fetchall()
+        #     column_names = [column[1] for column in columns_info]
+        # column_names_str = ', '.join(column_names)
+        # with DatabaseConnection(self.database_name) as conn:
+        #     conn.row_factory = sqlite3.Row
+        #     cursor = conn.cursor()
+        #     cursor.execute("SELECT * FROM assets WHERE id=?", (uid,))
+        #     row = cursor.fetchone()
+        # data = dict(row)
+        # data['Asset_id'] = 'dummy_row_' + str(uid)  # dummy unique Asset_id to avoid issue
+        # data['Image'] = empty_cell  # avoid displaying image warning on mouse over
+        # if return_as_string:
+        #     data = ','.join(str(value) for value in data.values())
+        #
+        ue_asset = self.get_ue_asset(str(uid))
+        ue_asset.asset_id = 'dummy_row_' + str(uid)  # dummy unique Asset_id to avoid issue
+        ue_asset.thumbnail_url = empty_cell  # avoid displaying image warning on mouse over
+        return str(ue_asset) if return_as_string else ue_asset
 
     def get_ue_asset(self, uid: str) -> UEAsset:
         """
