@@ -10,6 +10,12 @@ from pandastable import Table
 db_name = '../../scraping/assets.db'
 
 
+def columns_to_CSV_heading(word: str) -> str:
+    heading = ' '.join(x for x in word.split('_'))
+    heading = heading.capitalize()
+    return heading
+
+
 class EditableTable(tk.Frame):
 
     def __init__(self, parent: tk.Tk, db_name: str) -> None:
@@ -41,8 +47,21 @@ class EditableTable(tk.Frame):
         self.update_table()
 
     def load_data_from_db(self, db_name: str) -> pd.DataFrame:
-        with sqlite3.connect(db_name) as conn:
-            df = pd.read_sql_query("SELECT * FROM assets", conn)
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM assets")
+
+        rows = cursor.fetchall()
+        column_names = [description[0] for description in cursor.description]
+
+        df = pd.DataFrame(rows, columns=column_names)
+
+        cursor.close()
+        conn.close()
+
+        # Convert column names to CamelCase
+        df.columns = [columns_to_CSV_heading(col) for col in df.columns]
+
         return df
 
     def update_table(self) -> None:
