@@ -335,23 +335,26 @@ class EditableTable(Table):
         """
         Loads data from the specified CSV file into the table.
         """
-        csv_options = {'on_bad_lines': 'warn', 'encoding': "utf-8"}
+         # by default the following values will be considered as 'NaN'
+        # '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN', '<NA>', 'N/A', 'NA', 'NULL', 'NaN', 'None', 'n/a', 'nan', 'null'
+        # see https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html
+        csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
         if self.data_source is None or not os.path.isfile(self.data_source):
             log_warning(f'File to read data from is not defined or not found: {self.data_source}')
             return
-
         self.must_rebuild = False
         if self.data_source_type == DataSourceType.FILE:
             try:
                 self.data = pd.read_csv(self.data_source, **csv_options)
             except EmptyDataError:
-                # TODO : test and valid this code
                 # will create an empty row with the correct columns
                 str_data = ','.join(str(value) for value in CSV_headings.keys())  # column names
                 str_data += '\n'
                 str_data += create_empty_csv_row(return_as_string=True)  # dummy row
                 self.data = pd.read_csv(io.StringIO(str_data), **csv_options)
                 self.must_rebuild = True
+            # fill all 'NaN' like values with 'None', to be similar to the database
+            self.data.fillna('None', inplace=True)
         elif self.data_source_type == DataSourceType.SQLITE:
             try:
                 data, column_names = self.db_handler.get_assets_data_for_csv(CSV_headings)
@@ -373,6 +376,26 @@ class EditableTable(Table):
 
         self.total_pages = (len(self.data) - 1) // self.rows_per_page + 1
         self.data_filtered = self.data
+
+    def save_data(self, source_type=None) -> None:
+        """
+        Saves the current table data to the CSV file.
+        """
+        if source_type is None:
+            source_type = self.data_source_type
+        data = self.data.iloc[0:len(self.data)]
+        self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
+        if source_type == DataSourceType.FILE:
+            self.model.df.to_csv(self.data_source, index=False, na_rep='None', date_format=gui_g.s.csv_datetime_format)
+        else:
+            print("TODO")  # TODO: save data
+            # data_to_save = self.data.copy()
+            # Convert column names back to original format
+            # data_to_save.columns = [col.replace(' ', '_').lower() for col in data_to_save.columns]
+            # data_to_save.to_sql(name='assets', con=self.db_handler.connection, if_exists='replace', index=False, method='multi')
+
+        self.show_page(self.current_page)
+        self.must_save = False
 
     def init_data_format(self) -> None:
         """
@@ -401,11 +424,11 @@ class EditableTable(Table):
 
         for col in self.data.columns:
             if col in converters:
+                converter, *args = converters[col]
                 try:
-                    converter, *args = converters[col]
                     self.data[col] = self.data[col].apply(converter, *args) if callable(converter) else self.data[col].astype(converter)
                 except (KeyError, ValueError) as error:
-                    log_warning(f'Could not convert column "{col}" to {converter}. Error: {error}')
+                    log_warning(f'Could not convert column "{col}" using {converter}. Error: {error}')
             else:
                 try:
                     self.data[col] = self.data[col].astype(str)
@@ -437,18 +460,6 @@ class EditableTable(Table):
             self.load_data()
             self.show_page(0)
             return True
-
-    def save_data(self) -> None:
-        """
-        Saves the current table data to the CSV file.
-        """
-
-        data = self.data.iloc[0:len(self.data)]
-        self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
-        # TODO: Test and validate this code. Must save in file OR database
-        self.model.df.to_csv(self.data_source, index=False, na_rep='N/A', date_format=gui_g.s.csv_datetime_format)
-        self.show_page(self.current_page)
-        self.must_save = False
 
     def apply_filters(self, filter_dict=None, global_search=None) -> None:
         """
@@ -495,7 +506,7 @@ class EditableTable(Table):
         """
         Automatically resizes the columns to fit their content.
         """
-        # note:
+        # Note:
         # autoResizeColumns() will not resize table with more than 30 columns
         # same limit without settings the limit in adjustColumnWidths()
         # self.autoResizeColumns()
