@@ -206,7 +206,6 @@ def check_and_convert_key_csv_to_sql(csv_dict_to_check: dict, key: str) -> str:
     # key data already "transformed" and mapped in UEAssetScrapper._parse_data()
     # 'price':'priceValue' or 'discountPriceValue'
     # 'discount_price' : 'discountPriceValue'
-    # 'current_price_discounted' : new value
     # 'average_rating' :  new value
     # 'rating_total' :  new value
     # 'category' : ['categories'][0]['name']
@@ -274,8 +273,8 @@ def check_and_convert_key_sql_to_csv(sql_dict_to_check: dict, key: str) -> (str,
 
     # key for data not used in the final CSV
     key_to_ignore = [
-        'asset_slug', 'technical_details', 'namespace', 'long_description', 'is_catalog_item', 'catalog_item_id', 'current_price_discounted',
-        'currency_code', 'tags', 'comment_rating_id', 'rating_id', 'discount', 'custom_attributes'
+        'asset_slug', 'technical_details', 'namespace', 'long_description', 'is_catalog_item', 'catalog_item_id',
+        'currency_code', 'tags', 'comment_rating_id', 'rating_id', 'custom_attributes'
     ]
     if key in key_to_ignore:
         return '', True  # return empty string to not copy the value and not create a new column
