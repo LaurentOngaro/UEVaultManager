@@ -4,9 +4,9 @@ Utilities functions and tools
 These functions DO NOT depend on the globals.py module and be freely imported
 """
 import ctypes as ct
+import datetime
 import os
 import sys
-import datetime
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors

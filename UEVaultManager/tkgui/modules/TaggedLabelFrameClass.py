@@ -6,7 +6,8 @@ Implementation for:
 import tkinter as tk
 from tkinter import ttk
 
-from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import WidgetType, ExtendedWidget, ExtendedEntry, ExtendedText, ExtendedLabel, ExtendedCheckButton, ExtendedButton
+from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import WidgetType, ExtendedWidget, ExtendedEntry, ExtendedText, ExtendedLabel, \
+    ExtendedCheckButton, ExtendedButton
 from UEVaultManager.tkgui.modules.functions import log_error, log_warning, log_debug
 
 
