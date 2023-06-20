@@ -528,7 +528,7 @@ class EPCAPI:
                     self.log.info(f'{asset_name} is free (check 2)')
             else:
                 # get price using the logged or the not logged soup
-                # notes:
+                # Note:
                 #   when not discounted
                 #       base-price is not available
                 #       price is 'save-discount'

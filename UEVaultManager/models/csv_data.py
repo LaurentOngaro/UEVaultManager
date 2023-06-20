@@ -8,6 +8,9 @@ import uuid
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 CSV_headings = {
+    # title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
+    # similar list is maintained is UEAssetDbHandlerClass.py/fields_for_csv
+
     'Asset_id': False,  # ! important: Do not Rename => this field is used as main key for each asset
     'App name': False,
     'App title': False,
@@ -25,7 +28,7 @@ CSV_headings = {
     'Grab result': False,
     'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
     'Old price': False,  # ! important: always place it after the Price field in the list
-    # User Fields
+    # ## User Fields
     'Comment': True,
     'Stars': True,
     'Must buy': True,
@@ -33,7 +36,7 @@ CSV_headings = {
     'Installed folder': True,
     'Alternative': True,
     'Origin': True,
-    # less important fields
+    # ## less important fields
     'Page title': False,
     'Image': False,
     'Url': True,  # could be kept if a better url that can be used to download the asset is found

@@ -561,11 +561,11 @@ class AppCore:
         self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
         if gui_g.progress_window_ref is not None:
             gui_g.progress_window_ref.reset(new_value=0, new_text="Indexing assets...", new_max_value=len(assets.items()))
-        # note: we sort by reverse, as it the most recent version of an asset will be listed first
+        # Note: we sort by reverse, as it the most recent version of an asset will be listed first
         for app_name, app_assets in sorted(assets.items(), reverse=True):
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return []
-            # notes:
+            # Note:
             #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
             #   app_name is unique because it includes the unreal version
             # asset_id = app_assets['Windows'].asset_id
@@ -661,7 +661,7 @@ class AppCore:
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
-                # note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
+                # Note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
 
                 # with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() - 2), thread_name_prefix="Asset_Fetcher") as executor:
                 #    executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)

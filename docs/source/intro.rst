@@ -22,7 +22,7 @@ able to read directly the result file, display and edit the assets list.
 Please read the :doc:`configuration` and :doc:`usage` sections before creating an issue to avoid invalid
 issue reports.
 
-Notes:
+Note:
 ~~~~~~
 
 UEVaultManager is mainly a CLI (command-line interface) application, it has to be run from a

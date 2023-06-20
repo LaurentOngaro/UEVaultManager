@@ -16,7 +16,7 @@ logger = logging.getLogger('WebViewHelper')
 webview_available = True
 
 try:
-    # note : webview don't came with the obsolete webview package but with [pywebview](https://pywebview.flowrl.com/)
+    # Note: webview don't came with the obsolete webview package but with [pywebview](https://pywebview.flowrl.com/)
     import webview
 
     # silence logger

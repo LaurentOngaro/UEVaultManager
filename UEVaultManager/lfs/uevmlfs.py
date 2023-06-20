@@ -288,7 +288,7 @@ class UEVMLFS:
         :param app_name: The name of the item
         :return: an App object
         """
-        # note: self._assets_metadata is filled ay the start of the list command by reading all the json files in the metadata folder
+        # Note: self._assets_metadata is filled ay the start of the list command by reading all the json files in the metadata folder
         if _meta := self.assets_metadata.get(app_name, None):
             return App.from_json(_meta)  # create an object from the App class using the json data
         return None

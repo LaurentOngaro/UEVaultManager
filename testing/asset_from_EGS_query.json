@@ -203,14 +203,12 @@
   "headerImage": "https://cdn1.epicgames.com/ue/product/Screenshot/shot1-1920x1080-05bc9ce4617056a5277acc23fe017760.jpg",
   "status": "ACTIVE",
   "price": 11.13,
-  "discount": "€0.00",
   "discountPrice": "€11.13",
   "ownedCount": 0,
   "canPurchase": true,
   "owned": false,
   "discount_price": 1113,
   "discount_percentage": 100,
-  "current_price_discounted": true,
   "average_rating": 0,
   "rating_total": 0
 }
