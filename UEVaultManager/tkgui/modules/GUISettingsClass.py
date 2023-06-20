@@ -13,8 +13,7 @@ from UEVaultManager import __name__, __version__, __codename__
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.models.config import AppConf
 
-
-# NOTE : we can't import the following modules here because of circular dependencies
+# NOTE: we can't import the following modules here because of circular dependencies
 # UEVaultManager.tkgui.modules.functions_no_deps
 
 
@@ -66,12 +65,14 @@ class GUISettings:
         self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
         self.app_monitor = 1
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
-        self.data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'))
+        self.data_filetypes = (
+            ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
+        )
         self.preview_max_width = 150
         self.preview_max_height = 150
         self.default_global_search = 'Text to search...'
         self.default_category_for_all = 'All'
-        self.empty_cell = 'none'
+        self.empty_cell = 'None'
         self.expand_columns_factor = 20
         self.contract_columns_factor = 20
         # ttkbootstrap themes:
@@ -100,8 +101,7 @@ class GUISettings:
         return gui_fn.convert_to_int(self.config_vars['rows_per_page'])
 
     def set_rows_per_page(self, value):
-        """ Setter for rows_per_page
-        NOTE: if this value is changed all the scraped files must be updated to match the new value"""
+        """ Setter for rows_per_page """
         self.config_vars['rows_per_page'] = value
 
     # used as property for keeping transparent access
@@ -350,7 +350,7 @@ class GUISettings:
             },
             'scraping_folder': {
                 'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
-                'value'  : '../../../scraping'
+                'value': '../../../scraping'
             },
         }
 
