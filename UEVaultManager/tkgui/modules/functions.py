@@ -170,7 +170,7 @@ def show_asset_image(image_url: str, canvas_image=None) -> None:
     :param image_url: the url of the image to display
     :param canvas_image: the canvas to display the image in
     """
-    if canvas_image is None or image_url is None or not image_url or str(image_url).lower() == gui_g.s.empty_cell:
+    if canvas_image is None or image_url is None or not image_url or str(image_url) == gui_g.s.empty_cell:
         return
     try:
         # noinspection DuplicatedCode
