@@ -31,6 +31,7 @@ class UEAsset:
     def init_data(self) -> None:
         """
         Initialize the EGS data dictionary.
+
         Note: the keys of self.user_data dict are initialized here
         """
         self.data = {
@@ -39,10 +40,8 @@ class UEAsset:
             'catalog_item_id': None,
             'title': None,
             "category": None,
-            # 'category_slug': None,
             'author': None,
             'thumbnail_url': None,
-            'current_price_discounted': None,
             'asset_slug': None,
             'currency_code': None,
             'description': None,
@@ -53,11 +52,7 @@ class UEAsset:
             'rating_id': None,
             'status': None,
             'price': None,
-            'discount': None,
-            # 'discount_price':data['discountPrice'],
-            # 'discount_price_value':data[ 'discountPriceValue'],
             'discount_price': None,
-            # 'voucher_discount':data[ 'voucherDiscount'],
             'discount_percentage': None,
             'is_catalog_item': None,
             'is_new': None,
