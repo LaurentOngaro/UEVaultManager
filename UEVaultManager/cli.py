@@ -42,6 +42,7 @@ from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
+global_file_debug_only_flag = False  # create some limitations to speed up the dev process - Set to True for debug Only
 
 
 def init_gui_args(args, additional_args=None) -> None:
@@ -578,7 +579,7 @@ class UEVaultManagerCLI:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
             cpt += 1
-            # notes:
+            # Note:
             #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
             #   app_name is unique because it includes the unreal version
             #   we use asset_id as key because we don't want to have several entries for the same asset
@@ -1196,13 +1197,12 @@ class UEVaultManagerCLI:
             # if automatic checks are off force an update here
             self.core.check_for_updates(force=True)
 
-        load_from_files = args.offline
         # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
         # still true ?
         # rows_per_page = gui_g.s.rows_per_page
         rows_per_page = 100  # a bigger value will be refused by UE API
-        testing = False
-        if testing:
+
+        if global_file_debug_only_flag:
             start_row = 0  # debug only, shorter list
             # start_row = 1700  # debug only, shorter list
             max_threads = 0  # debug only, see exceptions
@@ -1218,7 +1218,7 @@ class UEVaultManagerCLI:
             store_in_db=True,
             store_in_files=True,
             store_ids=True,
-            load_from_files=load_from_files,
+            load_from_files=args.offline,
             engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
             egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
         )
