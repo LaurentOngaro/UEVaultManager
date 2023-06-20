@@ -12,7 +12,7 @@ import pandas as pd
 from pandas.errors import EmptyDataError
 from pandastable import Table, TableModel, config
 
-from UEVaultManager.models.csv_data import create_empty_csv_row, CSV_headings
+from UEVaultManager.models.csv_data import create_empty_csv_row, get_csv_field_name_list
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
@@ -335,7 +335,7 @@ class EditableTable(Table):
         """
         Loads data from the specified CSV file into the table.
         """
-         # by default the following values will be considered as 'NaN'
+        # by default the following values will be considered as 'NaN'
         # '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN', '<NA>', 'N/A', 'NA', 'NULL', 'NaN', 'None', 'n/a', 'nan', 'null'
         # see https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html
         csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
@@ -348,7 +348,7 @@ class EditableTable(Table):
                 self.data = pd.read_csv(self.data_source, **csv_options)
             except EmptyDataError:
                 # will create an empty row with the correct columns
-                str_data = ','.join(str(value) for value in CSV_headings.keys())  # column names
+                str_data = get_csv_field_name_list(exclude_sql_only=True, return_as_string=True)  # column names
                 str_data += '\n'
                 str_data += create_empty_csv_row(return_as_string=True)  # dummy row
                 self.data = pd.read_csv(io.StringIO(str_data), **csv_options)
@@ -357,7 +357,7 @@ class EditableTable(Table):
             self.data.fillna('None', inplace=True)
         elif self.data_source_type == DataSourceType.SQLITE:
             try:
-                data, column_names = self.db_handler.get_assets_data_for_csv(CSV_headings)
+                data, column_names = self.db_handler.get_assets_data_for_csv()
                 self.data = pd.DataFrame(data, columns=column_names)
             except EmptyDataError:
                 # will create an empty row (in the database) with the correct columns
@@ -385,6 +385,7 @@ class EditableTable(Table):
             source_type = self.data_source_type
         data = self.data.iloc[0:len(self.data)]
         self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
+        # noinspection GrazieInspection
         if source_type == DataSourceType.FILE:
             self.model.df.to_csv(self.data_source, index=False, na_rep='None', date_format=gui_g.s.csv_datetime_format)
         else:

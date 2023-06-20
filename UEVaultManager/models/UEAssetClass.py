@@ -4,6 +4,8 @@ implementation for:
 - UEAsset:  A class to represent an Unreal Engine asset
 """
 import logging
+
+from UEVaultManager.models.csv_data import get_sql_field_name_list
 from UEVaultManager.utils.cli import init_dict_from_data
 
 
@@ -16,7 +18,6 @@ class UEAsset:
     def __init__(self, engine_version_for_obsolete_assets: str = '4.26'):
         self.engine_version_for_obsolete_assets = engine_version_for_obsolete_assets
         self.data = {}
-        self.user_data = {}
         self.log = logging.getLogger('UEAsset')
         self.log.setLevel(logging.INFO)
         self.init_data()
@@ -32,55 +33,56 @@ class UEAsset:
         """
         Initialize the EGS data dictionary.
 
-        Note: the keys of self.user_data dict are initialized here
+        Note: the keys of self.Data dict are initialized here
         """
-        self.data = {
-            'id': None,
-            'namespace': None,
-            'catalog_item_id': None,
-            'title': None,
-            "category": None,
-            'author': None,
-            'thumbnail_url': None,
-            'asset_slug': None,
-            'currency_code': None,
-            'description': None,
-            'technical_details': None,
-            'long_description': None,
-            'tags': None,
-            'comment_rating_id': None,
-            'rating_id': None,
-            'status': None,
-            'price': None,
-            'discount_price': None,
-            'discount_percentage': None,
-            'is_catalog_item': None,
-            'is_new': None,
-            'free': None,
-            'discounted': None,
-            'can_purchase': None,
-            'owned': None,
-            'review': None,
-            'review_count': None,
-            'asset_id': None,
-            'asset_url': None,
-            'comment': None,
-            'stars': None,
-            'must_buy': None,
-            'test_result': None,
-            'installed_folder': None,
-            'alternative': None,
-            'origin': None,
-            'page_title': None,
-            'obsolete': None,
-            'supported_versions': None,
-            'creation_date': None,
-            'update_date': None,
-            'date_added_in_db': None,
-            'grab_result': None,
-            'old_price': None,
-            'custom_attributes': None,
-        }
+        self.data = {key: None for key in get_sql_field_name_list()}
+        # self.data = {
+        #     'id': None,
+        #     'namespace': None,
+        #     'catalog_item_id': None,
+        #     'title': None,
+        #     "category": None,
+        #     'author': None,
+        #     'thumbnail_url': None,
+        #     'asset_slug': None,
+        #     'currency_code': None,
+        #     'description': None,
+        #     'technical_details': None,
+        #     'long_description': None,
+        #     'tags': None,
+        #     'comment_rating_id': None,
+        #     'rating_id': None,
+        #     'status': None,
+        #     'price': None,
+        #     'discount_price': None,
+        #     'discount_percentage': None,
+        #     'is_catalog_item': None,
+        #     'is_new': None,
+        #     'free': None,
+        #     'discounted': None,
+        #     'can_purchase': None,
+        #     'owned': None,
+        #     'review': None,
+        #     'review_count': None,
+        #     'asset_id': None,
+        #     'asset_url': None,
+        #     'comment': None,
+        #     'stars': None,
+        #     'must_buy': None,
+        #     'test_result': None,
+        #     'installed_folder': None,
+        #     'alternative': None,
+        #     'origin': None,
+        #     'page_title': None,
+        #     'obsolete': None,
+        #     'supported_versions': None,
+        #     'creation_date': None,
+        #     'update_date': None,
+        #     'date_added_in_db': None,
+        #     'grab_result': None,
+        #     'old_price': None,
+        #     'custom_attributes': None,
+        # }
 
     def init_from_dict(self, data: dict = None) -> None:
         """
@@ -99,10 +101,11 @@ class UEAsset:
         :param data: source list for the EGS data
         """
         if data:
-            # create empty dictionary
             self.init_data()
-            # fill dictionary with data from list
-            self.data = dict(zip(self.data.keys(), data))
+            # fill dictionary with the data from the list
+            # Note: keep in mind that the order for the values of the list and must correspond to the order of the keys in self.data
+            keys = self.data.keys()
+            self.data = dict(zip(keys, data))
             self.convert_tag_list_to_string()
 
     def convert_tag_list_to_string(self) -> None:
@@ -113,6 +116,7 @@ class UEAsset:
         if not tags or tags == [] or tags == {}:
             tags = ''
         else:
+            # TODO : find to get the value associated to each tag id. Not sure, it's possible using the API
             tags = [str(i) for i in tags]  # convert each item to a string, if not an error will be raised when joining
             tags = ','.join(tags)
         self.data['tags'] = tags

@@ -26,7 +26,7 @@ from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_cod
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
-from UEVaultManager.models.csv_data import CSV_headings
+from UEVaultManager.models.csv_data import csv_sql_fields, FieldState, get_csv_field_name_list
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
@@ -42,7 +42,7 @@ from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
-global_file_debug_only_flag = False  # create some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
 
 
 def init_gui_args(args, additional_args=None) -> None:
@@ -263,7 +263,7 @@ class UEVaultManagerCLI:
 
         try:
             values = (
-                # dans les infos
+                # be ins the same order as csv_sql_fields keys, with explufind the SQL_ONLY fields
                 asset_id  # 'asset_id'
                 , item.app_name  # 'App name'
                 , item.app_title  # 'App title'
@@ -300,7 +300,7 @@ class UEVaultManagerCLI:
                 , item.app_version('Windows')  # 'UE version'
                 , uid  # 'Uid'
             )
-            record = dict(zip(CSV_headings.keys(), values))
+            record = dict(zip(get_csv_field_name_list(), values))
         except TypeError:
             self.logger.error(f'Could not create record for {item.app_name}')
 
@@ -412,9 +412,10 @@ class UEVaultManagerCLI:
             _csv_record = list(_asset[1].values())  # we need a list for the CSV comparison, not a dict
             # merge data from the items in the file (if exists) and those get by the application
             # items_in_file must be a dict of dicts
+            csv_fields_count = len(get_csv_field_name_list())
             if _items_in_file.get(_asset_id):
                 item_in_file = _items_in_file.get(_asset_id)
-                if len(item_in_file.keys()) != len(CSV_headings.keys()):
+                if len(item_in_file.keys()) != csv_fields_count:
                     self.logger.error(
                         f'In the existing file, asset {_asset_id} has not the same number of keys as the CSV headings. This asset is ignored and its values will be overwritten'
                     )
@@ -425,7 +426,8 @@ class UEVaultManagerCLI:
                     price_index = 0
                     _price = float(_no_data_value)
                     old_price = float(_no_data_value)
-                    for key, keep_value_in_file in CSV_headings.items():
+                    for key, state in csv_sql_fields.items():
+                        preserved_value_in_file = (state == FieldState.PRESERVED)
                         if item_in_file.get(key, None) is None:
                             self.logger.error(
                                 f'In the existing file, asset {_asset_id} has no column named {key}. This asset is ignored and its values will be overwritten'
@@ -433,7 +435,7 @@ class UEVaultManagerCLI:
                             # print(f' CHECK for asset {_asset_id}')
                             return _csv_record
                         else:
-                            if keep_value_in_file:
+                            if preserved_value_in_file:
                                 value = item_in_file[key]
                                 if str_is_bool(value):
                                     value = str_to_bool(value)
@@ -481,8 +483,9 @@ class UEVaultManagerCLI:
                 # loops through its columns
                 _price = float(_no_float_value)
                 old_price = float(_no_float_value)
-                for key, keep_value_in_file in CSV_headings.items():
-                    if keep_value_in_file and _items_in_file[_asset_id].get(key):
+                for key, state in csv_sql_fields.items():
+                    preserved_value_in_file = (state == FieldState.PRESERVED)
+                    if preserved_value_in_file and _items_in_file[_asset_id].get(key):
                         _json_record[key] = _items_in_file[_asset_id][key]
 
                 # Get the old price in the previous file
@@ -625,7 +628,7 @@ class UEVaultManagerCLI:
 
             try:
                 writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
-                writer.writerow(CSV_headings.keys())
+                writer.writerow(get_csv_field_name_list())
                 cpt = 0
                 if gui_g.progress_window_ref is not None:
                     gui_g.progress_window_ref.reset(
@@ -1202,7 +1205,7 @@ class UEVaultManagerCLI:
         # rows_per_page = gui_g.s.rows_per_page
         rows_per_page = 100  # a bigger value will be refused by UE API
 
-        if global_file_debug_only_flag:
+        if test_only_mode:
             start_row = 0  # debug only, shorter list
             # start_row = 1700  # debug only, shorter list
             max_threads = 0  # debug only, see exceptions

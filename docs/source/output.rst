@@ -58,50 +58,166 @@ order into the CSV file (or the names of the fields ins the Json file).
 The value is False if its content is not preserved, and True if it is
 preserved (and can be used to store persistant data).
 
-These value are defined by the CSV_headings variable at the beginning of
+These value are defined by the csv_sql_fields variable at the beginning of
 the
-`core.py <https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/core.py>`__
+`core.py <https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/models/csv_data.py>`__
 file:
 
 .. code:: python
 
-  CSV_headings = {
-      'Asset_id': False,  # ! important: Do not Rename => this field is used as main key for each asset
-      'App name': False,
-      'App title': False,
-      'Category': False,
-      'Review': False,
-      'Developer': False,
-      'Description': False,
-      'Status': False,
-      'Discount price': False,
-      'Discount percentage': False,
-      'Discounted': False,
-      'Owned': False,
-      'Obsolete': True,
-      'Supported versions': False,
-      'Grab result': False,
-      'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-      'Old price': False,  # ! important: always place it after the Price field in the list
-      # User Fields
-      'Comment': True,
-      'Stars': True,
-      'Must buy': True,
-      'Test result': True,
-      'Installed folder': True,
-      'Alternative': True,
-      'Origin': True,
-      # less important fields
-      'Page title': False,
-      'Image': False,
-      'Url': True,  # could be kept if a better url that can be used to download the asset is found
-      'Compatible versions': False,
-      'Date added': True,
-      'Creation date': False,
-      'Update date': False,
-      'UE version': False,
-      'Uid': False
+  csv_sql_fields = {
+      # fields mapping from csv to sql
+      # key: csv field name, value: {sql name, state }
+      'Asset_id': {
+          'sql_name': 'asset_id',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'App name': "title AS 'App name'",
+      'App title': "title AS 'App title'",
+      'Category': {
+          'sql_name': 'category',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Review': {
+          'sql_name': 'review',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Review count': {  # not in "standard/result" csv file
+          'sql_name': 'review_count',
+          'state': FieldState.SQL_ONLY
+      },
+      'Developer': {
+          'sql_name': 'author',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Description': {
+          'sql_name': 'description',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Status': {
+          'sql_name': 'status',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Discount price': {
+          'sql_name': 'discount_price',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Discount percentage': {
+          'sql_name': 'discount_percentage',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Discounted': {
+          'sql_name': 'discounted',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Is new': {  # not in "standard/result" csv file
+          'sql_name': 'is_new',
+          'state': FieldState.SQL_ONLY
+      },
+      'Free': {  # not in "standard/result" csv file
+          'sql_name': 'free',
+          'state': FieldState.SQL_ONLY
+      },
+      'Can purchase': {  # not in "standard/result" csv file
+          'sql_name': 'can_purchase',
+          'state': FieldState.SQL_ONLY
+      },
+      'Owned': {
+          'sql_name': 'owned',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Obsolete': {
+          'sql_name': 'obsolete',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Supported versions': {
+          'sql_name': 'supported_versions',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Grab result': {
+          'sql_name': 'grab_result',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Price': {
+          'sql_name': 'price',
+          'state': FieldState.NOT_PRESERVED
+      },
+      # ## User Fields
+      'Old price': {
+          'sql_name': 'old_price',
+          'state': FieldState.PRESERVED
+      },
+      'Comment': {
+          'sql_name': 'comment',
+          'state': FieldState.PRESERVED
+      },
+      'Stars': {
+          'sql_name': 'stars',
+          'state': FieldState.PRESERVED
+      },
+      'Must buy': {
+          'sql_name': 'must_buy',
+          'state': FieldState.PRESERVED
+      },
+      'Test result': {
+          'sql_name': 'test_result',
+          'state': FieldState.PRESERVED
+      },
+      'Installed folder': {
+          'sql_name': 'installed_folder',
+          'state': FieldState.PRESERVED
+      },
+      'Alternative': {
+          'sql_name': 'alternative',
+          'state': FieldState.PRESERVED
+      },
+      'Origin': {
+          'sql_name': 'origin',
+          'state': FieldState.PRESERVED
+      },
+      # ## less important fields
+      'Custom attributes': {  # not in "standard/result" csv file
+          'sql_name': 'custom_attributes',
+          'state': FieldState.SQL_ONLY
+      },
+      'Page title': {
+          'sql_name': 'page_title',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Image': {
+          'sql_name': 'thumbnail_url',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Url': {
+          'sql_name': 'asset_url',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Compatible versions': {  # not in database
+          'sql_name': None,
+          'state': FieldState.CSV_ONLY
+      },
+      'Date added': {
+          'sql_name': 'creation_date',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Creation date': {
+          'sql_name': 'update_date',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'Update date': {
+          'sql_name': 'date_added_in_db',
+          'state': FieldState.NOT_PRESERVED
+      },
+      'UE version': {  # not in database
+          'sql_name': None,
+          'state': FieldState.CSV_ONLY
+      },
+      'Uid': {
+          'sql_name': 'id',
+          'state': FieldState.NOT_PRESERVED
+      }
   }
+
 
 The individual json files
 ~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -16,57 +16,12 @@ from enum import Enum
 from faker import Faker
 
 from UEVaultManager.core import default_datetime_format
+from UEVaultManager.models.csv_data import get_sql_field_name_list
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
-from UEVaultManager.utils.cli import check_and_create_path, check_and_convert_key_sql_to_csv
+from UEVaultManager.utils.cli import check_and_create_path
 
-global_file_debug_only_flag = True  # create some limitations to speed up the dev process - Set to True for debug Only
-
-fields_for_csv = {
-    # fields mapping from csv to sql
-    # key: csv field name, value: sql field name
-    # similar list is maintained is csv_data.py/CSV_headings
-    'Asset_id': 'asset_id',
-    'App name': "title AS 'App name'",
-    'App title': "title AS 'App title'",
-    'Category': 'category',
-    'Review': 'review',
-    'Review count': 'review_count',
-    'Developer': 'author',
-    'Description': 'description',
-    'Status': 'status',
-    'Discount price': 'discount_price',
-    'Discount percentage': 'discount_percentage',
-    'Discounted': 'discounted',
-    'Is new': 'is_new',  # not in "standard/result" csv file
-    'Free': 'free',  # not in "standard/result" csv file
-    'Can purchase': 'can_purchase',  # not in "standard/result" csv file
-    'Owned': 'owned',
-    'Obsolete': 'obsolete',
-    'Supported versions': 'supported_versions',
-    'Grab result': 'grab_result',
-    'Price': 'price',
-    # ## User Fields
-    'Old price': 'old_price',
-    'Comment': 'comment',
-    'Stars': 'stars',
-    'Must buy': 'must_buy',
-    'Test result': 'test_result',
-    'Installed folder': 'installed_folder',
-    'Alternative': 'alternative',
-    'Origin': 'origin',
-    # ## less important fields
-    'Custom attributes': 'custom_attributes',  # not in "standard/result" csv file
-    'Page title': 'page_title',
-    'Image': 'thumbnail_url',
-    'Url': 'asset_url',
-    # 'Compatible versions':'' , # not in database
-    'Date added': 'creation_date',
-    'Creation date': 'update_date',
-    'Update date': 'date_added_in_db',
-    # 'UE version'::'' , # not in database
-    'Uid': 'id'
-}
+test_only_mode = True  # create some limitations to speed up the dev process - Set to True for debug Only
 
 
 class VersionNum(Enum):
@@ -293,15 +248,15 @@ class UEAssetDbHandler:
         Change the tables structure according to different versions.
         :param upgrade_from_version: The version we want to upgrade FROM. if None, the current version will be used
         """
-
         if not self.is_table_exist('assets'):
-            self.db_version = VersionNum.V0
+            previous_version = VersionNum.V0
         else:
             # force an update of the db_version property
-            self.db_version = self._get_db_version()
+            previous_version = self._get_db_version()
             # if self.db_version == VersionNum.V0:
             #    raise Exception("Invalid database version or database is badly initialized")
 
+        self.db_version = previous_version
         if upgrade_from_version is None:
             upgrade_from_version = self.db_version
 
@@ -349,7 +304,6 @@ class UEAssetDbHandler:
             self.db_version = VersionNum.V4
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
-            pass
         if upgrade_from_version == VersionNum.V4:
             # necessary steps to upgrade to version 5
             # does not exist yet
@@ -358,7 +312,8 @@ class UEAssetDbHandler:
             # upgrade_from_version = self.db_version
             # self.logger.info(f'Database upgraded to {upgrade_from_version}')
             pass
-        self._set_db_version(self.db_version)
+        if previous_version != self.db_version:
+            self._set_db_version(self.db_version)
 
     def is_table_exist(self, table_name) -> bool:
         """
@@ -431,8 +386,8 @@ class UEAssetDbHandler:
                         is_catalog_item, is_new, free, discounted, can_purchase,
                         owned, review, review_count, asset_id, asset_url,
                         comment, stars, must_buy, test_result, installed_folder, alternative, origin, page_title,
-                        obsolete, supported_versions, creation_date, update_date, date_added_in_db, grab_result
-                        , old_price, custom_attributes
+                        obsolete, supported_versions, creation_date, update_date, date_added_in_db, grab_result,
+                        old_price, custom_attributes
                     ) VALUES (
                         :id, :namespace, :catalog_item_id, :title, :category, :author, :thumbnail_url,
                         :asset_slug, :currency_code, :description,
@@ -442,7 +397,7 @@ class UEAssetDbHandler:
                         :owned, :review, :review_count, :asset_id, :asset_url,
                         :comment, :stars, :must_buy, :test_result, :installed_folder, :alternative, :origin, :page_title, 
                         :obsolete, :supported_versions, :creation_date, :update_date, :date_added_in_db, :grab_result,
-                         :old_price, :custom_attributes
+                        :old_price, :custom_attributes
                     )
                 """
                 # Execute the SQL query
@@ -470,29 +425,26 @@ class UEAssetDbHandler:
                 row_data[uid] = dict(row)
         return row_data
 
-    def get_assets_data_for_csv(self, csv_headings: dict) -> (list, list):
+    def get_assets_data_for_csv(self) -> (list, list):
         """
         Get data from all the assets in the 'assets' table for a "CSV file" like format.
-        :param csv_headings: dictionary of the CSV headings to convert column names into.
         :return: list(rows),list (column_names)
         """
         csv_column_names = []
         rows = []
         if self.connection is not None:
             cursor = self.connection.cursor()
-            # generate
-            query = f"SELECT {fields_for_csv.values()} FROM assets"
-            if global_file_debug_only_flag:
+            # generate column names for the CSV file using AS to rename the columns
+            fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
+            query = f"SELECT {fields} FROM assets"
+            if test_only_mode:
                 query += ' ORDER BY date_added_in_db DESC LIMIT 3000'
             cursor.execute(query)
             rows = cursor.fetchall()
-            db_column_names = [description[0] for description in cursor.description]
+            csv_column_names = [
+                description[0] for description in cursor.description
+            ]  # by using the 'AS' in the SQL query, the column names are the CSV column names
             cursor.close()
-
-            for col in db_column_names:
-                name, is_ignored = check_and_convert_key_sql_to_csv(csv_headings, col)
-                if not is_ignored:
-                    csv_column_names.append(name)
 
         return rows, csv_column_names
 
@@ -588,37 +540,28 @@ class UEAssetDbHandler:
             assets_id = fake.uuid4()
             print(f'creating test asset # {index} with id {assets_id}')
             ue_asset = UEAsset()
-            # the order of values must match the order of the fields in UEAsset.init_data() method
+            # the order of values must match the order of the fields in csv_data.py/csv_sql_fields dict
             data_list = [
-                assets_id,  # id
-                fake.word(),  # namespace
-                fake.uuid4(),  # catalog_item_id
+                fake.uuid4(),  # asset_id
                 fake.sentence(),  # title
                 fake.word(),  # category
-                fake.name(),  # author
-                fake.image_url(),  # thumbnail_url
-                fake.slug(),  # asset_slug
-                'USD',  # currency_code
-                fake.text(),  # description
-                fake.text(),  # technical_details
-                fake.text(),  # long_description
-                [random.randint(0, 1000), random.randint(0, 1000), random.randint(0, 1000)],  # tags
-                fake.uuid4(),  # comment_rating_id
-                fake.uuid4(),  # rating_id
-                fake.word(),  # status
-                round(random.uniform(1, 100), 2),  # price
-                round(random.uniform(1, 100), 2),  # discount_price
-                round(random.uniform(0, 100), 2),  # discount_percentage
-                random.choice([0, 1]),  # is_catalog_item
-                random.choice([0, 1]),  # is_new
-                random.choice([0, 1]),  # free
-                random.choice([0, 1]),  # discounted
-                random.choice([0, 1]),  # can_purchase
-                random.choice([0, 1]),  # owned
                 round(random.uniform(0, 5), 1),  # review
                 random.randint(0, 1000),  # review_count
-                fake.uuid4(),  # asset_id
-                fake.url(),  # asset_url
+                fake.name(),  # author
+                fake.text(),  # description
+                fake.word(),  # status
+                round(random.uniform(1, 100), 2),  # discount_price
+                round(random.uniform(0, 100), 2),  # discount_percentage
+                random.choice([0, 1]),  # discounted
+                random.choice([0, 1]),  # is_new
+                random.choice([0, 1]),  # free
+                random.choice([0, 1]),  # can_purchase
+                random.choice([0, 1]),  # owned
+                random.choice([0, 1]),  # obsolete
+                fake.word(),  # supported_versions
+                fake.word(),  # grab_result
+                round(random.uniform(1, 100), 2),  # price
+                random.randint(0, 1000),  # old_price
                 fake.text(),  # comment
                 random.randint(1, 5),  # stars
                 random.choice([0, 1]),  # must_buy
@@ -626,15 +569,24 @@ class UEAssetDbHandler:
                 fake.file_path(),  # installed_folder
                 fake.sentence(),  # alternative
                 fake.word(),  # origin
+                fake.sentence(),  # custom_attributes
                 fake.sentence(),  # page_title
-                random.choice([0, 1]),  # obsolete
-                fake.word(),  # supported_versions
+                fake.image_url(),  # thumbnail_url
+                fake.url(),  # asset_url
                 fake.date_time(),  # creation_date
                 fake.date_time(),  # update_date
                 fake.date_time(),  # date_added_in_db
-                fake.word(),  # grab_result
-                random.randint(0, 1000),  # old_price
-                fake.sentence(),  # custom_attributes
+                assets_id,  # id
+                fake.word(),  # namespace
+                fake.uuid4(),  # catalog_item_id
+                fake.slug(),  # asset_slug
+                'USD',  # currency_code
+                fake.text(),  # technical_details
+                fake.text(),  # long_description
+                [random.randint(0, 1000), random.randint(0, 1000), random.randint(0, 1000)],  # tags
+                fake.uuid4(),  # comment_rating_id
+                fake.uuid4(),  # rating_id
+                random.choice([0, 1]),  # is_catalog_item
             ]
             ue_asset.init_from_list(data=data_list)
             self.set_assets(assets=ue_asset.data)

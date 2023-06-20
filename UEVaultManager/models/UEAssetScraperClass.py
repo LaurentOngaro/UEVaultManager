@@ -19,7 +19,7 @@ from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder
 
-global_file_debug_only_flag = False  # create some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
 
 
 def get_filename_from_asset_data(asset_data) -> str:
@@ -197,6 +197,7 @@ class UEAssetScraper:
             # make some calculation with the "raw" data
             # ------------
             # set simple fields
+            asset_data['thumbnail_url'] = asset_data['thumbnail']
             asset_data['category'] = categories[0]['name'] if categories else ''
             asset_data['author'] = asset_data['seller']['name']
             asset_data['asset_url'] = self.egs.get_asset_url(asset_data.get('urlSlug', None))
@@ -555,9 +556,9 @@ if __name__ == '__main__':
     # set the number of rows to retrieve per page
     # As the asset are saved individually by default, this value is only use for pagination in the files that store the url
     # it speeds up the process of requesting the asset list
-    rows_per_page = 100
+    rows_per_page = 36
 
-    if global_file_debug_only_flag:
+    if test_only_mode:
         # shorter and faster list for testing only
         # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
         threads = 0  # set to 0 to disable threading
@@ -566,11 +567,11 @@ if __name__ == '__main__':
         clean_db = False
         load_data_from_files = False
     else:
-        threads = 10
+        threads = 16
         start_row = 0
         stop_row = 0  # 0 means no limit
         clean_db = True
-        load_data_from_files = False
+        load_data_from_files = True
 
     scraper = UEAssetScraper(
         start=start_row,
@@ -578,8 +579,8 @@ if __name__ == '__main__':
         assets_per_page=rows_per_page,
         max_threads=threads,
         store_in_db=True,
-        store_in_files=True,
-        store_ids=True,
+        store_in_files=not load_data_from_files,
+        store_ids=False,
         load_from_files=load_data_from_files,
         clean_database=clean_db
     )
