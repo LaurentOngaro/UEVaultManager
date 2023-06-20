@@ -234,8 +234,8 @@ class UEVMGui(tk.Tk):
         def __init__(self, container):
             super().__init__()
 
-            # grid_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.NW}
-            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
+            grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.SE}
+            # pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
             grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
             lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
             lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
@@ -326,12 +326,18 @@ class UEVMGui(tk.Tk):
             btn_load_data.grid(row=2, column=2, **grid_fw_options)
             lblf_files.columnconfigure('all', weight=1)  # important to make the buttons expand
 
-            # note : the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
+            # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
             # to get the widgets it needs. So they can't be changed freely
             lbtf_quick_edit = TaggedLabelFrame(self, text='Quick Edit User fields')
             lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
-            lbl_desc = ttk.Label(lbtf_quick_edit, text='Changing this values will change the values of \nthe selected row when losing focus')
-            lbl_desc.pack(**pack_def_options)
+
+            frm_inner_frame = ttk.Frame(lbtf_quick_edit)
+            lbl_desc = ttk.Label(frm_inner_frame, text='Changing this values will change the values of \nthe selected row when losing focus')
+            lbl_desc.grid(row=0, column=0, **grid_def_options)
+            bt_open_url = ttk.Button(frm_inner_frame, text='Open Url', command=container.open_asset_url)
+            bt_open_url.grid(row=0, column=1, **grid_def_options)
+            frm_inner_frame.pack()
+
             lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Url', focus_out_callback=container.on_quick_edit_focus_out)
             lbtf_quick_edit.add_child(
                 widget_type=WidgetType.TEXT, tag='Comment', focus_out_callback=container.on_quick_edit_focus_out, width=10, height=4
@@ -660,8 +666,7 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(f'Data Saved to {self.editable_table.data_source}')
             return filename
         else:
-            # TODO : add save_data to database feature
-            gui_f.todo_message()
+            self.editable_table.save_data()
             return ''
 
     def export_selection(self) -> None:
@@ -692,7 +697,7 @@ class UEVMGui(tk.Tk):
             category = filters.get('Category', gui_g.s.default_category_for_all)
             search_text = filters.get('Category', gui_g.s.default_global_search)
             obsolete = filters.get('Obsolete', True)
-            # note: the "status" filter has no control associated, it's managed by the "obsolete" checkbutton
+            # Note: the "status" filter has no control associated, it's managed by the "obsolete" checkbutton
             frm.var_grab_results.set(filters.get('Grab result', gui_g.s.default_category_for_all))
             frm.var_is_owned.set(filters.get('Owned', False))
             frm.var_is_not_obsolete.set(not obsolete)
@@ -959,3 +964,14 @@ class UEVMGui(tk.Tk):
             # we display the window only if it is not already displayed
             function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
             function_to_call(gui_g.UEVM_cli_args)
+
+    # noinspection PyUnusedLocal
+    def open_asset_url(self, event=None) -> None:
+        """
+        Open the asset URL (Wrapper)
+        """
+        widget = self.control_frame.lbtf_quick_edit.get_child_by_tag('Url')
+        if widget is None:
+            return
+        url = widget.get_content()
+        self.editable_table.open_asset_url(url=url)
