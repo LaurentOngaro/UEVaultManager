@@ -155,9 +155,9 @@ def create_empty_file(file_path: str) -> (bool, str):
     :return: (True if path was valid, the corrected path of the file)
     """
     path, file = os.path.split(file_path)
-    is_valid, path = check_and_get_folder(os.path.dirname(path))
-    file_path = os.path.normpath(os.path.join(path, file))
-    open(file_path, 'a').close()
+    is_valid, path = check_and_get_folder(path)
+    file_path = os.path.join(path, file)
+    open(file_path, 'w').close()
     return is_valid, file_path
 
 
