@@ -338,7 +338,6 @@ class ProgressWindow(tk.Toplevel):
             progress_bar = self.content_frame.progress_bar
             if increment:
                 value = progress_bar["value"] + increment
-
             if value > self.max_value:
                 value = self.max_value
             progress_bar["value"] = value
