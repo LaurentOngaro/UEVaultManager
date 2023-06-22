@@ -22,7 +22,7 @@ from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime
 from UEVaultManager.utils.cli import check_and_create_path
 
-test_only_mode = True  # create some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
 
 
 class VersionNum(Enum):
@@ -636,7 +636,7 @@ class UEAssetDbHandler:
 if __name__ == "__main__":
     # the following code is just for class testing purposes
     clean_data = True
-    read_data_only = False  # if True, the code will not create fake assets, but only read them from the database
+    read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
 
     db_folder = path_from_relative_to_absolute('../../../scraping/')
     db_name = os.path.join(db_folder, 'assets.db')
@@ -647,7 +647,7 @@ if __name__ == "__main__":
         # Read existing assets
         asset_list = asset_handler.get_assets_data()
         print("Assets:", asset_list)
-    else:
+    elif test_only_mode:
         # Create fake assets
         rows_to_create = 300
         if not clean_data:
