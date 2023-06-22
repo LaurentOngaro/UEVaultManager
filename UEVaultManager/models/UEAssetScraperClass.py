@@ -91,9 +91,8 @@ class UEAssetScraper:
         # noinspection PyBroadException
         try:
             self.engine_version_for_obsolete_assets = (
-                engine_version_for_obsolete_assets
-                or gui_g.UEVM_cli_ref.core.engine_version_for_obsolete_assets
-                or gui_g.s.engine_version_for_obsolete_assets
+                engine_version_for_obsolete_assets or gui_g.UEVM_cli_ref.core.engine_version_for_obsolete_assets or
+                gui_g.s.engine_version_for_obsolete_assets
             )
         except Exception:
             self.engine_version_for_obsolete_assets = None
@@ -581,7 +580,7 @@ if __name__ == '__main__':
         start_row = 0
         stop_row = 0  # 0 means no limit
         clean_db = True
-        load_data_from_files = True
+        load_data_from_files = False  # by default the scrapper will rebuild the database from scratch
 
     scraper = UEAssetScraper(
         start=start_row,
