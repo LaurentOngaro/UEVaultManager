@@ -22,6 +22,7 @@ from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_int, convert_to_float, convert_to_datetime
+from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 from UEVaultManager.utils.cli import get_max_threads
 
@@ -483,6 +484,9 @@ class EditableTable(Table):
                 self.show_page(0)
                 return True
         elif self.data_source_type == DataSourceType.SQLITE:
+            # we create the progress window here to avoid lots of imports in UEAssetScraper class
+            progress_window = ProgressWindow('Rebuilding Data from database')
+            progress_window.deactivate()
             max_threads = get_max_threads()
             owned_assets_only = False
             ue_asset_per_page = 100  # a bigger value will be refused by UE API
@@ -507,10 +511,15 @@ class EditableTable(Table):
                 load_from_files=load_from_files,
                 clean_database=not test_only_mode,
                 engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
-                egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs
+                egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs,
+                progress_window=progress_window
             )
             scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
+            if not progress_window.continue_execution:
+                progress_window.close_window()
+                return False
             scraper.save(owned_assets_only=owned_assets_only)
+            progress_window.close_window()
             self.current_page = 0
             self.load_data()
             self.show_page(0)
@@ -534,8 +543,11 @@ class EditableTable(Table):
                 continue
             if key == 'Grab result' and value == gui_g.s.default_category_for_all:
                 continue
-            self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
-
+            try:
+                # if data are corrupted, we can have a ValueError here
+                self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
+            except (KeyError, ValueError) as error:
+                log_debug(f'Could not filter column "{key}" with value "{value}". Error: {error}')
         if global_search and global_search != gui_g.s.default_global_search:
             self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: global_search.lower() in str(row).lower(), axis=1)]
         self.show_page(0)

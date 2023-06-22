@@ -17,6 +17,7 @@ from UEVaultManager.api.egs import EPCAPI, GrabResult, is_asset_obsolete
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.tkgui.modules.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid
 
 test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
@@ -58,6 +59,7 @@ class UEAssetScraper:
     :param clean_database: A boolean indicating whether to clean the database before saving the data. Defaults to False.
     :param engine_version_for_obsolete_assets: A string representing the engine version to use to check if an asset is obsolete.
     :param egs: An EPCAPI object (session handler). Defaults to None. If None, a new EPCAPI object will be created and the session used WON'T BE LOGGED.
+    :param progress_window: A ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
     """
 
     def __init__(
@@ -77,6 +79,7 @@ class UEAssetScraper:
         clean_database=False,
         engine_version_for_obsolete_assets=None,
         egs: EPCAPI = None,
+        progress_window=None,  # don't use a typed annotation here to avoid import
     ) -> None:
         self.start = start
         self.stop = stop
@@ -119,6 +122,12 @@ class UEAssetScraper:
         self.egs = EPCAPI(timeout=timeout) if egs is None else egs
         self.logger = logging.getLogger(__name__)
         self.asset_db_handler = UEAssetDbHandler(self.db_name)
+        self.thread_executor = None
+        self.thread_executor_must_stop = False
+
+        if progress_window is None:
+            progress_window = FakeProgressWindow()
+        self.progress_window = progress_window
 
         # self.logger.setLevel(logging.DEBUG)
         if self.load_from_files:
@@ -142,7 +151,11 @@ class UEAssetScraper:
         if gui_g.UEVM_cli_ref is None:
             print(message)
         else:
-            self.logger.debug(message)
+            if test_only_mode:
+                # force printing debug messages in test_only_mode
+                self.logger.info(message)
+            else:
+                self.logger.debug(message)
 
     def _log_info(self, message):
         """ a simple wrapper to use when cli is not initialized"""
@@ -497,7 +510,11 @@ class UEAssetScraper:
             if filename.endswith('.json') and filename != self.last_run_filename:
                 # self._log_debug(f'Loading {filename}')
                 with open(os.path.join(folder, filename), 'r') as fh:
-                    json_data = json.load(fh)
+                    try:
+                        json_data = json.load(fh)
+                    except json.decoder.JSONDecodeError as error:
+                        self._log_warning(f'The following error occured when loading data from {filename}:{error!r}')
+                        continue
                     assets_data = self._parse_data(json_data)  # self._parse_data returns a list of assets
                     for asset_data in assets_data:
                         self.scraped_data.append(asset_data)
