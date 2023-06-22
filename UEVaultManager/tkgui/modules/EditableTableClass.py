@@ -12,7 +12,8 @@ import pandas as pd
 from pandas.errors import EmptyDataError
 from pandastable import Table, TableModel, config
 
-from UEVaultManager.models.csv_data import create_empty_csv_row, get_csv_field_name_list, convert_csv_row_to_sql_row, is_on_state, FieldState, FieldType, is_from_type, get_typed_value
+from UEVaultManager.models.csv_data import create_empty_csv_row, get_csv_field_name_list, convert_csv_row_to_sql_row, is_on_state, FieldState, \
+    FieldType, is_from_type, get_typed_value
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper

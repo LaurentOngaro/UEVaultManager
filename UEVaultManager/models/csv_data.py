@@ -467,7 +467,7 @@ def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
             field_type = associated_field['field_type']
             typed_value = field_type.cast(value)
             return typed_value
-    except Exception as e:
-        # print(f'Failed to cast value {value}: {e}')
+    except Exception:
+        # print(f'Failed to cast value {value}')
         return value
     return value
