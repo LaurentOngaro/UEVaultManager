@@ -11,7 +11,6 @@ import logging
 import os
 import random
 import sqlite3
-import uuid
 from enum import Enum
 
 from faker import Faker

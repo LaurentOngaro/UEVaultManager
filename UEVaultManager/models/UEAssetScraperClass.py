@@ -169,7 +169,7 @@ class UEAssetScraper:
         """
         Parses on or more asset data from the response of an url query.
         :param json_data: A dictionary containing the data to parse.
-        :param owned_assets_only: if True, only the owned assets are scrapped
+        :param owned_assets_only: if True, only the owned assets are scraped
         :return: A list containing the parsed data.
         """
         content = []
@@ -179,10 +179,10 @@ class UEAssetScraper:
             return content
 
         try:
-            # get the list of assets after a "scrapping" of the json data using URL
+            # get the list of assets after a "scraping" of the json data using URL
             assets_data_list = json_data['data']['elements']
         except KeyError:
-            self._log_debug('data is not in a "scrapped" format')
+            self._log_debug('data is not in a "scraped" format')
             # create a list of one asset when data come from a json file
             assets_data_list = [json_data]
 
@@ -201,7 +201,7 @@ class UEAssetScraper:
             average_rating = 0
             rating_total = 0
             supported_versions = no_text_data
-            origin = 'Marketplace'  # by default when scrapped from marketplace
+            origin = 'Marketplace'  # by default when scraped from marketplace
             date_now = datetime.now().strftime(default_datetime_format)
             grab_result = GrabResult.NO_ERROR.name
 
@@ -330,7 +330,7 @@ class UEAssetScraper:
         if not self.store_in_db:
             return
         # convert the list of ids to a string for the database only
-        last_run_content['scrapped_ids'] = ','.join(self.scraped_ids) if self.store_ids else ''
+        last_run_content['scraped_ids'] = ','.join(self.scraped_ids) if self.store_ids else ''
 
         if self.clean_database:
             # next line will delete all assets in the database
@@ -345,13 +345,13 @@ class UEAssetScraper:
         Gathers all the URLs (with pagination) to be parsed and stores them in a list for further use.
         :param empty_list_before: if True, the list of URLs is emptied before adding the new ones
         :param save_result: if True, the list of URLs is saved in the database
-        :param owned_assets_only: if True, only the owned assets are scrapped
+        :param owned_assets_only: if True, only the owned assets are scraped
         """
         if empty_list_before:
             self.urls = []
         start_time = time.time()
         if self.stop <= 0:
-            self.stop = self.egs.get_scrapped_asset_count(owned_assets_only=owned_assets_only)
+            self.stop = self.egs.get_scraped_asset_count(owned_assets_only=owned_assets_only)
         assets_count = self.stop - self.start
         pages_count = int(assets_count / self.assets_per_page)
         if (assets_count % self.assets_per_page) > 0:
@@ -371,13 +371,13 @@ class UEAssetScraper:
         """
         Grabs the data from the given url and stores it in the scraped_data property.
         :param url: The url to grab the data from. If not given, uses the url property of the class.
-        :param owned_assets_only: if True, only the owned assets are scrapped
+        :param owned_assets_only: if True, only the owned assets are scraped
         """
         if not url:
             self._log_error('No url given to get_data_from_url()')
             return
         self._log_info(f'Opening url {url}')
-        json_data = self.egs.get_scrapped_assets(url)
+        json_data = self.egs.get_scraped_assets(url)
         if json_data.get('errorCode', '') != '':
             self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
             return
@@ -403,7 +403,7 @@ class UEAssetScraper:
         """
         Loads from files or downloads the items from the URLs and stores them in the scraped_data property.
         The execution is done in parallel using threads.
-        :param owned_assets_only: if True, only the owned assets are scrapped
+        :param owned_assets_only: if True, only the owned assets are scraped
 
         Note: if self.urls is None or empty, gather_urls() will be called first.
         """
@@ -481,7 +481,7 @@ class UEAssetScraper:
     def load_from_json_files(self, owned_assets_only=False) -> None:
         """
         Load all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
-        :param owned_assets_only: if True, only the owned assets are scrapped
+        :param owned_assets_only: if True, only the owned assets are scraped
         """
         start_time = time.time()
         self.files_count = 0
@@ -511,7 +511,7 @@ class UEAssetScraper:
             'mode': 'load_owned' if owned_assets_only else 'load',
             'files_count': self.files_count,
             'items_count': len(self.scraped_data),
-            'scrapped_ids': self.scraped_ids if self.store_ids else ''
+            'scraped_ids': self.scraped_ids if self.store_ids else ''
         }
         filename = os.path.join(folder, self.last_run_filename)
         with open(filename, 'w') as fh:
@@ -522,10 +522,10 @@ class UEAssetScraper:
     def save(self, owned_assets_only=False) -> None:
         """
         Saves all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
-        :param owned_assets_only: if True, only the owned assets are scrapped
+        :param owned_assets_only: if True, only the owned assets are scraped
         """
         if owned_assets_only:
-            self._log_info('Only Owned Assets will be scrapped')
+            self._log_info('Only Owned Assets will be scraped')
 
         self.get_scraped_data(owned_assets_only=owned_assets_only)
 
@@ -535,7 +535,7 @@ class UEAssetScraper:
             'mode': 'save_owned' if owned_assets_only else 'save',
             'files_count': 0,
             'items_count': len(self.scraped_data),
-            'scrapped_ids': ''
+            'scraped_ids': ''
         }
 
         start_time = time.time()
@@ -551,7 +551,7 @@ class UEAssetScraper:
 
         # save results in the last_run file
         content['files_count'] = self.files_count
-        content['scrapped_ids'] = self.scraped_ids if self.store_ids else ''
+        content['scraped_ids'] = self.scraped_ids if self.store_ids else ''
         folder = self.owned_assets_data_folder if owned_assets_only else self.assets_data_folder
         filename = os.path.join(folder, self.last_run_filename)
         with open(filename, 'w') as fh:
@@ -582,7 +582,7 @@ if __name__ == '__main__':
         start_row = 0
         stop_row = 0  # 0 means no limit
         clean_db = True
-        load_data_from_files = False  # by default the scrapper will rebuild the database from scratch
+        load_data_from_files = False  # by default the scraper will rebuild the database from scratch
 
     scraper = UEAssetScraper(
         start=start_row,

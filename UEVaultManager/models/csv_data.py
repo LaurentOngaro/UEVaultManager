@@ -2,7 +2,6 @@
 """
 CSV and SQL fields mapping and utility functions
 """
-import uuid
 from enum import Enum
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -427,7 +426,7 @@ def create_empty_csv_row(return_as_string=False):
     data = {}
     for key in get_csv_field_name_list(exclude_sql_only=True):
         data[key] = 0  # 0 is used to avoid empty cells in the csv file
-    data['Asset_id'] = 'dummy_row_' + create_uid() # dummy unique Asset_id to avoid issue
+    data['Asset_id'] = 'dummy_row_' + create_uid()  # dummy unique Asset_id to avoid issue
     data['Image'] = gui_g.s.empty_cell  # avoid displaying image warning on mouse over
 
     if return_as_string:
