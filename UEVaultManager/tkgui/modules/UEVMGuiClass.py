@@ -686,13 +686,21 @@ class UEVMGui(tk.Tk):
         if filename and os.path.isfile(filename):
             self.editable_table.data_source = filename
             file, ext = os.path.splitext(filename)
+            old_type = self.editable_table.data_source_type
             self.editable_table.data_source_type = DataSourceType.SQLITE if ext == '.db' else DataSourceType.FILE
-            self.editable_table.load_data()
-            self.editable_table.show_page(0)
-            self.update_page_numbers()
-            self.update_data_source_name()
-            gui_f.box_message(f'The data source {filename} as been read')
-            return filename
+            go_on = True
+            if old_type != self.editable_table.data_source_type:
+                go_on = gui_f.box_yesno(f'The type of data source has changed from the previous one.\nYou should quit and restart the application to avoid any data loss.\nAre you sure you want to continue ?')
+
+            if go_on:
+                self.editable_table.load_data()
+                self.editable_table.show_page(0)
+                self.update_page_numbers()
+                self.update_data_source_name()
+                gui_f.box_message(f'The data source {filename} as been read')
+                return filename
+            else:
+                gui_f.box_message('Operation cancelled')
 
     def save_data(self, show_dialog=True) -> str:
         """
