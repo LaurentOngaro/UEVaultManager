@@ -461,6 +461,7 @@ def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
     if sql_field and not csv_field:
         csv_field = get_csv_field_name(sql_field)
 
+    # noinspection PyBroadException
     try:
         associated_field = csv_sql_fields.get(csv_field, None)
         if associated_field is not None:
