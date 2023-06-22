@@ -208,7 +208,7 @@ def check_and_convert_key(dict_to_check: dict, key: str) -> str:
     key_to_ignore = [
         # key for data not used in the final json
         'ownedCount', 'headerImage', 'learnThumbnail', 'klass', 'recurrence', 'voucherDiscount', 'keyImages', 'effectiveDate', 'bundle', 'platforms',
-        'purchaseLimit', 'compatibleApps', 'tax', 'featured', 'isFeatured', 'discount',
+        'purchaseLimit', 'compatibleApps', 'tax', 'featured', 'isFeatured', 'discount','reviewed',
         # key data already "transformed" and mapped in UEAssetScrapper._parse_data()
         'priceValue', 'discountPriceValue', 'seller', 'average_rating', 'rating_total', 'rating', 'categories', 'releaseInfo', 'thumbnail'
     ]

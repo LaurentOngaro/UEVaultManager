@@ -15,8 +15,11 @@ class UEAsset:
     :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete
     """
 
-    def __init__(self, engine_version_for_obsolete_assets: str = '4.26'):
-        self.engine_version_for_obsolete_assets = engine_version_for_obsolete_assets
+    def __init__(self, engine_version_for_obsolete_assets=None):
+        if engine_version_for_obsolete_assets is None:
+            self.engine_version_for_obsolete_assets = '4.26'  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
+        else:
+            self.engine_version_for_obsolete_assets = engine_version_for_obsolete_assets
         self.data = {}
         self.log = logging.getLogger('UEAsset')
         self.log.setLevel(logging.INFO)
@@ -35,7 +38,7 @@ class UEAsset:
 
         Note: the keys of self.Data dict are initialized here
         """
-        self.data = {key: None for key in get_sql_field_name_list()}
+        self.data = {key: None for key in get_sql_field_name_list(include_asset_only=True)}
         # self.data = {
         #     'id': None,
         #     'namespace': None,

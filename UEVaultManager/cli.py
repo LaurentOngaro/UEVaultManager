@@ -26,7 +26,7 @@ from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_cod
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
-from UEVaultManager.models.csv_data import csv_sql_fields, FieldState, get_csv_field_name_list
+from UEVaultManager.models.csv_data import csv_sql_fields, FieldState, get_csv_field_name_list, is_on_state
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
@@ -427,7 +427,7 @@ class UEVaultManagerCLI:
                     _price = float(_no_data_value)
                     old_price = float(_no_data_value)
                     for key, state in csv_sql_fields.items():
-                        preserved_value_in_file = (state == FieldState.PRESERVED)
+                        preserved_value_in_file = is_on_state(csv_field_name=key, states=[FieldState.PRESERVED])
                         if item_in_file.get(key, None) is None:
                             self.logger.error(
                                 f'In the existing file, asset {_asset_id} has no column named {key}. This asset is ignored and its values will be overwritten'
@@ -484,7 +484,7 @@ class UEVaultManagerCLI:
                 _price = float(_no_float_value)
                 old_price = float(_no_float_value)
                 for key, state in csv_sql_fields.items():
-                    preserved_value_in_file = (state == FieldState.PRESERVED)
+                    preserved_value_in_file = is_on_state(csv_field_name=key, states=[FieldState.PRESERVED])
                     if preserved_value_in_file and _items_in_file[_asset_id].get(key):
                         _json_record[key] = _items_in_file[_asset_id][key]
 
@@ -519,7 +519,6 @@ class UEVaultManagerCLI:
                 self._log_gui_wrapper(self.logger.critical, message, True)
             # we try to open it for writing
             if not os.access(file_src, os.W_OK):
-                self.logger.warning(f'Could not read CSV record from the file {file_src}')
                 message = f'Could not create result file {file_src}. Exiting...'
                 self._log_gui_wrapper(self.logger.critical, message, True)
 
@@ -1543,7 +1542,9 @@ def main():
     cli.core.notfound_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
     cli.core.bad_data_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'bad_data_assets_filename_log', fallback='')
 
-    cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get('UEVaultManager', 'engine_version_for_obsolete_assets', fallback='4.26')
+    cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get(
+        'UEVaultManager', 'engine_version_for_obsolete_assets', fallback=gui_g.s.engine_version_for_obsolete_assets
+    )
 
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:

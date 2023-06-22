@@ -247,9 +247,9 @@ class UEVMGui(tk.Tk):
             lblf_content.pack(**lblf_def_options)
             btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=container.editable_table.create_edit_record_window)
             btn_edit_row.grid(row=0, column=0, **grid_fw_options)
-            btn_reload_data = ttk.Button(lblf_content, text='Reload File Content', command=container.reload_data)
+            btn_reload_data = ttk.Button(lblf_content, text='Reload Content', command=container.reload_data)
             btn_reload_data.grid(row=0, column=1, **grid_fw_options)
-            btn_rebuild_file = ttk.Button(lblf_content, text='Rebuild File Content', command=container.rebuild_data)
+            btn_rebuild_file = ttk.Button(lblf_content, text='Rebuild Content', command=container.rebuild_data)
             btn_rebuild_file.grid(row=0, column=2, **grid_fw_options)
             lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
@@ -338,12 +338,32 @@ class UEVMGui(tk.Tk):
             bt_open_url.grid(row=0, column=1, **grid_def_options)
             frm_inner_frame.pack()
 
-            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Url', focus_out_callback=container.on_quick_edit_focus_out)
             lbtf_quick_edit.add_child(
-                widget_type=WidgetType.TEXT, tag='Comment', focus_out_callback=container.on_quick_edit_focus_out, width=10, height=4
+                widget_type=WidgetType.ENTRY,
+                tag='Url',
+                focus_out_callback=container.on_quick_edit_focus_out,
+                focus_in_callback=container.on_quick_edit_focus_in
             )
-            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Stars', focus_out_callback=container.on_quick_edit_focus_out)
-            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Test result', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.TEXT,
+                tag='Comment',
+                focus_out_callback=container.on_quick_edit_focus_out,
+                focus_in_callback=container.on_quick_edit_focus_in,
+                width=10,
+                height=4
+            )
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.ENTRY,
+                tag='Stars',
+                focus_out_callback=container.on_quick_edit_focus_out,
+                focus_in_callback=container.on_quick_edit_focus_in
+            )
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.ENTRY,
+                tag='Test result',
+                focus_out_callback=container.on_quick_edit_focus_out,
+                focus_in_callback=container.on_quick_edit_focus_in
+            )
             lbtf_quick_edit.add_child(
                 widget_type=WidgetType.CHECKBUTTON,
                 tag='Must buy',
@@ -352,9 +372,25 @@ class UEVMGui(tk.Tk):
                 click_on_callback=container.on_switch_edit_flag,
                 default_content=False
             )
-            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Installed folder', default_content='Installed in')
-            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Origin', focus_out_callback=container.on_quick_edit_focus_out)
-            lbtf_quick_edit.add_child(widget_type=WidgetType.ENTRY, tag='Alternative', focus_out_callback=container.on_quick_edit_focus_out)
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.ENTRY,
+                tag='Installed folder',
+                default_content='Installed in',
+                focus_out_callback=container.on_quick_edit_focus_out,
+                focus_in_callback=container.on_quick_edit_focus_in
+            )
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.ENTRY,
+                tag='Origin',
+                focus_out_callback=container.on_quick_edit_focus_out,
+                focus_in_callback=container.on_quick_edit_focus_in
+            )
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.ENTRY,
+                tag='Alternative',
+                focus_out_callback=container.on_quick_edit_focus_out,
+                focus_in_callback=container.on_quick_edit_focus_in
+            )
 
             lbt_image_preview = ttk.LabelFrame(self, text='Image Preview')
             lbt_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
@@ -385,7 +421,7 @@ class UEVMGui(tk.Tk):
             Reset the search entry to the default text.
             :param _event:
             """
-            self.entry_search.delete(0, 'end')
+            self.entry_search.delete(0, tk.END)
             self.entry_search.insert(0, gui_g.s.default_global_search)
 
         def del_entry_search(self, _event=None) -> None:
@@ -393,7 +429,7 @@ class UEVMGui(tk.Tk):
             Delete the text in the search entry.
             :param _event:
             """
-            self.entry_search.delete(0, 'end')
+            self.entry_search.delete(0, tk.END)
 
     class OptionsFrame(ttk.Frame):
         """
@@ -556,22 +592,45 @@ class UEVMGui(tk.Tk):
     def on_quick_edit_focus_out(self, event=None, tag='') -> None:
         """
         When the focus leaves a quick edit widget, save the value
-        :param event:
+        :param event: ignored but required for an event handler
         :param tag: tag of the widget that triggered the event
         """
+        value, widget = self._check_and_get_widget_value(tag=tag)
+        if widget:
+            self.editable_table.quick_edit_save_value(col=widget.col, row=widget.row, value=value, tag=tag)
+
+    # noinspection PyUnusedLocal
+    def on_quick_edit_focus_in(self, event=None, tag='') -> None:
+        """
+        When the focus enter a quick edit widget, check (and clean) the value
+        :param event: ignored but required for an event handler
+        :param tag: tag of the widget that triggered the event
+        """
+        value, widget = self._check_and_get_widget_value(tag=tag)
+        # empty the widget if the value is the default value or none
+        if widget and (value == 'None' or value == widget.default_content or value == gui_g.s.empty_cell):
+            value = ''
+            widget.set_content(value)
+
+    def _check_and_get_widget_value(self, tag):
+        """
+        Check if the widget with the given tags exists and return its value and itself
+        :param tag: tag of the widget that triggered the event
+        :return: value,widget
+        """
         if tag == '':
-            return
+            return None, None
         widget = self.control_frame.lbtf_quick_edit.get_child_by_tag(tag)
         if widget is None:
             gui_f.log_warning(f'Could not find a widget with tag {tag}')
-            return
+            return None, None
         col = widget.col
         row = widget.row
         if col is None or row is None or col < 0 or row < 0:
             gui_f.log_debug(f'invalid values for row={row} and col={col}')
-            return
+            return None, widget
         value = widget.get_content()
-        self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
+        return value, widget
 
     # noinspection PyUnusedLocal
     def on_switch_edit_flag(self, event=None, tag='') -> None:
@@ -580,20 +639,10 @@ class UEVMGui(tk.Tk):
         :param event: event that triggered the call
         :param tag: tag of the widget that triggered the event
         """
-        if tag == '':
-            return
-        widget = self.control_frame.lbtf_quick_edit.get_child_by_tag(tag)
-        if widget is None or widget.widget_type != WidgetType.CHECKBUTTON:
-            gui_f.log_warning(f'Could not find a CHECKBUTTON widget with tag {tag}')
-            return
-        col = widget.col
-        row = widget.row
-        if col is None or row is None or col < 0 or row < 0:
-            gui_f.log_debug(f'invalid values for row={row} and col={col}')
-            return
-
-        value = widget.switch_state(event=event)
-        self.editable_table.quick_edit_save_value(col=col, row=row, value=value)
+        _, widget = self._check_and_get_widget_value(tag=tag)
+        if widget:
+            value = widget.switch_state(event=event)
+            self.editable_table.quick_edit_save_value(col=widget.col, row=widget.row, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
     def on_check_change(self, *args) -> None:
@@ -633,20 +682,17 @@ class UEVMGui(tk.Tk):
         Load data from the current data source
         :return: the name of the file that was loaded
         """
-        if self.editable_table.data_source_type == DataSourceType.FILE:
-            filename = self._open_file_dialog(filename=self.editable_table.data_source)
-            if filename and os.path.isfile(filename):
-                self.editable_table.data_source = filename
-                self.editable_table.load_data()
-                self.editable_table.show_page(0)
-                self.update_page_numbers()
-                self.update_data_source_name()
-                gui_f.box_message(f'The data source {filename} as been read')
+        filename = self._open_file_dialog(filename=self.editable_table.data_source)
+        if filename and os.path.isfile(filename):
+            self.editable_table.data_source = filename
+            file, ext = os.path.splitext(filename)
+            self.editable_table.data_source_type = DataSourceType.SQLITE if ext == '.db' else DataSourceType.FILE
+            self.editable_table.load_data()
+            self.editable_table.show_page(0)
+            self.update_page_numbers()
+            self.update_data_source_name()
+            gui_f.box_message(f'The data source {filename} as been read')
             return filename
-        else:
-            # TODO : add load_data to database feature
-            gui_f.todo_message()
-            return ''
 
     def save_data(self, show_dialog=True) -> str:
         """
@@ -970,8 +1016,6 @@ class UEVMGui(tk.Tk):
         """
         Open the asset URL (Wrapper)
         """
-        widget = self.control_frame.lbtf_quick_edit.get_child_by_tag('Url')
-        if widget is None:
-            return
-        url = widget.get_content()
-        self.editable_table.open_asset_url(url=url)
+        url, widget = self._check_and_get_widget_value(tag='Url')
+        if url:
+            self.editable_table.open_asset_url(url=url)

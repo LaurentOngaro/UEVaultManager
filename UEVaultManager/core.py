@@ -111,7 +111,7 @@ class AppCore:
         self.use_threads = False
         self.thread_executor = None
         self.thread_executor_must_stop = False
-        self.engine_version_for_obsolete_assets = '4.26'
+        self.engine_version_for_obsolete_assets = gui_g.s.engine_version_for_obsolete_assets
 
     def setup_assets_loggers(self) -> None:
         """

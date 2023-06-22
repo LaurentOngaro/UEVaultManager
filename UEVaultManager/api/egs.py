@@ -33,7 +33,7 @@ class GrabResult(Enum):
     NO_APPID = 6  # no appid found in the data (will produce a file name like '_no_appId_asset_1e10acc0cca34d5c8ff7f0ab57e7f89f
 
 
-def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets='4.26') -> bool:
+def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=None) -> bool:
     """
     :param supported_versions: The supported versions the check the obsolete status against.
     :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete

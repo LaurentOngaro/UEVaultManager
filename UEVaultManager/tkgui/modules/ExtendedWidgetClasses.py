@@ -233,7 +233,10 @@ class ExtendedText(ExtendedWidget, tk.Text):
         :return: content of the widget
         """
         try:
-            return self.get('1.0', tk.END)
+            # Note that by using END you're also getting the trailing newline that tkinter automatically adds.
+            # You might want to use "end-1c"
+            # return self.get('1.0', tk.END)
+            return self.get('1.0', 'end-1c')
         except (AttributeError, tk.TclError) as error:
             log_warning(f'Failed to get content of {self}: {error!r}')
             return ''

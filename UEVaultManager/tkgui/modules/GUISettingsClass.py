@@ -46,8 +46,8 @@ class GUISettings:
         # they must be used trought path_from_relative_to_absolute
         # following vars are not set as properties to avoid storing absolute paths in the config file
         self.cache_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
-        self.scraping_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['scraping_folder'])
         self.results_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
+        self.scraping_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['scraping_folder'])
 
         # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
         self.assets_folder = gui_fn.path_from_relative_to_absolute('../../assets')
@@ -58,10 +58,9 @@ class GUISettings:
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename = self.config_vars['last_opened_file']
         else:
-            self.csv_filename = os.path.normpath(self.csv_filename)
+            self.csv_filename = os.path.join(self.results_folder, 'list.csv')
 
-        self.sqlite_filename = os.path.join(self.config_vars['scraping_folder'], 'assets.db')
-        self.sqlite_filename = os.path.normpath(self.sqlite_filename)
+        self.sqlite_filename = os.path.join(self.scraping_folder, 'assets.db')
 
         self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
         self.app_monitor = 1
@@ -96,6 +95,7 @@ class GUISettings:
             'rowselectedcolor': '#E4DED4',  #
             'textcolor': 'black'  #
         }
+        self.engine_version_for_obsolete_assets = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
 
     def get_rows_per_page(self):
         """ Getter for rows_per_page """

@@ -12,14 +12,17 @@ import pandas as pd
 from pandas.errors import EmptyDataError
 from pandastable import Table, TableModel, config
 
-from UEVaultManager.models.csv_data import create_empty_csv_row, get_csv_field_name_list
+from UEVaultManager.models.csv_data import create_empty_csv_row, get_csv_field_name_list, convert_csv_row_to_sql_row, is_on_state, FieldState, FieldType, is_from_type, get_typed_value
+from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
-from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton
+from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_int, convert_to_float, convert_to_datetime
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
+from UEVaultManager.utils.cli import get_max_threads
 
 
 class DataSourceType(Enum):
@@ -53,6 +56,7 @@ class EditableTable(Table):
     ):
         self._last_selected_row = -1
         self._last_selected_col = -1
+        self._changed_rows = []
 
         self.data_source_type = data_source_type
         self.data_source = data_source
@@ -78,7 +82,10 @@ class EditableTable(Table):
         self.edit_cell_window = None
         self.edit_cell_row_index = None
         self.edit_cell_col_index = None
-        self.edit_cell_entry = None
+        self.edit_cell_widget = None
+
+        self.quick_edit_frame = None
+
         if self.data_source_type == DataSourceType.SQLITE:
             self.db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
         else:
@@ -358,13 +365,15 @@ class EditableTable(Table):
         elif self.data_source_type == DataSourceType.SQLITE:
             try:
                 data, column_names = self.db_handler.get_assets_data_for_csv()
+                if len(data) <= 0 or data[0][0] is None:
+                    # create an empty row (in the database) with the correct columns
+                    self.db_handler.create_empty_row(return_as_string=False, empty_cell=gui_g.s.empty_cell)  # dummy row
+                    data, column_names = self.db_handler.get_assets_data_for_csv()
+                    self.must_rebuild = True
                 self.data = pd.DataFrame(data, columns=column_names)
             except EmptyDataError:
-                # will create an empty row (in the database) with the correct columns
-                # TODO : test and valid this code
-                dummy_dict = self.db_handler.create_empty_row(return_as_string=False, empty_cell=gui_g.s.empty_cell)  # dummy row
-                self.data = pd.DataFrame(dummy_dict)
-                self.must_rebuild = True
+                log_error(f'Unable to read data from database: {self.data_source}')
+                return
         else:
             log_error(f'Unknown data source type: {self.data_source_type}')
             return
@@ -389,14 +398,23 @@ class EditableTable(Table):
         if source_type == DataSourceType.FILE:
             self.model.df.to_csv(self.data_source, index=False, na_rep='None', date_format=gui_g.s.csv_datetime_format)
         else:
-            print("TODO")  # TODO: save data
-            # data_to_save = self.data.copy()
-            # Convert column names back to original format
-            # data_to_save.columns = [col.replace(' ', '_').lower() for col in data_to_save.columns]
-            # data_to_save.to_sql(name='assets', con=self.db_handler.connection, if_exists='replace', index=False, method='multi')
+            for row in self._changed_rows:
+                # get the row data
+                row_data = self.data.iloc[row]
+                # convert the series to a dictionary
+                row_data = row_data.to_dict()
+                # convert the key names to the database column names
+                asset_data = convert_csv_row_to_sql_row(row_data)
+                ue_asset = UEAsset()
+                ue_asset.init_from_dict(asset_data)
+                # update the row in the database
+                self.db_handler.save_ue_asset(ue_asset)
+                log_info(f'UE_asset ({ue_asset.data["asset_id"]}) for row #{row} has been saved to the database')
 
         self.show_page(self.current_page)
+        self.clear_rows_to_save()
         self.must_save = False
+        box_message(f'Changed data has been saved to {self.data_source}')
 
     def init_data_format(self) -> None:
         """
@@ -416,7 +434,7 @@ class EditableTable(Table):
             'Old price': (convert_to_float, float),
             'Discount price': (convert_to_float, float),
             'Discount percentage': (convert_to_float, float),
-            'Stars': (convert_to_float, float),
+            'Stars': (convert_to_int, int),
             'Review count': (convert_to_int, int),
             'Creation date': (lambda x: convert_to_datetime(x, date_format='%Y-%m-%dT%H:%M:%S.%fZ'), pd.to_datetime),
             'Update date': (lambda x: convert_to_datetime(x, date_format=gui_g.s.csv_datetime_format), pd.to_datetime),
@@ -450,17 +468,40 @@ class EditableTable(Table):
          Rebuilds the data in the table based on the current filtering and sorting options.
          :return: True if the data was successfully rebuilt, False otherwise.
          """
-
-        # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
-        if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
-            from_cli_only_message()
-            return False
-        else:
-            gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
+        if self.data_source_type == DataSourceType.FILE:
+            # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
+            if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
+                from_cli_only_message()
+                return False
+            else:
+                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
+                self.current_page = 0
+                self.load_data()
+                self.show_page(0)
+                return True
+        elif self.data_source_type == DataSourceType.SQLITE:
+            max_threads = get_max_threads()
+            owned_assets_only = False
+            scraper = UEAssetScraper(
+                start=0,
+                assets_per_page=200,
+                max_threads=max_threads,
+                store_in_db=True,
+                store_in_files=True,
+                store_ids=True,
+                load_from_files=True,
+                clean_database=True,
+                engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
+                egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs
+            )
+            scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
+            scraper.save(owned_assets_only=owned_assets_only)
             self.current_page = 0
             self.load_data()
             self.show_page(0)
             return True
+        else:
+            return False
 
     def apply_filters(self, filter_dict=None, global_search=None) -> None:
         """
@@ -526,6 +567,21 @@ class EditableTable(Table):
         """
         self.zoomOut()
 
+    def add_to_rows_to_save(self, row_index: int) -> None:
+        """
+        Adds the specified row to the list of rows to save.
+        :param row_index: The index of the row to save.
+        """
+        if row_index < 0 or row_index > len(self.data) or row_index in self._changed_rows:
+            return
+        self._changed_rows.append(row_index)
+
+    def clear_rows_to_save(self) -> None:
+        """
+        Clears the list of rows to save.
+        """
+        self._changed_rows = []
+
     def get_edited_row_values(self) -> dict:
         """
         Returns the values of the selected row in the table.
@@ -540,7 +596,7 @@ class EditableTable(Table):
             except AttributeError:
                 value = entry.get_content()  # for extendedWidgets
             except TypeError:
-                value = entry.get('1.0', 'end')
+                value = entry.get('1.0', tk.END)
             entries_values[key] = value
         return entries_values
 
@@ -582,18 +638,18 @@ class EditableTable(Table):
         entries = {}
         image_url = ''
         for i, (key, value) in enumerate(row_data.items()):
-            from tkinter import ttk
-            ttk.Label(edit_row_window.content_frame, text=key).grid(row=i, column=0, sticky=tk.W)
+            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [FieldState.SQL_ONLY, FieldState.ASSET_ONLY]):
+                continue
+            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [FieldState.CSV_ONLY, FieldState.ASSET_ONLY]):
+                continue
+            label = key.replace('_', ' ').title()
+            ttk.Label(edit_row_window.content_frame, text=label).grid(row=i, column=0, sticky=tk.W)
             lower_key = key.lower()
+
             if lower_key == 'image':
                 image_url = value
 
-            if lower_key == 'asset_id':
-                # asset_id is readonly
-                entry = ttk.Entry(edit_row_window.content_frame)
-                entry.insert(0, value)
-                entry.grid(row=i, column=1, sticky=tk.EW)
-            elif lower_key == 'url':
+            if lower_key == 'url':
                 # we add a button to open the url in an inner frame
                 inner_frame_url = tk.Frame(edit_row_window.content_frame)
                 inner_frame_url.grid(row=i, column=1, sticky=tk.EW)
@@ -602,11 +658,11 @@ class EditableTable(Table):
                 entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
                 button = ttk.Button(inner_frame_url, text="Open URL", command=self.open_asset_url)
                 button.pack(side=tk.RIGHT)
-            elif lower_key in ('description', 'comment'):
+            elif is_from_type(key, [FieldType.TEXT]):
                 entry = ExtendedText(edit_row_window.content_frame, height=3)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
-            elif lower_key in ('must buy', 'obsolete', 'owned', 'discounted'):
+            elif is_from_type(key, [FieldType.BOOL]):
                 entry = ExtendedCheckButton(edit_row_window.content_frame, label='', images_folder=gui_g.s.assets_folder)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
@@ -631,13 +687,18 @@ class EditableTable(Table):
         Saves the edited row values to the table data.
         """
         for key, value in self.get_edited_row_values().items():
+            # if is_from_type(key, [FieldType.BOOL]):
+            #    value = convert_to_bool(value)
+            value = get_typed_value(csv_field=key, value=value)
             self.model.df.at[self.edit_row_index, key] = value
+        row = self.edit_row_index
         self.edit_row_entries = None
         self.edit_row_index = None
         self.redraw()
         self.must_save = True
         self.edit_row_window.close_window()
-        self.update_quick_edit()
+        self.add_to_rows_to_save(row)
+        self.update_quick_edit(row=row)
 
     def move_to_prev_record(self) -> None:
         """
@@ -687,12 +748,21 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.model.df.columns[col_index]
         ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
-        entry = ttk.Entry(edit_cell_window.content_frame)
-        entry.insert(0, cell_value)
-        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        entry.focus_set()
+        if is_from_type(col_name, [FieldType.TEXT]):
+            widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
+            widget.set_content(cell_value)
+            widget.focus_set()
+        elif is_from_type(col_name, [FieldType.BOOL]):
+            widget = ExtendedCheckButton(edit_cell_window.content_frame, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
+            widget.set_content(cell_value)
+        else:
+            # other field is just a ExtendedEntry
+            widget = ExtendedEntry(edit_cell_window.content_frame, tag=col_name)
+            widget.insert(0, cell_value)
+            widget.focus_set()
 
-        self.edit_cell_entry = entry
+        widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.edit_cell_widget = widget
         self.edit_cell_row_index = row_index
         self.edit_cell_col_index = col_index
         self.edit_cell_window = edit_cell_window
@@ -703,36 +773,36 @@ class EditableTable(Table):
         Returns the values of the selected cell in the table.
         :return: The value of the selected cell.
         """
-        if self.edit_cell_entry is None:
+        if self.edit_cell_widget is None:
             return ''
-        return self.edit_cell_entry.get()
+        tag = self.edit_cell_widget.tag
+        value = self.edit_cell_widget.get_content()
+        typed_value = get_typed_value(csv_field=tag, value=value)
+        return typed_value
 
     def save_edit_cell_value(self) -> None:
         """
         Saves the edited cell value to the table data.
         """
-        widget = self.edit_cell_entry
-        if widget is None or self.edit_cell_row_index is None or self.edit_cell_col_index is None or self.edit_cell_entry is None:
+        widget = self.edit_cell_widget
+        if widget is None or self.edit_cell_row_index is None or self.edit_cell_col_index is None or self.edit_cell_widget is None:
             return
-        # widget_class = widget.winfo_class().lower()
-        entry = self.edit_cell_entry
+        row = self.edit_cell_row_index
         try:
-            try:
-                # get value for an entry tk widget
-                value = entry.get()
-            except TypeError:
-                # get value for a text tk widget
-                value = entry.get('1.0', 'end')
-            self.model.df.iat[self.edit_cell_row_index, self.edit_cell_col_index] = value
+            tag = self.edit_cell_widget.tag
+            value = self.edit_cell_widget.get_content()
+            typed_value = get_typed_value(csv_field=tag, value=value)
+            self.model.df.iat[self.edit_cell_row_index, self.edit_cell_col_index] = typed_value
             self.must_save = True
-            self.edit_cell_entry = None
+            self.edit_cell_widget = None
             self.edit_cell_row_index = None
             self.edit_cell_col_index = None
         except TypeError:
             log_warning(f'Failed to get content of {widget}')
         self.redraw()
         self.edit_cell_window.close_window()
-        self.update_quick_edit()
+        self.add_to_rows_to_save(row)
+        self.update_quick_edit(row=row)
 
     def update_quick_edit(self, quick_edit_frame: TaggedLabelFrame = None, row: int = None) -> None:
         """
@@ -740,6 +810,11 @@ class EditableTable(Table):
         :param quick_edit_frame: The frame to display the cell content preview in.
         :param row: The row index of the selected cell.
         """
+        if quick_edit_frame is None:
+            quick_edit_frame = self.quick_edit_frame
+        else:
+            self.quick_edit_frame = quick_edit_frame
+
         if row is None or row >= len(self.model.df) or quick_edit_frame is None:
             return
 
@@ -747,7 +822,8 @@ class EditableTable(Table):
         for col_name in column_names:
             col = self.model.df.columns.get_loc(col_name)
             value = self.model.getValueAt(row=row, col=col)
-            quick_edit_frame.set_child_values(tag=col_name, content=value, row=row, col=col)
+            typed_value = get_typed_value(csv_field=col_name, value=value)
+            quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row, col=col)
 
     @staticmethod
     def quick_edit(quick_edit_frame: TaggedLabelFrame = None) -> None:
@@ -764,22 +840,29 @@ class EditableTable(Table):
         quick_edit_frame.set_default_content('Origin')
         quick_edit_frame.set_default_content('Alternative')
 
-    def quick_edit_save_value(self, value: str, row: int = None, col: int = None) -> None:
+    def quick_edit_save_value(self, value: str, row: int = None, col: int = None, tag=None) -> None:
         """
         Saves the cell content preview.
         :param value: The value to save.
         :param row: The row index of the cell.
         :param col: The column index of the cell.
+        :param tag: The tag associated to the control where the value come from
         """
-        if row is None or row >= len(self.model.df) or col is None:
+        old_value = self.model.df.iat[row, col]
+
+        typed_old_value = get_typed_value(sql_field=tag, value=old_value)
+        typed_value = get_typed_value(sql_field=tag, value=value)
+
+        if row is None or row >= len(self.model.df) or col is None or typed_old_value == typed_value:
             return
         try:
-            self.model.df.iat[row, col] = value
+            self.model.df.iat[row, col] = typed_value
             self.redraw()
             self.must_save = True
-            log_debug(f'Save preview value {value} at row={row} col={col}')
+            log_debug(f'Save preview value {typed_value} at row={row} col={col}')
+            self.add_to_rows_to_save(row)
         except IndexError:
-            log_warning(f'Failed to save preview value {value} at row={row} col={col}')
+            log_warning(f'Failed to save preview value {typed_value} at row={row} col={col}')
 
     def get_image_url(self, row: int = None) -> str:
         """

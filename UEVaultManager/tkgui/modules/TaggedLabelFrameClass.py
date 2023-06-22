@@ -38,6 +38,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         images_folder=None,
         add_label_before=True,
         focus_out_callback=None,
+        focus_in_callback=None,
         click_on_callback=None
     ) -> None:
         """
@@ -52,6 +53,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param images_folder: folder for image used by some widgets
         :param add_label_before: If True, adds a label before the child widget
         :param focus_out_callback: Callback to call when the child widget loses focus
+        :param focus_in_callback: Callback to call when the child widget get focus
         :param click_on_callback: Callback to call when the child widget is clicked or checked
 
         Note: we can not use command parameter to manage callback here because it should be transmited
@@ -85,6 +87,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
 
         if focus_out_callback is not None:
             child.bind('<FocusOut>', lambda event: focus_out_callback(event=event, tag=tag))
+        if focus_in_callback is not None:
+            child.bind('<FocusIn>', lambda event: focus_in_callback(event=event, tag=tag))
         if click_on_callback is not None:
             child.bind('<Button-1>', lambda event: click_on_callback(event=event, tag=tag))
 

@@ -229,17 +229,37 @@ def convert_to_float(value) -> float:
         return 0.0
 
 
-def convert_to_datetime(value: str, date_format='%Y-%m-%d %H:%M:%S') -> datetime.datetime:
+def convert_to_datetime(value: str, date_format='%Y-%m-%d %H:%M:%S', default=None) -> datetime.datetime:
     """
-    Convert a value to a datetime
+    Convert a value to a datetime object
     :param value: the value to convert. If the value is not a datetime, it will be converted to a string and then to a datetime.
     :param date_format: the format of value
+    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
     :return: the datetime value
     """
-    default = datetime.datetime(1970, 1, 1)
+    if default is None:
+        default = datetime.datetime(1970, 1, 1)
     if not value:
         return default
     try:
         return datetime.datetime.strptime(value, date_format)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, AttributeError):
+        return default
+
+
+def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None) -> str:
+    """
+    Convert a value to a datetime string
+    :param value: the value to convert. If the value is not a datetime
+    :param date_format: the format of value
+    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
+    :return: the string value of the datetime
+    """
+    if default is None:
+        default = datetime.datetime(1970, 1, 1).strftime(date_format)
+    if not value:
+        return default
+    try:
+        return value.strftime(date_format)
+    except (TypeError, ValueError, AttributeError):
         return default

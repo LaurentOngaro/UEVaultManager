@@ -11,6 +11,7 @@ import logging
 import os
 import random
 import sqlite3
+import uuid
 from enum import Enum
 
 from faker import Faker
@@ -18,7 +19,7 @@ from faker import Faker
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.csv_data import get_sql_field_name_list
 from UEVaultManager.models.UEAssetClass import UEAsset
-from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
+from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime
 from UEVaultManager.utils.cli import check_and_create_path
 
 test_only_mode = True  # create some limitations to speed up the dev process - Set to True for debug Only
@@ -137,6 +138,7 @@ class UEAssetDbHandler:
                 cursor = self.connection.cursor()
                 cursor.execute("PRAGMA user_version")
                 ret = int(cursor.fetchone()[0])  # type: int
+                cursor.close()
                 db_version = VersionNum(ret)
                 return db_version
         except sqlite3.OperationalError:
@@ -151,6 +153,7 @@ class UEAssetDbHandler:
         if self.connection is not None:
             cursor = self.connection.cursor()
             cursor.execute(f'PRAGMA user_version = {new_version.value}')
+            cursor.close()
             self.logger.info(f'database version is now set to {new_version}')
 
     def _check_db_version(self, minimal_db_version: VersionNum, caller_name='this method') -> bool:
@@ -180,6 +183,7 @@ class UEAssetDbHandler:
                 if column_name not in columns:
                     cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {data_type}")
             self.connection.commit()
+            cursor.close()
 
     def db_exists(self) -> bool:
         """
@@ -204,7 +208,7 @@ class UEAssetDbHandler:
                     # - the order of columns must match the order of the fields in UEAsset.init_data() method
                     query = """
                     CREATE TABLE IF NOT EXISTS assets ( 
-                        id TEXT PRIMARY KEY, 
+                        id TEXT PRIMARY KEY NOT NULL, 
                         namespace TEXT, 
                         catalog_item_id TEXT, 
                         title TEXT, 
@@ -235,6 +239,7 @@ class UEAssetDbHandler:
                     """
                     cursor.execute(query)
                     self.connection.commit()
+                    cursor.close()
         if upgrade_to_version.value >= VersionNum.V3.value:
             if not self.is_table_exist('last_run'):
                 # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
@@ -242,6 +247,7 @@ class UEAssetDbHandler:
                 query = "CREATE TABLE IF NOT EXISTS last_run (date DATETIME, mode TEXT, files_count INTEGER, items_count INTEGER, scrapped_ids TEXT)"
                 cursor.execute(query)
                 self.connection.commit()
+                cursor.close()
 
     def check_and_upgrade_database(self, upgrade_from_version: VersionNum = None) -> None:
         """
@@ -326,6 +332,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
             result = cursor.fetchone()
+            cursor.close()
         return result is not None
 
     def get_rows_count(self, table_name='assets') -> int:
@@ -339,6 +346,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
             row_count = cursor.fetchone()[0]
+            cursor.close()
         return row_count
 
     def save_last_run(self, data: dict):
@@ -353,6 +361,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             query = "INSERT INTO last_run (date, mode, files_count, items_count, scrapped_ids) VALUES (:date, :mode, :files_count, :items_count, :scrapped_ids)"
             cursor.execute(query, data)
+            cursor.close()
             self.connection.commit()
 
     def set_assets(self, assets) -> None:
@@ -369,12 +378,14 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             if not isinstance(assets, list):
                 assets = [assets]
-            date_added_in_db = datetime.datetime.now().strftime(default_datetime_format)
+            str_today = datetime.datetime.now().strftime(default_datetime_format)
             # Note: the order of columns and value must match the order of the fields in UEAsset.init_data() method
             for asset in assets:
-                if asset.get('date_added_in_db', None) is None:
-                    asset['date_added_in_db'] = date_added_in_db
-
+                asset['update_date'] = str_today
+                asset['creation_date'] = convert_to_str_datetime(value=asset['creation_date'], date_format=default_datetime_format)
+                asset['date_added_in_db'] = convert_to_str_datetime(
+                    value=asset['date_added_in_db'], date_format=default_datetime_format, default=str_today
+                )
                 # Generate the SQL query
                 # this query will insert or update the asset if it already exists
                 query = """
@@ -405,7 +416,10 @@ class UEAssetDbHandler:
                     cursor.execute(query, asset)
                 except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
                     self.logger.error(f"Error while inserting/updating asset '{asset['id']}' (tags='{asset['tags']}': {error!r}")
+        try:
             self.connection.commit()
+        except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
+            self.logger.error(f'Error when committing the database changes: {error!r}')
 
     def get_assets_data(self, fields='*') -> dict:
         """
@@ -423,6 +437,7 @@ class UEAssetDbHandler:
             for row in cursor.fetchall():
                 uid = row['id']
                 row_data[uid] = dict(row)
+            cursor.close()
         return row_data
 
     def get_assets_data_for_csv(self) -> (list, list):
@@ -459,31 +474,44 @@ class UEAssetDbHandler:
         # add a new row to the 'assets' table
         if self.connection is not None:
             cursor = self.connection.cursor()
-            cursor.execute("INSERT INTO assets DEFAULT VALUES")
-            self.connection.commit()
-            uid = cursor.lastrowid
-            ue_asset = self.get_ue_asset(str(uid))
-            ue_asset.asset_id = 'dummy_row_' + str(uid)  # dummy unique Asset_id to avoid issue
-            ue_asset.thumbnail_url = empty_cell  # avoid displaying image warning on mouse over
+            # generate a unique ID and check if it already exists in the database
+            uid = ''
+            count = 1
+            while count > 0:
+                uid = str(uuid.uuid4())[:8]
+                cursor.execute("SELECT COUNT(*) FROM assets WHERE id = ?", (uid,))
+                count = cursor.fetchone()[0]
+            cursor.close()
+            ue_asset = UEAsset()
+            ue_asset.data['id'] = uid
+            ue_asset.data['asset_id'] = 'dummy_row_' + uid  # dummy unique Asset_id to avoid issue
+            ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
+            self.save_ue_asset(ue_asset)
             result = str(ue_asset) if return_as_string else ue_asset
         return result
 
-    def get_ue_asset(self, uid: str) -> UEAsset:
+    def read_ue_asset(self, uid: str) -> UEAsset:
         """
-        Get an asset from the 'assets' table.
+        Read an UEAsset object from the 'assets' table.
         :param uid: The ID of the asset to get.
-        :return: an UEAsset object.
+        :return: UEAsset object.
         """
         ue_asset = None
         if self.connection is not None:
             cursor = self.connection.cursor()
             cursor.execute("SELECT * assets WHERE id = ?", (uid,))
-
             row = cursor.fetchone()
+            cursor.close()
             ue_asset = UEAsset()
             ue_asset.init_from_list(data=row)
-
         return ue_asset
+
+    def save_ue_asset(self, ue_asset: UEAsset) -> None:
+        """
+        Save an UEAsset object to the 'assets' table.
+        :param ue_asset: UEAsset object to save
+        """
+        self.set_assets([ue_asset.data])
 
     def delete_asset(self, uid: str) -> None:
         """
@@ -494,6 +522,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             cursor.execute("DELETE FROM assets WHERE id = ?", (uid,))
             self.connection.commit()
+            cursor.close()
 
     def delete_all_assets(self) -> None:
         """
@@ -503,6 +532,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             cursor.execute("DELETE FROM assets WHERE 1")
             self.connection.commit()
+            cursor.close()
 
     def update_asset(self, uid: str, column: str, value) -> None:
         """
@@ -515,6 +545,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             cursor.execute(f"UPDATE assets SET {column} = ? WHERE id = ?", (value, uid))
             self.connection.commit()
+            cursor.close()
 
     def drop_tables(self) -> None:
         """
@@ -525,6 +556,7 @@ class UEAssetDbHandler:
             cursor.execute("DROP TABLE IF EXISTS assets")
             cursor.execute("DROP TABLE IF EXISTS last_run")
             self.connection.commit()
+            cursor.close()
 
     def generate_test_data(self, number_of_rows=1) -> None:
         """

@@ -54,7 +54,7 @@ class UEAssetScraper:
     :param store_ids: A boolean indicating whether to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
     :param use_raw_format: A boolean indicating whether to store the data in a raw format (as returned by the API) or after data have been parsed. Defaults to True.
     :param clean_database: A boolean indicating whether to clean the database before saving the data. Defaults to False.
-    :param engine_version_for_obsolete_assets: A string representing the engine version to use to check if an asset is obsolete. Defaults to '4.26'.
+    :param engine_version_for_obsolete_assets: A string representing the engine version to use to check if an asset is obsolete.
     :param egs: An EPCAPI object (session handler). Defaults to None. If None, a new EPCAPI object will be created and the session used WON'T BE LOGGED.
     """
 
@@ -73,7 +73,7 @@ class UEAssetScraper:
         use_raw_format=True,
         load_from_files=False,
         clean_database=False,
-        engine_version_for_obsolete_assets='4.26',
+        engine_version_for_obsolete_assets=None,
         egs: EPCAPI = None,
     ) -> None:
         self.start = start
@@ -87,7 +87,17 @@ class UEAssetScraper:
         self.store_ids = store_ids
         self.use_raw_format = use_raw_format
         self.clean_database = clean_database
-        self.engine_version_for_obsolete_assets = engine_version_for_obsolete_assets
+        # test several ways to get the following value depending on the context
+        # noinspection PyBroadException
+        try:
+            self.engine_version_for_obsolete_assets = (
+                engine_version_for_obsolete_assets
+                or gui_g.UEVM_cli_ref.core.engine_version_for_obsolete_assets
+                or gui_g.s.engine_version_for_obsolete_assets
+            )
+        except Exception:
+            self.engine_version_for_obsolete_assets = None
+
         self.last_run_filename = 'last_run.json'
         self.urls_list_filename = 'urls_list.txt'
         self.assets_data_folder = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
