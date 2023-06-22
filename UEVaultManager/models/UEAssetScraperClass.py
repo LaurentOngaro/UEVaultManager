@@ -11,6 +11,7 @@ import random
 import time
 from datetime import datetime
 from itertools import chain
+from threading import current_thread
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult, is_asset_obsolete
@@ -369,7 +370,10 @@ class UEAssetScraper:
         pages_count = int(assets_count / self.assets_per_page)
         if (assets_count % self.assets_per_page) > 0:
             pages_count += 1
+        self.progress_window.reset(new_value=0, new_text='Gathering URLs', new_max_value=pages_count)
         for i in range(int(pages_count)):
+            if not self.progress_window.update_and_continue(value=i, text=f'Gathering URL ({i + 1}/{pages_count})'):
+                return
             start = self.start + (i * self.assets_per_page)
             if owned_assets_only:
                 url = self.egs.get_owned_scrap_url(start, self.assets_per_page)
@@ -434,6 +438,7 @@ class UEAssetScraper:
             start_time = time.time()
             if self.urls is None or len(self.urls) == 0:
                 self.gather_all_assets_urls(owned_assets_only=owned_assets_only)
+            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=len(self.urls))
             if self.max_threads > 0:
                 self.threads_count = min(self.max_threads, len(self.urls))
                 with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count) as executor:
@@ -506,6 +511,7 @@ class UEAssetScraper:
         files_count = len(files)
         # Note: this data have the same structure as the table last_run inside the method UEAsset.create_tables()
         self._log_info(f'Loading {files_count} files from {folder}')
+        self.progress_window.reset(new_value=0, new_text='Loading asset data from json files', new_max_value=files_count)
         for filename in files:
             if filename.endswith('.json') and filename != self.last_run_filename:
                 # self._log_debug(f'Loading {filename}')
@@ -519,6 +525,8 @@ class UEAssetScraper:
                     for asset_data in assets_data:
                         self.scraped_data.append(asset_data)
                 self.files_count += 1
+                if not self.progress_window.update_and_continue(increment=1):
+                    return
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self.files_count} files'
         self._log_info(message)
 
@@ -545,6 +553,8 @@ class UEAssetScraper:
             self._log_info('Only Owned Assets will be scraped')
 
         self.get_scraped_data(owned_assets_only=owned_assets_only)
+        if not self.progress_window.continue_execution:
+            return
 
         # Note: this data have the same structure as the table last_run inside the method UEAsset.create_tables()
         content = {
@@ -557,12 +567,15 @@ class UEAssetScraper:
 
         start_time = time.time()
         if self.store_in_files and not self.use_raw_format:
+            self.progress_window.reset(new_value=0, new_text='Saving into files', new_max_value=len(self.scraped_data))
             # store the data in a AFTER parsing it
             self.files_count = 0
             for asset_data in self.scraped_data:
                 filename = get_filename_from_asset_data(asset_data)
                 self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                 self.files_count += 1
+                if not self.progress_window.update_and_continue(increment=1):
+                    return
             message = f'It took {(time.time() - start_time):.3f} seconds to save the data in {self.files_count} files'
             self._log_info(message)
 
@@ -574,6 +587,7 @@ class UEAssetScraper:
         with open(filename, 'w') as fh:
             json.dump(content, fh)
 
+        self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=None)
         self._save_in_db(last_run_content=content)
         self._log_info('data saved')
 
