@@ -8,6 +8,7 @@ from enum import Enum
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_int, convert_to_bool, convert_to_float
 
+
 class FieldState(Enum):
     """
     Enum for the state of a field in the database
