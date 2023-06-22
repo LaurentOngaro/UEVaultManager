@@ -398,6 +398,8 @@ class UEAssetScraper:
 
         thread_data = ''
         if self.threads_count > 1:
+            # add a delay when multiple threads are used
+            time.sleep(random.uniform(1.0, 3.0))
             thread = current_thread()
             thread_data = f' ==> By Thread name={thread.name}'
 
@@ -421,9 +423,11 @@ class UEAssetScraper:
                     self.files_count += 1
             content = self._parse_data(json_data)
             self.scraped_data.append(content)
-        if self.threads_count > 1:
-            # add a delay when multiple threads are used
-            time.sleep(random.uniform(1.0, 3.0))
+
+        # # this code is  HS WHY ? perhaps threading in threading ?
+        # if not self.progress_window.update_and_continue(increment=1):
+        #    self.thread_executor_must_stop = True
+        # # end code HS
 
     def get_scraped_data(self, owned_assets_only=False) -> None:
         """
@@ -459,15 +463,36 @@ class UEAssetScraper:
                 self.gather_all_assets_urls(owned_assets_only=owned_assets_only)
             self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=len(self.urls))
             if self.max_threads > 0:
-                process_can_be_stopped = False  # Note: a True value is not working properly. See below
+                process_can_be_stopped = True
                 self.threads_count = min(self.max_threads, len(self.urls))
                 if not process_can_be_stopped:
-                    # threading processing is automatic and CAN NOT be stopped by the progress window
+                    # threading processing is automatic and COULD NOT be stopped by the progress window
                     self.progress_window.hide_stop_button()
                     with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count, thread_name_prefix="Asset_Scapper") as executor:
                         executor.map(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), self.urls)
                 else:
-                    pass
+                    # threading processing COULD be stopped by the progress window
+                    self.progress_window.show_stop_button()
+                    self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count, thread_name_prefix="Asset_Scaper")
+                    futures = {}
+                    # for url in self.urls:
+                    while len(self.urls) > 0:
+                        url = self.urls.pop()
+                        # Submit the task and add its Future to the dictionary
+                        future = self.thread_executor.submit(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), url)
+                        futures[url] = future
+                        if self.thread_executor_must_stop:
+                            self._log_info(f'User stop has been pressed. Stopping running threads....')
+                            stop_executor(futures)
+                            return
+                    # Wait for all the tasks to finish
+                    concurrent.futures.wait(futures.values())
+                    for url, future in futures.items():
+                        try:
+                            future.result()
+                        except Exception as error:
+                            self._log_warning(f'generated an exception: {error!r}')
+                    self.thread_executor.shutdown(wait=False)
             else:
                 for url in self.urls:
                     self.get_data_from_url(url, owned_assets_only)
