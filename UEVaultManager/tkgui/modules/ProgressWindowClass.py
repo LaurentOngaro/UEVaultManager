@@ -34,12 +34,12 @@ class ProgressWindow(tk.Toplevel):
     def __init__(
         self,
         title: str,
-        width: 300,
-        height: 150,
+        width: int = 300,
+        height: int = 150,
         icon=None,
         screen_index=0,
         max_value=100,
-        show_start_button=True,
+        show_start_button=False,
         show_stop_button=True,
         show_progress=True,
         function=None,
@@ -81,7 +81,7 @@ class ProgressWindow(tk.Toplevel):
 
         # Start the execution if not control frame is present
         # important because the control frame is not present when the function is set after the window is created
-        if self.control_frame is None or not show_start_button:
+        if self.control_frame is None or not show_start_button and self.function is not None:
             self.start_execution()
 
     def __del__(self):
@@ -267,7 +267,11 @@ class ProgressWindow(tk.Toplevel):
                 self.set_value(new_value)
             if new_max_value is not None:
                 self.show_progress_bar()
+                self.show_stop_button()
                 self.set_max_value(new_max_value)
+            else:
+                self.hide_progress_bar()
+                self.hide_stop_button()
         except tk.TclError:
             gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
         self.continue_execution = True
@@ -322,11 +326,12 @@ class ProgressWindow(tk.Toplevel):
         if self.control_frame.button_stop is not None:
             self.control_frame.button_start.config(state=tk.DISABLED)
 
-    def update_and_continue(self, value=0, increment=0) -> bool:
+    def update_and_continue(self, value=0, increment=0, text=None) -> bool:
         """
         Updates the progress bar and returns whether the execution should continue
         :param value: the value to set
         :param increment: the value to increment. If both value and increment are set, the value is ignored
+        :param text: the text to set
         """
         try:
             # sometimes the window is already destroyed
@@ -337,6 +342,8 @@ class ProgressWindow(tk.Toplevel):
             if value > self.max_value:
                 value = self.max_value
             progress_bar["value"] = value
+            if text:
+                self.set_text(text)
             progress_bar.update_idletasks()
         except tk.TclError:
             gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
