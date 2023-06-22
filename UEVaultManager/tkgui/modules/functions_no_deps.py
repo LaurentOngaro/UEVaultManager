@@ -7,6 +7,7 @@ import ctypes as ct
 import datetime
 import os
 import sys
+import uuid
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
@@ -263,3 +264,11 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
         return value.strftime(date_format)
     except (TypeError, ValueError, AttributeError):
         return default
+
+
+def create_uid() -> str:
+    """
+    Create a unique id
+    :return: a unique id
+    """
+    return str(uuid.uuid4())[:8]

@@ -1190,6 +1190,7 @@ class UEVaultManagerCLI:
         :param args: options passed to the command
         """
         if not args.offline:
+            load_from_files = False
             try:
                 if not self.core.login():
                     message = 'Log in failed!'
@@ -1198,29 +1199,33 @@ class UEVaultManagerCLI:
                 pass
             # if automatic checks are off force an update here
             self.core.check_for_updates(force=True)
-
+        else:
+            load_from_files = True
         # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
         # still true ?
-        # rows_per_page = gui_g.s.rows_per_page
-        rows_per_page = 100  # a bigger value will be refused by UE API
+        # ue_asset_per_page = gui_g.s.rows_per_page
+        ue_asset_per_page = 100  # a bigger value will be refused by UE API
 
         if test_only_mode:
             start_row = 0  # debug only, shorter list
-            # start_row = 1700  # debug only, shorter list
+            # start_row = 1700  # debug only, very shorter list
             max_threads = 0  # debug only, see exceptions
             owned_assets_only = True  # True for debug only
         else:
             start_row = 0
             max_threads = get_max_threads()
             owned_assets_only = False
+
+        if args.force_refresh:
+            load_from_files = False
         scraper = UEAssetScraper(
             start=start_row,
-            assets_per_page=rows_per_page,
+            assets_per_page=ue_asset_per_page,
             max_threads=max_threads,
             store_in_db=True,
             store_in_files=True,
-            store_ids=True,
-            load_from_files=args.offline,
+            store_ids=False,  # useless for now
+            load_from_files=load_from_files,
             engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
             egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
         )

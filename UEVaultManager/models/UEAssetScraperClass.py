@@ -17,7 +17,7 @@ from UEVaultManager.api.egs import EPCAPI, GrabResult, is_asset_obsolete
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
-from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid
 
 test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
 
@@ -32,7 +32,9 @@ def get_filename_from_asset_data(asset_data) -> str:
         app_id = asset_data['releaseInfo'][0]['appId']
         filename = f'{app_id}.json'
     except KeyError:
-        uid = asset_data['id']
+        uid = asset_data.get('id', None)
+        if uid is None:
+            uid = asset_data.get('catalogItemId', create_uid())
         filename = f'_no_appId_asset_{uid}.json'
     return filename
 
@@ -565,14 +567,14 @@ if __name__ == '__main__':
     # set the number of rows to retrieve per page
     # As the asset are saved individually by default, this value is only use for pagination in the files that store the url
     # it speeds up the process of requesting the asset list
-    rows_per_page = 36
+    ue_asset_per_page = 100
 
     if test_only_mode:
         # shorter and faster list for testing only
         # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
         threads = 0  # set to 0 to disable threading
         start_row = 15000
-        stop_row = 15000 + rows_per_page
+        stop_row = 15000 + ue_asset_per_page
         clean_db = False
         load_data_from_files = False
     else:
@@ -585,7 +587,7 @@ if __name__ == '__main__':
     scraper = UEAssetScraper(
         start=start_row,
         stop=stop_row,
-        assets_per_page=rows_per_page,
+        assets_per_page=ue_asset_per_page,
         max_threads=threads,
         store_in_db=True,
         store_in_files=not load_data_from_files,

@@ -19,7 +19,7 @@ from faker import Faker
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.csv_data import get_sql_field_name_list
 from UEVaultManager.models.UEAssetClass import UEAsset
-from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime
+from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime, create_uid
 from UEVaultManager.utils.cli import check_and_create_path
 
 test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
@@ -478,7 +478,7 @@ class UEAssetDbHandler:
             uid = ''
             count = 1
             while count > 0:
-                uid = str(uuid.uuid4())[:8]
+                uid = create_uid()
                 cursor.execute("SELECT COUNT(*) FROM assets WHERE id = ?", (uid,))
                 count = cursor.fetchone()[0]
             cursor.close()

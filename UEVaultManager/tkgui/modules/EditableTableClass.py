@@ -25,6 +25,8 @@ from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, conv
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 from UEVaultManager.utils.cli import get_max_threads
 
+test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
+
 
 class DataSourceType(Enum):
     """ An enum to represent the data source type """
@@ -483,15 +485,27 @@ class EditableTable(Table):
         elif self.data_source_type == DataSourceType.SQLITE:
             max_threads = get_max_threads()
             owned_assets_only = False
+            ue_asset_per_page = 100  # a bigger value will be refused by UE API
+            if test_only_mode:
+                start_row = 15000
+                stop_row = 15000 + ue_asset_per_page
+            else:
+                start_row = 0
+                stop_row = 0
+            if gui_g.UEVM_cli_args and gui_g.UEVM_cli_args.get('force_refresh', False):
+                load_from_files = False
+            else:
+                load_from_files = gui_g.UEVM_cli_args.get('offline', True)
             scraper = UEAssetScraper(
-                start=0,
-                assets_per_page=200,
+                start=start_row,
+                stop=stop_row,
+                assets_per_page=ue_asset_per_page,
                 max_threads=max_threads,
                 store_in_db=True,
                 store_in_files=True,
-                store_ids=True,
-                load_from_files=True,
-                clean_database=True,
+                store_ids=False,  # useless for now
+                load_from_files=load_from_files,
+                clean_database=not test_only_mode,
                 engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
                 egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs
             )
