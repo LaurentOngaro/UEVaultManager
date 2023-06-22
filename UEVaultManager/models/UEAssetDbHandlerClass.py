@@ -244,7 +244,7 @@ class UEAssetDbHandler:
             if not self.is_table_exist('last_run'):
                 # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
                 cursor = self.connection.cursor()
-                query = "CREATE TABLE IF NOT EXISTS last_run (date DATETIME, mode TEXT, files_count INTEGER, items_count INTEGER, scrapped_ids TEXT)"
+                query = "CREATE TABLE IF NOT EXISTS last_run (date DATETIME, mode TEXT, files_count INTEGER, items_count INTEGER, scraped_ids TEXT)"
                 cursor.execute(query)
                 self.connection.commit()
                 cursor.close()
@@ -359,7 +359,7 @@ class UEAssetDbHandler:
             return
         if self.connection is not None:
             cursor = self.connection.cursor()
-            query = "INSERT INTO last_run (date, mode, files_count, items_count, scrapped_ids) VALUES (:date, :mode, :files_count, :items_count, :scrapped_ids)"
+            query = "INSERT INTO last_run (date, mode, files_count, items_count, scraped_ids) VALUES (:date, :mode, :files_count, :items_count, :scraped_ids)"
             cursor.execute(query, data)
             cursor.close()
             self.connection.commit()
@@ -628,7 +628,7 @@ class UEAssetDbHandler:
             'mode': 'save',
             'files_count': 0,
             'items_count': number_of_rows,
-            'scrapped_ids': ','.join(scraped_ids)
+            'scraped_ids': ','.join(scraped_ids)
         }
         self.save_last_run(content)
 

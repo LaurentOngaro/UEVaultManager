@@ -217,7 +217,7 @@ class EPCAPI:
         url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
         return url
 
-    def get_scrapped_asset_count(self, owned_assets_only=False) -> int:
+    def get_scraped_asset_count(self, owned_assets_only=False) -> int:
         """
         Return the number of assets in the marketplace.
         :param owned_assets_only: If True, only the owned assets are counted.
@@ -236,9 +236,9 @@ class EPCAPI:
             self.log.warning(f'Can not get the asset count from {url}:{error!r}')
         return assets_count
 
-    def get_scrapped_assets(self, url='') -> dict:
+    def get_scraped_assets(self, url='') -> dict:
         """
-        Return the scrapped assets
+        Return the scraped assets
         :param url: The url to scrap
         :return: The json data
         """

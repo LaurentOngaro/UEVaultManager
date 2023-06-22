@@ -60,7 +60,7 @@ Implemented Features:
       price, review, tags, owned or not...**
 
 -  Using a cache system to avoid getting data using API calls and web
-   scrapping each time the app is run. The delay of cache conservation
+   scraping each time the app is run. The delay of cache conservation
    can be set in the configuration file
 -  **Filtering the asset list by category before their listing (using the
    "-fc | -filter-category" optional argument)**

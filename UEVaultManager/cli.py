@@ -34,7 +34,7 @@ from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayConten
 from UEVaultManager.tkgui.modules.EditableTableClass import DataSourceType
 from UEVaultManager.tkgui.modules.functions import custom_print, box_message  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
-from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
+from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
@@ -84,13 +84,8 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
         uewm_gui_exists = True
     force_refresh = True if args.force_refresh else False
     window = ProgressWindow(
-        title="Updating Assets List",
+        title='Updating Assets List',
         quit_on_close=not uewm_gui_exists,
-        width=300,
-        height=150,
-        max_value=200,
-        show_start_button=False,
-        show_stop_button=True,
         function=callback,
         function_parameters={
             'filter_category': gui_g.UEVM_filter_category,
@@ -1188,6 +1183,8 @@ class UEVaultManagerCLI:
         """
         Scrap assets from the Epic Games Store or from previously saved files
         :param args: options passed to the command
+
+        NOTE: ! Unlike the list_asset method, this method is not intended to be called trhough the GUI. So there is no need to add a ProgressWindow setup here.
         """
         if not args.offline:
             load_from_files = False
@@ -1246,8 +1243,8 @@ class UEVaultManagerCLI:
         #             except KeyError:
         #                 self.logger.debug(f'Error getting id for asset {asset_data}')
         #     print(f'Found {cpt} assets')
-        #     asset_count = self.core.egs.get_scrapped_asset_count()
-        #     owned_asset_count = self.core.egs.get_scrapped_asset_count(owned_assets_only=True)
+        #     asset_count = self.core.egs.get_scraped_asset_count()
+        #     owned_asset_count = self.core.egs.get_scraped_asset_count(owned_assets_only=True)
         #     print(f'Found {asset_count} assets, ({owned_asset_count} owned)')
         #     exit(0)  # debug only
 
