@@ -390,10 +390,19 @@ class UEAssetScraper:
         :param url: The url to grab the data from. If not given, uses the url property of the class.
         :param owned_assets_only: if True, only the owned assets are scraped
         """
+        if self.thread_executor_must_stop:
+            return  # stop the thread
         if not url:
             self._log_error('No url given to get_data_from_url()')
             return
-        self._log_info(f'Opening url {url}')
+
+        thread_data = ''
+        if self.threads_count > 1:
+            thread = current_thread()
+            thread_data = f' ==> By Thread name={thread.name}'
+
+        self._log_info(f'--- START scraping data from {url}{thread_data}')
+
         json_data = self.egs.get_scraped_assets(url)
         if json_data.get('errorCode', '') != '':
             self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
@@ -424,6 +433,16 @@ class UEAssetScraper:
 
         Note: if self.urls is None or empty, gather_urls() will be called first.
         """
+
+        def stop_executor(tasks) -> None:
+            """
+            Cancel all outstanding tasks and shut down the executor
+            :param tasks: tasks to cancel
+            """
+            for _, task in tasks.items():
+                task.cancel()
+            self.thread_executor.shutdown(wait=False)
+
         # store previous data in the existing_data property
         self.existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.existing_data_fields)
 
@@ -440,11 +459,15 @@ class UEAssetScraper:
                 self.gather_all_assets_urls(owned_assets_only=owned_assets_only)
             self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=len(self.urls))
             if self.max_threads > 0:
+                process_can_be_stopped = False  # Note: a True value is not working properly. See below
                 self.threads_count = min(self.max_threads, len(self.urls))
-                with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count) as executor:
-                    # executor.map(self.get_data_from_url, self.urls)
-                    executor.map(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), self.urls)
-
+                if not process_can_be_stopped:
+                    # threading processing is automatic and CAN NOT be stopped by the progress window
+                    self.progress_window.hide_stop_button()
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count, thread_name_prefix="Asset_Scapper") as executor:
+                        executor.map(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), self.urls)
+                else:
+                    pass
             else:
                 for url in self.urls:
                     self.get_data_from_url(url, owned_assets_only)
