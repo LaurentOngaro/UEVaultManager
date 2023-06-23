@@ -42,7 +42,7 @@ from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
-test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = True  # create some limitations to speed up the dev process - Set to True for debug Only
 
 
 def init_gui_args(args, additional_args=None) -> None:
@@ -229,33 +229,19 @@ class UEVaultManagerCLI:
             self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
         if extras_data is None:
             extras_data = create_empty_assets_extras(item.app_name)
-        asset_url = no_text_data
-        review = no_int_data
-        price = no_float_data
-        owned = bool_false_data
-        discount_price = no_float_data
-        supported_versions = no_text_data
-        page_title = no_text_data
-        grab_result = GrabResult.NO_ERROR.name
         origin = 'Marketplace'  # by default the asset are from the "MarketPlace"
-        discount_percentage = no_int_data
-        discounted = bool_false_data
-        try:
-            asset_url = extras_data['asset_url']
-            review = extras_data['review']
-            price = extras_data['price']
-            discount_price = extras_data['discount_price']
-            owned = extras_data['owned']
-            supported_versions = extras_data['supported_versions']
-            page_title = extras_data['page_title']
-            grab_result = extras_data['grab_result']
-            discount_percentage = extras_data['discount_percentage']
-            discounted = extras_data['discounted']
-        except (TypeError, KeyError) as error:
-            self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
-
+        asset_url = extras_data.get('asset_url', no_text_data)
+        review = extras_data.get('review', no_int_data)
+        price = extras_data.get('price', no_float_data)
+        discount_price = extras_data.get('discount_price', no_float_data)
+        supported_versions = extras_data.get('supported_versions', no_text_data)
+        page_title = extras_data.get('page_title', no_text_data)
+        grab_result = extras_data.get('grab_result', GrabResult.NO_ERROR.name)
+        # next fields are missing in some assets pages
+        discount_percentage = extras_data.get('discount_percentage', no_int_data)
+        discounted = extras_data.get('discounted', bool_false_data)
+        owned = extras_data.get('owned', bool_false_data)
         obsolete = is_asset_obsolete(supported_versions, self.core.engine_version_for_obsolete_assets)
-
         try:
             values = (
                 # be ins the same order as csv_sql_fields keys, with explufind the SQL_ONLY fields
@@ -422,40 +408,53 @@ class UEVaultManagerCLI:
                     _price = float(_no_data_value)
                     old_price = float(_no_data_value)
                     for key, state in csv_sql_fields.items():
-                        preserved_value_in_file = is_on_state(csv_field_name=key, states=[FieldState.PRESERVED])
-                        if item_in_file.get(key, None) is None:
-                            self.logger.error(
-                                f'In the existing file, asset {_asset_id} has no column named {key}. This asset is ignored and its values will be overwritten'
-                            )
-                            # print(f' CHECK for asset {_asset_id}')
-                            return _csv_record
-                        else:
-                            if preserved_value_in_file:
+                        ignore_in_csv = is_on_state(csv_field_name=key, states=[FieldState.ASSET_ONLY, FieldState.SQL_ONLY])
+                        if not ignore_in_csv:
+                            preserved_value_in_file = is_on_state(csv_field_name=key, states=[FieldState.PRESERVED])
+                            if item_in_file.get(key, None) is None:
+                                self.logger.warning(
+                                    f'In the existing file, asset {_asset_id} has no column named {key}. This asset is ignored and its values will be overwritten'
+                                )
+                                # print(f' CHECK for asset {_asset_id}')
+                                return _csv_record
+                            else:
                                 value = item_in_file[key]
-                                if str_is_bool(value):
-                                    value = str_to_bool(value)
-                                _csv_record[index] = value
-                            # Get the old price in the previous file
-                            if key == 'Price':
-                                price_index = index
-                                try:
-                                    _price = float(_csv_record[price_index])
-                                    old_price = float(
-                                        item_in_file[key]
-                                    )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
-                                except Exception as _error:
-                                    self.logger.warning(f'Old price value can not be converted for asset {_asset_id}\nError:{_error!r}')
-                            if key == 'Origin':
-                                # all the folders when the asset came from are stored in a comma separated list
-                                folder_list = item_in_file[key].split(',')
-                                # add the new folder to the list without duplicates
-                                if _csv_record[index] not in folder_list:
-                                    folder_list.append(_csv_record[index])
-                                # update the list in the CSV record
-                                _csv_record[index] = ','.join(folder_list)
+                                # get rid of 'None' values in CSV file
+                                if value == gui_g.s.empty_cell:
+                                    value = ''
+                                    _csv_record[index] = value
+                                if preserved_value_in_file:
+                                    # convert bool values from string to bool
+                                    if str_is_bool(value):
+                                        value = str_to_bool(value)
+                                    _csv_record[index] = value
+                                # Get the old price in the previous file
+                                if key == 'Price':
+                                    price_index = index
+                                    try:
+                                        _price = float(_csv_record[price_index])
+                                        old_price = float(
+                                            item_in_file[key]
+                                        )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                                    except Exception as _error:
+                                        self.logger.warning(f'Old price value can not be converted for asset {_asset_id}\nError:{_error!r}')
+                                if key == 'Origin':
+                                    if isinstance(value, str):
+                                        # all the folders when the asset came from are stored in a comma separated list
+                                        folder_list = value.split(',')
+                                        # add the new folder to the list without duplicates
+                                        if _csv_record[index] not in folder_list:
+                                            folder_list.append(_csv_record[index])
+                                        # update the list in the CSV record
+                                        _csv_record[index] = ','.join(folder_list)
+                        # end if not ignore_in_csv
                         index += 1
-
-                _csv_record[price_index + 1] = old_price
+                    # end for key, state in csv_sql_fields.items()
+                    if price_index > 0:
+                        _csv_record[price_index + 1] = old_price
+                # end ELSE if len(item_in_file.keys()) != csv_fields_count
+            # end if _items_in_file.get(_asset_id)
+            print(f'debug here')
             return _csv_record
 
         # end update_and_merge_csv_record_data
@@ -546,7 +545,6 @@ class UEVaultManagerCLI:
                 # if the main gui is not running, we need to start a tk.mainloop
                 progress_window.mainloop()
             items = progress_window.get_result()
-
         else:
             items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
 
@@ -554,24 +552,28 @@ class UEVaultManagerCLI:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
             items.extend(na_items)
 
+        if not items:
+            self.logger.info('No assets found!')
+            return
+
         no_int_data = 0
         no_float_value = 0.0
         no_text_data = ''
         no_bool_true_data = True
         no_bool_false_data = False
-
-        # sort assets by name in reverse (to have the latest version first
-        items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
+        cpt = 0
+        cpt_max = len(items)
 
         # use a dict to store records and avoid duplicates (asset with the same asset_id and a different asset_name)
         assets_to_output = {}
         # create a minimal and full dict of data from existing assets
         assets_in_file = {}
 
-        cpt = 0
-        cpt_max = len(items)
+        # sort assets by name in reverse (to have the latest version first
+        items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
+
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging assets data...", new_max_value=len(items))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging assets data...", new_max_value=cpt_max)
         for item in items:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -632,6 +634,8 @@ class UEVaultManagerCLI:
                     if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                         return
                     asset_id = asset[0]
+                    if test_only_mode:
+                        print(f'merging _asset_id {asset_id}')
                     try:
                         if len(assets_in_file) > 0:
                             csv_record_merged = update_and_merge_csv_record_data(asset, assets_in_file, no_int_data)
@@ -639,9 +643,9 @@ class UEVaultManagerCLI:
                             csv_record_merged = list(asset[1].values())
                         cpt += 1
                         writer.writerow(csv_record_merged)
-                    except (OSError, UnicodeEncodeError, TypeError) as error:
+                    except (OSError, UnicodeEncodeError) as error:
                         message = f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}'
-                        self.logger.error(message)
+                        self.logger.warning(message)
             except (OSError, ValueError) as error:
                 message = f'Could not write list result to {args.output}: {error!r}'
                 self._log_gui_wrapper(self.logger.error, message)
@@ -703,15 +707,17 @@ class UEVaultManagerCLI:
             if UEVaultManagerCLI.is_gui:
                 # During the editabletable initial rebuild_data process, the window will not close
                 # So we try to close it several times
-                max_tries = 3
-                progress_window.quit_on_close = True  # gentle quit
-                tries = 0
-                while progress_window is not None and progress_window.winfo_viewable() and tries < max_tries:
-                    progress_window.close_window()
-                    time.sleep(0.2)
-                    tries += 1
-                progress_window.quit_on_close = False  # force destroy the window
-                progress_window.close_window()
+                # max_tries = 3
+                # progress_window.quit_on_close = True  # gentle quit
+                # tries = 0
+                # while progress_window is not None and progress_window.winfo_viewable() and tries < max_tries:
+                #     progress_window.close_window()
+                #     time.sleep(0.2)
+                #     tries += 1
+                # progress_window.quit_on_close = False  # force destroy the window
+                # progress_window.close_window()
+                progress_window.quit_on_close = False
+                progress_window.close_window(destroy_window=True)
             return
 
         # here, no other output has been done before, so we print the asset in a quick format to the console
@@ -1177,6 +1183,7 @@ class UEVaultManagerCLI:
             rebuild_data=rebuild
         )
         gui_g.UEVM_gui_ref.mainloop()
+        print('Exiting...')  #
         # gui_g.UEVM_gui_ref.quit()
 
     def scrap_assets(self, args) -> None:
@@ -1581,6 +1588,8 @@ def main():
             UEVaultManagerCLI.is_gui = True
             cli.edit_assets(args)
         elif args.subparser_name in {'scrap', 'scrap-assets'}:
+            args.gui = True
+            UEVaultManagerCLI.is_gui = True
             cli.scrap_assets(args)
         elif start_in_edit_mode:
             args.gui = True
