@@ -724,7 +724,7 @@ class UEVMGui(tk.Tk):
             if filename:
                 self.editable_table.save_data()
                 self.update_data_source_name()
-                gui_f.box_message(f'Data Saved to {self.editable_table.data_source}')
+                # gui_f.box_message(f'Data Saved to {self.editable_table.data_source}')
             return filename
         else:
             self.editable_table.save_data()

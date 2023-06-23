@@ -381,19 +381,19 @@ class UEVaultManagerCLI:
         :param args: options passed to the command
         """
 
-        def update_and_merge_csv_record_data(_asset, _items_in_file, _no_data_value) -> []:
+        def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> []:
             """
             Updates the data of the asset with the data from the items in the file
-            :param _asset: asset to update
+            :param _asset_id: id of the asset to update
+            :param _asset_data: data of the asset to update
             :param _items_in_file: list of items in the file
             :param _no_data_value: value to use when no data is available
             :return: list of values to be written in the CSV file
             """
-            _asset_id = _asset[0]
-            _csv_record = list(_asset[1].values())  # we need a list for the CSV comparison, not a dict
             # merge data from the items in the file (if exists) and those get by the application
             # items_in_file must be a dict of dicts
             csv_fields_count = len(get_csv_field_name_list())
+            _csv_record = list(_asset_data.values())  # we need a list for the CSV comparison, not a dict
             if _items_in_file.get(_asset_id):
                 item_in_file = _items_in_file.get(_asset_id)
                 if len(item_in_file.keys()) != csv_fields_count:
@@ -402,59 +402,49 @@ class UEVaultManagerCLI:
                     )
                     return _csv_record
                 else:
-                    # loops through its columns
+                    # loops through its columns to UPDATE the data with EXISTING VALUE if its state is PRESERVED
+                    # !! no cleaning must be done here !!!!
                     index = 0
                     price_index = 0
                     _price = float(_no_data_value)
                     old_price = float(_no_data_value)
-                    for key, state in csv_sql_fields.items():
-                        ignore_in_csv = is_on_state(csv_field_name=key, states=[FieldState.ASSET_ONLY, FieldState.SQL_ONLY])
-                        if not ignore_in_csv:
-                            preserved_value_in_file = is_on_state(csv_field_name=key, states=[FieldState.PRESERVED])
-                            if item_in_file.get(key, None) is None:
-                                self.logger.warning(
-                                    f'In the existing file, asset {_asset_id} has no column named {key}. This asset is ignored and its values will be overwritten'
-                                )
-                                # print(f' CHECK for asset {_asset_id}')
-                                return _csv_record
-                            else:
-                                value = item_in_file[key]
-                                # get rid of 'None' values in CSV file
-                                if value == gui_g.s.empty_cell:
-                                    value = ''
-                                    _csv_record[index] = value
-                                if preserved_value_in_file:
-                                    # convert bool values from string to bool
-                                    if str_is_bool(value):
-                                        value = str_to_bool(value)
-                                    _csv_record[index] = value
-                                # Get the old price in the previous file
-                                if key == 'Price':
-                                    price_index = index
-                                    try:
-                                        _price = float(_csv_record[price_index])
-                                        old_price = float(
-                                            item_in_file[key]
-                                        )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
-                                    except Exception as _error:
-                                        self.logger.warning(f'Old price value can not be converted for asset {_asset_id}\nError:{_error!r}')
-                                if key == 'Origin':
-                                    if isinstance(value, str):
-                                        # all the folders when the asset came from are stored in a comma separated list
-                                        folder_list = value.split(',')
-                                        # add the new folder to the list without duplicates
-                                        if _csv_record[index] not in folder_list:
-                                            folder_list.append(_csv_record[index])
-                                        # update the list in the CSV record
-                                        _csv_record[index] = ','.join(folder_list)
-                        # end if not ignore_in_csv
-                        index += 1
+                    for index, csv_field in enumerate(get_csv_field_name_list()):
+                        preserved_value_in_file = is_on_state(csv_field_name=csv_field, states=[FieldState.PRESERVED], default=True)
+                        value = item_in_file.get(csv_field, None)
+                        if value is None:
+                            self.logger.warning(f'In the existing data, asset {_asset_id} has no column named {csv_field}.')
+                            continue
+
+                        # get rid of 'None' values in CSV file
+                        if value == gui_g.s.empty_cell:
+                            _csv_record[index] = ''
+                            continue
+
+                        value = str(value)
+                        # Get the old price in the previous file
+                        if csv_field == 'Price':
+                            price_index = index
+                            _price = gui_fn.convert_to_float(_csv_record[price_index])
+                            old_price = gui_fn.convert_to_float(
+                                item_in_file[csv_field]
+                            )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                        elif csv_field == 'Origin':
+                            # all the folders when the asset came from are stored in a comma separated list
+                            folder_list = value.split(',')
+                            # add the new folder to the list without duplicates
+                            if _csv_record[index] not in folder_list:
+                                folder_list.append(_csv_record[index])
+                            # update the list in the CSV record
+                            _csv_record[index] = ','.join(folder_list)
+
+                        if preserved_value_in_file:
+                            _csv_record[index] = str_to_bool(value) if str_is_bool(value) else value
                     # end for key, state in csv_sql_fields.items()
                     if price_index > 0:
                         _csv_record[price_index + 1] = old_price
                 # end ELSE if len(item_in_file.keys()) != csv_fields_count
             # end if _items_in_file.get(_asset_id)
-            print(f'debug here')
+            # print(f'debug here')
             return _csv_record
 
         # end update_and_merge_csv_record_data
@@ -622,33 +612,31 @@ class UEVaultManagerCLI:
                 output = open(file_src, 'w', encoding='utf-8')
             # end if args.output:
 
-            try:
-                writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
-                writer.writerow(get_csv_field_name_list())
-                cpt = 0
-                if gui_g.progress_window_ref is not None:
-                    gui_g.progress_window_ref.reset(
-                        new_value=0, new_text="Writing assets into csv file...", new_max_value=len(assets_to_output.items())
-                    )
-                for asset in sorted(assets_to_output.items()):
-                    if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                        return
-                    asset_id = asset[0]
-                    if test_only_mode:
-                        print(f'merging _asset_id {asset_id}')
-                    try:
-                        if len(assets_in_file) > 0:
-                            csv_record_merged = update_and_merge_csv_record_data(asset, assets_in_file, no_int_data)
-                        else:
-                            csv_record_merged = list(asset[1].values())
-                        cpt += 1
-                        writer.writerow(csv_record_merged)
-                    except (OSError, UnicodeEncodeError) as error:
-                        message = f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}'
-                        self.logger.warning(message)
-            except (OSError, ValueError) as error:
-                message = f'Could not write list result to {args.output}: {error!r}'
-                self._log_gui_wrapper(self.logger.error, message)
+            writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
+            writer.writerow(get_csv_field_name_list())
+            cpt = 0
+            if gui_g.progress_window_ref is not None:
+                gui_g.progress_window_ref.reset(new_value=0, new_text="Writing assets into csv file...", new_max_value=len(assets_to_output.items()))
+            for asset in sorted(assets_to_output.items()):
+                asset_id = asset[0]
+                if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                    return
+                if test_only_mode:
+                    print(f'merging _asset_id {asset_id}')
+                asset_data = asset[1]
+                for key in asset_data.keys():
+                    # clean the asset data by removing the columns that are not in the csv field name list
+                    ignore_in_csv = is_on_state(csv_field_name=key, states=[FieldState.ASSET_ONLY, FieldState.SQL_ONLY], default=False)
+                    if ignore_in_csv:
+                        print(f'{key} must be ignored in CSV. Removing it from the asset data')
+                        del (asset_data[key])
+
+                if len(assets_in_file) > 0:
+                    csv_record_merged = update_and_merge_csv_record_data(asset_id, asset_data, assets_in_file, no_int_data)
+                else:
+                    csv_record_merged = list(asset_data.values())
+                cpt += 1
+                writer.writerow(csv_record_merged)
 
         # end if args.csv or args.tsv:
 

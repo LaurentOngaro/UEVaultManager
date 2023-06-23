@@ -359,7 +359,7 @@ class EditableTable(Table):
                 self.data = pd.read_csv(self.data_source, **csv_options)
             except EmptyDataError:
                 # will create an empty row with the correct columns
-                str_data = get_csv_field_name_list(exclude_sql_only=True, return_as_string=True)  # column names
+                str_data = get_csv_field_name_list(return_as_string=True)  # column names
                 str_data += '\n'
                 str_data += create_empty_csv_row(return_as_string=True)  # dummy row
                 self.data = pd.read_csv(io.StringIO(str_data), **csv_options)
@@ -400,7 +400,15 @@ class EditableTable(Table):
         self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
         # noinspection GrazieInspection
         if source_type == DataSourceType.FILE:
-            self.model.df.to_csv(self.data_source, index=False, na_rep='None', date_format=gui_g.s.csv_datetime_format)
+            # ALL THE TESTS MADE TO REMOVE NONE VALUES from the saved csv file have failed
+            default_value = ''
+            # self.model.df = self.model.df.replace({None: default_value'})
+            # self.model.df.fillna(default_value, inplace=True)
+            # self.model.df.apply(lambda x: x if x.isna() else default_value)
+            # self.model.df.replace(value=default_value, to_replace=np.nan, inplace=True)
+            # test_df = self.model.df.replace('place', 'epic')
+            # test_df.to_csv(self.data_source + '.TEST', index=False, date_format=gui_g.s.csv_datetime_format)
+            self.model.df.to_csv(self.data_source, index=False, na_rep='', date_format=gui_g.s.csv_datetime_format)
         else:
             for row in self._changed_rows:
                 # get the row data
@@ -440,9 +448,12 @@ class EditableTable(Table):
             'Discount percentage': (convert_to_float, float),
             'Stars': (convert_to_int, int),
             'Review count': (convert_to_int, int),
-            'Creation date': (lambda x: convert_to_datetime(x, date_format='%Y-%m-%dT%H:%M:%S.%fZ'), pd.to_datetime),
-            'Update date': (lambda x: convert_to_datetime(x, date_format=gui_g.s.csv_datetime_format), pd.to_datetime),
-            'Date added': (lambda x: convert_to_datetime(x, date_format=gui_g.s.csv_datetime_format), pd.to_datetime),
+            'Creation date':
+            (lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format]), pd.to_datetime),
+            'Update date':
+            (lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format]), pd.to_datetime),
+            'Date added':
+            (lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format]), pd.to_datetime),
         }
 
         for col in self.data.columns:

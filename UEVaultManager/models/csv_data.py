@@ -309,10 +309,11 @@ csv_sql_fields = {
 }
 
 
-def get_csv_field_name_list(exclude_sql_only=True, return_as_string=False):
+def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, return_as_string=False):
     """
     Get the csv fields list
     :param exclude_sql_only: if True, exclude the sql only fields from result
+    :param include_asset_only: if True, include the asset only fields from result
     :param return_as_string: if True, return a string instead of a list
     :return: csv headings
     """
@@ -320,7 +321,8 @@ def get_csv_field_name_list(exclude_sql_only=True, return_as_string=False):
     for csv_field, value in csv_sql_fields.items():
         if exclude_sql_only and value['state'] == FieldState.SQL_ONLY:
             continue
-
+        if not include_asset_only and value['state'] == FieldState.ASSET_ONLY:
+            continue
         result.append(csv_field)
     if return_as_string:
         result = ','.join(result)
@@ -424,7 +426,7 @@ def create_empty_csv_row(return_as_string=False):
     :return: empty row
     """
     data = {}
-    for key in get_csv_field_name_list(exclude_sql_only=True):
+    for key in get_csv_field_name_list():
         data[key] = 0  # 0 is used to avoid empty cells in the csv file
     data['Asset_id'] = 'dummy_row_' + create_uid()  # dummy unique Asset_id to avoid issue
     data['Image'] = gui_g.s.empty_cell  # avoid displaying image warning on mouse over

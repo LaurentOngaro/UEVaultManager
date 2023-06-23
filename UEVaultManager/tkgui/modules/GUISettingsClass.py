@@ -65,6 +65,7 @@ class GUISettings:
         self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
         self.app_monitor = 1
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
+        self.epic_datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
         self.data_filetypes = (
             ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
         )
