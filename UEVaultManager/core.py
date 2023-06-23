@@ -3,6 +3,7 @@
 Implementation for:
 - AppCore: handles most of the lower level interaction with the downloader, lfs, and api components to make writing CLI/GUI code easier and cleaner and avoid duplication.
 """
+import concurrent
 import json
 import logging
 import os
@@ -676,7 +677,14 @@ class AppCore:
                         self.log.info(f'User stop has been pressed. Stopping running threads....')
                         stop_executor(futures)
                         return []
-
+            # Wait for all the tasks to finish
+                concurrent.futures.wait(futures.values())
+                for key, future in futures.items():
+                    try:
+                        future.result()
+                    except Exception as error:
+                        self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
+                self.thread_executor.shutdown(wait=False)
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         if gui_g.progress_window_ref is not None:

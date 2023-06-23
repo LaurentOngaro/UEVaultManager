@@ -134,13 +134,13 @@ class EditableTable(Table):
         for col_name in col_names:
             try:
                 x = df[col_name]
-            except KeyError:
-                log_debug(f'gradient_color_cells: Column {col_name} not found in the table data.')
+                clrs = self.values_to_colors(x, cmap, alpha)
+                clrs = pd.Series(clrs, index=df.index)
+                rc = self.rowcolors
+                rc[col_name] = clrs
+            except (KeyError, ValueError) as error:
+                log_debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
                 continue
-            clrs = self.values_to_colors(x, cmap, alpha)
-            clrs = pd.Series(clrs, index=df.index)
-            rc = self.rowcolors
-            rc[col_name] = clrs
 
     def color_cells_if(self, col_names=None, color='green', value_to_check='True') -> None:
         """
@@ -156,10 +156,10 @@ class EditableTable(Table):
         for col_name in col_names:
             try:
                 mask = df[col_name] == value_to_check
-            except KeyError:
-                log_debug(f'color_cells_if: Column {col_name} not found in the table data.')
+                self.setColorByMask(col=col_name, mask=mask, clr=color)
+            except (KeyError, ValueError) as error:
+                log_debug(f'color_cells_if: An error as occured with {col_name} : {error!r}')
                 continue
-            self.setColorByMask(col=col_name, mask=mask, clr=color)
 
     def color_cells_if_not(self, col_names=None, color='grey', value_to_check='False') -> None:
         """
@@ -174,12 +174,12 @@ class EditableTable(Table):
         for col_name in col_names:
             try:
                 mask = df[col_name] != value_to_check
-            except KeyError:
-                log_debug(f'color_cells_if_not: Column {col_name} not found in the table data.')
+                self.setColorByMask(col=col_name, mask=mask, clr=color)
+            except (KeyError, ValueError) as error:
+                log_debug(f'color_cells_if_not: An error as occured with {col_name} : {error!r}')
                 continue
-            self.setColorByMask(col=col_name, mask=mask, clr=color)
 
-    def color_rows_if(self, col_names=None, color='#55555', value_to_check='True') -> None:
+    def color_rows_if(self, col_names=None, color='#555555', value_to_check='True') -> None:
         """
         Set the row color for the specified columns and the rows with a given value.
         :param col_names: The names of the columns to check for the value.

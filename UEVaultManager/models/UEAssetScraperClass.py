@@ -487,11 +487,11 @@ class UEAssetScraper:
                             return
                     # Wait for all the tasks to finish
                     concurrent.futures.wait(futures.values())
-                    for url, future in futures.items():
+                    for key, future in futures.items():
                         try:
                             future.result()
                         except Exception as error:
-                            self._log_warning(f'generated an exception: {error!r}')
+                            self._log_warning(f'thread execution with key {key} has generated an exception: {error!r}')
                     self.thread_executor.shutdown(wait=False)
             else:
                 for url in self.urls:

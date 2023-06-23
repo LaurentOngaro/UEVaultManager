@@ -157,6 +157,12 @@ class ProgressWindow(tk.Toplevel):
             self.function_return_value = self.result_queue.get()
             self.close_window(destroy_window=self.quit_on_close)  # the window is kept to allow further calls to the progress bar
 
+    def mainloop(self, n=0):
+        """Call the mainloop of Tk."""
+        gui_f.log_info(f'starting mainloop in {__name__}')
+        self.tk.mainloop(n)
+        gui_f.log_info(f'ending mainloop in {__name__}')
+
     def set_text(self, new_text: str) -> None:
         """
         Sets the text of the label

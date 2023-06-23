@@ -74,7 +74,6 @@ class UEVMGui(tk.Tk):
 
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
 
-        # done in the rebuild_data() method
         self.editable_table.show()
         self.editable_table.show_page(0)
 
@@ -526,6 +525,12 @@ class UEVMGui(tk.Tk):
         self.toolbar_frame.btn_last_page.config(state=state)
         self.toolbar_frame.entry_page_num.config(state=state)
 
+    def mainloop(self, n=0):
+        """Call the mainloop of Tk."""
+        gui_f.log_info(f'starting mainloop in {__name__}')
+        self.tk.mainloop(n)
+        gui_f.log_info(f'ending mainloop in {__name__}')
+
     def on_key_press(self, event) -> None:
         """
         Handle key press events
@@ -690,7 +695,9 @@ class UEVMGui(tk.Tk):
             self.editable_table.data_source_type = DataSourceType.SQLITE if ext == '.db' else DataSourceType.FILE
             go_on = True
             if old_type != self.editable_table.data_source_type:
-                go_on = gui_f.box_yesno(f'The type of data source has changed from the previous one.\nYou should quit and restart the application to avoid any data loss.\nAre you sure you want to continue ?')
+                go_on = gui_f.box_yesno(
+                    f'The type of data source has changed from the previous one.\nYou should quit and restart the application to avoid any data loss.\nAre you sure you want to continue ?'
+                )
 
             if go_on:
                 self.editable_table.load_data()
