@@ -543,7 +543,7 @@ class UEVMGui(tk.Tk):
         self.toolbar_frame.entry_page_num.config(state=state)
 
     def mainloop(self, n=0):
-        """Call the mainloop of Tk."""
+        """ Override of mainloop method with loggin function (for debugging)"""
         gui_f.log_info(f'starting mainloop in {__name__}')
         self.tk.mainloop(n)
         gui_f.log_info(f'ending mainloop in {__name__}')
