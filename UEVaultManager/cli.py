@@ -42,7 +42,7 @@ from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
-test_only_mode = True  # create some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
 
 
 def init_gui_args(args, additional_args=None) -> None:
@@ -403,8 +403,7 @@ class UEVaultManagerCLI:
                     return _csv_record
                 else:
                     # loops through its columns to UPDATE the data with EXISTING VALUE if its state is PRESERVED
-                    # !! no cleaning must be done here !!!!
-                    index = 0
+                    # !! no data cleaning must be done here !!!!
                     price_index = 0
                     _price = float(_no_data_value)
                     old_price = float(_no_data_value)
@@ -467,10 +466,10 @@ class UEVaultManagerCLI:
                 # loops through its columns
                 _price = float(_no_float_value)
                 old_price = float(_no_float_value)
-                for key, state in csv_sql_fields.items():
-                    preserved_value_in_file = is_on_state(csv_field_name=key, states=[FieldState.PRESERVED])
-                    if preserved_value_in_file and _items_in_file[_asset_id].get(key):
-                        _json_record[key] = _items_in_file[_asset_id][key]
+                for field, state in csv_sql_fields.items():
+                    preserved_value_in_file = is_on_state(csv_field_name=field, states=[FieldState.PRESERVED])
+                    if preserved_value_in_file and _items_in_file[_asset_id].get(field):
+                        _json_record[field] = _items_in_file[_asset_id][field]
 
                 # Get the old price in the previous file
                 try:
@@ -1171,7 +1170,7 @@ class UEVaultManagerCLI:
             rebuild_data=rebuild
         )
         gui_g.UEVM_gui_ref.mainloop()
-        print('Exiting...')  #
+        # print('Exiting...')  #
         # gui_g.UEVM_gui_ref.quit()
 
     def scrap_assets(self, args) -> None:
@@ -1221,27 +1220,6 @@ class UEVaultManagerCLI:
             engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
             egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
         )
-
-        #     # test code for getting owned assets: tested and working
-        #     url = self.core.egs.get_owned_scrap_url(0, 100)
-        #     r = self.core.egs.session.get(url, timeout=self.core.egs.request_timeout)
-        #     r.raise_for_status()
-        #     json_data = r.json()
-        #     cpt = 0
-        #     if json_data:
-        #         for asset_data in json_data['data']['elements']:
-        #             try:
-        #                 uid = asset_data['id']
-        #                 # self.owned_asset_ids.append(uid)
-        #                 print(f'Asset {uid}')
-        #                 cpt += 1
-        #             except KeyError:
-        #                 self.logger.debug(f'Error getting id for asset {asset_data}')
-        #     print(f'Found {cpt} assets')
-        #     asset_count = self.core.egs.get_scraped_asset_count()
-        #     owned_asset_count = self.core.egs.get_scraped_asset_count(owned_assets_only=True)
-        #     print(f'Found {asset_count} assets, ({owned_asset_count} owned)')
-        #     exit(0)  # debug only
 
         scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
         scraper.save(owned_assets_only=owned_assets_only)

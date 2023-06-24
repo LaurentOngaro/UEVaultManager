@@ -448,6 +448,9 @@ class AppCore:
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
 
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
+                return False
+
             thread_data = ''
             if self.use_threads:
                 thread = current_thread()
@@ -517,9 +520,6 @@ class AppCore:
             self.log.info(
                 f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
             )
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                self.thread_executor_must_stop = True
-                return False
             return True
 
         # end of fetch_asset_meta
@@ -673,18 +673,28 @@ class AppCore:
                     # Submit the task and add its Future to the dictionary
                     future = self.thread_executor.submit(fetch_asset_meta, key)
                     futures[key] = future
-                    if self.thread_executor_must_stop:
-                        self.log.info(f'User stop has been pressed. Stopping running threads....')
-                        stop_executor(futures)
-                        return []
-            # Wait for all the tasks to finish
-                concurrent.futures.wait(futures.values())
-                for key, future in futures.items():
-                    try:
-                        future.result()
-                    except Exception as error:
-                        self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
+
+                with concurrent.futures.ThreadPoolExecutor():
+                    for future in concurrent.futures.as_completed(futures.values()):
+                        try:
+                            _ = future.result()
+                            # print("Result: ", result)
+                        except Exception as error:
+                            self.log.warning(f'The following error occurs in threading: {error!r}')
+                        if not gui_g.progress_window_ref.continue_execution:
+                            # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
+                            stop_executor(futures)
                 self.thread_executor.shutdown(wait=False)
+
+                # Wait for all the tasks to finish
+                # concurrent.futures.wait(futures.values())
+                # for key, future in futures.items():
+                #     try:
+                #         future.result()
+                #     except Exception as error:
+                #         self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
+                # self.thread_executor.shutdown(wait=False)
+
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         if gui_g.progress_window_ref is not None:

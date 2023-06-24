@@ -26,7 +26,7 @@ from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 from UEVaultManager.utils.cli import get_max_threads
 
-test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
 
 
 class DataSourceType(Enum):
@@ -401,7 +401,7 @@ class EditableTable(Table):
         # noinspection GrazieInspection
         if source_type == DataSourceType.FILE:
             # ALL THE TESTS MADE TO REMOVE NONE VALUES from the saved csv file have failed
-            default_value = ''
+            # default_value = ''
             # self.model.df = self.model.df.replace({None: default_value'})
             # self.model.df.fillna(default_value, inplace=True)
             # self.model.df.apply(lambda x: x if x.isna() else default_value)
@@ -497,7 +497,8 @@ class EditableTable(Table):
         elif self.data_source_type == DataSourceType.SQLITE:
             # we create the progress window here to avoid lots of imports in UEAssetScraper class
             progress_window = ProgressWindow('Rebuilding Data from database')
-            progress_window.deactivate()
+            progress_window.set_text('Initializing...')
+            progress_window.set_activation(False)
             max_threads = get_max_threads()
             owned_assets_only = False
             ue_asset_per_page = 100  # a bigger value will be refused by UE API

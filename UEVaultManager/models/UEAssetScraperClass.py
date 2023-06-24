@@ -21,7 +21,7 @@ from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid
 
-test_only_mode = False  # create some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
 
 
 def get_filename_from_asset_data(asset_data) -> str:
@@ -390,8 +390,9 @@ class UEAssetScraper:
         :param url: The url to grab the data from. If not given, uses the url property of the class.
         :param owned_assets_only: if True, only the owned assets are scraped
         """
-        if self.thread_executor_must_stop:
-            return  # stop the thread
+        if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
+            return
+
         if not url:
             self._log_error('No url given to get_data_from_url()')
             return
@@ -423,11 +424,6 @@ class UEAssetScraper:
                     self.files_count += 1
             content = self._parse_data(json_data)
             self.scraped_data.append(content)
-
-        # # this code is  HS WHY ? perhaps threading in threading ?
-        # if not self.progress_window.update_and_continue(increment=1):
-        #    self.thread_executor_must_stop = True
-        # # end code HS
 
     def get_scraped_data(self, owned_assets_only=False) -> None:
         """
@@ -463,36 +459,38 @@ class UEAssetScraper:
                 self.gather_all_assets_urls(owned_assets_only=owned_assets_only)
             self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=len(self.urls))
             if self.max_threads > 0:
-                process_can_be_stopped = True
                 self.threads_count = min(self.max_threads, len(self.urls))
-                if not process_can_be_stopped:
-                    # threading processing is automatic and COULD NOT be stopped by the progress window
-                    self.progress_window.hide_stop_button()
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count, thread_name_prefix="Asset_Scapper") as executor:
-                        executor.map(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), self.urls)
-                else:
-                    # threading processing COULD be stopped by the progress window
-                    self.progress_window.show_stop_button()
-                    self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count, thread_name_prefix="Asset_Scaper")
-                    futures = {}
-                    # for url in self.urls:
-                    while len(self.urls) > 0:
-                        url = self.urls.pop()
-                        # Submit the task and add its Future to the dictionary
-                        future = self.thread_executor.submit(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), url)
-                        futures[url] = future
-                        if self.thread_executor_must_stop:
-                            self._log_info(f'User stop has been pressed. Stopping running threads....')
-                            stop_executor(futures)
-                            return
-                    # Wait for all the tasks to finish
-                    concurrent.futures.wait(futures.values())
-                    for key, future in futures.items():
+                # threading processing COULD be stopped by the progress window
+                self.progress_window.show_stop_button()
+                self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count, thread_name_prefix="Asset_Scaper")
+                futures = {}
+                # for url in self.urls:
+                while len(self.urls) > 0:
+                    url = self.urls.pop()
+                    # Submit the task and add its Future to the dictionary
+                    future = self.thread_executor.submit(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), url)
+                    futures[url] = future
+
+                with concurrent.futures.ThreadPoolExecutor():
+                    for future in concurrent.futures.as_completed(futures.values()):
                         try:
-                            future.result()
+                            _ = future.result()
+                            # print("Result: ", result)
                         except Exception as error:
-                            self._log_warning(f'thread execution with key {key} has generated an exception: {error!r}')
-                    self.thread_executor.shutdown(wait=False)
+                            self._log_warning(f'The following error occurs in threading: {error!r}')
+                        if not self.progress_window.update_and_continue(increment=1):
+                            # self._log_info(f'User stop has been pressed. Stopping running threads....')   # will flood console
+                            stop_executor(futures)
+                self.thread_executor.shutdown(wait=False)
+
+                # # Wait for all the tasks to finish
+                # concurrent.futures.wait(futures.values())
+                # for key, future in futures.items():
+                #     try:
+                #         future.result()
+                #     except Exception as error:
+                #         self._log_warning(f'thread execution with key {key} has generated an exception: {error!r}')
+                # self.thread_executor.shutdown(wait=False)
             else:
                 for url in self.urls:
                     self.get_data_from_url(url, owned_assets_only)
@@ -575,6 +573,8 @@ class UEAssetScraper:
                 self.files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
                     return
+                if test_only_mode and self.files_count >= 100:
+                    break
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self.files_count} files'
         self._log_info(message)
 
@@ -590,6 +590,7 @@ class UEAssetScraper:
         with open(filename, 'w') as fh:
             json.dump(content, fh)
 
+        self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=0)
         self._save_in_db(last_run_content=content)
 
     def save(self, owned_assets_only=False) -> None:
