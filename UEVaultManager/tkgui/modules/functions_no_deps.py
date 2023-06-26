@@ -263,6 +263,10 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
     :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
     :return: the string value of the datetime
     """
+    # we convert only datetime object
+    if isinstance(value, str):
+        return value
+
     if default is None:
         default = datetime.datetime(1970, 1, 1).strftime(date_format)
     if not value:
@@ -270,6 +274,7 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
     try:
         return value.strftime(date_format)
     except (TypeError, ValueError, AttributeError):
+        # print(f'Error while converting {value} to a datetime: {error}')
         return default
 
 

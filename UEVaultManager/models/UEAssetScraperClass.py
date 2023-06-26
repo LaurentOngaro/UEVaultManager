@@ -19,9 +19,9 @@ from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime
 
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = True  # add some limitations to speed up the dev process - Set to True for debug Only
 
 
 def get_filename_from_asset_data(asset_data) -> str:
@@ -292,13 +292,19 @@ class UEAssetScraper:
                 self._log_debug(f'Error getting compatibleApps for asset #{uid}: {error!r}')
             asset_data['supported_versions'] = supported_versions
             asset_data['origin'] = origin
+
+            asset_data['update_date'] = date_now
+            tmp_date = release_info[0].get('dateAdded', no_text_data) if release_info else no_text_data
+            tmp_date = convert_to_datetime(tmp_date, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])
+            tmp_date = convert_to_str_datetime(tmp_date, gui_g.s.csv_datetime_format)
+            asset_data['creation_date'] = tmp_date
+            tmp_date = asset_existing_data.get('date_added_in_db', None) if asset_existing_data else date_now
+            asset_data['date_added_in_db'] = tmp_date
+
             asset_data['obsolete'] = is_asset_obsolete(supported_versions, self.engine_version_for_obsolete_assets)
             old_price = asset_existing_data.get('price', None) if asset_existing_data else 0
             older_price = asset_existing_data.get('old_price', None) if asset_existing_data else 0
             asset_data['old_price'] = old_price if old_price else older_price
-            asset_data['creation_date'] = release_info[0].get('dateAdded', no_text_data) if release_info else no_text_data
-            asset_data['update_date'] = date_now
-            asset_data['date_added_in_db'] = asset_existing_data.get('date_added_in_db', None) if asset_existing_data else date_now
             # the current parsing process does not produce as many error as the previous one
             # mainly, there is no error during the process
             old_grab_result = asset_existing_data.get('grab_result', GrabResult.NO_ERROR.name) if asset_existing_data else GrabResult.NO_ERROR.name
@@ -326,7 +332,7 @@ class UEAssetScraper:
 
             ue_asset.init_from_dict(asset_data)
             content.append(ue_asset.data)
-            message = f'Asset #{uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} date_added_in_db={ue_asset.data["date_added_in_db"]} discount_percentage={ue_asset.data["discount_percentage"]}'
+            message = f'Asset #{uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}'
             self._log_debug(message)
             # print(message) # only if run from main
             if self.store_ids:
