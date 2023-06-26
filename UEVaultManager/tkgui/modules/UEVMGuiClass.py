@@ -720,7 +720,7 @@ class UEVMGui(tk.Tk):
                 self.editable_table.load_data()
                 self.editable_table.show_page(0)
                 self.update_page_numbers()
-                self.update_data_source_name()
+                self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
                 return filename
             else:
@@ -740,7 +740,7 @@ class UEVMGui(tk.Tk):
                 filename = self.editable_table.data_source
             if filename:
                 self.editable_table.save_data()
-                self.update_data_source_name()
+                self.update_data_source()
                 # gui_f.box_message(f'Data Saved to {self.editable_table.data_source}')
             return filename
         else:
@@ -960,12 +960,12 @@ class UEVMGui(tk.Tk):
             self.toolbar_frame.btn_next_page.config(state=tk.DISABLED)
             self.toolbar_frame.btn_last_page.config(state=tk.DISABLED)
 
-    def update_data_source_name(self) -> None:
+    def update_data_source(self) -> None:
         """
         Update the data source name in the control frame
         """
-        data_source = self.editable_table.data_source
-        self.control_frame.var_entry_data_source_name.set(data_source)
+        self.control_frame.var_entry_data_source_name.set(self.editable_table.data_source)
+        self.control_frame.var_entry_data_source_type.set(self.editable_table.data_source_type.name)
 
     def update_category_var(self) -> dict:
         """
