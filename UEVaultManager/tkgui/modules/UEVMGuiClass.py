@@ -61,7 +61,7 @@ class UEVMGui(tk.Tk):
         self.do_not_launch_search = False
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
-        self.table_frame = self.TableFrame(self)
+        table_frame = self.TableFrame(self)
 
         # gui_g.UEVM_gui_ref = self  # important ! Must be donne before any use of a ProgressWindow. If not, an UEVMGuiHiddenRootClass will be created and the ProgressWindow still be displayed after the init
         # reading from CSV file version
@@ -69,7 +69,7 @@ class UEVMGui(tk.Tk):
 
         # reading from database file version
         self.editable_table = EditableTable(
-            container_frame=self.table_frame, data_source_type=data_source_type, data_source=data_source, rows_per_page=36, show_statusbar=True
+            container_frame=table_frame, data_source_type=data_source_type, data_source=data_source, rows_per_page=36, show_statusbar=True
         )
 
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
@@ -77,7 +77,7 @@ class UEVMGui(tk.Tk):
         self.editable_table.show()
         self.editable_table.show_page(0)
 
-        self.table_frame = self.table_frame
+        table_frame = table_frame
         toolbar_frame = self.ToolbarFrame(self)
         self.toolbar_frame = toolbar_frame
         control_frame = self.ControlFrame(self)
@@ -87,7 +87,7 @@ class UEVMGui(tk.Tk):
         self.editable_table.set_colors()
 
         toolbar_frame.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
-        self.table_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
+        table_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
         control_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
         # not displayed at start
         # options_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
