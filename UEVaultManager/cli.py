@@ -1143,7 +1143,7 @@ class UEVaultManagerCLI:
         data_source = gui_fn.path_from_relative_to_absolute(data_source)
         data_source = os.path.normpath(data_source)
 
-        app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+        gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
         gui_g.UEVM_log_ref = self.logger
         gui_g.UEVM_cli_ref = self
 
@@ -1163,7 +1163,7 @@ class UEVaultManagerCLI:
                 gui_g.UEVM_cli_args['output'] = data_source
         gui_g.UEVM_gui_ref = UEVMGui(
             title=gui_g.s.app_title,
-            icon=app_icon_filename,
+            icon=gui_g.s.app_icon_filename,
             screen_index=0,
             data_source_type=data_source_type,
             data_source=data_source,

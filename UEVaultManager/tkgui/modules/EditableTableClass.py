@@ -22,6 +22,7 @@ from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_int, convert_to_float, convert_to_datetime
+from UEVaultManager.tkgui.modules.globals import UEVM_gui_ref
 from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 from UEVaultManager.utils.cli import get_max_threads
@@ -94,8 +95,16 @@ class EditableTable(Table):
             self.db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
         else:
             self.db_handler = None
+        # add a loading screen using the progress window
+        self.progress_window = ProgressWindow(
+            title=gui_g.s.app_title, icon=gui_g.s.app_icon_filename, show_stop_button=False, show_progress=False, max_value=0
+        )
+        self.progress_window.set_text('Loading Data...Please wait')
+        self.progress_window.update()
         self.load_data()
         Table.__init__(self, container_frame, dataframe=self.data, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
+        self.progress_window.close_window()
+        self.progress_window = None
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
     def _generate_cell_selection_changed_event(self) -> None:

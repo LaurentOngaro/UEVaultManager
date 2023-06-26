@@ -21,7 +21,7 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
     :param use_db: if True, the database will be used instead of the csv file
     :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script
     """
-    app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+    gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
     rebuild = False
     if use_db:
         data_source = gui_fn.path_from_relative_to_absolute(gui_g.s.sqlite_filename)
@@ -38,7 +38,7 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
     if open_mainwindow:
         main_window = UEVMGui(
             title=gui_g.s.app_title,
-            icon=app_icon_filename,
+            icon=gui_g.s.app_icon_filename,
             screen_index=0,
             data_source_type=data_source_type,
             data_source=data_source,
