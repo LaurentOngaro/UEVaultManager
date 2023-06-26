@@ -14,9 +14,10 @@ Its main purpose is to list the assets (with or without user login),
 filter (optional) and save the list into a file that can be reused later
 as a data source (in an Excel sheet for instance).
 
-| Hot news                                                                                                                                                                                         |                                                                                                           |
-|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| The new version is out : Now with a GUI !<br/>Edit the data in the GUI and save it back to the file<br/>Use colors to visualize your asset status<br/>Use filters and search to find them easily | [![preview](https://i.imgur.com/dXS62o4.png)](https://uevaultmanager.readthedocs.io/en/latest/tkgui.html) |
+| Hot news                                                    |                                                                                                                                                                                                                                                                         |
+|-------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| The 1.8.0 version is out : EPIC marketplace API integration | Scrap the data of ALL the asset in the marketplace and save the in a SQLITE database                                                                                                                                                                                    |  
+| The 1.6.0 version is out : Now with a GUI !                 | [![preview](https://i.imgur.com/DhVArs4.png)](https://uevaultmanager.readthedocs.io/en/latest/tkgui.html) <br/>- Edit the data in the GUI and save it back to the file<br/>- Use colors to visualize your asset status<br/>- Use filters and search to find them easily |
 
 **This project is still under active development**                                                                    |
 

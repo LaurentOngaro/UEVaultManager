@@ -7,7 +7,7 @@ import datetime
 year = datetime.date.today().year
 
 __name__ = 'UEVaultManager'
-__version__ = '1.8.0'
+__version__ = '1.8.1'
 # 0 Pegasus Seiya
 # 1 Dragon Shiryu
 # 2 Cygnus Hyoga
@@ -18,7 +18,7 @@ __version__ = '1.8.0'
 # 6 Libra Dohko
 # 7 Scorpio Milo
 # 8 Sagittarius Aiolos
-__codename__ = 'Sagittarius'
+__codename__ = 'Sagittarius+1'
 # 9 Capricorn Shura
 # 10 Aquarius Camus
 # 11 Pisces Aphrodite

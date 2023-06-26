@@ -55,7 +55,7 @@ Implemented Features:
       name, title, id, description, UE versions...
    -  **extras data grabbed from the marketplace page of an asset :
       price, review, tags, owned or not...**
--  **Scraping the marketplace page of an asset to get all the data using the EPI MARKETPLACE API (since the version 1.8.0)**
+-  **Scraping the marketplace page of an asset to get all the data using the EPIC MARKETPLACE API (since the version 1.8.0)**
 -  Since version 1.8.0, the app can also use a sqlite database to store
    the data and, as it, it could list ALLthe assets available on the marketplace (and not only the ones you own like in the previous versions).
 -  Using a cache system to avoid getting data using API calls and web
