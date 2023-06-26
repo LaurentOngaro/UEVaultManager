@@ -51,17 +51,34 @@ Saving the list into a CSV file
 
 .. code:: console
 
-  UEVaultManager list -o "c:/ue_asset_list.csv"
+  UEVaultManager list -o "D:/ue_asset_list.csv"
 
 You can manually edit some data in this file
 And you can update the data extrated from the Marketplace (new version, new release, desciption update...) by running the same command again.
 The changes you made manually will be preserved, depending on what fields (aka. columns) has been changed (see :doc:`output` section).
 
-Editing the list with the new GUI
+Editing the list with the new GUI (since 1.6.0)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: console
 
-  UEVaultManager edit -i "c:/ue_asset_list.csv"
+  UEVaultManager edit -i "D:/ue_asset_list.csv"
 
 For more details, please read the :doc:`gui` section.
+
+Scraping all the asset from the marketplace and store them in a database file (since 1.8.0)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: console
+
+  UEVaultManager scrap
+
+Editing the database content with the new GUI (since 1.8.0)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: console
+
+  UEVaultManager edit -db "D:/scraping/assets.db"
+
+Note that the folder ``D:/scraping`` is set in ``<config folder>/config_gui.ini``.
+By default this folder is located in the application installation folder (``<python folder>/Lib/site-packages/UEVaultManager``).

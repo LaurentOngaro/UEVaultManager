@@ -63,12 +63,12 @@ A new file can be created from scratch or loaded from an existing file.
 
 Data can be exported to a CSV file and saved to the current loaded file or to a new one.
 
-Data can be rebuilt from the previous stored metadata files by clicking on the `Rebuild file content` button (basicaly, it will run the `list` command in background).
+Data can be rebuilt from the previous stored metadata files by clicking on the `Rebuild file content` button.
 It could take some time, so a progress window will be displayed and the process can be stopped.
 
 Some commands can be executed from the toolbar and their result will be displayed in a Result window.
 
-.. image:: https://i.imgur.com/UDQ9S18.png
+.. image:: https://i.imgur.com/DhVArs4.png
     :alt: main window
     :align: center
 
@@ -82,7 +82,7 @@ Note that the data are raw and not formatted as in the main window, exception fo
 
 The changes made to a value must respect the initial format of the field to avoid errors on save.
 
-.. image:: https://i.imgur.com/k4pQoYq.png
+.. image:: https://i.imgur.com/KKD1MwC.png
     :alt: row edit window
     :align: center
 
@@ -96,7 +96,7 @@ Note that the data are raw and not formatted as in the main window, exception fo
 
 The changes made to a value must respect the initial format of the field to avoid errors on save.
 
-.. image:: https://i.imgur.com/p6OrwLz.png
+.. image:: https://i.imgur.com/16mqJde.png
     :alt: cell edit window
     :align: center
 
