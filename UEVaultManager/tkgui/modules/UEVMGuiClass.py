@@ -234,7 +234,7 @@ class UEVMGui(tk.Tk):
             super().__init__()
 
             grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.SE}
-            grid_def_options_2 = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0, 'sticky': tk.SE}
+            grid_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0, 'sticky': tk.SE}  # no padding
             # pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
             grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
             lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
@@ -324,11 +324,11 @@ class UEVMGui(tk.Tk):
             frm_inner.grid(row=0, column=2, **grid_fw_options)
 
             lbl_data_type = ttk.Label(frm_inner, text='Type: ')
-            lbl_data_type.grid(row=0, column=0, **grid_def_options_2)
+            lbl_data_type.grid(row=0, column=0, **grid_def_options_np)
             var_entry_data_source_type = tk.StringVar(value=container.editable_table.data_source_type.name)
             # noinspection PyArgumentList
             entry_data_type = ttk.Entry(frm_inner, textvariable=var_entry_data_source_type, state='readonly', width=6, bootstyle=WARNING)
-            entry_data_type.grid(row=0, column=1, **grid_def_options_2)
+            entry_data_type.grid(row=0, column=1, **grid_def_options_np)
 
             var_entry_data_source_name = tk.StringVar(value=container.editable_table.data_source)
             entry_data_source = ttk.Entry(lblf_files, textvariable=var_entry_data_source_name, state='readonly')
