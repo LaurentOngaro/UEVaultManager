@@ -22,7 +22,6 @@ from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_int, convert_to_float, convert_to_datetime
-from UEVaultManager.tkgui.modules.globals import UEVM_gui_ref
 from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
 from UEVaultManager.utils.cli import get_max_threads
