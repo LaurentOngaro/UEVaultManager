@@ -58,7 +58,7 @@ And you can update the data extrated from the Marketplace (new version, new rele
 The changes you made manually will be preserved, depending on what fields (aka. columns) has been changed (see :doc:`output` section).
 
 Editing the list with the new GUI (since 1.6.0)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: console
 
@@ -67,14 +67,14 @@ Editing the list with the new GUI (since 1.6.0)
 For more details, please read the :doc:`gui` section.
 
 Scraping all the asset from the marketplace and store them in a database file (since 1.8.0)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: console
 
   UEVaultManager scrap
 
 Editing the database content with the new GUI (since 1.8.0)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: console
 
