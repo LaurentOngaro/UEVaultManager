@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import WidgetType, ExtendedWidget, ExtendedEntry, ExtendedText, ExtendedLabel, \
-    ExtendedCheckButton
+    ExtendedCheckButton, ExtendedButton
 from UEVaultManager.tkgui.modules.functions import log_error, log_warning, log_debug
 
 
@@ -38,12 +38,11 @@ class TaggedLabelFrame(ttk.LabelFrame):
         images_folder=None,
         add_label_before=True,
         focus_out_callback=None,
+        focus_in_callback=None,
         click_on_callback=None
     ) -> None:
         """
         Adds a child widget to the LabelFrame and associates it with the given tag.
-        Note: we can not use command parameter to manage callback here because it should be transmited
-        to the parent widget and in that case tag won't be available as an indentificator
         :param tag: Tag to search for (case-insensitive)
         :param widget_type: Type of widget to add. A string value of 'text', 'checkbutton', or 'entry'
         :param width: Width of the child widget. Only used for text widgets
@@ -54,7 +53,11 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param images_folder: folder for image used by some widgets
         :param add_label_before: If True, adds a label before the child widget
         :param focus_out_callback: Callback to call when the child widget loses focus
+        :param focus_in_callback: Callback to call when the child widget get focus
         :param click_on_callback: Callback to call when the child widget is clicked or checked
+
+        Note: we can not use command parameter to manage callback here because it should be transmited
+        to the parent widget and in that case tag won't be available as an indentificator
         """
         tag = tag.lower()
         frame = ttk.Frame(self)
@@ -70,6 +73,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
             child = ExtendedLabel(master=frame, tag=tag, default_content=default_content)
         elif widget_type == WidgetType.CHECKBUTTON:
             child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, label=label, images_folder=images_folder)
+        elif widget_type == WidgetType.BUTTON:
+            child = ExtendedButton(master=frame, tag=tag, default_content=default_content)
         else:
             error = f'Invalid widget type: {widget_type}'
             log_error(error)
@@ -82,6 +87,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
 
         if focus_out_callback is not None:
             child.bind('<FocusOut>', lambda event: focus_out_callback(event=event, tag=tag))
+        if focus_in_callback is not None:
+            child.bind('<FocusIn>', lambda event: focus_in_callback(event=event, tag=tag))
         if click_on_callback is not None:
             child.bind('<Button-1>', lambda event: click_on_callback(event=event, tag=tag))
 

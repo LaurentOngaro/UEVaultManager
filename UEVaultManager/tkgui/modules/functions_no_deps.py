@@ -4,8 +4,10 @@ Utilities functions and tools
 These functions DO NOT depend on the globals.py module and be freely imported
 """
 import ctypes as ct
+import datetime
 import os
 import sys
+import uuid
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
@@ -154,9 +156,9 @@ def create_empty_file(file_path: str) -> (bool, str):
     :return: (True if path was valid, the corrected path of the file)
     """
     path, file = os.path.split(file_path)
-    is_valid, path = check_and_get_folder(os.path.dirname(path))
-    file_path = os.path.normpath(os.path.join(path, file))
-    open(file_path, 'a').close()
+    is_valid, path = check_and_get_folder(path)
+    file_path = os.path.join(path, file)
+    open(file_path, 'w').close()
     return is_valid, file_path
 
 
@@ -189,7 +191,7 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
 
 def convert_to_bool(value) -> bool:
     """
-    Convert a value to a boolean
+    Convert a value to a boolean. Useful for None values
     :param value: the value to convert. If the value is not a boolean, it will be converted to a string and then to a boolean.
     :return:
     """
@@ -198,7 +200,7 @@ def convert_to_bool(value) -> bool:
             return True
         else:
             return False
-    except ValueError:
+    except (TypeError, ValueError):
         return False
 
 
@@ -206,10 +208,79 @@ def convert_to_int(value) -> int:
     """
     Convert a value to an integer
     :param value: the value to convert.
-    :return: the integer value or 0 if the value is not an integer
+    :return: the integer value or 0 if the value is None or not an integer
     """
     try:
         value = int(value)
         return value
-    except ValueError:
+    except (TypeError, ValueError):
         return 0
+
+
+def convert_to_float(value) -> float:
+    """
+    Convert a value to a float. Useful for None values
+    :param value: the value to convert.
+    :return: the float value or 0.0 if the value is None or not a float
+    """
+    try:
+        value = float(value)
+        return value
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def convert_to_datetime(value: str, formats_to_use='%Y-%m-%d %H:%M:%S', default=None) -> datetime.datetime:
+    """
+    Convert a value to a datetime object
+    :param value: the value to convert. If the value is not a datetime, it will be converted to a string and then to a datetime.
+    :param formats_to_use: list of format to use to trye to convert the value. They will be tried in order
+    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
+    :return: the datetime value
+    """
+    if default is None:
+        default = datetime.datetime(1970, 1, 1)
+    if not value:
+        return default
+    if not isinstance(formats_to_use, list):
+        formats_to_use = [formats_to_use]
+    for date_format in formats_to_use:
+        try:
+            value_date = datetime.datetime.strptime(value, date_format)
+            if value_date != datetime.datetime(1970, 1, 1):
+                return value_date
+        except (TypeError, ValueError, AttributeError):
+            continue
+
+    return default
+
+
+def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None) -> str:
+    """
+    Convert a value to a datetime string
+    :param value: the value to convert. If the value is not a datetime
+    :param date_format: the format of value
+    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
+    :return: the string value of the datetime
+    """
+    # we convert only datetime object
+    if isinstance(value, str):
+        return value
+
+    if default is None:
+        default = datetime.datetime(1970, 1, 1).strftime(date_format)
+    if not value:
+        return default
+    try:
+        return value.strftime(date_format)
+    except (TypeError, ValueError, AttributeError):
+        # print(f'Error while converting {value} to a datetime: {error}')
+        return default
+
+
+def create_uid() -> str:
+    """
+    Create a unique id
+    :return: a unique id
+    """
+    return str(uuid.uuid4())[:8]

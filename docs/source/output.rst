@@ -58,62 +58,295 @@ order into the CSV file (or the names of the fields ins the Json file).
 The value is False if its content is not preserved, and True if it is
 preserved (and can be used to store persistant data).
 
-These value are defined by the CSV_headings variable at the beginning of
+These value are defined by the csv_sql_fields variable at the beginning of
 the
-`core.py <https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/UEVaultManager/core.py>`__
+`core.py <https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/models/csv_data.py>`__
 file:
 
 .. code:: python
 
-  CSV_headings = {
-      'Asset_id': False,  # ! important: Do not Rename => this field is used as main key for each asset
-      'App name': False,
-      'App title': False,
-      'Category': False,
-      'Review': False,
-      'Developer': False,
-      'Description': False,
-      'Status': False,
-      'Discount price': False,
-      'Price reduction': False,
-      'On sale': False,
-      'Purchased': False,
-      'Obsolete': True,
-      'Supported versions': False,
-      'Grab result': False,
-      'Price': False,  # ! important: Rename Wisely => this field is searched by text in the next lines
-      'Old price': False,  # ! important: always place it after the Price field in the list
-      # User Fields
-      'Comment': True,
-      'Stars': True,
-      'Must buy': True,
-      'Test result': True,
-      'Installed folder': True,
-      'Alternative': True,
-      'Origin': True,
-      # less important fields
-      'Page title': False,
-      'Image': False,
-      'Url': True,  # could be kept if a better url that can be used to download the asset is found
-      'Compatible versions': False,
-      'Date added': True,
-      'Creation date': False,
-      'Update date': False,
-      'UE version': False,
-      'Uid': False
+  csv_sql_fields = {
+      # fields mapping from csv to sql
+      # key: csv field name, value: {sql name, state }
+      # some field are intentionnaly duplicated because
+      #   several CSV fields could come from a same database field
+      #   a csv field with this name must exist to get the value
+      'Asset_id': {
+          'sql_name': 'asset_id',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'App name': {
+          'sql_name': 'title',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'App title': {  # intentionnaly duplicated
+          'sql_name': 'title',
+          'state': FieldState.CSV_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Category': {
+          'sql_name': 'category',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Review': {
+          'sql_name': 'review',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.FLOAT
+      },
+      'Review count': {  # not in "standard/result" csv file
+          'sql_name': 'review_count',
+          'state': FieldState.SQL_ONLY,
+          'field_type': FieldType.INT
+      },
+      'Developer': {
+          'sql_name': 'author',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Description': {
+          'sql_name': 'description',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.TEXT
+      },
+      'Status': {
+          'sql_name': 'status',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Discount price': {
+          'sql_name': 'discount_price',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.FLOAT
+      },
+      'Discount percentage': {
+          'sql_name': 'discount_percentage',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.INT
+      },
+      'Discounted': {
+          'sql_name': 'discounted',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.BOOL
+      },
+      'Is new': {  # not in "standard/result" csv file
+          'sql_name': 'is_new',
+          'state': FieldState.SQL_ONLY,
+          'field_type': FieldType.BOOL
+      },
+      'Free': {  # not in "standard/result" csv file
+          'sql_name': 'free',
+          'state': FieldState.SQL_ONLY,
+          'field_type': FieldType.BOOL
+      },
+      'Can purchase': {  # not in "standard/result" csv file
+          'sql_name': 'can_purchase',
+          'state': FieldState.SQL_ONLY,
+          'field_type': FieldType.BOOL
+      },
+      'Owned': {
+          'sql_name': 'owned',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.BOOL
+      },
+      'Obsolete': {
+          'sql_name': 'obsolete',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.BOOL
+      },
+      'Supported versions': {
+          'sql_name': 'supported_versions',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Grab result': {
+          'sql_name': 'grab_result',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Price': {
+          'sql_name': 'price',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.FLOAT
+      },
+      # ## User Fields
+      'Old price': {
+          'sql_name': 'old_price',
+          'state': FieldState.PRESERVED,
+          'field_type': FieldType.FLOAT
+      },
+      'Comment': {
+          'sql_name': 'comment',
+          'state': FieldState.PRESERVED,
+          'field_type': FieldType.TEXT
+      },
+      'Stars': {
+          'sql_name': 'stars',
+          'state': FieldState.PRESERVED,
+          'field_type': FieldType.INT
+      },
+      'Must buy': {
+          'sql_name': 'must_buy',
+          'state': FieldState.PRESERVED,
+          'field_type': FieldType.BOOL
+      },
+      'Test result': {
+          'sql_name': 'test_result',
+          'state': FieldState.PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Installed folder': {
+          'sql_name': 'installed_folder',
+          'state': FieldState.PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Alternative': {
+          'sql_name': 'alternative',
+          'state': FieldState.PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Origin': {
+          'sql_name': 'origin',
+          'state': FieldState.PRESERVED,
+          'field_type': FieldType.STR
+      },
+      # ## less important fields
+      'Custom attributes':
+      {  # not in "standard/result" csv file
+          'sql_name': 'custom_attributes',
+          'state': FieldState.SQL_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Page title': {
+          'sql_name': 'page_title',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Image': {
+          'sql_name': 'thumbnail_url',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Url': {
+          'sql_name': 'asset_url',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Compatible versions': {  # not in database
+          'sql_name': None,
+          'state': FieldState.CSV_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Date added': {
+          'sql_name': 'creation_date',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Creation date': {
+          'sql_name': 'update_date',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'Update date': {
+          'sql_name': 'date_added_in_db',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      'UE version': {  # not in database
+          'sql_name': None,
+          'state': FieldState.CSV_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Uid': {
+          'sql_name': 'id',
+          'state': FieldState.NOT_PRESERVED,
+          'field_type': FieldType.STR
+      },
+      # ## UE asset class field only
+      'Namespace': {
+          'sql_name': 'namespace',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Catalog itemid': {
+          'sql_name': 'catalog_item_id',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Asset slug': {
+          'sql_name': 'asset_slug',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'urlSlug': {  # intentionnaly duplicated
+          'sql_name': 'asset_slug',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Currency code': {
+          'sql_name': 'currency_code',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Technical details': {
+          'sql_name': 'technical_details',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Long description': {
+          'sql_name': 'long_description',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.TEXT
+      },
+      'Tags': {
+          'sql_name': 'tags',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Comment rating id': {
+          'sql_name': 'comment_rating_id',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Rating id': {
+          'sql_name': 'rating_id',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
+      'Is catalog item': {
+          'sql_name': 'is_catalog_item',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.BOOL
+      },
+      'Thumbnail': {  # intentionnaly duplicated
+          'sql_name': 'thumbnail_url',
+          'state': FieldState.ASSET_ONLY,
+          'field_type': FieldType.STR
+      },
   }
+
 
 The individual json files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each asset will also have its data saved in to different json files:
 
--  the folder ``<data folder>/metadata``: contains a json file for each
-   asset (identified by its `asset_id`) to store its metadata (get from
-   a call to the epic API)
--  the folder ``<data folder>/extras``: contains a json file for each
-   asset (identified by its `asset_id`) to store its ''extras data''
-   (grabbed from the marketplace page of the asset)
+-  for the all the assets available in the marketplace (including the owned ones):
+
+  -  the folder ``<scrapping folder>/assets``: contains a json file for each
+     asset (identified by its `asset_id` is the asset has one) to store its metadata (get from
+     a call to the epic API). The <scrapping folder> can be set in the ``<config folder>/config_gui.ini`` configuration file
+
+-  for the assets OWNED by the user
+
+  -  the folder ``<data folder>/metadata``: contains a json file for each
+     asset (identified by its `asset_id`) to store its metadata (get from
+     a call to the epic API)
+  -  the folder ``<data folder>/extras``: contains a json file for each
+     asset (identified by its `asset_id`) to store its ''extras data''
+     (grabbed from the marketplace page of the asset)
 
 Note:
 

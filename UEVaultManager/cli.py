@@ -18,27 +18,31 @@ from datetime import datetime
 from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
+
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
 from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_codename
-from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult
+from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
-from UEVaultManager.core import AppCore
-from UEVaultManager.models.csv import CSV_headings
+from UEVaultManager.core import AppCore, default_datetime_format
+from UEVaultManager.models.csv_data import csv_sql_fields, FieldState, get_csv_field_name_list, is_on_state
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
 from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
+from UEVaultManager.tkgui.modules.EditableTableClass import DataSourceType
 from UEVaultManager.tkgui.modules.functions import custom_print, box_message  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
-from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
+from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, create_list_from_string, str_is_bool
+from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads, remove_command_argument
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
 
 
 def init_gui_args(args, additional_args=None) -> None:
@@ -80,13 +84,8 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
         uewm_gui_exists = True
     force_refresh = True if args.force_refresh else False
     window = ProgressWindow(
-        title="Updating Assets List",
+        title='Updating Assets List',
         quit_on_close=not uewm_gui_exists,
-        width=300,
-        height=150,
-        max_value=200,
-        show_start_button=False,
-        show_stop_button=True,
         function=callback,
         function_parameters={
             'filter_category': gui_g.UEVM_filter_category,
@@ -128,18 +127,6 @@ class UEVaultManagerCLI:
         self.core = AppCore(override_config, timeout=api_timeout)
         self.logger = logging.getLogger('Cli')
         self.logging_queue = None
-
-    def _resolve_aliases(self, name: str) -> str:
-        """
-        Resolve an alias
-        :param name: name to resolve
-        :return: real name
-        """
-        # make sure aliases exist if not yet created
-        self.core.update_aliases(force=False)
-        name = name.strip()
-        # resolve alias (if any) to real app name
-        return self.core.uevmlfs.config.get(section='UEVaultManager.aliases', option=name, fallback=self.core.uevmlfs.aliases.get(name.lower(), name))
 
     @staticmethod
     def _print_json(data, pretty=False):
@@ -203,6 +190,7 @@ class UEVaultManagerCLI:
         self.create_file_backup(self.core.notfound_assets_filename_log)
         self.create_file_backup(self.core.bad_data_assets_filename_log)
 
+    # noinspection PyUnusedLocal
     def create_asset_from_data(
         self, item, asset_id: str, no_text_data: str, no_int_data: int, no_float_data: float, bool_true_data: bool, bool_false_data: bool
     ) -> (str, dict):
@@ -233,7 +221,7 @@ class UEVaultManagerCLI:
             thumbnail_url = metadata['keyImages'][2]['url']  # 'Image' with 488 height
         except IndexError:
             self.logger.debug(f'asset {item.app_name} has no image')
-        date_added = datetime.now().strftime(self.core.default_datetime_format)
+        date_added = datetime.now().strftime(default_datetime_format)
         extras_data = None
         try:
             extras_data = self.core.uevmlfs.get_item_extras(item.app_name)
@@ -241,47 +229,22 @@ class UEVaultManagerCLI:
             self.logger.warning(f'Error getting extra data for {item.app_name} : {error!r}')
         if extras_data is None:
             extras_data = create_empty_assets_extras(item.app_name)
-        asset_url = no_text_data
-        review = no_int_data
-        price = no_float_data
-        purchased = bool_false_data
-        discount_price = no_float_data
-        supported_versions = no_text_data
-        page_title = no_text_data
-        grab_result = GrabResult.NO_ERROR.name
-        oigin = 'Marketplace'  # by default the asset are from the "MarketPlace"
-        price_reduction=no_int_data
-        on_sale = bool_false_data
-        try:
-            asset_url = extras_data['asset_url']
-            review = extras_data['review']
-            price = extras_data['price']
-            discount_price = extras_data['discount_price']
-            purchased = extras_data['purchased']
-            supported_versions = extras_data['supported_versions']
-            page_title = extras_data['page_title']
-            grab_result = extras_data['grab_result']
-            price_reduction=extras_data['price_reduction']
-            on_sale = extras_data['on_sale']
-        except (TypeError, KeyError) as error:
-            self.logger.warning(f'Key not found in extra data for {item.app_name} : {error!r}')
-
-        if self.core.engine_version_for_obsolete_assets == '' or supported_versions == '' or supported_versions == no_text_data:
-            obsolete = bool_false_data
-        else:
-            supported_versions_list = supported_versions.lower().replace('UE_', '')
-            supported_versions_list = create_list_from_string(supported_versions_list)
-            obsolete = bool_true_data
-            for _, version in enumerate(supported_versions_list):
-                if version == '':
-                    continue
-                else:
-                    if float(self.core.engine_version_for_obsolete_assets) <= float(version):
-                        obsolete = bool_false_data
-                        break
+        origin = 'Marketplace'  # by default the asset are from the "MarketPlace"
+        asset_url = extras_data.get('asset_url', no_text_data)
+        review = extras_data.get('review', no_int_data)
+        price = extras_data.get('price', no_float_data)
+        discount_price = extras_data.get('discount_price', no_float_data)
+        supported_versions = extras_data.get('supported_versions', no_text_data)
+        page_title = extras_data.get('page_title', no_text_data)
+        grab_result = extras_data.get('grab_result', GrabResult.NO_ERROR.name)
+        # next fields are missing in some assets pages
+        discount_percentage = extras_data.get('discount_percentage', no_int_data)
+        discounted = extras_data.get('discounted', bool_false_data)
+        owned = extras_data.get('owned', bool_false_data)
+        obsolete = is_asset_obsolete(supported_versions, self.core.engine_version_for_obsolete_assets)
         try:
             values = (
-                # dans les infos
+                # be ins the same order as csv_sql_fields keys, with explufind the SQL_ONLY fields
                 asset_id  # 'asset_id'
                 , item.app_name  # 'App name'
                 , item.app_title  # 'App title'
@@ -289,13 +252,13 @@ class UEVaultManagerCLI:
                 , review  # 'Review'
                 , metadata['developer']  # 'Developer'
                 , metadata['description']  # 'Description'
-                , metadata['status']  # 'status'
+                , metadata['status']  # 'Status'
                 , discount_price  # 'Discount price'
-                , price_reduction  # 'Price reduction'
-                , on_sale  # 'On Sale'
-                , purchased  # 'Purchased'
-                , obsolete  # 'obsolete'
-                , supported_versions  # 'supported versions'
+                , discount_percentage  # 'Discount percentage'
+                , discounted  # 'Discounted'
+                , owned  # 'Owned'
+                , obsolete  # 'Obsolete'
+                , supported_versions  # 'Supported versions'
                 , grab_result  # 'Grab result'
                 , price  # 'Price'
                 , no_float_data  # 'Old price'
@@ -306,9 +269,9 @@ class UEVaultManagerCLI:
                 , no_text_data  # 'Test result
                 , no_text_data  # 'Installed folder'
                 , no_text_data  # 'Alternative'
-                , oigin  # 'Origin
+                , origin  # 'Origin
                 # less important fields
-                , page_title  # 'page title'
+                , page_title  # 'Page title'
                 , thumbnail_url  # 'Image' with 488 height
                 , asset_url  # 'Url'
                 , compatible_versions  # compatible_versions
@@ -318,7 +281,7 @@ class UEVaultManagerCLI:
                 , item.app_version('Windows')  # 'UE version'
                 , uid  # 'Uid'
             )
-            record = dict(zip(CSV_headings.keys(), values))
+            record = dict(zip(get_csv_field_name_list(), values))
         except TypeError:
             self.logger.error(f'Could not create record for {item.app_name}')
 
@@ -418,65 +381,69 @@ class UEVaultManagerCLI:
         :param args: options passed to the command
         """
 
-        def update_and_merge_csv_record_data(_asset, _items_in_file, _no_data_value) -> []:
+        def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> []:
             """
             Updates the data of the asset with the data from the items in the file
-            :param _asset: asset to update
+            :param _asset_id: id of the asset to update
+            :param _asset_data: data of the asset to update
             :param _items_in_file: list of items in the file
             :param _no_data_value: value to use when no data is available
             :return: list of values to be written in the CSV file
             """
-            _asset_id = _asset[0]
-            _csv_record = list(_asset[1].values())  # we need a list for the CSV comparison, not a dict
             # merge data from the items in the file (if exists) and those get by the application
             # items_in_file must be a dict of dicts
+            csv_fields_count = len(get_csv_field_name_list())
+            _csv_record = list(_asset_data.values())  # we need a list for the CSV comparison, not a dict
             if _items_in_file.get(_asset_id):
                 item_in_file = _items_in_file.get(_asset_id)
-                if len(item_in_file.keys()) != len(CSV_headings.keys()):
+                if len(item_in_file.keys()) != csv_fields_count:
                     self.logger.error(
                         f'In the existing file, asset {_asset_id} has not the same number of keys as the CSV headings. This asset is ignored and its values will be overwritten'
                     )
                     return _csv_record
                 else:
-                    # loops through its columns
-                    index = 0
+                    # loops through its columns to UPDATE the data with EXISTING VALUE if its state is PRESERVED
+                    # !! no data cleaning must be done here !!!!
                     price_index = 0
                     _price = float(_no_data_value)
                     old_price = float(_no_data_value)
-                    for key, keep_value_in_file in CSV_headings.items():
-                        if item_in_file.get(key, None) is None:
-                            self.logger.error(
-                                f'In the existing file, asset {_asset_id} has no column named {key}. This asset is ignored and its values will be overwritten'
-                            )
-                            # print(f' CHECK for asset {_asset_id}')
-                            return _csv_record
-                        else:
-                            if keep_value_in_file:
-                                value = item_in_file[key]
-                                if str_is_bool(value):
-                                    value = str_to_bool(value)
-                                _csv_record[index] = value
-                            # Get the old price in the previous file
-                            if key == 'Price':
-                                price_index = index
-                                try:
-                                    _price = float(_csv_record[price_index])
-                                    old_price = float(
-                                        item_in_file[key]
-                                    )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
-                                except Exception as _error:
-                                    self.logger.warning(f'Old price value can not be converted for asset {_asset_id}\nError:{_error!r}')
-                            if key == 'Origin':
-                                # all the folders when the asset came from are stored in a comma separated list
-                                folder_list = item_in_file[key].split(',')
-                                # add the new folder to the list without duplicates
-                                if _csv_record[index] not in folder_list:
-                                    folder_list.append(_csv_record[index])
-                                # update the list in the CSV record
-                                _csv_record[index] = ','.join(folder_list)
-                        index += 1
+                    for index, csv_field in enumerate(get_csv_field_name_list()):
+                        preserved_value_in_file = is_on_state(csv_field_name=csv_field, states=[FieldState.PRESERVED], default=True)
+                        value = item_in_file.get(csv_field, None)
+                        if value is None:
+                            self.logger.warning(f'In the existing data, asset {_asset_id} has no column named {csv_field}.')
+                            continue
 
-                _csv_record[price_index + 1] = old_price
+                        # get rid of 'None' values in CSV file
+                        if value == gui_g.s.empty_cell:
+                            _csv_record[index] = ''
+                            continue
+
+                        value = str(value)
+                        # Get the old price in the previous file
+                        if csv_field == 'Price':
+                            price_index = index
+                            _price = gui_fn.convert_to_float(_csv_record[price_index])
+                            old_price = gui_fn.convert_to_float(
+                                item_in_file[csv_field]
+                            )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                        elif csv_field == 'Origin':
+                            # all the folders when the asset came from are stored in a comma separated list
+                            folder_list = value.split(',')
+                            # add the new folder to the list without duplicates
+                            if _csv_record[index] not in folder_list:
+                                folder_list.append(_csv_record[index])
+                            # update the list in the CSV record
+                            _csv_record[index] = ','.join(folder_list)
+
+                        if preserved_value_in_file:
+                            _csv_record[index] = str_to_bool(value) if str_is_bool(value) else value
+                    # end for key, state in csv_sql_fields.items()
+                    if price_index > 0:
+                        _csv_record[price_index + 1] = old_price
+                # end ELSE if len(item_in_file.keys()) != csv_fields_count
+            # end if _items_in_file.get(_asset_id)
+            # print(f'debug here')
             return _csv_record
 
         # end update_and_merge_csv_record_data
@@ -499,9 +466,10 @@ class UEVaultManagerCLI:
                 # loops through its columns
                 _price = float(_no_float_value)
                 old_price = float(_no_float_value)
-                for key, keep_value_in_file in CSV_headings.items():
-                    if keep_value_in_file and _items_in_file[_asset_id].get(key):
-                        _json_record[key] = _items_in_file[_asset_id][key]
+                for field, state in csv_sql_fields.items():
+                    preserved_value_in_file = is_on_state(csv_field_name=field, states=[FieldState.PRESERVED])
+                    if preserved_value_in_file and _items_in_file[_asset_id].get(field):
+                        _json_record[field] = _items_in_file[_asset_id][field]
 
                 # Get the old price in the previous file
                 try:
@@ -520,7 +488,7 @@ class UEVaultManagerCLI:
             self.create_log_file_backup()
 
         # open log file for assets if necessary
-        self.core.setup_assets_logging()
+        self.core.setup_assets_loggers()
         self.core.egs.notfound_logger = self.core.notfound_logger
         self.core.egs.ignored_logger = self.core.ignored_logger
 
@@ -534,7 +502,6 @@ class UEVaultManagerCLI:
                 self._log_gui_wrapper(self.logger.critical, message, True)
             # we try to open it for writing
             if not os.access(file_src, os.W_OK):
-                self.logger.warning(f'Could not read CSV record from the file {file_src}')
                 message = f'Could not create result file {file_src}. Exiting...'
                 self._log_gui_wrapper(self.logger.critical, message, True)
 
@@ -567,7 +534,6 @@ class UEVaultManagerCLI:
                 # if the main gui is not running, we need to start a tk.mainloop
                 progress_window.mainloop()
             items = progress_window.get_result()
-
         else:
             items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
 
@@ -575,29 +541,33 @@ class UEVaultManagerCLI:
             na_items = self.core.get_non_asset_library_items(skip_ue=False)
             items.extend(na_items)
 
+        if not items:
+            self.logger.info('No assets found!')
+            return
+
         no_int_data = 0
         no_float_value = 0.0
         no_text_data = ''
         no_bool_true_data = True
         no_bool_false_data = False
-
-        # sort assets by name in reverse (to have the latest version first
-        items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
+        cpt = 0
+        cpt_max = len(items)
 
         # use a dict to store records and avoid duplicates (asset with the same asset_id and a different asset_name)
         assets_to_output = {}
         # create a minimal and full dict of data from existing assets
         assets_in_file = {}
 
-        cpt = 0
-        cpt_max = len(items)
+        # sort assets by name in reverse (to have the latest version first
+        items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
+
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging assets data...", new_max_value=len(items))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging assets data...", new_max_value=cpt_max)
         for item in items:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
             cpt += 1
-            # notes:
+            # Note:
             #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
             #   app_name is unique because it includes the unreal version
             #   we use asset_id as key because we don't want to have several entries for the same asset
@@ -641,31 +611,31 @@ class UEVaultManagerCLI:
                 output = open(file_src, 'w', encoding='utf-8')
             # end if args.output:
 
-            try:
-                writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
-                writer.writerow(CSV_headings.keys())
-                cpt = 0
-                if gui_g.progress_window_ref is not None:
-                    gui_g.progress_window_ref.reset(
-                        new_value=0, new_text="Writing assets into csv file...", new_max_value=len(assets_to_output.items())
-                    )
-                for asset in sorted(assets_to_output.items()):
-                    if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                        return
-                    asset_id = asset[0]
-                    try:
-                        if len(assets_in_file) > 0:
-                            csv_record_merged = update_and_merge_csv_record_data(asset, assets_in_file, no_int_data)
-                        else:
-                            csv_record_merged = list(asset[1].values())
-                        cpt += 1
-                        writer.writerow(csv_record_merged)
-                    except (OSError, UnicodeEncodeError, TypeError) as error:
-                        message = f'Could not write CSV record for {asset_id} into {args.output}\nError:{error!r}'
-                        self.logger.error(message)
-            except (OSError, ValueError) as error:
-                message = f'Could not write list result to {args.output}: {error!r}'
-                self._log_gui_wrapper(self.logger.error, message)
+            writer = csv.writer(output, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
+            writer.writerow(get_csv_field_name_list())
+            cpt = 0
+            if gui_g.progress_window_ref is not None:
+                gui_g.progress_window_ref.reset(new_value=0, new_text="Writing assets into csv file...", new_max_value=len(assets_to_output.items()))
+            for asset in sorted(assets_to_output.items()):
+                asset_id = asset[0]
+                if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
+                    return
+                if test_only_mode:
+                    print(f'merging _asset_id {asset_id}')
+                asset_data = asset[1]
+                for key in asset_data.keys():
+                    # clean the asset data by removing the columns that are not in the csv field name list
+                    ignore_in_csv = is_on_state(csv_field_name=key, states=[FieldState.ASSET_ONLY, FieldState.SQL_ONLY], default=False)
+                    if ignore_in_csv:
+                        print(f'{key} must be ignored in CSV. Removing it from the asset data')
+                        del (asset_data[key])
+
+                if len(assets_in_file) > 0:
+                    csv_record_merged = update_and_merge_csv_record_data(asset_id, asset_data, assets_in_file, no_int_data)
+                else:
+                    csv_record_merged = list(asset_data.values())
+                cpt += 1
+                writer.writerow(csv_record_merged)
 
         # end if args.csv or args.tsv:
 
@@ -724,15 +694,17 @@ class UEVaultManagerCLI:
             if UEVaultManagerCLI.is_gui:
                 # During the editabletable initial rebuild_data process, the window will not close
                 # So we try to close it several times
-                max_tries = 3
-                progress_window.quit_on_close = True  # gentle quit
-                tries = 0
-                while progress_window is not None and progress_window.winfo_viewable() and tries < max_tries:
-                    progress_window.close_window()
-                    time.sleep(0.2)
-                    tries += 1
-                progress_window.quit_on_close = False  # force destroy the window
-                progress_window.close_window()
+                # max_tries = 3
+                # progress_window.quit_on_close = True  # gentle quit
+                # tries = 0
+                # while progress_window is not None and progress_window.winfo_viewable() and tries < max_tries:
+                #     progress_window.close_window()
+                #     time.sleep(0.2)
+                #     tries += 1
+                # progress_window.quit_on_close = False  # force destroy the window
+                # progress_window.close_window()
+                progress_window.quit_on_close = False
+                progress_window.close_window(destroy_window=True)
             return
 
         # here, no other output has been done before, so we print the asset in a quick format to the console
@@ -751,8 +723,6 @@ class UEVaultManagerCLI:
         if not args.override_manifest and not args.app_name:
             print('You must provide either a manifest url/path or app name!')
             return
-        elif args.app_name:
-            args.app_name = self._resolve_aliases(args.app_name)
 
         # check if we even need to log in
         if args.override_manifest:
@@ -827,7 +797,7 @@ class UEVaultManagerCLI:
         else:
             user_name = self.core.uevmlfs.userdata['displayName']
 
-        cache_information = self.core.uevmlfs.get_ue_assets_cache_data()
+        cache_information = self.core.uevmlfs.get_assets_cache_info()
         update_information = self.core.uevmlfs.get_cached_version()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
@@ -846,8 +816,8 @@ class UEVaultManagerCLI:
             'Current version': f'{UEVM_version} - {UEVM_codename}',
         }
         if not args.offline:
-            assets_available = len(self.core.get_asset_list(update_assets=args.force_refresh))
-            json_content['Assets available'] = assets_available
+            owned_assets = len(self.core.get_asset_list(update_assets=args.force_refresh))
+            json_content['Assets owned'] = owned_assets
             json_content['Update available'] = 'yes' if self.core.update_available else 'no'
 
             if self.core.update_available and update_information is not None:
@@ -880,8 +850,6 @@ class UEVaultManagerCLI:
         app_name = manifest_uri = None
         if os.path.exists(name_or_path) or name_or_path.startswith('http'):
             manifest_uri = name_or_path
-        else:
-            app_name = self._resolve_aliases(name_or_path)
 
         if not args.offline and not manifest_uri:
             try:
@@ -1160,40 +1128,101 @@ class UEVaultManagerCLI:
         Edit assets in the database using a GUI
         :param args: options passed to the command
         """
-        if not args.input:
-            input_filename = gui_g.s.csv_filename
-            self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
+        data_source_type = DataSourceType.FILE
+        if args.database:
+            data_source = args.database
+            data_source_type = DataSourceType.SQLITE
+            self.logger.info(f'The database {data_source} will be used to read data from')
+        elif args.input:
+            data_source = args.input
+            self.logger.info(f'The file {data_source} will be used to read data from')
         else:
-            input_filename = gui_fn.path_from_relative_to_absolute(args.input)
-        input_filename = os.path.normpath(input_filename)
+            data_source = gui_g.s.csv_filename
+            self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
 
-        app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+        data_source = gui_fn.path_from_relative_to_absolute(data_source)
+        data_source = os.path.normpath(data_source)
+
+        gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
         gui_g.UEVM_log_ref = self.logger
         gui_g.UEVM_cli_ref = self
 
         # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
-        init_gui_args(args, additional_args={'output': input_filename})
+        init_gui_args(args, additional_args={'output': data_source})
         rebuild = False
-        if not os.path.isfile(input_filename):
-            is_valid, input_filename = gui_fn.create_empty_file(input_filename)
+        if not os.path.isfile(data_source):
+            is_valid, data_source = gui_fn.create_empty_file(data_source)
             rebuild = True
             if not is_valid:
-                message = f'Error while creating the empty result file with the given path. The following file {input_filename} will be used as default'
+                message = f'Error while creating the empty result file with the given path. The following file {data_source} will be used as default'
                 self._log_gui_wrapper(self.logger.error, message)
                 # fix invalid input/output file name in arguments to avoid futher errors in file path checks
-                args.input = input_filename
-                args.output = input_filename
-                gui_g.UEVM_cli_args['input'] = input_filename
-                gui_g.UEVM_cli_args['output'] = input_filename
+                args.input = data_source
+                args.output = data_source
+                gui_g.UEVM_cli_args['input'] = data_source
+                gui_g.UEVM_cli_args['output'] = data_source
         gui_g.UEVM_gui_ref = UEVMGui(
             title=gui_g.s.app_title,
-            icon=app_icon_filename,
+            icon=gui_g.s.app_icon_filename,
             screen_index=0,
-            file=input_filename,
+            data_source_type=data_source_type,
+            data_source=data_source,
             rebuild_data=rebuild
         )
         gui_g.UEVM_gui_ref.mainloop()
+        # print('Exiting...')  #
         # gui_g.UEVM_gui_ref.quit()
+
+    def scrap_assets(self, args) -> None:
+        """
+        Scrap assets from the Epic Games Store or from previously saved files
+        :param args: options passed to the command
+
+        NOTE: ! Unlike the list_asset method, this method is not intended to be called trhough the GUI. So there is no need to add a ProgressWindow setup here.
+        """
+        if not args.offline:
+            load_from_files = False
+            try:
+                if not self.core.login():
+                    message = 'Log in failed!'
+                    self._log_gui_wrapper(self.logger.critical, message, True)
+            except ValueError:
+                pass
+            # if automatic checks are off force an update here
+            self.core.check_for_updates(force=True)
+        else:
+            load_from_files = True
+        # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
+        # still true ?
+        # ue_asset_per_page = gui_g.s.rows_per_page
+        ue_asset_per_page = 100  # a bigger value will be refused by UE API
+
+        if test_only_mode:
+            start_row = 0  # debug only, shorter list
+            # start_row = 1700  # debug only, very shorter list
+            max_threads = 0  # debug only, see exceptions
+            owned_assets_only = True  # True for debug only
+        else:
+            start_row = 0
+            max_threads = get_max_threads()
+            owned_assets_only = False
+
+        if args.force_refresh:
+            load_from_files = False
+        scraper = UEAssetScraper(
+            start=start_row,
+            assets_per_page=ue_asset_per_page,
+            max_threads=max_threads,
+            store_in_db=True,
+            store_in_files=True,
+            store_ids=False,  # useless for now
+            load_from_files=load_from_files,
+            engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
+            egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
+        )
+
+        scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
+        scraper.save(owned_assets_only=owned_assets_only)
 
     @staticmethod
     def print_help(args, parser=None, forced=False) -> None:
@@ -1293,10 +1322,13 @@ def main():
     auth_parser = subparsers.add_parser('auth', help='Authenticate with the Epic Games Store')
     clean_parser = subparsers.add_parser('cleanup', help='Remove old temporary, metadata, and manifest files')
     info_parser = subparsers.add_parser('info', help='Prints info about specified app name or manifest')
-    list_parser = subparsers.add_parser('list', aliases=('list-assets',), hide_aliases=True, help='List available assets')
+    list_parser = subparsers.add_parser('list', aliases=('list-assets',), hide_aliases=True, help='List owned assets')
     list_files_parser = subparsers.add_parser('list-files', help='List files in manifest')
     status_parser = subparsers.add_parser('status', help='Show UEVaultManager status information')
     edit_parser = subparsers.add_parser('edit', aliases=('edit-assets',), hide_aliases=True, help='Edit the assets list file')
+    scrap_parser = subparsers.add_parser(
+        'scrap', aliases=('scrap-assets',), hide_aliases=True, help='Scrap all the available assets on the marketplace'
+    )
 
     # hidden commands have no help text
     get_token_parser = subparsers.add_parser('get-token')
@@ -1417,12 +1449,39 @@ def main():
     get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
 
     edit_parser.add_argument(
-        '-i', '--input', dest='input', metavar='<path/name>', action='store', help='The file name (with path) where the list should be read from'
+        '-i',
+        '--input',
+        dest='input',
+        metavar='<path/name>',
+        action='store',
+        help='The file name (with path) where the list should be read from (it exludes the --database option)'
     )
+    edit_parser.add_argument(
+        '-db',
+        '--database',
+        dest='database',
+        metavar='<path/name>',
+        action='store',
+        help='The sqlite file name (with path) where the list should be read from (it exludes the --input option)'
+    )
+
     # not use for now
     # edit_parser.add_argument('--csv', dest='csv', action='store_true', help='Input file is in CSV format')
     # edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
     # edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
+
+    # noinspection DuplicatedCode
+    scrap_parser.add_argument(
+        '-f',
+        '--force-refresh',
+        dest='force_refresh',
+        action='store_true',
+        help='Force a refresh of all assets data. It could take some time ! If not forced, the cached data will be used'
+    )
+    scrap_parser.add_argument(
+        '--offline', dest='offline', action='store_true', help='Use previous saved data files (json) instead of grabing urls and scapping new data'
+    )
+    scrap_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
@@ -1458,7 +1517,9 @@ def main():
     cli.core.notfound_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
     cli.core.bad_data_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'bad_data_assets_filename_log', fallback='')
 
-    cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get('UEVaultManager', 'engine_version_for_obsolete_assets', fallback='4.26')
+    cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get(
+        'UEVaultManager', 'engine_version_for_obsolete_assets', fallback=gui_g.s.engine_version_for_obsolete_assets
+    )
 
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
@@ -1487,9 +1548,15 @@ def main():
         elif args.subparser_name == 'get-token':
             cli.get_token(args)
         elif args.subparser_name in {'edit', 'edit-assets'}:
+            if args.database and args.input:
+                remove_command_argument(edit_parser, 'input')
             args.gui = True
             UEVaultManagerCLI.is_gui = True
             cli.edit_assets(args)
+        elif args.subparser_name in {'scrap', 'scrap-assets'}:
+            args.gui = True
+            UEVaultManagerCLI.is_gui = True
+            cli.scrap_assets(args)
         elif start_in_edit_mode:
             args.gui = True
             UEVaultManagerCLI.is_gui = True

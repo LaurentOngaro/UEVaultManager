@@ -9,11 +9,12 @@ import os
 from termcolor import colored
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
+from UEVaultManager import __name__, __version__, __codename__
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.models.config import AppConf
-from UEVaultManager import __name__, __version__, __codename__
 
-# NOTE : we can't import the following modules here because of circular dependencies
+
+# NOTE: we can't import the following modules here because of circular dependencies
 # UEVaultManager.tkgui.modules.functions_no_deps
 
 
@@ -46,6 +47,7 @@ class GUISettings:
         # following vars are not set as properties to avoid storing absolute paths in the config file
         self.cache_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
         self.results_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
+        self.scraping_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['scraping_folder'])
 
         # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
         self.assets_folder = gui_fn.path_from_relative_to_absolute('../../assets')
@@ -56,18 +58,22 @@ class GUISettings:
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename = self.config_vars['last_opened_file']
         else:
-            self.csv_filename = os.path.join(self.config_vars['results_folder'], 'list.csv')
+            self.csv_filename = os.path.join(self.results_folder, 'list.csv')
 
-        self.csv_filename = os.path.normpath(self.csv_filename)
+        self.sqlite_filename = os.path.join(self.scraping_folder, 'assets.db')
+
         self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
         self.app_monitor = 1
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
-        self.data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'))
+        self.epic_datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+        self.data_filetypes = (
+            ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
+        )
         self.preview_max_width = 150
         self.preview_max_height = 150
         self.default_global_search = 'Text to search...'
         self.default_category_for_all = 'All'
-        self.empty_cell = 'nan'
+        self.empty_cell = 'None'
         self.expand_columns_factor = 20
         self.contract_columns_factor = 20
         # ttkbootstrap themes:
@@ -90,6 +96,18 @@ class GUISettings:
             'rowselectedcolor': '#E4DED4',  #
             'textcolor': 'black'  #
         }
+        self.engine_version_for_obsolete_assets = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
+
+    def get_rows_per_page(self):
+        """ Getter for rows_per_page """
+        return gui_fn.convert_to_int(self.config_vars['rows_per_page'])
+
+    def set_rows_per_page(self, value):
+        """ Setter for rows_per_page """
+        self.config_vars['rows_per_page'] = value
+
+    # used as property for keeping transparent access
+    rows_per_page = property(get_rows_per_page, set_rows_per_page)
 
     def get_data_filters(self):
         """ Getter for data_filters """
@@ -235,8 +253,16 @@ class GUISettings:
         """ Setter for results_folder """
         self.config_vars['results_folder'] = value
 
+    def get_scraping_folder(self):
+        """ Getter for scraping_folder """
+        return self.config_vars['scraping_folder']
+
+    def set_scraping_folder(self, value):
+        """ Setter for scraping_folder """
+        self.config_vars['scraping_folder'] = value
+
     # not used as property to avoid storing absolute paths in the config file. Getter and setter could be used to store relative paths
-    # results_folder = property(get_results_folder, set_results_folder)
+    # scraping_folder = property(get_scraping_folder, set_scraping_folder)
 
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -267,9 +293,14 @@ class GUISettings:
             log('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {
+            'rows_per_page': {
+                'comment':
+                'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
+                'value': 36
+            },
             'data_filters': {
                 'comment': 'Filters to apply to the datatable. Stored in json format',
-                'value'  : ''
+                'value': ''
             },
             'x_pos': {
                 'comment': 'X position of the main windows. Set to 0 to center the window',
@@ -319,6 +350,10 @@ class GUISettings:
                 'comment': 'Folder (relative or absolute) to store result files to read and save data from',
                 'value': '../../../results'
             },
+            'scraping_folder': {
+                'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
+                'value': '../../../scraping'
+            },
         }
 
         has_changed = False
@@ -344,6 +379,7 @@ class GUISettings:
         # store all the properties that must be saved in config file
         # no need of fallback values here, they are set in the config file by default
         config_vars = {
+            'rows_per_page': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'rows_per_page')),
             'data_filters': self.config.get('UEVaultManager', 'data_filters'),
             'x_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'x_pos')),
             'y_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'y_pos')),
@@ -356,7 +392,8 @@ class GUISettings:
             'image_cache_max_time': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'image_cache_max_time')),
             'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file'),
             'cache_folder': self.config.get('UEVaultManager', 'cache_folder'),
-            'results_folder': self.config.get('UEVaultManager', 'results_folder')
+            'results_folder': self.config.get('UEVaultManager', 'results_folder'),
+            'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
         }
         return config_vars
 

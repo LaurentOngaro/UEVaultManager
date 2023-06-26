@@ -3,6 +3,7 @@
 Implementation for:
 - AppCore: handles most of the lower level interaction with the downloader, lfs, and api components to make writing CLI/GUI code easier and cleaner and avoid duplication.
 """
+import concurrent
 import json
 import logging
 import os
@@ -32,14 +33,12 @@ from UEVaultManager.models.exceptions import *
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.tkgui.modules.functions import box_message
-from UEVaultManager.utils.cli import check_and_create_path
+from UEVaultManager.utils.cli import check_and_create_path, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
-# The heading dict contains the title of each column and a boolean value to know if its contents must be preserved if it already exists in the output file (To Avoid overwriting data changed by the user in the file)
-
-# ToDo: instead of true/false return values for success/failure actually raise an exception that the CLI/GUI
-#  can handle to give the user more details. (Not required yet since there's no GUI so log output is fine)
+# make some properties of the AppCore class accessible from outside to limit the number of imports needed
+default_datetime_format: str = '%Y-%m-%d %H:%M:%S'
 
 
 class AppCore:
@@ -87,7 +86,6 @@ class AppCore:
         self.webview_killswitch = False
         self.logged_in = False
 
-        self.default_datetime_format = '%y-%m-%d %H:%M:%S'
         # UE assets metadata cache properties
         self.ue_assets_count = 0
         self.cache_is_invalidate = False
@@ -114,9 +112,9 @@ class AppCore:
         self.use_threads = False
         self.thread_executor = None
         self.thread_executor_must_stop = False
-        self.engine_version_for_obsolete_assets = '4.26'
+        self.engine_version_for_obsolete_assets = gui_g.s.engine_version_for_obsolete_assets
 
-    def setup_assets_logging(self) -> None:
+    def setup_assets_loggers(self) -> None:
         """
         Setup logging for ignored, not found and bad data assets
         """
@@ -141,7 +139,7 @@ class AppCore:
                 return None
 
         formatter = logging.Formatter('%(message)s')
-        message = f"-----\n{datetime.now().strftime(self.default_datetime_format)} Log Started\n-----\n"
+        message = f"-----\n{datetime.now().strftime(default_datetime_format)} Log Started\n-----\n"
 
         if self.ignored_assets_filename_log:
             self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
@@ -352,15 +350,6 @@ class AppCore:
         """
         return self.uevmlfs.get_cached_version()['data']
 
-    def update_aliases(self, force=False) -> None:
-        """
-        Updates aliases if enabled
-        :param force: force alias update
-        """
-        _aliases_enabled = not self.uevmlfs.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False)
-        if _aliases_enabled and (force or not self.uevmlfs.aliases):
-            self.uevmlfs.generate_aliases()
-
     def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
         """
         Returns a list of assets for the given platform.
@@ -459,6 +448,9 @@ class AppCore:
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
 
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
+                return False
+
             thread_data = ''
             if self.use_threads:
                 thread = current_thread()
@@ -482,11 +474,11 @@ class AppCore:
 
             if _process_extras:
                 # we use title because it's less ambiguous than a name when searching an asset
-                eg_extras = self.egs.get_assets_extras(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
+                eg_extras = self.egs.grab_assets_extras(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
 
                 # check for data consistency
                 if 'stomt' in app_name.lower() or 'terrainmagic' in app_name.lower():
-                    if eg_extras.get('grab_result', '') != GrabResult.NO_ERROR.name or not eg_extras.get('purchased', False):
+                    if eg_extras.get('grab_result', '') != GrabResult.NO_ERROR.name or not eg_extras.get('owned', False):
                         box_message(
                             msg=f'Some results in extras data are inconsistants for {app_name}. Please check the data and try again. Exiting...',
                             level='error'
@@ -528,10 +520,8 @@ class AppCore:
             self.log.info(
                 f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
             )
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                self.thread_executor_must_stop = True
-                return False
             return True
+
         # end of fetch_asset_meta
 
         _ret = []
@@ -572,11 +562,11 @@ class AppCore:
         self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
         if gui_g.progress_window_ref is not None:
             gui_g.progress_window_ref.reset(new_value=0, new_text="Indexing assets...", new_max_value=len(assets.items()))
-        # note: we sort by reverse, as it the most recent version of an asset will be listed first
+        # Note: we sort by reverse, as it the most recent version of an asset will be listed first
         for app_name, app_assets in sorted(assets.items(), reverse=True):
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return []
-            # notes:
+            # Note:
             #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
             #   app_name is unique because it includes the unreal version
             # asset_id = app_assets['Windows'].asset_id
@@ -672,21 +662,38 @@ class AppCore:
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
-                # note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
+                # Note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
 
                 # with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() - 2), thread_name_prefix="Asset_Fetcher") as executor:
                 #    executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)
-                self.thread_executor = ThreadPoolExecutor(max_workers=min(15, os.cpu_count() + 2), thread_name_prefix="Asset_Fetcher")
+                self.thread_executor = ThreadPoolExecutor(max_workers=get_max_threads(), thread_name_prefix="Asset_Fetcher")
                 # Dictionary that maps each key to its corresponding Future object
                 futures = {}
                 for key in fetch_list.keys():
                     # Submit the task and add its Future to the dictionary
                     future = self.thread_executor.submit(fetch_asset_meta, key)
                     futures[key] = future
-                    if self.thread_executor_must_stop:
-                        self.log.info(f'User stop has been pressed. Stopping running threads....')
-                        stop_executor(futures)
-                        return []
+
+                with concurrent.futures.ThreadPoolExecutor():
+                    for future in concurrent.futures.as_completed(futures.values()):
+                        try:
+                            _ = future.result()
+                            # print("Result: ", result)
+                        except Exception as error:
+                            self.log.warning(f'The following error occurs in threading: {error!r}')
+                        if not gui_g.progress_window_ref.continue_execution:
+                            # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
+                            stop_executor(futures)
+                self.thread_executor.shutdown(wait=False)
+
+                # Wait for all the tasks to finish
+                # concurrent.futures.wait(futures.values())
+                # for key, future in futures.items():
+                #     try:
+                #         future.result()
+                #     except Exception as error:
+                #         self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
+                # self.thread_executor.shutdown(wait=False)
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
@@ -752,8 +759,6 @@ class AppCore:
 
         self.log.info(f'A total of {len(_ret)} assets have been analysed and kept in phase 3')
 
-        self.update_aliases(force=meta_updated)
-
         if gui_g.s.never_update_data_files:
             meta_updated = False
         if meta_updated:
@@ -777,8 +782,8 @@ class AppCore:
         Compile a list of assets without assets, then delete their metadata
         """
         # compile list of assets without assets, then delete their metadata
-        available_assets = set()
-        available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
+        owned_assets = set()
+        owned_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
         for app_name in self.uevmlfs.get_item_app_names():
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
@@ -789,8 +794,8 @@ class AppCore:
         Compile a list of assets without assets, then delete their extras data
         :param update_global_dict:  if True, update the global dict
         """
-        available_assets = set()
-        available_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
+        owned_assets = set()
+        owned_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
         for app_name in self.uevmlfs.get_item_app_names():
             self.log.debug(f'Removing old/unused extras data for "{app_name}"')
@@ -801,6 +806,7 @@ class AppCore:
         Save the metadata for the given assets
         :param assets:  List of assets to save
         """
+        self.log.info('Saving metadata in files... could take some time')
         for app in assets:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -812,6 +818,7 @@ class AppCore:
         :param extras: Dict of extras data to save
         :param update_global_dict: if True, update the global dict
         """
+        self.log.info('Saving extras data in files... could take some time')
         for app_name, eg_extras in extras.items():
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -848,8 +855,6 @@ class AppCore:
             if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])):
                 _ret.append(item)
 
-        # Force refresh to make sure these titles are included in aliasing
-        self.update_aliases(force=True)
         return _ret
 
     @staticmethod
@@ -959,7 +964,7 @@ class AppCore:
         :param force_refresh: force the refresh of the cache
         """
         self.cache_is_invalidate = False
-        cached = self.uevmlfs.get_ue_assets_cache_data()
+        cached = self.uevmlfs.get_assets_cache_info()
         cached_assets_count = cached['ue_assets_count']
 
         date_now = datetime.now().timestamp()
@@ -967,11 +972,11 @@ class AppCore:
 
         if not cached_assets_count or cached_assets_count != assets_count:
             self.log.info(f'New assets are available. {assets_count} available VS {cached_assets_count} in cache')
-            self.uevmlfs.set_ue_assets_cache_data(last_update=cached['last_update'], ue_assets_count=assets_count)
+            self.uevmlfs.set_assets_cache_info(last_update=cached['last_update'], ue_assets_count=assets_count)
 
         if force_refresh or date_diff > self.ue_assets_max_cache_duration:
             self.cache_is_invalidate = True
-            self.uevmlfs.set_ue_assets_cache_data(last_update=date_now, ue_assets_count=assets_count)
+            self.uevmlfs.set_assets_cache_info(last_update=date_now, ue_assets_count=assets_count)
             if not force_refresh:
                 self.log.info(f'Data cache is outdated. Cache age is {date_diff:.1f} s OR {str(timedelta(seconds=date_diff))}')
         else:

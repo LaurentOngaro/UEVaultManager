@@ -6,13 +6,11 @@ Implementation for:
 import json
 import logging
 import os
-from collections import defaultdict
 from pathlib import Path
 from time import time
 
 from UEVaultManager.models.app import *
 from UEVaultManager.models.config import AppConf
-from UEVaultManager.utils.aliasing import generate_aliases
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 from .utils import clean_filename
 
@@ -44,7 +42,7 @@ class UEVMLFS:
         # UEVaultManager update check info
         self._update_info = None
         # UE assets metadata cache data
-        self._ue_assets_cache_data = None
+        self._assets_cache_info = None
 
         # Config with item specific settings (e.g. start parameters, env variables)
         self.config = AppConf(comment_prefixes='/', allow_no_value=True)
@@ -160,7 +158,7 @@ class UEVMLFS:
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'engine_version_for_obsolete_assets'):
             self.config.set('UEVaultManager', '; Minimal unreal engine version to check for obsolete assets (default is 4.26)')
-            self.config.set('UEVaultManager', 'engine_version_for_obsolete_assets', '4.26')
+            self.config.set('UEVaultManager', 'engine_version_for_obsolete_assets', '4.26')  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
             has_changed = True
 
         if has_changed:
@@ -290,7 +288,7 @@ class UEVMLFS:
         :param app_name: The name of the item
         :return: an App object
         """
-        # note: self._assets_metadata is filled ay the start of the list command by reading all the json files in the metadata folder
+        # Note: self._assets_metadata is filled ay the start of the list command by reading all the json files in the metadata folder
         if _meta := self.assets_metadata.get(app_name, None):
             return App.from_json(_meta)  # create an object from the App class using the json data
         return None
@@ -465,68 +463,29 @@ class UEVMLFS:
         self._update_info = dict(last_update=time(), data=version_data)
         json.dump(self._update_info, open(os.path.join(self.path, 'version.json'), 'w'), indent=2, sort_keys=True)
 
-    def generate_aliases(self) -> None:
+    def get_assets_cache_info(self) -> dict:
         """
-        Generate the list of aliases
-        """
-        self.log.debug('Generating list of aliases...')
-
-        self.aliases = dict()
-        aliases = set()
-        collisions = set()
-        alias_map = defaultdict(set)
-
-        for app_name in self.assets_metadata.keys():
-            item = self.get_item_meta(app_name)
-            if item.is_dlc:
-                continue
-            item_folder = item.metadata.get('customAttributes', {}).get('FolderName', {}).get('value', None)
-            _aliases = generate_aliases(item.app_title, item_folder=item_folder, app_name=item.app_name)
-            for alias in _aliases:
-                if alias not in aliases:
-                    aliases.add(alias)
-                    alias_map[item.app_name].add(alias)
-                else:
-                    collisions.add(alias)
-
-        # remove colliding aliases from map and add aliases to lookup table
-        for app_name, aliases in alias_map.items():
-            alias_map[app_name] -= collisions
-            for alias in alias_map[app_name]:
-                self.aliases[alias] = app_name
-
-        def serialise_sets(obj) -> list:
-            """
-            Turn sets into sorted lists for storage
-            :param obj: The object to serialise
-            """
-            return sorted(obj) if isinstance(obj, set) else obj
-
-        json.dump(alias_map, open(os.path.join(self.path, 'aliases.json'), 'w', newline='\n'), indent=2, sort_keys=True, default=serialise_sets)
-
-    def get_ue_assets_cache_data(self) -> dict:
-        """
-        Get UE assets metadata cache data
+        Get assets metadata cache information
         :return: dict {last_update, ue_assets_count}
         """
-        if self._ue_assets_cache_data:
-            return self._ue_assets_cache_data
+        if self._assets_cache_info:
+            return self._assets_cache_info
 
         try:
-            self._ue_assets_cache_data = json.load(open(os.path.join(self.path, 'ue_assets_cache_data.json')))
+            self._assets_cache_info = json.load(open(os.path.join(self.path, 'assets_cache_info.json')))
         except Exception as error:
             self.log.debug(f'Failed to UE assets last update data: {error!r}')
-            self._ue_assets_cache_data = dict(last_update=0, ue_assets_count=0)
+            self._assets_cache_info = dict(last_update=0, ue_assets_count=0)
 
-        return self._ue_assets_cache_data
+        return self._assets_cache_info
 
     # Set UE assets metadata cache data
-    def set_ue_assets_cache_data(self, last_update: float, ue_assets_count: int) -> None:
+    def set_assets_cache_info(self, last_update: float, ue_assets_count: int) -> None:
         """
-        Set UE assets metadata cache data
+        Set assets metadata cache information
         :param last_update: last update time
         :param ue_assets_count: number of UE assets on last update
         :return:
         """
-        self._ue_assets_cache_data = dict(last_update=last_update, ue_assets_count=ue_assets_count)
-        json.dump(self._ue_assets_cache_data, open(os.path.join(self.path, 'ue_assets_cache_data.json'), 'w'), indent=2, sort_keys=True)
+        self._assets_cache_info = dict(last_update=last_update, ue_assets_count=ue_assets_count)
+        json.dump(self._assets_cache_info, open(os.path.join(self.path, 'assets_cache_info.json'), 'w'), indent=2, sort_keys=True)

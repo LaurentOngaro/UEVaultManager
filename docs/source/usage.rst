@@ -29,11 +29,13 @@ Usage
        auth             Authenticate with the Epic Games Store
        cleanup          Remove old temporary, metadata, and manifest files
        info             Prints info about specified app name or manifest
-       list             List available assets. It could take some time.
+       list             List the assets you OWNED (and only them). The process could take some time.
        list-files       List files in manifest
        status           Show UEVaultManager status information. Will update the assets list and could take some time.
        edit             Display a GUI to Edit the file that contains a list of assets. Mainly use in conjunction with the list command that could
                           produce a list of assets in a file.
+       scrap            Will use the EPIC API to retreive the data of ALL THE AVAILABLE assets in the EPIC marketplace (including the ones you owned)
+                          and store them in an sqlite database file. The process could take some time.
 
 
   Individual command help:
@@ -127,4 +129,14 @@ Usage
 
     optional arguments:
       -h, --help            Show this help message and exit
-      -i, --input           The file name (with path) where the list should be read from
+      -i, --input           The file name (with path) where the list should be read from (it exludes the --database option)
+      -db, --database       The sqlite file name (with path) where the list should be read from (it exludes the --input option)
+
+  Command: scrap
+    usage: UEVaultManager scrap [-h]
+
+    optional arguments:
+      -h, --help            Show this help message and exit
+      -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data in json files will be used
+      --offline             Use previous saved data files (json) instead of grabing urls and scapping new data
+      -g,  --gui            Display the output in a windows instead of using the console

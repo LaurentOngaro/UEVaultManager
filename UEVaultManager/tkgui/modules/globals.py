@@ -7,8 +7,9 @@ global variables and references to global objects
 import UEVaultManager.tkgui.modules.EditCellWindowClass as EditCellWindow
 import UEVaultManager.tkgui.modules.EditRowWindowClass as EditRowWindow
 from UEVaultManager.tkgui.modules.GUISettingsClass import GUISettings
-from UEVaultManager.tkgui.modules.ProgressWindowsClass import ProgressWindow
+from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
+
 
 # references to global objects
 edit_cell_window_ref: EditCellWindow = None

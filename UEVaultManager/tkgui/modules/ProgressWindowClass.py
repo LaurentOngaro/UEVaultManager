@@ -34,12 +34,12 @@ class ProgressWindow(tk.Toplevel):
     def __init__(
         self,
         title: str,
-        width: 300,
-        height: 150,
+        width: int = 300,
+        height: int = 150,
         icon=None,
         screen_index=0,
         max_value=100,
-        show_start_button=True,
+        show_start_button=False,
         show_stop_button=True,
         show_progress=True,
         function=None,
@@ -81,7 +81,7 @@ class ProgressWindow(tk.Toplevel):
 
         # Start the execution if not control frame is present
         # important because the control frame is not present when the function is set after the window is created
-        if self.control_frame is None or not show_start_button:
+        if self.control_frame is None or not show_start_button and self.function is not None:
             self.start_execution()
 
     def __del__(self):
@@ -156,6 +156,12 @@ class ProgressWindow(tk.Toplevel):
             gui_f.log_debug(f'Quitting {self.__class__.__name__}')
             self.function_return_value = self.result_queue.get()
             self.close_window(destroy_window=self.quit_on_close)  # the window is kept to allow further calls to the progress bar
+
+    def mainloop(self, n=0):
+        """ Override of mainloop method with loggin function (for debugging)"""
+        gui_f.log_info(f'starting mainloop in {__name__}')
+        self.tk.mainloop(n)
+        gui_f.log_info(f'ending mainloop in {__name__}')
 
     def set_text(self, new_text: str) -> None:
         """
@@ -267,10 +273,15 @@ class ProgressWindow(tk.Toplevel):
                 self.set_value(new_value)
             if new_max_value is not None:
                 self.show_progress_bar()
+                self.show_stop_button()
                 self.set_max_value(new_max_value)
+            else:
+                self.hide_progress_bar()
+                self.hide_stop_button()
         except tk.TclError:
             gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
         self.continue_execution = True
+        self.update()
 
     def start_execution(self) -> None:
         """
@@ -280,7 +291,7 @@ class ProgressWindow(tk.Toplevel):
             gui_f.log_warning('the function name to execute is not set')
             return
         self.continue_execution = True
-        self.deactivate()
+        self.set_activation(False)
         # Run the function in a separate thread
         t = threading.Thread(target=self._function_result_wrapper, args=(self.function, self), kwargs=self.function_params)
         t.start()
@@ -292,7 +303,7 @@ class ProgressWindow(tk.Toplevel):
         Stops the execution of the function
         """
         self.continue_execution = False
-        self.activate()
+        self.set_activation(True)
 
     def get_result(self):
         """
@@ -300,47 +311,40 @@ class ProgressWindow(tk.Toplevel):
         """
         return self.function_return_value
 
-    def activate(self) -> None:
+    def set_activation(self, activate: bool) -> None:
         """
-        Activates the control buttons for starting
-        """
-        if self.control_frame is None:
-            return
-        if self.control_frame.button_start is not None:
-            self.control_frame.button_start.config(state=tk.NORMAL)
-        if self.control_frame.button_stop is not None:
-            self.control_frame.button_stop.config(state=tk.DISABLED)
-
-    def deactivate(self) -> None:
-        """
-        Activates the control buttons for stopping
+        Sets the activation state of the control buttons.
         """
         if self.control_frame is None:
             return
+        start_state = tk.NORMAL if activate else tk.DISABLED
+        stop_state = tk.DISABLED if activate else tk.NORMAL
         if self.control_frame.button_start is not None:
-            self.control_frame.button_stop.config(state=tk.NORMAL)
+            self.control_frame.button_start.config(state=start_state)
         if self.control_frame.button_stop is not None:
-            self.control_frame.button_start.config(state=tk.DISABLED)
+            self.control_frame.button_stop.config(state=stop_state)
+        self.update()
 
-    def update_and_continue(self, value=0, increment=0) -> bool:
+    def update_and_continue(self, value=0, increment=0, text=None) -> bool:
         """
         Updates the progress bar and returns whether the execution should continue
         :param value: the value to set
         :param increment: the value to increment. If both value and increment are set, the value is ignored
+        :param text: the text to set
         """
         try:
             # sometimes the window is already destroyed
             progress_bar = self.content_frame.progress_bar
             if increment:
                 value = progress_bar["value"] + increment
-
             if value > self.max_value:
                 value = self.max_value
             progress_bar["value"] = value
-            progress_bar.update_idletasks()
+            if text:
+                self.set_text(text)
         except tk.TclError:
             gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
-        self.update_idletasks()
+        self.update()
         return self.continue_execution
 
     def close_window(self, destroy_window=True, _event=None) -> None:

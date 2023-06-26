@@ -7,6 +7,7 @@ Implementation for:
 - ExtendedText: extended text widget
 - ExtendedLabel: extended label widget
 - ExtendedCheckButton: extended checkbutton widget
+- ExtendedButton: extended button widget
 """
 
 import inspect
@@ -28,6 +29,7 @@ class WidgetType(Enum):
     TEXT = 1  # Text widget
     LABEL = 2  # Label widget
     CHECKBUTTON = 3  # Checkbutton widget
+    BUTTON = 4  # Button widget
 
 
 class ExtendedWidget:
@@ -165,7 +167,7 @@ class ExtendedEntry(ExtendedWidget, ttk.Entry):
         ExtendedWidget.__init__(self, **ext_args)
         # already made with _extract_extended_args
         # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
-        ttk.Entry.__init__(self, master, **kwargs)
+        ttk.Entry.__init__(self, master=master, **kwargs)
         self.widget_type = WidgetType.ENTRY
 
     def set_content(self, content='') -> None:
@@ -194,7 +196,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
 
         # already made with _extract_extended_args
         # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
-        tk.Text.__init__(self, master, **kwargs)
+        tk.Text.__init__(self, master=master, **kwargs)
         self.widget_type = WidgetType.TEXT
         self.update_style()
 
@@ -231,7 +233,10 @@ class ExtendedText(ExtendedWidget, tk.Text):
         :return: content of the widget
         """
         try:
-            return self.get('1.0', tk.END)
+            # Note that by using END you're also getting the trailing newline that tkinter automatically adds.
+            # You might want to use "end-1c"
+            # return self.get('1.0', tk.END)
+            return self.get('1.0', 'end-1c')
         except (AttributeError, tk.TclError) as error:
             log_warning(f'Failed to get content of {self}: {error!r}')
             return ''
@@ -254,7 +259,7 @@ class ExtendedLabel(ExtendedWidget, ttk.Label):
         ExtendedWidget.__init__(self, **ext_args)
         # already made with _extract_extended_args
         # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
-        ttk.Label.__init__(self, master, **kwargs)
+        ttk.Label.__init__(self, master=master, **kwargs)
         self.widget_type = WidgetType.LABEL
 
 
@@ -284,7 +289,7 @@ class ExtendedCheckButton(ExtendedWidget):
         self.widget_type = WidgetType.CHECKBUTTON
         self.default_content = False
         self._var = tk.BooleanVar(value=self.default_content)
-        frm_inner = ttk.Frame(master)
+        frm_inner = ttk.Frame(master=master)
         lbl_text = ttk.Label(frm_inner, text='')  # no text bydefault
         check_label = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
         lbl_text.pack(side=tk.LEFT)
@@ -380,3 +385,24 @@ class ExtendedCheckButton(ExtendedWidget):
         :return: True if the checkbutton is checked, False otherwise
         """
         return self._var.get()
+
+
+class ExtendedButton(ExtendedWidget, ttk.Button):
+    """
+    Extended widget version of a ttk.Button
+    :param master: container for the widget
+    :param command: function to call when the button is clicked
+    :param kwargs: kwargs to pass to the widget
+    :return: ExtendedButton instance
+    """
+
+    def __init__(self, master=None, command='', **kwargs):
+        if master is None:
+            print('A container is needed to display this widget')
+            return
+        ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
+        ExtendedWidget.__init__(self, **ext_args)
+        # already made with _extract_extended_args
+        # self._remove_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
+        ttk.Button.__init__(self, master=master, command=command, **kwargs)
+        self.widget_type = WidgetType.BUTTON

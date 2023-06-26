@@ -5,19 +5,34 @@ Implementation for:
 """
 import io
 import webbrowser
+from enum import Enum
 from tkinter import ttk
 
 import pandas as pd
 from pandas.errors import EmptyDataError
 from pandastable import Table, TableModel, config
 
-from UEVaultManager.models.csv import create_emty_csv_row, CSV_headings
+from UEVaultManager.models.csv_data import create_empty_csv_row, get_csv_field_name_list, convert_csv_row_to_sql_row, is_on_state, FieldState, \
+    FieldType, is_from_type, get_typed_value
+from UEVaultManager.models.UEAssetClass import UEAsset
+from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
-from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton
+from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
 from UEVaultManager.tkgui.modules.functions import *
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_int, convert_to_float, convert_to_datetime
+from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame
+from UEVaultManager.utils.cli import get_max_threads
+
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
+
+
+class DataSourceType(Enum):
+    """ An enum to represent the data source type """
+    FILE = 1
+    SQLITE = 2
 
 
 class EditableTable(Table):
@@ -25,18 +40,31 @@ class EditableTable(Table):
     A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
     :param container_frame: The parent frame for the table.
-    :param file: The path to the CSV file containing the table data.
-    :param fontsize: The font size for the table.
+    :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
+    :param data_source: The path to the source that contains the table data
+    :param rows_per_page: The number of rows to show per page.
     :param show_toolbar: Whether to show the toolbar.
     :param show_statusbar: Whether to show the status bar.
     :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
 
-    def __init__(self, container_frame=None, file=None, rows_per_page=36, show_toolbar=False, show_statusbar=False, **kwargs):
+    def __init__(
+        self,
+        container_frame=None,
+        data_source_type=DataSourceType.FILE,
+        data_source=None,
+        rows_per_page=36,
+        show_toolbar=False,
+        show_statusbar=False,
+        **kwargs
+    ):
         self._last_selected_row = -1
         self._last_selected_col = -1
+        self._changed_rows = []
 
-        self.file = file
+        self.data_source_type = data_source_type
+        self.data_source = data_source
+
         self.must_save = False
         self.must_rebuild = False
         self.container_frame = container_frame
@@ -58,10 +86,24 @@ class EditableTable(Table):
         self.edit_cell_window = None
         self.edit_cell_row_index = None
         self.edit_cell_col_index = None
-        self.edit_cell_entry = None
+        self.edit_cell_widget = None
 
+        self.quick_edit_frame = None
+
+        if self.data_source_type == DataSourceType.SQLITE:
+            self.db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
+        else:
+            self.db_handler = None
+        # add a loading screen using the progress window
+        self.progress_window = ProgressWindow(
+            title=gui_g.s.app_title, icon=gui_g.s.app_icon_filename, show_stop_button=False, show_progress=False, max_value=0
+        )
+        self.progress_window.set_text('Loading Data...Please wait')
+        self.progress_window.update()
         self.load_data()
         Table.__init__(self, container_frame, dataframe=self.data, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
+        self.progress_window.close_window()
+        self.progress_window = None
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
     def _generate_cell_selection_changed_event(self) -> None:
@@ -100,13 +142,13 @@ class EditableTable(Table):
         for col_name in col_names:
             try:
                 x = df[col_name]
-            except KeyError:
-                log_debug(f'gradient_color_cells: Column {col_name} not found in the table data.')
+                clrs = self.values_to_colors(x, cmap, alpha)
+                clrs = pd.Series(clrs, index=df.index)
+                rc = self.rowcolors
+                rc[col_name] = clrs
+            except (KeyError, ValueError) as error:
+                log_debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
                 continue
-            clrs = self.values_to_colors(x, cmap, alpha)
-            clrs = pd.Series(clrs, index=df.index)
-            rc = self.rowcolors
-            rc[col_name] = clrs
 
     def color_cells_if(self, col_names=None, color='green', value_to_check='True') -> None:
         """
@@ -122,10 +164,10 @@ class EditableTable(Table):
         for col_name in col_names:
             try:
                 mask = df[col_name] == value_to_check
-            except KeyError:
-                log_debug(f'color_cells_if: Column {col_name} not found in the table data.')
+                self.setColorByMask(col=col_name, mask=mask, clr=color)
+            except (KeyError, ValueError) as error:
+                log_debug(f'color_cells_if: An error as occured with {col_name} : {error!r}')
                 continue
-            self.setColorByMask(col=col_name, mask=mask, clr=color)
 
     def color_cells_if_not(self, col_names=None, color='grey', value_to_check='False') -> None:
         """
@@ -140,12 +182,12 @@ class EditableTable(Table):
         for col_name in col_names:
             try:
                 mask = df[col_name] != value_to_check
-            except KeyError:
-                log_debug(f'color_cells_if_not: Column {col_name} not found in the table data.')
+                self.setColorByMask(col=col_name, mask=mask, clr=color)
+            except (KeyError, ValueError) as error:
+                log_debug(f'color_cells_if_not: An error as occured with {col_name} : {error!r}')
                 continue
-            self.setColorByMask(col=col_name, mask=mask, clr=color)
 
-    def color_rows_if(self, col_names=None, color='#55555', value_to_check='True') -> None:
+    def color_rows_if(self, col_names=None, color='#555555', value_to_check='True') -> None:
         """
         Set the row color for the specified columns and the rows with a given value.
         :param col_names: The names of the columns to check for the value.
@@ -225,7 +267,7 @@ class EditableTable(Table):
             return
         log_debug('set_colors')
         self.gradient_color_cells(col_names=['Review'], cmap='Set3', alpha=1)
-        self.color_cells_if(col_names=['Purchased', 'On sale'], color='lightgreen', value_to_check='True')
+        self.color_cells_if(col_names=['Owned', 'Discounted'], color='lightgreen', value_to_check='True')
         self.color_cells_if(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
         self.color_cells_if_not(col_names=['Status'], color='#555555', value_to_check='ACTIVE')
         self.color_rows_if(col_names=['Status'], color='#555555', value_to_check='SUNSET')
@@ -312,36 +354,43 @@ class EditableTable(Table):
         """
         Loads data from the specified CSV file into the table.
         """
-        csv_options = {
-            'converters': {
-                'Asset_id': str,  #
-                'App name': str,  #
-                'Review': float,  #
-                'Price': float,  #
-                'Old price': float,  #
-                'Purchased': convert_to_bool,  #
-                'Must buy': convert_to_bool,  #
-                'Date added': convert_to_datetime,  #
-            },
-            'on_bad_lines': 'warn',
-            'encoding': "utf-8",
-        }
-        if self.file is None or not os.path.isfile(self.file):
-            log_warning(f'File to read data from is not defined or not found: {self.file}')
+        # by default the following values will be considered as 'NaN'
+        # '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN', '<NA>', 'N/A', 'NA', 'NULL', 'NaN', 'None', 'n/a', 'nan', 'null'
+        # see https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html
+        csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
+        if self.data_source is None or not os.path.isfile(self.data_source):
+            log_warning(f'File to read data from is not defined or not found: {self.data_source}')
+            return
+        self.must_rebuild = False
+        if self.data_source_type == DataSourceType.FILE:
+            try:
+                self.data = pd.read_csv(self.data_source, **csv_options)
+            except EmptyDataError:
+                # will create an empty row with the correct columns
+                str_data = get_csv_field_name_list(return_as_string=True)  # column names
+                str_data += '\n'
+                str_data += create_empty_csv_row(return_as_string=True)  # dummy row
+                self.data = pd.read_csv(io.StringIO(str_data), **csv_options)
+                self.must_rebuild = True
+            # fill all 'NaN' like values with 'None', to be similar to the database
+            self.data.fillna('None', inplace=True)
+        elif self.data_source_type == DataSourceType.SQLITE:
+            try:
+                data, column_names = self.db_handler.get_assets_data_for_csv()
+                if len(data) <= 0 or data[0][0] is None:
+                    # create an empty row (in the database) with the correct columns
+                    self.db_handler.create_empty_row(return_as_string=False, empty_cell=gui_g.s.empty_cell)  # dummy row
+                    data, column_names = self.db_handler.get_assets_data_for_csv()
+                    self.must_rebuild = True
+                self.data = pd.DataFrame(data, columns=column_names)
+            except EmptyDataError:
+                log_error(f'Unable to read data from database: {self.data_source}')
+                return
+        else:
+            log_error(f'Unknown data source type: {self.data_source_type}')
             return
 
-        self.must_rebuild = False
-        try:
-            self.data = pd.read_csv(self.file, **csv_options)
-        except EmptyDataError:
-            # will create an empty row with the correct columns
-            str_data = ','.join(str(value) for value in CSV_headings.keys())  # column names
-            str_data += '\n'
-            str_data += create_emty_csv_row(return_as_string=True)  # dummy row
-            self.data = pd.read_csv(io.StringIO(str_data))
-            self.must_rebuild = True
-
-        self.init_data_format()
+        self.init_data_format()  # could take some time with lots of rows
 
         # log_debug("\nCOL TYPES AFTER LOADING CSV\n")
         # self.data.info()  # direct print info
@@ -349,46 +398,84 @@ class EditableTable(Table):
         self.total_pages = (len(self.data) - 1) // self.rows_per_page + 1
         self.data_filtered = self.data
 
+    def save_data(self, source_type=None) -> None:
+        """
+        Saves the current table data to the CSV file.
+        """
+        if source_type is None:
+            source_type = self.data_source_type
+        data = self.data.iloc[0:len(self.data)]
+        self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
+        # noinspection GrazieInspection
+        if source_type == DataSourceType.FILE:
+            # ALL THE TESTS MADE TO REMOVE NONE VALUES from the saved csv file have failed
+            # default_value = ''
+            # self.model.df = self.model.df.replace({None: default_value'})
+            # self.model.df.fillna(default_value, inplace=True)
+            # self.model.df.apply(lambda x: x if x.isna() else default_value)
+            # self.model.df.replace(value=default_value, to_replace=np.nan, inplace=True)
+            # test_df = self.model.df.replace('place', 'epic')
+            # test_df.to_csv(self.data_source + '.TEST', index=False, date_format=gui_g.s.csv_datetime_format)
+            self.model.df.to_csv(self.data_source, index=False, na_rep='', date_format=gui_g.s.csv_datetime_format)
+        else:
+            for row in self._changed_rows:
+                # get the row data
+                row_data = self.data.iloc[row]
+                # convert the series to a dictionary
+                row_data = row_data.to_dict()
+                # convert the key names to the database column names
+                asset_data = convert_csv_row_to_sql_row(row_data)
+                ue_asset = UEAsset()
+                ue_asset.init_from_dict(asset_data)
+                # update the row in the database
+                self.db_handler.save_ue_asset(ue_asset)
+                log_info(f'UE_asset ({ue_asset.data["asset_id"]}) for row #{row} has been saved to the database')
+
+        self.show_page(self.current_page)
+        self.clear_rows_to_save()
+        self.must_save = False
+        box_message(f'Changed data has been saved to {self.data_source}')
+
     def init_data_format(self) -> None:
         """
         Initializes the data format for the table.
         """
+        converters = {
+            'Category': ('category',),
+            'Grab result': ('category',),
+            'Discounted': (convert_to_bool, bool),
+            'Is new': (convert_to_bool, bool),
+            'Free': (convert_to_bool, bool),
+            'Can purchase': (convert_to_bool, bool),
+            'Owned': (convert_to_bool, bool),
+            'Obsolete': (convert_to_bool, bool),
+            'Review': (convert_to_float, float),
+            'Price': (convert_to_float, float),
+            'Old price': (convert_to_float, float),
+            'Discount price': (convert_to_float, float),
+            'Discount percentage': (convert_to_float, float),
+            'Stars': (convert_to_int, int),
+            'Review count': (convert_to_int, int),
+            'Creation date':
+            (lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format]), pd.to_datetime),
+            'Update date':
+            (lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format]), pd.to_datetime),
+            'Date added':
+            (lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format]), pd.to_datetime),
+        }
+
         for col in self.data.columns:
-            try:
-                self.data[col] = self.data[col].astype(str)
-            except (KeyError, ValueError) as error:
-                log_error(f'Could not convert column "{col}" to string. Error: {error}')
-
-        col_to_convert = ['Creation date', 'Update date']
-        # note "date added" does not use the same format as the other date columns
-        for col in col_to_convert:
-            col_type = self.data.get(col, None)
-            if col_type is not None:
+            if col in converters:
+                converter, *args = converters[col]
                 try:
-                    self.data[col] = pd.to_datetime(self.data[col], format='ISO8601', errors='ignore')
+                    self.data[col] = self.data[col].apply(converter, *args) if callable(converter) else self.data[col].astype(converter)
                 except (KeyError, ValueError) as error:
-                    log_error(f'Could not convert column "{col}" to datetime. Error: {error}')
-
-        col_to_convert = ['Review', 'Price', 'Old price', 'Discount price']
-        for col in col_to_convert:
-            col_type = self.data.get(col, None)
-            if col_type is not None:
+                    log_warning(f'Could not convert column "{col}" using {converter}. Error: {error}')
+            else:
                 try:
-                    self.data[col] = self.data[col].astype(float)
+                    self.data[col] = self.data[col].astype(str)
                 except (KeyError, ValueError) as error:
-                    log_error(f'Could not convert column "{col}" to float. Error: {error}')
-
-        col_to_convert = ['Category', 'Grab result']
-        for col in col_to_convert:
-            col_type = self.data.get(col, None)
-            if col_type is not None:
-                try:
-                    self.data[col] = self.data[col].astype('category')
-                except (KeyError, ValueError) as error:
-                    log_error(f'Could not convert column "{col}" to category. Error: {error}')
-
-        # log_debug("\nCOL TYPES AFTER MANUAL CONVERSION\n")
-        # self.data.info() # direct print info
+                    log_error(f'Could not convert column "{col}" to string. Error: {error}')
 
         self.data_filtered = self.data
 
@@ -404,28 +491,61 @@ class EditableTable(Table):
          Rebuilds the data in the table based on the current filtering and sorting options.
          :return: True if the data was successfully rebuilt, False otherwise.
          """
-
-        # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
-        if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
-            from_cli_only_message()
-            return False
-        else:
-            gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
+        if self.data_source_type == DataSourceType.FILE:
+            # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
+            if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
+                from_cli_only_message()
+                return False
+            else:
+                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
+                self.current_page = 0
+                self.load_data()
+                self.show_page(0)
+                return True
+        elif self.data_source_type == DataSourceType.SQLITE:
+            # we create the progress window here to avoid lots of imports in UEAssetScraper class
+            progress_window = ProgressWindow('Rebuilding Data from database')
+            progress_window.set_text('Initializing...')
+            progress_window.set_activation(False)
+            max_threads = get_max_threads()
+            owned_assets_only = False
+            ue_asset_per_page = 100  # a bigger value will be refused by UE API
+            if test_only_mode:
+                start_row = 15000
+                stop_row = 15000 + ue_asset_per_page
+            else:
+                start_row = 0
+                stop_row = 0
+            if gui_g.UEVM_cli_args and gui_g.UEVM_cli_args.get('force_refresh', False):
+                load_from_files = False
+            else:
+                load_from_files = gui_g.UEVM_cli_args.get('offline', True)
+            scraper = UEAssetScraper(
+                start=start_row,
+                stop=stop_row,
+                assets_per_page=ue_asset_per_page,
+                max_threads=max_threads,
+                store_in_db=True,
+                store_in_files=True,
+                store_ids=False,  # useless for now
+                load_from_files=load_from_files,
+                clean_database=not test_only_mode,
+                engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
+                egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs,
+                progress_window=progress_window
+            )
+            scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
+            if not progress_window.continue_execution:
+                progress_window.close_window()
+                return False
+            scraper.save(owned_assets_only=owned_assets_only)
+            progress_window.close_window()
             self.current_page = 0
             self.load_data()
             self.show_page(0)
             return True
-
-    def save_data(self) -> None:
-        """
-        Saves the current table data to the CSV file.
-        """
-
-        data = self.data.iloc[0:len(self.data)]
-        self.updateModel(TableModel(data))  # needed to restore all the data and not only the current page
-        self.model.df.to_csv(self.file, index=False, na_rep='N/A', date_format=gui_g.s.csv_datetime_format)
-        self.show_page(self.current_page)
-        self.must_save = False
+        else:
+            return False
 
     def apply_filters(self, filter_dict=None, global_search=None) -> None:
         """
@@ -443,8 +563,11 @@ class EditableTable(Table):
                 continue
             if key == 'Grab result' and value == gui_g.s.default_category_for_all:
                 continue
-            self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
-
+            try:
+                # if data are corrupted, we can have a ValueError here
+                self.data_filtered = self.data_filtered[self.data_filtered[key].apply(lambda x: str(value).lower() in str(x).lower())]
+            except (KeyError, ValueError) as error:
+                log_debug(f'Could not filter column "{key}" with value "{value}". Error: {error}')
         if global_search and global_search != gui_g.s.default_global_search:
             self.data_filtered = self.data_filtered[self.data_filtered.apply(lambda row: global_search.lower() in str(row).lower(), axis=1)]
         self.show_page(0)
@@ -472,7 +595,7 @@ class EditableTable(Table):
         """
         Automatically resizes the columns to fit their content.
         """
-        # note:
+        # Note:
         # autoResizeColumns() will not resize table with more than 30 columns
         # same limit without settings the limit in adjustColumnWidths()
         # self.autoResizeColumns()
@@ -491,6 +614,21 @@ class EditableTable(Table):
         """
         self.zoomOut()
 
+    def add_to_rows_to_save(self, row_index: int) -> None:
+        """
+        Adds the specified row to the list of rows to save.
+        :param row_index: The index of the row to save.
+        """
+        if row_index < 0 or row_index > len(self.data) or row_index in self._changed_rows:
+            return
+        self._changed_rows.append(row_index)
+
+    def clear_rows_to_save(self) -> None:
+        """
+        Clears the list of rows to save.
+        """
+        self._changed_rows = []
+
     def get_edited_row_values(self) -> dict:
         """
         Returns the values of the selected row in the table.
@@ -505,7 +643,7 @@ class EditableTable(Table):
             except AttributeError:
                 value = entry.get_content()  # for extendedWidgets
             except TypeError:
-                value = entry.get('1.0', 'end')
+                value = entry.get('1.0', tk.END)
             entries_values[key] = value
         return entries_values
 
@@ -547,18 +685,18 @@ class EditableTable(Table):
         entries = {}
         image_url = ''
         for i, (key, value) in enumerate(row_data.items()):
-            from tkinter import ttk
-            ttk.Label(edit_row_window.content_frame, text=key).grid(row=i, column=0, sticky=tk.W)
+            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [FieldState.SQL_ONLY, FieldState.ASSET_ONLY]):
+                continue
+            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [FieldState.CSV_ONLY, FieldState.ASSET_ONLY]):
+                continue
+            label = key.replace('_', ' ').title()
+            ttk.Label(edit_row_window.content_frame, text=label).grid(row=i, column=0, sticky=tk.W)
             lower_key = key.lower()
+
             if lower_key == 'image':
                 image_url = value
 
-            if lower_key == 'asset_id':
-                # asset_id is readonly
-                entry = ttk.Entry(edit_row_window.content_frame)
-                entry.insert(0, value)
-                entry.grid(row=i, column=1, sticky=tk.EW)
-            elif lower_key == 'url':
+            if lower_key == 'url':
                 # we add a button to open the url in an inner frame
                 inner_frame_url = tk.Frame(edit_row_window.content_frame)
                 inner_frame_url.grid(row=i, column=1, sticky=tk.EW)
@@ -567,11 +705,11 @@ class EditableTable(Table):
                 entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
                 button = ttk.Button(inner_frame_url, text="Open URL", command=self.open_asset_url)
                 button.pack(side=tk.RIGHT)
-            elif lower_key in ('description', 'comment'):
+            elif is_from_type(key, [FieldType.TEXT]):
                 entry = ExtendedText(edit_row_window.content_frame, height=3)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
-            elif lower_key in ('must buy', 'obsolete', 'purchased', 'on sale'):
+            elif is_from_type(key, [FieldType.BOOL]):
                 entry = ExtendedCheckButton(edit_row_window.content_frame, label='', images_folder=gui_g.s.assets_folder)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
@@ -596,13 +734,18 @@ class EditableTable(Table):
         Saves the edited row values to the table data.
         """
         for key, value in self.get_edited_row_values().items():
+            # if is_from_type(key, [FieldType.BOOL]):
+            #    value = convert_to_bool(value)
+            value = get_typed_value(csv_field=key, value=value)
             self.model.df.at[self.edit_row_index, key] = value
+        row = self.edit_row_index
         self.edit_row_entries = None
         self.edit_row_index = None
         self.redraw()
         self.must_save = True
         self.edit_row_window.close_window()
-        self.update_quick_edit()
+        self.add_to_rows_to_save(row)
+        self.update_quick_edit(row=row)
 
     def move_to_prev_record(self) -> None:
         """
@@ -652,12 +795,21 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.model.df.columns[col_index]
         ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
-        entry = ttk.Entry(edit_cell_window.content_frame)
-        entry.insert(0, cell_value)
-        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        entry.focus_set()
+        if is_from_type(col_name, [FieldType.TEXT]):
+            widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
+            widget.set_content(cell_value)
+            widget.focus_set()
+        elif is_from_type(col_name, [FieldType.BOOL]):
+            widget = ExtendedCheckButton(edit_cell_window.content_frame, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
+            widget.set_content(cell_value)
+        else:
+            # other field is just a ExtendedEntry
+            widget = ExtendedEntry(edit_cell_window.content_frame, tag=col_name)
+            widget.insert(0, cell_value)
+            widget.focus_set()
 
-        self.edit_cell_entry = entry
+        widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.edit_cell_widget = widget
         self.edit_cell_row_index = row_index
         self.edit_cell_col_index = col_index
         self.edit_cell_window = edit_cell_window
@@ -668,36 +820,36 @@ class EditableTable(Table):
         Returns the values of the selected cell in the table.
         :return: The value of the selected cell.
         """
-        if self.edit_cell_entry is None:
+        if self.edit_cell_widget is None:
             return ''
-        return self.edit_cell_entry.get()
+        tag = self.edit_cell_widget.tag
+        value = self.edit_cell_widget.get_content()
+        typed_value = get_typed_value(csv_field=tag, value=value)
+        return typed_value
 
     def save_edit_cell_value(self) -> None:
         """
         Saves the edited cell value to the table data.
         """
-        widget = self.edit_cell_entry
-        if widget is None or self.edit_cell_row_index is None or self.edit_cell_col_index is None or self.edit_cell_entry is None:
+        widget = self.edit_cell_widget
+        if widget is None or self.edit_cell_row_index is None or self.edit_cell_col_index is None or self.edit_cell_widget is None:
             return
-        # widget_class = widget.winfo_class().lower()
-        entry = self.edit_cell_entry
+        row = self.edit_cell_row_index
         try:
-            try:
-                # get value for an entry tk widget
-                value = entry.get()
-            except TypeError:
-                # get value for a text tk widget
-                value = entry.get('1.0', 'end')
-            self.model.df.iat[self.edit_cell_row_index, self.edit_cell_col_index] = value
+            tag = self.edit_cell_widget.tag
+            value = self.edit_cell_widget.get_content()
+            typed_value = get_typed_value(csv_field=tag, value=value)
+            self.model.df.iat[self.edit_cell_row_index, self.edit_cell_col_index] = typed_value
             self.must_save = True
-            self.edit_cell_entry = None
+            self.edit_cell_widget = None
             self.edit_cell_row_index = None
             self.edit_cell_col_index = None
         except TypeError:
             log_warning(f'Failed to get content of {widget}')
         self.redraw()
         self.edit_cell_window.close_window()
-        self.update_quick_edit()
+        self.add_to_rows_to_save(row)
+        self.update_quick_edit(row=row)
 
     def update_quick_edit(self, quick_edit_frame: TaggedLabelFrame = None, row: int = None) -> None:
         """
@@ -705,6 +857,11 @@ class EditableTable(Table):
         :param quick_edit_frame: The frame to display the cell content preview in.
         :param row: The row index of the selected cell.
         """
+        if quick_edit_frame is None:
+            quick_edit_frame = self.quick_edit_frame
+        else:
+            self.quick_edit_frame = quick_edit_frame
+
         if row is None or row >= len(self.model.df) or quick_edit_frame is None:
             return
 
@@ -712,7 +869,8 @@ class EditableTable(Table):
         for col_name in column_names:
             col = self.model.df.columns.get_loc(col_name)
             value = self.model.getValueAt(row=row, col=col)
-            quick_edit_frame.set_child_values(tag=col_name, content=value, row=row, col=col)
+            typed_value = get_typed_value(csv_field=col_name, value=value)
+            quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row, col=col)
 
     @staticmethod
     def quick_edit(quick_edit_frame: TaggedLabelFrame = None) -> None:
@@ -729,22 +887,29 @@ class EditableTable(Table):
         quick_edit_frame.set_default_content('Origin')
         quick_edit_frame.set_default_content('Alternative')
 
-    def quick_edit_save_value(self, value: str, row: int = None, col: int = None) -> None:
+    def quick_edit_save_value(self, value: str, row: int = None, col: int = None, tag=None) -> None:
         """
         Saves the cell content preview.
         :param value: The value to save.
         :param row: The row index of the cell.
         :param col: The column index of the cell.
+        :param tag: The tag associated to the control where the value come from
         """
-        if row is None or row >= len(self.model.df) or col is None:
+        old_value = self.model.df.iat[row, col]
+
+        typed_old_value = get_typed_value(sql_field=tag, value=old_value)
+        typed_value = get_typed_value(sql_field=tag, value=value)
+
+        if row is None or row >= len(self.model.df) or col is None or typed_old_value == typed_value:
             return
         try:
-            self.model.df.iat[row, col] = value
+            self.model.df.iat[row, col] = typed_value
             self.redraw()
             self.must_save = True
-            log_debug(f'Save preview value {value} at row={row} col={col}')
+            log_debug(f'Save preview value {typed_value} at row={row} col={col}')
+            self.add_to_rows_to_save(row)
         except IndexError:
-            log_warning(f'Failed to save preview value {value} at row={row} col={col}')
+            log_warning(f'Failed to save preview value {typed_value} at row={row} col={col}')
 
     def get_image_url(self, row: int = None) -> str:
         """

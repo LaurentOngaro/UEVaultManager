@@ -57,23 +57,39 @@ This is an example of this file content and the settings you can change:
 
 .. code:: ini
 
-    [UEVaultManager]
-    ; Set to True to print debug information (GUI related only)
-    debug_mode = False
-    ; Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY
-    never_update_data_files = False
-    ; Set to True to re-open the last file at startup if no input file is given
-    reopen_last_file = True
-    ; Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing
-    use_colors_for_data = True
-    ; Last opened file name
-    last_opened_file = D:\results\list.csv
-    ; Delay in seconds when image cache will be invalidated. Default value represent 15 days
-    image_cache_max_time = 1296000
-    ; Folder (relative or absolute) to store cached data for assets (mainly preview images)
-    cache_folder = ../../../cache
-    ; Folder (relative or absolute) to store result files to read and save data from
-    results_folder = ../../../results
+  [UEVaultManager]
+  ;File name of the last opened file
+  last_opened_file = D:\Projets_Perso\03d_CodePython\UEVaultManager\scraping\assets.db
+  ;X position of the main windows. Set to 0 to center the window
+  x_pos = -1885
+  ;Y position of the main windows. Set to 0 to center the window
+  y_pos = 8
+  ;Width of the main windows
+  width = 1694
+  ;Height of the main windows
+  height = 941
+  ;Set to True to print debug information (GUI related only)
+  debug_mode = False
+  ;Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY
+  never_update_data_files = False
+  ;Set to True to re-open the last file at startup if no input file is given
+  reopen_last_file = True
+  ;Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing
+  use_colors_for_data = True
+  ;Delay in seconds when image cache will be invalidated. Default value represent 15 days
+  image_cache_max_time = 1296000
+  ;Folder (relative or absolute) to store cached data for assets (mainly preview images)
+  cache_folder = ../../../cache
+  ;Folder (relative or absolute) to store result files to read and save data from
+  results_folder = ../../../results
+  ;Filters to apply to the datatable. Stored in json format
+  data_filters = {"Grab result": "NO_ERROR"}
+  ;Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value
+  rows_per_page = 36
+  ;Folder (relative or absolute) to store the scraped files for the assets in markeplace
+  scraping_folder = ../../../scraping
+
+
 
 
 Note that some other settings for the new GUI are managed by a dedicated python file ``<python install folder>/<source folder of the package>/tkgui/modules/GuiSettingsClass.py``

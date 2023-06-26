@@ -2,9 +2,14 @@
 """
 UEVaultManager setup file.
 """
-import requirements
 import sys
 from pathlib import Path
+try:
+    import requirements
+    use_requirements = True
+except (ImportError, ModuleNotFoundError):
+    print('requirements module not found, please install it with: pip install requirements-parser')
+    use_requirements = False
 
 import setuptools
 from setuptools import setup
@@ -25,22 +30,28 @@ __long_description__ += f'\n\n {__name__} ## version:{__version__} ## codename: 
 
 # Read requirements from the requirements.txt file
 ######################
-# Note: This can cause problems with hyphenated package names.
-# It is fairly common for PyPi packages to be listed with a hyphen in their name,
-# but for all other references to them to have underscores.
-# see: https://github.com/pypa/setuptools/issues/1080
-requirements_from_file = []
-with open(Path.joinpath(current_folder, 'requirements.txt')) as fd:
-    for req in requirements.parse(fd):
-        if req.name:
-            name = req.name.replace("-", "_")
-            full_line = name + "".join(["".join(list(spec)) for spec in req.specs])
-            requirements_from_file.append(full_line)
-        else:
-            # no name meens it's a package from a source URL , e.g.:
-            # a GitHub URL doesn't have a name
-            # I am not sure what to do with this, actually, right now I just ignore it...
-            pass
+if not use_requirements:
+    requirements_from_file = [
+        'Pillow', 'beautifulsoup4', 'future', 'pandastable', 'pandas', 'pywebview', 'requests', 'screeninfo', 'setuptools', 'termcolor',
+        'ttkbootstrap', 'packaging', 'Faker', 'UEVaultManager'
+    ]
+else:
+    # Note: This can cause problems with hyphenated package names.
+    # It is fairly common for PyPi packages to be listed with a hyphen in their name,
+    # but for all other references to them to have underscores.
+    # see: https://github.com/pypa/setuptools/issues/1080
+    requirements_from_file = []
+    with open(Path.joinpath(current_folder, 'requirements.txt')) as fd:
+        for req in requirements.parse(fd):
+            if req.name:
+                name = req.name.replace("-", "_")
+                full_line = name + "".join(["".join(list(spec)) for spec in req.specs])
+                requirements_from_file.append(full_line)
+            else:
+                # no name meens it's a package from a source URL , e.g.:
+                # a GitHub URL doesn't have a name
+                # I am not sure what to do with this, actually, right now I just ignore it...
+                pass
 
 setup(
     name=__name__,

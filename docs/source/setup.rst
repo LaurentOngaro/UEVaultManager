@@ -17,7 +17,7 @@ Requirements
    -  (optional) `setuptools` and `wheel` for setup/building
    -  (optional but recommended) `pywebview` for webview-based login
 
-  **Notes:** We describe how to do things for Ubuntu 22.04. But it should be similar for other Linux distributions and macOS.
+  **Note:** We describe how to do things for Ubuntu 22.04. But it should be similar for other Linux distributions and macOS.
 
   We only make tests and installations on Windows 11, Ubuntu 22.04 (WSL) and Pop!OS 22.04. So we can't guarantee that it will work on other OS.
 

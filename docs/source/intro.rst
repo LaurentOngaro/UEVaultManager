@@ -16,19 +16,16 @@ Its main purpose is to list the assets (with or without user login),
 filter (optional) and save the list into a file that can be reused later
 as a data source (in an Excel sheet for instance).
 
-In future versions, this application will also offer a GUI, and will be
-able to read directly the result file, display and edit the assets list.
-
 Please read the :doc:`configuration` and :doc:`usage` sections before creating an issue to avoid invalid
 issue reports.
 
-Notes:
+Note:
 ~~~~~~
 
-UEVaultManager is mainly a CLI (command-line interface) application, it has to be run from a
+UEVaultManager can be run as a CLI (command-line interface) application, it has to be run from a
 terminal (e.g. a Linux Shell, a PowerShell or a Dos Console).
 
-Since the version 1.1.0, the app can edit the content of a result file that has been created using the 'list' command.
+Since the version 1.1.0, the app can edit the content of a previous assets scan (using the 'list' or the 'scrap' commands).
 This feature offers GUI interface to edit the assets list, and to add or edit the user data for each asset.
 
 If you find a problem with this app, please note that it's a free app,
@@ -57,10 +54,12 @@ Implemented Features:
    -  all the metadata that were already downloaded before by legendary:
       name, title, id, description, UE versions...
    -  **extras data grabbed from the marketplace page of an asset :
-      price, review, tags, purchased or not...**
-
+      price, review, tags, owned or not...**
+-  **Scraping the marketplace page of an asset to get all the data using the EPI MARKETPLACE API (since the version 1.8.0)**
+-  Since version 1.8.0, the app can also use a sqlite database to store
+   the data and, as it, it could list ALLthe assets available on the marketplace (and not only the ones you own like in the previous versions).
 -  Using a cache system to avoid getting data using API calls and web
-   scrapping each time the app is run. The delay of cache conservation
+   scraping each time the app is run. The delay of cache conservation
    can be set in the configuration file
 -  **Filtering the asset list by category before their listing (using the
    "-fc | -filter-category" optional argument)**
