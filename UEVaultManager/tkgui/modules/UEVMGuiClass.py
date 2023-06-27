@@ -379,22 +379,7 @@ class UEVMGui(tk.Tk):
                 focus_out_callback=container.on_quick_edit_focus_out,
                 focus_in_callback=container.on_quick_edit_focus_in
             )
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.CHECKBUTTON,
-                tag='Must buy',
-                label='',
-                images_folder=gui_g.s.assets_folder,
-                click_on_callback=container.on_switch_edit_flag,
-                default_content=False
-            )
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.CHECKBUTTON,
-                tag='Added manually',
-                label='',
-                images_folder=gui_g.s.assets_folder,
-                click_on_callback=container.on_switch_edit_flag,
-                default_content=False
-            )
+
             lbtf_quick_edit.add_child(
                 widget_type=WidgetType.ENTRY,
                 tag='Installed folder',
@@ -415,6 +400,29 @@ class UEVMGui(tk.Tk):
                 focus_in_callback=container.on_quick_edit_focus_in
             )
 
+            frm_inner_frame = ttk.Frame(lbtf_quick_edit, relief=tk.RIDGE, borderwidth=1)
+            inner_pack_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False, 'anchor': tk.W}
+            frm_inner_frame.pack(**inner_pack_options)
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.CHECKBUTTON,
+                alternate_container=frm_inner_frame,
+                layout_option=inner_pack_options,
+                tag='Must buy',
+                label='',
+                images_folder=gui_g.s.assets_folder,
+                click_on_callback=container.on_switch_edit_flag,
+                default_content=False
+            )
+            lbtf_quick_edit.add_child(
+                widget_type=WidgetType.CHECKBUTTON,
+                alternate_container=frm_inner_frame,
+                layout_option=inner_pack_options,
+                tag='Added manually',
+                label='',
+                images_folder=gui_g.s.assets_folder,
+                click_on_callback=container.on_switch_edit_flag,
+                default_content=False
+            )
             lbt_image_preview = ttk.LabelFrame(self, text='Image Preview')
             lbt_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
             canvas_image = tk.Canvas(lbt_image_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)

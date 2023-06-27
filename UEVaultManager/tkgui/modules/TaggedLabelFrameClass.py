@@ -30,6 +30,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         self,
         tag: str,
         widget_type: WidgetType.ENTRY,
+        alternate_container=None,
         default_content=None,
         width=None,
         height=None,
@@ -40,11 +41,12 @@ class TaggedLabelFrame(ttk.LabelFrame):
         focus_out_callback=None,
         focus_in_callback=None,
         click_on_callback=None
-    ) -> None:
+    ):
         """
         Adds a child widget to the LabelFrame and associates it with the given tag.
         :param tag: Tag to search for (case-insensitive)
-        :param widget_type: Type of widget to add. A string value of 'text', 'checkbutton', or 'entry'
+        :param widget_type: Type of widget to add.
+        :param alternate_container: Alternate container to use for the child widget. If None, uses the TaggedLabelFrame
         :param width: Width of the child widget. Only used for text widgets
         :param height: Height of the child widget. Only used for text widgets
         :param label: Text to display in the child widget.
@@ -55,13 +57,19 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param focus_out_callback: Callback to call when the child widget loses focus
         :param focus_in_callback: Callback to call when the child widget get focus
         :param click_on_callback: Callback to call when the child widget is clicked or checked
+        :return: Child widget
 
-        Note: we can not use command parameter to manage callback here because it should be transmited
-        to the parent widget and in that case tag won't be available as an indentificator
+        Notes:
+        we can not use command parameter to manage callback here because it should be transmited
+        to the parent widget and in that case tag won't be available as an indentificator.
+        If alternate_container is not None, the widget the layout of the child must be managed by the caller
         """
         tag = tag.lower()
-        frame = ttk.Frame(self)
-        frame.pack(**self.lblf_fw_options)
+        if alternate_container is None:
+            frame = ttk.Frame(self)
+            frame.pack(**self.lblf_fw_options)
+        else:
+            frame = alternate_container
         if add_label_before:
             lbl_name = ttk.Label(frame, text=ExtendedWidget.tag_to_label(tag))
             lbl_name.pack(side=tk.LEFT, **self.pack_options)
@@ -78,7 +86,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         else:
             error = f'Invalid widget type: {widget_type}'
             log_error(error)
-            return
+            return None
 
         self._tagged_child[tag] = child
 
@@ -91,6 +99,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
             child.bind('<FocusIn>', lambda event: focus_in_callback(event=event, tag=tag))
         if click_on_callback is not None:
             child.bind('<Button-1>', lambda event: click_on_callback(event=event, tag=tag))
+        return child
 
     def get_child_by_tag(self, tag: str):
         """
