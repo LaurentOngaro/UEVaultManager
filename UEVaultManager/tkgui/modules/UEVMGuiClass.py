@@ -760,15 +760,14 @@ class UEVMGui(tk.Tk):
         Export the selected rows to a file
         """
         # Get selected row indices
-        selected_row_indices = self.editable_table.multiplerowlist
-        if selected_row_indices:
-            selected_rows = self.editable_table.data_filtered.iloc[selected_row_indices]
+        selected_rows = self.editable_table.get_selected_rows()
+        if selected_rows:
             filename = self._open_file_dialog(save_mode=True, filename=self.editable_table.data_source)
             if filename:
                 selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
-        else:
-            gui_f.box_message('Select at least one row first')
+            else:
+                gui_f.box_message('Select at least one row first')
 
     def load_filter(self, filters: dict) -> bool:
         """
@@ -982,13 +981,13 @@ class UEVMGui(tk.Tk):
         """
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-            categories = list(self.editable_table.data['Category'].cat.categories)
+            categories = list(self.editable_table.get_data()['Category'].cat.categories)
         except (AttributeError, TypeError, KeyError):
             categories = []
         categories.insert(0, gui_g.s.default_category_for_all)
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-            grab_results = list(self.editable_table.data['Grab result'].cat.categories)
+            grab_results = list(self.editable_table.get_data()['Grab result'].cat.categories)
         except (AttributeError, TypeError, KeyError):
             grab_results = []
         grab_results.insert(0, gui_g.s.default_category_for_all)
@@ -1027,8 +1026,8 @@ class UEVMGui(tk.Tk):
             gui_f.from_cli_only_message()
             return
         row = self.editable_table.getSelectedRow()
-        col = self.editable_table.model.df.columns.get_loc('App name')
-        app_name = self.editable_table.model.getValueAt(row, col)
+        col = self.editable_table.get_data().columns.get_loc('App name')
+        app_name = self.editable_table.get_cell(row, col)
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY
         # set default options for the cli command to execute
         gui_g.UEVM_cli_args['gui'] = True  # mandatory for displaying the result in the DisplayContentWindow
