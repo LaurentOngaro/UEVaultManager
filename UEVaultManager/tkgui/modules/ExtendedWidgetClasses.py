@@ -366,10 +366,14 @@ class ExtendedCheckButton(ExtendedWidget):
         :param content: content to set
         """
         try:
-            if type(content) is bool:
+            if content or type(content) is bool:
                 # noinspection PyTypeChecker
                 # keep "bad" type to keep compatible signatures with overriden methods
                 self._var.set(content)
+            elif bool(content):
+                self._var.set(True)
+            elif not bool(content):
+                self._var.set(False)
             elif (content.lower() == 'true') or (content == '1'):
                 self._var.set(True)
             else:
@@ -384,7 +388,7 @@ class ExtendedCheckButton(ExtendedWidget):
         Gets the content of the widget.
         :return: True if the checkbutton is checked, False otherwise
         """
-        return self._var.get()
+        return bool(self._var.get())
 
 
 class ExtendedButton(ExtendedWidget, ttk.Button):
