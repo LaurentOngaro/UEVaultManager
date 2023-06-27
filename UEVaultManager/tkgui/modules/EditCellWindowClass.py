@@ -77,6 +77,17 @@ class EditCellWindow(tk.Toplevel):
             self.columnconfigure('all', weight=1)
             self.rowconfigure('all', weight=1)
 
+    def set_size(self, width: int, height: int) -> None:
+        """
+        Set the size (aka geometry) the window.
+        :param width: the width
+        :param height: the height
+        
+        Note: The window is centered on the screen.
+        """
+        geometry = gui_fn.center_window_on_screen(0, width, height)
+        self.geometry(geometry)
+
     def on_key_press(self, event) -> None:
         """
         Event when a key is pressed

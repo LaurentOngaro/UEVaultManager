@@ -450,7 +450,7 @@ class UEAssetScraper:
             self.thread_executor.shutdown(wait=False)
 
         # store previous data in the existing_data property
-        self.existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.existing_data_fields)
+        self.existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields)
 
         if self.load_from_files:
             self.load_from_json_files()

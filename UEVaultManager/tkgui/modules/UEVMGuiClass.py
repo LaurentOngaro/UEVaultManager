@@ -388,6 +388,14 @@ class UEVMGui(tk.Tk):
                 default_content=False
             )
             lbtf_quick_edit.add_child(
+                widget_type=WidgetType.CHECKBUTTON,
+                tag='Added manually',
+                label='',
+                images_folder=gui_g.s.assets_folder,
+                click_on_callback=container.on_switch_edit_flag,
+                default_content=False
+            )
+            lbtf_quick_edit.add_child(
                 widget_type=WidgetType.ENTRY,
                 tag='Installed folder',
                 default_content='Installed in',
@@ -994,9 +1002,9 @@ class UEVMGui(tk.Tk):
             self.editable_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             self.editable_table.reload_data()
-            gui_f.box_message(f'Data Reloaded from {self.editable_table.data_source}')
             self.update_page_numbers()
             self.update_category_var()
+            gui_f.box_message(f'Data Reloaded from {self.editable_table.data_source}')
 
     def rebuild_data(self) -> None:
         """
@@ -1004,9 +1012,9 @@ class UEVMGui(tk.Tk):
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
             if self.editable_table.rebuild_data():
-                gui_f.box_message(f'Data rebuilt from {self.editable_table.data_source}')
                 self.update_page_numbers()
                 self.update_category_var()
+                gui_f.box_message(f'Data rebuilt from {self.editable_table.data_source}')
 
     def run_uevm_command(self, command_name='') -> None:
         """

@@ -174,42 +174,42 @@ file:
       # ## User Fields
       'Old price': {
           'sql_name': 'old_price',
-          'state': FieldState.PRESERVED,
+          'state': FieldState.CHANGED,
           'field_type': FieldType.FLOAT
       },
       'Comment': {
           'sql_name': 'comment',
-          'state': FieldState.PRESERVED,
+          'state': FieldState.USER,
           'field_type': FieldType.TEXT
       },
       'Stars': {
           'sql_name': 'stars',
-          'state': FieldState.PRESERVED,
+          'state': FieldState.USER,
           'field_type': FieldType.INT
       },
       'Must buy': {
           'sql_name': 'must_buy',
-          'state': FieldState.PRESERVED,
+          'state': FieldState.USER,
           'field_type': FieldType.BOOL
       },
       'Test result': {
           'sql_name': 'test_result',
-          'state': FieldState.PRESERVED,
+          'state': FieldState.USER,
           'field_type': FieldType.STR
       },
       'Installed folder': {
           'sql_name': 'installed_folder',
-          'state': FieldState.PRESERVED,
+          'state': FieldState.USER,
           'field_type': FieldType.STR
       },
       'Alternative': {
           'sql_name': 'alternative',
-          'state': FieldState.PRESERVED,
+          'state': FieldState.USER,
           'field_type': FieldType.STR
       },
       'Origin': {
           'sql_name': 'origin',
-          'state': FieldState.PRESERVED,
+          'state': FieldState.USER,
           'field_type': FieldType.STR
       },
       # ## less important fields
