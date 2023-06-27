@@ -418,7 +418,6 @@ class EditableTable(Table):
         """
         Saves the current table data to the CSV file.
         """
-        # TODO test the new version of save
         if source_type is None:
             source_type = self.data_source_type
         data = self.get_data()
@@ -426,14 +425,14 @@ class EditableTable(Table):
         # noinspection GrazieInspection
         if source_type == DataSourceType.FILE:
             # ALL THE TESTS MADE TO REMOVE NONE VALUES from the saved csv file have failed
-            default_value = ''
+            # default_value = ''
             # self.model.df = self.model.df.replace({None: default_value'})
             # self.model.df.fillna(default_value, inplace=True)
-            # self.model.df.apply(lambda x: x if x.isna() else default_value)
-            # self.model.df.replace(value=default_value, to_replace=np.nan, inplace=True)
             # test_df = self.model.df.replace('place', 'epic')
             # test_df.to_csv(self.data_source + '.TEST', index=False, date_format=gui_g.s.csv_datetime_format)
-            data.fillna(default_value, inplace=True)
+            # data.fillna(default_value, inplace=True)
+            # data.apply(lambda x: x if x.isna() else default_value)
+            # data.replace(value=default_value, to_replace=nan, inplace=True)
             data.to_csv(self.data_source, index=False, na_rep='', date_format=gui_g.s.csv_datetime_format)
         else:
             for row in self._changed_rows:
@@ -641,10 +640,6 @@ class EditableTable(Table):
         Returns the data in the table.
         :return: data
         """
-        # Todo:
-        # see if we must use self.data_filtered instead of self.data
-        # or if we must use self.data_filtered only when filtering is enabled and self.data otherwise
-        # or self.model.df instead of self.data
         return self.data_filtered
 
     def get_row(self, row_index: int, return_as_dict: bool = False):

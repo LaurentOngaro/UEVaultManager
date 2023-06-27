@@ -270,6 +270,7 @@ class UEVaultManagerCLI:
                 , no_text_data  # 'Installed folder'
                 , no_text_data  # 'Alternative'
                 , origin  # 'Origin
+                , bool_false_data  # 'Added manually'
                 # less important fields
                 , page_title  # 'Page title'
                 , thumbnail_url  # 'Image' with 488 height
