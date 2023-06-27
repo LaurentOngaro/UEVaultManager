@@ -5,7 +5,7 @@ CSV and SQL fields mapping and utility functions
 from enum import Enum
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_int, convert_to_bool, convert_to_float, create_uid
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_int, convert_to_bool, convert_to_float, create_uid, convert_to_datetime
 
 
 class FieldState(Enum):
@@ -15,9 +15,10 @@ class FieldState(Enum):
     """
     CSV_ONLY = 0  # field is only in the CSV result file
     SQL_ONLY = 1  # field is only in the database
-    PRESERVED = 2  # value will be preserved if already present in data (CSV file or database)
+    CHANGED = 2  # Changed during the process. Will be preserved if already present in data (CSV file or database)
     NOT_PRESERVED = 3  # value will NOT be preserved if already present in data (CSV file or database)
     ASSET_ONLY = 4  # field is only in the property of the UEAsset class
+    USER = 5  # field is only in the user data. Will be preserved if already present in data (CSV file or database)
 
 
 class FieldType(Enum):
@@ -25,11 +26,13 @@ class FieldType(Enum):
     Enum for the (simplified) type of field in the database
     Used for selecting the good format and/or control to show the value
     """
-    STR = 0  # short text (ie ENTRY)
+    STR = 0  # short text (ie ttk.ENTRY)
     INT = 1
     FLOAT = 2
     BOOL = 3
-    TEXT = 4  # long text (ie TEXT)
+    TEXT = 4  # long text (ie ttk.TEXT)
+    DATETIME = 5  # date and time (see ttkbootstrap.widgets.DateEntry)
+    LIST = 6  # list of values (ie ttk.DROPBOX)
 
     def cast(self, value):
         """
@@ -43,6 +46,8 @@ class FieldType(Enum):
             return convert_to_float(value)
         if self == self.BOOL:
             return convert_to_bool(value)
+        if self == self.BOOL:
+            return convert_to_datetime(value, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])
         return str(value)
 
 
@@ -70,7 +75,7 @@ csv_sql_fields = {
     'Category': {
         'sql_name': 'category',
         'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'field_type': FieldType.LIST
     },
     'Review': {
         'sql_name': 'review',
@@ -145,7 +150,7 @@ csv_sql_fields = {
     'Grab result': {
         'sql_name': 'grab_result',
         'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'field_type': FieldType.LIST
     },
     'Price': {
         'sql_name': 'price',
@@ -155,43 +160,48 @@ csv_sql_fields = {
     # ## User Fields
     'Old price': {
         'sql_name': 'old_price',
-        'state': FieldState.PRESERVED,
+        'state': FieldState.CHANGED,
         'field_type': FieldType.FLOAT
     },
     'Comment': {
         'sql_name': 'comment',
-        'state': FieldState.PRESERVED,
+        'state': FieldState.USER,
         'field_type': FieldType.TEXT
     },
     'Stars': {
         'sql_name': 'stars',
-        'state': FieldState.PRESERVED,
+        'state': FieldState.USER,
         'field_type': FieldType.INT
     },
     'Must buy': {
         'sql_name': 'must_buy',
-        'state': FieldState.PRESERVED,
+        'state': FieldState.USER,
         'field_type': FieldType.BOOL
     },
     'Test result': {
         'sql_name': 'test_result',
-        'state': FieldState.PRESERVED,
+        'state': FieldState.USER,
         'field_type': FieldType.STR
     },
     'Installed folder': {
         'sql_name': 'installed_folder',
-        'state': FieldState.PRESERVED,
+        'state': FieldState.USER,
         'field_type': FieldType.STR
     },
     'Alternative': {
         'sql_name': 'alternative',
-        'state': FieldState.PRESERVED,
+        'state': FieldState.USER,
         'field_type': FieldType.STR
     },
     'Origin': {
         'sql_name': 'origin',
-        'state': FieldState.PRESERVED,
+        'state': FieldState.USER,
         'field_type': FieldType.STR
+    },
+    'Added manually': {
+        'sql_name': 'added_manually',
+        'state': FieldState.USER,
+        'field_type': FieldType.BOOL
     },
     # ## less important fields
     'Custom attributes':
@@ -221,19 +231,19 @@ csv_sql_fields = {
         'field_type': FieldType.STR
     },
     'Date added': {
-        'sql_name': 'creation_date',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
-    },
-    'Creation date': {
-        'sql_name': 'update_date',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
-    },
-    'Update date': {
         'sql_name': 'date_added_in_db',
         'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'field_type': FieldType.DATETIME
+    },
+    'Creation date': {
+        'sql_name': 'creation_date',
+        'state': FieldState.NOT_PRESERVED,
+        'field_type': FieldType.DATETIME
+    },
+    'Update date': {
+        'sql_name': 'update_date',
+        'state': FieldState.NOT_PRESERVED,
+        'field_type': FieldType.DATETIME
     },
     'UE version': {  # not in database
         'sql_name': None,
@@ -309,12 +319,13 @@ csv_sql_fields = {
 }
 
 
-def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, return_as_string=False):
+def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, return_as_string=False, filter_on_states=None):
     """
     Get the csv fields list
     :param exclude_sql_only: if True, exclude the sql only fields from result
     :param include_asset_only: if True, include the asset only fields from result
     :param return_as_string: if True, return a string instead of a list
+    :param filter_on_states: if not empty, only return the fields in the given states
     :return: csv headings
     """
     result = []
@@ -323,19 +334,22 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
             continue
         if not include_asset_only and value['state'] == FieldState.ASSET_ONLY:
             continue
+        if filter_on_states and value['state'] not in filter_on_states:
+            continue
         result.append(csv_field)
     if return_as_string:
         result = ','.join(result)
     return result
 
 
-def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, return_as_string=False, add_alias=False):
+def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, return_as_string=False, add_alias=False, filter_on_states=None):
     """
     Get the sql fields list
     :param exclude_csv_only: if True, exclude the csv only fields from result
     :param include_asset_only: if True, include the asset only fields from result
     :param return_as_string: if True, return a string instead of a list
     :param add_alias: if True, add the csv name as alias to the sql field name
+    :param filter_on_states: if not empty, only return the fields in the given states
     :return: sql headings
     """
     result = []
@@ -343,6 +357,8 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
         if exclude_csv_only and value['state'] == FieldState.CSV_ONLY:
             continue
         if not include_asset_only and value['state'] == FieldState.ASSET_ONLY:
+            continue
+        if filter_on_states and value['state'] not in filter_on_states:
             continue
         sql_name = value['sql_name']
         if add_alias:
@@ -358,6 +374,31 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
     return result
 
 
+def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
+    """
+    Get the typed value for a field in CSV or SQL format. Only one of the two fields is required.
+    :param csv_field: name of the field (csv format)
+    :param sql_field: name of the field (sql format)
+    :param value: value to cast
+    :return: typed value
+    """
+
+    if sql_field and not csv_field:
+        csv_field = get_csv_field_name(sql_field)
+
+    # noinspection PyBroadException
+    try:
+        associated_field = csv_sql_fields.get(csv_field, None)
+        if associated_field is not None:
+            field_type = associated_field['field_type']
+            typed_value = field_type.cast(value)
+            return typed_value
+    except Exception:
+        # print(f'Failed to cast value {value}')
+        return value
+    return value
+
+
 def is_on_state(csv_field_name: str, states: list[FieldState], default=False) -> bool:
     """
     Check if the csv field is in the given states
@@ -369,7 +410,7 @@ def is_on_state(csv_field_name: str, states: list[FieldState], default=False) ->
     if not isinstance(states, list):
         states = [states]
     try:
-        state = csv_sql_fields[csv_field_name]['state']
+        state = get_state(csv_field_name)
         return state in states
     except KeyError:
         print(f'Key not found {csv_field_name} in is_on_state()')  # debug only. Will flood the console
@@ -387,11 +428,68 @@ def is_from_type(csv_field_name: str, types: list[FieldType], default=False) -> 
     if not isinstance(types, list):
         types = [types]
     try:
-        field_type = csv_sql_fields[csv_field_name]['field_type']
+        field_type = get_type(csv_field_name)
         return field_type in types
     except KeyError:
         print(f'Key not found {csv_field_name} in is_from_type()')  # debug only. Will flood the console
         return default  # by default, we consider that the field is not on this type
+
+
+def get_type(csv_field_name: str):
+    """
+    Get the type of field
+    :param csv_field_name: csv field name
+    :return: type of the field
+    """
+    try:
+        return csv_sql_fields[csv_field_name]['field_type']
+    except KeyError:
+        return None
+
+
+def get_converters(csv_field_name: str):
+    """
+    Get the converter of field
+    :param csv_field_name: csv field name
+    :return: list of converters to use sequentially. [str] will be returned if the field is not found
+    """
+    field_type = get_type(csv_field_name)
+
+    if field_type == FieldType.LIST:
+        # this is a special case. Use a 'category' for pandas datatable.
+        # The caller should handle this case where the converter is not callable
+        return ['category']
+    if field_type == FieldType.INT:
+        return [convert_to_int, int]
+    if field_type == FieldType.FLOAT:
+        return [convert_to_float, float]
+    if field_type == FieldType.BOOL:
+        return [convert_to_bool, bool]
+    if field_type == FieldType.DATETIME:
+        return [lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])]
+    else:
+        return [str]
+
+
+def get_state(csv_field_name: str):
+    """
+    Get the state of field
+    :param csv_field_name: csv field name
+    :return: state of the field
+    """
+    try:
+        return csv_sql_fields[csv_field_name]['state']
+    except KeyError:
+        return None
+
+
+def is_preserved(csv_field_name: str) -> bool:
+    """
+    Check if the csv field is preserved
+    :param csv_field_name: csv field name
+    :return: True if is preserved
+    """
+    return not is_on_state(csv_field_name, [FieldState.NOT_PRESERVED])
 
 
 def get_sql_field_name(csv_field_name: str):
@@ -448,28 +546,3 @@ def convert_csv_row_to_sql_row(csv_row: dict) -> dict:
         if sql_field:
             sql_row[sql_field] = value
     return sql_row
-
-
-def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
-    """
-    Get the typed value for a field in CSV or SQL format. Only one of the two fields is required.
-    :param csv_field: name of the field (csv format)
-    :param sql_field: name of the field (sql format)
-    :param value: value to cast
-    :return: typed value
-    """
-
-    if sql_field and not csv_field:
-        csv_field = get_csv_field_name(sql_field)
-
-    # noinspection PyBroadException
-    try:
-        associated_field = csv_sql_fields.get(csv_field, None)
-        if associated_field is not None:
-            field_type = associated_field['field_type']
-            typed_value = field_type.cast(value)
-            return typed_value
-    except Exception:
-        # print(f'Failed to cast value {value}')
-        return value
-    return value

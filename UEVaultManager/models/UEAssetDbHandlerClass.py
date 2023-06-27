@@ -16,7 +16,7 @@ from enum import Enum
 from faker import Faker
 
 from UEVaultManager.core import default_datetime_format
-from UEVaultManager.models.csv_data import get_sql_field_name_list
+from UEVaultManager.models.csv_data import get_sql_field_name_list, FieldState
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime, create_uid
 from UEVaultManager.utils.cli import check_and_create_path
@@ -37,7 +37,8 @@ class VersionNum(Enum):
     V2 = 2  # add the columns used fo user data to the "standard" marketplace columns
     V3 = 3  # add the last_run table to get data about the last run of the app
     V4 = 4  # add custom_attributes field to the assets table
-    V5 = 5  # future version
+    V5 = 5  # add added_manually column to the assets tablen
+    V6 = 6  # future version
 
 
 class DatabaseConnection:
@@ -86,11 +87,13 @@ class UEAssetDbHandler:
         # the user fields that must be preserved when updating the database
         # these fields are also present in the asset table and in the UEAsset.init_data() method
         # THEY WILL BE PRESERVED when parsing the asset data
-        self.user_fields = ['comment', 'stars', 'must_buy', 'test_result', 'installed_folder', 'alternative', 'origin']
+        self.user_fields = get_sql_field_name_list(filter_on_states=[FieldState.USER])
         # the field we keep for previous data. NEED TO BE SEPARATED FROM self.user_fields
         # THEY WILL BE USED (BUT NOT FORCELY PRESERVED) when parsing the asset data
-        self.existing_data_fields = ['id', 'price', 'old_price', 'asset_url', 'grab_result', 'date_added_in_db']
-        self.existing_data_fields.extend(self.user_fields)
+        self.changed_fields = get_sql_field_name_list(filter_on_states=[FieldState.CHANGED])
+        self.preserved_data_fields = self.user_fields
+        self.preserved_data_fields.append('id')
+        self.preserved_data_fields.extend(self.changed_fields)
         self.connection = None
         self._init_connection()
         if reset_database:
@@ -173,6 +176,8 @@ class UEAssetDbHandler:
         Add missing columns to a table.
         :param table_name: Name of the table.
         :param required_columns: Dictionary of columns to add. Key is the column name, value is the data type.
+
+        NOTE: the AFTER parameter in SQL is not supported in the SQLite version used
         """
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -180,7 +185,8 @@ class UEAssetDbHandler:
             columns = {row[1]: row for row in cursor.fetchall()}
             for column_name, data_type in required_columns.items():
                 if column_name not in columns:
-                    cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {data_type}")
+                    query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {data_type}"
+                    cursor.execute(query)
             self.connection.commit()
             cursor.close()
 
@@ -233,7 +239,8 @@ class UEAssetDbHandler:
                         can_purchase BOOLEAN, 
                         owned INTEGER, 
                         review REAL, 
-                        review_count INTEGER
+                        review_count INTEGER,
+                        custom_attributes TEXT
                     )
                     """
                     cursor.execute(query)
@@ -269,8 +276,19 @@ class UEAssetDbHandler:
         if upgrade_from_version.value <= VersionNum.V1.value:
             # necessary steps to upgrade to version 1, aka create tables
             self.create_tables(upgrade_to_version=VersionNum.V1)
-            # necessary steps to upgrade to version 2
-            # add the columns used fo user data to the "standard" marketplace columns
+            self.db_version = VersionNum.V2
+            upgrade_from_version = self.db_version
+            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+        if upgrade_from_version == VersionNum.V2:
+            # necessary steps to upgrade from version 2
+            # add the last_run table to get data about the last run of the ap
+            self.create_tables(upgrade_to_version=VersionNum.V3)
+            self.db_version = VersionNum.V3
+            upgrade_from_version = self.db_version
+            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+        if upgrade_from_version == VersionNum.V3:
+            # necessary steps to upgrade from version 3
+            # add user fields
             self._add_missing_columns(
                 'assets',
                 required_columns={
@@ -278,13 +296,26 @@ class UEAssetDbHandler:
                     'asset_url': 'TEXT',
                     'comment': 'TEXT',
                     'stars': 'INTEGER',
-                    'must_buy': 'BOOL',
+                    'must_buy': 'BOOLEAN',
                     'test_result': 'TEXT',
                     'installed_folder': 'TEXT',
                     'alternative': 'TEXT',
                     'origin': 'TEXT',
+                    'added_manually': 'BOOLEAN'
+                }
+            )
+            self.db_version = VersionNum.V4
+            upgrade_from_version = self.db_version
+            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+        if upgrade_from_version == VersionNum.V4:
+            # necessary steps to upgrade from version 4
+            # add changed fields
+            self._add_missing_columns(
+                'assets',
+                required_columns={
+                    'added_manually': 'BOOLEAN',
                     'page_title': 'TEXT',
-                    'obsolete': 'BOOL',
+                    'obsolete': 'BOOLEAN',
                     'supported_versions': 'TEXT',
                     'creation_date': 'DATETIME',
                     'update_date': 'DATETIME',
@@ -293,27 +324,14 @@ class UEAssetDbHandler:
                     'old_price': 'REAL'
                 }
             )
-            self.db_version = VersionNum.V2
+            self.db_version = VersionNum.V5
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
-        if upgrade_from_version == VersionNum.V2:
-            # necessary steps to upgrade to version 3
-            # add the last_run table to get data about the last run of the ap
-            self.create_tables(upgrade_to_version=VersionNum.V3)
-            self.db_version = VersionNum.V3
-            upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {upgrade_from_version}')
-        if upgrade_from_version == VersionNum.V3:
-            # necessary steps to upgrade to version 4
-            self._add_missing_columns('assets', required_columns={'custom_attributes': 'TEXT'})
-            self.db_version = VersionNum.V4
-            upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {upgrade_from_version}')
-        if upgrade_from_version == VersionNum.V4:
-            # necessary steps to upgrade to version 5
+        if upgrade_from_version == VersionNum.V5:
+            # necessary steps to upgrade from version 5
             # does not exist yet
             # do stuff here
-            # self.db_version = VersionNum.V5
+            # self.db_version = VersionNum.V6
             # upgrade_from_version = self.db_version
             # self.logger.info(f'Database upgraded to {upgrade_from_version}')
             pass
@@ -395,7 +413,7 @@ class UEAssetDbHandler:
                         rating_id, status, price, discount_price, discount_percentage,
                         is_catalog_item, is_new, free, discounted, can_purchase,
                         owned, review, review_count, asset_id, asset_url,
-                        comment, stars, must_buy, test_result, installed_folder, alternative, origin, page_title,
+                        comment, stars, must_buy, test_result, installed_folder, alternative, origin, added_manually, page_title,
                         obsolete, supported_versions, creation_date, update_date, date_added_in_db, grab_result,
                         old_price, custom_attributes
                     ) VALUES (
@@ -405,7 +423,7 @@ class UEAssetDbHandler:
                         :rating_id, :status, :price, :discount_price, :discount_percentage,
                         :is_catalog_item, :is_new, :free, :discounted, :can_purchase,
                         :owned, :review, :review_count, :asset_id, :asset_url,
-                        :comment, :stars, :must_buy, :test_result, :installed_folder, :alternative, :origin, :page_title, 
+                        :comment, :stars, :must_buy, :test_result, :installed_folder, :alternative, :origin, :added_manually, :page_title, 
                         :obsolete, :supported_versions, :creation_date, :update_date, :date_added_in_db, :grab_result,
                         :old_price, :custom_attributes
                     )
@@ -600,6 +618,7 @@ class UEAssetDbHandler:
                 fake.file_path(),  # installed_folder
                 fake.sentence(),  # alternative
                 fake.word(),  # origin
+                random.choice([0, 1]),  # added_manually
                 fake.sentence(),  # custom_attributes
                 fake.sentence(),  # page_title
                 fake.image_url(),  # thumbnail_url

@@ -26,7 +26,7 @@ from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_cod
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
-from UEVaultManager.models.csv_data import csv_sql_fields, FieldState, get_csv_field_name_list, is_on_state
+from UEVaultManager.models.csv_data import csv_sql_fields, FieldState, get_csv_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
@@ -408,7 +408,7 @@ class UEVaultManagerCLI:
                     _price = float(_no_data_value)
                     old_price = float(_no_data_value)
                     for index, csv_field in enumerate(get_csv_field_name_list()):
-                        preserved_value_in_file = is_on_state(csv_field_name=csv_field, states=[FieldState.PRESERVED], default=True)
+                        preserved_value_in_file = is_preserved(csv_field_name=csv_field)
                         value = item_in_file.get(csv_field, None)
                         if value is None:
                             self.logger.warning(f'In the existing data, asset {_asset_id} has no column named {csv_field}.')
@@ -467,7 +467,7 @@ class UEVaultManagerCLI:
                 _price = float(_no_float_value)
                 old_price = float(_no_float_value)
                 for field, state in csv_sql_fields.items():
-                    preserved_value_in_file = is_on_state(csv_field_name=field, states=[FieldState.PRESERVED])
+                    preserved_value_in_file = is_preserved(csv_field_name=field)
                     if preserved_value_in_file and _items_in_file[_asset_id].get(field):
                         _json_record[field] = _items_in_file[_asset_id][field]
 
