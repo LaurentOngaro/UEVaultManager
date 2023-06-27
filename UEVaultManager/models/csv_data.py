@@ -231,17 +231,17 @@ csv_sql_fields = {
         'field_type': FieldType.STR
     },
     'Date added': {
-        'sql_name': 'creation_date',
+        'sql_name': 'date_added_in_db',
         'state': FieldState.NOT_PRESERVED,
         'field_type': FieldType.DATETIME
     },
     'Creation date': {
-        'sql_name': 'update_date',
+        'sql_name': 'creation_date',
         'state': FieldState.NOT_PRESERVED,
         'field_type': FieldType.DATETIME
     },
     'Update date': {
-        'sql_name': 'date_added_in_db',
+        'sql_name': 'update_date',
         'state': FieldState.NOT_PRESERVED,
         'field_type': FieldType.DATETIME
     },
