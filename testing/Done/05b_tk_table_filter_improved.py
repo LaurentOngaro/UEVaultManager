@@ -24,6 +24,7 @@ class App:
     combo_box = None
     filter_widget = None
     filter_value = None
+    filters = {}
 
     total_results_var = None
     total_pages_var = None
@@ -80,7 +81,7 @@ class App:
         self.filter_widget.bind('<FocusOut>', lambda event: self.update_table())
         self.inner_frame.grid(row=0, column=1)
 
-        self.reset_button = ttk.Button(self.filter_frame, text="Add to Filters", command=self.add_to_filter)
+        self.reset_button = ttk.Button(self.filter_frame, text="Add to Filters", command=self._add_to_filters)
         self.reset_button.grid(row=0, column=2)
         self.reset_button = ttk.Button(self.filter_frame, text="Apply Filter", command=self.update_table)
         self.reset_button.grid(row=0, column=3)
@@ -119,6 +120,13 @@ class App:
         next_button = ttk.Button(navigation_frame, text="Next", command=self.next_page)
         next_button.pack(side=tk.RIGHT)
 
+    def _add_to_filters(self):
+        selected_column = self.combo_box.get()
+        if selected_column:
+            value_type, filter_value = self._get_filter_value_and_type()
+            # Filter values are a tuple of the form (value_type, filter_value)
+            self.filters[selected_column] = (value_type, filter_value)
+
     def _update_filter_widgets(self):
         selected_column = self.combo_box.get()
 
@@ -135,13 +143,13 @@ class App:
             elif dtype.name == 'category':
                 self.filter_widget = ttk.Combobox(self.inner_frame)
                 self.filter_widget['values'] = list(self.get_data()[selected_column].cat.categories)
-                self.filter_widget.bind('<<ComboboxSelected>>', lambda event: self.update_table())
+                # self.filter_widget.bind('<<ComboboxSelected>>', lambda event: self.update_table())
             elif np.issubdtype(dtype, int) or np.issubdtype(dtype, float):
                 self.filter_widget = ttk.Spinbox(self.inner_frame, increment=0.1, from_=0, to=100, command=self.update_table)
                 self.filter_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
             else:
                 self.filter_widget = ttk.Entry(self.inner_frame)
-                self.filter_widget.bind('<FocusOut>', lambda event: self.update_table())
+                # self.filter_widget.bind('<FocusOut>', lambda event: self.update_table())
 
             self.filter_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
@@ -166,7 +174,7 @@ class App:
 
     def _create_mask(self, selected_column, value_type, filter_value, data):
         if selected_column == self.value_for_all:
-            mask = False
+            mask = None
             for col in data.columns:
                 mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
         else:
@@ -180,17 +188,26 @@ class App:
         return mask
 
     def update_table(self):
-        selected_column = self.combo_box.get()
         data = self.get_data()
 
-        if selected_column:
-            value_type, filter_value = self._get_filter_value_and_type()
+        # selected_column = self.combo_box.get()
+        # if selected_column:
+        #     value_type, filter_value = self._get_filter_value_and_type()
+        #
+        #     if filter_value is not None:
+        #         mask = self._create_mask(selected_column, value_type, filter_value, data)
+        #         self._data_filtered = data[mask]
+        #     else:
+        #         self._data_filtered = data
+        # else:
+        #     self._data_filtered = data
+        final_mask = None
+        for column, (value_type, filter_value) in self.filters.items():
+            mask = self._create_mask(column, value_type, filter_value, data)
+            final_mask = mask if final_mask is None else final_mask & mask
 
-            if filter_value is not None:
-                mask = self._create_mask(selected_column, value_type, filter_value, data)
-                self._data_filtered = data[mask]
-            else:
-                self._data_filtered = data
+        if final_mask is not None:
+            self._data_filtered = data[final_mask]
         else:
             self._data_filtered = data
 
@@ -203,7 +220,7 @@ class App:
             self.filter_widget.state(['alternate'])
         else:
             self.filter_widget.delete(0, 'end')
-
+        self.filters = {}
         self._update_filter_widgets()
         self.update_table()
 
