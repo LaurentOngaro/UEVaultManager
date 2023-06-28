@@ -117,7 +117,7 @@ class FilterFrame(ttk.LabelFrame):
         selected_column = self.cb_col_name.get()
         if selected_column:
             value_type, filter_value = self._get_filter_value_and_type()
-            if filter_value:
+            if filter_value != '':
                 # Filter values are a tuple of the form (value_type, filter_value)
                 self._filters[selected_column] = (value_type, filter_value)
             self.update_controls()
