@@ -33,7 +33,7 @@ def prev_page():
         update_table()
 
 
-df = pd.read_csv('../../results/list.csv')
+df = pd.read_csv('K:/UE/UEVM/results/list.csv')
 
 root = tk.Tk()
 
