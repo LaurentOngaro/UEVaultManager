@@ -80,11 +80,12 @@ class App:
         self.filter_widget.bind('<FocusOut>', lambda event: self.update_table())
         self.inner_frame.grid(row=0, column=1)
 
-        self.reset_button = ttk.Button(self.filter_frame, text="Apply Filter", command=self.update_table)
+        self.reset_button = ttk.Button(self.filter_frame, text="Add to Filters", command=self.add_to_filter)
         self.reset_button.grid(row=0, column=2)
-        self.reset_button = ttk.Button(self.filter_frame, text="Reset Filter", command=self.reset_filter)
+        self.reset_button = ttk.Button(self.filter_frame, text="Apply Filter", command=self.update_table)
         self.reset_button.grid(row=0, column=3)
-
+        self.reset_button = ttk.Button(self.filter_frame, text="Reset Filter", command=self.reset_filter)
+        self.reset_button.grid(row=0, column=4)
 
     def _create_data_frame(self):
         self.data_frame = ttk.Frame(self.root)
@@ -178,16 +179,6 @@ class App:
 
         return mask
 
-    def reset_filter(self):
-        self.combo_box.set('')
-        if isinstance(self.filter_widget, ttk.Checkbutton):
-            self.filter_widget.state(['alternate'])
-        else:
-            self.filter_widget.delete(0, 'end')
-
-        self._update_filter_widgets()
-        self.update_table()
-
     def update_table(self):
         selected_column = self.combo_box.get()
         data = self.get_data()
@@ -204,6 +195,17 @@ class App:
             self._data_filtered = data
 
         self.update_page_info()
+
+
+    def reset_filter(self):
+        self.combo_box.set('')
+        if isinstance(self.filter_widget, ttk.Checkbutton):
+            self.filter_widget.state(['alternate'])
+        else:
+            self.filter_widget.delete(0, 'end')
+
+        self._update_filter_widgets()
+        self.update_table()
 
     def update_page_info(self):
         self.total_pages = (len(self._data_filtered) - 1) // self.rows_per_page + 1
