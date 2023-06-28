@@ -45,6 +45,11 @@ class App:
     def load_data(self):
         if os.path.isfile(self.file):
             self._data = pd.read_csv(self.file)
+
+            # Change the dtype for 'Category' and 'Grab Result' to 'category'
+            for col in ['Category', 'Grab Result']:
+                if col in self._data.columns:
+                    self._data[col] = self._data[col].astype('category')
         else:
             raise FileNotFoundError(f"No such file: '{self.file}'")
         self.total_pages = (len(self._data) - 1) // self.rows_per_page + 1
@@ -53,20 +58,21 @@ class App:
         return self._data
 
     def create_widgets(self):
-        self.create_filter_frame()
-        self.create_data_frame()
-        self.create_info_frame()
-        self.create_navigation_frame()
+        self._create_filter_frame()
+        self._create_data_frame()
+        self._create_info_frame()
+        self._create_navigation_frame()
 
-    def create_filter_frame(self):
+    def _create_filter_frame(self):
         self.filter_frame = ttk.Frame(self.root)
         self.filter_frame.pack(fill=tk.X, expand=True)
 
-        # Init self.combo_box here, so it's not None when update_filter_widgets is called for the first time
+        # Init self.combo_box here, so it's not None when _update_filter_widgets is called for the first time
         columns_to_list = self.get_data().columns.to_list()
         columns_to_list.insert(0, self.value_for_all)
         self.combo_box = ttk.Combobox(self.filter_frame, values=columns_to_list, state='readonly')
         self.combo_box.grid(row=0, column=0)
+        self.combo_box.bind('<<ComboboxSelected>>', lambda event: self._update_filter_widgets())
 
         self.inner_frame = ttk.Frame(self.filter_frame)
         self.filter_widget = ttk.Entry(self.inner_frame)
@@ -74,42 +80,19 @@ class App:
         self.filter_widget.bind('<FocusOut>', lambda event: self.update_table())
         self.inner_frame.grid(row=0, column=1)
 
-        # Recreate the reset button
-        self.reset_button = ttk.Button(self.filter_frame, text="Reset Filter", command=self.reset_filter)
+        self.reset_button = ttk.Button(self.filter_frame, text="Apply Filter", command=self.update_table)
         self.reset_button.grid(row=0, column=2)
+        self.reset_button = ttk.Button(self.filter_frame, text="Reset Filter", command=self.reset_filter)
+        self.reset_button.grid(row=0, column=3)
 
-        # Continue to bind the <<ComboboxSelected>> only after you've dealt with the existing selected_column
-        self.combo_box.bind('<<ComboboxSelected>>', lambda event: self.update_filter_widgets())
 
-    def update_filter_widgets(self):
-        selected_column = self.combo_box.get()
-
-        # Clear all widgets from the filter frame
-        for widget in self.inner_frame.winfo_children():
-            widget.destroy()
-
-        # Create the filter widget based on the dtype of the selected column
-        if selected_column:
-            dtype = self.get_data()[selected_column].dtype if selected_column != self.value_for_all else 'str'
-            if dtype == 'bool':
-                self.filter_value = tk.BooleanVar()
-                self.filter_widget = ttk.Checkbutton(self.inner_frame, variable=self.filter_value, command=self.update_table)
-                self.filter_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            elif np.issubdtype(dtype, int) or np.issubdtype(dtype, float):
-                self.filter_widget = ttk.Spinbox(self.inner_frame, increment=0.1, from_=0, to=100, command=self.update_table)
-                self.filter_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            else:
-                self.filter_widget = ttk.Entry(self.inner_frame)
-                self.filter_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
-                self.filter_widget.bind('<FocusOut>', lambda event: self.update_table())
-
-    def create_data_frame(self):
+    def _create_data_frame(self):
         self.data_frame = ttk.Frame(self.root)
         self.data_frame.pack(fill=tk.X, expand=True)
         self.table = Table(self.data_frame, dataframe=self.get_data().iloc[0:self.rows_per_page])
         self.table.show()
 
-    def create_info_frame(self):
+    def _create_info_frame(self):
         self.info_frame = ttk.Frame(self.root)
         self.info_frame.pack(fill=tk.X, expand=True)
 
@@ -125,7 +108,7 @@ class App:
         current_page_label = ttk.Label(self.info_frame, textvariable=self.current_page_var)
         current_page_label.pack(side=tk.LEFT)
 
-    def create_navigation_frame(self):
+    def _create_navigation_frame(self):
         navigation_frame = ttk.Frame(self.root)
         navigation_frame.pack(fill=tk.X, expand=True)
 
@@ -135,6 +118,66 @@ class App:
         next_button = ttk.Button(navigation_frame, text="Next", command=self.next_page)
         next_button.pack(side=tk.RIGHT)
 
+    def _update_filter_widgets(self):
+        selected_column = self.combo_box.get()
+
+        # Clear all widgets from the filter frame
+        for widget in self.inner_frame.winfo_children():
+            widget.destroy()
+
+        # Create the filter widget based on the dtype of the selected column
+        if selected_column:
+            dtype = self.get_data()[selected_column].dtype if selected_column != self.value_for_all else 'str'
+            if dtype == 'bool':
+                self.filter_value = tk.BooleanVar()
+                self.filter_widget = ttk.Checkbutton(self.inner_frame, variable=self.filter_value, command=self.update_table)
+            elif dtype.name == 'category':
+                self.filter_widget = ttk.Combobox(self.inner_frame)
+                self.filter_widget['values'] = list(self.get_data()[selected_column].cat.categories)
+                self.filter_widget.bind('<<ComboboxSelected>>', lambda event: self.update_table())
+            elif np.issubdtype(dtype, int) or np.issubdtype(dtype, float):
+                self.filter_widget = ttk.Spinbox(self.inner_frame, increment=0.1, from_=0, to=100, command=self.update_table)
+                self.filter_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            else:
+                self.filter_widget = ttk.Entry(self.inner_frame)
+                self.filter_widget.bind('<FocusOut>', lambda event: self.update_table())
+
+            self.filter_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+    def _get_filter_value_and_type(self):
+        if isinstance(self.filter_widget, ttk.Checkbutton):
+            value_type = bool
+            state = self.filter_widget.state()
+            if 'alternate' in state:
+                filter_value = ''
+            elif 'selected' in state:
+                filter_value = True
+            else:
+                filter_value = False
+        elif isinstance(self.filter_widget, ttk.Spinbox):
+            value_type = float
+            filter_value = self.filter_widget.get()
+        else:
+            value_type = str
+            filter_value = self.filter_widget.get()
+
+        return value_type, filter_value
+
+    def _create_mask(self, selected_column, value_type, filter_value, data):
+        if selected_column == self.value_for_all:
+            mask = False
+            for col in data.columns:
+                mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
+        else:
+            if value_type == bool and filter_value != '':
+                mask = data[selected_column].astype(bool) == filter_value
+            elif value_type == float:
+                mask = data[selected_column].astype(float) == float(filter_value)
+            else:
+                mask = data[selected_column].astype(str).str.lower().str.contains(filter_value.lower())
+
+        return mask
+
     def reset_filter(self):
         self.combo_box.set('')
         if isinstance(self.filter_widget, ttk.Checkbutton):
@@ -142,48 +185,27 @@ class App:
         else:
             self.filter_widget.delete(0, 'end')
 
-        self.update_filter_widgets()
+        self._update_filter_widgets()
         self.update_table()
 
     def update_table(self):
         selected_column = self.combo_box.get()
-        filter_value = None
-        value_type = None
+        data = self.get_data()
+
         if selected_column:
-            if isinstance(self.filter_widget, ttk.Checkbutton):
-                value_type = bool
-                # empty string for alternate state, True for selected state, False for unselected state
-                state = self.filter_widget.state()
-                if 'selected' in state:
-                    filter_value = True
-                elif 'alternate' in state:
-                    filter_value = ''
-                elif not ('selected' in state or 'alternate' in state):
-                    filter_value = False
-            elif isinstance(self.filter_widget, ttk.Spinbox):
-                value_type = float
-                filter_value = self.filter_widget.get()
-            else:
-                value_type = str
-                filter_value = self.filter_widget.get()
+            value_type, filter_value = self._get_filter_value_and_type()
 
-        if filter_value is not None:
-            if selected_column == self.value_for_all:
-                mask = False
-                for col in self.get_data().columns:
-                    mask |= self.get_data()[col].astype(str).apply(lambda x: True if filter_value == '' else str(filter_value).lower() in x.lower())
+            if filter_value is not None:
+                mask = self._create_mask(selected_column, value_type, filter_value, data)
+                self._data_filtered = data[mask]
             else:
-                if value_type == bool and filter_value != '':
-                    mask = self.get_data()[selected_column].astype(bool).apply(lambda x: True if x==filter_value else False)
-                elif value_type == float:
-                    mask = self.get_data()[selected_column].astype(float).apply(lambda x: True if filter_value == '' else x == float(filter_value))
-                else:
-                    mask = self.get_data(
-                    )[selected_column].astype(str).apply(lambda x: True if filter_value == '' else str(filter_value).lower() in x.lower())
-            self._data_filtered = self.get_data()[mask]
+                self._data_filtered = data
         else:
-            self._data_filtered = self.get_data()
+            self._data_filtered = data
 
+        self.update_page_info()
+
+    def update_page_info(self):
         self.total_pages = (len(self._data_filtered) - 1) // self.rows_per_page + 1
         start = (self.current_page - 1) * self.rows_per_page
         end = start + self.rows_per_page
