@@ -247,9 +247,8 @@ class FilterFrame(ttk.LabelFrame):
         self.cb_col_name['state'] = state
         self.btn_clear_filters['state'] = state
 
-        state = tk.NORMAL if selected_column != '' else tk.DISABLED
-        state_inversed = tk.NORMAL if selected_column == '' else tk.DISABLED
-        self.cb_quick_filter['state'] = state_inversed
+        state = tk.NORMAL if selected_column == '' else tk.DISABLED
+        self.cb_quick_filter['state'] = state
 
         state = tk.NORMAL if (selected_column != '' and filter_value != '') else tk.DISABLED
         self.btn_add_filters['state'] = state
