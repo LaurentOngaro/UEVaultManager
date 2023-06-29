@@ -31,31 +31,6 @@ def log_error(msg: str) -> None:
     print(f'[ERROR] {msg}')
 
 
-def create_mask(col_name: str, value_type: type, filter_value, data: pd.DataFrame) -> pd.Series:
-    """
-    Creates a boolean mask for specified column based on filter value in a pandas DataFrame.
-    :param col_name: Column name for which the mask will be created.
-    :param value_type: Type of the filter value.
-    :param filter_value: The value to filter by.
-    :param data: The pandas DataFrame where the mask will be applied.
-    :return: Boolean Series (mask) where True indicates rows that meet the condition.
-    """
-    if col_name == global_value_for_all:
-        mask = None
-        for col in data.columns:
-            mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
-    else:
-        if value_type == bool and filter_value != '':
-            mask = data[col_name].astype(bool) == filter_value
-        elif value_type == int:
-            mask = data[col_name].astype(int) == int(filter_value)
-        elif value_type == float:
-            mask = data[col_name].astype(float) == float(filter_value)
-        else:
-            mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower())
-    return mask
-
-
 class FilterFrame(ttk.LabelFrame):
     """
     A frame that contains widgets for filtering a DataFrame.
@@ -87,8 +62,16 @@ class FilterFrame(ttk.LabelFrame):
     pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}
     grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.W}
 
-    def __init__(self, parent: tk, data_func: Callable[[], pd.DataFrame], update_func: Callable[[], None]):
-        super().__init__(parent, text='Set filters for data')
+    def __init__(
+        self, parent: tk, data_func: Callable, update_func: Callable, title='Set filters for data', value_for_all='All'
+    ):
+        if data_func is None:
+            raise ValueError('data_func cannot be None')
+        if update_func is None:
+            raise ValueError('update_func cannot be None')
+
+        super().__init__(parent, text=title)
+        self.value_for_all = value_for_all
         self.container = parent
         self.data_func = data_func
         if self.data_func is None:
@@ -103,7 +86,7 @@ class FilterFrame(ttk.LabelFrame):
         Creates filter widgets inside the FilterFrame instance.
         """
         columns_to_list = self.data_func().columns.to_list()
-        columns_to_list.insert(0, global_value_for_all)
+        columns_to_list.insert(0, self.value_for_all)
 
         cur_row = 0
         cur_col = 0
@@ -186,7 +169,7 @@ class FilterFrame(ttk.LabelFrame):
         # Create the filter widget based on the dtype of the selected column
         if selected_column:
             data = self.data_func()
-            dtype = data[selected_column].dtype if selected_column != global_value_for_all else 'str'
+            dtype = data[selected_column].dtype if selected_column != self.value_for_all else 'str'
             try:
                 type_name = dtype.name
             except AttributeError:
@@ -235,9 +218,33 @@ class FilterFrame(ttk.LabelFrame):
             filter_value = self.filter_widget.get()
         return value_type, filter_value
 
+    def create_mask(self, col_name: str, value_type: type, filter_value):
+        """
+        Creates a boolean mask for specified column based on filter value in a pandas DataFrame.
+        :param col_name: Column name for which the mask will be created.
+        :param value_type: Type of the filter value.
+        :param filter_value: The value to filter by.
+        :return: Boolean Series (mask) where True indicates rows that meet the condition.
+        """
+        data = self.data_func()
+        if col_name == self.value_for_all:
+            mask = False
+            for col in data.columns:
+                mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
+        else:
+            if value_type == bool and filter_value != '':
+                mask = data[col_name].astype(bool) == filter_value
+            elif value_type == int:
+                mask = data[col_name].astype(int) == int(filter_value)
+            elif value_type == float:
+                mask = data[col_name].astype(float) == float(filter_value)
+            else:
+                mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower())
+        return mask
+
     def update_controls(self) -> None:
         """
-        Updates the state of the controls based on the current state of the filters.
+        Updates the state of the controls based on the current state of the filters
         """
         selected_column = self.cb_col_name.get()
         _, filter_value = self._get_filter_value_and_type()
@@ -270,9 +277,8 @@ class FilterFrame(ttk.LabelFrame):
         """
         Applies the filters and updates the caller.
         """
-        if len(self._filters) <= 0:
-            self._add_to_filters()
-            self._update_filter_widgets()
+        self._add_to_filters()
+        self._update_filter_widgets()
         self.update_controls()
         self.update_func()
 
@@ -352,7 +358,7 @@ class App(tk.Tk):
         """
         Creates all widgets for the application
         """
-        self._frm_filters = FilterFrame(self, self.get_data, self.update)
+        self._frm_filters = FilterFrame(self, data_func=self.get_data, update_func=self.update, value_for_all=global_value_for_all)
         self._frm_filters.pack(**self.lblf_def_options)
 
         self._create_data_frame()
@@ -425,7 +431,7 @@ class App(tk.Tk):
         data = self.get_data()
         final_mask = None
         for column, (value_type, filter_value) in self._frm_filters.get_filters().items():
-            mask = create_mask(column, value_type, filter_value, data)
+            mask = self._frm_filters.create_mask(column, value_type, filter_value)
             final_mask = mask if final_mask is None else final_mask & mask
         if final_mask is not None:
             self._filtered = data[final_mask]
