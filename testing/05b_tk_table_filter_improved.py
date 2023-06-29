@@ -9,9 +9,26 @@ from typing import Callable, Tuple, Any, Dict
 from pandastable import Table
 import pandas as pd
 import os
+import re
 
 global_rows_per_page = 10
 global_value_for_all = 'All'
+
+
+def log_info(msg: str) -> None:
+    """
+    Logs an info message.
+    :param msg: The message to log.
+    """
+    print(f'[INFO] {msg}')
+
+
+def log_error(msg: str) -> None:
+    """
+    Logs an error message.
+    :param msg: The message to log.
+    """
+    print(f'[ERROR] {msg}')
 
 
 def create_mask(col_name: str, value_type: type, filter_value, data: pd.DataFrame) -> pd.Series:
@@ -30,6 +47,8 @@ def create_mask(col_name: str, value_type: type, filter_value, data: pd.DataFram
     else:
         if value_type == bool and filter_value != '':
             mask = data[col_name].astype(bool) == filter_value
+        elif value_type == int:
+            mask = data[col_name].astype(int) == int(filter_value)
         elif value_type == float:
             mask = data[col_name].astype(float) == float(filter_value)
         else:
@@ -45,8 +64,20 @@ class FilterFrame(ttk.LabelFrame):
     :param update_table_func: A function that updates the table.
     """
     _filters = {}
+    _quick_filters = {
+        'Owned': ['Owned', True],  #
+        'Not Owned': ['Owned', False],  #
+        'Obsolete': ['Obsolete', True],  #
+        'Not Obsolete': ['Obsolete', False],  #
+        'Must buy': ['Must buy', True],  #
+        'Added manually': ['Added manually', True],  #
+        'Grab OK': ['Grab result', 'NO_ERROR'],  #
+        'Plugins only': ['Category', 'plugins'],  #
+        'Free': ['Price', 0],  #
+    }
     frm_widgets = None
     cb_col_name = None
+    cb_quick_filter = None
     btn_clear_filters = None
     btn_view_filters = None
     lbl_filters_count = None
@@ -58,7 +89,11 @@ class FilterFrame(ttk.LabelFrame):
         super().__init__(parent, text='Set filters for data')
         self.container = parent
         self.data_func = data_func
+        if self.data_func is None:
+            raise ValueError('data_func cannot be None')
         self.update_table_func = update_table_func
+        if self.update_table_func is None:
+            raise ValueError('update_table_func cannot be None')
         self._create_filter_widgets()
 
     def _create_filter_widgets(self) -> None:
@@ -70,13 +105,21 @@ class FilterFrame(ttk.LabelFrame):
 
         cur_row = 0
         cur_col = 0
+        lbl_value = ttk.Label(self, text='Quick Filter')
+        lbl_value.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        cur_col += 1
         lbl_col_name = ttk.Label(self, text='Filter On')
         lbl_col_name.grid(row=cur_row, columnspan=2, column=cur_col, **self.grid_def_options)
         cur_col += 2
         lbl_value = ttk.Label(self, text='With value')
-        lbl_value.grid(row=cur_row, columnspan=4, column=cur_col, **self.grid_def_options)
+        lbl_value.grid(row=cur_row, columnspan=2, column=cur_col, **self.grid_def_options)
+
         cur_row += 1
         cur_col = 0
+        self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly')
+        self.cb_quick_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.quick_filter())
+        cur_col += 1
         self.cb_col_name = ttk.Combobox(self, values=columns_to_list, state='readonly')
         self.cb_col_name.grid(row=cur_row, columnspan=2, column=cur_col, **self.grid_def_options)
         self.cb_col_name.bind('<<ComboboxSelected>>', lambda event: self._update_filter_widgets())
@@ -85,7 +128,7 @@ class FilterFrame(ttk.LabelFrame):
         # widget dynamically created based on the dtype of the selected column in _update_filter_widgets()
         self.filter_widget = ttk.Entry(self.frm_widgets, state='disabled')
         self.filter_widget.pack(ipadx=1, ipady=1)
-        self.frm_widgets.grid(row=cur_row, columnspan=4, column=cur_col, **self.grid_def_options)
+        self.frm_widgets.grid(row=cur_row, columnspan=2, column=cur_col, **self.grid_def_options)
 
         cur_row += 1
         cur_col = 0
@@ -120,6 +163,10 @@ class FilterFrame(ttk.LabelFrame):
             if filter_value != '':
                 # Filter values are a tuple of the form (value_type, filter_value)
                 self._filters[selected_column] = (value_type, filter_value)
+                # print a text to easily add a new filter to self._quick_filters
+                value_type = re.sub(r"<class '(.*)'>", r'\1', str(value_type))
+                value = f"'{filter_value}'" if value_type == 'str' else filter_value
+                log_info(f"Added filter: '{selected_column}_filter':['{selected_column}', {value}]  (value_type: {value_type})")
             self.update_controls()
 
     def _update_filter_widgets(self) -> None:
@@ -230,6 +277,18 @@ class FilterFrame(ttk.LabelFrame):
             self.clipboard_clear()
             self.clipboard_append(values)
 
+    def quick_filter(self) -> None:
+        """
+        Updates the widgets that are used for filtering based on the selected column.
+        """
+        selected_filter = self.cb_quick_filter.get()
+        quick_filter = self._quick_filters.get(selected_filter, None)
+        if selected_filter and quick_filter:
+            store_filters = self._filters.copy()
+            self._filters = {quick_filter[0]: (type(quick_filter[1]), quick_filter[1])}
+            self.update_table_func()
+            self._filters = store_filters
+
 
 class App(tk.Tk):
     """
@@ -280,7 +339,7 @@ class App(tk.Tk):
                 if col in self._data.columns:
                     self._data[col] = self._data[col].astype('category')
         else:
-            raise FileNotFoundError(f'No such file: \'{self.file}\'')
+            raise FileNotFoundError(f'No such file: "{self.file}"')
         self.total_pages = (len(self._data) - 1) // self.rows_per_page + 1
 
     def get_data(self) -> pd.DataFrame:
