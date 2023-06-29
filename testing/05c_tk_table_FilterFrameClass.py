@@ -3,13 +3,11 @@
 This module contains a class that creates a frame with widgets for filtering a DataFrame.
 """
 import tkinter as tk
-from tkinter import ttk, messagebox
-from typing import Callable, Tuple, Any, Dict
+from tkinter import ttk
 
 from pandastable import Table
 import pandas as pd
 import os
-import re
 
 from UEVaultManager.tkgui.modules.FilterFrameClass import FilterFrame
 
