@@ -61,7 +61,7 @@ class FilterFrame(ttk.LabelFrame):
     A frame that contains widgets for filtering a DataFrame.
     :param parent: Parent widget.
     :param data_func: A function that returns the DataFrame to be filtered.
-    :param update_table_func: A function that updates the table.
+    :param update_func: A function that updates the table.
     """
     _filters = {}
     _quick_filters = {
@@ -78,6 +78,8 @@ class FilterFrame(ttk.LabelFrame):
     frm_widgets = None
     cb_col_name = None
     cb_quick_filter = None
+    btn_apply_filters = None
+    btn_add_filters = None
     btn_clear_filters = None
     btn_view_filters = None
     lbl_filters_count = None
@@ -85,15 +87,15 @@ class FilterFrame(ttk.LabelFrame):
     pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}
     grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.W}
 
-    def __init__(self, parent: tk, data_func: Callable[[], pd.DataFrame], update_table_func: Callable[[], None]):
+    def __init__(self, parent: tk, data_func: Callable[[], pd.DataFrame], update_func: Callable[[], None]):
         super().__init__(parent, text='Set filters for data')
         self.container = parent
         self.data_func = data_func
         if self.data_func is None:
             raise ValueError('data_func cannot be None')
-        self.update_table_func = update_table_func
-        if self.update_table_func is None:
-            raise ValueError('update_table_func cannot be None')
+        self.update_func = update_func
+        if self.update_func is None:
+            raise ValueError('update_func cannot be None')
         self._create_filter_widgets()
 
     def _create_filter_widgets(self) -> None:
@@ -105,51 +107,55 @@ class FilterFrame(ttk.LabelFrame):
 
         cur_row = 0
         cur_col = 0
+        # empty cell for now
+        cur_col += 1
         lbl_value = ttk.Label(self, text='Quick Filter')
         lbl_value.grid(row=cur_row, column=cur_col, **self.grid_def_options)
-        cur_col += 1
+        cur_col += 2
         lbl_col_name = ttk.Label(self, text='Filter On')
-        lbl_col_name.grid(row=cur_row, columnspan=2, column=cur_col, **self.grid_def_options)
+        lbl_col_name.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
         cur_col += 2
         lbl_value = ttk.Label(self, text='With value')
-        lbl_value.grid(row=cur_row, columnspan=2, column=cur_col, **self.grid_def_options)
+        lbl_value.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
 
         cur_row += 1
         cur_col = 0
-        self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly')
-        self.cb_quick_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
-        self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.quick_filter())
+        self.btn_clear_filters = ttk.Button(self, text="Clear All", command=self.reset_filters)
+        self.btn_clear_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
+        self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly')
+        self.cb_quick_filter.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
+        self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.quick_filter())
+        cur_col += 2
         self.cb_col_name = ttk.Combobox(self, values=columns_to_list, state='readonly')
-        self.cb_col_name.grid(row=cur_row, columnspan=2, column=cur_col, **self.grid_def_options)
+        self.cb_col_name.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
         self.cb_col_name.bind('<<ComboboxSelected>>', lambda event: self._update_filter_widgets())
         cur_col += 2
         self.frm_widgets = ttk.Frame(self)
         # widget dynamically created based on the dtype of the selected column in _update_filter_widgets()
         self.filter_widget = ttk.Entry(self.frm_widgets, state='disabled')
         self.filter_widget.pack(ipadx=1, ipady=1)
-        self.frm_widgets.grid(row=cur_row, columnspan=2, column=cur_col, **self.grid_def_options)
+        self.frm_widgets.grid(row=cur_row, column=cur_col, **self.grid_def_options)
 
         cur_row += 1
         cur_col = 0
         lbl_filters = ttk.Label(self, text='Filter List:')
-        lbl_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
-        cur_col += 1
-        btn_add = ttk.Button(self, text="Add to", command=self._add_to_filters)
-        btn_add.grid(row=cur_row, column=cur_col, **self.grid_def_options)
-        cur_col += 1
-        btn_apply = ttk.Button(self, text="Apply", command=self.apply_filters)
-        btn_apply.grid(row=cur_row, column=cur_col, **self.grid_def_options)
-        cur_col += 1
-        self.btn_clear_filters = ttk.Button(self, text="Clear", command=self.reset_filters)
-        self.btn_clear_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
-        cur_col += 1
-        self.btn_view_filters = ttk.Button(self, text="View", command=self.view_filters)
-        self.btn_view_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        lbl_filters.grid(row=cur_row, column=cur_col, **{'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.E})
         cur_col += 1
         self.filters_count_var = tk.StringVar(value='Count: 0')
         self.lbl_filters_count = ttk.Label(self, textvariable=self.filters_count_var)
         self.lbl_filters_count.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        cur_col += 1
+        self.btn_add_filters = ttk.Button(self, text="Add to", command=self._add_to_filters)
+        self.btn_add_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        cur_col += 1
+        self.btn_apply_filters = ttk.Button(self, text="Apply", command=self.apply_filters)
+        self.btn_apply_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        cur_col += 1
+        self.btn_view_filters = ttk.Button(self, text="View", command=self.view_filters)
+        self.btn_view_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        cur_col += 1
+        # empty cell for now
 
         self._update_filter_widgets()
 
@@ -187,17 +193,19 @@ class FilterFrame(ttk.LabelFrame):
                 type_name = 'str'
             if type_name == 'bool':
                 self.filter_value = tk.BooleanVar()
-                self.filter_widget = ttk.Checkbutton(self.frm_widgets, variable=self.filter_value, command=self.update_table_func)
+                self.filter_widget = ttk.Checkbutton(self.frm_widgets, variable=self.filter_value, command=self.update_func)
             elif type_name == 'category':
                 self.filter_widget = ttk.Combobox(self.frm_widgets)
                 self.filter_widget['values'] = list(data[selected_column].cat.categories)
             elif type_name in ('int', 'float', 'int64', 'float64'):
-                self.filter_widget = ttk.Spinbox(self.frm_widgets, increment=0.1, from_=0, to=100, command=self.update_table_func)
+                self.filter_widget = ttk.Spinbox(self.frm_widgets, increment=0.1, from_=0, to=100, command=self.update_func)
             else:
                 self.filter_widget = ttk.Entry(self.frm_widgets, width=20)
         else:
             self.filter_widget = ttk.Entry(self.frm_widgets, width=20, state='disabled')
 
+        self.filter_widget.bind('<FocusIn>', lambda event: self.update_controls())
+        self.filter_widget.bind('<Key>', lambda event: self.update_controls())
         self.filter_widget.pack(ipadx=1, ipady=1)
 
         self.update_controls()
@@ -207,6 +215,9 @@ class FilterFrame(ttk.LabelFrame):
         Reads current value from filter widgets and determines its type.
         :return: A tuple containing the type and value of the filter condition.
         """
+        if not self.filter_widget:
+            return str, ''
+
         if isinstance(self.filter_widget, ttk.Checkbutton):
             value_type = bool
             state = self.filter_widget.state()
@@ -226,16 +237,28 @@ class FilterFrame(ttk.LabelFrame):
 
     def update_controls(self) -> None:
         """
-        Updates the state of the controls based on the current state of the filters
+        Updates the state of the controls based on the current state of the filters.
         """
-        if len(self._filters) <= 0:
-            self.btn_clear_filters['state'] = tk.DISABLED
-            self.btn_view_filters['state'] = tk.DISABLED
-        else:
-            self.btn_clear_filters['state'] = tk.NORMAL
-            self.btn_view_filters['state'] = tk.NORMAL
+        selected_column = self.cb_col_name.get()
+        _, filter_value = self._get_filter_value_and_type()
+        filter_count = len(self._filters)
 
-        self.filters_count_var.set(f'Count: {len(self._filters)}')
+        state = tk.NORMAL
+        self.cb_col_name['state'] = state
+        self.btn_clear_filters['state'] = state
+
+        state = tk.NORMAL if selected_column != '' else tk.DISABLED
+        state_inversed = tk.NORMAL if selected_column == '' else tk.DISABLED
+        self.cb_quick_filter['state'] = state_inversed
+
+        state = tk.NORMAL if (selected_column != '' and filter_value != '') else tk.DISABLED
+        self.btn_add_filters['state'] = state
+        self.btn_apply_filters['state'] = state
+
+        state = tk.NORMAL if filter_count > 0 else tk.DISABLED
+        self.btn_view_filters['state'] = state
+
+        self.filters_count_var.set(f'Count: {filter_count}')
 
     def get_filters(self) -> Dict[str, Tuple[type, Any]]:
         """
@@ -252,7 +275,7 @@ class FilterFrame(ttk.LabelFrame):
             self._add_to_filters()
             self._update_filter_widgets()
         self.update_controls()
-        self.update_table_func()
+        self.update_func()
 
     def reset_filters(self) -> None:
         """
@@ -265,7 +288,7 @@ class FilterFrame(ttk.LabelFrame):
             self.filter_widget.delete(0, 'end')
         self._filters = {}
         self._update_filter_widgets()
-        self.update_table_func()
+        self.update_func()
 
     def view_filters(self) -> None:
         """
@@ -286,7 +309,7 @@ class FilterFrame(ttk.LabelFrame):
         if selected_filter and quick_filter:
             store_filters = self._filters.copy()
             self._filters = {quick_filter[0]: (type(quick_filter[1]), quick_filter[1])}
-            self.update_table_func()
+            self.update_func()
             self._filters = store_filters
 
 
@@ -295,13 +318,12 @@ class App(tk.Tk):
     Main application class
     """
     _data = {}
-    _data_filtered = {}
+    _filtered = {}
     table = None
     current_page = 1
     total_pages = 0
-    rows_per_page = global_rows_per_page
 
-    frm_filters = None
+    _frm_filters = None
     data_frame = None
     info_frame = None
 
@@ -319,42 +341,20 @@ class App(tk.Tk):
     lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
     grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.SE}
 
-    def __init__(self, file=''):
+    def __init__(self, file='', rows_per_page=global_rows_per_page):
         super().__init__()
         self.file = file
+        self.rows_per_page = rows_per_page
 
         self.load_data()
         self.create_widgets()
-
-    def load_data(self) -> None:
-        """
-        Loads the data from the file specified in the constructor.
-        :return:
-        """
-        if os.path.isfile(self.file):
-            self._data = pd.read_csv(self.file)
-
-            # Change the dtype for 'Category' and 'Grab Result' to 'category'
-            for col in ['Category', 'Grab result']:
-                if col in self._data.columns:
-                    self._data[col] = self._data[col].astype('category')
-        else:
-            raise FileNotFoundError(f'No such file: "{self.file}"')
-        self.total_pages = (len(self._data) - 1) // self.rows_per_page + 1
-
-    def get_data(self) -> pd.DataFrame:
-        """
-        Returns the data that is currently displayed in the table
-        :return:
-        """
-        return self._data
 
     def create_widgets(self) -> None:
         """
         Creates all widgets for the application
         """
-        self.frm_filters = FilterFrame(self, self.get_data, self.update_table)
-        self.frm_filters.pack(**self.lblf_def_options)
+        self._frm_filters = FilterFrame(self, self.get_data, self.update)
+        self._frm_filters.pack(**self.lblf_def_options)
 
         self._create_data_frame()
         self._create_info_frame()
@@ -396,37 +396,60 @@ class App(tk.Tk):
         next_button = ttk.Button(navigation_frame, text='Next', command=self.next_page)
         next_button.pack(side=tk.RIGHT, **self.pack_def_options)
 
-    def update_table(self) -> None:
+    def get_data(self) -> pd.DataFrame:
+        """
+        Returns the data that is currently displayed in the table
+        :return:
+        """
+        return self._data
+
+    def load_data(self) -> None:
+        """
+        Loads the data from the file specified in the constructor.
+        :return:
+        """
+        if os.path.isfile(self.file):
+            self._data = pd.read_csv(self.file)
+
+            # Change the dtype for 'Category' and 'Grab Result' to 'category'
+            for col in ['Category', 'Grab result']:
+                if col in self._data.columns:
+                    self._data[col] = self._data[col].astype('category')
+        else:
+            raise FileNotFoundError(f'No such file: "{self.file}"')
+        self.total_pages = (len(self._data) - 1) // self.rows_per_page + 1
+
+    def update(self) -> None:
         """
         Updates the table with the current data.
         """
         data = self.get_data()
         final_mask = None
-        for column, (value_type, filter_value) in self.frm_filters.get_filters().items():
+        for column, (value_type, filter_value) in self._frm_filters.get_filters().items():
             mask = create_mask(column, value_type, filter_value, data)
             final_mask = mask if final_mask is None else final_mask & mask
         if final_mask is not None:
-            self._data_filtered = data[final_mask]
+            self._filtered = data[final_mask]
         else:
-            self._data_filtered = data
+            self._filtered = data
         self.update_page_info()
 
     def update_page_info(self) -> None:
         """
         Updates the page info.
         """
-        data_count = len(self._data_filtered)
+        data_count = len(self._filtered)
         self.total_pages = (data_count-1) // self.rows_per_page + 1
         start = (self.current_page - 1) * self.rows_per_page
         end = start + self.rows_per_page
         try:
             # could be empty before load_data is called
-            self.table.model.df = self._data_filtered.iloc[start:end]
+            self.table.model.df = self._filtered.iloc[start:end]
         except IndexError:
             self.current_page = self.total_pages
 
         self.table.redraw()
-        self.total_results_var.set(f'Total Results: {len(self._data_filtered)}')
+        self.total_results_var.set(f'Total Results: {len(self._filtered)}')
         self.total_pages_var.set(f'Total Pages: {self.total_pages}')
         self.current_page_var.set(f'Current Page: {self.current_page}')
 
@@ -436,7 +459,7 @@ class App(tk.Tk):
         """
         if self.current_page < self.total_pages:
             self.current_page += 1
-            self.update_table()
+            self.update()
 
     def prev_page(self) -> None:
         """
@@ -444,7 +467,7 @@ class App(tk.Tk):
         """
         if self.current_page > 1:
             self.current_page -= 1
-            self.update_table()
+            self.update()
 
 
 if __name__ == '__main__':
