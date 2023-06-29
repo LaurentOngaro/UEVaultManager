@@ -11,7 +11,7 @@ import os
 
 from UEVaultManager.tkgui.modules.FilterFrameClass import FilterFrame
 
-global_rows_per_page = 10
+global_rows_per_page = 36
 global_value_for_all = 'All'
 
 
@@ -41,7 +41,7 @@ class App(tk.Tk):
     current_page = 1
     total_pages = 0
 
-    _frm_filters = None
+    _filter_frame = None
     data_frame = None
     info_frame = None
 
@@ -71,8 +71,8 @@ class App(tk.Tk):
         """
         Creates all widgets for the application
         """
-        self._frm_filters = FilterFrame(self, data_func=self.get_data, update_func=self.update, value_for_all=global_value_for_all)
-        self._frm_filters.pack(**self.lblf_def_options)
+        self._filter_frame = FilterFrame(self, data_func=self.get_data, update_func=self.update, value_for_all=global_value_for_all)
+        self._filter_frame.pack(**self.lblf_def_options)
 
         self._create_data_frame()
         self._create_info_frame()
@@ -142,16 +142,18 @@ class App(tk.Tk):
         Updates the table with the current data.
         """
         data = self.get_data()
-        final_mask = self._frm_filters.create_mask()
-        if final_mask is not None:
-            self._filtered = data[final_mask]
+        mask = None
+        if self._filter_frame is not None:
+            mask = self._filter_frame.create_mask()
+        if mask is not None:
+            self._filtered = data[mask]
         else:
             self._filtered = data
-        self.update_page_info()
+        self.update_page()
 
-    def update_page_info(self) -> None:
+    def update_page(self) -> None:
         """
-        Updates the page info.
+        Updates the page
         """
         data_count = len(self._filtered)
         self.total_pages = (data_count-1) // self.rows_per_page + 1
@@ -164,7 +166,7 @@ class App(tk.Tk):
             self.current_page = self.total_pages
 
         self.table.redraw()
-        self.total_results_var.set(f'Total Results: {len(self._filtered)}')
+        self.total_results_var.set(f'Total Results: {data_count}')
         self.total_pages_var.set(f'Total Pages: {self.total_pages}')
         self.current_page_var.set(f'Current Page: {self.current_page}')
 
