@@ -100,8 +100,7 @@ class UEVMLFS:
         try:
             self.config.read(self.config_path)
         except Exception as error:
-            self.log.error(f'Unable to read configuration file, please ensure that file is valid! '
-                           f'(Error: {repr(error)})')
+            self.log.error(f'Unable to read configuration file, please ensure that file is valid!:Error: {error!r}')
             self.log.warning('Continuing with blank config in safe-mode...')
             self.config.read_only = True
 
@@ -214,7 +213,6 @@ class UEVMLFS:
         """
         Set the user data
         :param userdata: User data
-        :raises ValueError: If userdata is None
         """
         if userdata is None:
             raise ValueError('Userdata is none!')
@@ -251,7 +249,6 @@ class UEVMLFS:
         """
         Set the assets data
         :param assets: assets
-        :raises ValueError: If assets is None
         """
         if assets is None:
             raise ValueError('Assets is none!')
@@ -308,7 +305,6 @@ class UEVMLFS:
         """
         Delete the metadata for an item
         :param app_name: The name of the item
-        :raises ValueError: If the item does not exist
         """
         if app_name not in self.assets_metadata:
             raise ValueError(f'Item {app_name} does not exist in metadata DB!')

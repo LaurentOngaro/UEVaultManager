@@ -619,7 +619,7 @@ class DLManager(Process):
             for t in self.threads:
                 t.join(timeout=5.0)
                 if t.is_alive():
-                    self.log.warning(f'Thread did not terminate! {repr(t)}')
+                    self.log.warning(f'Thread did not terminate! {t!r}')
 
             # forcibly kill DL workers that are not actually dead yet
             for child in self.children:
@@ -797,7 +797,7 @@ class DLManager(Process):
         for t in self.threads:
             t.join(timeout=5.0)
             if t.is_alive():
-                self.log.warning(f'Thread did not terminate! {repr(t)}')
+                self.log.warning(f'Thread did not terminate! {t!r}')
 
         # clean up resume file
         if self.resume_file:

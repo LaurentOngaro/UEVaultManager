@@ -4,12 +4,11 @@ global variables and references to global objects
 """
 # circular import error
 # import UEVaultManager.tkgui.modules.DisplayContentWindowClass as DisplayContentWindow
-import UEVaultManager.tkgui.modules.EditCellWindowClass as EditCellWindow
-import UEVaultManager.tkgui.modules.EditRowWindowClass as EditRowWindow
-from UEVaultManager.tkgui.modules.GUISettingsClass import GUISettings
-from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
-from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
-
+import UEVaultManager.tkgui.modules.cls.EditCellWindowClass as EditCellWindow
+import UEVaultManager.tkgui.modules.cls.EditRowWindowClass as EditRowWindow
+from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
+from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 
 # references to global objects
 edit_cell_window_ref: EditCellWindow = None

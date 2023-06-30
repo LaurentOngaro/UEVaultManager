@@ -26,18 +26,18 @@ from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_cod
 from UEVaultManager.api.egs import create_empty_assets_extras, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
-from UEVaultManager.models.csv_data import csv_sql_fields, FieldState, get_csv_field_name_list, is_on_state, is_preserved
+from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, get_csv_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
-from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
-from UEVaultManager.tkgui.modules.EditableTableClass import DataSourceType
+from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
+from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
+from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
+from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 from UEVaultManager.tkgui.modules.functions import custom_print, box_message  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
-from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
-from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
-from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
-from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
+from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads, remove_command_argument
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
@@ -626,7 +626,7 @@ class UEVaultManagerCLI:
                 asset_data = asset[1]
                 for key in asset_data.keys():
                     # clean the asset data by removing the columns that are not in the csv field name list
-                    ignore_in_csv = is_on_state(csv_field_name=key, states=[FieldState.ASSET_ONLY, FieldState.SQL_ONLY], default=False)
+                    ignore_in_csv = is_on_state(csv_field_name=key, states=[CSVFieldState.ASSET_ONLY, CSVFieldState.SQL_ONLY], default=False)
                     if ignore_in_csv:
                         print(f'{key} must be ignored in CSV. Removing it from the asset data')
                         del (asset_data[key])

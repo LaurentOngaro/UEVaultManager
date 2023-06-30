@@ -1,8 +1,6 @@
 # coding=utf-8
 """
 implementation for:
-- VersionNum: The version of the database or/and class.
-- DatabaseConnection: Context manager for opening and closing a database connection.
 - UEAssetDbHandler: Handles database operations for the UE Assets.
 """
 import datetime
@@ -11,63 +9,17 @@ import logging
 import os
 import random
 import sqlite3
-from enum import Enum
 
 from faker import Faker
 
 from UEVaultManager.core import default_datetime_format
-from UEVaultManager.models.csv_data import get_sql_field_name_list, FieldState
+from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, CSVFieldState
+from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime, create_uid
 from UEVaultManager.utils.cli import check_and_create_path
 
 test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
-
-
-class VersionNum(Enum):
-    """
-    The version of the database or/and class.
-    Used when checking if database must be upgraded by comparing with the class version
-    """
-    # when a new version is added to the VersionNum enum
-    # - add code for the new version to the create_tables() method
-    # - add code for the new version check to the check_and_upgrade_database() method
-    V0 = 0  # invalid version
-    V1 = 1  # initial version : only the "standard" marketplace columns
-    V2 = 2  # add the columns used fo user data to the "standard" marketplace columns
-    V3 = 3  # add the last_run table to get data about the last run of the app
-    V4 = 4  # add custom_attributes field to the assets table
-    V5 = 5  # add added_manually column to the assets tablen
-    V6 = 6  # future version
-
-
-class DatabaseConnection:
-    """
-    Context manager for opening and closing a database connection
-    :param database_name: The name of the database file.
-    """
-
-    def __init__(self, database_name: str):
-        self.database_name = database_name
-        self.conn = sqlite3.connect(self.database_name)
-
-    def __enter__(self):
-        """
-        Open the database connection.
-        :return: The sqlite3.Connection object.
-        """
-        self.conn = sqlite3.connect(self.database_name)
-        return self.conn
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Close the database connection.
-        :param exc_type: Exception type.
-        :param exc_val: Exception value.
-        :param exc_tb: Exception traceback.
-        """
-        self.conn.close()
-        self.conn = None
 
 
 class UEAssetDbHandler:
@@ -83,14 +35,14 @@ class UEAssetDbHandler:
         self.logger = logging.getLogger(__name__)
         # self.logger.setLevel(logging.DEBUG)
         self.database_name = database_name
-        self.db_version = VersionNum.V0  # updated in check_and_upgrade_database()
+        self.db_version = DbVersionNum.V0  # updated in check_and_upgrade_database()
         # the user fields that must be preserved when updating the database
         # these fields are also present in the asset table and in the UEAsset.init_data() method
         # THEY WILL BE PRESERVED when parsing the asset data
-        self.user_fields = get_sql_field_name_list(filter_on_states=[FieldState.USER])
+        self.user_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.USER])
         # the field we keep for previous data. NEED TO BE SEPARATED FROM self.user_fields
         # THEY WILL BE USED (BUT NOT FORCELY PRESERVED) when parsing the asset data
-        self.changed_fields = get_sql_field_name_list(filter_on_states=[FieldState.CHANGED])
+        self.changed_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.CHANGED])
         self.preserved_data_fields = self.user_fields
         self.preserved_data_fields.append('id')
         self.preserved_data_fields.extend(self.changed_fields)
@@ -100,6 +52,34 @@ class UEAssetDbHandler:
             self.drop_tables()
 
         self.check_and_upgrade_database()
+
+    class DatabaseConnection:
+        """
+        Context manager for opening and closing a database connection
+        :param database_name: The name of the database file.
+        """
+
+        def __init__(self, database_name: str):
+            self.database_name = database_name
+            self.conn = sqlite3.connect(self.database_name)
+
+        def __enter__(self):
+            """
+            Open the database connection.
+            :return: The sqlite3.Connection object.
+            """
+            self.conn = sqlite3.connect(self.database_name)
+            return self.conn
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            """
+            Close the database connection.
+            :param exc_type: Exception type.
+            :param exc_val: Exception value.
+            :param exc_tb: Exception traceback.
+            """
+            self.conn.close()
+            self.conn = None
 
     def __del__(self):
         # log could alrready be destroyed before here
@@ -124,13 +104,13 @@ class UEAssetDbHandler:
         """
         self._close_connection()  # close the connection IF IT WAS ALREADY OPENED
         try:
-            self.connection = DatabaseConnection(self.database_name).conn
+            self.connection = self.DatabaseConnection(self.database_name).conn
         except sqlite3.Error as error:
             print(f'Error while connecting to sqlite: {error!r}')
 
         return self.connection
 
-    def _get_db_version(self) -> VersionNum:
+    def _get_db_version(self) -> DbVersionNum:
         """
         Check the database version.
         :return: The database version.
@@ -141,13 +121,13 @@ class UEAssetDbHandler:
                 cursor.execute("PRAGMA user_version")
                 ret = int(cursor.fetchone()[0])  # type: int
                 cursor.close()
-                db_version = VersionNum(ret)
+                db_version = DbVersionNum(ret)
                 return db_version
         except sqlite3.OperationalError:
             self.logger.critical('Could not get the database version')
-            return VersionNum.V0
+            return DbVersionNum.V0
 
-    def _set_db_version(self, new_version: VersionNum) -> None:
+    def _set_db_version(self, new_version: DbVersionNum) -> None:
         """
         Set the database version.
         :param new_version: The new database version.
@@ -158,7 +138,7 @@ class UEAssetDbHandler:
             cursor.close()
             self.logger.info(f'database version is now set to {new_version}')
 
-    def _check_db_version(self, minimal_db_version: VersionNum, caller_name='this method') -> bool:
+    def _check_db_version(self, minimal_db_version: DbVersionNum, caller_name='this method') -> bool:
         """
         Check if the database version is compatible with the current method.
         :param minimal_db_version: The minimal database version that is compatible with the current method.
@@ -197,13 +177,13 @@ class UEAssetDbHandler:
         """
         return os.path.exists(self.database_name)
 
-    def create_tables(self, upgrade_to_version=VersionNum.V1) -> None:
+    def create_tables(self, upgrade_to_version=DbVersionNum.V1) -> None:
         """
         Create the tables if they don't exist.
         :param upgrade_to_version: The database version we want to upgrade TO
         """
         # all the following steps must be run sequentially
-        if upgrade_to_version.value >= VersionNum.V1.value:
+        if upgrade_to_version.value >= DbVersionNum.V1.value:
             if not self.is_table_exist('assets'):
                 if self.connection is not None:
                     cursor = self.connection.cursor()
@@ -246,7 +226,7 @@ class UEAssetDbHandler:
                     cursor.execute(query)
                     self.connection.commit()
                     cursor.close()
-        if upgrade_to_version.value >= VersionNum.V3.value:
+        if upgrade_to_version.value >= DbVersionNum.V3.value:
             if not self.is_table_exist('last_run'):
                 # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
                 cursor = self.connection.cursor()
@@ -255,17 +235,17 @@ class UEAssetDbHandler:
                 self.connection.commit()
                 cursor.close()
 
-    def check_and_upgrade_database(self, upgrade_from_version: VersionNum = None) -> None:
+    def check_and_upgrade_database(self, upgrade_from_version: DbVersionNum = None) -> None:
         """
         Change the tables structure according to different versions.
         :param upgrade_from_version: The version we want to upgrade FROM. if None, the current version will be used
         """
         if not self.is_table_exist('assets'):
-            previous_version = VersionNum.V0
+            previous_version = DbVersionNum.V0
         else:
             # force an update of the db_version property
             previous_version = self._get_db_version()
-            # if self.db_version == VersionNum.V0:
+            # if self.db_version == DbVersionNum.V0:
             #    raise Exception("Invalid database version or database is badly initialized")
 
         self.db_version = previous_version
@@ -273,20 +253,20 @@ class UEAssetDbHandler:
             upgrade_from_version = self.db_version
 
         # all the following steps must be run sequentially
-        if upgrade_from_version.value <= VersionNum.V1.value:
+        if upgrade_from_version.value <= DbVersionNum.V1.value:
             # necessary steps to upgrade to version 1, aka create tables
-            self.create_tables(upgrade_to_version=VersionNum.V1)
-            self.db_version = VersionNum.V2
+            self.create_tables(upgrade_to_version=DbVersionNum.V1)
+            self.db_version = DbVersionNum.V2
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
-        if upgrade_from_version == VersionNum.V2:
+        if upgrade_from_version == DbVersionNum.V2:
             # necessary steps to upgrade from version 2
             # add the last_run table to get data about the last run of the ap
-            self.create_tables(upgrade_to_version=VersionNum.V3)
-            self.db_version = VersionNum.V3
+            self.create_tables(upgrade_to_version=DbVersionNum.V3)
+            self.db_version = DbVersionNum.V3
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
-        if upgrade_from_version == VersionNum.V3:
+        if upgrade_from_version == DbVersionNum.V3:
             # necessary steps to upgrade from version 3
             # add user fields
             self._add_missing_columns(
@@ -304,10 +284,10 @@ class UEAssetDbHandler:
                     'added_manually': 'BOOLEAN'
                 }
             )
-            self.db_version = VersionNum.V4
+            self.db_version = DbVersionNum.V4
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
-        if upgrade_from_version == VersionNum.V4:
+        if upgrade_from_version == DbVersionNum.V4:
             # necessary steps to upgrade from version 4
             # add changed fields
             self._add_missing_columns(
@@ -324,14 +304,14 @@ class UEAssetDbHandler:
                     'old_price': 'REAL'
                 }
             )
-            self.db_version = VersionNum.V5
+            self.db_version = DbVersionNum.V5
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
-        if upgrade_from_version == VersionNum.V5:
+        if upgrade_from_version == DbVersionNum.V5:
             # necessary steps to upgrade from version 5
             # does not exist yet
             # do stuff here
-            # self.db_version = VersionNum.V6
+            # self.db_version = DbVersionNum.V6
             # upgrade_from_version = self.db_version
             # self.logger.info(f'Database upgraded to {upgrade_from_version}')
             pass
@@ -372,7 +352,7 @@ class UEAssetDbHandler:
         :param data: A dictionary containing the data to save.
         """
         # check if the database version is compatible with the current method
-        if not self._check_db_version(VersionNum.V3, caller_name=inspect.currentframe().f_code.co_name):
+        if not self._check_db_version(DbVersionNum.V3, caller_name=inspect.currentframe().f_code.co_name):
             return
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -389,7 +369,7 @@ class UEAssetDbHandler:
         NOTE: the (existing) user fields data should have already been added or merged the assets dictionary
         """
         # check if the database version is compatible with the current method
-        if not self._check_db_version(VersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
+        if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
             return
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -581,7 +561,7 @@ class UEAssetDbHandler:
         :param number_of_rows: The number of fake assets to generate and insert.
         """
         # check if the database version is compatible with the current method
-        if not self._check_db_version(VersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
+        if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
             return
         scraped_ids = []
         fake = Faker()

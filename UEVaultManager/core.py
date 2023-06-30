@@ -214,7 +214,6 @@ class AppCore:
         """
         Import refresh token from EGL installation and use it for logging in
         :return: True if successful, False otherwise
-        :raises ValueError
         """
         self.egl.read_config()
         remember_me_data = self.egl.config.get('RememberMe', 'Data')
@@ -248,7 +247,6 @@ class AppCore:
         Attempts logging in with existing credentials.
         :param force_refresh: if True, force a refresh of the session
         :return: True if successful, False otherwise
-        :raises ValueError if no existing credentials or InvalidCredentialsError if the API return an error
         """
         if not self.uevmlfs.userdata:
             raise ValueError('No saved credentials')
@@ -380,7 +378,6 @@ class AppCore:
         :param platform: platform to get asset for
         :param update: force update of asset list
         :return: AppAsset object
-        :raises ValueError: if no asset is found for the given app name and platform
         """
         if update or platform not in self.uevmlfs.assets:
             self.get_assets(update_assets=True, platform=platform)
@@ -905,7 +902,6 @@ class AppCore:
         :param platform: Platform to get the CDN manifest for
         :param disable_https: Disable HTTPS for the manifest URLs
         :return: list of base URLs, manifest hash
-        :raises ValueError
         """
         manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(item, platform)
         if not manifest_urls:

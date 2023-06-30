@@ -5,44 +5,40 @@ Implementation for:
 """
 import io
 import webbrowser
-from enum import Enum
 from tkinter import ttk
 
 import pandas as pd
 from pandas.errors import EmptyDataError
 from pandastable import Table, TableModel, config
 
-from UEVaultManager.models.csv_data import create_empty_csv_row, get_csv_field_name_list, convert_csv_row_to_sql_row, is_on_state, FieldState, \
-    FieldType, is_from_type, get_typed_value, get_converters
+from UEVaultManager.models.csv_sql_fields import create_empty_csv_row, get_csv_field_name_list, convert_csv_row_to_sql_row, is_on_state, \
+    CSVFieldState, \
+    CSVFieldType, is_from_type, get_typed_value, get_converters
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
-from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
-from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
-from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
+from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
+from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
+from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.functions import *
-from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
+from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
 test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
-
-
-class DataSourceType(Enum):
-    """ An enum to represent the data source type """
-    FILE = 1
-    SQLITE = 2
 
 
 class EditableTable(Table):
     """
     A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
-    :param container_frame: The parent frame for the table.
+    :param container: The parent frame for the table.
     :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
     :param data_source: The path to the source that contains the table data
     :param rows_per_page: The number of rows to show per page.
     :param show_toolbar: Whether to show the toolbar.
     :param show_statusbar: Whether to show the status bar.
+    :param update_page_numbers_func: A function that updates the page numbers.
     :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
 
@@ -75,18 +71,19 @@ class EditableTable(Table):
 
     def __init__(
         self,
-        container_frame=None,
+        container=None,
         data_source_type=DataSourceType.FILE,
         data_source=None,
         rows_per_page=36,
         show_toolbar=False,
         show_statusbar=False,
+        update_page_numbers_func=None,
         **kwargs
     ):
-        if container_frame is None:
-            raise ValueError('container_frame cannot be None')
-        self._container_frame = container_frame
-
+        if container is None:
+            raise ValueError('container cannot be None')
+        self._container = container
+        self.update_page_numbers_func = update_page_numbers_func
         self.data_source_type = data_source_type
         self.data_source = data_source
         self.show_toolbar = show_toolbar
@@ -95,7 +92,7 @@ class EditableTable(Table):
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
         self.load_data()
-        Table.__init__(self, container_frame, dataframe=self.get_data(), showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
+        Table.__init__(self, container, dataframe=self.get_data(), showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
     def _generate_cell_selection_changed_event(self) -> None:
@@ -534,6 +531,8 @@ class EditableTable(Table):
             self.total_pages = 1
         # self.redraw() # done in set_colors
         self.set_colors()
+        if self.update_page_numbers_func is not None:
+            self.update_page_numbers_func()
 
     def next_page(self) -> None:
         """
@@ -711,9 +710,9 @@ class EditableTable(Table):
         entries = {}
         image_url = ''
         for i, (key, value) in enumerate(row_data.items()):
-            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [FieldState.SQL_ONLY, FieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [FieldState.CSV_ONLY, FieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             label = key.replace('_', ' ').title()
             ttk.Label(edit_row_window.content_frame, text=label).grid(row=i, column=0, sticky=tk.W)
@@ -731,16 +730,16 @@ class EditableTable(Table):
             #     entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
             #     button = ttk.Button(inner_frame_url, text="Open URL", command=self.open_asset_url)
             #     button.pack(side=tk.RIGHT)
-            # elif is_from_type(key, [FieldType.TEXT]):
-            if is_from_type(key, [FieldType.TEXT]):
+            # elif is_from_type(key, [CSVFieldType.TEXT]):
+            if is_from_type(key, [CSVFieldType.TEXT]):
                 entry = ExtendedText(edit_row_window.content_frame, height=3)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
-            elif is_from_type(key, [FieldType.BOOL]):
+            elif is_from_type(key, [CSVFieldType.BOOL]):
                 entry = ExtendedCheckButton(edit_row_window.content_frame, label='', images_folder=gui_g.s.assets_folder)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
-                # TODO : add other extended widget for specific type (FieldType.DATETIME , FieldType.LIST)
+                # TODO : add other extended widget for specific type (CSVFieldType.DATETIME , CSVFieldType.LIST)
             else:
                 # other field is just a usual entry
                 entry = ttk.Entry(edit_row_window.content_frame)
@@ -762,7 +761,7 @@ class EditableTable(Table):
         Saves the edited row values to the table data.
         """
         for key, value in self.get_edited_row_values().items():
-            # if is_from_type(key, [FieldType.BOOL]):
+            # if is_from_type(key, [CSVFieldType.BOOL]):
             #    value = convert_to_bool(value)
             value = get_typed_value(csv_field=key, value=value)
             self.model.df.at[self._edit_row_index, key] = value
@@ -823,12 +822,12 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.model.df.columns[col_index]
         ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
-        if is_from_type(col_name, [FieldType.TEXT]):
+        if is_from_type(col_name, [CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
             widget.set_content(str(cell_value))
             widget.focus_set()
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
-        elif is_from_type(col_name, [FieldType.BOOL]):
+        elif is_from_type(col_name, [CSVFieldType.BOOL]):
             widget = ExtendedCheckButton(edit_cell_window.content_frame, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
             widget.set_content(bool(cell_value))
         else:
@@ -895,7 +894,7 @@ class EditableTable(Table):
             return
 
         column_names = ['Asset_id', 'Url']
-        column_names.extend(get_csv_field_name_list(filter_on_states=[FieldState.USER]))
+        column_names.extend(get_csv_field_name_list(filter_on_states=[CSVFieldState.USER]))
         for col_name in column_names:
             col = self.model.df.columns.get_loc(col_name)
             value = self.model.getValueAt(row=row, col=col)
@@ -911,7 +910,7 @@ class EditableTable(Table):
         Resets the cell content preview.
         """
         self._frm_quick_edit.config(text='Quick Edit User Fields')
-        column_names = get_csv_field_name_list(filter_on_states=[FieldState.USER])
+        column_names = get_csv_field_name_list(filter_on_states=[CSVFieldState.USER])
         for col_name in column_names:
             self._frm_quick_edit.set_default_content(col_name)
 

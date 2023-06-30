@@ -2,54 +2,10 @@
 """
 CSV and SQL fields mapping and utility functions
 """
-from enum import Enum
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.models.types import CSVFieldState, CSVFieldType
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_int, convert_to_bool, convert_to_float, create_uid, convert_to_datetime
-
-
-class FieldState(Enum):
-    """
-    Enum for the state of a field in the database
-    Used for filtering the fields regarding the context
-    """
-    CSV_ONLY = 0  # field is only in the CSV result file
-    SQL_ONLY = 1  # field is only in the database
-    CHANGED = 2  # Changed during the process. Will be preserved if already present in data (CSV file or database)
-    NOT_PRESERVED = 3  # value will NOT be preserved if already present in data (CSV file or database)
-    ASSET_ONLY = 4  # field is only in the property of the UEAsset class
-    USER = 5  # field is only in the user data. Will be preserved if already present in data (CSV file or database)
-
-
-class FieldType(Enum):
-    """
-    Enum for the (simplified) type of field in the database
-    Used for selecting the good format and/or control to show the value
-    """
-    STR = 0  # short text (ie ttk.ENTRY)
-    INT = 1
-    FLOAT = 2
-    BOOL = 3
-    TEXT = 4  # long text (ie ttk.TEXT)
-    DATETIME = 5  # date and time (see ttkbootstrap.widgets.DateEntry)
-    LIST = 6  # list of values (ie ttk.DROPBOX)
-
-    def cast(self, value):
-        """
-        Cast the value to the type of the field
-        :param value: value to cast
-        :return: value with the cast type
-        """
-        if self == self.INT:
-            return convert_to_int(value)
-        if self == self.FLOAT:
-            return convert_to_float(value)
-        if self == self.BOOL:
-            return convert_to_bool(value)
-        if self == self.BOOL:
-            return convert_to_datetime(value, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])
-        return str(value)
-
 
 csv_sql_fields = {
     # fields mapping from csv to sql
@@ -59,262 +15,262 @@ csv_sql_fields = {
     #   a csv field with this name must exist to get the value
     'Asset_id': {
         'sql_name': 'asset_id',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     'App name': {
         'sql_name': 'title',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     'App title': {  # intentionnaly duplicated
         'sql_name': 'title',
-        'state': FieldState.CSV_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.CSV_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Category': {
         'sql_name': 'category',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.LIST
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.LIST
     },
     'Review': {
         'sql_name': 'review',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.FLOAT
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.FLOAT
     },
     'Review count': {  # not in "standard/result" csv file
         'sql_name': 'review_count',
-        'state': FieldState.SQL_ONLY,
-        'field_type': FieldType.INT
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.INT
     },
     'Developer': {
         'sql_name': 'author',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     'Description': {
         'sql_name': 'description',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.TEXT
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.TEXT
     },
     'Status': {
         'sql_name': 'status',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     'Discount price': {
         'sql_name': 'discount_price',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.FLOAT
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.FLOAT
     },
     'Discount percentage': {
         'sql_name': 'discount_percentage',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.INT
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.INT
     },
     'Discounted': {
         'sql_name': 'discounted',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.BOOL
     },
     'Is new': {  # not in "standard/result" csv file
         'sql_name': 'is_new',
-        'state': FieldState.SQL_ONLY,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.BOOL
     },
     'Free': {  # not in "standard/result" csv file
         'sql_name': 'free',
-        'state': FieldState.SQL_ONLY,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.BOOL
     },
     'Can purchase': {  # not in "standard/result" csv file
         'sql_name': 'can_purchase',
-        'state': FieldState.SQL_ONLY,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.BOOL
     },
     'Owned': {
         'sql_name': 'owned',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.BOOL
     },
     'Obsolete': {
         'sql_name': 'obsolete',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.BOOL
     },
     'Supported versions': {
         'sql_name': 'supported_versions',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     'Grab result': {
         'sql_name': 'grab_result',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.LIST
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.LIST
     },
     'Price': {
         'sql_name': 'price',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.FLOAT
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.FLOAT
     },
     # ## User Fields
     'Old price': {
         'sql_name': 'old_price',
-        'state': FieldState.CHANGED,
-        'field_type': FieldType.FLOAT
+        'state': CSVFieldState.CHANGED,
+        'field_type': CSVFieldType.FLOAT
     },
     'Comment': {
         'sql_name': 'comment',
-        'state': FieldState.USER,
-        'field_type': FieldType.TEXT
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.TEXT
     },
     'Stars': {
         'sql_name': 'stars',
-        'state': FieldState.USER,
-        'field_type': FieldType.INT
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.INT
     },
     'Must buy': {
         'sql_name': 'must_buy',
-        'state': FieldState.USER,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.BOOL
     },
     'Test result': {
         'sql_name': 'test_result',
-        'state': FieldState.USER,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.STR
     },
     'Installed folder': {
         'sql_name': 'installed_folder',
-        'state': FieldState.USER,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.STR
     },
     'Alternative': {
         'sql_name': 'alternative',
-        'state': FieldState.USER,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.STR
     },
     'Origin': {
         'sql_name': 'origin',
-        'state': FieldState.USER,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.STR
     },
     'Added manually': {
         'sql_name': 'added_manually',
-        'state': FieldState.USER,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.BOOL
     },
     # ## less important fields
     'Custom attributes':
     {  # not in "standard/result" csv file
         'sql_name': 'custom_attributes',
-        'state': FieldState.SQL_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Page title': {
         'sql_name': 'page_title',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     'Image': {
         'sql_name': 'thumbnail_url',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     'Url': {
         'sql_name': 'asset_url',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     'Compatible versions': {  # not in database
         'sql_name': None,
-        'state': FieldState.CSV_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.CSV_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Date added': {
         'sql_name': 'date_added_in_db',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.DATETIME
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.DATETIME
     },
     'Creation date': {
         'sql_name': 'creation_date',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.DATETIME
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.DATETIME
     },
     'Update date': {
         'sql_name': 'update_date',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.DATETIME
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.DATETIME
     },
     'UE version': {  # not in database
         'sql_name': None,
-        'state': FieldState.CSV_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.CSV_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Uid': {
         'sql_name': 'id',
-        'state': FieldState.NOT_PRESERVED,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
     },
     # ## UE asset class field only
     'Namespace': {
         'sql_name': 'namespace',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Catalog itemid': {
         'sql_name': 'catalog_item_id',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Asset slug': {
         'sql_name': 'asset_slug',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'urlSlug': {  # intentionnaly duplicated
         'sql_name': 'asset_slug',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Currency code': {
         'sql_name': 'currency_code',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Technical details': {
         'sql_name': 'technical_details',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Long description': {
         'sql_name': 'long_description',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.TEXT
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.TEXT
     },
     'Tags': {
         'sql_name': 'tags',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Comment rating id': {
         'sql_name': 'comment_rating_id',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Rating id': {
         'sql_name': 'rating_id',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
     'Is catalog item': {
         'sql_name': 'is_catalog_item',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.BOOL
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.BOOL
     },
     'Thumbnail': {  # intentionnaly duplicated
         'sql_name': 'thumbnail_url',
-        'state': FieldState.ASSET_ONLY,
-        'field_type': FieldType.STR
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
     },
 }
 
@@ -330,9 +286,9 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
     """
     result = []
     for csv_field, value in csv_sql_fields.items():
-        if exclude_sql_only and value['state'] == FieldState.SQL_ONLY:
+        if exclude_sql_only and value['state'] == CSVFieldState.SQL_ONLY:
             continue
-        if not include_asset_only and value['state'] == FieldState.ASSET_ONLY:
+        if not include_asset_only and value['state'] == CSVFieldState.ASSET_ONLY:
             continue
         if filter_on_states and value['state'] not in filter_on_states:
             continue
@@ -354,9 +310,9 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
     """
     result = []
     for csv_field, value in csv_sql_fields.items():
-        if exclude_csv_only and value['state'] == FieldState.CSV_ONLY:
+        if exclude_csv_only and value['state'] == CSVFieldState.CSV_ONLY:
             continue
-        if not include_asset_only and value['state'] == FieldState.ASSET_ONLY:
+        if not include_asset_only and value['state'] == CSVFieldState.ASSET_ONLY:
             continue
         if filter_on_states and value['state'] not in filter_on_states:
             continue
@@ -399,7 +355,7 @@ def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
     return value
 
 
-def is_on_state(csv_field_name: str, states: list[FieldState], default=False) -> bool:
+def is_on_state(csv_field_name: str, states: list[CSVFieldState], default=False) -> bool:
     """
     Check if the csv field is in the given states
     :param csv_field_name: csv field name
@@ -417,7 +373,7 @@ def is_on_state(csv_field_name: str, states: list[FieldState], default=False) ->
         return default  # by default, we consider that the field is not on this state
 
 
-def is_from_type(csv_field_name: str, types: list[FieldType], default=False) -> bool:
+def is_from_type(csv_field_name: str, types: list[CSVFieldType], default=False) -> bool:
     """
     Check if the csv field is in the given types
     :param csv_field_name: csv field name
@@ -455,17 +411,17 @@ def get_converters(csv_field_name: str):
     """
     field_type = get_type(csv_field_name)
 
-    if field_type == FieldType.LIST:
+    if field_type == CSVFieldType.LIST:
         # this is a special case. Use a 'category' for pandas datatable.
         # The caller should handle this case where the converter is not callable
         return ['category']
-    if field_type == FieldType.INT:
+    if field_type == CSVFieldType.INT:
         return [convert_to_int, int]
-    if field_type == FieldType.FLOAT:
+    if field_type == CSVFieldType.FLOAT:
         return [convert_to_float, float]
-    if field_type == FieldType.BOOL:
+    if field_type == CSVFieldType.BOOL:
         return [convert_to_bool, bool]
-    if field_type == FieldType.DATETIME:
+    if field_type == CSVFieldType.DATETIME:
         return [lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])]
     else:
         return [str]
@@ -489,7 +445,7 @@ def is_preserved(csv_field_name: str) -> bool:
     :param csv_field_name: csv field name
     :return: True if is preserved
     """
-    return not is_on_state(csv_field_name, [FieldState.NOT_PRESERVED])
+    return not is_on_state(csv_field_name, [CSVFieldState.NOT_PRESERVED])
 
 
 def get_sql_field_name(csv_field_name: str):

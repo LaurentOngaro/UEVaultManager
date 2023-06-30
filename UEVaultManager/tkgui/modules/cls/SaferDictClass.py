@@ -55,7 +55,6 @@ class SaferDict(dict):
         """
         Copies the content of the given source dictionary into the SaferDict.
         :param source: the source dictionary to copy from
-        :raises TypeError: if the source is not a dictionary
         """
         if not isinstance(source, dict):
             raise TypeError("source must be a dictionary")

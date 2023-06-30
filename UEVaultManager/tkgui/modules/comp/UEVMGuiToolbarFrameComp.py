@@ -1,0 +1,111 @@
+# coding=utf-8
+"""
+Implementation for:
+- UEVMGuiToolbarFrame: a toolbar frame for the UEVMGui Class
+"""
+import tkinter as tk
+
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+
+from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
+
+
+class UEVMGuiToolbarFrame(ttk.Frame):
+    """
+    A toolbar frame for the UEVMGui Class
+    :param container: The parent container.
+    :param data_table: The EditableTable instance
+    """
+
+    def __init__(self, container, data_table: EditableTable):
+        super().__init__()
+        if container is None:
+            raise ValueError('container must be None')
+        if data_table is None:
+            raise ValueError('data_table must be a UEVMGuiContentFrame instance')
+
+        self.data_table: EditableTable = data_table
+
+        pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
+        lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
+
+        lblf_navigation = ttk.LabelFrame(self, text='Navigation')
+        lblf_navigation.pack(side=tk.LEFT, **lblf_def_options)
+        # (bootstyle is not recognized by PyCharm)
+        # noinspection PyArgumentList
+        btn_toggle_pagination = ttk.Button(lblf_navigation, text='Disable Pagination', command=container.toggle_pagination)
+        # noinspection PyArgumentList
+        btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
+        btn_first_page = ttk.Button(lblf_navigation, text='First Page', command=container.show_first_page)
+        btn_first_page.pack(**pack_def_options, side=tk.LEFT)
+        btn_first_page.config(state=tk.DISABLED)
+        btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.show_prev_page)
+        btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
+        btn_prev_page.config(state=tk.DISABLED)
+        entry_current_page_var = tk.StringVar(value=data_table.current_page)
+        entry_current_page = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_current_page_var)
+        entry_current_page.pack(**pack_def_options, side=tk.LEFT)
+        lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages}')
+        lbl_page_count.pack(**pack_def_options, side=tk.LEFT)
+        btn_next_page = ttk.Button(lblf_navigation, text='Next Page', command=container.show_next_page)
+        btn_next_page.pack(**pack_def_options, side=tk.LEFT)
+        btn_last_page = ttk.Button(lblf_navigation, text='Last Page', command=container.show_last_page)
+        btn_last_page.pack(**pack_def_options, side=tk.LEFT)
+        btn_prev = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
+        btn_prev.pack(**pack_def_options, side=tk.LEFT)
+        btn_next = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
+        btn_next.pack(**pack_def_options, side=tk.RIGHT)
+
+        lblf_display = ttk.LabelFrame(self, text='Display')
+        lblf_display.pack(side=tk.LEFT, **lblf_def_options)
+        btn_expand = ttk.Button(lblf_display, text='Expand Cols', command=data_table.expand_columns)
+        btn_expand.pack(**pack_def_options, side=tk.LEFT)
+        btn_shrink = ttk.Button(lblf_display, text='Shrink Cols', command=data_table.contract_columns)
+        btn_shrink.pack(**pack_def_options, side=tk.LEFT)
+        btn_autofit = ttk.Button(lblf_display, text='Autofit Cols', command=data_table.autofit_columns)
+        btn_autofit.pack(**pack_def_options, side=tk.LEFT)
+        btn_zoom_in = ttk.Button(lblf_display, text='Zoom In', command=data_table.zoom_in)
+        btn_zoom_in.pack(**pack_def_options, side=tk.LEFT)
+        btn_zoom_out = ttk.Button(lblf_display, text='Zoom Out', command=data_table.zoom_out)
+        btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
+
+        lblf_commands = ttk.LabelFrame(self, text='Cli commands')
+        lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
+        btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
+        btn_help.pack(**pack_def_options, side=tk.LEFT)
+        btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_uevm_command('status'))
+        btn_status.pack(**pack_def_options, side=tk.LEFT)
+        btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_uevm_command('info'))
+        btn_info.pack(**pack_def_options, side=tk.LEFT)
+        btn_list_files = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_uevm_command('list_files'))
+        btn_list_files.pack(**pack_def_options, side=tk.LEFT)
+        btn_cleanup = ttk.Button(lblf_commands, text='Cleanup', command=lambda: container.run_uevm_command('cleanup'))
+        btn_cleanup.pack(**pack_def_options, side=tk.LEFT)
+
+        lblf_actions = ttk.LabelFrame(self, text='Actions')
+        lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
+        # noinspection PyArgumentList
+        btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_pane, state=tk.DISABLED)
+        btn_toggle_options.pack(**pack_def_options, side=tk.LEFT)
+        # noinspection PyArgumentList
+        btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Controls', command=container.toggle_controls_pane)
+        btn_toggle_controls.pack(**pack_def_options, side=tk.LEFT)
+        # noinspection PyArgumentList
+        btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)
+        btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
+
+        # Bind events for the Entry widget
+        entry_current_page.bind('<FocusOut>', container.on_entry_current_page_changed)
+        entry_current_page.bind('<Return>', container.on_entry_current_page_changed)
+
+        self.btn_toggle_pagination = btn_toggle_pagination
+        self.btn_first_page = btn_first_page
+        self.btn_prev_page = btn_prev_page
+        self.btn_next_page = btn_next_page
+        self.btn_last_page = btn_last_page
+        self.btn_toggle_options = btn_toggle_options
+        self.btn_toggle_controls = btn_toggle_controls
+        self.lbl_page_count = lbl_page_count
+        self.entry_current_page = entry_current_page
+        self.entry_current_page_var = entry_current_page_var
