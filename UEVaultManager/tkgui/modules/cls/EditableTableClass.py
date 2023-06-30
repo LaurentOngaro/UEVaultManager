@@ -17,11 +17,11 @@ from UEVaultManager.models.csv_data import create_empty_csv_row, get_csv_field_n
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
-from UEVaultManager.tkgui.modules.EditCellWindowClass import EditCellWindow
-from UEVaultManager.tkgui.modules.EditRowWindowClass import EditRowWindow
-from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
+from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
+from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
+from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.functions import *
-from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
 from UEVaultManager.utils.cli import get_max_threads
 
 test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only

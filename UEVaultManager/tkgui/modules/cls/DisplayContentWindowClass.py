@@ -13,7 +13,7 @@ from ttkbootstrap.constants import *
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.tkgui.modules.ExtendedWidgetClasses import ExtendedText
+from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText
 
 
 # class DisplayContentWindow(tk.Tk if tk._default_root is None else tk.Toplevel):

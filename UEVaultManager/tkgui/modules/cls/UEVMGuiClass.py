@@ -7,16 +7,16 @@ import os
 import tkinter as tk
 from tkinter import filedialog as fd
 
-import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
-
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.tkgui.modules.EditableTableClass import EditableTable, DataSourceType
-from UEVaultManager.tkgui.modules.FilterFrameClass import FilterFrame
+from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable, DataSourceType
+from UEVaultManager.tkgui.modules.comp.FilterFrameClass import FilterFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameClass import UEVMGuiControlFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameClass import UEVMGuiOptionsFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiTableFrameClass import UEVMGuiTableFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameClass import UEVMGuiToolbarFrame
 from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
-from UEVaultManager.tkgui.modules.TaggedLabelFrameClass import TaggedLabelFrame, WidgetType
 
 
 class UEVMGui(tk.Tk):
@@ -62,7 +62,7 @@ class UEVMGui(tk.Tk):
         self.resizable(True, True)
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
-        table_frame = self.TableFrame(self)
+        table_frame = UEVMGuiTableFrame(self)
 
         # gui_g.UEVM_gui_ref = self  # important ! Must be donne before any use of a ProgressWindow. If not, an UEVMGuiHiddenRootClass will be created and the ProgressWindow still be displayed after the init
         # reading from CSV file version
@@ -78,11 +78,11 @@ class UEVMGui(tk.Tk):
         self.editable_table.show()
         self.editable_table.update()
 
-        toolbar_frame = self.ToolbarFrame(self, self.editable_table)
+        toolbar_frame = UEVMGuiToolbarFrame(self, self.editable_table)
         self._toolbar_frame = toolbar_frame
-        control_frame = self.ControlFrame(self, self.editable_table)
+        control_frame = UEVMGuiControlFrame(self, self.editable_table)
         self._control_frame = control_frame
-        options_frame = self.OptionsFrame(self)
+        options_frame = UEVMGuiOptionsFrame(self)
         self._options_frame = options_frame
 
         toolbar_frame.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
@@ -120,334 +120,6 @@ class UEVMGui(tk.Tk):
         self.editable_table.update_quick_edit(row=0)
         if gui_g.s.data_filters:
             self._filter_frame.load_filters(gui_g.s.data_filters)
-
-    class ToolbarFrame(ttk.Frame):
-        """
-        This class is used to create the toolbar frame
-        :param container: The parent container.
-        :param data_table: The EditableTable instance
-        """
-
-        def __init__(self, container, data_table: EditableTable):
-            super().__init__()
-            if container is None:
-                raise ValueError('container must be None')
-            if data_table is None:
-                raise ValueError('data_table must be a TableFrame instance')
-
-            self.data_table: EditableTable = data_table
-
-            pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
-            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
-
-            lblf_navigation = ttk.LabelFrame(self, text='Navigation')
-            lblf_navigation.pack(side=tk.LEFT, **lblf_def_options)
-            # (bootstyle is not recognized by PyCharm)
-            # noinspection PyArgumentList
-            btn_toggle_pagination = ttk.Button(lblf_navigation, text='Disable Pagination', command=container.toggle_pagination)
-            # noinspection PyArgumentList
-            btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
-            btn_first_page = ttk.Button(lblf_navigation, text='First Page', command=container.show_first_page)
-            btn_first_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_first_page.config(state=tk.DISABLED)
-            btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.show_prev_page)
-            btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_prev_page.config(state=tk.DISABLED)
-            entry_page_num_var = tk.StringVar(value=data_table.current_page)
-            entry_page_num = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_page_num_var)
-            entry_page_num.pack(**pack_def_options, side=tk.LEFT)
-            lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages}')
-            lbl_page_count.pack(**pack_def_options, side=tk.LEFT)
-            btn_next_page = ttk.Button(lblf_navigation, text='Next Page', command=container.show_next_page)
-            btn_next_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_last_page = ttk.Button(lblf_navigation, text='Last Page', command=container.show_last_page)
-            btn_last_page.pack(**pack_def_options, side=tk.LEFT)
-            btn_prev = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
-            btn_prev.pack(**pack_def_options, side=tk.LEFT)
-            btn_next = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
-            btn_next.pack(**pack_def_options, side=tk.RIGHT)
-
-            lblf_display = ttk.LabelFrame(self, text='Display')
-            lblf_display.pack(side=tk.LEFT, **lblf_def_options)
-            btn_expand = ttk.Button(lblf_display, text='Expand Cols', command=data_table.expand_columns)
-            btn_expand.pack(**pack_def_options, side=tk.LEFT)
-            btn_shrink = ttk.Button(lblf_display, text='Shrink Cols', command=data_table.contract_columns)
-            btn_shrink.pack(**pack_def_options, side=tk.LEFT)
-            btn_autofit = ttk.Button(lblf_display, text='Autofit Cols', command=data_table.autofit_columns)
-            btn_autofit.pack(**pack_def_options, side=tk.LEFT)
-            btn_zoom_in = ttk.Button(lblf_display, text='Zoom In', command=data_table.zoom_in)
-            btn_zoom_in.pack(**pack_def_options, side=tk.LEFT)
-            btn_zoom_out = ttk.Button(lblf_display, text='Zoom Out', command=data_table.zoom_out)
-            btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
-
-            lblf_commands = ttk.LabelFrame(self, text='Cli commands')
-            lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
-            btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
-            btn_help.pack(**pack_def_options, side=tk.LEFT)
-            btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_uevm_command('status'))
-            btn_status.pack(**pack_def_options, side=tk.LEFT)
-            btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_uevm_command('info'))
-            btn_info.pack(**pack_def_options, side=tk.LEFT)
-            btn_list_files = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_uevm_command('list_files'))
-            btn_list_files.pack(**pack_def_options, side=tk.LEFT)
-            btn_cleanup = ttk.Button(lblf_commands, text='Cleanup', command=lambda: container.run_uevm_command('cleanup'))
-            btn_cleanup.pack(**pack_def_options, side=tk.LEFT)
-
-            lblf_actions = ttk.LabelFrame(self, text='Actions')
-            lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
-            # noinspection PyArgumentList
-            btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_pane, state=tk.DISABLED)
-            btn_toggle_options.pack(**pack_def_options, side=tk.LEFT)
-            # noinspection PyArgumentList
-            btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Controls', command=container.toggle_controls_pane)
-            btn_toggle_controls.pack(**pack_def_options, side=tk.LEFT)
-            # noinspection PyArgumentList
-            btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)
-            btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
-
-            # Bind events for the Entry widget
-            entry_page_num.bind('<FocusOut>', container.on_entry_page_num_changed)
-            entry_page_num.bind('<Return>', container.on_entry_page_num_changed)
-
-            self.btn_toggle_pagination = btn_toggle_pagination
-            self.btn_first_page = btn_first_page
-            self.btn_prev_page = btn_prev_page
-            self.btn_next_page = btn_next_page
-            self.btn_last_page = btn_last_page
-            self.btn_toggle_options = btn_toggle_options
-            self.btn_toggle_controls = btn_toggle_controls
-            self.lbl_page_count = lbl_page_count
-            self.entry_page_num = entry_page_num
-            self.entry_page_num_var = entry_page_num_var
-
-    class TableFrame(ttk.Frame):
-        """
-        The TableFrame is a container for the Table widget.
-        :param container: The parent container.
-        """
-
-        def __init__(self, container):
-            if container is None:
-                raise ValueError('container must be None')
-            super().__init__(container)
-
-            self.container = container
-
-    class ControlFrame(ttk.Frame):
-        """
-        The ControlFrame is a container for the filter controls.
-        :param container: The parent container.
-        :param data_table: The EditableTable instance
-        """
-
-        def __init__(self, container, data_table: EditableTable):
-            super().__init__()
-            if container is None:
-                raise ValueError('container must be None')
-            if data_table is None:
-                raise ValueError('data_table must be a TableFrame instance')
-
-            self.data_table: EditableTable = data_table
-
-            grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.SE}
-            grid_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0, 'sticky': tk.SE}  # no padding
-            # pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
-            grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
-            lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
-            lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
-
-            lblf_content = ttk.LabelFrame(self, text='Content')
-            lblf_content.pack(**lblf_def_options)
-            btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=data_table.create_edit_record_window)
-            btn_edit_row.grid(row=0, column=0, **grid_fw_options)
-            btn_reload_data = ttk.Button(lblf_content, text='Reload Content', command=container.reload_data)
-            btn_reload_data.grid(row=0, column=1, **grid_fw_options)
-            btn_rebuild_file = ttk.Button(lblf_content, text='Rebuild Content', command=container.rebuild_data)
-            btn_rebuild_file.grid(row=0, column=2, **grid_fw_options)
-            lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
-
-            filter_frame = FilterFrame(
-                self, data_func=data_table.get_data, update_func=data_table.update, value_for_all=gui_g.s.default_value_for_all
-            )
-            filter_frame.pack(**lblf_def_options)
-            container._filter_frame = filter_frame
-            data_table.set_filter_frame(filter_frame)
-
-            lblf_files = ttk.LabelFrame(self, text='Files')
-            lblf_files.pack(**lblf_def_options)
-            lbl_data_source = ttk.Label(lblf_files, text='Data Source: ')
-            lbl_data_source.grid(row=0, column=0, columnspan=2, **grid_fw_options)
-            frm_inner = ttk.Frame(lblf_files)
-            frm_inner.grid(row=0, column=2, **grid_fw_options)
-
-            lbl_data_type = ttk.Label(frm_inner, text='Type: ')
-            lbl_data_type.grid(row=0, column=0, **grid_def_options_np)
-            var_entry_data_source_type = tk.StringVar(value=data_table.data_source_type.name)
-            # noinspection PyArgumentList
-            entry_data_type = ttk.Entry(frm_inner, textvariable=var_entry_data_source_type, state='readonly', width=6, bootstyle=WARNING)
-            entry_data_type.grid(row=0, column=1, **grid_def_options_np)
-
-            var_entry_data_source_name = tk.StringVar(value=data_table.data_source)
-            entry_data_source = ttk.Entry(lblf_files, textvariable=var_entry_data_source_name, state='readonly')
-            entry_data_source.grid(row=1, column=0, columnspan=3, **grid_fw_options)
-            btn_save_data = ttk.Button(lblf_files, text='Save Data', command=container.save_data)
-            btn_save_data.grid(row=2, column=0, **grid_fw_options)
-            btn_export_button = ttk.Button(lblf_files, text='Export Selection', command=container.export_selection)
-            btn_export_button.grid(row=2, column=1, **grid_fw_options)
-            btn_load_data = ttk.Button(lblf_files, text='Load Data', command=container.load_data)
-            btn_load_data.grid(row=2, column=2, **grid_fw_options)
-            lblf_files.columnconfigure('all', weight=1)  # important to make the buttons expand
-
-            # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
-            # to get the widgets it needs. So they can't be changed freely
-            lbtf_quick_edit = TaggedLabelFrame(self, text='Quick Edit User fields')
-            lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
-            data_table.set_quick_edit_frame(lbtf_quick_edit)
-
-            frm_inner_frame = ttk.Frame(lbtf_quick_edit)
-            lbl_desc = ttk.Label(frm_inner_frame, text='Changing this values will change the values of \nthe selected row when losing focus')
-            lbl_desc.grid(row=0, column=0, **grid_def_options)
-            bt_open_url = ttk.Button(frm_inner_frame, text='Open Url', command=container.open_asset_url)
-            bt_open_url.grid(row=0, column=1, **grid_def_options)
-            frm_inner_frame.pack()
-
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.ENTRY,
-                tag='Url',
-                focus_out_callback=container.on_quick_edit_focus_out,
-                focus_in_callback=container.on_quick_edit_focus_in
-            )
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.TEXT,
-                tag='Comment',
-                focus_out_callback=container.on_quick_edit_focus_out,
-                focus_in_callback=container.on_quick_edit_focus_in,
-                width=10,
-                height=4
-            )
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.ENTRY,
-                tag='Stars',
-                focus_out_callback=container.on_quick_edit_focus_out,
-                focus_in_callback=container.on_quick_edit_focus_in
-            )
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.ENTRY,
-                tag='Test result',
-                focus_out_callback=container.on_quick_edit_focus_out,
-                focus_in_callback=container.on_quick_edit_focus_in
-            )
-
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.ENTRY,
-                tag='Installed folder',
-                default_content='Installed in',
-                focus_out_callback=container.on_quick_edit_focus_out,
-                focus_in_callback=container.on_quick_edit_focus_in
-            )
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.ENTRY,
-                tag='Origin',
-                focus_out_callback=container.on_quick_edit_focus_out,
-                focus_in_callback=container.on_quick_edit_focus_in
-            )
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.ENTRY,
-                tag='Alternative',
-                focus_out_callback=container.on_quick_edit_focus_out,
-                focus_in_callback=container.on_quick_edit_focus_in
-            )
-
-            frm_inner_frame = ttk.Frame(lbtf_quick_edit, relief=tk.RIDGE, borderwidth=1)
-            inner_pack_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False, 'anchor': tk.W}
-            frm_inner_frame.pack(**inner_pack_options)
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.CHECKBUTTON,
-                alternate_container=frm_inner_frame,
-                layout_option=inner_pack_options,
-                tag='Must buy',
-                label='',
-                images_folder=gui_g.s.assets_folder,
-                click_on_callback=container.on_switch_edit_flag,
-                default_content=False
-            )
-            lbtf_quick_edit.add_child(
-                widget_type=WidgetType.CHECKBUTTON,
-                alternate_container=frm_inner_frame,
-                layout_option=inner_pack_options,
-                tag='Added manually',
-                label='',
-                images_folder=gui_g.s.assets_folder,
-                click_on_callback=container.on_switch_edit_flag,
-                default_content=False
-            )
-            lbt_image_preview = ttk.LabelFrame(self, text='Image Preview')
-            lbt_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
-            canvas_image = tk.Canvas(lbt_image_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
-            canvas_image.pack(side=tk.BOTTOM, expand=True, anchor=tk.CENTER)
-            canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
-
-            lblf_bottom = ttk.Frame(self)
-            lblf_bottom.pack(**lblf_def_options)
-            ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
-
-            # store the controls that need to be accessible outside the class
-            self.var_entry_data_source_name = var_entry_data_source_name
-            self.var_entry_data_source_type = var_entry_data_source_type
-
-            self.lbtf_quick_edit = lbtf_quick_edit
-            self.canvas_image = canvas_image
-
-    class OptionsFrame(ttk.Frame):
-        """
-        This class is used to create the toolbar frame
-        :param _container: The parent container
-        """
-
-        def __init__(self, _container):
-            super().__init__()
-            # pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
-            lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
-            grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
-
-            lblf_options = ttk.LabelFrame(self, text='Command Options')
-            lblf_options.pack(side=tk.TOP, **lblf_def_options)
-            # row 0
-            cur_col = 0
-            cur_row = 0
-            force_refresh_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('force', False))
-            force_refresh_var.trace_add('write', lambda name, index, mode: gui_g.set_args_force_refresh(force_refresh_var.get()))
-            ck_force_refresh = ttk.Checkbutton(lblf_options, text='Force refresh', variable=force_refresh_var)
-            ck_force_refresh.grid(row=cur_row, column=cur_col, **grid_fw_options)
-            # row 1
-            cur_row += 1
-            cur_col = 0
-            offline_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('offline', False))
-            offline_var.trace_add('write', lambda name, index, mode: gui_g.set_args_offline(offline_var.get()))
-            ck_offline = ttk.Checkbutton(lblf_options, text='Offline Mode', variable=offline_var)
-            ck_offline.grid(row=cur_row, column=cur_col, **grid_fw_options)
-            # row 2
-            cur_row += 1
-            cur_col = 0
-            debug_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('debug', False))
-            debug_var.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(debug_var.get()))
-            ck_debug = ttk.Checkbutton(lblf_options, text='Debug mode', variable=debug_var)
-            ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
-            # row 3
-            # delete_extras_data'] = True
-            cur_row += 1
-            cur_col = 0
-            delete_metadata_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_metadata', False))
-            delete_metadata_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_metadata(delete_metadata_var.get()))
-            ck_delete_metadata = ttk.Checkbutton(lblf_options, text='Delete metadata (cleanup)', variable=delete_metadata_var)
-            ck_delete_metadata.grid(row=cur_row, column=cur_col, **grid_fw_options)
-            # row 4
-            cur_row += 1
-            cur_col = 0
-            delete_extras_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extras_data', False))
-            delete_extras_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extras_data(delete_extras_data_var.get()))
-            ck_delete_extras_data = ttk.Checkbutton(lblf_options, text='Delete metadata (cleanup)', variable=delete_extras_data_var)
-            ck_delete_extras_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
     def _open_file_dialog(self, save_mode=False, filename=None) -> str:
         """
@@ -888,10 +560,12 @@ class UEVMGui(tk.Tk):
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY
         # set default options for the cli command to execute
         gui_g.UEVM_cli_args['gui'] = True  # mandatory for displaying the result in the DisplayContentWindow
-        # arguments for various commands
+
+        # arguments for several commands
         gui_g.UEVM_cli_args['csv'] = False  # mandatory for displaying the result in the DisplayContentWindow
         gui_g.UEVM_cli_args['tcsv'] = False  # mandatory for displaying the result in the DisplayContentWindow
         gui_g.UEVM_cli_args['json'] = False  # mandatory for displaying the result in the DisplayContentWindow
+
         # arguments for cleanup command
         # now set in command options
         # gui_g.UEVM_cli_args['delete_extras_data'] = True

@@ -3,11 +3,10 @@
 Implementation for:
 - FilterFrame class: a frame that contains widgets for filtering a DataFrame.
 """
+import re
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Tuple, Any, Dict
-
-import re
 
 from UEVaultManager.tkgui.modules.functions import log_info
 

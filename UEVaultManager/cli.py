@@ -30,14 +30,14 @@ from UEVaultManager.models.csv_data import csv_sql_fields, FieldState, get_csv_f
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
-from UEVaultManager.tkgui.modules.DisplayContentWindowClass import DisplayContentWindow
-from UEVaultManager.tkgui.modules.EditableTableClass import DataSourceType
+from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
+from UEVaultManager.tkgui.modules.cls.EditableTableClass import DataSourceType
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
+from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
+from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
+from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 from UEVaultManager.tkgui.modules.functions import custom_print, box_message  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
-from UEVaultManager.tkgui.modules.ProgressWindowClass import ProgressWindow
-from UEVaultManager.tkgui.modules.SaferDictClass import SaferDict
-from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
-from UEVaultManager.tkgui.modules.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads, remove_command_argument
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 

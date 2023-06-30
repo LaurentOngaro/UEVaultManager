@@ -8,9 +8,9 @@ import os.path
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.tkgui.modules.EditableTableClass import DataSourceType
+from UEVaultManager.tkgui.modules.cls.EditableTableClass import DataSourceType
+from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.functions import log_error
-from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
 
 test_only_mode = True  # add some limitations to speed up the dev process - Set to True for debug Only
 
