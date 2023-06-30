@@ -11,11 +11,11 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
-from UEVaultManager.tkgui.modules.comp.FilterFrameClass import FilterFrame
-from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameClass import UEVMGuiControlFrame
-from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameClass import UEVMGuiOptionsFrame
-from UEVaultManager.tkgui.modules.comp.UEVMGuiTableFrameClass import UEVMGuiTableFrame
-from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameClass import UEVMGuiToolbarFrame
+from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOptionsFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiTableFrameComp import UEVMGuiTableFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
 from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
 from UEVaultManager.tkgui.modules.types import DataSourceType
 

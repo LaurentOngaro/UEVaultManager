@@ -9,7 +9,7 @@ from pandastable import Table
 import pandas as pd
 import os
 
-from UEVaultManager.tkgui.modules.FilterFrameClass import FilterFrame
+from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 
 global_rows_per_page = 36
 global_value_for_all = 'All'
