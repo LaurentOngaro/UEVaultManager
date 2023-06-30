@@ -5,7 +5,7 @@ import pandas as pd
 from pandastable import Table
 from tkinter import filedialog
 
-file = '../../results/list.csv'
+file = 'K:/UE/UEVM/Results//list.csv'
 
 
 class EditableTable(tk.Frame):
