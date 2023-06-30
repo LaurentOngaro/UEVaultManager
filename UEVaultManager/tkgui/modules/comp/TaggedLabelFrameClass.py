@@ -5,6 +5,7 @@ Implementation for:
 """
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import *
 from UEVaultManager.tkgui.modules.functions import log_error, log_warning, log_debug
+from UEVaultManager.tkgui.modules.types import WidgetType
 
 
 class TaggedLabelFrame(ttk.LabelFrame):

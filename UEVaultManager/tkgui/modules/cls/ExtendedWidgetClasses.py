@@ -1,7 +1,6 @@
 # coding=utf-8
 """
 Implementation for:
-- WidgetType: enum for the widget types
 - ExtendedWidget: base class for all widgets in the app
 - ExtendedEntry: extended entry widget
 - ExtendedText: extended text widget
@@ -13,23 +12,12 @@ Implementation for:
 import inspect
 import os
 import tkinter as tk
-from enum import Enum
 from tkinter import ttk
 from tkinter.font import nametofont
 
 from UEVaultManager.tkgui.modules.functions import log_warning
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
-
-
-class WidgetType(Enum):
-    """
-    Enum for the widget types
-    """
-    ENTRY = 0  # Entry widget
-    TEXT = 1  # Text widget
-    LABEL = 2  # Label widget
-    CHECKBUTTON = 3  # Checkbutton widget
-    BUTTON = 4  # Button widget
+from UEVaultManager.tkgui.modules.types import WidgetType
 
 
 class ExtendedWidget:

@@ -6,7 +6,7 @@ import argparse
 import os
 import re
 
-from UEVaultManager.models.csv_data import get_sql_field_name
+from UEVaultManager.models.csv_sql_fields import get_sql_field_name
 
 
 def get_boolean_choice(prompt: str, default=True) -> bool:
@@ -77,7 +77,6 @@ def str_to_bool(val: str) -> bool:
     'val' is anything else.
     :param val: The string representation of truth.
     :return: True or False based on the string representation of truth.
-    :raises ValueError: If the input value is not a valid truth representation.
     """
     val = val.lower()
     if val in ('y', 'yes', 't', 'true', 'on', '1'):

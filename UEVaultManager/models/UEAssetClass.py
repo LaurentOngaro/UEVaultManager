@@ -5,7 +5,7 @@ implementation for:
 """
 import logging
 
-from UEVaultManager.models.csv_data import get_sql_field_name_list
+from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list
 from UEVaultManager.utils.cli import init_dict_from_data
 
 

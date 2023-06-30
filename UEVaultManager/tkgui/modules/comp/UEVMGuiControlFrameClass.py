@@ -10,9 +10,9 @@ from ttkbootstrap.constants import *
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
-from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import WidgetType
 from UEVaultManager.tkgui.modules.comp.FilterFrameClass import FilterFrame
 from UEVaultManager.tkgui.modules.comp.TaggedLabelFrameClass import TaggedLabelFrame
+from UEVaultManager.tkgui.modules.types import WidgetType
 
 
 class UEVMGuiControlFrame(ttk.Frame):
