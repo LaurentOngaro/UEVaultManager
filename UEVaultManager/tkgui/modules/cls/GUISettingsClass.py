@@ -18,10 +18,10 @@ from UEVaultManager.models.config import AppConf
 # UEVaultManager.tkgui.modules.functions_no_deps
 
 
-def log(msg: str) -> None:
+def log_info(msg: str) -> None:
     """
     Print a message to the console
-    :param msg: the message to log
+    :param msg: the message to log_info
     """
     msg = colored(msg, 'orange')
     print(msg)
@@ -280,7 +280,7 @@ class GUISettings:
                 self.config_path = os.path.abspath(config_file)
             else:
                 self.config_path = os.path.join(self.path, clean_filename(config_file))
-            log(f'UEVMGui is using non-default config file "{self.config_path}"')
+            log_info(f'UEVMGui is using non-default config file "{self.config_path}"')
         else:
             self.config_path = os.path.join(self.path, 'config_gui.ini')
 
@@ -288,9 +288,8 @@ class GUISettings:
         try:
             self.config.read(self.config_path)
         except Exception as error:
-            log('Unable to read configuration file, please ensure that file is valid! '
-                f'(Error: {repr(error)})')
-            log('Continuing with blank config in safe-mode...')
+            log_info(f'Unable to read configuration file, please ensure that file is valid!:Error: {error!r}')
+            log_info('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {
             'rows_per_page': {
@@ -420,7 +419,7 @@ class GUISettings:
         if os.path.exists(self.config_path):
             if (mod_time := int(os.stat(self.config_path).st_mtime)) != self.config.mod_time:
                 new_filename = f'config.{mod_time}.ini'
-                log(
+                log_info(
                     f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
                 )
                 os.rename(self.config_path, os.path.join(os.path.dirname(self.config_path), new_filename))
