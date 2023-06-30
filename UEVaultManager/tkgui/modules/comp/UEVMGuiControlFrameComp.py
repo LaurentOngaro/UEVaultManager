@@ -76,11 +76,11 @@ class UEVMGuiControlFrame(ttk.Frame):
         var_entry_data_source_name = tk.StringVar(value=data_table.data_source)
         entry_data_source = ttk.Entry(lblf_files, textvariable=var_entry_data_source_name, state='readonly')
         entry_data_source.grid(row=1, column=0, columnspan=3, **grid_fw_options)
-        btn_save_data = ttk.Button(lblf_files, text='Save Data', command=container.save_data)
+        btn_save_data = ttk.Button(lblf_files, text='Save Data', command=container.save_file)
         btn_save_data.grid(row=2, column=0, **grid_fw_options)
         btn_export_button = ttk.Button(lblf_files, text='Export Selection', command=container.export_selection)
         btn_export_button.grid(row=2, column=1, **grid_fw_options)
-        btn_load_data = ttk.Button(lblf_files, text='Load Data', command=container.load_data)
+        btn_load_data = ttk.Button(lblf_files, text='Load Data', command=container.open_file)
         btn_load_data.grid(row=2, column=2, **grid_fw_options)
         lblf_files.columnconfigure('all', weight=1)  # important to make the buttons expand
 

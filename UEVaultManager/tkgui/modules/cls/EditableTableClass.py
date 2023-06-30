@@ -91,7 +91,8 @@ class EditableTable(Table):
         self.rows_per_page = rows_per_page
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
-        self.load_data()
+        if not self.load_data():
+            log_error('Failed to load data from data source when initializing the table')
         Table.__init__(self, container, dataframe=self.get_data(), showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
@@ -171,19 +172,39 @@ class EditableTable(Table):
         """
         return self._data
 
-    def load_data(self) -> None:
+    def valid_source_type(self, filename: str) -> bool:
+        """
+        Check if the file extension is valid for the current data source type.
+        :param filename: The filename to check
+        :return: True if the file extension is valid for the current data source type, False otherwise
+        """
+        file, ext = os.path.splitext(filename)
+        stored_type = self.data_source_type
+        self.data_source_type = DataSourceType.SQLITE if ext == '.db' else DataSourceType.FILE
+        go_on = True
+        if stored_type != self.data_source_type:
+            go_on = box_yesno(
+                f'The type of data source has changed from the previous one.\nYou should quit and restart the application to avoid any data loss.\nAre you sure you want to continue ?'
+            )
+        return go_on
+
+    def load_data(self) -> bool:
         """
         Loads data from the specified CSV file into the table.
+        :return: True if the data has been loaded successfully, False otherwise
         """
-        self._show_progress('Loadind Data from data source...')
+        self._show_progress('Loading Data from data source...')
         # by default the following values will be considered as 'NaN'
         # '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN', '<NA>', 'N/A', 'NA', 'NULL', 'NaN', 'None', 'n/a', 'nan', 'null'
         # see https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html
         csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
         if self.data_source is None or not os.path.isfile(self.data_source):
             log_warning(f'File to read data from is not defined or not found: {self.data_source}')
-            return
+            return False
         self.must_rebuild = False
+        if not self.valid_source_type(self.data_source):
+            return False
+
         if self.data_source_type == DataSourceType.FILE:
             try:
                 self._data = pd.read_csv(self.data_source, **csv_options)
@@ -198,6 +219,8 @@ class EditableTable(Table):
             self._data.fillna('None', inplace=True)
         elif self.data_source_type == DataSourceType.SQLITE:
             try:
+                if self._db_handler is None:
+                    self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
                 data, column_names = self._db_handler.get_assets_data_for_csv()
                 if len(data) <= 0 or data[0][0] is None:
                     # create an empty row (in the database) with the correct columns
@@ -207,10 +230,10 @@ class EditableTable(Table):
                 self._data = pd.DataFrame(data, columns=column_names)
             except EmptyDataError:
                 log_error(f'Unable to read data from database: {self.data_source}')
-                return
+                return False
         else:
             log_error(f'Unknown data source type: {self.data_source_type}')
-            return
+            return False
 
         self.format_columns()  # could take some time with lots of rows
 
@@ -219,6 +242,7 @@ class EditableTable(Table):
 
         self.total_pages = (len(self._data) - 1) // self.rows_per_page + 1
         self._close_progress()
+        return True
 
     def save_data(self, source_type=None) -> None:
         """
@@ -249,6 +273,8 @@ class EditableTable(Table):
                 try:
                     ue_asset.init_from_dict(asset_data)
                     # update the row in the database
+                    if self._db_handler is None:
+                        self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
                     self._db_handler.save_ue_asset(ue_asset)
                     asset_id = ue_asset.data.get('asset_id', '')
                     log_info(f'UE_asset ({asset_id}) for row #{row} has been saved to the database')
@@ -260,11 +286,13 @@ class EditableTable(Table):
         self.must_save = False
         box_message(f'Changed data has been saved to {self.data_source}')
 
-    def reload_data(self) -> None:
+    def reload_data(self) -> bool:
         """
         Reloads data from the CSV file and refreshes the table display.
+        :return: True if the data has been loaded successfully, False otherwise
         """
-        self.load_data()
+        if not self.load_data():
+            return False
         self.update()
 
     def rebuild_data(self) -> bool:
@@ -282,7 +310,8 @@ class EditableTable(Table):
             else:
                 gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
                 self.current_page = 1
-                self.load_data()
+                if not self.load_data():
+                    return False
                 self.update()
                 return True
         elif self.data_source_type == DataSourceType.SQLITE:
@@ -320,7 +349,8 @@ class EditableTable(Table):
                 return False
             scraper.save(owned_assets_only=owned_assets_only)
             self.current_page = 1
-            self.load_data()
+            if not self.load_data():
+                return False
             self.update()
             self._close_progress()
             return True

@@ -269,6 +269,42 @@ class GUISettings:
     # not used as property to avoid storing absolute paths in the config file. Getter and setter could be used to store relative paths
     # scraping_folder = property(get_scraping_folder, set_scraping_folder)
 
+    def get_folders_to_scan(self):
+        """ Getter for folders_to_scan """
+        json_str = self.config_vars['folders_to_scan']
+        try:
+            values = json.loads(json_str)
+        except json.decoder.JSONDecodeError:
+            values = []
+        return values
+
+    def set_folders_to_scan(self, values):
+        """ Setter for folders_to_scan """
+        if values is None or values == []:
+            json_str = ''
+        else:
+            json_str = json.dumps(values, skipkeys=True, allow_nan=True)
+        self.config_vars['folders_to_scan'] = json_str
+
+    folders_to_scan = property(get_folders_to_scan, set_folders_to_scan)
+
+    def get_data_filters(self):
+        """ Getter for data_filters """
+        json_str = self.config_vars['data_filters']
+        try:
+            values_dict = json.loads(json_str)
+        except json.decoder.JSONDecodeError:
+            values_dict = {}
+        return values_dict
+
+    def set_data_filters(self, values_dict):
+        """ Setter for data_filters """
+        if values_dict is None or values_dict == {}:
+            json_str = ''
+        else:
+            json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
+        self.config_vars['data_filters'] = json_str
+
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
         Initialize the config file for the gui
@@ -358,6 +394,10 @@ class GUISettings:
                 'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
                 'value': '../../../scraping'
             },
+            'folders_to_scan': {
+                'comment': 'List of Folders to scan for assets. Their content will be added to the list',
+                'value': ''
+            },
         }
 
         has_changed = False
@@ -398,6 +438,7 @@ class GUISettings:
             'cache_folder': self.config.get('UEVaultManager', 'cache_folder'),
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
+            'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
         }
         return config_vars
 

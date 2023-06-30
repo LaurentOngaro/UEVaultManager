@@ -83,7 +83,7 @@ class FilterFrame(ttk.LabelFrame):
 
         cur_row = 0
         cur_col = 0
-        lbl_value = ttk.Label(self, text='Select a Quick Filter')
+        lbl_value = ttk.Label(self, text='Select filter')
         lbl_value.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
         lbl_col_name = ttk.Label(self, text='Or Set a filter On')
@@ -94,11 +94,11 @@ class FilterFrame(ttk.LabelFrame):
 
         cur_row += 1
         cur_col = 0
-        self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly')
+        self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly', width=14)
         self.cb_quick_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.quick_filter())
         cur_col += 1
-        self.cb_col_name = ttk.Combobox(self, values=columns_to_list, state='readonly')
+        self.cb_col_name = ttk.Combobox(self, values=columns_to_list, state='readonly', width=18)
         self.cb_col_name.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         self.cb_col_name.bind('<<ComboboxSelected>>', lambda event: self._update_filter_widgets())
         cur_col += 3
@@ -110,7 +110,7 @@ class FilterFrame(ttk.LabelFrame):
 
         cur_row += 1
         cur_col = 0
-        self.filters_count_var = tk.StringVar(value='Current Filters (0)')
+        self.filters_count_var = tk.StringVar(value='Filters (0)')
         self.lbl_filters_count = ttk.Label(self, textvariable=self.filters_count_var)
         self.lbl_filters_count.grid(row=cur_row, column=cur_col, **{'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.E})
         cur_col += 1
@@ -135,33 +135,33 @@ class FilterFrame(ttk.LabelFrame):
         """
         Reads current selection from filter widgets and adds it to the filters' dictionary.
         """
-        selected_column = self.cb_col_name.get()
-        if selected_column:
+        cb_selection = self.cb_col_name.get()
+        if cb_selection:
             value_type_str, filter_value = self._get_filter_value_and_type()
-            if selected_column == 'Category' and filter_value != '':
+            if cb_selection == 'Category' and filter_value != '':
                 self.category = filter_value
             else:
                 self.category = None
             if filter_value != '':
                 # Filter values are a tuple of the form (value_type_str, filter_value)
-                self._filters[selected_column] = (value_type_str, filter_value)
+                self._filters[cb_selection] = (value_type_str, filter_value)
                 # print a text to easily add a new filter to self._quick_filters
                 value = f"'{filter_value}'" if value_type_str == 'str' else filter_value
-                log_info(f"Added filter: '{selected_column}_filter':['{selected_column}', {value}]  (value_type: {value_type_str})")
+                log_info(f"Added filter: '{cb_selection}_filter':['{cb_selection}', {value}]  (value_type: {value_type_str})")
             self.update_controls()
 
     def _update_filter_widgets(self) -> None:
         """
         Updates the widgets that are used for filtering based on the selected column.
         """
-        selected_column = self.cb_col_name.get()
+        cb_selection = self.cb_col_name.get()
         # Clear all widgets from the filter frame
         for widget in self.frm_widgets.winfo_children():
             widget.destroy()
         # Create the filter widget based on the dtype of the selected column
-        if selected_column:
+        if cb_selection:
             data = self.data_func()
-            dtype = data[selected_column].dtype if selected_column != self.value_for_all else 'str'
+            dtype = data[cb_selection].dtype if cb_selection != self.value_for_all else 'str'
             try:
                 type_name = dtype.name
             except AttributeError:
@@ -171,7 +171,7 @@ class FilterFrame(ttk.LabelFrame):
                 self.filter_widget = ttk.Checkbutton(self.frm_widgets, variable=self.filter_value, command=self.update_func)
             elif type_name == 'category':
                 self.filter_widget = ttk.Combobox(self.frm_widgets)
-                self.filter_widget['values'] = list(data[selected_column].cat.categories)
+                self.filter_widget['values'] = list(data[cb_selection].cat.categories)
             elif type_name in ('int', 'float', 'int64', 'float64'):
                 self.filter_widget = ttk.Spinbox(self.frm_widgets, increment=0.1, from_=0, to=100, command=self.update_func)
             else:
@@ -243,31 +243,31 @@ class FilterFrame(ttk.LabelFrame):
         """
         Updates the state of the controls based on the current state of the filters
         """
-        selected_column = self.cb_col_name.get()
+        cb_selection = self.cb_col_name.get()
         _, filter_value = self._get_filter_value_and_type()
         filter_count = len(self._filters)
 
         state = tk.NORMAL
         self.cb_col_name['state'] = state
         self.btn_clear_filters['state'] = state
+        self.btn_save_filters['state'] = state  # empty filters can be saved to remove existing one in config
 
-        cond_1 = (selected_column == '')
+        cond_1 = (cb_selection == '')
         state = tk.NORMAL if cond_1 else tk.DISABLED
         self.cb_quick_filter['state'] = state
 
-        cond_2 = (selected_column != '' and filter_value != '')
+        cond_2 = (cb_selection != '' and filter_value != '')
         state = tk.NORMAL if cond_2 else tk.DISABLED
         self.btn_add_filters['state'] = state
 
         cond_3 = (filter_count > 0)
         state = tk.NORMAL if cond_3 else tk.DISABLED
-        self.btn_save_filters['state'] = state
         self.btn_view_filters['state'] = state
 
         state = tk.NORMAL if cond_2 or cond_3 else tk.DISABLED
         self.btn_apply_filters['state'] = state
 
-        self.filters_count_var.set(f'Current filters ({filter_count})')
+        self.filters_count_var.set(f'Filters ({filter_count})')
 
     def get_filters(self) -> Dict[str, Tuple[type, Any]]:
         """

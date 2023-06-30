@@ -124,13 +124,18 @@ class UEVMGui(tk.Tk):
                 gui_f.log_error('No valid source to read data from. Application will be closed',)
 
         if show_open_file_dialog:
-            if self.load_data() == '':
+            if self.open_file() == '':
                 gui_f.log_error('This application could not run without a file to read data from')
                 self.quit()
         # Quick edit the first row
         self.editable_table.update_quick_edit(row=0)
         if gui_g.s.data_filters:
             self.load_filters(gui_g.s.data_filters)
+
+        show_option_fist = False  # debug_only
+        if show_option_fist:
+            self.toggle_options_pane(True)
+            self.toggle_controls_pane(False)
 
     def _open_file_dialog(self, save_mode=False, filename=None) -> str:
         """
@@ -307,7 +312,7 @@ class UEVMGui(tk.Tk):
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
-                self.save_data(show_dialog=False)
+                self.save_file(show_dialog=False)
         self.close_window()
 
     def close_window(self) -> None:
@@ -324,27 +329,21 @@ class UEVMGui(tk.Tk):
         gui_g.s.save_config_file()
         self.quit()
 
-    def load_data(self) -> str:
+    def open_file(self) -> str:
         """
-        Load data from the current data source
+        Open a file and Load data from it
         :return: the name of the file that was loaded
         """
-        filename = self._open_file_dialog(filename=self.editable_table.data_source)
+        data_table = self.editable_table
+        filename = self._open_file_dialog(filename=data_table.data_source)
         if filename and os.path.isfile(filename):
-            self.editable_table.data_source = filename
-            file, ext = os.path.splitext(filename)
-            old_type = self.editable_table.data_source_type
-            self.editable_table.data_source_type = DataSourceType.SQLITE if ext == '.db' else DataSourceType.FILE
-            go_on = True
-            if old_type != self.editable_table.data_source_type:
-                go_on = gui_f.box_yesno(
-                    f'The type of data source has changed from the previous one.\nYou should quit and restart the application to avoid any data loss.\nAre you sure you want to continue ?'
-                )
-
-            if go_on:
-                self.editable_table.load_data()
-                self.editable_table.current_page = 1
-                self.editable_table.update()
+            data_table.data_source = filename
+            if data_table.valid_source_type(filename):
+                if not data_table.load_data():
+                    gui_f.box_message('Error when loading data')
+                    return filename
+                data_table.current_page = 1
+                data_table.update()
                 self.update_navigation()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
@@ -352,7 +351,7 @@ class UEVMGui(tk.Tk):
             else:
                 gui_f.box_message('Operation cancelled')
 
-    def save_data(self, show_dialog=True) -> str:
+    def save_file(self, show_dialog=True) -> str:
         """
         Save the data to the current data source
         :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file
@@ -459,35 +458,39 @@ class UEVMGui(tk.Tk):
         self.editable_table.move_to_next_record()
 
     # noinspection DuplicatedCode
-    def toggle_controls_pane(self) -> None:
+    def toggle_controls_pane(self, force_showing=None) -> None:
         """
         Toggle the visibility of the controls pane
+        :param force_showing: if True, will force showing the options pane, if False, will force hiding it.If None, will toggle the visibility
         """
-        # noinspection DuplicatedCode
-        if self._control_frame.winfo_ismapped():
+        if force_showing is None:
+            force_showing = not self._control_frame.winfo_ismapped()
+        if force_showing:
+            self._control_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
+            self._toolbar_frame.btn_toggle_controls.config(text='Hide Control')
+            self._toolbar_frame.btn_toggle_options.config(state=tk.DISABLED)
+        else:
             self._control_frame.pack_forget()
             self._toolbar_frame.btn_toggle_controls.config(text='Show Control')
             self._toolbar_frame.btn_toggle_options.config(state=tk.NORMAL)
 
-        else:
-            self._control_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self._toolbar_frame.btn_toggle_controls.config(text='Hide Control')
-            self._toolbar_frame.btn_toggle_options.config(state=tk.DISABLED)
-
     # noinspection DuplicatedCode
-    def toggle_options_pane(self) -> None:
+    def toggle_options_pane(self, force_showing=None) -> None:
         """
         Toggle the visibility of the Options pane
+        :param force_showing: if True, will force showing the options pane, if False, will force hiding it.If None, will toggle the visibility
         """
         # noinspection DuplicatedCode
-        if self._options_frame.winfo_ismapped():
-            self._options_frame.pack_forget()
-            self._toolbar_frame.btn_toggle_options.config(text='Show Options')
-            self._toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
-        else:
+        if force_showing is None:
+            force_showing = not self._options_frame.winfo_ismapped()
+        if force_showing:
             self._options_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
             self._toolbar_frame.btn_toggle_options.config(text='Hide Options')
             self._toolbar_frame.btn_toggle_controls.config(state=tk.DISABLED)
+        else:
+            self._options_frame.pack_forget()
+            self._toolbar_frame.btn_toggle_options.config(text='Show Options')
+            self._toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
 
     def update_navigation(self) -> None:
         """
@@ -545,10 +548,12 @@ class UEVMGui(tk.Tk):
         if not self.editable_table.must_save or (
             self.editable_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
-            self.editable_table.reload_data()
-            # self.update_page_numbers() done in reload_data
-            self.update_category_var()
-            gui_f.box_message(f'Data Reloaded from {self.editable_table.data_source}')
+            if self.editable_table.reload_data():
+                # self.update_page_numbers() done in reload_data
+                self.update_category_var()
+                gui_f.box_message(f'Data Reloaded from {self.editable_table.data_source}')
+            else:
+                gui_f.box_message(f'Failed to reload data from {self.editable_table.data_source}')
 
     def rebuild_data(self) -> None:
         """
