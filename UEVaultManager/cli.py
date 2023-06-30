@@ -518,7 +518,7 @@ class UEVaultManagerCLI:
         else:
             self.logger.info('Getting asset list... (this may take a while)')
 
-        if args.filter_category and args.filter_category != gui_g.s.default_category_for_all:
+        if args.filter_category and args.filter_category != gui_g.s.default_value_for_all:
             gui_g.UEVM_filter_category = args.filter_category
             self.logger.info(f'The String "{args.filter_category}" will be search in Assets category')
 
