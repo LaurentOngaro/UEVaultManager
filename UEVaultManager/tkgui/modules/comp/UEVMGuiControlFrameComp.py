@@ -27,7 +27,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         if container is None:
             raise ValueError('container must be None')
         if data_table is None:
-            raise ValueError('data_table must be a UEVMGuiTableFrame instance')
+            raise ValueError('data_table must be a UEVMGuiContentFrame instance')
 
         self.data_table: EditableTable = data_table
 
@@ -48,7 +48,13 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_rebuild_file.grid(row=0, column=2, **grid_fw_options)
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
-        filter_frame = FilterFrame(self, data_func=data_table.get_data, update_func=data_table.update, value_for_all=gui_g.s.default_value_for_all)
+        filter_frame = FilterFrame(
+            self,
+            data_func=data_table.get_data,
+            update_func=data_table.update,
+            save_filter_func=self.save_filters,
+            value_for_all=gui_g.s.default_value_for_all
+        )
         filter_frame.pack(**lblf_def_options)
         container._filter_frame = filter_frame
         data_table.set_filter_frame(filter_frame)
@@ -177,3 +183,13 @@ class UEVMGuiControlFrame(ttk.Frame):
 
         self.lbtf_quick_edit = lbtf_quick_edit
         self.canvas_image = canvas_image
+
+    @staticmethod
+    def save_filters(filters: dict):
+        """
+        Save the filters to the config file
+        :param filters:
+        :return:
+        """
+        gui_g.s.data_filters = filters  # will call set_data_filters
+        gui_g.s.save_config_file()

@@ -12,9 +12,9 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOptionsFrame
-from UEVaultManager.tkgui.modules.comp.UEVMGuiTableFrameComp import UEVMGuiTableFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
 from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
 from UEVaultManager.tkgui.modules.types import DataSourceType
@@ -30,8 +30,12 @@ class UEVMGui(tk.Tk):
     :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
     :param show_open_file_dialog: If True, the open file dialog will be shown at startup
     """
-    _filter_frame: FilterFrame = None
     editable_table: EditableTable = None
+    _toolbar_frame: UEVMGuiToolbarFrame = None
+    _control_frame: UEVMGuiControlFrame = None
+    _options_frame: UEVMGuiOptionsFrame = None
+    _content_frame: UEVMGuiContentFrame = None
+    _filter_frame: FilterFrame = None
 
     def __init__(
         self,
@@ -63,15 +67,21 @@ class UEVMGui(tk.Tk):
         self.resizable(True, True)
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
-        table_frame = UEVMGuiTableFrame(self)
+        content_frame = UEVMGuiContentFrame(self)
+        self._content_frame = content_frame
 
         # gui_g.UEVM_gui_ref = self  # important ! Must be donne before any use of a ProgressWindow. If not, an UEVMGuiHiddenRootClass will be created and the ProgressWindow still be displayed after the init
         # reading from CSV file version
-        # self.editable_table = EditableTable(container_frame=table_frame, data_source=data_source, rows_per_page=36, show_statusbar=True)
+        # self.editable_table = EditableTable(container=content_frame, data_source=data_source, rows_per_page=36, show_statusbar=True)
 
         # reading from database file version
         self.editable_table = EditableTable(
-            container_frame=table_frame, data_source_type=data_source_type, data_source=data_source, rows_per_page=36, show_statusbar=True
+            container=content_frame,
+            data_source_type=data_source_type,
+            data_source=data_source,
+            rows_per_page=36,
+            show_statusbar=True,
+            update_page_numbers_func=self.update_navigation
         )
 
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
@@ -87,7 +97,7 @@ class UEVMGui(tk.Tk):
         self._options_frame = options_frame
 
         toolbar_frame.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
-        table_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
+        content_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
         control_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
         # not displayed at start
         # _options_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
@@ -120,7 +130,7 @@ class UEVMGui(tk.Tk):
         # Quick edit the first row
         self.editable_table.update_quick_edit(row=0)
         if gui_g.s.data_filters:
-            self._filter_frame.load_filters(gui_g.s.data_filters)
+            self.load_filters(gui_g.s.data_filters)
 
     def _open_file_dialog(self, save_mode=False, filename=None) -> str:
         """
@@ -164,7 +174,7 @@ class UEVMGui(tk.Tk):
         self._toolbar_frame.btn_prev_page.config(state=state)
         self._toolbar_frame.btn_next_page.config(state=state)
         self._toolbar_frame.btn_last_page.config(state=state)
-        self._toolbar_frame.entry_page_num.config(state=state)
+        self._toolbar_frame.entry_current_page.config(state=state)
 
     def mainloop(self, n=0):
         """ Override of mainloop method with loggin function (for debugging)"""
@@ -219,14 +229,14 @@ class UEVMGui(tk.Tk):
         selected_row = event.widget.currentrow
         self.editable_table.update_quick_edit(row=selected_row)
 
-    def on_entry_page_num_changed(self, _event=None) -> None:
+    def on_entry_current_page_changed(self, _event=None) -> None:
         """
         When the page number changes, show the corresponding page
         :param _event:
         """
         page_num = 1
         try:
-            page_num = self._toolbar_frame.entry_page_num.get()
+            page_num = self._toolbar_frame.entry_current_page.get()
             page_num = int(page_num)
             gui_f.log_debug(f'showing page {page_num}')
             self.editable_table.current_page = page_num
@@ -335,7 +345,7 @@ class UEVMGui(tk.Tk):
                 self.editable_table.load_data()
                 self.editable_table.current_page = 1
                 self.editable_table.update()
-                self.update_page_numbers()
+                self.update_navigation()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
                 return filename
@@ -377,7 +387,7 @@ class UEVMGui(tk.Tk):
             else:
                 gui_f.box_message('Select at least one row first')
 
-    def load_filter(self, filters=None):
+    def load_filters(self, filters=None):
         """
         Load the filters from a dictionary
         :param filters: filters
@@ -386,6 +396,7 @@ class UEVMGui(tk.Tk):
             return
         try:
             self._filter_frame.load_filters(filters)
+            # self.update_navigation() # done in load_filters and inner calls
         except Exception as error:
             gui_f.log_error(f'Error loading filters: {error!r}')
 
@@ -404,7 +415,7 @@ class UEVMGui(tk.Tk):
             self._change_navigation_state(tk.DISABLED)
             self._toolbar_frame.btn_toggle_pagination.config(text='Enable  Pagination')
         else:
-            self.update_page_numbers()  # will also update buttons status
+            self.update_navigation()  # will also update buttons status
             self._toolbar_frame.btn_toggle_pagination.config(text='Disable Pagination')
 
     def show_first_page(self) -> None:
@@ -412,28 +423,28 @@ class UEVMGui(tk.Tk):
         Show the first page of the table
         """
         self.editable_table.first_page()
-        self.update_page_numbers()
+        self.update_navigation()
 
     def show_prev_page(self) -> None:
         """
         Show the previous page of the table
         """
         self.editable_table.prev_page()
-        self.update_page_numbers()
+        self.update_navigation()
 
     def show_next_page(self) -> None:
         """
         Show the next page of the table
         """
         self.editable_table.next_page()
-        self.update_page_numbers()
+        self.update_navigation()
 
     def show_last_page(self) -> None:
         """
         Show the last page of the table
         """
         self.editable_table.last_page()
-        self.update_page_numbers()
+        self.update_navigation()
 
     def prev_asset(self) -> None:
         """
@@ -478,22 +489,26 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_toggle_options.config(text='Hide Options')
             self._toolbar_frame.btn_toggle_controls.config(state=tk.DISABLED)
 
-    def update_page_numbers(self) -> None:
+    def update_navigation(self) -> None:
         """
         Update the page numbers in the toolbar
         """
-        page_num = self.editable_table.current_page
-        self._toolbar_frame.entry_page_num_var.set(page_num)
-        self._toolbar_frame.lbl_page_count.config(text=f' / {self.editable_table.total_pages}')
+        if self._toolbar_frame is None:
+            # toolbar not created yet
+            return
+        current_page = self.editable_table.current_page
+        total_pages = self.editable_table.total_pages
+        self._toolbar_frame.entry_current_page_var.set(current_page)
+        self._toolbar_frame.lbl_page_count.config(text=f' / {total_pages}')
         # enable all buttons by default
         self._change_navigation_state(tk.NORMAL)
 
         if not self.editable_table.pagination_enabled:
-            self._toolbar_frame.entry_page_num.config(state=tk.NORMAL)
-        if page_num <= 1:
+            self._toolbar_frame.entry_current_page.config(state=tk.NORMAL)
+        if current_page <= 1:
             self._toolbar_frame.btn_first_page.config(state=tk.DISABLED)
             self._toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
-        elif page_num >= self.editable_table.total_pages:
+        if current_page >= total_pages:
             self._toolbar_frame.btn_next_page.config(state=tk.DISABLED)
             self._toolbar_frame.btn_last_page.config(state=tk.DISABLED)
 
@@ -531,7 +546,7 @@ class UEVMGui(tk.Tk):
             self.editable_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             self.editable_table.reload_data()
-            self.update_page_numbers()
+            # self.update_page_numbers() done in reload_data
             self.update_category_var()
             gui_f.box_message(f'Data Reloaded from {self.editable_table.data_source}')
 
@@ -541,7 +556,7 @@ class UEVMGui(tk.Tk):
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
             if self.editable_table.rebuild_data():
-                self.update_page_numbers()
+                self.update_navigation()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {self.editable_table.data_source}')
 

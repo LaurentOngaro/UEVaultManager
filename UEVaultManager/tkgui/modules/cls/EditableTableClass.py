@@ -32,12 +32,13 @@ class EditableTable(Table):
     """
     A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
-    :param container_frame: The parent frame for the table.
+    :param container: The parent frame for the table.
     :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
     :param data_source: The path to the source that contains the table data
     :param rows_per_page: The number of rows to show per page.
     :param show_toolbar: Whether to show the toolbar.
     :param show_statusbar: Whether to show the status bar.
+    :param update_page_numbers_func: A function that updates the page numbers.
     :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
 
@@ -70,18 +71,19 @@ class EditableTable(Table):
 
     def __init__(
         self,
-        container_frame=None,
+        container=None,
         data_source_type=DataSourceType.FILE,
         data_source=None,
         rows_per_page=36,
         show_toolbar=False,
         show_statusbar=False,
+        update_page_numbers_func=None,
         **kwargs
     ):
-        if container_frame is None:
-            raise ValueError('container_frame cannot be None')
-        self._container_frame = container_frame
-
+        if container is None:
+            raise ValueError('container cannot be None')
+        self._container = container
+        self.update_page_numbers_func = update_page_numbers_func
         self.data_source_type = data_source_type
         self.data_source = data_source
         self.show_toolbar = show_toolbar
@@ -90,7 +92,7 @@ class EditableTable(Table):
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
         self.load_data()
-        Table.__init__(self, container_frame, dataframe=self.get_data(), showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
+        Table.__init__(self, container, dataframe=self.get_data(), showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
     def _generate_cell_selection_changed_event(self) -> None:
@@ -529,6 +531,8 @@ class EditableTable(Table):
             self.total_pages = 1
         # self.redraw() # done in set_colors
         self.set_colors()
+        if self.update_page_numbers_func is not None:
+            self.update_page_numbers_func()
 
     def next_page(self) -> None:
         """

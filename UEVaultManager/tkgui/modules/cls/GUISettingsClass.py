@@ -111,14 +111,19 @@ class GUISettings:
 
     def get_data_filters(self):
         """ Getter for data_filters """
-        # convert a json string to a (filters) dict
-        values_dict = json.loads(self.config_vars['data_filters'])
+        json_str = self.config_vars['data_filters']
+        try:
+            values_dict = json.loads(json_str)
+        except json.decoder.JSONDecodeError:
+            values_dict = {}
         return values_dict
 
     def set_data_filters(self, values_dict):
         """ Setter for data_filters """
-        # convert a (filters) dict to json string
-        json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
+        if values_dict is None or values_dict == {}:
+            json_str = ''
+        else:
+            json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
         self.config_vars['data_filters'] = json_str
 
     # used as property for keeping transparent access

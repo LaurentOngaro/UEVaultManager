@@ -23,7 +23,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         if container is None:
             raise ValueError('container must be None')
         if data_table is None:
-            raise ValueError('data_table must be a UEVMGuiTableFrame instance')
+            raise ValueError('data_table must be a UEVMGuiContentFrame instance')
 
         self.data_table: EditableTable = data_table
 
@@ -43,9 +43,9 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.show_prev_page)
         btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
         btn_prev_page.config(state=tk.DISABLED)
-        entry_page_num_var = tk.StringVar(value=data_table.current_page)
-        entry_page_num = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_page_num_var)
-        entry_page_num.pack(**pack_def_options, side=tk.LEFT)
+        entry_current_page_var = tk.StringVar(value=data_table.current_page)
+        entry_current_page = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_current_page_var)
+        entry_current_page.pack(**pack_def_options, side=tk.LEFT)
         lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages}')
         lbl_page_count.pack(**pack_def_options, side=tk.LEFT)
         btn_next_page = ttk.Button(lblf_navigation, text='Next Page', command=container.show_next_page)
@@ -96,8 +96,8 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
 
         # Bind events for the Entry widget
-        entry_page_num.bind('<FocusOut>', container.on_entry_page_num_changed)
-        entry_page_num.bind('<Return>', container.on_entry_page_num_changed)
+        entry_current_page.bind('<FocusOut>', container.on_entry_current_page_changed)
+        entry_current_page.bind('<Return>', container.on_entry_current_page_changed)
 
         self.btn_toggle_pagination = btn_toggle_pagination
         self.btn_first_page = btn_first_page
@@ -107,5 +107,5 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         self.btn_toggle_options = btn_toggle_options
         self.btn_toggle_controls = btn_toggle_controls
         self.lbl_page_count = lbl_page_count
-        self.entry_page_num = entry_page_num
-        self.entry_page_num_var = entry_page_num_var
+        self.entry_current_page = entry_current_page
+        self.entry_current_page_var = entry_current_page_var
