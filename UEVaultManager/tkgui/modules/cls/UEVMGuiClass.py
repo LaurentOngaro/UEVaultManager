@@ -386,6 +386,18 @@ class UEVMGui(tk.Tk):
             else:
                 gui_f.box_message('Select at least one row first')
 
+    def scan_folders(self) -> None:
+        """
+        Scan the folders to find files that can be loaded
+        """
+        gui_f.todo_message()
+
+    def scrap_for_row(self) -> None:
+        """
+        Scrap the data for the current row
+        """
+        gui_f.todo_message()
+
     def load_filters(self, filters=None):
         """
         Load the filters from a dictionary

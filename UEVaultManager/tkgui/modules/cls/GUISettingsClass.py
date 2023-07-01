@@ -352,11 +352,11 @@ class GUISettings:
             },
             'width': {
                 'comment': 'Width of the main windows',
-                'value': 1600
+                'value': 1750
             },
             'height': {
                 'comment': 'Height of the main windows',
-                'value': 935
+                'value': 930
             },
             'debug_mode': {
                 'comment': 'Set to True to print debug information (GUI related only)',
