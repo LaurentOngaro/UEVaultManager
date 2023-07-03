@@ -32,7 +32,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.data_table: EditableTable = data_table
 
         grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.SE}
-        grid_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0, 'sticky': tk.SE}  # no padding
+        grid_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0}  # no padding
         # pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
         grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
         lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
@@ -40,14 +40,77 @@ class UEVMGuiControlFrame(ttk.Frame):
 
         lblf_content = ttk.LabelFrame(self, text='Content')
         lblf_content.pack(**lblf_def_options)
-        btn_edit_row = ttk.Button(lblf_content, text='Edit Row', command=data_table.create_edit_record_window)
-        btn_edit_row.grid(row=0, column=0, **grid_fw_options)
-        btn_reload_data = ttk.Button(lblf_content, text='Reload Content', command=container.reload_data)
-        btn_reload_data.grid(row=0, column=1, **grid_fw_options)
-        btn_rebuild_file = ttk.Button(lblf_content, text='Rebuild Content', command=container.rebuild_data)
-        btn_rebuild_file.grid(row=0, column=2, **grid_fw_options)
-        btn_scan_asset = ttk.Button(lblf_content, text='Scan Folders', command=container.scan_folders)
-        btn_scan_asset.grid(row=0, column=4, **grid_fw_options)
+        cur_col = 0
+        cur_row = 0
+        max_col = 5
+        # lblf_files row
+        lbl_data_source = ttk.Label(lblf_content, text='Data Source: ')
+        lbl_data_source.grid(row=cur_row, column=0, columnspan=3, **grid_fw_options)
+        cur_col += 3
+        lbl_data_type = ttk.Label(lblf_content, text='Type: ')
+        lbl_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.E)
+        cur_col += 1
+        var_entry_data_source_type = tk.StringVar(value=data_table.data_source_type.name)
+        # noinspection PyArgumentList
+        entry_data_type = ttk.Entry(lblf_content, textvariable=var_entry_data_source_type, state='readonly', width=6, bootstyle=WARNING)
+        entry_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.W)
+        # lblf_content row
+        cur_row += 1
+        var_entry_data_source_name = tk.StringVar(value=data_table.data_source)
+        entry_data_source = ttk.Entry(lblf_content, textvariable=var_entry_data_source_name, state='readonly')
+        entry_data_source.grid(row=cur_row, column=0, columnspan=max_col, **grid_fw_options)
+        cur_row += 1
+        cur_col = 0
+        buttons = [
+            {
+                "text": "Add",
+                "command": container.add_row
+            },  #
+            {
+                "text": "Del",
+                "command": container.del_row
+            },  #
+            {
+                "text": "Edit",
+                "command": data_table.create_edit_record_window
+            },  #
+            {
+                "text": "Scrap",
+                "command": container.scrap_row
+            },  #
+            {
+                "text": "Scan Folders",
+                "command": container.scan_folders
+            },  #
+            # row
+            {
+                "text": "Load",
+                "command": container.open_file
+            },  #
+            {
+                "text": "Save",
+                "command": container.save_file
+            },  #
+            {
+                "text": "Export",
+                "command": container.export_selection
+            },  #
+            {
+                "text": "Reload",
+                "command": container.reload_data
+            },  #
+            {
+                "text": "Rebuild",
+                "command": container.rebuild_data
+            },  #
+        ]
+        for _, button in enumerate(buttons):
+            btn = ttk.Button(lblf_content, text=button["text"], command=button["command"])
+            btn.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            cur_col += 1
+            if cur_col % max_col == 0:
+                cur_row += 1
+                cur_col = 0
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
         filter_frame = FilterFrame(
@@ -61,37 +124,9 @@ class UEVMGuiControlFrame(ttk.Frame):
         container._filter_frame = filter_frame
         data_table.set_filter_frame(filter_frame)
 
-        lblf_files = ttk.LabelFrame(self, text='Files')
-        lblf_files.pack(**lblf_def_options)
-        # lblf_files row
-        lbl_data_source = ttk.Label(lblf_files, text='Data Source: ')
-        lbl_data_source.grid(row=0, column=0, columnspan=3, **grid_fw_options)
-        frm_inner = ttk.Frame(lblf_files)
-        frm_inner.grid(row=0, column=3, **grid_fw_options)
-        lbl_data_type = ttk.Label(frm_inner, text='Type: ')
-        lbl_data_type.grid(row=0, column=0, **grid_def_options_np)
-        var_entry_data_source_type = tk.StringVar(value=data_table.data_source_type.name)
-        # noinspection PyArgumentList
-        entry_data_type = ttk.Entry(frm_inner, textvariable=var_entry_data_source_type, state='readonly', width=6, bootstyle=WARNING)
-        entry_data_type.grid(row=0, column=1, **grid_def_options_np)
-        var_entry_data_source_name = tk.StringVar(value=data_table.data_source)
-        # lblf_files row
-        entry_data_source = ttk.Entry(lblf_files, textvariable=var_entry_data_source_name, state='readonly')
-        entry_data_source.grid(row=1, column=0, columnspan=4, **grid_fw_options)
-        # lblf_files row
-        btn_load_data = ttk.Button(lblf_files, text='Load Data', command=container.open_file)
-        btn_load_data.grid(row=2, column=1, **grid_fw_options)
-        btn_save_data = ttk.Button(lblf_files, text='Save Data', command=container.save_file)
-        btn_save_data.grid(row=2, column=0, **grid_fw_options)
-        btn_export_button = ttk.Button(lblf_files, text='Export Selection', command=container.export_selection)
-        btn_export_button.grid(row=2, column=2, **grid_fw_options)
-        btn_scrap_row = ttk.Button(lblf_files, text='Scrap data', command=container.scrap_for_row)
-        btn_scrap_row.grid(row=2, column=3, **grid_fw_options)
-        lblf_files.columnconfigure('all', weight=1)  # important to make the buttons expand
-
         # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
         # to get the widgets it needs. So they can't be changed freely
-        lbtf_quick_edit = TaggedLabelFrame(self, text='Quick Edit User fields')
+        lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing')
         lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
         data_table.set_quick_edit_frame(lbtf_quick_edit)
 

@@ -378,23 +378,35 @@ class UEVMGui(tk.Tk):
         """
         # Get selected row indices
         selected_rows = self.editable_table.get_selected_rows()
-        if selected_rows:
+        if len(selected_rows):
             filename = self._open_file_dialog(save_mode=True, filename=self.editable_table.data_source)
             if filename:
                 selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
-            else:
-                gui_f.box_message('Select at least one row first')
+        else:
+            gui_f.box_message('Select at least one row first')
+
+    def add_row(self) -> None:
+        """
+        Add a new row
+        """
+        gui_f.todo_message()
+
+    def del_row(self) -> None:
+        """
+        Delete a row
+        """
+        gui_f.todo_message()
+
+    def scrap_row(self) -> None:
+        """
+        Scrap the data for the current row
+        """
+        gui_f.todo_message()
 
     def scan_folders(self) -> None:
         """
         Scan the folders to find files that can be loaded
-        """
-        gui_f.todo_message()
-
-    def scrap_for_row(self) -> None:
-        """
-        Scrap the data for the current row
         """
         gui_f.todo_message()
 
