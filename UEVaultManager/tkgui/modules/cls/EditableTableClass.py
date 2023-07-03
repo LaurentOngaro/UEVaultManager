@@ -294,6 +294,7 @@ class EditableTable(Table):
         if not self.load_data():
             return False
         self.update()
+        return True
 
     def rebuild_data(self) -> bool:
         """
@@ -930,7 +931,7 @@ class EditableTable(Table):
             value = self.model.getValueAt(row=row, col=col)
             if col_name == 'Asset_id':
                 asset_id = value
-                quick_edit_frame.config(text=f'Quick Edit {asset_id}')
+                quick_edit_frame.config(text=f'Quick Editing Asset: {asset_id}')
                 continue
             typed_value = get_typed_value(csv_field=col_name, value=value)
             quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row, col=col)
@@ -939,7 +940,7 @@ class EditableTable(Table):
         """
         Resets the cell content preview.
         """
-        self._frm_quick_edit.config(text='Quick Edit User Fields')
+        self._frm_quick_edit.config(text='Select a row for Quick Editing')
         column_names = get_csv_field_name_list(filter_on_states=[CSVFieldState.USER])
         for col_name in column_names:
             self._frm_quick_edit.set_default_content(col_name)

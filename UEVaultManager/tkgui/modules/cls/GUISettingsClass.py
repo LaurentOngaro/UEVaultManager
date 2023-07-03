@@ -356,7 +356,7 @@ class GUISettings:
             },
             'height': {
                 'comment': 'Height of the main windows',
-                'value': 930
+                'value': 940
             },
             'debug_mode': {
                 'comment': 'Set to True to print debug information (GUI related only)',
