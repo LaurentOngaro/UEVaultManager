@@ -267,18 +267,24 @@ class EditableTable(Table):
             self.must_rebuild = True
             self._data = table_row
 
+    def getSelectedRow(self):
+        """Get currently selected row"""
+        return self.currentrow
+
     def del_row(self, row=None) -> bool:
         """
         Delete the selected row in the table.
         """
-
         if row is None:
             row = self.getSelectedRow()
-        data = self.get_data_filtered()
-        if not data.empty and row is not None and 0 <= row < len(data):
-            asset_id = data.iloc[row]['Asset_id']
-            if box_yesno(f'Are you sure you want to delete the row {row + 1} for asset_id {asset_id}?'):
-                index = data.index[row]
+        data = self.get_data()
+        filtered = self.get_data_filtered()
+        if not data.empty and row is not None and 0 <= row < len(filtered):
+            if self.pagination_enabled:
+                row += self.rows_per_page * (self.current_page - 1)
+            asset_id = filtered.iloc[row]['Asset_id']
+            if box_yesno(f'Are you sure you want to delete the row #{row + 1} with asset_id={asset_id} ?'):
+                index = filtered.index[row]
                 data.drop(index, inplace=True)
                 self.setSelectedRow(row - 1)
                 self.clearSelected()
@@ -602,18 +608,18 @@ class EditableTable(Table):
         Updates the page
         """
         if self.pagination_enabled:
-            data_count = len(self._filtered)
+            data_count = len(self.get_data_filtered())
             self.total_pages = (data_count-1) // self.rows_per_page + 1
             start = (self.current_page - 1) * self.rows_per_page
             end = start + self.rows_per_page
             try:
                 # could be empty before load_data is called
-                self.model.df = self._filtered.iloc[start:end]
+                self.model.df = self.get_data_filtered().iloc[start:end]
             except IndexError:
                 self.current_page = self.total_pages
         else:
             # Update table with all data
-            self.model.df = self._data
+            self.model.df = self.get_data_filtered()
             self.current_page = 1
             self.total_pages = 1
         # self.redraw() # done in set_colors

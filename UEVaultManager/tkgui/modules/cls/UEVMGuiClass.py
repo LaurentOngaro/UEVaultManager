@@ -17,7 +17,7 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiCon
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOptionsFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
 from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
-from UEVaultManager.tkgui.modules.types import DataSourceType
+from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType
 
 
 class UEVMGui(tk.Tk):
@@ -395,20 +395,63 @@ class UEVMGui(tk.Tk):
         self.editable_table.update()
 
     def del_row(self) -> None:
-        """Remove the selected row from the DataFrame."""
+        """
+        Remove the selected row from the DataFrame
+        """
+        # if self.editable_table.pagination_enabled and gui_f.box_yesno('To delete a row, The pagination must be disabled. Do you want to disable it now ?'):
+        #     self.toggle_pagination(forced_value=False)
+        #     return
+
         if self.editable_table.del_row():
             self.editable_table.must_save = True
             self.editable_table.update()
 
+    @staticmethod
+    def scan_folders() -> None:
+        """
+        Scan the folders to find files that can be loaded
+        """
+        valid_folders = {}
+        folder_to_scan = gui_g.s.folders_to_scan
+
+        while len(folder_to_scan):
+            full_folder = folder_to_scan.pop()
+            gui_f.log_info(f'Scanning folder {full_folder}')
+            if os.path.isdir(full_folder):
+                full_folder = os.path.abspath(full_folder)
+                folder_name = os.path.basename(full_folder)
+                parent_folder = os.path.dirname(full_folder)
+                # check if the folder is a valid UE folder
+                if folder_name in gui_g.s.ue_valid_folder_content:
+                    # TODO: check if the folder contains an url file and its content in url variable
+                    url = ''
+                    valid_folders[folder_name] = {'path': parent_folder, 'asset_type': UEAssetType.Project, 'url': url}
+                    gui_f.log_info(f'-->Found {folder_name} as a valid project')
+                    continue
+                # check if the folder contains a valid UE file
+                for file in os.listdir(full_folder):
+                    extension = os.path.splitext(file)[1].lower()
+                    if extension in gui_g.s.ue_valid_file_content:
+                        asset_type = UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Project
+                        # TODO: check if the folder contains an url file and its content in url variable
+                        url = ''
+                        valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'url': url}
+                        gui_f.log_info(f'-->Found {folder_name} as a valid project containing a {asset_type.name}')
+                        continue
+                # add subfolders to the list of folders to scan
+                for subfolder in os.listdir(full_folder):
+                    full_subfolder = os.path.join(full_folder, subfolder)
+                    if os.path.isdir(full_subfolder):
+                        folder_to_scan.append(full_subfolder)
+
+        gui_f.log_info('Valid folders found after scan:')
+        for name, content in valid_folders.items():
+            gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with url {content["url"]} ')
+            # TODO: create a row for each valid folder in the table
+
     def scrap_row(self) -> None:
         """
         Scrap the data for the current row
-        """
-        gui_f.todo_message()
-
-    def scan_folders(self) -> None:
-        """
-        Scan the folders to find files that can be loaded
         """
         gui_f.todo_message()
 

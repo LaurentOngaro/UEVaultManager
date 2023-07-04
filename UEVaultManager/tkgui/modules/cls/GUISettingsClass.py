@@ -65,6 +65,10 @@ class GUISettings:
         self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
         self.app_monitor = 1
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
+        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
+        self.ue_valid_file_content = ('.uplugin', '.uproject')
+        # if a folder is in this tuple, the parent folder is considered as a valid UE folder
+        self.ue_valid_folder_content = ('content', 'Source')
 
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
