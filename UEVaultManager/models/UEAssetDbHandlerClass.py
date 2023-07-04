@@ -510,14 +510,18 @@ class UEAssetDbHandler:
         """
         self.set_assets([ue_asset.data])
 
-    def delete_asset(self, uid: str) -> None:
+    def delete_asset(self, uid: str = '', asset_id: str = '') -> None:
         """
-        Delete an asset from the 'assets' table by its ID.
+        Delete an asset from the 'assets' table by its ID or asset_id.
         :param uid: The ID of the asset to delete.
+        :param asset_id: The Asset_id of the asset to delete. If both uid and asset_id are provided, only asset_id is used.
         """
-        if self.connection is not None:
+        if self.connection is not None and (uid or asset_id):
             cursor = self.connection.cursor()
-            cursor.execute("DELETE FROM assets WHERE id = ?", (uid,))
+            if not asset_id:
+                cursor.execute("DELETE FROM assets WHERE id = ?", (uid,))
+            else:
+                cursor.execute("DELETE FROM assets WHERE asset_id = ?", (asset_id,))
             self.connection.commit()
             cursor.close()
 
@@ -531,16 +535,20 @@ class UEAssetDbHandler:
             self.connection.commit()
             cursor.close()
 
-    def update_asset(self, uid: str, column: str, value) -> None:
+    def update_asset(self, column: str, value, uid: str = '', asset_id: str = '') -> None:
         """
         Update a specific column of an asset in the 'assets' table by its ID.
-        :param uid: The ID of the asset to update.
         :param column: The name of the column
         :param value: The new value.
+        :param uid: The ID of the asset to delete.
+        :param asset_id: The Asset_id of the asset to delete. If both uid and asset_id are provided, only asset_id is used.
         """
-        if self.connection is not None:
+        if self.connection is not None and (uid or asset_id):
             cursor = self.connection.cursor()
-            cursor.execute(f"UPDATE assets SET {column} = ? WHERE id = ?", (value, uid))
+            if not asset_id:
+                cursor.execute(f"UPDATE assets SET {column} = ? WHERE id = ?", (value, uid))
+            else:
+                cursor.execute(f"UPDATE assets SET {column} = ? WHERE asset_id = ?", (value, asset_id))
             self.connection.commit()
             cursor.close()
 

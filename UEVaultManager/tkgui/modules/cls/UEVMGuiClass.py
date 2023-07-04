@@ -388,15 +388,17 @@ class UEVMGui(tk.Tk):
 
     def add_row(self) -> None:
         """
-        Add a new row
+        Add a new row at the current position
         """
-        gui_f.todo_message()
+        self.editable_table.create_row(add_to_existing=True)
+        self.editable_table.must_save = True
+        self.editable_table.update()
 
     def del_row(self) -> None:
-        """
-        Delete a row
-        """
-        gui_f.todo_message()
+        """Remove the selected row from the DataFrame."""
+        if self.editable_table.del_row():
+            self.editable_table.must_save = True
+            self.editable_table.update()
 
     def scrap_row(self) -> None:
         """

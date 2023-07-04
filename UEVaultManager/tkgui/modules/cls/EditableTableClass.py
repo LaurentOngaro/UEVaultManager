@@ -47,6 +47,7 @@ class EditableTable(Table):
     _last_selected_row = -1
     _last_selected_col = -1
     _changed_rows = []
+    _deleted_asset_ids = []
     _db_handler = None
 
     _frm_quick_edit = None
@@ -172,6 +173,13 @@ class EditableTable(Table):
         """
         return self._data
 
+    def get_data_filtered(self) -> pd.DataFrame:
+        """
+        Returns the filtered data of the table.
+        :return: data
+        """
+        return self._filtered
+
     def valid_source_type(self, filename: str) -> bool:
         """
         Check if the file extension is valid for the current data source type.
@@ -194,45 +202,32 @@ class EditableTable(Table):
         :return: True if the data has been loaded successfully, False otherwise
         """
         self._show_progress('Loading Data from data source...')
-        # by default the following values will be considered as 'NaN'
-        # '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN', '<NA>', 'N/A', 'NA', 'NULL', 'NaN', 'None', 'n/a', 'nan', 'null'
-        # see https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html
-        csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
         if self.data_source is None or not os.path.isfile(self.data_source):
             log_warning(f'File to read data from is not defined or not found: {self.data_source}')
             return False
         self.must_rebuild = False
         if not self.valid_source_type(self.data_source):
             return False
-
-        if self.data_source_type == DataSourceType.FILE:
-            try:
-                self._data = pd.read_csv(self.data_source, **csv_options)
-            except EmptyDataError:
-                # will create an empty row with the correct columns
-                str_data = get_csv_field_name_list(return_as_string=True)  # column names
-                str_data += '\n'
-                str_data += create_empty_csv_row(return_as_string=True)  # dummy row
-                self._data = pd.read_csv(io.StringIO(str_data), **csv_options)
-                self.must_rebuild = True
-            # fill all 'NaN' like values with 'None', to be similar to the database
-            self._data.fillna('None', inplace=True)
-        elif self.data_source_type == DataSourceType.SQLITE:
-            try:
-                if self._db_handler is None:
-                    self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
+        # TODO: test emtpy file at start with database and csv
+        try:
+            if self.data_source_type == DataSourceType.FILE:
+                self._data = pd.read_csv(self.data_source, **gui_g.s.csv_options)
+                if len(self._data) <= 0 or self._data.iloc[0][0] is None:
+                    raise EmptyDataError
+                # fill all 'NaN' like values with 'None', to be similar to the database
+                self._data.fillna('None', inplace=True)
+            elif self.data_source_type == DataSourceType.SQLITE:
                 data, column_names = self._db_handler.get_assets_data_for_csv()
                 if len(data) <= 0 or data[0][0] is None:
-                    # create an empty row (in the database) with the correct columns
-                    self._db_handler.create_empty_row(return_as_string=False, empty_cell=gui_g.s.empty_cell)  # dummy row
-                    data, column_names = self._db_handler.get_assets_data_for_csv()
-                    self.must_rebuild = True
-                self._data = pd.DataFrame(data, columns=column_names)
-            except EmptyDataError:
-                log_error(f'Unable to read data from database: {self.data_source}')
+                    raise EmptyDataError
+            else:
+                log_error(f'Unknown data source type: {self.data_source_type}')
                 return False
-        else:
-            log_error(f'Unknown data source type: {self.data_source_type}')
+        except EmptyDataError:
+            self.create_row(add_to_existing=False)
+
+        if len(self._data) <= 0:
+            log_error(f'No data found in data source: {self.data_source}')
             return False
 
         self.format_columns()  # could take some time with lots of rows
@@ -243,6 +238,55 @@ class EditableTable(Table):
         self.total_pages = (len(self._data) - 1) // self.rows_per_page + 1
         self._close_progress()
         return True
+
+    def create_row(self, add_to_existing=True) -> None:
+        """
+        Create an empty row in the table.
+        """
+        table_row = None
+        if self.data_source_type == DataSourceType.FILE:
+            # create an empty row with the correct columns
+            str_data = get_csv_field_name_list(return_as_string=True)  # column names
+            str_data += '\n'
+            str_data += create_empty_csv_row(return_as_string=True)  # dummy row
+            table_row = pd.read_csv(io.StringIO(str_data), **gui_g.s.csv_options)
+        elif self.data_source_type == DataSourceType.SQLITE:
+            if self._db_handler is None:
+                self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
+            # create an empty row (in the database) with the correct columns
+            self._db_handler.create_empty_row(return_as_string=False, empty_cell=gui_g.s.empty_cell)  # dummy row
+            data, column_names = self._db_handler.get_assets_data_for_csv()
+            table_row = pd.DataFrame(data, columns=column_names)
+        else:
+            log_error(f'Unknown data source type: {self.data_source_type}')
+        if add_to_existing and table_row is not None:
+            self.must_rebuild = False
+            self._data = pd.concat([self._data, table_row], copy=False, ignore_index=True)
+            self.add_to_rows_to_save(self._data.index[-1])
+        else:
+            self.must_rebuild = True
+            self._data = table_row
+
+    def del_row(self, row=None) -> bool:
+        """
+        Delete the selected row in the table.
+        """
+
+        if row is None:
+            row = self.getSelectedRow()
+        data = self.get_data_filtered()
+        if not data.empty and row is not None and 0 <= row < len(data):
+            asset_id = data.iloc[row]['Asset_id']
+            if box_yesno(f'Are you sure you want to delete the row {row + 1} for asset_id {asset_id}?'):
+                index = data.index[row]
+                data.drop(index, inplace=True)
+                self.setSelectedRow(row - 1)
+                self.clearSelected()
+
+                # data.drop(data.index[row], inplace=True)
+                self.add_to_asset_ids_to_delete(asset_id)
+                return True
+        return False
 
     def save_data(self, source_type=None) -> None:
         """
@@ -280,9 +324,19 @@ class EditableTable(Table):
                     log_info(f'UE_asset ({asset_id}) for row #{row} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
                     log_warning(f'Unable to save UE_asset for row #{row} to the database. Error: {error}')
+            for asset_id in self._deleted_asset_ids:
+                try:
+                    # delete the row in the database
+                    if self._db_handler is None:
+                        self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
+                    self._db_handler.delete_asset(asset_id=asset_id)
+                    log_info(f'row with asset_id={asset_id} has been deleted from the database')
+                except (KeyError, ValueError, AttributeError) as error:
+                    log_warning(f'Unable to delete asset_id={asset_id} to the database. Error: {error}')
 
         self.update()
         self.clear_rows_to_save()
+        self.clear_asset_ids_to_delete()
         self.must_save = False
         box_message(f'Changed data has been saved to {self.data_source}')
 
@@ -527,10 +581,12 @@ class EditableTable(Table):
         super().handle_right_click(event)
         self._generate_cell_selection_changed_event()
 
-    def update(self) -> None:
+    def update(self, reset_page=False) -> None:
         """
         Displays the specified page of the table data.
         """
+        if reset_page:
+            self.current_page = 1
         data = self.get_data()
         mask = None
         if self._filter_frame is not None:
@@ -644,6 +700,21 @@ class EditableTable(Table):
         Clears the list of rows to save.
         """
         self._changed_rows = []
+
+    def add_to_asset_ids_to_delete(self, asset_id: str) -> None:
+        """
+        Adds the specified row to the list of rows to delete.
+        :param asset_id: The asset_id of the row to delete.
+        """
+        if asset_id in self._deleted_asset_ids:
+            return
+        self._deleted_asset_ids.append(asset_id)
+
+    def clear_asset_ids_to_delete(self) -> None:
+        """
+        Clears the list of asset_ids to delete.
+        """
+        self._deleted_asset_ids = []
 
     def get_selected_rows(self):
         """

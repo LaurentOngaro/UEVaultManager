@@ -283,7 +283,7 @@ class FilterFrame(ttk.LabelFrame):
         self._add_to_filters()
         self._update_filter_widgets()
         self.update_controls()
-        self.update_func()
+        self.update_func(reset_page=True)
 
     def reset_filters(self) -> None:
         """
@@ -296,7 +296,7 @@ class FilterFrame(ttk.LabelFrame):
             self.filter_widget.delete(0, 'end')
         self._filters = {}
         self._update_filter_widgets()
-        self.update_func()
+        self.update_func(reset_page=True)
 
     def view_filters(self) -> None:
         """
