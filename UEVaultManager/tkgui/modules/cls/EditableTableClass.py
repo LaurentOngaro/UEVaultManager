@@ -162,7 +162,7 @@ class EditableTable(Table):
                     if callable(converter):
                         data[col] = data[col].apply(converter)  # apply the converter function to the column
                     else:
-                        data[col].astype(converter)
+                        data[col] = data[col].astype(converter)
                 except (KeyError, ValueError) as error:
                     log_warning(f'Could not convert column "{col}" using {converter}. Error: {error}')
         # log_debug("\nCOL TYPES AFTER CONVERSION\n")
