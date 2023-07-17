@@ -599,10 +599,11 @@ class UEAssetScraper:
         self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=0)
         self._save_in_db(last_run_content=content)
 
-    def save(self, owned_assets_only=False) -> None:
+    def save(self, owned_assets_only=False, save_last_run_file=True) -> None:
         """
         Saves all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param owned_assets_only: if True, only the owned assets are scraped
+        :param save_last_run_file: if True, the last_run file is saved
         """
         if owned_assets_only:
             self._log_info('Only Owned Assets will be scraped')
@@ -637,10 +638,11 @@ class UEAssetScraper:
         # save results in the last_run file
         content['files_count'] = self.files_count
         content['scraped_ids'] = self.scraped_ids if self.store_ids else ''
-        folder = self.owned_assets_data_folder if owned_assets_only else self.assets_data_folder
-        filename = os.path.join(folder, self.last_run_filename)
-        with open(filename, 'w') as fh:
-            json.dump(content, fh)
+        if save_last_run_file:
+            folder = self.owned_assets_data_folder if owned_assets_only else self.assets_data_folder
+            filename = os.path.join(folder, self.last_run_filename)
+            with open(filename, 'w') as fh:
+                json.dump(content, fh)
 
         self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=None)
         self._save_in_db(last_run_content=content)

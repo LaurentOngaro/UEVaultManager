@@ -212,8 +212,6 @@ class EPCAPI:
         :param asset_slug: The asset slug.
         :return: The url
         """
-        if not asset_slug:
-            return ''
         url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
         return url
 
