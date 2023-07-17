@@ -14,6 +14,7 @@ from rapidfuzz import fuzz
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper, get_filename_from_asset_data
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
@@ -89,7 +90,7 @@ class UEVMGui(tk.Tk):
 
         content_frame = UEVMGuiContentFrame(self)
         self._content_frame = content_frame
-        self.egs = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs
+        self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
 
         # gui_g.UEVM_gui_ref = self  # important ! Must be donne before any use of a ProgressWindow. If not, an UEVMGuiHiddenRootClass will be created and the ProgressWindow still be displayed after the init
         # reading from CSV file version
@@ -435,9 +436,10 @@ class UEVMGui(tk.Tk):
         :param check_if_valid: if True, check if the url is valid. Return an empty string if not.
         :return: the url found in the file or an empty string if not found
         """
-        if self.egs is None:
+        if self.core is None:
             return ''
-        found_url = self.egs.get_asset_url(asset_slug=folder)
+        egs = self.core.egs
+        found_url = egs.get_asset_url(asset_slug=folder)
         for entry in os.scandir(parent):
             if entry.is_file() and entry.name.lower().endswith('.url'):
                 file_name = clean_name(os.path.splitext(entry.name)[0])
@@ -450,8 +452,8 @@ class UEVMGui(tk.Tk):
                             if line.startswith('URL='):
                                 found_url = line.replace('URL=', '').strip()
                                 break
-        if check_if_valid and self.egs is not None:
-            if not self.egs.is_valid_url(found_url):
+        if check_if_valid and egs is not None:
+            if not egs.is_valid_url(found_url):
                 found_url = ''
 
         return found_url
@@ -464,7 +466,7 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         folder_to_scan = gui_g.s.folders_to_scan
 
-        if self.egs is None:
+        if self.core is None:
             gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
 
         while folder_to_scan:
@@ -506,24 +508,53 @@ class UEVMGui(tk.Tk):
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         data = self.editable_table.get_data()
         for name, content in valid_folders.items():
-            gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with url {content["url"]} ')
+            url = content['url']
+            gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with url {url} ')
             # set default values for the row, some will be replaced by scrapping
             row_data.update({'App name': name, 'Category': content['asset_type'].category_name, 'Origin': content['path'], 'Url': content['url'],})
             # check if a value exists in column 'App name' and 'Origin' for a pandastable
             row_exists = data['App name'].isin([name]).any() and data['Origin'].isin([content['path']]).any()
             if not row_exists:
                 self.editable_table.create_row(row_data=row_data, add_to_existing=True)
-                if self.egs is not None:
-                    # TODO : scrap the data for the row
-                    pass
+                self.scrap_row(url=url)
+
         self.editable_table.must_save = True
         self.editable_table.update()
 
-    def scrap_row(self) -> None:
+    def scrap_row(self, url: str = None) -> None:
         """
-        Scrap the data for the current row
+        Scrap the data for the current row or a given url.
+        :param url: url to scrap
         """
-        gui_f.todo_message()
+        if self.core is None:
+            gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
+            return
+        if url is None:
+            # get the url from the selected row
+            row_selected = self.editable_table.getSelectedRow()
+            if row_selected is None:
+                return
+            row_data = self.editable_table.get_row(row_selected, return_as_dict=True)
+            url = row_data['Url']
+        # check if the url is a marketplace url
+        ue_maketplace_url = self.core.get_asset_url().lower()
+        if ue_maketplace_url in url:
+            scraper = UEAssetScraper(
+                start=0,
+                assets_per_page=1,
+                max_threads=1,
+                store_in_db=True,
+                store_in_files=True,
+                store_ids=False,  # useless for now
+                load_from_files=False,
+                engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
+                egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
+            )
+            scraper.get_data_from_url(url)
+            asset_data = scraper.scraped_data.pop()
+            filename = get_filename_from_asset_data(asset_data)
+            scraper.save_to_file(filename=filename, data=asset_data)
+            scraper.asset_db_handler.set_assets(asset_data)
 
     def load_filters(self, filters=None):
         """
