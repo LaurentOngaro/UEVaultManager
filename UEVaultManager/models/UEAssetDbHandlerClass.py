@@ -437,9 +437,10 @@ class UEAssetDbHandler:
             cursor.close()
         return row_data
 
-    def get_assets_data_for_csv(self) -> list:
+    def get_assets_data_for_csv(self, where_clause='') -> list:
         """
         Get data from all the assets in the 'assets' table for a "CSV file" like format.
+        :param where_clause: A string containing the WHERE clause to use in the SQL query.
         :return: list(rows)
         """
         rows = []
@@ -448,6 +449,8 @@ class UEAssetDbHandler:
             # generate column names for the CSV file using AS to rename the columns
             fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
             query = f"SELECT {fields} FROM assets"
+            if where_clause:
+                query += f" WHERE {where_clause}"
             if test_only_mode:
                 query += ' ORDER BY date_added_in_db DESC LIMIT 3000'
             cursor.execute(query)
@@ -499,7 +502,11 @@ class UEAssetDbHandler:
             ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
             ue_asset.data['id'] = uid
             self.save_ue_asset(ue_asset)
-            result = str(ue_asset) if return_as_string else ue_asset
+            if return_as_string:
+                result = str(ue_asset)
+            else:
+                # we read the new row from the database to get CSV column names
+                result = self.get_assets_data_for_csv(where_clause=f"id = '{uid}'")
         return result
 
     def read_ue_asset(self, uid: str) -> UEAsset:

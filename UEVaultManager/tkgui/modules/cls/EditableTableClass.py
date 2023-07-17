@@ -205,9 +205,9 @@ class EditableTable(Table):
         :return: True if the data has been loaded successfully, False otherwise
         """
         self._show_progress('Loading Data from data source...')
-        if self.data_source is None or not os.path.isfile(self.data_source):
-            log_warning(f'File to read data from is not defined or not found: {self.data_source}')
-            return False
+        # if self.data_source is None or not os.path.isfile(self.data_source):
+        #     log_warning(f'File to read data from is not defined or not found: {self.data_source}')
+        #     return False
         self.must_rebuild = False
         if not self.valid_source_type(self.data_source):
             return False
@@ -216,7 +216,8 @@ class EditableTable(Table):
             if self.data_source_type == DataSourceType.FILE:
                 data = pd.read_csv(self.data_source, **gui_g.s.csv_options)
                 if len(data) <= 0 or data.iloc[0][0] is None:
-                    raise EmptyDataError
+                    log_warning(f'Empty file: {self.data_source}. Adding a dummy row.')
+                    self.create_row(add_to_existing=False)
                 # fill all 'NaN' like values with 'None', to be similar to the database
                 data.fillna('None', inplace=True)
                 self._data = data
@@ -224,12 +225,15 @@ class EditableTable(Table):
                 data = self._db_handler.get_assets_data_for_csv()
                 column_names = self._db_handler.get_columns_name_for_csv()
                 if len(data) <= 0 or data[0][0] is None:
-                    raise EmptyDataError
-                self._data = pd.DataFrame(data, columns=column_names)
+                    log_warning(f'Empty file: {self.data_source}. Adding a dummy row.')
+                    self.create_row(add_to_existing=False)
+                else:
+                    self._data = pd.DataFrame(data, columns=column_names)
             else:
                 log_error(f'Unknown data source type: {self.data_source_type}')
                 return False
         except EmptyDataError:
+            log_warning(f'Empty file: {self.data_source}. Adding a dummy row.')
             self.create_row(add_to_existing=False)
 
         if len(self._data) <= 0:
@@ -257,11 +261,11 @@ class EditableTable(Table):
             if self._db_handler is None:
                 self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
             # create an empty row (in the database) with the correct columns
-            ue_asset = self._db_handler.create_empty_row(
+            data = self._db_handler.create_empty_row(
                 return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix
             )  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
-            table_row = pd.DataFrame(ue_asset.data, columns=column_names)
+            table_row = pd.DataFrame(data, columns=column_names)
         else:
             log_error(f'Unknown data source type: {self.data_source_type}')
         if row_data is not None and table_row is not None:
