@@ -1,7 +1,7 @@
 # coding: utf-8
 """
 Implementation for:
-- UEVMLFS: Local File System
+- UEVMLFS: Local File System.
 """
 import json
 import logging
@@ -17,10 +17,9 @@ from .utils import clean_filename
 
 class UEVMLFS:
     """
-    Class to handle all local filesystem related tasks
-    :param config_file: Path to config file to use instead of default
+    Class to handle all local filesystem related tasks.
+    :param config_file: Path to config file to use instead of default.
     """
-
     def __init__(self, config_file=None):
         self.log = logging.getLogger('UEVMLFS')
 
@@ -38,7 +37,7 @@ class UEVMLFS:
         # EGS metadata
         self.assets_metadata = dict()
         # additional infos (price, review...)
-        self.assets_extras_data = dict()
+        self.assets_extra_data = dict()
         # UEVaultManager update check info
         self._update_info = None
         # UE assets metadata cache data
@@ -51,7 +50,7 @@ class UEVMLFS:
         self.manifests_folder = 'manifests'
         self.metadata_folder = 'metadata'
         self.tmp_folder = 'tmp'
-        self.extras_folder = 'extras'
+        self.extra_folder = 'extra'
 
         if config_file:
             # if user specified a valid relative/absolute path use that,
@@ -66,7 +65,7 @@ class UEVMLFS:
 
         # ensure folders exist.
 
-        for f in ['', self.manifests_folder, self.metadata_folder, self.tmp_folder, self.extras_folder]:
+        for f in ['', self.manifests_folder, self.metadata_folder, self.tmp_folder, self.extra_folder]:
             if not os.path.exists(os.path.join(self.path, f)):
                 os.makedirs(os.path.join(self.path, f))
 
@@ -173,13 +172,13 @@ class UEVMLFS:
                 self.log.debug(f'Loading asset meta file "{gm_file}" failed: {error!r}')
 
         # done when asset metadata is parsed to allow filtering
-        # load existing app extras data
-        # for gm_file in os.listdir(os.path.join(self.path, self.extras_folder)):
+        # load existing app extra data
+        # for gm_file in os.listdir(os.path.join(self.path, self.extra_folder)):
         #    try:
-        #        _extras = json.load(open(os.path.join(self.path, self.extras_folder, gm_file)))
-        #        self._assets_extras_data[_extras['asset_name']] = _extras
+        #        _extra = json.load(open(os.path.join(self.path, self.extra_folder, gm_file)))
+        #        self._assets_extra_data[_extra['asset_name']] = _extra
         #    except Exception as error:
-        #        self.log.debug(f'Loading asset extras file "{gm_file}" failed: {error!r}')
+        #        self.log.debug(f'Loading asset extra file "{gm_file}" failed: {error!r}')
 
         # load auto-aliases if enabled
         self.aliases = dict()
@@ -195,8 +194,8 @@ class UEVMLFS:
     @property
     def userdata(self):
         """
-        Returns the user data as a dict
-        :return: User data
+        Returns the user data as a dict.
+        :return: User data.
         """
         if self._user_data is not None:
             return self._user_data
@@ -211,8 +210,8 @@ class UEVMLFS:
     @userdata.setter
     def userdata(self, userdata: dict) -> None:
         """
-        Set the user data
-        :param userdata: User data
+        Set the user data.
+        :param userdata: User data.
         """
         if userdata is None:
             raise ValueError('Userdata is none!')
@@ -222,7 +221,7 @@ class UEVMLFS:
 
     def invalidate_userdata(self) -> None:
         """
-        Invalidate the user data
+        Invalidate the user data.
         """
         self._user_data = None
         if os.path.exists(os.path.join(self.path, 'user.json')):
@@ -231,8 +230,8 @@ class UEVMLFS:
     @property
     def assets(self):
         """
-        Returns the assets data as a dict
-        :return: Assets data
+        Returns the assets data as a dict.
+        :return: Assets data.
         """
         if self._assets is None:
             try:
@@ -247,8 +246,8 @@ class UEVMLFS:
     @assets.setter
     def assets(self, assets) -> None:
         """
-        Set the assets data
-        :param assets: assets
+        Set the asset data.
+        :param assets: assets.
         """
         if assets is None:
             raise ValueError('Assets is none!')
@@ -263,9 +262,9 @@ class UEVMLFS:
 
     def delete_folder(self, folder: str, list_of_items_to_keep=None) -> bool:
         """
-        Delete all the files in a folder that are not in the list_of_items_to_keep list
-        :param folder: The folder to clean
-        :param list_of_items_to_keep: The list of items to keep
+        Delete all the files in a folder that are not in the list_of_items_to_keep list.
+        :param folder: The folder to clean.
+        :param list_of_items_to_keep: The list of items to keep.
         """
         if list_of_items_to_keep is None:
             list_of_items_to_keep = []
@@ -281,9 +280,9 @@ class UEVMLFS:
 
     def get_item_meta(self, app_name: str):
         """
-        Get the metadata for an item
-        :param app_name: The name of the item
-        :return: an App object
+        Get the metadata for an item.
+        :param app_name: The name of the item.
+        :return: an App object.
         """
         # Note: self._assets_metadata is filled ay the start of the list command by reading all the json files in the metadata folder
         if _meta := self.assets_metadata.get(app_name, None):
@@ -292,9 +291,9 @@ class UEVMLFS:
 
     def set_item_meta(self, app_name: str, meta) -> None:
         """
-        Set the metadata for an item
-        :param app_name: The name of the item
-        :param meta: The metadata object
+        Set the metadata for an item.
+        :param app_name: The name of the item.
+        :param meta: The metadata object.
         """
         json_meta = meta.__dict__
         self.assets_metadata[app_name] = json_meta
@@ -303,8 +302,8 @@ class UEVMLFS:
 
     def delete_item_meta(self, app_name: str) -> None:
         """
-        Delete the metadata for an item
-        :param app_name: The name of the item
+        Delete the metadata for an item.
+        :param app_name: The name of the item.
         """
         if app_name not in self.assets_metadata:
             raise ValueError(f'Item {app_name} does not exist in metadata DB!')
@@ -314,90 +313,90 @@ class UEVMLFS:
         if os.path.exists(meta_file):
             os.remove(meta_file)
 
-    def get_item_extras(self, app_name: str) -> dict:
+    def get_item_extra(self, app_name: str) -> dict:
         """
-        Get the extras data for an app
-        :param app_name: The app name
-        :return: The extras data
+        Get the extra data for an app.
+        :param app_name: The app name.
+        :return: The extra data.
         """
         gm_file = app_name + '.json'
-        extras = self.assets_extras_data.get(app_name, None)
-        extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
-        if os.path.exists(extras_file):
+        extra = self.assets_extra_data.get(app_name, None)
+        extra_file = os.path.join(self.path, self.extra_folder, f'{app_name}.json')
+        if os.path.exists(extra_file):
             try:
-                extras = json.load(open(os.path.join(self.path, self.extras_folder, gm_file)))
-                self.assets_extras_data[extras['asset_name']] = extras
+                extra = json.load(open(os.path.join(self.path, self.extra_folder, gm_file)))
+                self.assets_extra_data[extra['asset_name']] = extra
             except json.decoder.JSONDecodeError:
-                self.log.warning(f'Failed to load extras data for {app_name}!. Deleting file...')
+                self.log.warning(f'Failed to load extra data for {app_name}!. Deleting file...')
                 # delete the file
                 try:
-                    os.remove(extras_file)
+                    os.remove(extra_file)
                 except Exception as error:
-                    self.log.error(f'Failed to delete extras file {extras_file}: {error!r}')
+                    self.log.error(f'Failed to delete extra file {extra_file}: {error!r}')
                 return {}
-        return extras
+        return extra
 
-    def set_item_extras(self, app_name: str, extras: dict, update_global_dict: True) -> None:
+    def set_item_extra(self, app_name: str, extra: dict, update_global_dict: True) -> None:
         """
-        Save the extras data for an app
-        :param app_name: The app name
-        :param extras: The extras data
-        :param update_global_dict: Update the global dict with the new data
+        Save the extra data for an app.
+        :param app_name: The app name.
+        :param extra: The extra data.
+        :param update_global_dict: Update the global dict with the new data.
         """
-        extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
-        self.log.debug(f'--- SAVING {len(extras)} extras data for {app_name} in {extras_file}')
-        json.dump(extras, open(extras_file, 'w'), indent=2, sort_keys=True)
+        extra_file = os.path.join(self.path, self.extra_folder, f'{app_name}.json')
+        self.log.debug(f'--- SAVING {len(extra)} extra data for {app_name} in {extra_file}')
+        json.dump(extra, open(extra_file, 'w'), indent=2, sort_keys=True)
         if update_global_dict:
-            self.assets_extras_data[app_name] = extras
+            self.assets_extra_data[app_name] = extra
 
-    def delete_item_extras(self, app_name: str, update_global_dict: True) -> None:
+    def delete_item_extra(self, app_name: str, update_global_dict: True) -> None:
         """
-        Delete the extras data for an app
-        :param app_name: The app name
-        :param update_global_dict: Update the global dict with the new data
+        Delete the extra data for an app.
+        :param app_name: The app name.
+        :param update_global_dict: Update the global dict with the new data.
         """
-        if update_global_dict and self.assets_extras_data.get(app_name):
-            del self.assets_extras_data[app_name]
-        extras_file = os.path.join(self.path, self.extras_folder, f'{app_name}.json')
-        if os.path.exists(extras_file):
-            os.remove(extras_file)
+        if update_global_dict and self.assets_extra_data.get(app_name):
+            del self.assets_extra_data[app_name]
+        extra_file = os.path.join(self.path, self.extra_folder, f'{app_name}.json')
+        if os.path.exists(extra_file):
+            os.remove(extra_file)
 
     def get_item_app_names(self) -> list:
         """
-        Get the list of app names
-        :return: The list of app names
+        Get the list of app names.
+        :return: The list of app names.
         """
         return sorted(self.assets_metadata.keys())
 
     def clean_tmp_data(self) -> None:
         """
-        Delete all the files in the tmp folder
+        Delete all the files in the tmp folder.
         """
         self.delete_folder(self.tmp_folder)
 
     def clean_metadata(self, app_names_to_keep: list) -> None:
         """
-        Delete all the metadata files that are not in the app_names_to_keep list
-        :param app_names_to_keep: The list of app names to keep
+        Delete all the metadata files that are not in the app_names_to_keep list.
+        :param app_names_to_keep: The list of app names to keep.
         """
         self.delete_folder(self.metadata_folder, app_names_to_keep)
 
-    def clean_extras(self, app_names_to_keep: list) -> None:
+    def clean_extra(self, app_names_to_keep: list) -> None:
         """
-        Delete all the metadata files that are not in the app_names_to_keep list
-        :param app_names_to_keep: The list of app names to keep
+        Delete all the metadata files that are not in the app_names_to_keep list.
+        :param app_names_to_keep: The list of app names to keep.
         """
-        self.delete_folder(self.extras_folder, app_names_to_keep)
+        self.delete_folder(self.extra_folder, app_names_to_keep)
 
     def clean_manifests(self) -> None:
         """
-        Delete all the metadata files that are not in the app_names_to_keep list
+        Delete all the metadata files that are not in the app_names_to_keep list.
         """
         self.delete_folder(self.manifests_folder)
 
     def clean_logs_and_backups(self) -> None:
         """
-        Delete all the log and backup files in the app folder
+        Delete all the log and backup files in the app folder.
         """
         for f in os.listdir(self.path):
             file_name_no_ext, file_ext = os.path.splitext(f)
@@ -409,7 +408,7 @@ class UEVMLFS:
 
     def save_config(self) -> None:
         """
-        Save the config file
+        Save the config file.
         """
         # do not save if in read-only mode or file hasn't changed
         if self.config.read_only or not self.config.modified:
@@ -429,15 +428,15 @@ class UEVMLFS:
 
     def get_dir_size(self) -> int:
         """
-        Get the size of the directory
-        :return: The size of the directory
+        Get the size of the directory.
+        :return: The size of the directory.
         """
         return sum(f.stat().st_size for f in Path(self.path).glob('**/*') if f.is_file())
 
     def get_cached_version(self) -> dict:
         """
-        Get the cached version data
-        :return: version data
+        Get the cached version data.
+        :return: version data.
         """
         if self._update_info:
             return self._update_info
@@ -451,8 +450,8 @@ class UEVMLFS:
 
     def set_cached_version(self, version_data: dict) -> None:
         """
-        Set the cached version data
-        :param version_data: The version data
+        Set the cached version data.
+        :param version_data: The version data.
         """
         if not version_data:
             return
@@ -461,8 +460,8 @@ class UEVMLFS:
 
     def get_assets_cache_info(self) -> dict:
         """
-        Get assets metadata cache information
-        :return: dict {last_update, ue_assets_count}
+        Get assets metadata cache information.
+        :return: dict {last_update, ue_assets_count}.
         """
         if self._assets_cache_info:
             return self._assets_cache_info
@@ -478,9 +477,9 @@ class UEVMLFS:
     # Set UE assets metadata cache data
     def set_assets_cache_info(self, last_update: float, ue_assets_count: int) -> None:
         """
-        Set assets metadata cache information
-        :param last_update: last update time
-        :param ue_assets_count: number of UE assets on last update
+        Set assets metadata cache information.
+        :param last_update: last update time.
+        :param ue_assets_count: number of UE assets on last update.
         :return:
         """
         self._assets_cache_info = dict(last_update=last_update, ue_assets_count=ue_assets_count)

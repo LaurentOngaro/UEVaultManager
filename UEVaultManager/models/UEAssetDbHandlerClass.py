@@ -55,7 +55,7 @@ class UEAssetDbHandler:
 
     class DatabaseConnection:
         """
-        Context manager for opening and closing a database connection
+        Context manager for opening and closing a database connection.
         :param database_name: The name of the database file.
         """
 
@@ -157,7 +157,7 @@ class UEAssetDbHandler:
         :param table_name: Name of the table.
         :param required_columns: Dictionary of columns to add. Key is the column name, value is the data type.
 
-        NOTE: the AFTER parameter in SQL is not supported in the SQLite version used
+        NOTE: the AFTER parameter in SQL is not supported in the SQLite version used.
         """
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -180,7 +180,7 @@ class UEAssetDbHandler:
     def create_tables(self, upgrade_to_version=DbVersionNum.V1) -> None:
         """
         Create the tables if they don't exist.
-        :param upgrade_to_version: The database version we want to upgrade TO
+        :param upgrade_to_version: The database version we want to upgrade TO.
         """
         # all the following steps must be run sequentially
         if upgrade_to_version.value >= DbVersionNum.V1.value:
@@ -190,7 +190,7 @@ class UEAssetDbHandler:
                     # create the first version of the database
                     # Note:
                     # - this table has the same structure as the json files saved inside the method UEAssetScraper.save_to_file()
-                    # - the order of columns must match the order of the fields in UEAsset.init_data() method
+                    # - the order of columns must match the order of the fields in UEAsset.init_data() method.
                     query = """
                     CREATE TABLE IF NOT EXISTS assets ( 
                         id TEXT PRIMARY KEY NOT NULL, 
@@ -238,7 +238,7 @@ class UEAssetDbHandler:
     def check_and_upgrade_database(self, upgrade_from_version: DbVersionNum = None) -> None:
         """
         Change the tables structure according to different versions.
-        :param upgrade_from_version: The version we want to upgrade FROM. if None, the current version will be used
+        :param upgrade_from_version: The version we want to upgrade FROM. if None, the current version will be used.
         """
         if not self.is_table_exist('assets'):
             previous_version = DbVersionNum.V0
@@ -366,7 +366,7 @@ class UEAssetDbHandler:
         Insert or update assets into the 'assets' table.
         :param assets: A dictionary or a list of dictionaries representing assets.
 
-        NOTE: the (existing) user fields data should have already been added or merged the assets dictionary
+        NOTE: the (existing) user fields data should have already been added or merged the asset dictionary.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
@@ -384,7 +384,7 @@ class UEAssetDbHandler:
                     value=asset['date_added_in_db'], date_format=default_datetime_format, default=str_today
                 )
                 # Generate the SQL query
-                # this query will insert or update the asset if it already exists
+                # this query will insert or update the asset if it already exists.
                 query = """
                     REPLACE INTO assets (
                         id, namespace, catalog_item_id, title, category, author, thumbnail_url,
@@ -422,7 +422,7 @@ class UEAssetDbHandler:
         """
         Get data from all the assets in the 'assets' table.
         :param fields: list of fields to return.
-        :return: dictionary {ids, rows}
+        :return: dictionary {ids, rows}.
         """
         if not isinstance(fields, str):
             fields = ', '.join(fields)
@@ -441,7 +441,7 @@ class UEAssetDbHandler:
         """
         Get data from all the assets in the 'assets' table for a "CSV file" like format.
         :param where_clause: A string containing the WHERE clause to use in the SQL query.
-        :return: list(rows)
+        :return: list(rows).
         """
         rows = []
         if self.connection is not None:
@@ -461,7 +461,7 @@ class UEAssetDbHandler:
     def get_columns_name_for_csv(self) -> list:
         """
         Get the columns name from the 'assets' table in a "CSV file" like format.
-        :return: list (column_names)
+        :return: list (column_names).
         """
         csv_column_names = []
         if self.connection is not None:
@@ -480,7 +480,7 @@ class UEAssetDbHandler:
     def create_empty_row(self, return_as_string=True, empty_cell='None', empty_row_prefix='dummy_row_'):
         """
         Create an empty row in the 'assets' table.
-        :param return_as_string: True to return the row as a string, False to
+        :param return_as_string: True to return the row as a string, False to.
         :param empty_cell: The value to use for empty cells.
         :param empty_row_prefix: The prefix to use for the row ID.
         :return: A row (dict) or a string representing the empty row.
@@ -528,7 +528,7 @@ class UEAssetDbHandler:
     def save_ue_asset(self, ue_asset: UEAsset) -> None:
         """
         Save an UEAsset object to the 'assets' table.
-        :param ue_asset: UEAsset object to save
+        :param ue_asset: UEAsset object to save.
         """
         self.set_assets([ue_asset.data])
 
@@ -560,7 +560,7 @@ class UEAssetDbHandler:
     def update_asset(self, column: str, value, uid: str = '', asset_id: str = '') -> None:
         """
         Update a specific column of an asset in the 'assets' table by its ID.
-        :param column: The name of the column
+        :param column: The name of the column.
         :param value: The new value.
         :param uid: The ID of the asset to delete.
         :param asset_id: The Asset_id of the asset to delete. If both uid and asset_id are provided, only asset_id is used.

@@ -26,9 +26,9 @@ test_only_mode = False  # add some limitations to speed up the dev process - Set
 
 def get_filename_from_asset_data(asset_data) -> str:
     """
-    Returns the filename to use to save the asset data
-    :param asset_data: the asset data
-    :return:  the filename to use to save the asset data
+    Return the filename to use to save the asset data.
+    :param asset_data: the asset data.
+    :return:  the filename to use to save the asset data.
     """
     try:
         app_id = asset_data['releaseInfo'][0]['appId']
@@ -44,7 +44,7 @@ def get_filename_from_asset_data(asset_data) -> str:
 class UEAssetScraper:
     """
     A class that handles scraping data from the Unreal Engine Marketplace.
-    It saves the data in json files and/or in a sqlite database
+    It saves the data in json files and/or in a sqlite database.
     :param start: An int representing the starting index for the data to retrieve. Defaults to 0.
     :param start: An int representing the ending index for the data to retrieve. Defaults to 0.
     :param assets_per_page: An int representing the number of items to retrieve per request. Defaults to 100.
@@ -53,7 +53,7 @@ class UEAssetScraper:
     :param timeout: A float representing the timeout for the requests. Defaults to 10.0.
     :param max_threads: An int representing the maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
     :param load_from_files: A boolean indicating whether to load the data from files instead of scraping it. Defaults to False. If set to True, store_in_files will be set to False and store_in_db will be set to True.
-    :param store_in_files: A boolean indicating whether to store the data in csv files. Defaults to True. Could create lots of files (1 file per asset)
+    :param store_in_files: A boolean indicating whether to store the data in csv files. Defaults to True. Could create lots of files (1 file per asset).
     :param store_in_db: A boolean indicating whether to store the data in a sqlite database. Defaults to True.
     :param store_ids: A boolean indicating whether to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
     :param use_raw_format: A boolean indicating whether to store the data in a raw format (as returned by the API) or after data have been parsed. Defaults to True.
@@ -62,7 +62,6 @@ class UEAssetScraper:
     :param egs: An EPCAPI object (session handler). Defaults to None. If None, a new EPCAPI object will be created and the session used WON'T BE LOGGED.
     :param progress_window: A ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
     """
-
     def __init__(
         self,
         start=0,
@@ -183,7 +182,7 @@ class UEAssetScraper:
         """
         Parses on or more asset data from the response of an url query.
         :param json_data: A dictionary containing the data to parse.
-        :param owned_assets_only: if True, only the owned assets are scraped
+        :param owned_assets_only: if True, only the owned assets are scraped.
         :return: A list containing the parsed data.
         """
         content = []
@@ -363,9 +362,9 @@ class UEAssetScraper:
     def gather_all_assets_urls(self, empty_list_before=False, save_result=True, owned_assets_only=False) -> None:
         """
         Gathers all the URLs (with pagination) to be parsed and stores them in a list for further use.
-        :param empty_list_before: if True, the list of URLs is emptied before adding the new ones
-        :param save_result: if True, the list of URLs is saved in the database
-        :param owned_assets_only: if True, only the owned assets are scraped
+        :param empty_list_before: if True, the list of URLs is emptied before adding the new ones.
+        :param save_result: if True, the list of URLs is saved in the database.
+        :param owned_assets_only: if True, only the owned assets are scraped.
         """
         if empty_list_before:
             self.urls = []
@@ -394,7 +393,7 @@ class UEAssetScraper:
         """
         Grabs the data from the given url and stores it in the scraped_data property.
         :param url: The url to grab the data from. If not given, uses the url property of the class.
-        :param owned_assets_only: if True, only the owned assets are scraped
+        :param owned_assets_only: if True, only the owned assets are scraped.
         """
         if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
             return
@@ -439,11 +438,10 @@ class UEAssetScraper:
 
         Note: if self.urls is None or empty, gather_urls() will be called first.
         """
-
         def stop_executor(tasks) -> None:
             """
-            Cancel all outstanding tasks and shut down the executor
-            :param tasks: tasks to cancel
+            Cancel all outstanding tasks and shut down the executor.
+            :param tasks: tasks to cancel.
             """
             for _, task in tasks.items():
                 task.cancel()
@@ -551,7 +549,7 @@ class UEAssetScraper:
     def load_from_json_files(self, owned_assets_only=False) -> None:
         """
         Load all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
-        :param owned_assets_only: if True, only the owned assets are scraped
+        :param owned_assets_only: if True, only the owned assets are scraped.
         """
         start_time = time.time()
         self.files_count = 0
@@ -602,8 +600,8 @@ class UEAssetScraper:
     def save(self, owned_assets_only=False, save_last_run_file=True) -> None:
         """
         Saves all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
-        :param owned_assets_only: if True, only the owned assets are scraped
-        :param save_last_run_file: if True, the last_run file is saved
+        :param owned_assets_only: if True, only the owned assets are scraped.
+        :param save_last_run_file: if True, the last_run file is saved.
         """
         if owned_assets_only:
             self._log_info('Only Owned Assets will be scraped')

@@ -20,8 +20,8 @@ from UEVaultManager.models.config import AppConf
 
 def log_info(msg: str) -> None:
     """
-    Print a message to the console
-    :param msg: the message to log_info
+    Print a message to the console.
+    :param msg: the message to log_info.
     """
     msg = colored(msg, 'orange')
     print(msg)
@@ -31,9 +31,8 @@ class GUISettings:
     """
     A class that contains all the settings for the GUI.
     :param config_file: Path to config file to use instead of default
-
+.
     """
-
     def __init__(self, config_file=None):
         self.path = ''
         self.config_path = ''
@@ -316,8 +315,8 @@ class GUISettings:
 
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
-        Initialize the config file for the gui
-        :param config_file: the path to the config file to use
+        Initialize the config file for the gui.
+        :param config_file: the path to the config file to use.
         """
         if config_path := os.environ.get('XDG_CONFIG_HOME'):
             self.path = os.path.join(config_path, 'UEVaultManager')
@@ -425,7 +424,7 @@ class GUISettings:
 
     def read_config_properties(self) -> dict:
         """
-        Read the properties from the config file
+        Read the properties from the config file.
         :return:
         """
         # ##### start of properties stored in config file
@@ -453,14 +452,14 @@ class GUISettings:
 
     def store_config_properties(self) -> None:
         """
-        store the properties in the config file
+        store the properties in the config file.
         """
         for key, value in self.config_vars.items():
             self.config.set('UEVaultManager', key, str(value))
 
     def save_config_file(self, save_config_var=True) -> None:
         """
-        Save the config file
+        Save the config file.
         """
         if save_config_var:
             self.store_config_properties()

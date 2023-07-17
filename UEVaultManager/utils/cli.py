@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-CLI interface functions
+CLI interface functions.
 """
 import argparse
 import os
@@ -195,11 +195,10 @@ def convert_to_pascal_case(string: str) -> str:
 def check_and_convert_key(dict_to_check: dict, key: str) -> str:
     """
     Check if a key is valid for a dict. If not, try to convert it to snake case or pascal case.
-    :param dict_to_check: dict to search the key for
-    :param key: key to check
+    :param dict_to_check: dict to search the key for.
+    :param key: key to check.
     :return: The checked key if it is valid, '' otherwise.
     """
-
     # if the key (from the source dict) is in the target dict, uses it as is
     if key in dict_to_check.keys():
         return key
@@ -239,8 +238,8 @@ def check_and_convert_key(dict_to_check: dict, key: str) -> str:
 def init_dict_from_data(target_dict: dict, source_dict: dict = None) -> None:
     """
     Initialize a dict from another dict. If the key is not found in the target_dict dict, try to convert it to snake case or pascal case.
-    :param target_dict:  dict to initialize
-    :param source_dict: dict to use for data
+    :param target_dict:  dict to initialize.
+    :param source_dict: dict to use for data.
     """
     if target_dict == {}:
         return

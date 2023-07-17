@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiToolbarFrame: a toolbar frame for the UEVMGui Class
+- UEVMGuiToolbarFrame: a toolbar frame for the UEVMGui Class.
 """
 import tkinter as tk
 
@@ -13,11 +13,10 @@ from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 
 class UEVMGuiToolbarFrame(ttk.Frame):
     """
-    A toolbar frame for the UEVMGui Class
+    A toolbar frame for the UEVMGui Class.
     :param container: The parent container.
-    :param data_table: The EditableTable instance
+    :param data_table: The EditableTable instance.
     """
-
     def __init__(self, container, data_table: EditableTable):
         super().__init__()
         if container is None:
@@ -86,10 +85,10 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         lblf_actions = ttk.LabelFrame(self, text='Actions')
         lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
         # noinspection PyArgumentList
-        btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_pane, state=tk.DISABLED)
+        btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_panel, state=tk.DISABLED)
         btn_toggle_options.pack(**pack_def_options, side=tk.LEFT)
         # noinspection PyArgumentList
-        btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Controls', command=container.toggle_controls_pane)
+        btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Actions', command=container.toggle_actions_panel)
         btn_toggle_controls.pack(**pack_def_options, side=tk.LEFT)
         # noinspection PyArgumentList
         btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)

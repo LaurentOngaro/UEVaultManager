@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- EditRowWindow: the window to edit a row
+- EditRowWindow: the window to edit a row.
 """
 import tkinter as tk
 from tkinter import ttk
@@ -15,16 +15,15 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 
 class EditRowWindow(tk.Toplevel):
     """
-    The window to edit a row
-    :param parent: the parent window
-    :param title: the title of the window
-    :param width: the width of the window
-    :param height: the height of the window
-    :param icon: the icon of the window
-    :param screen_index: the index of the screen on which the window will be displayed
-    :param editable_table: the table to edit
+    The window to edit a row.
+    :param parent: the parent window.
+    :param title: the title of the window.
+    :param width: the width of the window.
+    :param height: the height of the window.
+    :param icon: the icon of the window.
+    :param screen_index: the index of the screen on which the window will be displayed.
+    :param editable_table: the table to edit.
     """
-
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
         super().__init__(parent)
         self.title(title)
@@ -56,19 +55,17 @@ class EditRowWindow(tk.Toplevel):
 
     class ContentFrame(ttk.Frame):
         """
-        The frame containing the editable fields
-        :param container: the parent window
+        The frame containing the editable fields.
+        :param container: the parent window.
         """
-
         def __init__(self, container):
             super().__init__(container)
 
     class ControlFrame(ttk.Frame):
         """
-        The frame containing the buttons
-        :param container: the parent window
+        The frame containing the buttons.
+        :param container: the parent window.
         """
-
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.X, 'anchor': tk.NW}
@@ -107,8 +104,8 @@ class EditRowWindow(tk.Toplevel):
 
     def on_close(self, _event=None) -> None:
         """
-        Event when the window is closing
-        :param _event: the event that triggered the call of this function
+        Event when the window is closing.
+        :param _event: the event that triggered the call of this function.
         """
         current_values = self.editable_table.get_edited_row_values()
         # current_values is empty is save_button has been pressed because global variables have been cleared in save_changes()
@@ -120,8 +117,8 @@ class EditRowWindow(tk.Toplevel):
 
     def on_key_press(self, event) -> None:
         """
-        Event when a key is pressed
-        :param event: the event that triggered the call of this function
+        Event when a key is pressed.
+        :param event: the event that triggered the call of this function.
         """
         if event.keysym == 'Escape':
             self.on_close()
@@ -130,7 +127,7 @@ class EditRowWindow(tk.Toplevel):
 
     def close_window(self) -> None:
         """
-        Close the window
+        Close the window.
         """
         gui_g.edit_row_window_ref = None
         self.editable_table.reset_style()
@@ -138,25 +135,25 @@ class EditRowWindow(tk.Toplevel):
 
     def save_change(self) -> None:
         """
-        Save the changes (Wrapper)
+        Save the changes (Wrapper).
         """
         self.must_save = False
         self.editable_table.save_edit_row_record()
 
     def prev_asset(self) -> None:
         """
-        Go to the previous asset (Wrapper)
+        Go to the previous asset (Wrapper).
         """
         self.editable_table.move_to_prev_record()
 
     def next_asset(self) -> None:
         """
-        Go to the next asset (Wrapper)
+        Go to the next asset (Wrapper).
         """
         self.editable_table.move_to_next_record()
 
     def open_asset_url(self) -> None:
         """
-        Open the asset URL (Wrapper)
+        Open the asset URL (Wrapper).
         """
         self.editable_table.open_asset_url()

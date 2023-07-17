@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGui: the main window of the application
+- UEVMGui: the main window of the application.
 """
 import os
 import re
@@ -27,9 +27,9 @@ from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType
 
 def clean_name(name_to_clean: str) -> str:
     """
-    Clean a name to remove unwanted characters
-    :param name_to_clean: name to clean
-    :return: cleaned name
+    Clean a name to remove unwanted characters.
+    :param name_to_clean: name to clean.
+    :return: cleaned name.
     """
     # remove some unwanted strings
     patterns = [r'\bUE_[\d._]+\b', r' - UE Marketplace', r' in .+?$']
@@ -43,12 +43,12 @@ def clean_name(name_to_clean: str) -> str:
 class UEVMGui(tk.Tk):
     """
     This class is used to create the main window for the application.
-    :param title: The title
-    :param icon: The icon
-    :param screen_index: The screen index where the window will be displayed
-    :param data_source: The source where the data is stored or read from
+    :param title: The title.
+    :param icon: The icon.
+    :param screen_index: The screen index where the window will be displayed.
+    :param data_source: The source where the data is stored or read from.
     :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
-    :param show_open_file_dialog: If True, the open file dialog will be shown at startup
+    :param show_open_file_dialog: If True, the open file dialog will be shown at startup.
     """
     editable_table: EditableTable = None
     _toolbar_frame: UEVMGuiToolbarFrame = None
@@ -155,15 +155,15 @@ class UEVMGui(tk.Tk):
 
         show_option_fist = False  # debug_only
         if show_option_fist:
-            self.toggle_options_pane(True)
-            self.toggle_controls_pane(False)
+            self.toggle_options_panel(True)
+            self.toggle_actions_panel(False)
 
     def _open_file_dialog(self, save_mode=False, filename=None) -> str:
         """
-        Open a file dialog to choose a file to save or load data to/from
-        :param save_mode: if True, the dialog will be in saving mode, else in loading mode
-        :param filename: the default filename to use
-        :return: the chosen filename
+        Open a file dialog to choose a file to save or load data to/from.
+        :param save_mode: if True, the dialog will be in saving mode, else in loading mode.
+        :param filename: the default filename to use.
+        :return: the chosen filename.
         """
         # adding category to the default filename
         if not filename:
@@ -193,8 +193,8 @@ class UEVMGui(tk.Tk):
 
     def _change_navigation_state(self, state: str) -> None:
         """
-        Change the state of the navigation buttons
-        :param state: 'normal' or 'disabled'
+        Change the state of the navigation buttons.
+        :param state: 'normal' or 'disabled'.
         """
         self._toolbar_frame.btn_first_page.config(state=state)
         self._toolbar_frame.btn_prev_page.config(state=state)
@@ -204,9 +204,9 @@ class UEVMGui(tk.Tk):
 
     def _check_and_get_widget_value(self, tag):
         """
-        Check if the widget with the given tags exists and return its value and itself
-        :param tag: tag of the widget that triggered the event
-        :return: value,widget
+        Check if the widget with the given tags exists and return its value and itself.
+        :param tag: tag of the widget that triggered the event.
+        :return: value,widget.
         """
         if tag == '':
             return None, None
@@ -230,7 +230,7 @@ class UEVMGui(tk.Tk):
 
     def on_key_press(self, event) -> None:
         """
-        Handle key press events
+        Handle key press events.
         :param event:
         """
         if event.keysym == 'Escape':
@@ -247,7 +247,7 @@ class UEVMGui(tk.Tk):
 
     def on_mouse_over_cell(self, event=None) -> None:
         """
-        Show the image of the asset when the mouse is over the cell
+        Show the image of the asset when the mouse is over the cell.
         :param event:
         """
         if event is None:
@@ -261,7 +261,7 @@ class UEVMGui(tk.Tk):
 
     def on_mouse_leave_cell(self, _event=None) -> None:
         """
-        Show the default image when the mouse leaves the cell
+        Show the default image when the mouse leaves the cell.
         :param _event:
         """
         canvas_image = self._control_frame.canvas_image
@@ -269,7 +269,7 @@ class UEVMGui(tk.Tk):
 
     def on_selection_change(self, event=None) -> None:
         """
-        When the selection changes, show the selected row in the quick edit frame
+        When the selection changes, show the selected row in the quick edit frame.
         :param event:
         """
         selected_row = event.widget.currentrow
@@ -277,7 +277,7 @@ class UEVMGui(tk.Tk):
 
     def on_entry_current_page_changed(self, _event=None) -> None:
         """
-        When the page number changes, show the corresponding page
+        When the page number changes, show the corresponding page.
         :param _event:
         """
         page_num = 1
@@ -293,9 +293,9 @@ class UEVMGui(tk.Tk):
     # noinspection PyUnusedLocal
     def on_quick_edit_focus_out(self, event=None, tag='') -> None:
         """
-        When the focus leaves a quick edit widget, save the value
-        :param event: ignored but required for an event handler
-        :param tag: tag of the widget that triggered the event
+        When the focus leaves a quick edit widget, save the value.
+        :param event: ignored but required for an event handler.
+        :param tag: tag of the widget that triggered the event.
         """
         value, widget = self._check_and_get_widget_value(tag=tag)
         if widget:
@@ -304,9 +304,9 @@ class UEVMGui(tk.Tk):
     # noinspection PyUnusedLocal
     def on_quick_edit_focus_in(self, event=None, tag='') -> None:
         """
-        When the focus enter a quick edit widget, check (and clean) the value
-        :param event: ignored but required for an event handler
-        :param tag: tag of the widget that triggered the event
+        When the focus enter a quick edit widget, check (and clean) the value.
+        :param event: ignored but required for an event handler.
+        :param tag: tag of the widget that triggered the event.
         """
         value, widget = self._check_and_get_widget_value(tag=tag)
         # empty the widget if the value is the default value or none
@@ -317,9 +317,9 @@ class UEVMGui(tk.Tk):
     # noinspection PyUnusedLocal
     def on_switch_edit_flag(self, event=None, tag='') -> None:
         """
-        When the focus leaves a quick edit widget, save the value
-        :param event: event that triggered the call
-        :param tag: tag of the widget that triggered the event
+        When the focus leaves a quick edit widget, save the value.
+        :param event: event that triggered the call.
+        :param tag: tag of the widget that triggered the event.
         """
         _, widget = self._check_and_get_widget_value(tag=tag)
         if widget:
@@ -328,8 +328,8 @@ class UEVMGui(tk.Tk):
 
     def on_close(self, _event=None) -> None:
         """
-        When the window is closed, check if there are unsaved changes and ask the user if he wants to save them
-        :param _event: the event that triggered the call of this function
+        When the window is closed, check if there are unsaved changes and ask the user if he wants to save them.
+        :param _event: the event that triggered the call of this function.
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
@@ -338,7 +338,7 @@ class UEVMGui(tk.Tk):
 
     def close_window(self) -> None:
         """
-        Close the window
+        Close the window.
         """
         if gui_g.s.reopen_last_file:
             gui_g.s.last_opened_file = self.editable_table.data_source
@@ -352,8 +352,8 @@ class UEVMGui(tk.Tk):
 
     def open_file(self) -> str:
         """
-        Open a file and Load data from it
-        :return: the name of the file that was loaded
+        Open a file and Load data from it.
+        :return: the name of the file that was loaded.
         """
         data_table = self.editable_table
         filename = self._open_file_dialog(filename=data_table.data_source)
@@ -374,8 +374,8 @@ class UEVMGui(tk.Tk):
 
     def save_file(self, show_dialog=True) -> str:
         """
-        Save the data to the current data source
-        :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file
+        Save the data to the current data source.
+        :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file.
         """
         if self.editable_table.data_source_type == DataSourceType.FILE:
             if show_dialog:
@@ -395,7 +395,7 @@ class UEVMGui(tk.Tk):
 
     def export_selection(self) -> None:
         """
-        Export the selected rows to a file
+        Export the selected rows to a file.
         """
         # Get selected row indices
         selected_rows = self.editable_table.get_selected_rows()
@@ -409,8 +409,8 @@ class UEVMGui(tk.Tk):
 
     def add_row(self, row_data=None) -> None:
         """
-        Add a new row at the current position
-        :param row_data: data to add to the row
+        Add a new row at the current position.
+        :param row_data: data to add to the row.
         """
         self.editable_table.create_row(row_data=row_data, add_to_existing=True)
         self.editable_table.must_save = True
@@ -418,7 +418,7 @@ class UEVMGui(tk.Tk):
 
     def del_row(self) -> None:
         """
-        Remove the selected row from the DataFrame
+        Remove the selected row from the DataFrame.
         """
         # if self.editable_table.pagination_enabled and gui_f.box_yesno('To delete a row, The pagination must be disabled. Do you want to disable it now ?'):
         #     self.toggle_pagination(forced_value=False)
@@ -430,11 +430,11 @@ class UEVMGui(tk.Tk):
 
     def search_for_url(self, folder: str, parent: str, check_if_valid=False) -> str:
         """
-        Search for an url file that matches a folder name in a given folder
-        :param folder: name to search for
-        :param parent: parent folder to search in
+        Search for an url file that matches a folder name in a given folder.
+        :param folder: name to search for.
+        :param parent: parent folder to search in.
         :param check_if_valid: if True, check if the url is valid. Return an empty string if not.
-        :return: the url found in the file or an empty string if not found
+        :return: the url found in the file or an empty string if not found.
         """
         if self.core is None:
             return ''
@@ -460,9 +460,8 @@ class UEVMGui(tk.Tk):
 
     def scan_folders(self) -> None:
         """
-        Scan the folders to find files that can be loaded
+        Scan the folders to find files that can be loaded.
         """
-
         valid_folders = {}
         folder_to_scan = gui_g.s.folders_to_scan
 
@@ -511,7 +510,7 @@ class UEVMGui(tk.Tk):
             url = content['url']
             gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with url {url} ')
             # set default values for the row, some will be replaced by scrapping
-            row_data.update({'App name': name, 'Category': content['asset_type'].category_name, 'Origin': content['path'], 'Url': content['url'],})
+            row_data.update({'App name': name, 'Category': content['asset_type'].category_name, 'Origin': content['path'], 'Url': content['url']})
             # check if a value exists in column 'App name' and 'Origin' for a pandastable
             row_exists = data['App name'].isin([name]).any() and data['Origin'].isin([content['path']]).any()
             if not row_exists:
@@ -524,7 +523,7 @@ class UEVMGui(tk.Tk):
     def scrap_row(self, url: str = None) -> None:
         """
         Scrap the data for the current row or a given url.
-        :param url: url to scrap
+        :param url: url to scrap.
         """
         if self.core is None:
             gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
@@ -558,8 +557,8 @@ class UEVMGui(tk.Tk):
 
     def load_filters(self, filters=None):
         """
-        Load the filters from a dictionary
-        :param filters: filters
+        Load the filters from a dictionary.
+        :param filters: filters.
         """
         if filters is None:
             return
@@ -571,8 +570,8 @@ class UEVMGui(tk.Tk):
 
     def toggle_pagination(self, forced_value=None) -> None:
         """
-        Toggle pagination. Will change the navigation buttons states when pagination is changed
-        :param forced_value: if not None, will force the pagination to the given value
+        Toggle pagination. Will change the navigation buttons states when pagination is changed.
+        :param forced_value: if not None, will force the pagination to the given value.
         """
         if forced_value is not None:
             self.editable_table.pagination_enabled = forced_value
@@ -589,66 +588,66 @@ class UEVMGui(tk.Tk):
 
     def show_first_page(self) -> None:
         """
-        Show the first page of the table
+        Show the first page of the table.
         """
         self.editable_table.first_page()
         self.update_navigation()
 
     def show_prev_page(self) -> None:
         """
-        Show the previous page of the table
+        Show the previous page of the table.
         """
         self.editable_table.prev_page()
         self.update_navigation()
 
     def show_next_page(self) -> None:
         """
-        Show the next page of the table
+        Show the next page of the table.
         """
         self.editable_table.next_page()
         self.update_navigation()
 
     def show_last_page(self) -> None:
         """
-        Show the last page of the table
+        Show the last page of the table.
         """
         self.editable_table.last_page()
         self.update_navigation()
 
     def prev_asset(self) -> None:
         """
-        Move to the previous asset in the table
+        Move to the previous asset in the table.
         """
         self.editable_table.move_to_prev_record()
 
     def next_asset(self) -> None:
         """
-        Move to the next asset in the table
+        Move to the next asset in the table.
         """
         self.editable_table.move_to_next_record()
 
     # noinspection DuplicatedCode
-    def toggle_controls_pane(self, force_showing=None) -> None:
+    def toggle_actions_panel(self, force_showing=None) -> None:
         """
-        Toggle the visibility of the controls pane
-        :param force_showing: if True, will force showing the options pane, if False, will force hiding it.If None, will toggle the visibility
+        Toggle the visibility of the Actions panel.
+        :param force_showing: if True, will force showing the actions panel, if False, will force hiding it.If None, will toggle the visibility.
         """
         if force_showing is None:
             force_showing = not self._control_frame.winfo_ismapped()
         if force_showing:
             self._control_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self._toolbar_frame.btn_toggle_controls.config(text='Hide Control')
+            self._toolbar_frame.btn_toggle_controls.config(text='Hide Actions')
             self._toolbar_frame.btn_toggle_options.config(state=tk.DISABLED)
         else:
             self._control_frame.pack_forget()
-            self._toolbar_frame.btn_toggle_controls.config(text='Show Control')
+            self._toolbar_frame.btn_toggle_controls.config(text='Show Actions')
             self._toolbar_frame.btn_toggle_options.config(state=tk.NORMAL)
 
     # noinspection DuplicatedCode
-    def toggle_options_pane(self, force_showing=None) -> None:
+    def toggle_options_panel(self, force_showing=None) -> None:
         """
-        Toggle the visibility of the Options pane
-        :param force_showing: if True, will force showing the options pane, if False, will force hiding it.If None, will toggle the visibility
+        Toggle the visibility of the Options panel.
+        :param force_showing: if True, will force showing the options panel, if False, will force hiding it.If None, will toggle the visibility.
         """
         # noinspection DuplicatedCode
         if force_showing is None:
@@ -664,7 +663,7 @@ class UEVMGui(tk.Tk):
 
     def update_navigation(self) -> None:
         """
-        Update the page numbers in the toolbar
+        Update the page numbers in the toolbar.
         """
         if self._toolbar_frame is None:
             # toolbar not created yet
@@ -687,14 +686,14 @@ class UEVMGui(tk.Tk):
 
     def update_data_source(self) -> None:
         """
-        Update the data source name in the control frame
+        Update the data source name in the control frame.
         """
         self._control_frame.var_entry_data_source_name.set(self.editable_table.data_source)
         self._control_frame.var_entry_data_source_type.set(self.editable_table.data_source_type.name)
 
     def update_category_var(self) -> dict:
         """
-        Update the category variable with the current categories in the data
+        Update the category variable with the current categories in the data.
         :return: a dict with the new categories list as value and the key is the name of the variable.
         """
         try:
@@ -713,7 +712,7 @@ class UEVMGui(tk.Tk):
 
     def reload_data(self) -> None:
         """
-        Reload the data from the data source
+        Reload the data from the data source.
         """
         if not self.editable_table.must_save or (
             self.editable_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
@@ -727,7 +726,7 @@ class UEVMGui(tk.Tk):
 
     def rebuild_data(self) -> None:
         """
-        Rebuild the data from the data source. Will ask for confirmation before rebuilding
+        Rebuild the data from the data source. Will ask for confirmation before rebuilding.
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
             if self.editable_table.rebuild_data():
@@ -737,8 +736,8 @@ class UEVMGui(tk.Tk):
 
     def run_uevm_command(self, command_name='') -> None:
         """
-        Execute a cli command and display the result in DisplayContentWindow
-        :param command_name: the name of the command to execute
+        Execute a cli command and display the result in DisplayContentWindow.
+        :param command_name: the name of the command to execute.
         """
         if command_name == '':
             return
@@ -759,7 +758,7 @@ class UEVMGui(tk.Tk):
 
         # arguments for cleanup command
         # now set in command options
-        # gui_g.UEVM_cli_args['delete_extras_data'] = True
+        # gui_g.UEVM_cli_args['delete_extra_data'] = True
         # gui_g.UEVM_cli_args['delete_metadata'] = True
 
         # arguments for help command
@@ -775,7 +774,7 @@ class UEVMGui(tk.Tk):
     # noinspection PyUnusedLocal
     def open_asset_url(self, event=None) -> None:
         """
-        Open the asset URL (Wrapper)
+        Open the asset URL (Wrapper).
         """
         url, widget = self._check_and_get_widget_value(tag='Url')
         if url:

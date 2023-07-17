@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-CSV and SQL fields mapping and utility functions
+CSV and SQL fields mapping and utility functions.
 """
 from datetime import datetime
 
@@ -287,12 +287,12 @@ csv_sql_fields = {
 
 def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, return_as_string=False, filter_on_states=None):
     """
-    Get the csv fields list
-    :param exclude_sql_only: if True, exclude the sql only fields from result
-    :param include_asset_only: if True, include the asset only fields from result
-    :param return_as_string: if True, return a string instead of a list
-    :param filter_on_states: if not empty, only return the fields in the given states
-    :return: csv headings
+    Get the csv fields list.
+    :param exclude_sql_only: if True, exclude the sql only fields from result.
+    :param include_asset_only: if True, include the asset only fields from result.
+    :param return_as_string: if True, return a string instead of a list.
+    :param filter_on_states: if not empty, only return the fields in the given states.
+    :return: csv headings.
     """
     result = []
     for csv_field, value in csv_sql_fields.items():
@@ -310,13 +310,13 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
 
 def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, return_as_string=False, add_alias=False, filter_on_states=None):
     """
-    Get the sql fields list
-    :param exclude_csv_only: if True, exclude the csv only fields from result
-    :param include_asset_only: if True, include the asset only fields from result
-    :param return_as_string: if True, return a string instead of a list
-    :param add_alias: if True, add the csv name as alias to the sql field name
-    :param filter_on_states: if not empty, only return the fields in the given states
-    :return: sql headings
+    Get the sql fields list.
+    :param exclude_csv_only: if True, exclude the csv only fields from result.
+    :param include_asset_only: if True, include the asset only fields from result.
+    :param return_as_string: if True, return a string instead of a list.
+    :param add_alias: if True, add the csv name as alias to the sql field name.
+    :param filter_on_states: if not empty, only return the fields in the given states.
+    :return: sql headings.
     """
     result = []
     for csv_field, value in csv_sql_fields.items():
@@ -343,12 +343,11 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
 def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
     """
     Get the typed value for a field in CSV or SQL format. Only one of the two fields is required.
-    :param csv_field: name of the field (csv format)
-    :param sql_field: name of the field (sql format)
-    :param value: value to cast
-    :return: typed value
+    :param csv_field: name of the field (csv format).
+    :param sql_field: name of the field (sql format).
+    :param value: value to cast.
+    :return: typed value.
     """
-
     if sql_field and not csv_field:
         csv_field = get_csv_field_name(sql_field)
 
@@ -367,11 +366,11 @@ def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
 
 def is_on_state(csv_field_name: str, states: list[CSVFieldState], default=False) -> bool:
     """
-    Check if the csv field is in the given states
-    :param csv_field_name: csv field name
-    :param states: list of states to check
-    :param default: default value if the field is not in the list
-    :return: True if is in the given states
+    Check if the csv field is in the given states.
+    :param csv_field_name: csv field name.
+    :param states: list of states to check.
+    :param default: default value if the field is not in the list.
+    :return: True if is in the given states.
     """
     if not isinstance(states, list):
         states = [states]
@@ -385,11 +384,11 @@ def is_on_state(csv_field_name: str, states: list[CSVFieldState], default=False)
 
 def is_from_type(csv_field_name: str, types: list[CSVFieldType], default=False) -> bool:
     """
-    Check if the csv field is in the given types
-    :param csv_field_name: csv field name
-    :param types: list of types to check
-    :param default: default value if the field is not in the list
-    :return: True if is in the given types
+    Check if the csv field is in the given types.
+    :param csv_field_name: csv field name.
+    :param types: list of types to check.
+    :param default: default value if the field is not in the list.
+    :return: True if is in the given types.
     """
     if not isinstance(types, list):
         types = [types]
@@ -403,9 +402,9 @@ def is_from_type(csv_field_name: str, types: list[CSVFieldType], default=False) 
 
 def get_type(csv_field_name: str):
     """
-    Get the type of field
-    :param csv_field_name: csv field name
-    :return: type of the field
+    Get the type of field.
+    :param csv_field_name: csv field name.
+    :return: type of the field.
     """
     try:
         return csv_sql_fields[csv_field_name]['field_type']
@@ -415,9 +414,9 @@ def get_type(csv_field_name: str):
 
 def get_converters(csv_field_name: str):
     """
-    Get the converter of field
-    :param csv_field_name: csv field name
-    :return: list of converters to use sequentially. [str] will be returned if the field is not found
+    Get the converter of field.
+    :param csv_field_name: csv field name.
+    :return: list of converters to use sequentially. [str] will be returned if the field is not found.
     """
     field_type = get_type(csv_field_name)
 
@@ -439,10 +438,10 @@ def get_converters(csv_field_name: str):
 
 def get_default_value(csv_field_name: str = '', sql_field_name: str = ''):
     """
-    Get the default value of field
-    :param csv_field_name: csv field name
-    :param sql_field_name: sql field name. If not provided, the csv field name will be used
-    :return: default value of the field
+    Get the default value of field.
+    :param csv_field_name: csv field name.
+    :param sql_field_name: sql field name. If not provided, the csv field name will be used.
+    :return: default value of the field.
     """
     if sql_field_name and not csv_field_name:
         csv_field_name = get_csv_field_name(sql_field_name)
@@ -461,9 +460,9 @@ def get_default_value(csv_field_name: str = '', sql_field_name: str = ''):
 
 def get_state(csv_field_name: str):
     """
-    Get the state of field
-    :param csv_field_name: csv field name
-    :return: state of the field
+    Get the state of field.
+    :param csv_field_name: csv field name.
+    :return: state of the field.
     """
     try:
         return csv_sql_fields[csv_field_name]['state']
@@ -473,18 +472,18 @@ def get_state(csv_field_name: str):
 
 def is_preserved(csv_field_name: str) -> bool:
     """
-    Check if the csv field is preserved
-    :param csv_field_name: csv field name
-    :return: True if is preserved
+    Check if the csv field is preserved.
+    :param csv_field_name: csv field name.
+    :return: True if is preserved.
     """
     return not is_on_state(csv_field_name, [CSVFieldState.NOT_PRESERVED])
 
 
 def get_sql_field_name(csv_field_name: str):
     """
-    Get the sql field name for a csv field name
-    :param csv_field_name: csv field name
-    :return: sql field name
+    Get the sql field name for a csv field name.
+    :param csv_field_name: csv field name.
+    :return: sql field name.
     """
     try:
         return csv_sql_fields[csv_field_name]['sql_name']
@@ -494,9 +493,9 @@ def get_sql_field_name(csv_field_name: str):
 
 def get_csv_field_name(sql_field_name: str) -> str:
     """
-    Get the csv field name for a sql field name
-    :param sql_field_name: sql field name
-    :return: csv field name
+    Get the csv field name for a sql field name.
+    :param sql_field_name: sql field name.
+    :return: csv field name.
     """
     result = None
     for key, value in csv_sql_fields.items():
@@ -508,8 +507,8 @@ def get_csv_field_name(sql_field_name: str) -> str:
 
 def create_empty_csv_row(return_as_string=False):
     """
-    Create an empty row for the csv file
-    :return: empty row
+    Create an empty row for the csv file.
+    :return: empty row.
     """
     data = {}
     uid = create_uid()
@@ -526,9 +525,9 @@ def create_empty_csv_row(return_as_string=False):
 
 def convert_csv_row_to_sql_row(csv_row: dict) -> dict:
     """
-    Convert a csv row to a sql row
-    :param csv_row: csv row
-    :return: sql row
+    Convert a csv row to a sql row.
+    :param csv_row: csv row.
+    :return: sql row.
     """
     sql_row = {}
     for csv_field, value in csv_row.items():

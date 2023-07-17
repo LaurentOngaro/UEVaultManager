@@ -3,7 +3,7 @@
 Implementation for:
 - EPCAPI : Epic Games Client API
 - GrabResult : Enum for the result of grabbing a page.
-- create_empty_assets_extras : Creates an empty asset extras dict.
+- create_empty_assets_extra : Creates an empty asset extra dict.
 """
 import logging
 import re
@@ -36,10 +36,9 @@ class GrabResult(Enum):
 def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=None) -> bool:
     """
     :param supported_versions: The supported versions the check the obsolete status against.
-    :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete
-    :return: True if the asset is obsolete, False otherwise
+    :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete.
+    :return: True if the asset is obsolete, False otherwise.
     """
-
     if not engine_version_for_obsolete_assets or not supported_versions:
         obsolete = False
     else:
@@ -56,11 +55,11 @@ def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=
     return obsolete
 
 
-def create_empty_assets_extras(asset_name: str) -> dict:
+def create_empty_assets_extra(asset_name: str) -> dict:
     """
-    Creates an empty asset extras dict.
+    Creates an empty asset extra dict.
     :param asset_name:  The name of the asset.
-    :return: The empty asset extras dict.
+    :return: The empty asset extra dict.
      """
     return {
         'asset_name': asset_name,
@@ -80,7 +79,7 @@ def create_empty_assets_extras(asset_name: str) -> dict:
 
 class EPCAPI:
     """
-    Epic Games Client API
+    Epic Games Client API.
     :param lc: The language code.
     :param cc: The country code.
     :param timeout: The timeout for requests.
@@ -177,11 +176,11 @@ class EPCAPI:
 
     def get_scrap_url(self, start=0, count=1, sort_by='effectiveDate', sort_order='DESC') -> str:
         """
-        Return the scraping URL
+        Return the scraping URL.
         """
         url = f'https://{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}'
         # other possible filters
-        # to see the list of possible filters: https://www.unrealengine.com/marketplace/en-US/assets and use filters on the right panel
+        # to see the list of possible filters: https://www.unrealengine.com/marketplace/en-US/assets and use filters on the right panel.
         """
         # can add multiple platform filters
         # Windows, Android, Linux, Mac, PS4, Nintendo%20Switch, Win32, iOS, Xbox%20One, HTML5...
@@ -200,7 +199,7 @@ class EPCAPI:
 
     def get_owned_scrap_url(self, start=0, count=1) -> str:
         """
-        Return the scraping URL for the owned assets
+        Return the scraping URL for the owned assets.
         """
         # 'https://www.unrealengine.com/marketplace/api/assets/vault?start=1000&count=100'
         url = f'https://{self._url_owned_assets}?start={start}&count={count}'
@@ -210,7 +209,7 @@ class EPCAPI:
         """
         Returns the url for the asset in the marketplace.
         :param asset_slug: The asset slug.
-        :return: The url
+        :return: The url.
         """
         url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
         return url
@@ -236,8 +235,8 @@ class EPCAPI:
 
     def is_valid_url(self, url='') -> bool:
         """
-        Check is the url is valid (i.e. http response status is 200)
-        :param url: The url to check
+        Check is the url is valid (i.e. http response status is 200).
+        :param url: The url to check.
         :return: True if the url is valid.
         """
         result = False
@@ -250,9 +249,9 @@ class EPCAPI:
 
     def get_json_data_from_url(self, url='') -> dict:
         """
-        Return the scraped assets
-        :param url: The url to scrap
-        :return: The json data
+        Return the scraped assets.
+        :param url: The url to scrap.
+        :return: The json data.
         """
         json_data = {}
         if not url:
@@ -288,13 +287,13 @@ class EPCAPI:
         self, refresh_token: str = None, exchange_token: str = None, authorization_code: str = None, client_credentials: bool = False
     ) -> dict:
         """
-        Starts a session.
-        :param refresh_token: refresh token
-        :param exchange_token: exchange token
-        :param authorization_code: authorization code
-        :param client_credentials: client credentials
+        Start a session.
+        :param refresh_token: refresh token.
+        :param exchange_token: exchange token.
+        :param authorization_code: authorization code.
+        :param client_credentials: client credentials.
         :return: The session.
-        :raise: ValueError,InvalidCredentialsError
+        :raise: ValueError,InvalidCredentialsError.
         """
         if refresh_token:
             params = dict(grant_type='refresh_token', refresh_token=refresh_token, token_type='eg1')
@@ -334,9 +333,9 @@ class EPCAPI:
 
     def get_item_token(self) -> str:
         """
-        Gets the item token.
+        Get the item token.
         Unused but kept for the global API reference.
-        :return: The item token using json format
+        :return: The item token using json format.
         """
         url = f'https://{self._oauth_host}/account/api/oauth/exchange'
         r = self.session.get(url, timeout=self.request_timeout)
@@ -345,9 +344,9 @@ class EPCAPI:
 
     def get_item_assets(self, platform='Windows', label='Live'):
         """
-        Gets the item assets.
-        :param platform: platform to get assets for
-        :param label: label of the assets
+        Get the item assets.
+        :param platform: platform to get assets for.
+        :param label: label of the assets.
         :return: The item assets using json format.
         """
         url = f'https://{self._launcher_host}/launcher/api/public/assets/{platform}'
@@ -357,12 +356,12 @@ class EPCAPI:
 
     def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live') -> dict:
         """
-        Gets the item manifest.
-        :param namespace:  namespace
-        :param catalog_item_id: catalog item id
-        :param app_name: app name
-        :param platform: platform to get manifest for
-        :param label: label of the manifest
+        Get the item manifest.
+        :param namespace:  namespace.
+        :param catalog_item_id: catalog item id.
+        :param app_name: app name.
+        :param platform: platform to get manifest for.
+        :param label: label of the manifest.
         :return: The item manifest using json format.
         """
         url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
@@ -372,11 +371,11 @@ class EPCAPI:
 
     def get_item_info(self, namespace: str, catalog_item_id: str, timeout: float = None) -> (dict, int):
         """
-        Gets the item info.
-        :param namespace: Namespace of the item
-        :param catalog_item_id: Catalog item id of the item
-        :param timeout: Timeout for the request
-        :return: (The item info, status code)
+        Get the item info.
+        :param namespace: Namespace of the item.
+        :param catalog_item_id: Catalog item id of the item.
+        :param timeout: Timeout for the request.
+        :return: (The item info, status code).
         """
         url = f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items'
         r = self.session.get(
@@ -391,9 +390,9 @@ class EPCAPI:
 
     def get_library_items(self, include_metadata=True) -> list:
         """
-        Gets the library items.
-        :param include_metadata: Whether to include metadata
-        :return: The library items
+        Get the library items.
+        :param include_metadata: Whether to include metadata.
+        :return: The library items.
         """
         records = []
         url = f'https://{self._library_host}/library/api/public/items'
@@ -414,10 +413,10 @@ class EPCAPI:
 
     def search_for_asset_url(self, asset_name: str, timeout=10.0) -> []:
         """
-        Find the asset url from the asset name by searching the asset name in the unreal engine marketplace
-        :param asset_name: asset name to search
-        :param timeout: timeout for the request
-        :return: (The asset url, the asset name (converted or found), the grab result code)
+        Find the asset url from the asset name by searching the asset name in the unreal engine marketplace.
+        :param asset_name: asset name to search.
+        :param timeout: timeout for the request.
+        :return: (The asset url, the asset name (converted or found), the grab result code).
         """
         # remove the suffix _EngineVersion (ex _4.27) at the end of the name to have a valid search value
         regex = r"_[4|5]\.\d{1,2}$"
@@ -469,20 +468,20 @@ class EPCAPI:
         url = 'https://www.unrealengine.com' + links[0]
         return [url, asset_slug, GrabResult.NO_ERROR.name]
 
-    def grab_assets_extras(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
+    def grab_assets_extra(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
         """
-        Grab the extras data of an asset (price, review...) using BeautifulSoup from the marketplace
-        :param asset_name: name of the asset
-        :param asset_title: title of the asset
-        :param timeout: connection timeout
-        :param verbose_mode: verbose mode
-        :return: a dict with the extras data
+        Grab the extra data of an asset (price, review...) using BeautifulSoup from the marketplace.
+        :param asset_name: name of the asset.
+        :param asset_title: title of the asset.
+        :param timeout: connection timeout.
+        :param verbose_mode: verbose mode.
+        :return: a dict with the extra data.
         """
         not_found_price = 0.0
         not_found_review = 0.0
         supported_versions = ''
         page_title = ''
-        no_result = create_empty_assets_extras(asset_name=asset_name)
+        no_result = create_empty_assets_extra(asset_name=asset_name)
 
         # try to find the url of the asset by doing a search in the marketplace
         asset_url, asset_slug, error_code = self.search_for_asset_url(asset_title, timeout)
@@ -496,9 +495,9 @@ class EPCAPI:
         try:
             response = self.session.get(asset_url)  # when using session, we are already logged in Epic game
             response.raise_for_status()
-            self.log.info(f'Grabbing extras data for {asset_name}')
+            self.log.info(f'Grabbing extra data for {asset_name}')
         except requests.exceptions.RequestException as error:
-            self.log.warning(f'Can not get extras data for {asset_name}:{error!r}')
+            self.log.warning(f'Can not get extra data for {asset_name}:{error!r}')
             self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
             no_result['grab_result'] = error_code
             no_result['page_title'] = asset_slug

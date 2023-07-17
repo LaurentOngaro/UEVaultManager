@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 implementation for:
-- EGLManifest: EGL Manifest 
+- EGLManifest: EGL Manifest .
 """
 from copy import deepcopy
 
@@ -52,9 +52,8 @@ _template = {
 
 class EGLManifest:
     """
-    EGL Manifest
+    EGL Manifest.
     """
-
     def __init__(self):
         self.app_name = None
         self.app_version_string = None
@@ -83,9 +82,9 @@ class EGLManifest:
     @classmethod
     def from_json(cls, json: dict) -> 'EGLManifest':
         """
-        Create EGLManifest from json
-        :param json: json data
-        :return: EGLManifest
+        Create EGLManifest from json.
+        :param json: json data.
+        :return: EGLManifest.
         """
         json = deepcopy(json)
         tmp = cls()
@@ -116,8 +115,8 @@ class EGLManifest:
 
     def to_json(self) -> dict:
         """
-        Convert EGLManifest to json
-        :return: json data
+        Convert EGLManifest to json.
+        :return: json data.
         """
         out = _template.copy()
         out.update(self.remainder)

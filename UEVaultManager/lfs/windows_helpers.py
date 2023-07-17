@@ -7,7 +7,7 @@ import ctypes
 
 def double_clicked() -> bool:
     """
-    Check if the application was started by a double click
+    Check if the application was started by a double click.
     """
     # Thanks https://stackoverflow.com/a/55476145
 

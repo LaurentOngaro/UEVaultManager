@@ -53,7 +53,7 @@ Implemented Features:
 
    -  all the metadata that were already downloaded before by legendary:
       name, title, id, description, UE versions...
-   -  **extras data grabbed from the marketplace page of an asset :
+   -  **extra data grabbed from the marketplace page of an asset :
       price, review, tags, owned or not...**
 -  **Scraping the marketplace page of an asset to get all the data using the EPIC MARKETPLACE API (since the version 1.8.0)**
 -  Since version 1.8.0, the app can also use a sqlite database to store
@@ -65,7 +65,7 @@ Implemented Features:
    "-fc | -filter-category" optional argument)**
 -  **Saving the resulting list in a csv or a json file (using the "-o |
    -output" optional argument)**
--  Saving the metadata and the extras data in individual json files (one
+-  Saving the metadata and the extra data in individual json files (one
    for each asset) in sub-folders of the config folder
 -  **Editing the content of a result file (json or csv) using a GUI (since the version 1.1.0)**
 -  Preserving user data for each asset (see the :doc:`output` section).

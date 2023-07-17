@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- WebImage: class to download an image from an url and get it as a PhotoImage
+- WebImage: class to download an image from an url and get it as a PhotoImage.
 """
 from io import BytesIO
 
@@ -13,10 +13,9 @@ from UEVaultManager.tkgui.modules.functions import log_warning
 
 class WebImage:
     """
-    Class to download an image from an url and get it as a PhotoImage
-    :param url: the url of the image to download
+    Class to download an image from an url and get it as a PhotoImage.
+    :param url: the url of the image to download.
     """
-
     def __init__(self, url: str = None):
         # if no URL is given, return
         if url is None or url == '':
@@ -38,17 +37,17 @@ class WebImage:
 
     def get(self) -> ImageTk.PhotoImage:
         """
-        Get the downloaded image
-        :return: the image
+        Get the downloaded image.
+        :return: the image.
         """
         return self.__image_tk
 
     def get_resized(self, new_width: int, new_height: int) -> ImageTk.PhotoImage:
         """
-        Get the downloaded image resized to the given size
-        :param new_width: width of the resized image
-        :param new_height: height of the resized image
-        :return: the resized image
+        Get the downloaded image resized to the given size.
+        :param new_width: width of the resized image.
+        :param new_height: height of the resized image.
+        :return: the resized image.
         """
         try:
             # resize the PIL.Image object in place

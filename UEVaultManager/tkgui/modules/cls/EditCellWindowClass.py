@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- EditCellWindow: the window to edit a cell
+- EditCellWindow: the window to edit a cell.
 """
 import tkinter as tk
 from tkinter import ttk
@@ -15,16 +15,15 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 
 class EditCellWindow(tk.Toplevel):
     """
-    The window to edit a cell
-    :param parent: the parent window
-    :param title: the title of the window
-    :param width: the width of the window
-    :param height: the height of the window
-    :param icon: the icon of the window
-    :param screen_index: the index of the screen on which the window will be displayed
-    :param editable_table: the table to edit
+    The window to edit a cell.
+    :param parent: the parent window.
+    :param title: the title of the window.
+    :param width: the width of the window.
+    :param height: the height of the window.
+    :param icon: the icon of the window.
+    :param screen_index: the index of the screen on which the window will be displayed.
+    :param editable_table: the table to edit.
     """
-
     def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
@@ -52,19 +51,17 @@ class EditCellWindow(tk.Toplevel):
 
     class ContentFrame(ttk.Frame):
         """
-        The frame containing the content of the window
-        :param container: the container of the frame
+        The frame containing the content of the window.
+        :param container: the container of the frame.
         """
-
         def __init__(self, container):
             super().__init__(container)
 
     class ControlFrame(ttk.Frame):
         """
-        The frame containing the control buttons of the window
-        :param container: the container of the frame
+        The frame containing the control buttons of the window.
+        :param container: the container of the frame.
         """
-
         def __init__(self, container):
             super().__init__(container)
             grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
@@ -80,7 +77,7 @@ class EditCellWindow(tk.Toplevel):
     def set_size(self, width: int, height: int) -> None:
         """
         Set the size (aka geometry) the window.
-        :param width: the width
+        :param width: the width.
         :param height: the height
         
         Note: The window is centered on the screen.
@@ -90,8 +87,8 @@ class EditCellWindow(tk.Toplevel):
 
     def on_key_press(self, event) -> None:
         """
-        Event when a key is pressed
-        :param event: the event that triggered the call of this function
+        Event when a key is pressed.
+        :param event: the event that triggered the call of this function.
         """
         if event.keysym == 'Escape':
             self.on_close()
@@ -100,8 +97,8 @@ class EditCellWindow(tk.Toplevel):
 
     def on_close(self, _event=None) -> None:
         """
-        Event when the window is closing
-        :param _event: the event that triggered the call of this function
+        Event when the window is closing.
+        :param _event: the event that triggered the call of this function.
         """
         current_values = self.editable_table.get_edit_cell_values()
         # current_values is empty if save_button has been pressed because global variables have been cleared in save_changes()
@@ -113,7 +110,7 @@ class EditCellWindow(tk.Toplevel):
 
     def close_window(self) -> None:
         """
-        Close the window
+        Close the window.
         """
         gui_g.edit_cell_window_ref = None
         self.editable_table.reset_style()
@@ -121,7 +118,7 @@ class EditCellWindow(tk.Toplevel):
 
     def save_change(self) -> None:
         """
-        Save the changes made in the window  (Wrapper)
+        Save the changes made in the window  (Wrapper).
         """
         self.must_save = False
         self.editable_table.save_edit_cell_value()

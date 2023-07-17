@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Utilities functions and tools
-These functions depend on the globals.py module and can generate circular dependencies when imported
+These functions depend on the globals.py module and can generate circular dependencies when imported.
 """
 import logging
 import os
@@ -20,20 +20,20 @@ from UEVaultManager.tkgui.modules import globals as gui_g
 
 def log_format_message(name: str, levelname: str, message: str) -> str:
     """
-    Format the log message
-    :param name: the name of the logger
-    :param levelname: the level of log
-    :param message: the message to format
-    :return: the formatted message
+    Format the log message.
+    :param name: the name of the logger.
+    :param levelname: the level of log.
+    :param message: the message to format.
+    :return: the formatted message.
     """
     return f'[{name}] {levelname}: {message}'
 
 
 def box_message(msg: str, level='info'):
     """
-    Display a message box with the given message
-    :param msg: the message to display
-    :param level: the level of the message (info, warning, error)
+    Display a message box with the given message.
+    :param msg: the message to display.
+    :param level: the level of the message (info, warning, error).
     """
     level = level.lower()
     if level == 'warning':
@@ -51,25 +51,25 @@ def box_message(msg: str, level='info'):
 
 def box_yesno(msg: str) -> bool:
     """
-    Display a YES/NO message box with the given message
-    :param msg: the message to display 
-    :return:  True if the user clicked on Yes, False otherwise
+    Display a YES/NO message box with the given message.
+    :param msg: the message to display .
+    :return:  True if the user clicked on Yes, False otherwise.
     """
     return messagebox.askyesno(title=gui_g.s.app_title, message=msg)
 
 
 def box_okcancel(msg: str) -> bool:
     """
-    Display an OK/CANCEL message box with the given message
-    :param msg: the message to display
-    :return:  True if the user clicked on Yes, False otherwise
+    Display an OK/CANCEL message box with the given message.
+    :param msg: the message to display.
+    :return:  True if the user clicked on Yes, False otherwise.
     """
     return messagebox.askokcancel(title=gui_g.s.app_title, message=msg)
 
 
 def todo_message() -> None:
     """
-    Display a message box with a message saying that the feature is not implemented yet
+    Display a message box with a message saying that the feature is not implemented yet.
     """
     msg = 'Not implemented yet'
     print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
@@ -79,7 +79,7 @@ def todo_message() -> None:
 
 def from_cli_only_message(content='This feature is only accessible') -> None:
     """
-    Display a message box with a message saying that the feature is only accessible when running the app using the UEVM cli command options
+    Display a message box with a message saying that the feature is only accessible when running the app using the UEVM cli command options.
     """
     msg = f'{content} when running these app using the UEVM cli command options. Once the UEVaultManager package installed, Type UEVaultManager -h for more help'
     print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
@@ -89,8 +89,8 @@ def from_cli_only_message(content='This feature is only accessible') -> None:
 
 def log_info(msg: str) -> None:
     """
-    Log an info message
-    :param msg: the message to log
+    Log an info message.
+    :param msg: the message to log.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
@@ -101,8 +101,8 @@ def log_info(msg: str) -> None:
 
 def log_debug(msg: str) -> None:
     """
-    Log a debug message. Note that this message will only be logged if the debug mode is enabled
-    :param msg: the message to log
+    Log a debug message. Note that this message will only be logged if the debug mode is enabled.
+    :param msg: the message to log.
     """
     if not gui_g.s.debug_mode:
         return
@@ -120,8 +120,8 @@ def log_debug(msg: str) -> None:
 
 def log_warning(msg: str) -> None:
     """
-    Log a warning message
-    :param msg: the message to log
+    Log a warning message.
+    :param msg: the message to log.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
@@ -132,8 +132,8 @@ def log_warning(msg: str) -> None:
 
 def log_error(msg: str) -> None:
     """
-    Log an error message
-    :param msg: the message to log. Note that the app will exit after logging the message
+    Log an error message.
+    :param msg: the message to log. Note that the app will exit after logging the message.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.error(msg)
@@ -147,9 +147,9 @@ def log_error(msg: str) -> None:
 
 def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
     """
-    Resize the given image and display it in the given canvas
-    :param image: the image to display
-    :param canvas: the canvas to display the image in
+    Resize the given image and display it in the given canvas.
+    :param image: the image to display.
+    :param canvas: the canvas to display the image in.
     """
     # Resize the image while keeping the aspect ratio
     target_height = gui_g.s.preview_max_height
@@ -166,9 +166,9 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
 
 def show_asset_image(image_url: str, canvas_image=None) -> None:
     """
-    Show the image of the given asset in the given canvas
-    :param image_url: the url of the image to display
-    :param canvas_image: the canvas to display the image in
+    Show the image of the given asset in the given canvas.
+    :param image_url: the url of the image to display.
+    :param canvas_image: the canvas to display the image in.
     """
     if canvas_image is None or image_url is None or not image_url or str(image_url) == gui_g.s.empty_cell:
         return
@@ -194,8 +194,8 @@ def show_asset_image(image_url: str, canvas_image=None) -> None:
 
 def show_default_image(canvas_image=None) -> None:
     """
-    Show the default image in the given canvas
-    :param canvas_image: the canvas to display the image in
+    Show the default image in the given canvas.
+    :param canvas_image: the canvas to display the image in.
     """
     if canvas_image is None:
         return
@@ -218,7 +218,6 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
     :param output_on_gui: Determines whether to print the result on the GUI.
     :return: The pretty printed JSON object.
     """
-
     def _process(obj, level=0):
         lines = []
         indent_str = ' ' * indent * level
@@ -249,9 +248,9 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
 
 def custom_print(text='', keep_mode=True) -> None:
     """
-    Print the given text on the GUI if it's available, otherwise print it on the console²
-    :param text: the text to print
-    :param keep_mode: whether to keep the existing content when adding a new one
+    Print the given text on the GUI if it's available, otherwise print it on the console².
+    :param text: the text to print.
+    :param keep_mode: whether to keep the existing content when adding a new one.
     """
     if gui_g.display_content_window_ref is not None:
         gui_g.display_content_window_ref.display(content=text + '\n', keep_mode=keep_mode)

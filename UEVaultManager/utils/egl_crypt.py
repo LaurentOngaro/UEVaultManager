@@ -6,7 +6,6 @@ on https://github.com/bozhu/AES-Python with ECB decryption added.
 You should practically never roll your own crypto like this.
 In this case it's just unimportant enough since all it needs to do is decrypt some data from the EGL config file.
 """
-
 import locale
 
 # noinspection DuplicatedCode
@@ -232,9 +231,8 @@ class AES:
 
     def decrypt_ecb(self, ciphertext):
         """
-        Decrypts `ciphertext` using ECB mode
+        Decrypt `ciphertext` using ECB mode.
         """
-
         blocks = []
         for ciphertext_block in split_blocks(ciphertext, require_padding=False):
             # CTR mode decrypt : ciphertext XOR encrypt(nonce)

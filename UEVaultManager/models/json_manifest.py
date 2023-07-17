@@ -17,7 +17,6 @@ def blob_to_num(in_str):
     ...instead of just putting the fucking number in the JSON...
 
     Also, it's still little endian, so we have to bitshift it.
-
     """
     num = 0
     shift = 0
@@ -33,10 +32,8 @@ def guid_from_json(in_str):
 
 class JSONManifest(Manifest):
     """
-    Manifest-compatible reader for JSON based manifests
-
+    Manifest-compatible reader for JSON based manifests.
     """
-
     def __init__(self):
         super().__init__()
         self.json_data = None

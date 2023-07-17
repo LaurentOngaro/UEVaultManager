@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- EditableTable: a class that extends the pandastable.Table class, providing additional functionalities
+- EditableTable: a class that extends the pandastable.Table class, providing additional functionalities.
 """
 import io
 import webbrowser
@@ -34,14 +34,13 @@ class EditableTable(Table):
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
     :param container: The parent frame for the table.
     :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
-    :param data_source: The path to the source that contains the table data
+    :param data_source: The path to the source that contains the table data.
     :param rows_per_page: The number of rows to show per page.
     :param show_toolbar: Whether to show the toolbar.
     :param show_statusbar: Whether to show the status bar.
     :param update_page_numbers_func: A function that updates the page numbers.
     :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
-
     _data = {}
     _filtered = {}  # do not put the word "data" here to makje search in code easier
     _last_selected_row = -1
@@ -133,7 +132,7 @@ class EditableTable(Table):
     def set_filter_frame(self, filter_frame=None) -> None:
         """
         Set the filter frame.
-        :param filter_frame: The filter frame
+        :param filter_frame: The filter frame.
         """
         if filter_frame is None:
             raise ValueError('filters_frame cannot be None')
@@ -142,7 +141,7 @@ class EditableTable(Table):
     def set_quick_edit_frame(self, quick_edit_frame=None) -> None:
         """
         Set the quick edit frame.
-        :param quick_edit_frame:  The quick edit frame
+        :param quick_edit_frame:  The quick edit frame.
         """
         if quick_edit_frame is None:
             raise ValueError('quick_edit_frame cannot be None')
@@ -150,7 +149,7 @@ class EditableTable(Table):
 
     def format_columns(self) -> None:
         """
-        Set the columns format for the table
+        Set the columns format for the table.
         """
         data = self.get_data()
         # log_debug("\nCOL TYPES BEFORE CONVERSION\n")
@@ -171,23 +170,23 @@ class EditableTable(Table):
 
     def get_data(self) -> pd.DataFrame:
         """
-        Returns the data in the table.
-        :return: data
+        Return the data in the table.
+        :return: data.
         """
         return self._data
 
     def get_data_filtered(self) -> pd.DataFrame:
         """
-        Returns the filtered data of the table.
-        :return: data
+        Return the filtered data of the table.
+        :return: data.
         """
         return self._filtered
 
     def valid_source_type(self, filename: str) -> bool:
         """
         Check if the file extension is valid for the current data source type.
-        :param filename: The filename to check
-        :return: True if the file extension is valid for the current data source type, False otherwise
+        :param filename: The filename to check.
+        :return: True if the file extension is valid for the current data source type, False otherwise.
         """
         file, ext = os.path.splitext(filename)
         stored_type = self.data_source_type
@@ -201,8 +200,8 @@ class EditableTable(Table):
 
     def load_data(self) -> bool:
         """
-        Loads data from the specified CSV file into the table.
-        :return: True if the data has been loaded successfully, False otherwise
+        Load data from the specified CSV file into the table.
+        :return: True if the data has been loaded successfully, False otherwise.
         """
         self._show_progress('Loading Data from data source...')
         # if self.data_source is None or not os.path.isfile(self.data_source):
@@ -247,8 +246,8 @@ class EditableTable(Table):
     def create_row(self, row_data=None, add_to_existing=True) -> None:
         """
         Create an empty row in the table.
-        :param row_data: The data to add to the row
-        :param add_to_existing: True to add the row to the existing data, False to replace the existing data
+        :param row_data: The data to add to the row.
+        :param add_to_existing: True to add the row to the existing data, False to replace the existing data.
         """
         table_row = None
         if self.data_source_type == DataSourceType.FILE:
@@ -361,8 +360,8 @@ class EditableTable(Table):
 
     def reload_data(self) -> bool:
         """
-        Reloads data from the CSV file and refreshes the table display.
-        :return: True if the data has been loaded successfully, False otherwise
+        Reload data from the CSV file and refreshes the table display.
+        :return: True if the data has been loaded successfully, False otherwise.
         """
         if not self.load_data():
             return False
@@ -436,8 +435,8 @@ class EditableTable(Table):
         """
         Creates a gradient color for the cells os specified columns. The gradient depends on the cell value between min and max values for that column.
         :param col_names: The names of the columns to create a gradient color for.
-        :param cmap: name of the colormap to use
-        :param alpha: alpha value for the color
+        :param cmap: name of the colormap to use.
+        :param alpha: alpha value for the color.
         """
         # import pylab as plt
         # cmaps = sorted(m for m in plt.cm.datad if not m.endswith("_r"))
@@ -546,9 +545,9 @@ class EditableTable(Table):
 
     def colorRows(self):
         """
-        Color individual cells in column(s). Requires that the rowcolors
-        dataframe has been set. This needs to be updated if the index is reset
-        Override this method to check indexes when rebuildind data from en empty table
+        Color individual cells in column(s). Requires that the rowcolors.
+        dataframe has been set. This needs to be updated if the index is reset.
+        Override this method to check indexes when rebuildind data from en empty table.
         """
         df = self.model.df
         rc = self.rowcolors
@@ -618,7 +617,7 @@ class EditableTable(Table):
 
     def update_page(self) -> None:
         """
-        Updates the page
+        Update the page.
         """
         if self.pagination_enabled:
             data_count = len(self.get_data_filtered())
@@ -737,8 +736,8 @@ class EditableTable(Table):
 
     def get_selected_rows(self):
         """
-        Returns the selected rows in the table.
-        :return: the selected rows
+        Return the selected rows in the table.
+        :return: the selected rows.
         """
         selected_rows = []
         selected_row_indices = self.multiplerowlist
@@ -748,10 +747,10 @@ class EditableTable(Table):
 
     def get_row(self, row_index: int, return_as_dict: bool = False):
         """
-        Returns the row at the specified index.
-        :param row_index: row index
-        :param return_as_dict: if True, returns the row as a dictionary
-        :return: the row at the specified index
+        Return the row at the specified index.
+        :param row_index: row index.
+        :param return_as_dict: if True, returns the row as a dictionary.
+        :return: the row at the specified index.
         """
         try:
             record = self.get_data().iloc[row_index]
@@ -764,12 +763,11 @@ class EditableTable(Table):
 
     def get_cell(self, row: int, col: int):
         """
-        Returns the value of the cell at the specified row and column.
-        :param row: row index
-        :param col: column index
-        :return: the value of the cell or None if the row or column index is out of range
+        Return the value of the cell at the specified row and column.
+        :param row: row index.
+        :param col: column index.
+        :return: the value of the cell or None if the row or column index is out of range.
         """
-
         try:
             return self.get_data().iloc[row, col]
         except IndexError:
@@ -1037,11 +1035,11 @@ class EditableTable(Table):
 
     def quick_edit_save_value(self, value: str, row: int = None, col: int = None, tag=None) -> None:
         """
-        Saves the cell content preview.
+        Save the cell content preview.
         :param value: The value to save.
         :param row: The row index of the cell.
         :param col: The column index of the cell.
-        :param tag: The tag associated to the control where the value come from
+        :param tag: The tag associated to the control where the value come from.
         """
         old_value = self.model.df.iat[row, col]
 

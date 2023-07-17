@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiControlFrame: a control frame for the UEVMGui Class
+- UEVMGuiControlFrame: a control frame for the UEVMGui Class.
 """
 import tkinter as tk
 
@@ -17,11 +17,10 @@ from UEVaultManager.tkgui.modules.types import WidgetType
 
 class UEVMGuiControlFrame(ttk.Frame):
     """
-    A control frame for the UEVMGui Class
+    A control frame for the UEVMGui Class.
     :param container: The parent container.
-    :param data_table: The EditableTable instance
+    :param data_table: The EditableTable instance.
     """
-
     def __init__(self, container, data_table: EditableTable):
         super().__init__()
         if container is None:
@@ -227,8 +226,8 @@ class UEVMGuiControlFrame(ttk.Frame):
     @staticmethod
     def save_filters(filters: dict):
         """
-        Save the filters to the config file
-        :param filters:
+        Save the filters to the config file.
+        :param filters:.
         :return:
         """
         gui_g.s.data_filters = filters  # will call set_data_filters

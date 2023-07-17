@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- ProgressWindow: window to display the progress of a function
+- ProgressWindow: window to display the progress of a function.
 """
 import queue
 import threading
@@ -16,21 +16,20 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 # noinspection PyProtectedMember
 class ProgressWindow(tk.Toplevel):
     """
-    The window to display the progress of a function
-    :param title: the title
-    :param width: the width
-    :param height: the height
-    :param icon: the icon
-    :param screen_index: the index of the screen on which the window will be displayed
-    :param max_value: the maximum value of the progress bar
-    :param show_start_button: whether to show the start button
-    :param show_stop_button: whether to show the stop button
-    :param show_progress: whether to show the progress bar
-    :param function: the function to execute
-    :param function_parameters: the parameters of the function
-    :param quit_on_close: whether to quit the application when the window is closed
+    The window to display the progress of a function.
+    :param title: the title.
+    :param width: the width.
+    :param height: the height.
+    :param icon: the icon.
+    :param screen_index: the index of the screen on which the window will be displayed.
+    :param max_value: the maximum value of the progress bar.
+    :param show_start_button: whether to show the start button.
+    :param show_stop_button: whether to show the stop button.
+    :param show_progress: whether to show the progress bar.
+    :param function: the function to execute.
+    :param function_parameters: the parameters of the function.
+    :param quit_on_close: whether to quit the application when the window is closed.
     """
-
     def __init__(
         self,
         title: str,
@@ -90,10 +89,9 @@ class ProgressWindow(tk.Toplevel):
 
     class ContentFrame(ttk.Frame):
         """
-        The frame that contains the content of the window
-        :param container: the container
+        The frame that contains the content of the window.
+        :param container: the container.
         """
-
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'padx': 5, 'pady': 5, 'fill': tk.X}
@@ -110,33 +108,32 @@ class ProgressWindow(tk.Toplevel):
 
     class ControlFrame(ttk.Frame):
         """
-        The frame that contains the control buttons
-        :param container: the container
-        :param show_start_button: whether to show the start button
-        :param show_stop_button: whether to show the stop button
+        The frame that contains the control buttons.
+        :param container: the container.
+        :param show_start_button: whether to show the start button.
+        :param show_stop_button: whether to show the stop button.
         """
-
         def __init__(self, container, show_start_button=True, show_stop_button=True):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
             self.pack_def_options = pack_def_options
             self.button_start = None
             self.button_stop = None
+            button_start = ttk.Button(self, text="Start", command=container.start_execution)
+            button_stop = ttk.Button(self, text="Stop", command=container.stop_execution, state=tk.DISABLED)
+            self.button_start = button_start
+            self.button_stop = button_stop
             if show_start_button:
-                button_start = ttk.Button(self, text="Start", command=container.start_execution)
                 button_start.pack(**pack_def_options, side=tk.LEFT)
-                self.button_start = button_start
             if show_stop_button:
-                button_stop = ttk.Button(self, text="Stop", command=container.stop_execution, state=tk.DISABLED)
                 button_stop.pack(**pack_def_options, side=tk.RIGHT)
-                self.button_stop = button_stop
 
     def _function_result_wrapper(self, function, *args, **kwargs) -> None:
         """
-        Wraps the function call and puts the result in the queue
-        :param function: the function to execute
-        :param args: args to pass to the function
-        :param kwargs: kwargs to pass to the function
+        Wrap the function call and puts the result in the queue.
+        :param function: the function to execute.
+        :param args: args to pass to the function.
+        :param kwargs: kwargs to pass to the function.
         """
         gui_f.log_info(f'execution of {function.__name__} has started')
         result = function(*args, **kwargs)
@@ -145,8 +142,8 @@ class ProgressWindow(tk.Toplevel):
 
     def _check_for_end(self, t: threading) -> None:
         """
-        Checks if the thread has ended, if not, schedules another check
-        :param t: the thread to check
+        Check if the thread has ended, if not, schedules another check.
+        :param t: the thread to check.
         """
         if t.is_alive():
             # Schedule another check in a few ms
@@ -165,8 +162,8 @@ class ProgressWindow(tk.Toplevel):
 
     def set_text(self, new_text: str) -> None:
         """
-        Sets the text of the label
-        :param new_text: the new text
+        Set the text of the label.
+        :param new_text: the new text.
         """
         if self.content_frame is None or self.content_frame.lbl_function is None:
             return
@@ -174,8 +171,8 @@ class ProgressWindow(tk.Toplevel):
 
     def set_value(self, new_value: int) -> None:
         """
-        Sets the value of the progress bar
-        :param new_value: the new value
+        Set the value of the progress bar.
+        :param new_value: the new value.
         """
         new_value = max(0, new_value)
         if self.content_frame is None or self.content_frame.progress_bar is None:
@@ -184,8 +181,8 @@ class ProgressWindow(tk.Toplevel):
 
     def set_max_value(self, new_max_value: int) -> None:
         """
-        Sets the maximum value of the progress bar
-        :param new_max_value: the new maximum value
+        Set the maximum value of the progress bar.
+        :param new_max_value: the new maximum value.
         """
         if self.content_frame is None or self.content_frame.progress_bar is None:
             return
@@ -194,8 +191,8 @@ class ProgressWindow(tk.Toplevel):
 
     def set_function(self, new_function) -> None:
         """
-        Sets the function to execute
-        :param new_function: the new function
+        Set the function to execute.
+        :param new_function: the new function.
         """
         if new_function is None:
             return
@@ -204,26 +201,26 @@ class ProgressWindow(tk.Toplevel):
 
     def set_function_parameters(self, parameters: dict) -> None:
         """
-        Sets the parameters to pass to the function
-        :param parameters: the parameters
+        Set the parameters to pass to the function.
+        :param parameters: the parameters.
         """
         self.function_params = parameters
 
     def hide_progress_bar(self) -> None:
         """
-        Hides the progress bar
+        Hide the progress bar.
         """
         self.content_frame.progress_bar.pack_forget()
 
     def show_progress_bar(self) -> None:
         """
-        Shows the progress bar
+        Show the progress bar.
         """
         self.content_frame.progress_bar.pack(self.content_frame.pack_def_options)
 
     def hide_start_button(self) -> None:
         """
-        Hides the start button
+        Hide the start button.
         """
         if self.control_frame is None or self.control_frame.button_start is None:
             return
@@ -231,7 +228,7 @@ class ProgressWindow(tk.Toplevel):
 
     def show_start_button(self) -> None:
         """
-        Shows the start button
+        Show the start button.
         """
         if self.control_frame is None or self.control_frame.button_start is None:
             return
@@ -239,7 +236,7 @@ class ProgressWindow(tk.Toplevel):
 
     def hide_stop_button(self) -> None:
         """
-        Hides the stop button
+        Hide the stop button.
         """
         if self.control_frame is None or self.control_frame.button_stop is None:
             return
@@ -247,7 +244,7 @@ class ProgressWindow(tk.Toplevel):
 
     def show_stop_button(self) -> None:
         """
-        Shows the stop button
+        Show the stop button.
         """
         if self.control_frame is None or self.control_frame.button_stop is None:
             return
@@ -255,11 +252,11 @@ class ProgressWindow(tk.Toplevel):
 
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None) -> None:
         """
-        Resets the progress bar
-        :param new_title: the new title
-        :param new_value: the new value
-        :param new_text: the new text
-        :param new_max_value: the new maximum value
+        Reset the progress bar.
+        :param new_title: the new title.
+        :param new_value: the new value.
+        :param new_text: the new text.
+        :param new_max_value: the new maximum value.
         """
         self.must_end = False
         try:
@@ -285,7 +282,7 @@ class ProgressWindow(tk.Toplevel):
 
     def start_execution(self) -> None:
         """
-        Starts the execution of the function
+        Start the execution of the function.
         """
         if self.function is None:
             gui_f.log_warning('the function name to execute is not set')
@@ -300,14 +297,14 @@ class ProgressWindow(tk.Toplevel):
 
     def stop_execution(self) -> None:
         """
-        Stops the execution of the function
+        Stop the execution of the function.
         """
         self.continue_execution = False
         self.set_activation(True)
 
     def get_result(self):
         """
-        Returns the result of the function
+        Return the result of the function.
         """
         return self.function_return_value
 
@@ -327,10 +324,10 @@ class ProgressWindow(tk.Toplevel):
 
     def update_and_continue(self, value=0, increment=0, text=None) -> bool:
         """
-        Updates the progress bar and returns whether the execution should continue
-        :param value: the value to set
-        :param increment: the value to increment. If both value and increment are set, the value is ignored
-        :param text: the text to set
+        Update the progress bar and returns whether the execution should continue.
+        :param value: the value to set.
+        :param increment: the value to increment. If both value and increment are set, the value is ignored.
+        :param text: the text to set.
         """
         try:
             # sometimes the window is already destroyed
@@ -349,9 +346,9 @@ class ProgressWindow(tk.Toplevel):
 
     def close_window(self, destroy_window=True, _event=None) -> None:
         """
-        Closes the window
-        :param destroy_window: whether to destroy the window or just hide it
-        :param _event: the event that triggered the close
+        Close the window.
+        :param destroy_window: whether to destroy the window or just hide it.
+        :param _event: the event that triggered the close.
         """
         self.must_end = True
         if destroy_window:

@@ -1,5 +1,5 @@
 # dynamic version of requirements
-# works well for pip install BUT it's not parsed by pycharm
+# work well for pip install BUT it's not parsed by pycharm
 # so "Unsatisfied package requirements inspection" will raises weak warnings
 # --index-url https://pypi.python.org/uevaultmanager/
 # -e .

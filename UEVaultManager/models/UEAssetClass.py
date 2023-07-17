@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 implementation for:
-- UEAsset:  A class to represent an Unreal Engine asset
+- UEAsset:  A class to represent an Unreal Engine asset.
 """
 import logging
 
@@ -12,9 +12,8 @@ from UEVaultManager.utils.cli import init_dict_from_data
 class UEAsset:
     """
     A class to represent an Unreal Engine asset. With the EGS data and user data.
-    :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete
+    :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete.
     """
-
     def __init__(self, engine_version_for_obsolete_assets=None):
         if engine_version_for_obsolete_assets is None:
             self.engine_version_for_obsolete_assets = '4.26'  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
@@ -36,7 +35,7 @@ class UEAsset:
         """
         Initialize the EGS data dictionary.
 
-        Note: the keys of self.Data dict are initialized here
+        Note: the keys of self.Data dict are initialized here.
         """
         data = {}
         for key in get_sql_field_name_list(include_asset_only=True):
@@ -46,7 +45,7 @@ class UEAsset:
     def init_from_dict(self, data: dict = None) -> None:
         """
         Initialize the asset data from the given dictionaries.
-        :param data: source dictionary for the EGS data
+        :param data: source dictionary for the EGS data.
         """
         if data:
             self.init_data()
@@ -57,7 +56,7 @@ class UEAsset:
     def init_from_list(self, data: list = None) -> None:
         """
         Initialize the asset data from the given lists.
-        :param data: source list for the EGS data
+        :param data: source list for the EGS data.
         """
         if data:
             self.init_data()

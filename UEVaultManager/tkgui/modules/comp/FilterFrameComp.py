@@ -16,7 +16,7 @@ class FilterFrame(ttk.LabelFrame):
     :param container: Container widget.
     :param data_func: A function that returns the DataFrame to be filtered.
     :param update_func: A function that updates the table.
-    :param save_filter_func: A function that save the filters
+    :param save_filter_func: A function that save the filters.
     :param title: The title of the frame.
     :param value_for_all: The value to use for the 'All' option.
     """
@@ -76,7 +76,7 @@ class FilterFrame(ttk.LabelFrame):
     # noinspection DuplicatedCode
     def _create_filter_widgets(self) -> None:
         """
-        Creates filter widgets inside the FilterFrame instance.
+        Create filter widgets inside the FilterFrame instance.
         """
         columns_to_list = self.data_func().columns.to_list()
         columns_to_list.insert(0, self.value_for_all)
@@ -133,7 +133,7 @@ class FilterFrame(ttk.LabelFrame):
 
     def _add_to_filters(self) -> None:
         """
-        Reads current selection from filter widgets and adds it to the filters' dictionary.
+        Read current selection from filter widgets and adds it to the filters' dictionary.
         """
         cb_selection = self.cb_col_name.get()
         if cb_selection:
@@ -152,7 +152,7 @@ class FilterFrame(ttk.LabelFrame):
 
     def _update_filter_widgets(self) -> None:
         """
-        Updates the widgets that are used for filtering based on the selected column.
+        Update the widgets that are used for filtering based on the selected column.
         """
         cb_selection = self.cb_col_name.get()
         # Clear all widgets from the filter frame
@@ -187,7 +187,7 @@ class FilterFrame(ttk.LabelFrame):
 
     def _get_filter_value_and_type(self) -> Tuple[str, Any]:
         """
-        Reads current value from filter widgets and determines its type.
+        Read current value from filter widgets and determines its type.
         :return: A tuple containing the type (str) and value of the filter condition.
         """
         if not self.filter_widget:
@@ -214,7 +214,7 @@ class FilterFrame(ttk.LabelFrame):
 
     def create_mask(self):
         """
-        Creates a boolean mask for specified column based on filter value in a pandas DataFrame.
+        Create a boolean mask for specified column based on filter value in a pandas DataFrame.
         :return: Boolean Series (mask) where True indicates rows that meet the condition.
         """
         data = self.data_func()
@@ -241,7 +241,7 @@ class FilterFrame(ttk.LabelFrame):
 
     def update_controls(self) -> None:
         """
-        Updates the state of the controls based on the current state of the filters
+        Update the state of the controls based on the current state of the filters.
         """
         cb_selection = self.cb_col_name.get()
         _, filter_value = self._get_filter_value_and_type()
@@ -271,14 +271,14 @@ class FilterFrame(ttk.LabelFrame):
 
     def get_filters(self) -> Dict[str, Tuple[type, Any]]:
         """
-        Get the filters dictionary
-        :return: The filters dictionary containing the filter conditions.
+        Get the filter dictionary.
+        :return: The filter dictionary containing the filter conditions.
         """
         return self._filters
 
     def apply_filters(self) -> None:
         """
-        Applies the filters and updates the caller.
+        Applie the filters and updates the caller.
         """
         self._add_to_filters()
         self._update_filter_widgets()
@@ -287,7 +287,7 @@ class FilterFrame(ttk.LabelFrame):
 
     def reset_filters(self) -> None:
         """
-        Resets all filter conditions and updates the caller.
+        Reset all filter conditions and update the caller.
         """
         self.cb_col_name.set('')
         if isinstance(self.filter_widget, ttk.Checkbutton):
@@ -300,7 +300,7 @@ class FilterFrame(ttk.LabelFrame):
 
     def view_filters(self) -> None:
         """
-        View the filters dictionary
+        View the filter dictionary.
         """
         values = '\n'.join([f'"{k}" equals or contains "{v[1]}"' for k, v in self._filters.items()])
         msg = values + '\n\nCopy values into clipboard ?'
@@ -310,7 +310,7 @@ class FilterFrame(ttk.LabelFrame):
 
     def quick_filter(self) -> None:
         """
-        Updates the widgets that are used for filtering based on the selected column.
+        Update the widgets that are used for filtering based on the selected column.
         """
         selected_filter = self.cb_quick_filter.get()
         quick_filter = self._quick_filters.get(selected_filter, None)
@@ -323,8 +323,8 @@ class FilterFrame(ttk.LabelFrame):
 
     def load_filters(self, filters: Dict[str, Tuple[type, Any]]) -> None:
         """
-        Loads the filters dictionary
-        :param filters: The filters dictionary containing the filter conditions.
+        Load the filter dictionary.
+        :param filters: The filter dictionary containing the filter conditions.
         """
         if filters is None or not isinstance(filters, dict) or len(filters) == 0:
             return

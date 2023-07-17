@@ -2,7 +2,7 @@
 """
 GUI module for UEVaultManager
 this can be run directly by executing this script
-or by the --edit command option for the UEVaultManager cli application, for instance by running `cli --edit --input <my_source_file>'
+or by the --edit command option for the UEVaultManager cli application, for instance by running `cli --edit --input <my_source_file>'.
 """
 import os.path
 
@@ -17,11 +17,11 @@ test_only_mode = True  # add some limitations to speed up the dev process - Set 
 
 def init_gui(open_mainwindow=True, use_db=False) -> str:
     """
-    Main function for the GUI
+    Main function for the GUI.
     :param open_mainwindow: if True, the main window will be opened (default mode).
-            Set to False for running the GUI initialization only, useful if called from cli.py
-    :param use_db: if True, the database will be used instead of the csv file
-    :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script
+            Set to False for running the GUI initialization only, useful if called from cli.py.
+    :param use_db: if True, the database will be used instead of the csv file.
+    :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script.
     """
     gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
     rebuild = False

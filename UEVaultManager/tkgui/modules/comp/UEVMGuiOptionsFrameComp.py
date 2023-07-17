@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiOptionsFrame: an options/settings frame for the UEVMGui Class
+- UEVMGuiOptionsFrame: an options/settings frame for the UEVMGui Class.
 """
 import tkinter as tk
 from tkinter import filedialog
@@ -13,8 +13,8 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 
 class UEVMGuiOptionsFrame(ttk.Frame):
     """
-    an options/settings frame for the UEVMGui Class
-    :param _container: The parent container
+    an options/settings frame for the UEVMGui Class.
+    :param _container: The parent container.
     """
     _folders_to_scan = []
     _container = None
@@ -58,7 +58,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode', variable=debug_var)
         ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_options row
-        # delete_extras_data'] = True
+        # delete_extra_data'] = True
         cur_row += 1
         cur_col = 0
         delete_metadata_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_metadata', False))
@@ -68,10 +68,10 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         # lblf_options row
         cur_row += 1
         cur_col = 0
-        delete_extras_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extras_data', False))
-        delete_extras_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extras_data(delete_extras_data_var.get()))
-        ck_delete_extras_data = ttk.Checkbutton(lblf_command_options, text='Delete metadata (cleanup)', variable=delete_extras_data_var)
-        ck_delete_extras_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
+        delete_extra_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extra_data', False))
+        delete_extra_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extra_data(delete_extra_data_var.get()))
+        ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete metadata (cleanup)', variable=delete_extra_data_var)
+        ck_delete_extra_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
         # Folders To scan frame
         lblf_folders_to_scan = ttk.LabelFrame(lblf_options, text='Folders To scan (add/remove)')
@@ -96,7 +96,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
 
     def add_folder_to_scan(self):
         """
-        Add a folder to scan
+        Add a folder to scan.
         """
         # open a file dialog to select a folder
         folder_selected = filedialog.askdirectory(title='Select a folder to scan for UE assets', initialdir='.')
@@ -110,7 +110,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
 
     def remove_folder_to_scan(self):
         """
-        Remove a folder to scan
+        Remove a folder to scan.
         """
         cb_selection = self._cb_folders_to_scan.get()
         if cb_selection:
@@ -122,7 +122,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
 
     def save_folder_to_scan(self):
         """
-        Save the folder to scan
+        Save the folder to scan.
         """
         gui_g.s.folders_to_scan = self._folders_to_scan
         gui_g.s.save_config_file()
