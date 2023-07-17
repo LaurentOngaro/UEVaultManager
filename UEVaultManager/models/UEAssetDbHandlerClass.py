@@ -437,12 +437,11 @@ class UEAssetDbHandler:
             cursor.close()
         return row_data
 
-    def get_assets_data_for_csv(self) -> (list, list):
+    def get_assets_data_for_csv(self) -> list:
         """
         Get data from all the assets in the 'assets' table for a "CSV file" like format.
-        :return: list(rows),list (column_names)
+        :return: list(rows)
         """
-        csv_column_names = []
         rows = []
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -453,18 +452,34 @@ class UEAssetDbHandler:
                 query += ' ORDER BY date_added_in_db DESC LIMIT 3000'
             cursor.execute(query)
             rows = cursor.fetchall()
+            cursor.close()
+        return rows
+
+    def get_columns_name_for_csv(self) -> list:
+        """
+        Get the columns name from the 'assets' table in a "CSV file" like format.
+        :return: list (column_names)
+        """
+        csv_column_names = []
+        if self.connection is not None:
+            cursor = self.connection.cursor()
+            # generate column names for the CSV file using AS to rename the columns
+            fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
+            query = f"SELECT {fields} FROM assets ORDER BY date_added_in_db DESC LIMIT 1"
+            cursor.execute(query)
             csv_column_names = [
                 description[0] for description in cursor.description
             ]  # by using the 'AS' in the SQL query, the column names are the CSV column names
             cursor.close()
 
-        return rows, csv_column_names
+        return csv_column_names
 
-    def create_empty_row(self, return_as_string=True, empty_cell='None'):
+    def create_empty_row(self, return_as_string=True, empty_cell='None', empty_row_prefix='dummy_row_'):
         """
         Create an empty row in the 'assets' table.
         :param return_as_string: True to return the row as a string, False to
         :param empty_cell: The value to use for empty cells.
+        :param empty_row_prefix: The prefix to use for the row ID.
         :return: A row (dict) or a string representing the empty row.
         """
         result = '' if return_as_string else {}
@@ -480,9 +495,9 @@ class UEAssetDbHandler:
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
-            ue_asset.data['id'] = uid
-            ue_asset.data['asset_id'] = 'dummy_row_' + uid  # dummy unique Asset_id to avoid issue
+            ue_asset.data['asset_id'] = empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
             ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
+            ue_asset.data['id'] = uid
             self.save_ue_asset(ue_asset)
             result = str(ue_asset) if return_as_string else ue_asset
         return result

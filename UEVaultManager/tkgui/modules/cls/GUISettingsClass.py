@@ -68,18 +68,21 @@ class GUISettings:
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
         self.ue_valid_file_content = ('.uplugin', '.uproject')
         # if a folder is in this tuple, the parent folder is considered as a valid UE folder
-        self.ue_valid_folder_content = ('content', 'Source')
+        self.ue_valid_folder_content = ('content', 'source')
+        self.ue_invalid_folder_content = ('Binaries', 'Build', 'DerivedDataCache', 'Intermediate')
 
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
         self.data_filetypes = (
             ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
         )
+
         self.preview_max_width = 150
         self.preview_max_height = 150
         self.default_global_search = 'Text to search...'
         self.default_value_for_all = 'All'
         self.empty_cell = 'None'
+        self.empty_row_prefix = 'dummy_row_'
         self.expand_columns_factor = 20
         self.contract_columns_factor = 20
         # ttkbootstrap themes:

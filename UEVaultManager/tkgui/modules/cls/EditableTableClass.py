@@ -157,10 +157,13 @@ class EditableTable(Table):
         # data.info()  # direct print info
         for col in data.columns:
             converters = get_converters(col)
+            # at least 2 converters are expected: one for the convertion function and one for column type
             for converter in converters:
                 try:
-                    data[col] = data[col].apply(converter) if callable(converter) else data[col].astype(converter)
-                    continue
+                    if callable(converter):
+                        data[col] = data[col].apply(converter)  # apply the converter function to the column
+                    else:
+                        data[col].astype(converter)
                 except (KeyError, ValueError) as error:
                     log_warning(f'Could not convert column "{col}" using {converter}. Error: {error}')
         # log_debug("\nCOL TYPES AFTER CONVERSION\n")
@@ -211,15 +214,18 @@ class EditableTable(Table):
         # TODO: test emtpy file at start with database and csv
         try:
             if self.data_source_type == DataSourceType.FILE:
-                self._data = pd.read_csv(self.data_source, **gui_g.s.csv_options)
-                if len(self._data) <= 0 or self._data.iloc[0][0] is None:
+                data = pd.read_csv(self.data_source, **gui_g.s.csv_options)
+                if len(data) <= 0 or data.iloc[0][0] is None:
                     raise EmptyDataError
                 # fill all 'NaN' like values with 'None', to be similar to the database
-                self._data.fillna('None', inplace=True)
+                data.fillna('None', inplace=True)
+                self._data = data
             elif self.data_source_type == DataSourceType.SQLITE:
-                data, column_names = self._db_handler.get_assets_data_for_csv()
+                data = self._db_handler.get_assets_data_for_csv()
+                column_names = self._db_handler.get_columns_name_for_csv()
                 if len(data) <= 0 or data[0][0] is None:
                     raise EmptyDataError
+                self._data = pd.DataFrame(data, columns=column_names)
             else:
                 log_error(f'Unknown data source type: {self.data_source_type}')
                 return False
@@ -229,19 +235,16 @@ class EditableTable(Table):
         if len(self._data) <= 0:
             log_error(f'No data found in data source: {self.data_source}')
             return False
-
         self.format_columns()  # could take some time with lots of rows
-
-        # log_debug("\nCOL TYPES AFTER LOADING CSV\n")
-        # self.data.info()  # direct print info
-
         self.total_pages = (len(self._data) - 1) // self.rows_per_page + 1
         self._close_progress()
         return True
 
-    def create_row(self, add_to_existing=True) -> None:
+    def create_row(self, row_data=None, add_to_existing=True) -> None:
         """
         Create an empty row in the table.
+        :param row_data: The data to add to the row
+        :param add_to_existing: True to add the row to the existing data, False to replace the existing data
         """
         table_row = None
         if self.data_source_type == DataSourceType.FILE:
@@ -254,11 +257,17 @@ class EditableTable(Table):
             if self._db_handler is None:
                 self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
             # create an empty row (in the database) with the correct columns
-            self._db_handler.create_empty_row(return_as_string=False, empty_cell=gui_g.s.empty_cell)  # dummy row
-            data, column_names = self._db_handler.get_assets_data_for_csv()
-            table_row = pd.DataFrame(data, columns=column_names)
+            ue_asset = self._db_handler.create_empty_row(
+                return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix
+            )  # dummy row
+            column_names = self._db_handler.get_columns_name_for_csv()
+            table_row = pd.DataFrame(ue_asset.data, columns=column_names)
         else:
             log_error(f'Unknown data source type: {self.data_source_type}')
+        if row_data is not None and table_row is not None:
+            # add the data to the row
+            for col in row_data:
+                table_row[col] = row_data[col]
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
             self._data = pd.concat([self._data, table_row], copy=False, ignore_index=True)
@@ -267,9 +276,9 @@ class EditableTable(Table):
             self.must_rebuild = True
             self._data = table_row
 
-    def getSelectedRow(self):
-        """Get currently selected row"""
-        return self.currentrow
+    # def getSelectedRow(self):
+    #     """Get currently selected row. Override of the parent method."""
+    #     return self.currentrow
 
     def del_row(self, row=None) -> bool:
         """

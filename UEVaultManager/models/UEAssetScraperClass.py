@@ -412,7 +412,7 @@ class UEAssetScraper:
 
         self._log_info(f'--- START scraping data from {url}{thread_data}')
 
-        json_data = self.egs.get_scraped_assets(url)
+        json_data = self.egs.get_json_data_from_url(url)
         if json_data.get('errorCode', '') != '':
             self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
             return

@@ -4,8 +4,12 @@ Implementation for:
 - UEVMGui: the main window of the application
 """
 import os
+import re
 import tkinter as tk
+from datetime import datetime
 from tkinter import filedialog as fd
+
+from rapidfuzz import fuzz
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
@@ -18,6 +22,21 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOpt
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
 from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
 from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType
+
+
+def clean_name(name_to_clean: str) -> str:
+    """
+    Clean a name to remove unwanted characters
+    :param name_to_clean: name to clean
+    :return: cleaned name
+    """
+    # remove some unwanted strings
+    patterns = [r'\bUE_[\d._]+\b', r' - UE Marketplace', r' in .+?$']
+    patterns = [re.compile(p) for p in patterns]
+    for pattern in patterns:
+        name_to_clean = pattern.sub('', name_to_clean)
+
+    return name_to_clean.strip()  # Remove leading and trailing spaces
 
 
 class UEVMGui(tk.Tk):
@@ -36,6 +55,7 @@ class UEVMGui(tk.Tk):
     _options_frame: UEVMGuiOptionsFrame = None
     _content_frame: UEVMGuiContentFrame = None
     _filter_frame: FilterFrame = None
+    egs = None
 
     def __init__(
         self,
@@ -69,6 +89,7 @@ class UEVMGui(tk.Tk):
 
         content_frame = UEVMGuiContentFrame(self)
         self._content_frame = content_frame
+        self.egs = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs
 
         # gui_g.UEVM_gui_ref = self  # important ! Must be donne before any use of a ProgressWindow. If not, an UEVMGuiHiddenRootClass will be created and the ProgressWindow still be displayed after the init
         # reading from CSV file version
@@ -85,7 +106,6 @@ class UEVMGui(tk.Tk):
         )
 
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
-
         self.editable_table.show()
         self.editable_table.update()
 
@@ -181,6 +201,26 @@ class UEVMGui(tk.Tk):
         self._toolbar_frame.btn_last_page.config(state=state)
         self._toolbar_frame.entry_current_page.config(state=state)
 
+    def _check_and_get_widget_value(self, tag):
+        """
+        Check if the widget with the given tags exists and return its value and itself
+        :param tag: tag of the widget that triggered the event
+        :return: value,widget
+        """
+        if tag == '':
+            return None, None
+        widget = self._control_frame.lbtf_quick_edit.get_child_by_tag(tag)
+        if widget is None:
+            gui_f.log_warning(f'Could not find a widget with tag {tag}')
+            return None, None
+        col = widget.col
+        row = widget.row
+        if col is None or row is None or col < 0 or row < 0:
+            gui_f.log_debug(f'invalid values for row={row} and col={col}')
+            return None, widget
+        value = widget.get_content()
+        return value, widget
+
     def mainloop(self, n=0):
         """ Override of mainloop method with loggin function (for debugging)"""
         gui_f.log_info(f'starting mainloop in {__name__}')
@@ -272,26 +312,6 @@ class UEVMGui(tk.Tk):
         if widget and (value == 'None' or value == widget.default_content or value == gui_g.s.empty_cell):
             value = ''
             widget.set_content(value)
-
-    def _check_and_get_widget_value(self, tag):
-        """
-        Check if the widget with the given tags exists and return its value and itself
-        :param tag: tag of the widget that triggered the event
-        :return: value,widget
-        """
-        if tag == '':
-            return None, None
-        widget = self._control_frame.lbtf_quick_edit.get_child_by_tag(tag)
-        if widget is None:
-            gui_f.log_warning(f'Could not find a widget with tag {tag}')
-            return None, None
-        col = widget.col
-        row = widget.row
-        if col is None or row is None or col < 0 or row < 0:
-            gui_f.log_debug(f'invalid values for row={row} and col={col}')
-            return None, widget
-        value = widget.get_content()
-        return value, widget
 
     # noinspection PyUnusedLocal
     def on_switch_edit_flag(self, event=None, tag='') -> None:
@@ -386,11 +406,12 @@ class UEVMGui(tk.Tk):
         else:
             gui_f.box_message('Select at least one row first')
 
-    def add_row(self) -> None:
+    def add_row(self, row_data=None) -> None:
         """
         Add a new row at the current position
+        :param row_data: data to add to the row
         """
-        self.editable_table.create_row(add_to_existing=True)
+        self.editable_table.create_row(row_data=row_data, add_to_existing=True)
         self.editable_table.must_save = True
         self.editable_table.update()
 
@@ -406,48 +427,97 @@ class UEVMGui(tk.Tk):
             self.editable_table.must_save = True
             self.editable_table.update()
 
-    @staticmethod
-    def scan_folders() -> None:
+    def search_for_url(self, folder: str, parent: str, check_if_valid=False) -> str:
+        """
+        Search for an url file that matches a folder name in a given folder
+        :param folder: name to search for
+        :param parent: parent folder to search in
+        :param check_if_valid: if True, check if the url is valid. Return an empty string if not.
+        :return: the url found in the file or an empty string if not found
+        """
+        if self.egs is None:
+            return ''
+        found_url = self.egs.get_asset_url(asset_slug=folder)
+        for entry in os.scandir(parent):
+            if entry.is_file() and entry.name.lower().endswith('.url'):
+                file_name = clean_name(os.path.splitext(entry.name)[0])
+                # fuzzy compare the folder name with the file name
+                fuzz_score = fuzz.ratio(folder, file_name)
+                gui_f.log_info(f'Fuzzy compare {folder} with {file_name}: {fuzz_score}')
+                if fuzz_score > 80:
+                    with open(entry.path, 'r') as f:
+                        for line in f:
+                            if line.startswith('URL='):
+                                found_url = line.replace('URL=', '').strip()
+                                break
+        if check_if_valid and self.egs is not None:
+            if not self.egs.is_valid_url(found_url):
+                found_url = ''
+
+        return found_url
+
+    def scan_folders(self) -> None:
         """
         Scan the folders to find files that can be loaded
         """
+
         valid_folders = {}
         folder_to_scan = gui_g.s.folders_to_scan
 
-        while len(folder_to_scan):
+        if self.egs is None:
+            gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
+
+        while folder_to_scan:
             full_folder = folder_to_scan.pop()
-            gui_f.log_info(f'Scanning folder {full_folder}')
+            gui_f.log_debug(f'Scanning folder {full_folder}')
             if os.path.isdir(full_folder):
                 full_folder = os.path.abspath(full_folder)
                 folder_name = os.path.basename(full_folder)
                 parent_folder = os.path.dirname(full_folder)
                 # check if the folder is a valid UE folder
                 if folder_name in gui_g.s.ue_valid_folder_content:
-                    # TODO: check if the folder contains an url file and its content in url variable
-                    url = ''
-                    valid_folders[folder_name] = {'path': parent_folder, 'asset_type': UEAssetType.Project, 'url': url}
-                    gui_f.log_info(f'-->Found {folder_name} as a valid project')
+                    url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
+                    valid_folders[folder_name] = {'path': parent_folder, 'asset_type': UEAssetType.Asset, 'url': url}
+                    gui_f.log_debug(f'-->Found {folder_name} as a valid project')
                     continue
                 # check if the folder contains a valid UE file
-                for file in os.listdir(full_folder):
-                    extension = os.path.splitext(file)[1].lower()
-                    if extension in gui_g.s.ue_valid_file_content:
-                        asset_type = UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Project
-                        # TODO: check if the folder contains an url file and its content in url variable
-                        url = ''
-                        valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'url': url}
-                        gui_f.log_info(f'-->Found {folder_name} as a valid project containing a {asset_type.name}')
-                        continue
-                # add subfolders to the list of folders to scan
-                for subfolder in os.listdir(full_folder):
-                    full_subfolder = os.path.join(full_folder, subfolder)
-                    if os.path.isdir(full_subfolder):
-                        folder_to_scan.append(full_subfolder)
+                for entry in os.scandir(full_folder):
+                    if entry.is_file():
+                        extension = os.path.splitext(entry.name)[1].lower()
+                        filename = os.path.splitext(entry.name)[0].lower()
+                        if filename == 'manifest':
+                            asset_type = UEAssetType.Manifest
+                            url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
+                            valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'url': url}
+                            gui_f.log_debug(f'-->Found {folder_name} containing a {asset_type.name}')
+                            continue
+                        if extension in gui_g.s.ue_valid_file_content:
+                            asset_type = UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Asset
+                            url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
+                            valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'url': url}
+                            gui_f.log_debug(f'-->Found {folder_name} as a valid project containing a {asset_type.name}')
+                            continue
+                    # add subfolders to the list of folders to scan
+                    elif entry.is_dir() and entry.name not in gui_g.s.ue_invalid_folder_content:
+                        folder_to_scan.append(entry.path)
 
         gui_f.log_info('Valid folders found after scan:')
+        date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
+        row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
+        data = self.editable_table.get_data()
         for name, content in valid_folders.items():
             gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with url {content["url"]} ')
-            # TODO: create a row for each valid folder in the table
+            # set default values for the row, some will be replaced by scrapping
+            row_data.update({'App name': name, 'Category': content['asset_type'].category_name, 'Origin': content['path'], 'Url': content['url'],})
+            # check if a value exists in column 'App name' and 'Origin' for a pandastable
+            row_exists = data['App name'].isin([name]).any() and data['Origin'].isin([content['path']]).any()
+            if not row_exists:
+                self.editable_table.create_row(row_data=row_data, add_to_existing=True)
+                if self.egs is not None:
+                    # TODO : scrap the data for the row
+                    pass
+        self.editable_table.must_save = True
+        self.editable_table.update()
 
     def scrap_row(self) -> None:
         """

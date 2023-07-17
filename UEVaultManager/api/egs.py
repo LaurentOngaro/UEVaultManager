@@ -236,7 +236,21 @@ class EPCAPI:
             self.log.warning(f'Can not get the asset count from {url}:{error!r}')
         return assets_count
 
-    def get_scraped_assets(self, url='') -> dict:
+    def is_valid_url(self, url='') -> bool:
+        """
+        Check is the url is valid (i.e. http response status is 200)
+        :param url: The url to check
+        :return: True if the url is valid.
+        """
+        result = False
+        if not url:
+            return result
+        r = self.session.get(url, timeout=self.request_timeout)
+        if r.status_code == 200:
+            result = True
+        return result
+
+    def get_json_data_from_url(self, url='') -> dict:
         """
         Return the scraped assets
         :param url: The url to scrap
@@ -246,7 +260,7 @@ class EPCAPI:
         if not url:
             return json_data
         r = self.session.get(url, timeout=self.request_timeout)
-        # r.raise_for_status() # commented line because we want the exeptions to be raised
+        # r.raise_for_status() # commented line because we want the exceptions to be raised
         json_data = r.json()
         return json_data
 
@@ -400,7 +414,7 @@ class EPCAPI:
 
         return records
 
-    def find_asset_url(self, asset_name: str, timeout=10.0) -> []:
+    def search_for_asset_url(self, asset_name: str, timeout=10.0) -> []:
         """
         Find the asset url from the asset name by searching the asset name in the unreal engine marketplace
         :param asset_name: asset name to search
@@ -426,6 +440,7 @@ class EPCAPI:
 
         url = ''
         asset_slug = converted_name
+        # TODO: improve the following code to use the marketplace API instead of the website using beautifulsoup
         search_url_root = f'https://{self._search_url}/assets?keywords='
         search_url_full = search_url_root + converted_name
         try:
@@ -472,7 +487,9 @@ class EPCAPI:
         no_result = create_empty_assets_extras(asset_name=asset_name)
 
         # try to find the url of the asset by doing a search in the marketplace
-        asset_url, asset_slug, error_code = self.find_asset_url(asset_title, timeout)
+        asset_url, asset_slug, error_code = self.search_for_asset_url(asset_title, timeout)
+
+        # TODO: improve the following code to use the marketplace API instead of scrapping using beautifulsoup
         if asset_url == '' or error_code != GrabResult.NO_ERROR.name:
             self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
             no_result['grab_result'] = error_code

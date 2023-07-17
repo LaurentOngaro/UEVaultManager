@@ -2,6 +2,7 @@
 """
 CSV and SQL fields mapping and utility functions
 """
+from datetime import datetime
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType
@@ -23,7 +24,8 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.STR
     },
-    'App title': {  # intentionnaly duplicated
+    'App title': {
+        # intentionnaly duplicated
         'sql_name': 'title',
         'state': CSVFieldState.CSV_ONLY,
         'field_type': CSVFieldType.STR
@@ -38,7 +40,8 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.FLOAT
     },
-    'Review count': {  # not in "standard/result" csv file
+    'Review count': {
+        # not in "standard/result" csv file
         'sql_name': 'review_count',
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.INT
@@ -73,17 +76,20 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.BOOL
     },
-    'Is new': {  # not in "standard/result" csv file
+    'Is new': {
+        # not in "standard/result" csv file
         'sql_name': 'is_new',
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.BOOL
     },
-    'Free': {  # not in "standard/result" csv file
+    'Free': {
+        # not in "standard/result" csv file
         'sql_name': 'free',
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.BOOL
     },
-    'Can purchase': {  # not in "standard/result" csv file
+    'Can purchase': {
+        # not in "standard/result" csv file
         'sql_name': 'can_purchase',
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.BOOL
@@ -160,8 +166,8 @@ csv_sql_fields = {
         'field_type': CSVFieldType.BOOL
     },
     # ## less important fields
-    'Custom attributes':
-    {  # not in "standard/result" csv file
+    'Custom attributes': {
+        # not in "standard/result" csv file
         'sql_name': 'custom_attributes',
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.STR
@@ -181,7 +187,8 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.STR
     },
-    'Compatible versions': {  # not in database
+    'Compatible versions': {
+        # not in database
         'sql_name': None,
         'state': CSVFieldState.CSV_ONLY,
         'field_type': CSVFieldType.STR
@@ -201,7 +208,8 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.DATETIME
     },
-    'UE version': {  # not in database
+    'UE version': {
+        # not in database
         'sql_name': None,
         'state': CSVFieldState.CSV_ONLY,
         'field_type': CSVFieldType.STR
@@ -227,7 +235,8 @@ csv_sql_fields = {
         'state': CSVFieldState.ASSET_ONLY,
         'field_type': CSVFieldType.STR
     },
-    'urlSlug': {  # intentionnaly duplicated
+    'urlSlug': {
+        # intentionnaly duplicated
         'sql_name': 'asset_slug',
         'state': CSVFieldState.ASSET_ONLY,
         'field_type': CSVFieldType.STR
@@ -267,7 +276,8 @@ csv_sql_fields = {
         'state': CSVFieldState.ASSET_ONLY,
         'field_type': CSVFieldType.BOOL
     },
-    'Thumbnail': {  # intentionnaly duplicated
+    'Thumbnail': {
+        # intentionnaly duplicated
         'sql_name': 'thumbnail_url',
         'state': CSVFieldState.ASSET_ONLY,
         'field_type': CSVFieldType.STR
@@ -427,6 +437,28 @@ def get_converters(csv_field_name: str):
         return [str]
 
 
+def get_default_value(csv_field_name: str = '', sql_field_name: str = ''):
+    """
+    Get the default value of field
+    :param csv_field_name: csv field name
+    :param sql_field_name: sql field name. If not provided, the csv field name will be used
+    :return: default value of the field
+    """
+    if sql_field_name and not csv_field_name:
+        csv_field_name = get_csv_field_name(sql_field_name)
+    field_type = get_type(csv_field_name)
+    default_values = {
+        # CSVFieldType.LIST: [],
+        # CSVFieldType.STR: '',
+        # CSVFieldType.TEXT: '',
+        CSVFieldType.INT: 0,
+        CSVFieldType.FLOAT: 0.0,
+        CSVFieldType.BOOL: False,
+        CSVFieldType.DATETIME: datetime.now().strftime(gui_g.s.csv_datetime_format),
+    }
+    return default_values.get(field_type, 'None')
+
+
 def get_state(csv_field_name: str):
     """
     Get the state of field
@@ -480,10 +512,12 @@ def create_empty_csv_row(return_as_string=False):
     :return: empty row
     """
     data = {}
+    uid = create_uid()
     for key in get_csv_field_name_list():
-        data[key] = 0  # 0 is used to avoid empty cells in the csv file
-    data['Asset_id'] = 'dummy_row_' + create_uid()  # dummy unique Asset_id to avoid issue
+        data[key] = get_default_value(csv_field_name=key)
+    data['Asset_id'] = gui_g.s.empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
     data['Image'] = gui_g.s.empty_cell  # avoid displaying image warning on mouse over
+    data['Uid'] = uid
 
     if return_as_string:
         data = ','.join(str(value) for value in data.values())

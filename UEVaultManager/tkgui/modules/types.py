@@ -12,7 +12,19 @@ class UEAssetType(Enum):
     """ Enum to represent the asset type """
     Unknown = 0
     Plugin = 1
-    Project = 2
+    Asset = 2
+    Manifest = 3
+
+    @property
+    def category_name(self):
+        """ Return the category name of the asset type """
+        if self == self.Plugin:
+            return "plugins/engine"  # existing category in the marketplace
+        if self == self.Asset:
+            return "local/asset"  # non-existing category in the marketplace
+        if self == self.Manifest:
+            return "local/manifest"  # non-existing category in the marketplace
+        return "local/unknown"  # non-existing category in the marketplace
 
 
 class DataSourceType(Enum):

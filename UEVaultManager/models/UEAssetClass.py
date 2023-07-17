@@ -5,7 +5,7 @@ implementation for:
 """
 import logging
 
-from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list
+from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, get_default_value
 from UEVaultManager.utils.cli import init_dict_from_data
 
 
@@ -38,7 +38,10 @@ class UEAsset:
 
         Note: the keys of self.Data dict are initialized here
         """
-        self.data = {key: None for key in get_sql_field_name_list(include_asset_only=True)}
+        data = {}
+        for key in get_sql_field_name_list(include_asset_only=True):
+            data[key] = get_default_value(sql_field_name=key)
+        self.data = data
 
     def init_from_dict(self, data: dict = None) -> None:
         """
