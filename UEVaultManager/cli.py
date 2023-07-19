@@ -188,6 +188,7 @@ class UEVaultManagerCLI:
         self.create_file_backup(self.core.ignored_assets_filename_log)
         self.create_file_backup(self.core.notfound_assets_filename_log)
         self.create_file_backup(self.core.bad_data_assets_filename_log)
+        self.create_file_backup(self.core.scan_assets_filename_log)
 
     # noinspection PyUnusedLocal
     def create_asset_from_data(
@@ -1515,6 +1516,7 @@ def main():
     cli.core.ignored_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
     cli.core.notfound_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
     cli.core.bad_data_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'bad_data_assets_filename_log', fallback='')
+    cli.core.scan_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'scan_assets_filename_log', fallback='')
 
     cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get(
         'UEVaultManager', 'engine_version_for_obsolete_assets', fallback=gui_g.s.engine_version_for_obsolete_assets

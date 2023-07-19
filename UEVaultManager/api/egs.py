@@ -5,6 +5,7 @@ Implementation for:
 - GrabResult : Enum for the result of grabbing a page.
 - create_empty_assets_extra : Creates an empty asset extra dict.
 """
+import json
 import logging
 import re
 from enum import Enum
@@ -118,17 +119,17 @@ class EPCAPI:
 
     # page d'un asset avec son urlSlug
     # _url_marketplace/en-US/product/{'urlSlug}
-    # https://www.unrealengine.com/marketplace/en-US/product/cloudy-dungeon
+    # https://www.unrealengine.com/marketplace/en-US/product/volcrate
     #
     # detail json d'un asset avec son id (et non pas son asset_id ou son catalog_id)
     # UE_ASSET/{el['id']}")
-    # https://www.unrealengine.com/marketplace/api/assets/asset/5cb2a394d0c04e73891762be4cbd7216
+    # https://www.unrealengine.com/marketplace/api/assets/asset/d27cf128fdc24e328cf950b019563bc5
     #
     # liste json des reviews d'un asset avec son id
-    # https://www.unrealengine.com/marketplace/api/review/4ede75b0f8424e37a92316e75bf64cae/reviews/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
+    # https://www.unrealengine.com/marketplace/api/review/d27cf128fdc24e328cf950b019563bc5/reviews/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
     #
     # liste json des questions d'un asset avec son id
-    # https://www.unrealengine.com/marketplace/api/review/5cb2a394d0c04e73891762be4cbd7216/questions/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
+    # https://www.unrealengine.com/marketplace/api/review/d27cf128fdc24e328cf950b019563bc5/questions/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
     #
     # liste json des tags courants
     # https://www.unrealengine.com/marketplace/api/tags
@@ -176,7 +177,7 @@ class EPCAPI:
 
     def get_scrap_url(self, start=0, count=1, sort_by='effectiveDate', sort_order='DESC') -> str:
         """
-        Return the scraping URL.
+        Return the scraping URL for an asset.
         """
         url = f'https://{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}'
         # other possible filters
@@ -199,19 +200,28 @@ class EPCAPI:
 
     def get_owned_scrap_url(self, start=0, count=1) -> str:
         """
-        Return the scraping URL for the owned assets.
+        Return the scraping URL for an owned asset.
         """
         # 'https://www.unrealengine.com/marketplace/api/assets/vault?start=1000&count=100'
         url = f'https://{self._url_owned_assets}?start={start}&count={count}'
         return url
 
-    def get_asset_url(self, asset_slug: str) -> str:
+    def get_marketplace_product_url(self, asset_slug: str = '') -> str:
         """
         Returns the url for the asset in the marketplace.
         :param asset_slug: The asset slug.
         :return: The url.
         """
         url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
+        return url
+
+    def get_api_product_url(self, uid: str = '') -> str:
+        """
+        Returns the url for the asset using the UE API.
+        :param uid: The id of the asset (not the slug, nor the catalog_id).
+        :return: The url.
+        """
+        url = f'https://{self._url_asset}/{uid}'
         return url
 
     def get_scraped_asset_count(self, owned_assets_only=False) -> int:
@@ -621,3 +631,102 @@ class EPCAPI:
             'supported_versions': supported_versions,
             'grab_result': error_code,
         }
+
+    def get_asset_data_from_marketplace(self, url: str) -> dict:
+        """
+        Get the asset data from the marketplace using beautifulsoup.
+        :param url: The url to grab.
+
+        Note: This is the only way I know to get the id of an asset from its slug (or url)
+        """
+
+        empty_data = {
+            'id': '',
+            'name': '',
+            'category': '',
+            'description': '',
+            'image': '',
+            'release_date': '',
+            'url': '',
+            'price': '',
+            'price_currency': '',
+            'page_title': '',
+            'grab_result': '',
+        }
+        json_data = empty_data.copy()
+        asset_slug = url.split('/')[-1]
+        json_data['page_title'] = asset_slug
+        try:
+            response = self.session.get(url)  # when using session, we are already logged in Epic game
+            response.raise_for_status()
+            self.log.info(f'Grabbing asset data from {url}')
+        except requests.exceptions.RequestException as error:
+            self.log.warning(f'Can not get asset data for {url}:{error!r}')
+            json_data['grab_result'] = GrabResult.PAGE_NOT_FOUND.name
+            return json_data
+
+        json_data['grab_result'] = GrabResult.NO_ERROR.name
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Finding all script tags in the HTML
+        # scripts = soup.find_all('script')
+        # Finding all script tags with the type 'application/ld+json' in the HTML
+        scripts = soup.find_all('script', {'type': 'application/ld+json'})
+
+        for index, script in enumerate(scripts):
+            # Remove script tags
+            json_text = script.string
+
+            # Convert to Python dictionary
+            json_dict = json.loads(json_text)
+            # exemple of json_dict
+            # {
+            #     "@context"   : "https://schema.org",
+            #     "@type"      : "Product",
+            #     "sku"        : "d27cf128fdc24e328cf950b019563bc5",
+            #     "productID"  : "d27cf128fdc24e328cf950b019563bc5",
+            #     "name"       : "Volcrate",
+            #     "category"   : "Characters",
+            #     "image"      : [
+            #         "https://cdn1.epicgames.com/ue/item/Volcrate_FeaturedNew-894x488-ad93ea4be7589802d9dc289a4af3a751.png"
+            #     ],
+            #     "description": "Here is a Volcrate, this race is a crossing between a bird and a human. They mostly behave as barbarians with their impressive musculature, performing powerful devastating attacks.",
+            #     "releaseDate": "2016-12-21T00:00:00.000Z",
+            #     "brand"      : {
+            #         "@type": "Brand",
+            #         "name" : "Unreal Engine",
+            #         "logo" : {
+            #             "@type": "ImageObject",
+            #             "url"  : "https://cdn2.unrealengine.com/Unreal+Engine%2Flogos%2FUnreal_Engine_Black-1125x1280-cfa228c80703d4ffbd1cc05eabd5ed380818da45.png"
+            #         }
+            #     },
+            #     "offers"     : {
+            #         "@type"        : "Offer",
+            #         "price"        : "€32.01",
+            #         "availability" : "http://schema.org/InStock",
+            #         "priceCurrency": "EUR",
+            #         "url"          : "https://www.unrealengine.com/marketplace/en-US/product/volcrate"
+            #     }
+            # }
+
+            # check if the script describes a product
+            if json_dict['@type'] == 'Product':
+                try:
+                    json_data['id'] = json_dict['productID']
+                    json_data['name'] = json_dict['name']
+                    json_data['category'] = json_dict['category']
+                    json_data['description'] = json_dict['description']
+                    json_data['image'] = json_dict['image']
+                    json_data['release_date'] = json_dict['releaseDate']
+                    json_data['url'] = json_dict['offers']['url']  # must be the same as url
+                    json_data['price'] = json_dict['offers']['price']
+                    json_data['price_currency'] = json_dict['offers']['priceCurrency']
+                except KeyError as error:
+                    self.log.warning(f"A key is missing in Script {index + 1}: {error!r}")
+                    json_data['grab_result'] = GrabResult.PARTIAL.name
+                    continue
+        if json_data['url'].lower().replace('www.', '') != url.lower().replace('www.', ''):
+            self.log.warning(f"URLs do not match: {json_data['url']} != {url}")
+            json_data['grab_result'] = GrabResult.INCONSISTANT_DATA.name
+        return json_data

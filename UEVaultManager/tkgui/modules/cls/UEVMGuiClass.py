@@ -14,7 +14,8 @@ from rapidfuzz import fuzz
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper, get_filename_from_asset_data
+from UEVaultManager.api.egs import GrabResult
+from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
@@ -430,18 +431,18 @@ class UEVMGui(tk.Tk):
 
     def search_for_url(self, folder: str, parent: str, check_if_valid=False) -> str:
         """
-        Search for an url file that matches a folder name in a given folder.
+        Search for a marketplace_url file that matches a folder name in a given folder.
         :param folder: name to search for.
         :param parent: parent folder to search in.
-        :param check_if_valid: if True, check if the url is valid. Return an empty string if not.
-        :return: the url found in the file or an empty string if not found.
+        :param check_if_valid: if True, check if the marketplace_url is valid. Return an empty string if not.
+        :return: the marketplace_url found in the file or an empty string if not found.
         """
         if self.core is None:
             return ''
         egs = self.core.egs
-        found_url = egs.get_asset_url(asset_slug=folder)
+        found_url = egs.get_marketplace_product_url(asset_slug=folder)
         for entry in os.scandir(parent):
-            if entry.is_file() and entry.name.lower().endswith('.url'):
+            if entry.is_file() and entry.name.lower().endswith('.marketplace_url'):
                 file_name = clean_name(os.path.splitext(entry.name)[0])
                 # fuzzy compare the folder name with the file name
                 fuzz_score = fuzz.ratio(folder, file_name)
@@ -472,14 +473,19 @@ class UEVMGui(tk.Tk):
             full_folder = folder_to_scan.pop()
             gui_f.log_debug(f'Scanning folder {full_folder}')
             if os.path.isdir(full_folder):
+                if self.core.scan_assets_logger:
+                    self.core.scan_assets_logger.info(f'Scanning folder {full_folder}')
                 full_folder = os.path.abspath(full_folder)
                 folder_name = os.path.basename(full_folder)
                 parent_folder = os.path.dirname(full_folder)
                 # check if the folder is a valid UE folder
                 if folder_name in gui_g.s.ue_valid_folder_content:
-                    url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
-                    valid_folders[folder_name] = {'path': parent_folder, 'asset_type': UEAssetType.Asset, 'url': url}
-                    gui_f.log_debug(f'-->Found {folder_name} as a valid project')
+                    marketplace_url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
+                    valid_folders[folder_name] = {'path': parent_folder, 'asset_type': UEAssetType.Asset, 'marketplace_url': marketplace_url}
+                    msg = f'-->Found {folder_name} as a valid project'
+                    gui_f.log_debug(msg)
+                    if self.core.scan_assets_logger:
+                        self.core.scan_assets_logger.info(msg)
                     continue
                 # check if the folder contains a valid UE file
                 for entry in os.scandir(full_folder):
@@ -488,56 +494,81 @@ class UEVMGui(tk.Tk):
                         filename = os.path.splitext(entry.name)[0].lower()
                         if filename == 'manifest':
                             asset_type = UEAssetType.Manifest
-                            url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
-                            valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'url': url}
-                            gui_f.log_debug(f'-->Found {folder_name} containing a {asset_type.name}')
+                            marketplace_url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
+                            valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'marketplace_url': marketplace_url}
+                            msg = f'-->Found {folder_name} containing a {asset_type.name}'
+                            gui_f.log_debug(msg)
+                            if self.core.scan_assets_logger:
+                                self.core.scan_assets_logger.info(msg)
                             continue
                         if extension in gui_g.s.ue_valid_file_content:
                             asset_type = UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Asset
-                            url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
-                            valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'url': url}
-                            gui_f.log_debug(f'-->Found {folder_name} as a valid project containing a {asset_type.name}')
+                            marketplace_url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
+                            valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'marketplace_url': marketplace_url}
+                            msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}'
+                            gui_f.log_debug(msg)
+                            if self.core.scan_assets_logger:
+                                self.core.scan_assets_logger.info(msg)
                             continue
                     # add subfolders to the list of folders to scan
                     elif entry.is_dir() and entry.name not in gui_g.s.ue_invalid_folder_content:
                         folder_to_scan.append(entry.path)
 
-        gui_f.log_info('Valid folders found after scan:')
+        msg = '\n\nValid folders found after scan:\n'
+        gui_f.log_info(msg)
+        if self.core.scan_assets_logger:
+            self.core.scan_assets_logger.info(msg)
         date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         data = self.editable_table.get_data()
         for name, content in valid_folders.items():
-            url = content['url']
-            gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with url {url} ')
+            marketplace_url = content['marketplace_url']
+            gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
             # set default values for the row, some will be replaced by scrapping
-            row_data.update({'App name': name, 'Category': content['asset_type'].category_name, 'Origin': content['path'], 'Url': content['url']})
+            row_data.update(
+                {
+                    'App name': name,
+                    'Category': content['asset_type'].category_name,
+                    'Origin': content['path'],
+                    'Url': content['marketplace_url']
+                }
+            )
             # check if a value exists in column 'App name' and 'Origin' for a pandastable
             row_exists = data['App name'].isin([name]).any() and data['Origin'].isin([content['path']]).any()
             if not row_exists:
                 self.editable_table.create_row(row_data=row_data, add_to_existing=True)
-                self.scrap_row(url=url)
+            asset_data = self.scrap_row(marketplace_url=marketplace_url)
+            # TODO: update the row with the scrapped data in the datatable
 
         self.editable_table.must_save = True
         self.editable_table.update()
 
-    def scrap_row(self, url: str = None) -> None:
+    def scrap_row(self, marketplace_url: str = None):
         """
-        Scrap the data for the current row or a given url.
-        :param url: url to scrap.
+        Scrap the data for the current row or a given marketplace_url.
+        :param marketplace_url: marketplace_url to scrap.
+        :return: the scapped data or None
         """
+
         if self.core is None:
             gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
-            return
-        if url is None:
-            # get the url from the selected row
+            return None
+        if marketplace_url is None:
+            # get the marketplace_url from the selected row
             row_selected = self.editable_table.getSelectedRow()
             if row_selected is None:
-                return
+                return None
             row_data = self.editable_table.get_row(row_selected, return_as_dict=True)
-            url = row_data['Url']
-        # check if the url is a marketplace url
-        ue_maketplace_url = self.core.get_asset_url().lower()
-        if ue_maketplace_url in url:
+            marketplace_url = row_data['Url']
+        # check if the marketplace_url is a marketplace marketplace_url
+        ue_marketplace_url = self.core.egs.get_marketplace_product_url()
+        if ue_marketplace_url.lower() in marketplace_url.lower():
+            # get the data from the marketplace marketplace_url
+            asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
+            if asset_data is None or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
+                gui_f.log_error(f'Unable to grab data from {marketplace_url}')
+                return None
+            api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
                 start=0,
                 assets_per_page=1,
@@ -549,11 +580,10 @@ class UEVMGui(tk.Tk):
                 engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
                 egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
             )
-            scraper.get_data_from_url(url)
+            scraper.get_data_from_url(api_product_url)
             asset_data = scraper.scraped_data.pop()
-            filename = get_filename_from_asset_data(asset_data)
-            scraper.save_to_file(filename=filename, data=asset_data)
             scraper.asset_db_handler.set_assets(asset_data)
+            return asset_data
 
     def load_filters(self, filters=None):
         """

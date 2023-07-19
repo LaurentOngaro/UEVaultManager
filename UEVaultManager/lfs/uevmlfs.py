@@ -154,6 +154,9 @@ class UEVMLFS:
         if not self.config.has_option('UEVaultManager', 'bad_data_assets_filename_log'):
             self.config.set('UEVaultManager', 'bad_data_assets_filename_log', '~/.config/bad_data_assets.log')
             has_changed = True
+        if not self.config.has_option('UEVaultManager', 'scan_assets_filename_log'):
+            self.config.set('UEVaultManager', 'scan_assets_filename_log', '~/.config/scan_assets.log')
+            has_changed = True
         if not self.config.has_option('UEVaultManager', 'engine_version_for_obsolete_assets'):
             self.config.set('UEVaultManager', '; Minimal unreal engine version to check for obsolete assets (default is 4.26)')
             self.config.set('UEVaultManager', 'engine_version_for_obsolete_assets', '4.26')  # no access to the engine_version_for_obsolete_assets global settings here without importing its module

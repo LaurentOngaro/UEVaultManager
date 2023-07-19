@@ -101,12 +101,15 @@ class AppCore:
         self.notfound_assets_filename_log = ''
         # Set the file name (and path) for logging when an asset has metadata and extra data are incoherent when running the --list command
         self.bad_data_assets_filename_log = ''
+        # Set the file name (and path) for logging when scanning folder to find assets
+        self.scan_assets_filename_log = ''
         # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
         self.create_log_backup = True
         # new file loggers
         self.ignored_logger = None
         self.notfound_logger = None
         self.bad_data_logger = None
+        self.scan_assets_logger = None
         # store time to process metadata and extra update
         self.process_time_average = {'time': 0.0, 'count': 0}
         self.use_threads = False
@@ -146,6 +149,8 @@ class AppCore:
             self.notfound_logger = create_logger('NotFoundAssets', self.notfound_assets_filename_log)
         if self.bad_data_assets_filename_log:
             self.bad_data_logger = create_logger('BadDataAssets', self.bad_data_assets_filename_log)
+        if self.scan_assets_filename_log:
+            self.scan_assets_logger = create_logger('ScanAssets', self.scan_assets_filename_log)
 
     def auth_sid(self, sid) -> str:
         """

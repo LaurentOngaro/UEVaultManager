@@ -34,6 +34,13 @@ or set to '' the corresponding log feature will be disabled.
       result during the grabbing process. See the :ref:`how-to-fix-invalid-search-result-during-the-grabbing-process`
       section.
 
+-  scan for assets log
+
+   -  file is defined by the setting: `scan_assets_filename_log`
+      (default is ``~/.config/scan_assets_filename_log.log``)
+   -  each scanned folder is listed here whith the result of the scan
+
+
 The output file
 ~~~~~~~~~~~~~~~
 

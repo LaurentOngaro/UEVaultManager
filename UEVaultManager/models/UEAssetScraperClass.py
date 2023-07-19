@@ -62,6 +62,7 @@ class UEAssetScraper:
     :param egs: An EPCAPI object (session handler). Defaults to None. If None, a new EPCAPI object will be created and the session used WON'T BE LOGGED.
     :param progress_window: A ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
     """
+
     def __init__(
         self,
         start=0,
@@ -224,7 +225,7 @@ class UEAssetScraper:
             asset_data['thumbnail_url'] = asset_data['thumbnail']
             asset_data['category'] = categories[0]['name'] if categories else ''
             asset_data['author'] = asset_data['seller']['name']
-            asset_data['asset_url'] = self.egs.get_asset_url(asset_data.get('urlSlug', None))
+            asset_data['asset_url'] = self.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
             try:
                 asset_data['asset_id'] = release_info[0]['appId']  # latest release
             except (KeyError, AttributeError):
@@ -232,8 +233,8 @@ class UEAssetScraper:
                 asset_data['asset_id'] = uid
 
             # set url and (re) update data if needed
-            existing_url = asset_existing_data['asset_url'] if asset_existing_data else ''
             try:
+                existing_url = asset_existing_data.get('asset_url', '') if asset_existing_data else ''
                 if existing_url and asset_existing_data and asset_data['asset_url'] != existing_url and asset_existing_data.get(
                     'grab_result', GrabResult.NO_ERROR.name
                 ) != GrabResult.NO_ERROR.name:
@@ -275,7 +276,7 @@ class UEAssetScraper:
             try:
                 custom_attributes = asset_data['customAttributes']
                 if custom_attributes != {}:
-                    self._log_info(f'asset {uid}:custom_attributes= {custom_attributes}')
+                    self._log_debug(f'asset {uid}:custom_attributes= {custom_attributes}')
                     # has an external link
                     custom_attributes = 'external_link:' + custom_attributes['BuyLink']['value'] if custom_attributes.get('BuyLink', '') else ''
                     asset_data['custom_attributes'] = custom_attributes
@@ -416,10 +417,13 @@ class UEAssetScraper:
             self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
             return
         try:
-            number = len(json_data['data']['elements'])
+            # when multiple assets are returned, the data is in the 'elements' key
+            count = len(json_data['data']['elements'])
+            self._log_info(f'==> parsed url {url}: got a list of {count} assets')
         except KeyError:
-            number = 0
-        self._log_info(f'==> parsed url {url}: got {number} assets')
+            # when only one asset is returned, the data is in the 'data' key
+            self._log_info(f'==> parsed url {url} for one asset')
+            json_data['data']['elements'] = [json_data['data']['data']]
 
         if json_data:
             if self.store_in_files and self.use_raw_format:
@@ -438,6 +442,7 @@ class UEAssetScraper:
 
         Note: if self.urls is None or empty, gather_urls() will be called first.
         """
+
         def stop_executor(tasks) -> None:
             """
             Cancel all outstanding tasks and shut down the executor.
