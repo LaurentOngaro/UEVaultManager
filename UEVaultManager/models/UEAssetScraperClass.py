@@ -491,15 +491,6 @@ class UEAssetScraper:
                             # self._log_info(f'User stop has been pressed. Stopping running threads....')   # will flood console
                             stop_executor(futures)
                 self.thread_executor.shutdown(wait=False)
-
-                # # Wait for all the tasks to finish
-                # concurrent.futures.wait(futures.values())
-                # for key, future in futures.items():
-                #     try:
-                #         future.result()
-                #     except Exception as error:
-                #         self._log_warning(f'thread execution with key {key} has generated an exception: {error!r}')
-                # self.thread_executor.shutdown(wait=False)
             else:
                 for url in self.urls:
                     self.get_data_from_url(url, owned_assets_only)
