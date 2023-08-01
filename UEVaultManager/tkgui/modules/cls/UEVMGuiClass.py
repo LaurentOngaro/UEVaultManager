@@ -5,6 +5,7 @@ Implementation for:
 """
 import os
 import re
+import shutil
 import tkinter as tk
 from datetime import datetime
 from tkinter import filedialog as fd
@@ -15,8 +16,10 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import GrabResult
+from UEVaultManager.models.csv_sql_fields import get_typed_value
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
@@ -26,14 +29,31 @@ from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
 from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType
 
 
-def clean_name(name_to_clean: str) -> str:
+def clean_ue_asset_name(name_to_clean: str) -> str:
     """
     Clean a name to remove unwanted characters.
     :param name_to_clean: name to clean.
     :return: cleaned name.
     """
-    # remove some unwanted strings
-    patterns = [r'\bUE_[\d._]+\b', r' - UE Marketplace', r' in .+?$']
+    # ONE: convert some unwanted strings to @. @ is used to identify the changes made
+    patterns = [
+        r'UE_[\d._]+',  # any string starting with 'UE_' followed by any digit, dot or underscore ex: 'UE_4_26'
+        r'_UE[\d._]+',  # any string starting with '_UE' followed by any digit, dot or underscore ex: '_UE4_26'
+        r'\d+[._]+',  # at least one digit followed by a dot or underscore  ex: '1.0' or '1_0'
+        ' - UE Marketplace',  # remove ' - UE Marketplace'
+        r'\b(\w+)\b in (\1)?.',  # remove ' in ' and the string before and after ' in ' are the same ex: "Linhi Character in Characters" will keep only "Linhi"
+        r' in \b.+?$',  # any string starting with ' in ' and ending with the end of the string ex: ' in Characters'
+    ]
+    patterns = [re.compile(p) for p in patterns]
+    for pattern in patterns:
+        name_to_clean = pattern.sub('@', name_to_clean)
+
+    # TWO: remove converted string with relicats
+    patterns = [
+        r'[@]+\d+',  # a @ followed by at least one digit ex: '@1' or '@11'
+        r'\d+[@]+',  # at least one digit followed by @ ex: '1@' or '1@@'
+        r'[@]+',  # any @  ex: '@' or '@@'
+    ]
     patterns = [re.compile(p) for p in patterns]
     for pattern in patterns:
         name_to_clean = pattern.sub('', name_to_clean)
@@ -388,7 +408,6 @@ class UEVMGui(tk.Tk):
             if filename:
                 self.editable_table.save_data()
                 self.update_data_source()
-                # gui_f.box_message(f'Data Saved to {self.editable_table.data_source}')
             return filename
         else:
             self.editable_table.save_data()
@@ -437,25 +456,40 @@ class UEVMGui(tk.Tk):
         :param check_if_valid: if True, check if the marketplace_url is valid. Return an empty string if not.
         :return: the marketplace_url found in the file or an empty string if not found.
         """
-        if self.core is None:
-            return ''
-        egs = self.core.egs
-        found_url = egs.get_marketplace_product_url(asset_slug=folder)
-        for entry in os.scandir(parent):
-            if entry.is_file() and entry.name.lower().endswith('.marketplace_url'):
-                file_name = clean_name(os.path.splitext(entry.name)[0])
-                # fuzzy compare the folder name with the file name
-                fuzz_score = fuzz.ratio(folder, file_name)
-                gui_f.log_info(f'Fuzzy compare {folder} with {file_name}: {fuzz_score}')
-                if fuzz_score > 80:
+
+        def read_from_url_file(entry, folder_name, returned_urls: [str]) -> bool:
+            """
+            Read an url from a .url file and add it to the list of urls to return.
+            :param entry: the entry to process.
+            :param folder_name: the name of the folder to search for.
+            :param returned_urls: a list of urls to return. We use a list instead of a str because we need to modify it from the inner function.
+            :return: True if the entry is a file and the name matches the folder name, False otherwise.
+            """
+            if entry.is_file() and entry.name.lower().endswith('.url'):
+                folder_name_cleaned = clean_ue_asset_name(folder_name)
+                file_name = os.path.splitext(entry.name)[0]
+                file_name_cleaned = clean_ue_asset_name(file_name)
+                fuzz_score = fuzz.ratio(folder_name_cleaned, file_name_cleaned)
+                gui_f.log_debug(f'Fuzzy compare {folder_name} ({folder_name_cleaned}) with {file_name} ({file_name_cleaned}): {fuzz_score}')
+                if fuzz_score >= 70:
                     with open(entry.path, 'r') as f:
                         for line in f:
                             if line.startswith('URL='):
-                                found_url = line.replace('URL=', '').strip()
-                                break
-        if check_if_valid and egs is not None:
-            if not egs.is_valid_url(found_url):
-                found_url = ''
+                                returned_urls[0] = line.replace('URL=', '').strip()
+                                return True
+            return False
+
+        if self.core is None:
+            return ''
+        egs = self.core.egs
+        read_urls = ['']
+        entries = os.scandir(parent)
+        if any(read_from_url_file(entry, folder, read_urls) for entry in entries):
+            found_url = read_urls[0]
+        else:
+            found_url = egs.get_marketplace_product_url(asset_slug=clean_ue_asset_name(folder))
+        if check_if_valid and egs is not None and not egs.is_valid_url(found_url):
+            found_url = ''
 
         return found_url
 
@@ -469,50 +503,100 @@ class UEVMGui(tk.Tk):
         if self.core is None:
             gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
 
+        pw = ProgressWindow(title='Scanning folders for new assets', width=500, height=100, show_progress=True)
+        pw.hide_progress_bar()
+        pw.set_activation(False)
+
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
-            gui_f.log_debug(f'Scanning folder {full_folder}')
+            msg = f'Scanning folder {full_folder}'
+            gui_f.log_info(msg)
+            if not pw.update_and_continue(value=0, text=f'Scanning folder:\n{full_folder}'):
+                pw.close_window()
+                return
             if os.path.isdir(full_folder):
                 if self.core.scan_assets_logger:
-                    self.core.scan_assets_logger.info(f'Scanning folder {full_folder}')
+                    self.core.scan_assets_logger.info(msg)
                 full_folder = os.path.abspath(full_folder)
                 folder_name = os.path.basename(full_folder)
                 parent_folder = os.path.dirname(full_folder)
+
                 # check if the folder is a valid UE folder
-                if folder_name in gui_g.s.ue_valid_folder_content:
-                    marketplace_url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
-                    valid_folders[folder_name] = {'path': parent_folder, 'asset_type': UEAssetType.Asset, 'marketplace_url': marketplace_url}
+                folder_name_lower = folder_name.lower()
+                folder_is_valid = folder_name_lower in gui_g.s.ue_valid_folder_content
+                parent_could_be_valid = folder_name_lower in gui_g.s.ue_invalid_folder_content or folder_name_lower in gui_g.s.ue_possible_folder_content
+                if folder_is_valid:
+                    # folder_name is 'content' or 'source'. We need to move up for one level to get the asset folder
+                    folder_name = os.path.basename(parent_folder)
+                    parent_folder = os.path.dirname(parent_folder)
+                    pw.set_text(f'{folder_name} as a valid folder.\nChecking asset url...')
+                    pw.update()
                     msg = f'-->Found {folder_name} as a valid project'
-                    gui_f.log_debug(msg)
+                    gui_f.log_info(msg)
+                    marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=True)
+                    valid_folders[folder_name] = {'path': parent_folder, 'asset_type': UEAssetType.Asset, 'marketplace_url': marketplace_url}
                     if self.core.scan_assets_logger:
                         self.core.scan_assets_logger.info(msg)
                     continue
+                elif parent_could_be_valid:
+                    # the parent folder contains some UE folders but with a bad structure
+                    content_folder_name = 'content'
+                    if gui_f.box_yesno(
+                        f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
+                    ):
+                        content_folder = os.path.join(parent_folder, content_folder_name)
+                        if not os.path.isdir(content_folder):
+                            os.mkdir(content_folder)
+                            for entry in os.scandir(parent_folder):
+                                if entry.name != content_folder_name:
+                                    path = entry.path
+                                    shutil.move(path, content_folder)
+                                    if path in folder_to_scan:
+                                        folder_to_scan.remove(path)
+                        msg = f'-->Found {parent_folder}. The folder has been restructured as a valid project'
+                        gui_f.log_debug(msg)
+                        if full_folder in folder_to_scan:
+                            folder_to_scan.remove(full_folder)
+                        if parent_folder not in folder_to_scan:
+                            folder_to_scan.append(parent_folder)
+
                 # check if the folder contains a valid UE file
-                for entry in os.scandir(full_folder):
-                    if entry.is_file():
-                        extension = os.path.splitext(entry.name)[1].lower()
-                        filename = os.path.splitext(entry.name)[0].lower()
-                        if filename == 'manifest':
-                            asset_type = UEAssetType.Manifest
-                            marketplace_url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
-                            valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'marketplace_url': marketplace_url}
-                            msg = f'-->Found {folder_name} containing a {asset_type.name}'
-                            gui_f.log_debug(msg)
-                            if self.core.scan_assets_logger:
-                                self.core.scan_assets_logger.info(msg)
-                            continue
-                        if extension in gui_g.s.ue_valid_file_content:
-                            asset_type = UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Asset
-                            marketplace_url = self.search_for_url(folder_name, parent_folder, check_if_valid=True)
-                            valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'marketplace_url': marketplace_url}
-                            msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}'
-                            gui_f.log_debug(msg)
-                            if self.core.scan_assets_logger:
-                                self.core.scan_assets_logger.info(msg)
-                            continue
-                    # add subfolders to the list of folders to scan
-                    elif entry.is_dir() and entry.name not in gui_g.s.ue_invalid_folder_content:
-                        folder_to_scan.append(entry.path)
+                # it could have been removed by the previous step
+                try:
+                    for entry in os.scandir(full_folder):
+                        entry_is_valid = entry.name.lower() not in gui_g.s.ue_invalid_folder_content
+                        if entry.is_file():
+                            extension = os.path.splitext(entry.name)[1].lower()
+                            filename = os.path.splitext(entry.name)[0].lower()
+
+                            if filename == 'manifest' or extension in gui_g.s.ue_valid_file_content:
+                                asset_type = UEAssetType.Manifest if filename == 'manifest' else (
+                                    UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Asset
+                                )
+                                marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=True)
+                                valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'marketplace_url': marketplace_url}
+
+                                msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension in gui_g.s.ue_valid_file_content else f'-->Found {folder_name} containing a {asset_type.name}'
+                                gui_f.log_debug(msg)
+                                if self.core.scan_assets_logger:
+                                    self.core.scan_assets_logger.info(msg)
+                                # remove all the subfolders from the list of folders to scan
+                                # a while loop is used because we need to modify the list while iterating over it
+                                i = 0
+                                while i < len(folder_to_scan):
+                                    if folder_to_scan[i].startswith(full_folder):
+                                        folder_to_scan.remove(folder_to_scan[i])
+                                    else:
+                                        i += 1
+                                continue
+                        # add subfolders to the list of folders to scan
+                        elif entry.is_dir() and entry_is_valid:
+                            folder_to_scan.append(entry.path)
+                except FileNotFoundError:
+                    gui_f.log_debug(f'{full_folder} has been removed during the scan')
+
+            # sort the list to have the parent folder POPED (by the end) before the subfolders
+            folder_to_scan = sorted(folder_to_scan, key=lambda x: len(x), reverse=True)
 
         msg = '\n\nValid folders found after scan:\n'
         gui_f.log_info(msg)
@@ -521,7 +605,13 @@ class UEVMGui(tk.Tk):
         date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         data = self.editable_table.get_data()
+        count = len(valid_folders.items())
+        pw.reset(new_text='Scrapping data and adding assets to the table', new_max_value=count)
+        pw.show_progress_bar()
+        pw.update()
         for name, content in valid_folders.items():
+            if not pw.update_and_continue(increment=1, text=f'Adding {name}'):
+                break
             marketplace_url = content['marketplace_url']
             gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
             # set default values for the row, some will be replaced by scrapping
@@ -537,16 +627,32 @@ class UEVMGui(tk.Tk):
             row_exists = data['App name'].isin([name]).any() and data['Origin'].isin([content['path']]).any()
             if not row_exists:
                 self.editable_table.create_row(row_data=row_data, add_to_existing=True)
-            asset_data = self.scrap_row(marketplace_url=marketplace_url)
-            # TODO: update the row with the scrapped data in the datatable
+                row_index = data.index[-1]
+            else:
+                row_index = data[(data['App name'] == name) & (data['Origin'] == content['path'])].index[0]
+            asset_data = self.scrap_row(marketplace_url=marketplace_url, new_origin=content['path'], added_manually=True)
+            if asset_data is None or not asset_data:
+                continue
+            for key, value in asset_data.items():
+                typed_value = get_typed_value(csv_field=key, value=value)
+                # get the column index of the key
+                col_index = self.editable_table.model.df.columns.get_loc(key)
+                self.editable_table.model.df.iat[row_index, col_index] = typed_value
 
+        pw.hide_progress_bar()
+        pw.hide_stop_button()
+        pw.set_text('Updating the table. Could take a while...')
+        pw.update()
         self.editable_table.must_save = True
         self.editable_table.update()
+        pw.close_window()
 
-    def scrap_row(self, marketplace_url: str = None):
+    def scrap_row(self, marketplace_url: str = None, new_origin=None, added_manually=None):
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
+        :param new_origin: if not None, the origin of the row will be changed to this value.
+        :param added_manually: if not None, the added_manually value of the row will be changed to this value.
         :return: the scapped data or None
         """
 
@@ -582,6 +688,10 @@ class UEVMGui(tk.Tk):
             )
             scraper.get_data_from_url(api_product_url)
             asset_data = scraper.scraped_data.pop()
+            if new_origin is not None:
+                asset_data['Origin'] = new_origin
+            if added_manually is not None:
+                asset_data['Added manually'] = added_manually
             scraper.asset_db_handler.set_assets(asset_data)
             return asset_data
 

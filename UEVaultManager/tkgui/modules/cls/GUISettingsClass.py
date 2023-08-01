@@ -66,9 +66,12 @@ class GUISettings:
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
         self.ue_valid_file_content = ('.uplugin', '.uproject')
-        # if a folder is in this tuple, the parent folder is considered as a valid UE folder
-        self.ue_valid_folder_content = ('content', 'source')
-        self.ue_invalid_folder_content = ('Binaries', 'Build', 'DerivedDataCache', 'Intermediate')
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder
+        self.ue_valid_folder_content = ('content')
+        # if a folder is in this tuple, the folder won't be scanned to find ue folders
+        self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved')
+        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
+        self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')
 
         self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
