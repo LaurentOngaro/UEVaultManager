@@ -197,6 +197,7 @@ class ProgressWindow(tk.Toplevel):
         if new_function is None:
             return
         self.set_text('Running function: ' + new_function.__name__)
+        self.update()
         self.function = new_function
 
     def set_function_parameters(self, parameters: dict) -> None:
