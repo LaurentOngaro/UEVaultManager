@@ -32,6 +32,7 @@ class GrabResult(Enum):
     # next codes could occur only with API scraping only (UEVM version 2.X.X.X)
     PARTIAL = 5  # when asset has been added when owned asset data only (less complete that "standard" asset data)
     NO_APPID = 6  # no appid found in the data (will produce a file name like '_no_appId_asset_1e10acc0cca34d5c8ff7f0ab57e7f89f
+    NO_RESPONSE = 7  # the url does not return HTTP 200
 
 
 def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=None) -> bool:

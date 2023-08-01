@@ -33,6 +33,7 @@ class GUISettings:
     :param config_file: Path to config file to use instead of default
 .
     """
+
     def __init__(self, config_file=None):
         self.path = ''
         self.config_path = ''
@@ -78,7 +79,11 @@ class GUISettings:
         self.data_filetypes = (
             ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
         )
-
+        # minimal score required when looking for an url file comparing to an asset name.
+        # some comparison are more fuzzy than others, so we can set a different score for each comparison
+        # The key is a string that must be in the url file name or asset name
+        # default value if no key is found
+        self.minimal_fuzzy_score_by_name = {'default': 70, 'brushify': 80}
         self.preview_max_width = 150
         self.preview_max_height = 150
         self.default_global_search = 'Text to search...'

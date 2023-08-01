@@ -16,7 +16,8 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import GrabResult
-from UEVaultManager.models.csv_sql_fields import get_typed_value
+from UEVaultManager.models.csv_sql_fields import get_typed_value, get_csv_field_name, is_on_state
+from UEVaultManager.models.types import CSVFieldState
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
@@ -41,7 +42,7 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
         r'_UE[\d._]+',  # any string starting with '_UE' followed by any digit, dot or underscore ex: '_UE4_26'
         r'\d+[._]+',  # at least one digit followed by a dot or underscore  ex: '1.0' or '1_0'
         ' - UE Marketplace',  # remove ' - UE Marketplace'
-        r'\b(\w+)\b in (\1)?.',  # remove ' in ' and the string before and after ' in ' are the same ex: "Linhi Character in Characters" will keep only "Linhi"
+        r'\b(\w+)\b in (\1){1}.',  # remove ' in ' and the string before and after ' in ' are the same ex: "Linhi Character in Characters" will keep only "Linhi"
         r' in \b.+?$',  # any string starting with ' in ' and ending with the end of the string ex: ' in Characters'
     ]
     patterns = [re.compile(p) for p in patterns]
@@ -58,6 +59,7 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
     for pattern in patterns:
         name_to_clean = pattern.sub('', name_to_clean)
 
+    name_to_clean = name_to_clean.replace('_', '-')
     return name_to_clean.strip()  # Remove leading and trailing spaces
 
 
@@ -471,7 +473,14 @@ class UEVMGui(tk.Tk):
                 file_name_cleaned = clean_ue_asset_name(file_name)
                 fuzz_score = fuzz.ratio(folder_name_cleaned, file_name_cleaned)
                 gui_f.log_debug(f'Fuzzy compare {folder_name} ({folder_name_cleaned}) with {file_name} ({file_name_cleaned}): {fuzz_score}')
-                if fuzz_score >= 70:
+                minimal_score = gui_g.s.minimal_fuzzy_score_by_name.get('default', 70)
+                for key, value in gui_g.s.minimal_fuzzy_score_by_name.items():
+                    key = key.lower()
+                    if key in folder_name_cleaned.lower() or key in file_name_cleaned.lower():
+                        minimal_score = value
+                        break
+
+                if fuzz_score >= minimal_score:
                     with open(entry.path, 'r') as f:
                         for line in f:
                             if line.startswith('URL='):
@@ -503,38 +512,48 @@ class UEVMGui(tk.Tk):
         if self.core is None:
             gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
 
-        pw = ProgressWindow(title='Scanning folders for new assets', width=500, height=100, show_progress=True)
+        pw = ProgressWindow(title='Scanning folders for new assets', width=500, height=120)
         pw.hide_progress_bar()
         pw.set_activation(False)
 
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
+            full_folder_abs = os.path.abspath(full_folder)
+            folder_name = os.path.basename(full_folder_abs)
+            parent_folder = os.path.dirname(full_folder_abs)
+            folder_name_lower = folder_name.lower()
+
             msg = f'Scanning folder {full_folder}'
             gui_f.log_info(msg)
             if not pw.update_and_continue(value=0, text=f'Scanning folder:\n{full_folder}'):
                 pw.close_window()
                 return
+
             if os.path.isdir(full_folder):
                 if self.core.scan_assets_logger:
                     self.core.scan_assets_logger.info(msg)
-                full_folder = os.path.abspath(full_folder)
-                folder_name = os.path.basename(full_folder)
-                parent_folder = os.path.dirname(full_folder)
 
-                # check if the folder is a valid UE folder
-                folder_name_lower = folder_name.lower()
                 folder_is_valid = folder_name_lower in gui_g.s.ue_valid_folder_content
                 parent_could_be_valid = folder_name_lower in gui_g.s.ue_invalid_folder_content or folder_name_lower in gui_g.s.ue_possible_folder_content
+
                 if folder_is_valid:
-                    # folder_name is 'content' or 'source'. We need to move up for one level to get the asset folder
                     folder_name = os.path.basename(parent_folder)
                     parent_folder = os.path.dirname(parent_folder)
+                    path = os.path.dirname(full_folder_abs)
                     pw.set_text(f'{folder_name} as a valid folder.\nChecking asset url...')
                     pw.update()
                     msg = f'-->Found {folder_name} as a valid project'
                     gui_f.log_info(msg)
-                    marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=True)
-                    valid_folders[folder_name] = {'path': parent_folder, 'asset_type': UEAssetType.Asset, 'marketplace_url': marketplace_url}
+                    marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
+                    grab_result = ''
+                    if marketplace_url:
+                        grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
+                    valid_folders[folder_name] = {
+                        'path': path,
+                        'asset_type': UEAssetType.Asset,
+                        'marketplace_url': marketplace_url,
+                        'grab_result': grab_result
+                    }
                     if self.core.scan_assets_logger:
                         self.core.scan_assets_logger.info(msg)
                     continue
@@ -546,7 +565,7 @@ class UEVMGui(tk.Tk):
                     ):
                         content_folder = os.path.join(parent_folder, content_folder_name)
                         if not os.path.isdir(content_folder):
-                            os.mkdir(content_folder)
+                            os.makedirs(content_folder, exist_ok=True)
                             for entry in os.scandir(parent_folder):
                                 if entry.name != content_folder_name:
                                     path = entry.path
@@ -560,8 +579,6 @@ class UEVMGui(tk.Tk):
                         if parent_folder not in folder_to_scan:
                             folder_to_scan.append(parent_folder)
 
-                # check if the folder contains a valid UE file
-                # it could have been removed by the previous step
                 try:
                     for entry in os.scandir(full_folder):
                         entry_is_valid = entry.name.lower() not in gui_g.s.ue_invalid_folder_content
@@ -573,27 +590,32 @@ class UEVMGui(tk.Tk):
                                 asset_type = UEAssetType.Manifest if filename == 'manifest' else (
                                     UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Asset
                                 )
-                                marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=True)
-                                valid_folders[folder_name] = {'path': full_folder, 'asset_type': asset_type, 'marketplace_url': marketplace_url}
-
+                                marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
+                                grab_result = ''
+                                if marketplace_url:
+                                    grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(
+                                        marketplace_url
+                                    ) else GrabResult.NO_RESPONSE.name
+                                valid_folders[folder_name] = {
+                                    'path': full_folder_abs,
+                                    'asset_type': asset_type,
+                                    'marketplace_url': marketplace_url,
+                                    'grab_result': grab_result
+                                }
                                 msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension in gui_g.s.ue_valid_file_content else f'-->Found {folder_name} containing a {asset_type.name}'
                                 gui_f.log_debug(msg)
                                 if self.core.scan_assets_logger:
                                     self.core.scan_assets_logger.info(msg)
+
                                 # remove all the subfolders from the list of folders to scan
-                                # a while loop is used because we need to modify the list while iterating over it
-                                i = 0
-                                while i < len(folder_to_scan):
-                                    if folder_to_scan[i].startswith(full_folder):
-                                        folder_to_scan.remove(folder_to_scan[i])
-                                    else:
-                                        i += 1
+                                folder_to_scan = [folder for folder in folder_to_scan if not folder.startswith(full_folder_abs)]
                                 continue
+
                         # add subfolders to the list of folders to scan
                         elif entry.is_dir() and entry_is_valid:
                             folder_to_scan.append(entry.path)
                 except FileNotFoundError:
-                    gui_f.log_debug(f'{full_folder} has been removed during the scan')
+                    gui_f.log_debug(f'{full_folder_abs} has been removed during the scan')
 
             # sort the list to have the parent folder POPED (by the end) before the subfolders
             folder_to_scan = sorted(folder_to_scan, key=lambda x: len(x), reverse=True)
@@ -620,7 +642,9 @@ class UEVMGui(tk.Tk):
                     'App name': name,
                     'Category': content['asset_type'].category_name,
                     'Origin': content['path'],
-                    'Url': content['marketplace_url']
+                    'Url': content['marketplace_url'],
+                    'Grab result': content['grab_result'],
+                    'Added manually': True,
                 }
             )
             # check if a value exists in column 'App name' and 'Origin' for a pandastable
@@ -630,14 +654,31 @@ class UEVMGui(tk.Tk):
                 row_index = data.index[-1]
             else:
                 row_index = data[(data['App name'] == name) & (data['Origin'] == content['path'])].index[0]
-            asset_data = self.scrap_row(marketplace_url=marketplace_url, new_origin=content['path'], added_manually=True)
-            if asset_data is None or not asset_data:
-                continue
-            for key, value in asset_data.items():
-                typed_value = get_typed_value(csv_field=key, value=value)
-                # get the column index of the key
-                col_index = self.editable_table.model.df.columns.get_loc(key)
-                self.editable_table.model.df.iat[row_index, col_index] = typed_value
+            forced_data = {
+                # 'category': content['asset_type'].category_name,
+                'origin': content['path'],
+                'asset_url': content['marketplace_url'],
+                'grab_result': content['grab_result'],
+                'added_manually': True,
+            }
+            if content['grab_result'] == GrabResult.NO_ERROR.name:
+                ue_asset_data = self.scrap_row(marketplace_url=marketplace_url, forced_data=forced_data)
+                if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
+                    continue
+                if isinstance(ue_asset_data, list):
+                    ue_asset_data = ue_asset_data[0]
+                for key, value in ue_asset_data.items():
+                    typed_value = get_typed_value(sql_field=key, value=value)
+                    # get the column index of the key
+                    col_name = get_csv_field_name(key)
+                    if is_on_state(col_name, [CSVFieldState.SQL_ONLY]):
+                        continue
+                    try:
+                        col_index = self.editable_table.model.df.columns.get_loc(col_name)
+                        data.iat[row_index, col_index] = typed_value
+                    except KeyError as error:
+                        gui_f.log_warning(f'KeyError when updating row {row_index} and column {col_name}: {error}')
+                        continue
 
         pw.hide_progress_bar()
         pw.hide_stop_button()
@@ -647,13 +688,12 @@ class UEVMGui(tk.Tk):
         self.editable_table.update()
         pw.close_window()
 
-    def scrap_row(self, marketplace_url: str = None, new_origin=None, added_manually=None):
+    def scrap_row(self, marketplace_url: str = None, forced_data=None):
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param new_origin: if not None, the origin of the row will be changed to this value.
-        :param added_manually: if not None, the added_manually value of the row will be changed to this value.
-        :return: the scapped data or None
+        :param forced_data: if not None, all the key in forced_data will replace the scrapped data
+        :return: the scapped data
         """
 
         if self.core is None:
@@ -687,11 +727,10 @@ class UEVMGui(tk.Tk):
                 egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
             )
             scraper.get_data_from_url(api_product_url)
-            asset_data = scraper.scraped_data.pop()
-            if new_origin is not None:
-                asset_data['Origin'] = new_origin
-            if added_manually is not None:
-                asset_data['Added manually'] = added_manually
+            asset_data = scraper.scraped_data.pop()  # returns a list of one element
+            if forced_data is not None:
+                for key, value in forced_data.items():
+                    asset_data[0][key] = value
             scraper.asset_db_handler.set_assets(asset_data)
             return asset_data
 
