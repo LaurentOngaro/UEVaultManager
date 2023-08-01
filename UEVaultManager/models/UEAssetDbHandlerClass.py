@@ -92,7 +92,10 @@ class UEAssetDbHandler:
         Close the database connection.
         """
         if self.connection is not None:
-            self.connection.close()
+            try:
+                self.connection.close()
+            except sqlite3.Error as error:
+                print(f'Error while closing sqlite connection: {error!r}')
         self.connection = None
 
     def _init_connection(self) -> sqlite3.Connection:
