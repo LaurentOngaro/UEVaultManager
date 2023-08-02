@@ -21,6 +21,7 @@ class UEVMGuiControlFrame(ttk.Frame):
     :param container: The parent container.
     :param data_table: The EditableTable instance.
     """
+
     def __init__(self, container, data_table: EditableTable):
         super().__init__()
         if container is None:
@@ -221,6 +222,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.var_entry_data_source_type = var_entry_data_source_type
 
         self.lbtf_quick_edit = lbtf_quick_edit
+        self.lbt_image_preview = lbt_image_preview
         self.canvas_image = canvas_image
 
     @staticmethod

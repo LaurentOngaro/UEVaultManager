@@ -268,6 +268,12 @@ class UEVMGui(tk.Tk):
         # elif event.keysym == 'Return':
         #    self.editable_table.create_edit_record_window()
 
+    def _get_row_text(self):
+        row_count_filtered = len(self.editable_table.get_data_filtered())
+        row_count = len(self.editable_table.get_data())
+        row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered count | {row_count} rows count'
+        return row_text
+
     def on_mouse_over_cell(self, event=None) -> None:
         """
         Show the image of the asset when the mouse is over the cell.
@@ -277,7 +283,11 @@ class UEVMGui(tk.Tk):
             return
         canvas_image = self._control_frame.canvas_image
         try:
-            image_url = self.editable_table.get_image_url(row=self.editable_table.get_row_clicked(event))
+            row_index = self.editable_table.get_row_clicked(event)
+            row_offset = (self.editable_table.current_page - 1) * self.editable_table.rows_per_page + 1
+
+            self._control_frame.lbt_image_preview.config(text=f'Image Preview for row {row_index + row_offset} {self._get_row_text()}')
+            image_url = self.editable_table.get_image_url(row=row_index)
             gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
         except IndexError:
             gui_f.show_default_image(canvas_image)
@@ -287,6 +297,7 @@ class UEVMGui(tk.Tk):
         Show the default image when the mouse leaves the cell.
         :param _event:
         """
+        self._control_frame.lbt_image_preview.config(text=f'No Image Preview {self._get_row_text()}')
         canvas_image = self._control_frame.canvas_image
         gui_f.show_default_image(canvas_image=canvas_image)
 
@@ -676,7 +687,7 @@ class UEVMGui(tk.Tk):
                 'added_manually': True,
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
-                ue_asset_data = self.scrap_row(marketplace_url=marketplace_url, forced_data=forced_data)
+                ue_asset_data = self.scrap_row(marketplace_url=marketplace_url, forced_data=forced_data, show_message=False)
                 if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
                     continue
                 if isinstance(ue_asset_data, list):
@@ -705,21 +716,24 @@ class UEVMGui(tk.Tk):
         self.editable_table.redraw()
         pw.close_window()
 
-    def scrap_row(self, marketplace_url: str = None, forced_data=None):
+    def scrap_row(self, marketplace_url: str = None, forced_data=None, show_message=True):
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
+        :param show_message: if True, show a message if the marketplace_url is not valid
         :return: the scapped data
         """
 
         if self.core is None:
             gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
             return None
+        row_selected = self.editable_table.getSelectedRow()
         if marketplace_url is None:
             # get the marketplace_url from the selected row
-            row_selected = self.editable_table.getSelectedRow()
             if row_selected is None:
+                if show_message:
+                    gui_f.box_message('You must select a row first')
                 return None
             row_data = self.editable_table.get_row(row_selected, return_as_dict=True)
             marketplace_url = row_data['Url']
@@ -729,7 +743,10 @@ class UEVMGui(tk.Tk):
             # get the data from the marketplace marketplace_url
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if asset_data is None or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
-                gui_f.log_error(f'Unable to grab data from {marketplace_url}')
+                msg = f'Unable to grab data from {marketplace_url}'
+                gui_f.log_error(msg)
+                if show_message:
+                    gui_f.box_message('You must select a row first')
                 return None
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
@@ -749,6 +766,8 @@ class UEVMGui(tk.Tk):
                 for key, value in forced_data.items():
                     asset_data[0][key] = value
             scraper.asset_db_handler.set_assets(asset_data)
+            if show_message:
+                gui_f.box_message(f'Data for row {row_selected+1} have been updated from marketplace')
             return asset_data
 
     def load_filters(self, filters=None):
