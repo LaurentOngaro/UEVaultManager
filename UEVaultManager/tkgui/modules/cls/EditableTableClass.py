@@ -329,6 +329,8 @@ class EditableTable(Table):
         else:
             for row in self._changed_rows:
                 row_data = self.get_row(row, return_as_dict=True)
+                if row_data is None:
+                    continue
                 # convert the key names to the database column names
                 asset_data = convert_csv_row_to_sql_row(row_data)
                 ue_asset = UEAsset()
@@ -375,6 +377,9 @@ class EditableTable(Table):
          """
         self._show_progress('Rebuilding Data from database...')
         progress_window = self._progress_window
+        self.clear_rows_to_save()
+        self.clear_asset_ids_to_delete()
+        self.must_save = False
         if self.data_source_type == DataSourceType.FILE:
             # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
             if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):

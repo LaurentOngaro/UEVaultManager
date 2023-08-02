@@ -559,7 +559,7 @@ class UEVMGui(tk.Tk):
                     continue
                 elif parent_could_be_valid:
                     # the parent folder contains some UE folders but with a bad structure
-                    content_folder_name = 'content'
+                    content_folder_name = 'Content'
                     if gui_f.box_yesno(
                         f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
                     ):
@@ -585,11 +585,25 @@ class UEVMGui(tk.Tk):
                         if entry.is_file():
                             extension = os.path.splitext(entry.name)[1].lower()
                             filename = os.path.splitext(entry.name)[0].lower()
-
+                            # check if full_folder contains a "data" sub folder
                             if filename == 'manifest' or extension in gui_g.s.ue_valid_file_content:
-                                asset_type = UEAssetType.Manifest if filename == 'manifest' else (
-                                    UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Asset
-                                )
+                                path = full_folder_abs
+                                has_data_folder = os.path.isdir(os.path.join(full_folder, 'data'))
+                                if filename == 'manifest':
+                                    if has_data_folder:
+                                        asset_type = UEAssetType.Manifest
+                                        # we need to move to parent folder to get the real names because manifest files are inside a specific sub folder
+                                        folder_name = os.path.basename(parent_folder)
+                                        parent_folder = os.path.dirname(parent_folder)
+                                        path = os.path.dirname(full_folder_abs)
+                                    else:
+                                        asset_type = UEAssetType.Asset
+                                        gui_f.log_warning(
+                                            f'{full_folder_abs} has a manifest file but no data folder.It will be considered as an asset'
+                                        )
+                                else:
+                                    asset_type = UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Asset
+
                                 marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                                 grab_result = ''
                                 if marketplace_url:
@@ -597,7 +611,7 @@ class UEVMGui(tk.Tk):
                                         marketplace_url
                                     ) else GrabResult.NO_RESPONSE.name
                                 valid_folders[folder_name] = {
-                                    'path': full_folder_abs,
+                                    'path': path,
                                     'asset_type': asset_type,
                                     'marketplace_url': marketplace_url,
                                     'grab_result': grab_result
@@ -671,21 +685,24 @@ class UEVMGui(tk.Tk):
                     typed_value = get_typed_value(sql_field=key, value=value)
                     # get the column index of the key
                     col_name = get_csv_field_name(key)
-                    if is_on_state(col_name, [CSVFieldState.SQL_ONLY]):
+                    if is_on_state(col_name, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
                         continue
                     try:
                         col_index = self.editable_table.model.df.columns.get_loc(col_name)
-                        data.iat[row_index, col_index] = typed_value
-                    except KeyError as error:
-                        gui_f.log_warning(f'KeyError when updating row {row_index} and column {col_name}: {error}')
+                        # self.editable_table.model.df.iat[row_index, col_index] = typed_value
+                        self.editable_table.get_data().iat[row_index, col_index] = typed_value
+                    except (KeyError, IndexError) as error:
+                        gui_f.log_warning(f'Error when updating row {row_index} and column {col_name}: {error}')
                         continue
+            self.editable_table.add_to_rows_to_save(row_index)
 
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
         self.editable_table.must_save = True
-        self.editable_table.update()
+        # self.editable_table.update()
+        self.editable_table.redraw()
         pw.close_window()
 
     def scrap_row(self, marketplace_url: str = None, forced_data=None):

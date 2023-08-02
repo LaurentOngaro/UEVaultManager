@@ -70,7 +70,7 @@ class GUISettings:
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder
         self.ue_valid_folder_content = ('content')
         # if a folder is in this tuple, the folder won't be scanned to find ue folders
-        self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved')
+        self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data')
         # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
         self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')
 
@@ -83,7 +83,7 @@ class GUISettings:
         # some comparison are more fuzzy than others, so we can set a different score for each comparison
         # The key is a string that must be in the url file name or asset name
         # default value if no key is found
-        self.minimal_fuzzy_score_by_name = {'default': 70, 'brushify': 80}
+        self.minimal_fuzzy_score_by_name = {'default': 70, 'brushify': 80, 'elite_landscapes': 90}
         self.preview_max_width = 150
         self.preview_max_height = 150
         self.default_global_search = 'Text to search...'
