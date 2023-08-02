@@ -126,7 +126,8 @@ class UEVMGui(tk.Tk):
             data_source=data_source,
             rows_per_page=36,
             show_statusbar=True,
-            update_page_numbers_func=self.update_navigation
+            update_page_numbers_func=self.update_navigation,
+            update_rows_text_func=self.update_rows_text
         )
 
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
@@ -268,12 +269,6 @@ class UEVMGui(tk.Tk):
         # elif event.keysym == 'Return':
         #    self.editable_table.create_edit_record_window()
 
-    def _get_row_text(self):
-        row_count_filtered = len(self.editable_table.get_data_filtered())
-        row_count = len(self.editable_table.get_data())
-        row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered count | {row_count} rows count'
-        return row_text
-
     def on_mouse_over_cell(self, event=None) -> None:
         """
         Show the image of the asset when the mouse is over the cell.
@@ -284,9 +279,7 @@ class UEVMGui(tk.Tk):
         canvas_image = self._control_frame.canvas_image
         try:
             row_index = self.editable_table.get_row_clicked(event)
-            row_offset = (self.editable_table.current_page - 1) * self.editable_table.rows_per_page + 1
-
-            self._control_frame.lbt_image_preview.config(text=f'Image Preview for row {row_index + row_offset} {self._get_row_text()}')
+            self.update_rows_text(row_index)
             image_url = self.editable_table.get_image_url(row=row_index)
             gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
         except IndexError:
@@ -297,7 +290,7 @@ class UEVMGui(tk.Tk):
         Show the default image when the mouse leaves the cell.
         :param _event:
         """
-        self._control_frame.lbt_image_preview.config(text=f'No Image Preview {self._get_row_text()}')
+        self.update_rows_text()
         canvas_image = self._control_frame.canvas_image
         gui_f.show_default_image(canvas_image=canvas_image)
 
@@ -924,6 +917,21 @@ class UEVMGui(tk.Tk):
             grab_results = []
         grab_results.insert(0, gui_g.s.default_value_for_all)
         return {'categories': categories, 'grab_results': grab_results}
+
+    def update_rows_text(self, row_index=None):
+        """
+        Set the text to display in the preview frame about the number of rows.
+        """
+        if self._control_frame is None:
+            return
+        row_count_filtered = self.editable_table.row_filtered_count
+        row_count = self.editable_table.row_count
+        row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered count | {row_count} rows count'
+        if row_index is not None:
+            row_offset = (self.editable_table.current_page - 1) * self.editable_table.rows_per_page + 1
+            self._control_frame.lbt_image_preview.config(text=f'Image Preview for row {row_index+row_offset} {row_text}')
+        else:
+            self._control_frame.lbt_image_preview.config(text=f'No Image Preview {row_text}')
 
     def reload_data(self) -> None:
         """

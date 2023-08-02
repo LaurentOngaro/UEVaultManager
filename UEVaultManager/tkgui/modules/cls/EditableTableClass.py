@@ -39,6 +39,7 @@ class EditableTable(Table):
     :param show_toolbar: Whether to show the toolbar.
     :param show_statusbar: Whether to show the status bar.
     :param update_page_numbers_func: A function that updates the page numbers.
+    :param update_rows_text_func: A function that updates the text that shows the number of rows.
     :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
     _data = {}
@@ -68,6 +69,8 @@ class EditableTable(Table):
     total_pages = 1
     must_save = False
     must_rebuild = False
+    row_count = 0
+    row_filtered_count = 0
 
     def __init__(
         self,
@@ -78,12 +81,14 @@ class EditableTable(Table):
         show_toolbar=False,
         show_statusbar=False,
         update_page_numbers_func=None,
+        update_rows_text_func=None,
         **kwargs
     ):
         if container is None:
             raise ValueError('container cannot be None')
         self._container = container
         self.update_page_numbers_func = update_page_numbers_func
+        self.update_rows_text_func = update_rows_text_func
         self.data_source_type = data_source_type
         self.data_source = data_source
         self.show_toolbar = show_toolbar
@@ -285,28 +290,36 @@ class EditableTable(Table):
     #     """Get currently selected row. Override of the parent method."""
     #     return self.currentrow
 
-    def del_row(self, row=None) -> bool:
+    def del_row(self, rows=None) -> bool:
         """
         Delete the selected row in the table.
+        :param rows: The row to delete. If None, the selected row is deleted.
         """
-        if row is None:
-            row = self.getSelectedRow()
+        number_deleted = 0
         data = self.get_data()
         filtered = self.get_data_filtered()
-        if not data.empty and row is not None and 0 <= row < len(filtered):
-            if self.pagination_enabled:
-                row += self.rows_per_page * (self.current_page - 1)
-            asset_id = filtered.iloc[row]['Asset_id']
-            if box_yesno(f'Are you sure you want to delete the row #{row + 1} with asset_id={asset_id} ?'):
-                index = filtered.index[row]
-                data.drop(index, inplace=True)
-                self.setSelectedRow(row - 1)
-                self.clearSelected()
+        if rows is None:
+            # rows = self.get_selected_rows()
+            rows = self.multiplerowlist
+        # if isinstance(rows, int):
+        #     rows = [rows]
+        rows = sorted(rows)  # MUST be sorted by ascending order
+        for row_index in rows:
+            if not data.empty and 0 <= row_index < len(filtered):
+                if self.pagination_enabled:
+                    row_index += self.rows_per_page * (self.current_page - 1)
+                row_index -= number_deleted  # because the index changes after each deletion
+                asset_id = filtered.iloc[row_index]['Asset_id']
+                if box_yesno(f'Are you sure you want to delete the row #{row_index + 1} with asset_id={asset_id} ?'):
+                    index = filtered.index[row_index]
+                    data.drop(index, inplace=True)
+                    self.clearSelected()
 
-                # data.drop(data.index[row], inplace=True)
-                self.add_to_asset_ids_to_delete(asset_id)
-                return True
-        return False
+                    # data.drop(data.index[row], inplace=True)
+                    self.add_to_asset_ids_to_delete(asset_id)
+                    number_deleted += 1
+
+        return number_deleted > 0
 
     def save_data(self, source_type=None) -> None:
         """
@@ -620,6 +633,9 @@ class EditableTable(Table):
             self._filtered = data[mask]
         else:
             self._filtered = data
+        self.row_count = len(data)
+        self.row_filtered_count = len(self._filtered)
+
         self.update_page()
 
     def update_page(self) -> None:
@@ -645,6 +661,8 @@ class EditableTable(Table):
         self.set_colors()
         if self.update_page_numbers_func is not None:
             self.update_page_numbers_func()
+        if self.update_page_numbers_func is not None:
+            self.update_rows_text_func()
 
     def next_page(self) -> None:
         """
