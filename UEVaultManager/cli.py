@@ -731,12 +731,12 @@ class UEVaultManagerCLI:
             self.logger.info(f'Logging in and downloading manifest for {args.app_name}')
             if not self.core.login():
                 message = 'Login failed! Cannot continue with download process.'
-                self._log_gui_wrapper(self.logger.critical, message, True)
+                self._log_gui_wrapper(self.logger.error, message, False)
             update_meta = args.force_refresh
             item = self.core.get_item(args.app_name, update_meta=update_meta)
             if not item:
-                message = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership). Exiting...'
-                self._log_gui_wrapper(self.logger.critical, message, True)
+                message = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)'
+                self._log_gui_wrapper(self.logger.error, message, False)
             manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
 
         manifest = self.core.load_manifest(manifest_data)
