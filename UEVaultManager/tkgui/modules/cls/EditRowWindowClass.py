@@ -78,7 +78,7 @@ class EditRowWindow(tk.Toplevel):
             btn_next = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
             btn_next.pack(**pack_def_options, side=tk.RIGHT)
 
-            lbf_preview = ttk.LabelFrame(self, text="Image Preview")
+            lbf_preview = ttk.LabelFrame(self, text='Image Preview')
             lbf_preview.grid(row=0, column=1, **grid_def_options)
             canvas_image = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
             canvas_image.pack()
