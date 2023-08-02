@@ -381,6 +381,7 @@ class UEVaultManagerCLI:
         List assets in the vault.
         :param args: options passed to the command.
         """
+
         def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> []:
             """
             Updates the data of the asset with the data from the items in the file.
@@ -445,6 +446,7 @@ class UEVaultManagerCLI:
             # end if _items_in_file.get(_asset_id)
             # print(f'debug here')
             return _csv_record
+
         # end update_and_merge_csv_record_data
 
         def update_and_merge_json_record_data(_asset, _items_in_file, _no_float_value: float, _no_bool_false_value: bool) -> dict:
@@ -1322,13 +1324,11 @@ def main():
     auth_parser = subparsers.add_parser('auth', help='Authenticate with the Epic Games Store')
     clean_parser = subparsers.add_parser('cleanup', help='Remove old temporary, metadata, and manifest files')
     info_parser = subparsers.add_parser('info', help='Prints info about specified app name or manifest')
-    list_parser = subparsers.add_parser('list', aliases=('list-assets',), hide_aliases=True, help='List owned assets')
+    list_parser = subparsers.add_parser('list', aliases=('list-assets',), help='List owned assets')
     list_files_parser = subparsers.add_parser('list-files', help='List files in manifest')
     status_parser = subparsers.add_parser('status', help='Show UEVaultManager status information')
-    edit_parser = subparsers.add_parser('edit', aliases=('edit-assets',), hide_aliases=True, help='Edit the assets list file')
-    scrap_parser = subparsers.add_parser(
-        'scrap', aliases=('scrap-assets',), hide_aliases=True, help='Scrap all the available assets on the marketplace'
-    )
+    edit_parser = subparsers.add_parser('edit', aliases=('edit-assets',), help='Edit the assets list file')
+    scrap_parser = subparsers.add_parser('scrap', aliases=('scrap-assets',), help='Scrap all the available assets on the marketplace')
 
     # hidden commands have no help text
     get_token_parser = subparsers.add_parser('get-token')

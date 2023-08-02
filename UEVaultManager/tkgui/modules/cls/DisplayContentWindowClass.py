@@ -121,7 +121,7 @@ class DisplayContentWindow(tk.Toplevel):
 
     def display(self, content='', keep_mode=True) -> None:
         """
-        Display the content in the window. By default, ie. keep_mode==True, each new call adds the content to the existing content with a new line.
+        Display the content in the window. By default, i.e. keep_mode==True, each new call adds the content to the existing content with a new line.
         :param content: the text to print.
         :param keep_mode: whether to keep the existing content when a new one is added.
         """

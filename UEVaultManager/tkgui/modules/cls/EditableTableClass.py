@@ -204,9 +204,11 @@ class EditableTable(Table):
         :return: True if the data has been loaded successfully, False otherwise.
         """
         self._show_progress('Loading Data from data source...')
-        # if self.data_source is None or not os.path.isfile(self.data_source):
-        #     log_warning(f'File to read data from is not defined or not found: {self.data_source}')
-        #     return False
+        """
+        if self.data_source is None or not os.path.isfile(self.data_source):
+            log_warning(f'File to read data from is not defined or not found: {self.data_source}')
+            return False
+        """
         self.must_rebuild = False
         if not self.valid_source_type(self.data_source):
             return False

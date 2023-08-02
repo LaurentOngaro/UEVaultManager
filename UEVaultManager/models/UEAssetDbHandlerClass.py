@@ -311,12 +311,14 @@ class UEAssetDbHandler:
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
         if upgrade_from_version == DbVersionNum.V5:
-            # necessary steps to upgrade from version 5
-            # does not exist yet
-            # do stuff here
-            # self.db_version = DbVersionNum.V6
-            # upgrade_from_version = self.db_version
-            # self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            """
+            necessary steps to upgrade from version 5
+            does not exist yet
+            do stuff here
+            self.db_version = DbVersionNum.V6
+            upgrade_from_version = self.db_version
+            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            """
             pass
         if previous_version != self.db_version:
             self._set_db_version(self.db_version)

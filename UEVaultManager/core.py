@@ -684,15 +684,16 @@ class AppCore:
                             # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
                             stop_executor(futures)
                 self.thread_executor.shutdown(wait=False)
-
+                """
                 # Wait for all the tasks to finish
-                # concurrent.futures.wait(futures.values())
-                # for key, future in futures.items():
-                #     try:
-                #         future.result()
-                #     except Exception as error:
-                #         self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
-                # self.thread_executor.shutdown(wait=False)
+                concurrent.futures.wait(futures.values())
+                for key, future in futures.items():
+                    try:
+                        future.result()
+                    except Exception as error:
+                        self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
+                self.thread_executor.shutdown(wait=False)
+                """
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')

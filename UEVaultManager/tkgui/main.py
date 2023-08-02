@@ -2,7 +2,7 @@
 """
 GUI module for UEVaultManager
 this can be run directly by executing this script
-or by the --edit command option for the UEVaultManager cli application, for instance by running `cli --edit --input <my_source_file>'.
+or by the --edit command option for the UEVaultManager cli application, for instance by running cli --edit --input <my_source_file>.
 """
 import os.path
 
