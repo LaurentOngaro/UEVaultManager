@@ -115,9 +115,6 @@ class UEAssetScraper:
         self.scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
         self.scraped_ids = []  # store IDs of all items
         self.owned_asset_ids = []  # store IDs of all owned items
-        self.existing_data = {
-        }  # dictionary {ids, rows} : the data in database before scraping. Contains only minimal information (user fields, id, price)
-
         self.urls = []  # list of all urls to scrap
 
         self.egs = EPCAPI(timeout=timeout) if egs is None else egs
@@ -208,7 +205,8 @@ class UEAssetScraper:
                 continue
             categories = asset_data.get('categories', None)
             release_info = asset_data.get('releaseInfo', {})
-            asset_existing_data = self.existing_data.get(uid, None)
+            existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, id=uid)
+            asset_existing_data = existing_data.get(uid, None)
             price = 0
             discount_price = 0
             discount_percentage = 0
@@ -268,6 +266,7 @@ class UEAssetScraper:
                 rating_total = asset_data['rating']['total']
             except KeyError:
                 self.logger.debug(f'No rating for {asset_data["title"]}')
+                # TODO: get rating from API
             asset_data['review'] = average_rating
             asset_data['review_count'] = rating_total
 
@@ -324,7 +323,7 @@ class UEAssetScraper:
             ue_asset = UEAsset()
 
             # we use copy data for user_fields to preserve user data
-            if asset_existing_data:
+            if asset_existing_data:  # TODO: fix empty asset_existing_data here
                 for field in self.asset_db_handler.user_fields:
                     old_value = asset_existing_data.get(field, None)
                     if old_value:
@@ -451,9 +450,6 @@ class UEAssetScraper:
             for _, task in tasks.items():
                 task.cancel()
             self.thread_executor.shutdown(wait=False)
-
-        # store previous data in the existing_data property
-        self.existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields)
 
         if self.load_from_files:
             self.load_from_json_files()

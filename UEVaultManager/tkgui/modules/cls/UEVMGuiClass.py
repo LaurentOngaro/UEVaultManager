@@ -680,56 +680,16 @@ class UEVMGui(tk.Tk):
                 'added_manually': True,
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
-                ue_asset_data = self.scrap_row(marketplace_url=marketplace_url, forced_data=forced_data, show_message=False)
-                if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
-                    continue
-                if isinstance(ue_asset_data, list):
-                    ue_asset_data = ue_asset_data[0]
-                for key, value in ue_asset_data.items():
-                    typed_value = get_typed_value(sql_field=key, value=value)
-                    # get the column index of the key
-                    col_name = get_csv_field_name(key)
-                    if is_on_state(col_name, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
-                        continue
-                    try:
-                        col_index = self.editable_table.model.df.columns.get_loc(col_name)
-                        # self.editable_table.model.df.iat[row_index, col_index] = typed_value
-                        self.editable_table.get_data().iat[row_index, col_index] = typed_value
-                    except (KeyError, IndexError) as error:
-                        gui_f.log_warning(f'Error when updating row {row_index} and column {col_name}: {error}')
-                        continue
-            self.editable_table.add_to_rows_to_save(row_index)
+                self.scrap_row(marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False)
 
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
-        self.editable_table.must_save = True
-        # self.editable_table.update()
-        self.editable_table.redraw()
         pw.close_window()
 
-    def scrap_row(self, marketplace_url: str = None, forced_data=None, show_message=True):
-        """
-        Scrap the data for the current row or a given marketplace_url.
-        :param marketplace_url: marketplace_url to scrap.
-        :param forced_data: if not None, all the key in forced_data will replace the scrapped data
-        :param show_message: if True, show a message if the marketplace_url is not valid
-        :return: the scapped data
-        """
-
-        if self.core is None:
-            gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
-            return None
-        row_selected = self.editable_table.getSelectedRow()
-        if marketplace_url is None:
-            # get the marketplace_url from the selected row
-            if row_selected is None:
-                if show_message:
-                    gui_f.box_message('You must select a row first')
-                return None
-            row_data = self.editable_table.get_row(row_selected, return_as_dict=True)
-            marketplace_url = row_data['Url']
+    def _scrap_from_url(self, marketplace_url: str, forced_data=None, show_message=False):
+        asset_data = None
         # check if the marketplace_url is a marketplace marketplace_url
         ue_marketplace_url = self.core.egs.get_marketplace_product_url()
         if ue_marketplace_url.lower() in marketplace_url.lower():
@@ -739,7 +699,7 @@ class UEVMGui(tk.Tk):
                 msg = f'Unable to grab data from {marketplace_url}'
                 gui_f.log_error(msg)
                 if show_message:
-                    gui_f.box_message('You must select a row first')
+                    gui_f.box_message(msg)
                 return None
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
@@ -759,9 +719,67 @@ class UEVMGui(tk.Tk):
                 for key, value in forced_data.items():
                     asset_data[0][key] = value
             scraper.asset_db_handler.set_assets(asset_data)
+        return asset_data
+
+    def _update_row(self, row_index: int, ue_asset_data: dict, no_table_update=False):
+        if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
+            return
+        if isinstance(ue_asset_data, list):
+            ue_asset_data = ue_asset_data[0]
+
+        for key, value in ue_asset_data.items():
+            typed_value = get_typed_value(sql_field=key, value=value)
+            # get the column index of the key
+            col_name = get_csv_field_name(key)
+            if is_on_state(col_name, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
+                continue
+            try:
+                col_index = self.editable_table.model.df.columns.get_loc(col_name)
+                # self.editable_table.model.df.iat[row_index, col_index] = typed_value
+                self.editable_table.get_data().iat[row_index, col_index] = typed_value
+            except (KeyError, IndexError) as error:
+                gui_f.log_warning(f'Error when updating row {row_index} and column {col_name}: {error}')
+                continue
+        if not no_table_update:
+            self.editable_table.add_to_rows_to_save(row_index)
+            self.editable_table.must_save = True
+            self.editable_table.redraw()
+
+    def scrap_row(self, marketplace_url: str = None, row_index: int = None, forced_data=None, show_message=True):
+        """
+        Scrap the data for the current row or a given marketplace_url.
+        :param marketplace_url: marketplace_url to scrap.
+        :param row_index: row index to scrap.
+        :param forced_data: if not None, all the key in forced_data will replace the scrapped data
+        :param show_message: if True, show a message if the marketplace_url is not valid
+        """
+
+        if self.core is None:
+            gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
+            return
+
+        row_indexes = self.editable_table.multiplerowlist
+
+        if marketplace_url is None and row_indexes is None and len(row_indexes) < 1:
             if show_message:
-                gui_f.box_message(f'Data for row {row_selected+1} have been updated from marketplace')
-            return asset_data
+                gui_f.box_message('You must select a row first')
+            return
+
+        if marketplace_url is None:
+            for row_index in row_indexes:
+                row_data = self.editable_table.get_row(row_index, return_as_dict=True)
+                marketplace_url = row_data['Url']
+                asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
+                if asset_data is not None:
+                    self._update_row(
+                        row_index=row_index, ue_asset_data=asset_data, no_table_update=True
+                    )  # no table update to avoid data duplication (saving asset tiwce)
+
+                if show_message:
+                    gui_f.box_message(f'Data for row {row_index+1} have been updated from marketplace')
+        else:
+            asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
+            self._update_row(row_index=row_index, ue_asset_data=asset_data)
 
     def load_filters(self, filters=None):
         """

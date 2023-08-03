@@ -217,7 +217,6 @@ class EditableTable(Table):
         self.must_rebuild = False
         if not self.valid_source_type(self.data_source):
             return False
-        # TODO: test emtpy file at start with database and csv
         try:
             if self.data_source_type == DataSourceType.FILE:
                 data = pd.read_csv(self.data_source, **gui_g.s.csv_options)
@@ -290,21 +289,21 @@ class EditableTable(Table):
     #     """Get currently selected row. Override of the parent method."""
     #     return self.currentrow
 
-    def del_row(self, rows=None) -> bool:
+    def del_row(self, row_indexes=None) -> bool:
         """
         Delete the selected row in the table.
-        :param rows: The row to delete. If None, the selected row is deleted.
+        :param row_indexes: The row to delete. If None, the selected row is deleted.
         """
         number_deleted = 0
         data = self.get_data()
         filtered = self.get_data_filtered()
-        if rows is None:
+        if row_indexes is None:
             # rows = self.get_selected_rows()
-            rows = self.multiplerowlist
+            row_indexes = self.multiplerowlist
         # if isinstance(rows, int):
         #     rows = [rows]
-        rows = sorted(rows)  # MUST be sorted by ascending order
-        for row_index in rows:
+        row_indexes = sorted(row_indexes)  # MUST be sorted by ascending order
+        for row_index in row_indexes:
             if not data.empty and 0 <= row_index < len(filtered):
                 if self.pagination_enabled:
                     row_index += self.rows_per_page * (self.current_page - 1)
@@ -357,6 +356,22 @@ class EditableTable(Table):
                     self._db_handler.save_ue_asset(ue_asset)
                     asset_id = ue_asset.data.get('asset_id', '')
                     log_info(f'UE_asset ({asset_id}) for row #{row} has been saved to the database')
+                    """
+                    # self.container._update_row(row, ue_asset.data)
+                    # update the row in the table . SEE to report the changes self.container._update_row(row, ue_asset.data) when finished
+                    for key, value in ue_asset.data.items():
+                        typed_value = get_typed_value(sql_field=key, value=value)
+                        # get the column index of the key
+                        col_name = get_csv_field_name(key)
+                        if is_on_state(col_name, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
+                            continue
+                        try:
+                            col_index = self.model.df.columns.get_loc(col_name)
+                            # self.editable_table.model.df.iat[row_index, col_index] = typed_value
+                            self.get_data_filtered().iat[row, col_index] = typed_value
+                        except (KeyError, IndexError):
+                            continue
+                    """
                 except (KeyError, ValueError, AttributeError) as error:
                     log_warning(f'Unable to save UE_asset for row #{row} to the database. Error: {error}')
             for asset_id in self._deleted_asset_ids:
@@ -369,7 +384,7 @@ class EditableTable(Table):
                 except (KeyError, ValueError, AttributeError) as error:
                     log_warning(f'Unable to delete asset_id={asset_id} to the database. Error: {error}')
 
-        self.update()
+        # self.update()
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
@@ -778,7 +793,8 @@ class EditableTable(Table):
         :return: the row at the specified index.
         """
         try:
-            record = self.get_data().iloc[row_index]
+            # record = self.get_data().iloc[row_index]
+            record = self.get_data_filtered().iloc[row_index]
             if return_as_dict:
                 return record.to_dict()
             else:
@@ -794,7 +810,8 @@ class EditableTable(Table):
         :return: the value of the cell or None if the row or column index is out of range.
         """
         try:
-            return self.get_data().iloc[row, col]
+            # return self.get_data().iloc[row, col]
+            return self.get_data_filtered().iloc[row, col]
         except IndexError:
             return None
 

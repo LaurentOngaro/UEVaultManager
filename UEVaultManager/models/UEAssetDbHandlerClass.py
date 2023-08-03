@@ -423,19 +423,21 @@ class UEAssetDbHandler:
         except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
             self.logger.error(f'Error when committing the database changes: {error!r}')
 
-    def get_assets_data(self, fields='*') -> dict:
+    def get_assets_data(self, fields='*', id=None) -> dict:
         """
         Get data from all the assets in the 'assets' table.
         :param fields: list of fields to return.
+        :param id: The id of the asset to get data for. If None, all the assets will be returned.
         :return: dictionary {ids, rows}.
         """
         if not isinstance(fields, str):
             fields = ', '.join(fields)
         row_data = {}
+        where_clause = f"WHERE id='{id}'" if id is not None else ''
         if self.connection is not None:
             self.connection.row_factory = sqlite3.Row
             cursor = self.connection.cursor()
-            cursor.execute(f"SELECT {fields} FROM assets")
+            cursor.execute(f"SELECT {fields} FROM assets {where_clause}")
             for row in cursor.fetchall():
                 uid = row['id']
                 row_data[uid] = dict(row)
