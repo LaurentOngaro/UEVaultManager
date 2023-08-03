@@ -73,6 +73,22 @@ class FilterFrame(ttk.LabelFrame):
             raise ValueError('update_func cannot be None')
         self._create_filter_widgets()
 
+    def _search_combobox(self, _event, combobox)-> None:
+        """
+        Search for the text in the Combobox's values.
+        :param _event: the event that triggered the search.
+        :param combobox: the Combobox to search in.
+        """
+        # Get the current text in the Combobox
+        current_text = combobox.get().lower()
+        if len(current_text) < 3:
+            return
+        for value in combobox['values']:
+            if value.lower().startswith(current_text):
+                combobox.set(value)
+                self.quick_filter()
+                break
+
     # noinspection DuplicatedCode
     def _create_filter_widgets(self) -> None:
         """
@@ -97,10 +113,14 @@ class FilterFrame(ttk.LabelFrame):
         self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly', width=14)
         self.cb_quick_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.quick_filter())
+        self.cb_quick_filter.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_quick_filter))
+
         cur_col += 1
         self.cb_col_name = ttk.Combobox(self, values=columns_to_list, state='readonly', width=18)
         self.cb_col_name.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         self.cb_col_name.bind('<<ComboboxSelected>>', lambda event: self._update_filter_widgets())
+        self.cb_col_name.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_col_name))
+
         cur_col += 3
         self.frm_widgets = ttk.Frame(self)
         # widget dynamically created based on the dtype of the selected column in _update_filter_widgets()
@@ -172,6 +192,7 @@ class FilterFrame(ttk.LabelFrame):
             elif type_name == 'category':
                 self.filter_widget = ttk.Combobox(self.frm_widgets)
                 self.filter_widget['values'] = list(data[cb_selection].cat.categories)
+                self.filter_widget.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.filter_widget))
             elif type_name in ('int', 'float', 'int64', 'float64'):
                 self.filter_widget = ttk.Spinbox(self.frm_widgets, increment=0.1, from_=0, to=100, command=self.update_func)
             else:
