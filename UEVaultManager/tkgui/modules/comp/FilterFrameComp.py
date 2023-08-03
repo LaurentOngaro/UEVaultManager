@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Tuple, Any, Dict
 
-from UEVaultManager.tkgui.modules.functions import log_info
+from UEVaultManager.tkgui.modules.functions import log_info, box_message
 
 
 class FilterFrame(ttk.LabelFrame):
@@ -73,7 +73,7 @@ class FilterFrame(ttk.LabelFrame):
             raise ValueError('update_func cannot be None')
         self._create_filter_widgets()
 
-    def _search_combobox(self, _event, combobox)-> None:
+    def _search_combobox(self, _event, combobox) -> None:
         """
         Search for the text in the Combobox's values.
         :param _event: the event that triggered the search.
@@ -86,7 +86,7 @@ class FilterFrame(ttk.LabelFrame):
         for value in combobox['values']:
             if value.lower().startswith(current_text):
                 combobox.set(value)
-                self.quick_filter()
+                self._update_filter_widgets()
                 break
 
     # noinspection DuplicatedCode
@@ -240,22 +240,25 @@ class FilterFrame(ttk.LabelFrame):
         """
         data = self.data_func()
         final_mask = None
-
+        mask = False
         for col_name, (value_type_str, filter_value) in self.get_filters().items():
             if col_name == self.value_for_all:
                 mask = False
                 for col in data.columns:
                     mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
             else:
-                if value_type_str == 'bool' and filter_value != '':
-                    mask = data[col_name].astype(bool) == filter_value
-                elif value_type_str == 'int':
-                    mask = data[col_name].astype(int) == int(filter_value)
-                elif value_type_str == 'float':
-                    filter_value = filter_value.replace(',', '.')
-                    mask = data[col_name].astype(float) == float(filter_value)
-                else:
-                    mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower())
+                try:
+                    if value_type_str == 'bool' and filter_value != '':
+                        mask = data[col_name].astype(bool) == filter_value
+                    elif value_type_str == 'int':
+                        mask = data[col_name].astype(int) == int(filter_value)
+                    elif value_type_str == 'float':
+                        filter_value = filter_value.replace(',', '.')
+                        mask = data[col_name].astype(float) == float(filter_value)
+                    else:
+                        mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower())
+                except ValueError:
+                    box_message(f'the value {filter_value} does not correspond to the type of column {col_name}')
             final_mask = mask if final_mask is None else final_mask & mask
 
         return final_mask
