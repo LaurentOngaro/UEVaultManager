@@ -307,17 +307,17 @@ class EditableTable(Table):
             if not data.empty and 0 <= row_index < len(filtered):
                 if self.pagination_enabled:
                     row_index += self.rows_per_page * (self.current_page - 1)
-                row_index -= number_deleted  # because the index changes after each deletion
+                # row_index -= number_deleted  # because the index changes after each deletion
                 asset_id = filtered.iloc[row_index]['Asset_id']
                 if box_yesno(f'Are you sure you want to delete the row #{row_index + 1} with asset_id={asset_id} ?'):
                     index = filtered.index[row_index]
-                    data.drop(index, inplace=True)
-                    self.clearSelected()
-
-                    # data.drop(data.index[row], inplace=True)
+                    try:
+                        data.drop(index, inplace=True)
+                    except KeyError:
+                        log_warning(f'Could not delete row #{row_index + 1} with asset_id={asset_id} !')
                     self.add_to_asset_ids_to_delete(asset_id)
                     number_deleted += 1
-
+        self.clearSelected()
         return number_deleted > 0
 
     def save_data(self, source_type=None) -> None:

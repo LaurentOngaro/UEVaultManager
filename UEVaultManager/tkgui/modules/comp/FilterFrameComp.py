@@ -31,6 +31,7 @@ class FilterFrame(ttk.LabelFrame):
         'Grab OK': ['Grab result', 'NO_ERROR'],  #
         'Plugins only': ['Category', 'plugins'],  #
         'Free': ['Price', 0],  #
+        'Dummy': ['Asset_id', 'dummy'],  #
     }
     frm_widgets = None
     cb_col_name = None
@@ -105,7 +106,7 @@ class FilterFrame(ttk.LabelFrame):
         lbl_col_name = ttk.Label(self, text='Or Set a filter On')
         lbl_col_name.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         cur_col += 3
-        lbl_value = ttk.Label(self, text='with value')
+        lbl_value = ttk.Label(self, text='that contains ou equals')
         lbl_value.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
 
         cur_row += 1
