@@ -14,6 +14,7 @@ class UEAsset:
     A class to represent an Unreal Engine asset. With the EGS data and user data.
     :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete.
     """
+
     def __init__(self, engine_version_for_obsolete_assets=None):
         if engine_version_for_obsolete_assets is None:
             self.engine_version_for_obsolete_assets = '4.26'  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
@@ -71,11 +72,24 @@ class UEAsset:
         INPLACE Convert the tags id list of an asset_data dict to a string.
         """
         tags = self.data.get('tags', None)
-        if not tags or tags == [] or tags == {}:
+        if tags is None or not tags or tags == [] or tags == {}:
             tags = ''
         else:
-            # TODO : find to get the value associated to each tag id. Not sure, it's possible using the API
-            tags = [str(i) for i in tags]  # convert each item to a string, if not an error will be raised when joining
-            tags = ','.join(tags)
+            if isinstance(tags, list):
+                names = []
+                for item in tags:
+                    if isinstance(item, int):
+                        # temp: use the tag id as a name
+                        # TODO : get the value associated to each tag id. Not sure, it's possible using the API. If not, use a new table for that
+                        name = str(item)
+                    elif isinstance(item, dict):
+                        # id = item.get('id', None) # not used for now
+                        name = item.get('name', '').title()
+                        # TODO : store each new correspondance for a tag id and its name in a new table
+                    else:
+                        name = str(item).title()
+                    if name and name not in names:
+                        names.append(name)
+                tags = ','.join(names)
         self.data['tags'] = tags
         # print(f"{self.data['asset_id']} tags converted: {tags}") # debug only
