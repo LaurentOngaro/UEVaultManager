@@ -205,7 +205,7 @@ class UEAssetScraper:
                 continue
             categories = asset_data.get('categories', None)
             release_info = asset_data.get('releaseInfo', {})
-            existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, id=uid)
+            existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
             asset_existing_data = existing_data.get(uid, None)
             price = 0
             discount_price = 0
@@ -304,6 +304,8 @@ class UEAssetScraper:
             old_price = asset_existing_data.get('price', None) if asset_existing_data else 0
             older_price = asset_existing_data.get('old_price', None) if asset_existing_data else 0
             asset_data['old_price'] = old_price if old_price else older_price
+            # note: asset_data['tags'] will be converted in ue_asset.init_from_dict(asset_data)
+
             # the current parsing process does not produce as many error as the previous one
             # mainly, there is no error during the process
             old_grab_result = asset_existing_data.get('grab_result', GrabResult.NO_ERROR.name) if asset_existing_data else GrabResult.NO_ERROR.name
