@@ -66,7 +66,7 @@ class ProgressWindow(tk.Toplevel if tk._default_root else tk.Tk):
             function = globals().get(self.function_name)
             if function:
                 # Run the function in a separate thread
-                t = threading.Thread(target=function, args=(self,), kwargs=self.function_params)
+                t = threading.Thread(target=function, args=(self, ), kwargs=self.function_params)
                 t.start()
                 # Schedule GUI update while waiting for the thread to finish
                 self.after(100, self._check_for_end, t)

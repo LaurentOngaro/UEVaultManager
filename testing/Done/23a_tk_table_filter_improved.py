@@ -62,9 +62,7 @@ class FilterFrame(ttk.LabelFrame):
     pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}
     grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.W}
 
-    def __init__(
-        self, parent: tk, data_func: Callable, update_func: Callable, title='Set filters for data', value_for_all='All'
-    ):
+    def __init__(self, parent: tk, data_func: Callable, update_func: Callable, title='Set filters for data', value_for_all='All'):
         if data_func is None:
             raise ValueError('data_func cannot be None')
         if update_func is None:

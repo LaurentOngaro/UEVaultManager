@@ -40,13 +40,12 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.FLOAT
     },
-    'Review count':
-        {
-            # not in "standard/result" csv file
-            'sql_name': 'review_count',
-            'state': CSVFieldState.SQL_ONLY,
-            'field_type': CSVFieldType.INT
-        },
+    'Review count': {
+        # not in "standard/result" csv file
+        'sql_name': 'review_count',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.INT
+    },
     'Developer': {
         'sql_name': 'author',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -89,13 +88,12 @@ csv_sql_fields = {
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.BOOL
     },
-    'Can purchase':
-        {
-            # not in "standard/result" csv file
-            'sql_name': 'can_purchase',
-            'state': CSVFieldState.SQL_ONLY,
-            'field_type': CSVFieldType.BOOL
-        },
+    'Can purchase': {
+        # not in "standard/result" csv file
+        'sql_name': 'can_purchase',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.BOOL
+    },
     'Owned': {
         'sql_name': 'owned',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -168,13 +166,12 @@ csv_sql_fields = {
         'field_type': CSVFieldType.BOOL
     },
     # ## less important fields
-    'Custom attributes':
-        {
-            # not in "standard/result" csv file
-            'sql_name': 'custom_attributes',
-            'state': CSVFieldState.SQL_ONLY,
-            'field_type': CSVFieldType.STR
-        },
+    'Custom attributes': {
+        # not in "standard/result" csv file
+        'sql_name': 'custom_attributes',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.STR
+    },
     'Page title': {
         'sql_name': 'page_title',
         'state': CSVFieldState.NOT_PRESERVED,
