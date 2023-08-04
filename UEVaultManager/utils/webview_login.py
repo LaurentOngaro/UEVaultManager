@@ -62,6 +62,7 @@ class MockLauncher:
     :param callback_sid: callback function to handle the SID login.
     :param callback_code: callback function to handle the exchange code.
     """
+
     def __init__(self, callback_sid, callback_code):
         self.callback_sid = callback_sid
         self.callback_code = callback_code

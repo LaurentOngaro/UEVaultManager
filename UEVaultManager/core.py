@@ -121,6 +121,7 @@ class AppCore:
         """
         Setup logging for ignored, not found and bad data assets.
         """
+
         def create_logger(logger_name: str, filename_log: str):
             """
             Create a logger for ignored, not found and bad data assets.
@@ -161,20 +162,16 @@ class AppCore:
         s = session()
         s.headers.update(
             {
-                'X-Epic-Event-Action':
-                'login',
-                'X-Epic-Event-Category':
-                'login',
-                'X-Epic-Strategy-Flags':
-                '',
-                'X-Requested-With':
-                'XMLHttpRequest',
+                'X-Epic-Event-Action': 'login',
+                'X-Epic-Event-Category': 'login',
+                'X-Epic-Strategy-Flags': '',
+                'X-Requested-With': 'XMLHttpRequest',
                 'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                f'EpicGamesLauncher/{self._egl_version} '
-                'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
-                'Chrome/84.0.4147.38 Safari/537.36'
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                    'AppleWebKit/537.36 (KHTML, like Gecko) '
+                    f'EpicGamesLauncher/{self._egl_version} '
+                    'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
+                    'Chrome/84.0.4147.38 Safari/537.36'
             }
         )
         s.cookies['EPIC_COUNTRY'] = self.country_code.upper()
@@ -327,6 +324,7 @@ class AppCore:
         Checks for updates and sets the update_available flag accordingly.
         :param force: force update check.
         """
+
         def version_tuple(v):
             """
             Converts a version string to a tuple of ints.
@@ -428,6 +426,7 @@ class AppCore:
         :param force_refresh: force refresh of asset list.
         :return: Assets list.
         """
+
         # Cancel all outstanding tasks and shut down the executor
         def stop_executor(tasks) -> None:
             """
@@ -716,7 +715,7 @@ class AppCore:
             else:
                 fetch_try_count[app_name] = 1
             if self.verbose_mode:
-                self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name] }. Still {len(filtered_items)} assets to check')
+                self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name]}. Still {len(filtered_items)} assets to check')
             try:
                 app_item = apps.get(app_name)
             except (KeyError, IndexError):

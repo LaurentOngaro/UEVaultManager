@@ -316,7 +316,7 @@ class UEAssetDbHandler:
         if upgrade_from_version == DbVersionNum.V5:
             # necessary steps to upgrade from version 5
             # add changed fields
-            self._add_missing_columns('assets', required_columns={'tags': 'TEXT',})
+            self._add_missing_columns('assets', required_columns={'tags': 'TEXT', })
             self.db_version = DbVersionNum.V6
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
@@ -503,7 +503,7 @@ class UEAssetDbHandler:
             count = 1
             while count > 0:
                 uid = create_uid()
-                cursor.execute("SELECT COUNT(*) FROM assets WHERE id = ?", (uid,))
+                cursor.execute("SELECT COUNT(*) FROM assets WHERE id = ?", (uid, ))
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
@@ -527,7 +527,7 @@ class UEAssetDbHandler:
         ue_asset = None
         if self.connection is not None:
             cursor = self.connection.cursor()
-            cursor.execute("SELECT * assets WHERE id = ?", (uid,))
+            cursor.execute("SELECT * assets WHERE id = ?", (uid, ))
             row = cursor.fetchone()
             cursor.close()
             ue_asset = UEAsset()
@@ -550,9 +550,9 @@ class UEAssetDbHandler:
         if self.connection is not None and (uid or asset_id):
             cursor = self.connection.cursor()
             if not asset_id:
-                cursor.execute("DELETE FROM assets WHERE id = ?", (uid,))
+                cursor.execute("DELETE FROM assets WHERE id = ?", (uid, ))
             else:
-                cursor.execute("DELETE FROM assets WHERE asset_id = ?", (asset_id,))
+                cursor.execute("DELETE FROM assets WHERE asset_id = ?", (asset_id, ))
             self.connection.commit()
             cursor.close()
 

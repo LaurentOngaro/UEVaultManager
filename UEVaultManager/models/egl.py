@@ -54,6 +54,7 @@ class EGLManifest:
     """
     EGL Manifest.
     """
+
     def __init__(self):
         self.app_name = None
         self.app_version_string = None

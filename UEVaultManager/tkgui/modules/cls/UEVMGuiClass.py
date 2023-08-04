@@ -40,7 +40,8 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
         r'_UE[\d._]+',  # any string starting with '_UE' followed by any digit, dot or underscore ex: '_UE4_26'
         r'\d+[._]+',  # at least one digit followed by a dot or underscore  ex: '1.0' or '1_0'
         ' - UE Marketplace',  # remove ' - UE Marketplace'
-        r'\b(\w+)\b in (\1){1}.',  # remove ' in ' and the string before and after ' in ' are the same ex: "Linhi Character in Characters" will keep only "Linhi"
+        r'\b(\w+)\b in (\1){1}.',
+        # remove ' in ' and the string before and after ' in ' are the same ex: "Linhi Character in Characters" will keep only "Linhi"
         r' in \b.+?$',  # any string starting with ' in ' and ending with the end of the string ex: ' in Characters'
     ]
     patterns = [re.compile(p) for p in patterns]
@@ -164,14 +165,14 @@ class UEVMGui(tk.Tk):
                 show_open_file_dialog = True
             else:
                 self.destroy()  # self.quit() won't work here
-                gui_f.log_error('No valid source to read data from. Application will be closed',)
+                gui_f.log_error('No valid source to read data from. Application will be closed', )
 
         if show_open_file_dialog:
             if self.open_file() == '':
                 gui_f.log_error('This application could not run without a file to read data from')
                 self.quit()
         # Quick edit the first row
-        self.editable_table.update_quick_edit(row=0)
+        self.editable_table.update_quick_edit(0)
         if gui_g.s.data_filters:
             self.load_filters(gui_g.s.data_filters)
 
@@ -278,7 +279,7 @@ class UEVMGui(tk.Tk):
         try:
             row_index = self.editable_table.get_row_clicked(event)
             self.update_rows_text(row_index)
-            image_url = self.editable_table.get_image_url(row=row_index)
+            image_url = self.editable_table.get_image_url(row_index)
             gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
         except IndexError:
             gui_f.show_default_image(canvas_image)
@@ -298,7 +299,7 @@ class UEVMGui(tk.Tk):
         :param event:
         """
         selected_row = event.widget.currentrow
-        self.editable_table.update_quick_edit(row=selected_row)
+        self.editable_table.update_quick_edit(selected_row)
 
     def on_entry_current_page_changed(self, _event=None) -> None:
         """
@@ -750,7 +751,7 @@ class UEVMGui(tk.Tk):
                     )  # no table update to avoid data duplication (saving asset tiwce)
 
                 if show_message:
-                    gui_f.box_message(f'Data for row {row_index+1} have been updated from marketplace')
+                    gui_f.box_message(f'Data for row {row_index + 1} have been updated from marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
@@ -921,7 +922,7 @@ class UEVMGui(tk.Tk):
         row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered count | {row_count} rows count'
         if row_index is not None:
             row_offset = (self.editable_table.current_page - 1) * self.editable_table.rows_per_page + 1
-            self._control_frame.lbt_image_preview.config(text=f'Image Preview for row {row_index+row_offset} {row_text}')
+            self._control_frame.lbt_image_preview.config(text=f'Image Preview for row {row_index + row_offset} {row_text}')
         else:
             self._control_frame.lbt_image_preview.config(text=f'No Image Preview {row_text}')
 

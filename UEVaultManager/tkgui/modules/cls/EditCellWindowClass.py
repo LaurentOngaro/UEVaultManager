@@ -24,6 +24,7 @@ class EditCellWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param editable_table: the table to edit.
     """
+
     def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index=0, editable_table=None):
         super().__init__(parent)
         self.title(title)
@@ -54,6 +55,7 @@ class EditCellWindow(tk.Toplevel):
         The frame containing the content of the window.
         :param container: the container of the frame.
         """
+
         def __init__(self, container):
             super().__init__(container)
 
@@ -62,6 +64,7 @@ class EditCellWindow(tk.Toplevel):
         The frame containing the control buttons of the window.
         :param container: the container of the frame.
         """
+
         def __init__(self, container):
             super().__init__(container)
             grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}

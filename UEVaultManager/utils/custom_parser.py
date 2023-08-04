@@ -11,6 +11,7 @@ class HiddenAliasSubparsersAction(argparse._SubParsersAction):
     """
     Subclass of argparse._SubParsersAction that hides aliases from the help output.
     """
+
     def add_parser(self, name: str, **kwargs):
         """
         Add a parser to the set of parsers for this action.

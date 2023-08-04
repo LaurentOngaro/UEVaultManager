@@ -27,6 +27,7 @@ class ExtendedWidget:
     :param col: column of the widget.
     :return: ExtendedWidget instance.
     """
+
     def __init__(self, tag=None, row=-1, col=-1, default_content=''):
         self.tag = tag
         self.col = col
@@ -144,6 +145,7 @@ class ExtendedEntry(ExtendedWidget, ttk.Entry):
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedEntry instance.
     """
+
     def __init__(self, master=None, **kwargs):
         if master is None:
             print('A container is needed to display this widget')
@@ -171,6 +173,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedText instance.
     """
+
     def __init__(self, master=None, **kwargs):
         if master is None:
             print('A container is needed to display this widget')
@@ -234,6 +237,7 @@ class ExtendedLabel(ExtendedWidget, ttk.Label):
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedLabel instance.
     """
+
     def __init__(self, master=None, **kwargs):
         if master is None:
             print('A container is needed to display this widget')
@@ -257,6 +261,7 @@ class ExtendedCheckButton(ExtendedWidget):
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedCheckButton instance.
     """
+
     def __init__(self, master, label=None, images_folder=None, change_state_on_click=True, **kwargs):
         if master is None:
             print('A container is needed to display this widget')
@@ -381,6 +386,7 @@ class ExtendedButton(ExtendedWidget, ttk.Button):
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedButton instance.
     """
+
     def __init__(self, master=None, command='', **kwargs):
         if master is None:
             print('A container is needed to display this widget')

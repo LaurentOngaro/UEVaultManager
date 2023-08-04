@@ -15,6 +15,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
     :param kwargs: Kwargs to pass to the widget.
     :return: TaggedLabelFrame instance.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._tagged_child = {}

@@ -84,7 +84,7 @@ def str_to_bool(val: str) -> bool:
     elif val in ('n', 'no', 'f', 'false', 'off', '0'):
         return False
     else:
-        raise ValueError('Invalid truth value %r' % (val,))
+        raise ValueError('Invalid truth value %r' % (val, ))
 
 
 def str_is_bool(val: str) -> bool:

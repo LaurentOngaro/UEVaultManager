@@ -68,7 +68,7 @@ class GUISettings:
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
         self.ue_valid_file_content = ('.uplugin', '.uproject')
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder
-        self.ue_valid_folder_content = ('content',)
+        self.ue_valid_folder_content = ('content', )
         # if a folder is in this tuple, the folder won't be scanned to find ue folders
         self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data')
         # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
@@ -349,11 +349,13 @@ class GUISettings:
             log_info('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {
-            'rows_per_page': {
-                'comment':
-                'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
-                'value': 36
-            },
+            'rows_per_page':
+                {
+                    'comment':
+                        'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
+                    'value':
+                        36
+                },
             'data_filters': {
                 'comment': 'Filters to apply to the datatable. Stored in json format',
                 'value': ''
@@ -378,38 +380,44 @@ class GUISettings:
                 'comment': 'Set to True to print debug information (GUI related only)',
                 'value': 'False'
             },
-            'never_update_data_files': {
-                'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
-                'value': 'False'
-            },
+            'never_update_data_files':
+                {
+                    'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
+                    'value': 'False'
+                },
             'reopen_last_file': {
                 'comment': 'Set to True to re-open the last file at startup if no input file is given',
                 'value': 'True'
             },
-            'use_colors_for_data': {
-                'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
-                'value': 'True'
-            },
+            'use_colors_for_data':
+                {
+                    'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
+                    'value': 'True'
+                },
             'last_opened_file': {
                 'comment': 'File name of the last opened file',
                 'value': ''
             },
-            'image_cache_max_time': {
-                'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
-                'value': str(60 * 60 * 24 * 15)
-            },
-            'cache_folder': {
-                'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
-                'value': '../../../cache'
-            },
-            'results_folder': {
-                'comment': 'Folder (relative or absolute) to store result files to read and save data from',
-                'value': '../../../results'
-            },
-            'scraping_folder': {
-                'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
-                'value': '../../../scraping'
-            },
+            'image_cache_max_time':
+                {
+                    'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
+                    'value': str(60 * 60 * 24 * 15)
+                },
+            'cache_folder':
+                {
+                    'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
+                    'value': '../../../cache'
+                },
+            'results_folder':
+                {
+                    'comment': 'Folder (relative or absolute) to store result files to read and save data from',
+                    'value': '../../../results'
+                },
+            'scraping_folder':
+                {
+                    'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
+                    'value': '../../../scraping'
+                },
             'folders_to_scan': {
                 'comment': 'List of Folders to scan for assets. Their content will be added to the list',
                 'value': ''

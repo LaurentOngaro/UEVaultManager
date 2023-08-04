@@ -14,6 +14,7 @@ class AppConf(configparser.ConfigParser):
     :param args: arguments.
     :param kwargs: keyword arguments.
     """
+
     def __init__(self, *args, **kwargs):
         self.modified = False
         self.read_only = False

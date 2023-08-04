@@ -27,6 +27,7 @@ class DisplayContentWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param quit_on_close: whether to quit the application when the window is closed.
     """
+
     def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index=0, quit_on_close=False):
         super().__init__()
         self.title(title)
@@ -63,6 +64,7 @@ class DisplayContentWindow(tk.Toplevel):
         The frame containing the content of the window.
         :param container: the container of the frame.
         """
+
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3}
@@ -81,6 +83,7 @@ class DisplayContentWindow(tk.Toplevel):
         The frame containing the control buttons of the window.
         :param container: the container of the frame.
         """
+
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}

@@ -24,6 +24,7 @@ class EditRowWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param editable_table: the table to edit.
     """
+
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
         super().__init__(parent)
         self.title(title)
@@ -58,6 +59,7 @@ class EditRowWindow(tk.Toplevel):
         The frame containing the editable fields.
         :param container: the parent window.
         """
+
         def __init__(self, container):
             super().__init__(container)
 
@@ -66,6 +68,7 @@ class EditRowWindow(tk.Toplevel):
         The frame containing the buttons.
         :param container: the parent window.
         """
+
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.X, 'anchor': tk.NW}

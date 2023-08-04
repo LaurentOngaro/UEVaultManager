@@ -16,6 +16,7 @@ class WebImage:
     Class to download an image from an url and get it as a PhotoImage.
     :param url: the url of the image to download.
     """
+
     def __init__(self, url: str = None):
         # if no URL is given, return
         if url is None or url == '':

@@ -17,6 +17,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
     :param container: The parent container.
     :param data_table: The EditableTable instance.
     """
+
     def __init__(self, container, data_table: EditableTable):
         super().__init__()
         if container is None:

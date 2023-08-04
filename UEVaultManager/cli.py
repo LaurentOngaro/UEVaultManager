@@ -1324,11 +1324,11 @@ def main():
     auth_parser = subparsers.add_parser('auth', help='Authenticate with the Epic Games Store')
     clean_parser = subparsers.add_parser('cleanup', help='Remove old temporary, metadata, and manifest files')
     info_parser = subparsers.add_parser('info', help='Prints info about specified app name or manifest')
-    list_parser = subparsers.add_parser('list', aliases=('list-assets',), help='List owned assets')
+    list_parser = subparsers.add_parser('list', aliases=('list-assets', ), help='List owned assets')
     list_files_parser = subparsers.add_parser('list-files', help='List files in manifest')
     status_parser = subparsers.add_parser('status', help='Show UEVaultManager status information')
-    edit_parser = subparsers.add_parser('edit', aliases=('edit-assets',), help='Edit the assets list file')
-    scrap_parser = subparsers.add_parser('scrap', aliases=('scrap-assets',), help='Scrap all the available assets on the marketplace')
+    edit_parser = subparsers.add_parser('edit', aliases=('edit-assets', ), help='Edit the assets list file')
+    scrap_parser = subparsers.add_parser('scrap', aliases=('scrap-assets', ), help='Scrap all the available assets on the marketplace')
 
     # hidden commands have no help text
     get_token_parser = subparsers.add_parser('get-token')

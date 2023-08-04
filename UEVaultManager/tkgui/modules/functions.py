@@ -218,6 +218,7 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
     :param output_on_gui: Determines whether to print the result on the GUI.
     :return: The pretty printed JSON object.
     """
+
     def _process(obj, level=0):
         lines = []
         indent_str = ' ' * indent * level

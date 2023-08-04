@@ -83,7 +83,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         # lbl_folders_to_scan.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # cur_col += 1
         cb_folders_to_scan = ttk.Combobox(lblf_folders_to_scan, values=self._folders_to_scan, state='readonly', width=35)
-        cb_folders_to_scan.grid(row=cur_row, column=cur_col, columnspan=2 , **grid_fw_options)
+        cb_folders_to_scan.grid(row=cur_row, column=cur_col, columnspan=2, **grid_fw_options)
         self._cb_folders_to_scan = cb_folders_to_scan
         # lblf_folders_to_scan row
         cur_row += 1

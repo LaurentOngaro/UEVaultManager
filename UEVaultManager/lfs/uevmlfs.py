@@ -20,6 +20,7 @@ class UEVMLFS:
     Class to handle all local filesystem related tasks.
     :param config_file: Path to config file to use instead of default.
     """
+
     def __init__(self, config_file=None):
         self.log = logging.getLogger('UEVMLFS')
 
@@ -130,7 +131,9 @@ class UEVMLFS:
             self.config.set('UEVaultManager', 'create_output_backup', 'True')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'create_log_backup'):
-            self.config.set('UEVaultManager', '; Set to True to create a backup of the log files that store asset analysis. It is suffixed by a timestamp')
+            self.config.set(
+                'UEVaultManager', '; Set to True to create a backup of the log files that store asset analysis. It is suffixed by a timestamp'
+            )
             self.config.set('UEVaultManager', 'create_log_backup', 'True')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'verbose_mode'):
@@ -159,7 +162,9 @@ class UEVMLFS:
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'engine_version_for_obsolete_assets'):
             self.config.set('UEVaultManager', '; Minimal unreal engine version to check for obsolete assets (default is 4.26)')
-            self.config.set('UEVaultManager', 'engine_version_for_obsolete_assets', '4.26')  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
+            self.config.set(
+                'UEVaultManager', 'engine_version_for_obsolete_assets', '4.26'
+            )  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
             has_changed = True
 
         if has_changed:

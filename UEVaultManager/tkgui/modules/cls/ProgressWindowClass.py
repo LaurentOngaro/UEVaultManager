@@ -30,6 +30,7 @@ class ProgressWindow(tk.Toplevel):
     :param function_parameters: the parameters of the function.
     :param quit_on_close: whether to quit the application when the window is closed.
     """
+
     def __init__(
         self,
         title: str,
@@ -92,6 +93,7 @@ class ProgressWindow(tk.Toplevel):
         The frame that contains the content of the window.
         :param container: the container.
         """
+
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'padx': 5, 'pady': 5, 'fill': tk.X}
@@ -113,6 +115,7 @@ class ProgressWindow(tk.Toplevel):
         :param show_start_button: whether to show the start button.
         :param show_stop_button: whether to show the stop button.
         """
+
         def __init__(self, container, show_start_button=True, show_stop_button=True):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
