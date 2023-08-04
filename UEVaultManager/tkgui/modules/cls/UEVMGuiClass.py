@@ -16,8 +16,6 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import GrabResult
-from UEVaultManager.models.csv_sql_fields import get_typed_value, get_csv_field_name, is_on_state
-from UEVaultManager.models.types import CSVFieldState
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
@@ -324,9 +322,9 @@ class UEVMGui(tk.Tk):
         :param event: ignored but required for an event handler.
         :param tag: tag of the widget that triggered the event.
         """
-        value, widget = self._check_and_get_widget_value(tag=tag)
+        value, widget = self._check_and_get_widget_value(tag)
         if widget:
-            self.editable_table.quick_edit_save_value(col=widget.col, row=widget.row, value=value, tag=tag)
+            self.editable_table.quick_edit_save_value(widget.col, widget.row, value, tag)
 
     # noinspection PyUnusedLocal
     def on_quick_edit_focus_in(self, event=None, tag='') -> None:
@@ -348,10 +346,10 @@ class UEVMGui(tk.Tk):
         :param event: event that triggered the call.
         :param tag: tag of the widget that triggered the event.
         """
-        _, widget = self._check_and_get_widget_value(tag=tag)
+        _, widget = self._check_and_get_widget_value(tag)
         if widget:
             value = widget.switch_state(event=event)
-            self.editable_table.quick_edit_save_value(col=widget.col, row=widget.row, value=value, tag=tag)
+            self.editable_table.quick_edit_save_value(widget.col, widget.row, value, tag)
 
     def on_close(self, _event=None) -> None:
         """
@@ -644,7 +642,7 @@ class UEVMGui(tk.Tk):
             self.core.scan_assets_logger.info(msg)
         date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
-        data = self.editable_table.get_data()
+        data = self.editable_table.get_data()  # get_data checked
         count = len(valid_folders.items())
         pw.reset(new_text='Scrapping data and adding assets to the table', new_max_value=count)
         pw.show_progress_bar()
@@ -721,35 +719,6 @@ class UEVMGui(tk.Tk):
             scraper.asset_db_handler.set_assets(asset_data)
         return asset_data
 
-    def _update_row(self, row_index: int, ue_asset_data: dict, no_table_update=False):
-        if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
-            return
-        if isinstance(ue_asset_data, list):
-            ue_asset_data = ue_asset_data[0]
-        table_data = self.editable_table.get_data()
-        col_index = self.editable_table.model.df.columns.get_loc('Asset_id')
-        asset_id = table_data.iat[row_index, col_index]
-        gui_f.log_info(f'Updating row {row_index} with asset_id={asset_id}')
-        for key, value in ue_asset_data.items():
-            typed_value = get_typed_value(sql_field=key, value=value)
-            # get the column index of the key
-            col_name = get_csv_field_name(key)
-            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
-                continue
-            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
-                continue
-            try:
-                col_index = self.editable_table.model.df.columns.get_loc(col_name)
-                # self.editable_table.model.df.iat[row_index, col_index] = typed_value
-                table_data.iat[row_index, col_index] = typed_value
-            except (KeyError, IndexError) as error:
-                gui_f.log_warning(f'Error when updating row {row_index} and column {col_name}: {error}')
-                continue
-        if not no_table_update:
-            self.editable_table.add_to_rows_to_save(row_index)
-            self.editable_table.must_save = True
-            self.editable_table.redraw()
-
     def scrap_row(self, marketplace_url: str = None, row_index: int = None, forced_data=None, show_message=True):
         """
         Scrap the data for the current row or a given marketplace_url.
@@ -776,7 +745,7 @@ class UEVMGui(tk.Tk):
                 marketplace_url = row_data['Url']
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
-                    self._update_row(
+                    self.editable_table.update_row(
                         row_index=row_index, ue_asset_data=asset_data, no_table_update=True
                     )  # no table update to avoid data duplication (saving asset tiwce)
 
@@ -784,7 +753,7 @@ class UEVMGui(tk.Tk):
                     gui_f.box_message(f'Data for row {row_index+1} have been updated from marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-            self._update_row(row_index=row_index, ue_asset_data=asset_data)
+            self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
 
     def load_filters(self, filters=None):
         """
@@ -929,13 +898,13 @@ class UEVMGui(tk.Tk):
         """
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-            categories = list(self.editable_table.get_data()['Category'].cat.categories)
+            categories = list(self.editable_table.get_data()['Category'].cat.categories)  # get_data checked
         except (AttributeError, TypeError, KeyError):
             categories = []
         categories.insert(0, gui_g.s.default_value_for_all)
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-            grab_results = list(self.editable_table.get_data()['Grab result'].cat.categories)
+            grab_results = list(self.editable_table.get_data()['Grab result'].cat.categories)  # get_data checked
         except (AttributeError, TypeError, KeyError):
             grab_results = []
         grab_results.insert(0, gui_g.s.default_value_for_all)
@@ -990,9 +959,8 @@ class UEVMGui(tk.Tk):
         if gui_g.UEVM_cli_ref is None:
             gui_f.from_cli_only_message()
             return
-        row = self.editable_table.getSelectedRow()
-        col = self.editable_table.get_data().columns.get_loc('App name')
-        app_name = self.editable_table.get_cell(row, col)
+        row_index = self.editable_table.getSelectedRow()
+        app_name = self.editable_table.get_cell(row_index, 'App name')
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY
         # set default options for the cli command to execute
         gui_g.UEVM_cli_args['gui'] = True  # mandatory for displaying the result in the DisplayContentWindow
