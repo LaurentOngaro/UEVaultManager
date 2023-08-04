@@ -124,7 +124,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         if widget is not None:
             widget.set_content(widget.default_content)
 
-    def set_child_values(self, tag='', content='', label=None, row=-1, col=-1) -> None:
+    def set_child_values(self, tag='', content='', label=None, row: int = -1, col: int = -1) -> None:
         """
         Set the content of the child widget associated with the given tag.
         Also sets its row and column index.

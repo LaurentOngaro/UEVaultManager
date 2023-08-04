@@ -33,10 +33,10 @@ class GUISettings:
     :param config_file: Path to config file to use instead of default
 .
     """
+    path: str = ''
+    config_path: str = ''
 
     def __init__(self, config_file=None):
-        self.path = ''
-        self.config_path = ''
         self.config = AppConf(comment_prefixes='/', allow_no_value=True)
 
         self.init_gui_config_file(config_file)
@@ -45,25 +45,25 @@ class GUISettings:
         # the following folders are relative to the current file location
         # they must be used trought path_from_relative_to_absolute
         # following vars are not set as properties to avoid storing absolute paths in the config file
-        self.cache_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
-        self.results_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
-        self.scraping_folder = gui_fn.path_from_relative_to_absolute(self.config_vars['scraping_folder'])
+        self.cache_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
+        self.results_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
+        self.scraping_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['scraping_folder'])
 
         # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
-        self.assets_folder = gui_fn.path_from_relative_to_absolute('../../assets')
+        self.assets_folder: str = gui_fn.path_from_relative_to_absolute('../../assets')
 
-        self.app_icon_filename = os.path.join(self.assets_folder, 'main.ico')
-        self.default_image_filename = os.path.join(self.assets_folder, 'UEVM_200x200.png')
+        self.app_icon_filename: str = os.path.join(self.assets_folder, 'main.ico')
+        self.default_image_filename: str = os.path.join(self.assets_folder, 'UEVM_200x200.png')
 
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
-            self.csv_filename = self.config_vars['last_opened_file']
+            self.csv_filename: str = self.config_vars['last_opened_file']
         else:
-            self.csv_filename = os.path.join(self.results_folder, 'list.csv')
+            self.csv_filename: str = os.path.join(self.results_folder, 'list.csv')
 
-        self.sqlite_filename = os.path.join(self.scraping_folder, 'assets.db')
+        self.sqlite_filename: str = os.path.join(self.scraping_folder, 'assets.db')
 
-        self.app_title = f'{__name__} Gui v{__version__} ({__codename__})'
-        self.app_monitor = 1
+        self.app_title: str = f'{__name__} Gui v{__version__} ({__codename__})'
+        self.app_monitor: int = 1
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
         self.ue_valid_file_content = ('.uplugin', '.uproject')
@@ -74,8 +74,8 @@ class GUISettings:
         # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
         self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')
 
-        self.csv_datetime_format = '%Y-%m-%d %H:%M:%S'
-        self.epic_datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+        self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
+        self.epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
         self.data_filetypes = (
             ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
         )
@@ -84,18 +84,18 @@ class GUISettings:
         # The key is a string that must be in the url file name or asset name
         # default value if no key is found
         self.minimal_fuzzy_score_by_name = {'default': 70, 'brushify': 80, 'elite_landscapes': 90}
-        self.preview_max_width = 150
-        self.preview_max_height = 150
-        self.default_global_search = 'Text to search...'
-        self.default_value_for_all = 'All'
-        self.empty_cell = 'None'
-        self.empty_row_prefix = 'dummy_row_'
-        self.expand_columns_factor = 20
-        self.contract_columns_factor = 20
+        self.preview_max_width: int = 150
+        self.preview_max_height: int = 150
+        self.default_global_search: str = 'Text to search...'
+        self.default_value_for_all: str = 'All'
+        self.empty_cell: str = 'None'
+        self.empty_row_prefix: str = 'dummy_row_'
+        self.expand_columns_factor: int = 20
+        self.contract_columns_factor: int = 20
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
         # dark themes: "darkly", "superhero", "solar", "cyborg", "vapor"
-        self.theme_name = 'lumen'
+        self.theme_name: str = 'lumen'
         self.theme_font = ('Verdana', 8)
         self.datatable_default_pref = {
             'align': 'w',  #
@@ -112,7 +112,7 @@ class GUISettings:
             'rowselectedcolor': '#E4DED4',  #
             'textcolor': 'black'  #
         }
-        self.engine_version_for_obsolete_assets = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
+        self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
 
     def get_rows_per_page(self):
         """ Getter for rows_per_page """
@@ -349,13 +349,11 @@ class GUISettings:
             log_info('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {
-            'rows_per_page':
-                {
-                    'comment':
-                        'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
-                    'value':
-                        36
-                },
+            'rows_per_page': {
+                'comment':
+                'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
+                'value': 36
+            },
             'data_filters': {
                 'comment': 'Filters to apply to the datatable. Stored in json format',
                 'value': ''
@@ -380,44 +378,38 @@ class GUISettings:
                 'comment': 'Set to True to print debug information (GUI related only)',
                 'value': 'False'
             },
-            'never_update_data_files':
-                {
-                    'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
-                    'value': 'False'
-                },
+            'never_update_data_files': {
+                'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
+                'value': 'False'
+            },
             'reopen_last_file': {
                 'comment': 'Set to True to re-open the last file at startup if no input file is given',
                 'value': 'True'
             },
-            'use_colors_for_data':
-                {
-                    'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
-                    'value': 'True'
-                },
+            'use_colors_for_data': {
+                'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
+                'value': 'True'
+            },
             'last_opened_file': {
                 'comment': 'File name of the last opened file',
                 'value': ''
             },
-            'image_cache_max_time':
-                {
-                    'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
-                    'value': str(60 * 60 * 24 * 15)
-                },
-            'cache_folder':
-                {
-                    'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
-                    'value': '../../../cache'
-                },
-            'results_folder':
-                {
-                    'comment': 'Folder (relative or absolute) to store result files to read and save data from',
-                    'value': '../../../results'
-                },
-            'scraping_folder':
-                {
-                    'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
-                    'value': '../../../scraping'
-                },
+            'image_cache_max_time': {
+                'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
+                'value': str(60 * 60 * 24 * 15)
+            },
+            'cache_folder': {
+                'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
+                'value': '../../../cache'
+            },
+            'results_folder': {
+                'comment': 'Folder (relative or absolute) to store result files to read and save data from',
+                'value': '../../../results'
+            },
+            'scraping_folder': {
+                'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
+                'value': '../../../scraping'
+            },
             'folders_to_scan': {
                 'comment': 'List of Folders to scan for assets. Their content will be added to the list',
                 'value': ''

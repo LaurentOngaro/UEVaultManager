@@ -65,34 +65,34 @@ class UEAssetScraper:
 
     def __init__(
         self,
-        start=0,
-        stop=0,
-        assets_per_page=100,
-        sort_by='effectiveDate',  # other values: 'title','currentPrice','discountPercentage'
-        sort_order='DESC',  # other values: 'ASC'
-        timeout=10.0,
-        max_threads=8,
-        store_in_files=True,
-        store_in_db=True,
-        store_ids=False,
-        use_raw_format=True,
-        load_from_files=False,
-        clean_database=False,
+        start: int = 0,
+        stop: int = 0,
+        assets_per_page: int = 100,
+        sort_by: str = 'effectiveDate',  # other values: 'title','currentPrice','discountPercentage'
+        sort_order: str = 'DESC',  # other values: 'ASC'
+        timeout: float = 10.0,
+        max_threads: int = 8,
+        store_in_files: bool = True,
+        store_in_db: bool = True,
+        store_ids: bool = False,
+        use_raw_format: bool = True,
+        load_from_files: bool = False,
+        clean_database: bool = False,
         engine_version_for_obsolete_assets=None,
         egs: EPCAPI = None,
         progress_window=None,  # don't use a typed annotation here to avoid import
     ) -> None:
-        self.start = start
-        self.stop = stop
-        self.assets_per_page = assets_per_page
-        self.sort_by = sort_by
-        self.sort_order = sort_order
-        self.load_from_files = load_from_files
-        self.store_in_files = store_in_files
-        self.store_in_db = store_in_db
+        self.start: int = start
+        self.stop: int = stop
+        self.assets_per_page: int = assets_per_page
+        self.sort_by: str = sort_by
+        self.sort_order: str = sort_order
+        self.load_from_files: bool = load_from_files
+        self.store_in_files: bool = store_in_files
+        self.store_in_db: bool = store_in_db
         self.store_ids = store_ids
-        self.use_raw_format = use_raw_format
-        self.clean_database = clean_database
+        self.use_raw_format: bool = use_raw_format
+        self.clean_database: bool = clean_database
         # test several ways to get the following value depending on the context
         # noinspection PyBroadException
         try:
@@ -103,15 +103,15 @@ class UEAssetScraper:
         except Exception:
             self.engine_version_for_obsolete_assets = None
 
-        self.last_run_filename = 'last_run.json'
-        self.urls_list_filename = 'urls_list.txt'
-        self.assets_data_folder = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
-        self.owned_assets_data_folder = os.path.join(gui_g.s.scraping_folder, 'assets', 'owned')
-        self.db_name = os.path.join(gui_g.s.scraping_folder, 'assets.db')
-        self.max_threads = max_threads
-        self.threads_count = 0
+        self.last_run_filename: str = 'last_run.json'
+        self.urls_list_filename: str = 'urls_list.txt'
+        self.assets_data_folder: str = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
+        self.owned_assets_data_folder: str = os.path.join(gui_g.s.scraping_folder, 'assets', 'owned')
+        self.db_name: str = os.path.join(gui_g.s.scraping_folder, 'assets.db')
+        self.max_threads: int = max_threads
+        self.threads_count: int = 0
 
-        self.files_count = 0
+        self.files_count: int = 0
         self.scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
         self.scraped_ids = []  # store IDs of all items
         self.owned_asset_ids = []  # store IDs of all owned items
@@ -121,7 +121,7 @@ class UEAssetScraper:
         self.logger = logging.getLogger(__name__)
         self.asset_db_handler = UEAssetDbHandler(self.db_name)
         self.thread_executor = None
-        self.thread_executor_must_stop = False
+        self.thread_executor_must_stop: bool = False
 
         if progress_window is None:
             progress_window = FakeProgressWindow()

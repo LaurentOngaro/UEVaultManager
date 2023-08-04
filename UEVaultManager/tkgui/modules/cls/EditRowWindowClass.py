@@ -24,21 +24,19 @@ class EditRowWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param editable_table: the table to edit.
     """
+    must_save: bool = False
 
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
         super().__init__(parent)
         self.title(title)
-        style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
-        self.style = style
-        geometry = gui_fn.center_window_on_screen(screen_index, width, height)
-        self.geometry(geometry)
+        self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
 
         self.editable_table = editable_table
-        self.must_save = False
         self.initial_values = []
-        self.width = width
+        self.width: int = width
         # the photoimage is stored is the variable to avoid garbage collection
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.canvas_image = None

@@ -27,27 +27,16 @@ class DisplayContentWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param quit_on_close: whether to quit the application when the window is closed.
     """
+    keep_existing: bool = False  # whether to keep the existing content when adding a new one
 
-    def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index=0, quit_on_close=False):
+    def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index: int = 0, quit_on_close: bool = False):
         super().__init__()
         self.title(title)
-        style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
-        self.style = style
-        # if tk._default_root == self :
-        #     style = gui_f.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
-        #     print(f"style SELF = {style.theme_use()}")
-        # else:
-        #     style = ttk.Style(tk._default_root)
-        #     print(f"style ROOT = {style.theme_use()}")
-        #
-        # self.style = style
-
-        geometry = gui_fn.center_window_on_screen(screen_index, width, height)
-        self.geometry(geometry)
+        self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
         self.quit_on_close = quit_on_close
-        self.keep_existing = False  # whether to keep the existing content when adding a new one
         self.content_frame = self.ContentFrame(self)
         self.control_frame = self.ControlFrame(self)
 

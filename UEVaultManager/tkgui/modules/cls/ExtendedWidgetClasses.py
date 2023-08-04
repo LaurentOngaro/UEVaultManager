@@ -28,11 +28,11 @@ class ExtendedWidget:
     :return: ExtendedWidget instance.
     """
 
-    def __init__(self, tag=None, row=-1, col=-1, default_content=''):
-        self.tag = tag
-        self.col = col
-        self.row = row
-        self.default_content = default_content if default_content else self.tag_to_label(tag)
+    def __init__(self, tag=None, row: int = -1, col: int = -1, default_content=''):
+        self.tag: str = tag
+        self.col: int = col
+        self.row: int = row
+        self.default_content = default_content if default_content is not None else self.tag_to_label(tag)
         # can't call this here because the set_content function is specific and overridden in the derived classes
         # self.reset_content()
 
@@ -261,21 +261,21 @@ class ExtendedCheckButton(ExtendedWidget):
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedCheckButton instance.
     """
+    default_content = False
 
-    def __init__(self, master, label=None, images_folder=None, change_state_on_click=True, **kwargs):
+    def __init__(self, master, label: str = None, images_folder: str = '', change_state_on_click: bool = True, **kwargs):
         if master is None:
             print('A container is needed to display this widget')
             return
         ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ExtendedWidget.__init__(self, **ext_args)
         # by default , images are searched in a folder named 'statics' in the directory of this file
-        if images_folder is None:
+        if not images_folder:
             images_folder = path_from_relative_to_absolute('./assets/')
         self._img_checked = tk.PhotoImage(file=os.path.join(images_folder, 'checked_16.png'))  # Path to the checked image
         self._img_uncheckked = tk.PhotoImage(file=os.path.join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
         self.widget_type = WidgetType.CHECKBUTTON
-        self.default_content = False
-        self._var = tk.BooleanVar(value=self.default_content)
+        self._var = tk.BooleanVar(value=bool(self.default_content))
         frm_inner = ttk.Frame(master=master)
         lbl_text = ttk.Label(frm_inner, text='')  # no text bydefault
         check_label = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
@@ -289,7 +289,7 @@ class ExtendedCheckButton(ExtendedWidget):
             self.set_label(label)
         # noinspection PyTypeChecker
         # keep "bad" type to keep compatible signatures with overriden methods
-        self.set_content(self.default_content)
+        self.set_content(bool(self.default_content))
 
         if change_state_on_click:
             self.bind("<Button-1>", self.switch_state)
@@ -387,7 +387,7 @@ class ExtendedButton(ExtendedWidget, ttk.Button):
     :return: ExtendedButton instance.
     """
 
-    def __init__(self, master=None, command='', **kwargs):
+    def __init__(self, master=None, command: str = '', **kwargs):
         if master is None:
             print('A container is needed to display this widget')
             return

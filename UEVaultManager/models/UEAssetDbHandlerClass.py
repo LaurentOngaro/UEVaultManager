@@ -30,12 +30,12 @@ class UEAssetDbHandler:
 
     Note: The database will be created if it doesn't exist.
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    db_version: DbVersionNum = DbVersionNum.V0  # updated in check_and_upgrade_database()
+    connection = None
 
     def __init__(self, database_name: str, reset_database: bool = False):
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.database_name = database_name
-        self.db_version = DbVersionNum.V0  # updated in check_and_upgrade_database()
         # the user fields that must be preserved when updating the database
         # these fields are also present in the asset table and in the UEAsset.init_data() method
         # THEY WILL BE PRESERVED when parsing the asset data
@@ -49,7 +49,7 @@ class UEAssetDbHandler:
         # we also need to preserve the values in the database that are not in the (CSV) table
         asset_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.ASSET_ONLY])
         self.preserved_data_fields.extend(asset_fields)
-        self.connection = None
+        self.database_name: str = database_name
         self._init_connection()
         if reset_database:
             self.drop_tables()
@@ -63,7 +63,7 @@ class UEAssetDbHandler:
         """
 
         def __init__(self, database_name: str):
-            self.database_name = database_name
+            self.database_name: str = database_name
             self.conn = sqlite3.connect(self.database_name)
 
         def __enter__(self):

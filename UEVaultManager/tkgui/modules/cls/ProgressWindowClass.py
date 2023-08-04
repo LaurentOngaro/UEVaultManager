@@ -37,25 +37,24 @@ class ProgressWindow(tk.Toplevel):
         width: int = 300,
         height: int = 150,
         icon=None,
-        screen_index=0,
-        max_value=100,
-        show_start_button=False,
-        show_stop_button=True,
-        show_progress=True,
+        screen_index: int = 0,
+        max_value: int = 100,
+        show_start_button: bool = False,
+        show_stop_button: bool = True,
+        show_progress: bool = True,
         function=None,
         function_parameters: dict = None,
-        quit_on_close=False
+        quit_on_close: bool = False
     ):
         super().__init__()
         self.title(title)
-        geometry = gui_fn.center_window_on_screen(screen_index, width, height)
-        self.geometry(geometry)
+        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
-        self._thread_check_delay = 100
-        self.must_end = False
-        self.quit_on_close = quit_on_close
-        self.max_value = max_value
-        self.continue_execution = True
+        self._thread_check_delay: int = 100
+        self.must_end: bool = False
+        self.quit_on_close: bool = quit_on_close
+        self.max_value: int = max_value
+        self.continue_execution: bool = True
         self.function = function
         self.function_params = function_parameters
         self.function_return_value = None

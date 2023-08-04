@@ -16,8 +16,8 @@ class AppConf(configparser.ConfigParser):
     """
 
     def __init__(self, *args, **kwargs):
-        self.modified = False
-        self.read_only = False
+        self.modified: bool = False
+        self.read_only: bool = False
         self.mod_time = None
         super().__init__(*args, **kwargs)
         self.optionxform = str

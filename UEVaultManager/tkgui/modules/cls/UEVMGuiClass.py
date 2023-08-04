@@ -84,28 +84,25 @@ class UEVMGui(tk.Tk):
         self,
         title: str,
         icon='',
-        screen_index=0,
-        data_source_type=DataSourceType.FILE,
+        screen_index: int = 0,
+        data_source_type: DataSourceType = DataSourceType.FILE,
         data_source=None,
-        show_open_file_dialog=False,
-        rebuild_data=False,
+        show_open_file_dialog: bool = False,
+        rebuild_data: bool = False,
     ):
         super().__init__()
         self.data_source_type = data_source_type
         if data_source_type == DataSourceType.SQLITE:
             show_open_file_dialog = False
-
         self.title(title)
-        style = set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
-        self.style = style
-        width = gui_g.s.width
-        height = gui_g.s.height
-        x_pos = gui_g.s.x_pos
-        y_pos = gui_g.s.y_pos
+        self.style = set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        width: int = gui_g.s.width
+        height: int = gui_g.s.height
+        x_pos: int = gui_g.s.x_pos
+        y_pos: int = gui_g.s.y_pos
         if not (x_pos and y_pos):
             x_pos, y_pos = gui_fn.get_center_screen_positions(screen_index, width, height)
-        geometry: str = f'{width}x{height}+{x_pos}+{y_pos}'
-        self.geometry(geometry)
+        self.geometry(f'{width}x{height}+{x_pos}+{y_pos}')
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, True)
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
@@ -298,8 +295,8 @@ class UEVMGui(tk.Tk):
         When the selection changes, show the selected row in the quick edit frame.
         :param event:
         """
-        selected_row = event.widget.currentrow
-        self.editable_table.update_quick_edit(selected_row)
+        row_index = self.editable_table.get_row_index_with_offet(event.widget.currentrow)
+        self.editable_table.update_quick_edit(row_index)
 
     def on_entry_current_page_changed(self, _event=None) -> None:
         """
@@ -325,7 +322,7 @@ class UEVMGui(tk.Tk):
         """
         value, widget = self._check_and_get_widget_value(tag)
         if widget:
-            self.editable_table.quick_edit_save_value(widget.col, widget.row, value, tag)
+            self.editable_table.quick_edit_save_value(row_index=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
     def on_quick_edit_focus_in(self, event=None, tag='') -> None:
@@ -350,7 +347,7 @@ class UEVMGui(tk.Tk):
         _, widget = self._check_and_get_widget_value(tag)
         if widget:
             value = widget.switch_state(event=event)
-            self.editable_table.quick_edit_save_value(widget.col, widget.row, value, tag)
+            self.editable_table.quick_edit_save_value(row_index=widget.row, col_index=widget.col, value=value, tag=tag)
 
     def on_close(self, _event=None) -> None:
         """
@@ -742,13 +739,12 @@ class UEVMGui(tk.Tk):
 
         if marketplace_url is None:
             for row_index in row_indexes:
+                row_index = self.editable_table.get_row_index_with_offet(row_index)
                 row_data = self.editable_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
-                    self.editable_table.update_row(
-                        row_index=row_index, ue_asset_data=asset_data, no_table_update=True
-                    )  # no table update to avoid data duplication (saving asset tiwce)
+                    self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
 
                 if show_message:
                     gui_f.box_message(f'Data for row {row_index + 1} have been updated from marketplace')
@@ -917,8 +913,8 @@ class UEVMGui(tk.Tk):
         """
         if self._control_frame is None:
             return
-        row_count_filtered = self.editable_table.row_filtered_count
-        row_count = self.editable_table.row_count
+        row_count_filtered = self.editable_table.current_count
+        row_count = self.editable_table.data_count
         row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered count | {row_count} rows count'
         if row_index is not None:
             row_offset = (self.editable_table.current_page - 1) * self.editable_table.rows_per_page + 1
@@ -961,7 +957,7 @@ class UEVMGui(tk.Tk):
             gui_f.from_cli_only_message()
             return
         row_index = self.editable_table.getSelectedRow()
-        app_name = self.editable_table.get_cell(row_index, 'App name')
+        app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('App name'))
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY
         # set default options for the cli command to execute
         gui_g.UEVM_cli_args['gui'] = True  # mandatory for displaying the result in the DisplayContentWindow

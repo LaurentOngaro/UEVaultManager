@@ -44,8 +44,8 @@ class EditableTable(Table):
     """
     _data = {}
     _filtered = {}  # do not put the word "data" here to makje search in code easier
-    _last_selected_row = -1
-    _last_selected_col = -1
+    _last_selected_row: int = -1
+    _last_selected_col: int = -1
     _changed_rows = []
     _deleted_asset_ids = []
     _db_handler = None
@@ -55,32 +55,32 @@ class EditableTable(Table):
 
     _edit_row_window = None
     _edit_row_entries = None
-    _edit_row_index = None
+    _edit_row_index: int = -1
 
     _edit_cell_window = None
-    _edit_cell_row_index = None
-    _edit_cell_col_index = None
+    _edit_cell_row_index: int = -1
+    _edit_cell_col_index: int = -1
     _edit_cell_widget = None
 
     _progress_window = None
 
-    pagination_enabled = True
-    is_filtered = False
-    current_page = 1
-    total_pages = 1
-    must_save = False
-    must_rebuild = False
-    row_count = 0
-    row_filtered_count = 0
+    pagination_enabled: bool = True
+    is_filtered: bool = False
+    current_page: int = 1
+    total_pages: int = 1
+    must_save: bool = False
+    must_rebuild: bool = False
+    data_count: int = 0
+    current_count: int = 0
 
     def __init__(
         self,
         container=None,
-        data_source_type=DataSourceType.FILE,
+        data_source_type: DataSourceType = DataSourceType.FILE,
         data_source=None,
-        rows_per_page=36,
-        show_toolbar=False,
-        show_statusbar=False,
+        rows_per_page: int = 36,
+        show_toolbar: bool = False,
+        show_statusbar: bool = False,
         update_page_numbers_func=None,
         update_rows_text_func=None,
         **kwargs
@@ -88,13 +88,13 @@ class EditableTable(Table):
         if container is None:
             raise ValueError('container cannot be None')
         self._container = container
+        self.data_source_type: DataSourceType = data_source_type
+        self.data_source = data_source
+        self.show_toolbar: bool = show_toolbar
+        self.show_statusbar: bool = show_statusbar
+        self.rows_per_page: int = rows_per_page
         self.update_page_numbers_func = update_page_numbers_func
         self.update_rows_text_func = update_rows_text_func
-        self.data_source_type = data_source_type
-        self.data_source = data_source
-        self.show_toolbar = show_toolbar
-        self.show_statusbar = show_statusbar
-        self.rows_per_page = rows_per_page
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
         if not self.load_data():
@@ -196,8 +196,10 @@ class EditableTable(Table):
         :return: data.
         """
         if self.is_filtered:
+            self.current_count = len(self._filtered)
             return self._filtered
         else:
+            self.current_count = len(self._data)
             return self._data
 
     def get_row_index_with_offet(self, row_index=None) -> int:
@@ -266,12 +268,12 @@ class EditableTable(Table):
         except EmptyDataError:
             log_warning(f'Empty file: {self.data_source}. Adding a dummy row.')
             self.create_row(add_to_existing=False)
-
-        if len(self._data) <= 0:
+        self.data_count = len(self._data)
+        if self.data_count <= 0:
             log_error(f'No data found in data source: {self.data_source}')
             return False
         self.format_columns()  # could take some time with lots of rows
-        self.total_pages = (len(self._data) - 1) // self.rows_per_page + 1
+        self.total_pages = (self.data_count - 1) // self.rows_per_page + 1
         self._close_progress()
         return True
 
@@ -351,8 +353,8 @@ class EditableTable(Table):
         if source_type == DataSourceType.FILE:
             data.to_csv(self.data_source, index=False, na_rep='', date_format=gui_g.s.csv_datetime_format)
         else:
-            for row in self._changed_rows:
-                row_data = self.get_row(row, return_as_dict=True)
+            for row_index in self._changed_rows:
+                row_data = self.get_row(row_index, return_as_dict=True)
                 if row_data is None:
                     continue
                 # convert the key names to the database column names
@@ -365,9 +367,9 @@ class EditableTable(Table):
                         self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
                     self._db_handler.save_ue_asset(ue_asset)
                     asset_id = ue_asset.data.get('asset_id', '')
-                    log_info(f'UE_asset ({asset_id}) for row #{row} has been saved to the database')
+                    log_info(f'UE_asset ({asset_id}) for row #{row_index} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
-                    log_warning(f'Unable to save UE_asset for row #{row} to the database. Error: {error}')
+                    log_warning(f'Unable to save UE_asset for row #{row_index} to the database. Error: {error}')
             for asset_id in self._deleted_asset_ids:
                 try:
                     # delete the row in the database
@@ -479,7 +481,7 @@ class EditableTable(Table):
         #  'tab20c', 'terrain', 'winter'
         if col_names is None:
             return
-        df = self.get_current_data()
+        df = self.get_data()
         for col_name in col_names:
             try:
                 x = df[col_name]
@@ -500,7 +502,7 @@ class EditableTable(Table):
         """
         if col_names is None:
             return
-        df = self.get_current_data()
+        df = self.get_data()
         for col_name in col_names:
             try:
                 mask = df[col_name] == value_to_check
@@ -518,7 +520,7 @@ class EditableTable(Table):
         """
         if col_names is None:
             return
-        df = self.get_current_data()
+        df = self.get_data()
         for col_name in col_names:
             try:
                 mask = df[col_name] != value_to_check
@@ -536,7 +538,7 @@ class EditableTable(Table):
         """
         if col_names is None:
             return
-        df = self.get_current_data()
+        df = self.get_data()
         for col_name in col_names:
             row_indices = []
             if col_name not in df.columns:
@@ -578,11 +580,14 @@ class EditableTable(Table):
         Override this method to check indexes when rebuildind data from en empty table.
         """
         # df = self.model.df
-        df = self.get_current_data()  # to check
+        df = self.get_data()  # to check
         rc = self.rowcolors
         rows = self.visiblerows
         offset = rows[0]
-        idx = df.index[rows]
+        try:
+            idx = df.index[rows]
+        except IndexError:
+            return
         for col in self.visiblecols:
             colname = df.columns[col]
             if colname in list(rc.columns):
@@ -644,8 +649,8 @@ class EditableTable(Table):
         else:
             self._filtered = data
             self.is_filtered = False
-        self.row_count = len(data)
-        self.row_filtered_count = len(self._filtered)
+        self.data_count = len(data)
+        self.current_count = len(self._filtered)
 
         self.update_page()
 
@@ -745,7 +750,7 @@ class EditableTable(Table):
         Adds the specified row to the list of rows to save.
         :param row_index: The index of the row to save.
         """
-        if row_index < 0 or row_index > len(self.get_data()) or row_index in self._changed_rows:  # get_data checked
+        if row_index < 0 or row_index > self.current_count or row_index in self._changed_rows:  # get_data checked
             return
         self._changed_rows.append(row_index)
 
@@ -785,11 +790,15 @@ class EditableTable(Table):
         """
         Return the row at the specified index.
         :param row_index: row index. This value must be offsetted BEFORE if needed
-        :param return_as_dict: if True, return the row as a dict
+        :param return_as_dict: Set to True to return the row as a dict
         :return: the row at the specified index.
         """
         try:
-            record = self.get_current_data().iat[row_index]  # iat checked
+
+            record = self.get_current_data().iloc[row_index]  # iloc checked
+            # get the row of the pandastable
+            # (not the row of the dataframe, which is offsetted by the pagination)
+
             if return_as_dict:
                 return record.to_dict()
             else:
@@ -809,24 +818,26 @@ class EditableTable(Table):
             return
         if isinstance(ue_asset_data, list):
             ue_asset_data = ue_asset_data[0]
-        asset_id = self.get_cell(row_index, 'Asset_id')
+        asset_id = self.get_cell(row_index, self.get_col_index('Asset_id'))
         log_info(f'Updating row {row_index} with asset_id={asset_id}')
         for key, value in ue_asset_data.items():
             typed_value = get_typed_value(sql_field=key, value=value)
             # get the column index of the key
             col_name = get_csv_field_name(key)
+            # if col_name == 'Tags':
+            #     typed_value = 'ICICICI' # debug only
             if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
-            if not self.update_cell(row_index, col_name, typed_value):
+            col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
+            if col_index >= 0 and not self.update_cell(row_index, col_index, typed_value):
                 log_warning(f'Failed to update the cell ({row_index}, {col_name}) value')
-
                 continue
         if not no_table_update:
             self.add_to_rows_to_save(row_index)
             self.must_save = True
-            self.redraw()
+            self.update()
 
     def get_col_name(self, col_index: int) -> str:
         """
@@ -850,28 +861,44 @@ class EditableTable(Table):
         except KeyError:
             return -1
 
-    def get_cell(self, row_index: int, col):
+    def get_cell(self, row_index: int, col_index: int):
         """
         Return the value of the cell at the specified row and column.
         :param row_index: row index. This value must be offsetted BEFORE if needed
-        :param col: column index or column name.
+        :param col_index: column index.
         :return: the value of the cell or None if the row or column index is out of range.
         """
+        if row_index < 0 or col_index < 0:
+            return None
         try:
-            return self.get_current_data().iat[row_index, col]  # iat checked
+            return self.get_current_data().iat[row_index, col_index]  # iat checked
         except IndexError:
             return None
 
-    def update_cell(self, row_index: int, col, value) -> bool:
+    def update_cell(self, row_index: int, col_index: int, value) -> bool:
         """
         Update the value of the cell at the specified row and column.
         :param row_index: row index. This value must be offsetted BEFORE if needed
-        :param col: column index or column name.
+        :param col_index: column index or column name.
         :param value: the new value of the cell.
         :return: True if the cell was updated, False otherwise.
         """
+        if row_index < 0 or col_index < 0:
+            return False
         try:
-            self.get_current_data().iat[row_index, col] = value  # iat checked
+            # TODO: PB ICI CAR _data et _filtered sont différent. Quel est celui utilisé par l'affichage ?
+            self.get_current_data().iat[row_index, col_index] = value  # iat checked
+            """
+            # debug only
+            asset_id_current = self.get_current_data().iat[row_index, 0]
+            asset_id_data = self._data.iat[row_index, 0]
+            asset_id_filtered = self._filtered.iat[row_index, 0]
+            tags_current = self.get_current_data().iat[row_index, 36]
+            tags_data = self._data.iat[row_index, 36]
+            tags_filtered = self._filtered.iat[row_index, 36]
+            print(f'value={value} asset_id_current={asset_id_current}, asset_id_data={asset_id_data}, asset_id_filtered={asset_id_filtered}')
+            print(f'tags_current={tags_current}, tags_data={tags_data}, tags_filtered={tags_filtered}')
+            """
             return True
         except IndexError:
             return False
@@ -881,7 +908,7 @@ class EditableTable(Table):
         Return the values of the selected row in the table.
         :return: A dictionary containing the column names and their corresponding values for the selected row.
         """
-        if self._edit_row_entries is None or self._edit_row_index is None:
+        if self._edit_row_entries is None or self._edit_row_index < 0:
             return {}
         entries_values = {}
         for key, entry in self._edit_row_entries.items():
@@ -898,8 +925,9 @@ class EditableTable(Table):
         """
         Create the edit row window for the selected row in the table.
         """
-        row_selected = self.getSelectedRow()
-        if row_selected is None:
+        row_index = self.getSelectedRow()
+        row_index = self.get_row_index_with_offet(row_index)
+        if row_index is None:
             return
 
         title = 'Edit current row'
@@ -917,18 +945,18 @@ class EditableTable(Table):
         edit_row_window.content_frame.columnconfigure(0, weight=0)
         edit_row_window.content_frame.columnconfigure(1, weight=1)
 
-        self.edit_record(row_selected)
+        self.edit_record(row_index)
 
-    def edit_record(self, row_selected: int = None) -> None:
+    def edit_record(self, row_index: int = None) -> None:
         """
         Edit the values of the specified row in the table.
-        :param row_selected: The index of the row to edit.
+        :param row_index: The index of the row to edit.
         """
         edit_row_window = gui_g.edit_row_window_ref
-        if row_selected is None or edit_row_window is None:
+        if row_index is None or edit_row_window is None:
             return
         # get and display the row data
-        row_data = self.get_row(row_selected, return_as_dict=True)
+        row_data = self.get_row(row_index, return_as_dict=True)
         entries = {}
         image_url = ''
         for i, (key, value) in enumerate(row_data.items()):
@@ -974,7 +1002,7 @@ class EditableTable(Table):
         show_asset_image(image_url=image_url, canvas_image=edit_row_window.control_frame.canvas_image)
 
         self._edit_row_entries = entries
-        self._edit_row_index = row_selected
+        self._edit_row_index = row_index
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
 
@@ -989,7 +1017,7 @@ class EditableTable(Table):
             self.get_current_data().at[self._edit_row_index, key] = value  # at checked
         row = self._edit_row_index
         self._edit_row_entries = None
-        self._edit_row_index = None
+        self._edit_row_index = -1
         self.redraw()
         self.must_save = True
         self._edit_row_window.close_window()
@@ -1013,7 +1041,8 @@ class EditableTable(Table):
         Navigate to the next row in the table and opens the edit row window.
         """
         row_selected = self.getSelectedRow()
-        if row_selected is None or row_selected == self.get_current_data().shape[0] - 1:
+        max_displayed_rows = self.model.df.shape[0] - 1  # df checked: best way to get the number of displayed rows
+        if row_selected is None or row_selected >= max_displayed_rows:
             return
         self.setSelectedRow(row_selected + 1)
         self.redraw()
@@ -1029,6 +1058,7 @@ class EditableTable(Table):
         col_index = self.get_col_clicked(event)
         if row_index is None or col_index is None:
             return None
+        row_index = self.get_row_index_with_offet(row_index)
         cell_value = self.get_cell(row_index, col_index)
         title = 'Edit current cell values'
         width = 300
@@ -1081,7 +1111,7 @@ class EditableTable(Table):
         Save the edited cell value to the table data.
         """
         widget = self._edit_cell_widget
-        if widget is None or self._edit_cell_row_index is None or self._edit_cell_col_index is None or self._edit_cell_widget is None:
+        if widget is None or self._edit_cell_widget is None or self._edit_cell_row_index < 0 or self._edit_cell_col_index < 0:
             return
         row_index = self._edit_cell_row_index
         try:
@@ -1095,8 +1125,8 @@ class EditableTable(Table):
                 return
             self.must_save = True
             self._edit_cell_widget = None
-            self._edit_cell_row_index = None
-            self._edit_cell_col_index = None
+            self._edit_cell_row_index = -1
+            self._edit_cell_col_index = -1
         except TypeError:
             log_warning(f'Failed to get content of {widget}')
         self.redraw()
@@ -1115,21 +1145,21 @@ class EditableTable(Table):
         else:
             self._frm_quick_edit = quick_edit_frame
 
-        if row_index is None or row_index >= len(self.get_current_data()) or quick_edit_frame is None:
+        if row_index is None or row_index >= self.current_count or quick_edit_frame is None:
             return
 
         column_names = ['Asset_id', 'Url']
         column_names.extend(get_csv_field_name_list(filter_on_states=[CSVFieldState.USER]))
         for col_name in column_names:
-            value = self.get_cell(row_index, col_name)
+            col_index = self.get_col_index(col_name)
+            value = self.get_cell(row_index, col_index)
             if col_name == 'Asset_id':
                 asset_id = value
                 quick_edit_frame.config(text=f'Quick Editing Asset: {asset_id}')
                 continue
             typed_value = get_typed_value(csv_field=col_name, value=value)
-            col = self.get_col_index(col_name)
-            if col >= 0:
-                quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row_index, col=col)
+            if col_index >= 0:
+                quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row_index, col=col_index)
 
     def quick_edit(self) -> None:
         """
@@ -1140,7 +1170,7 @@ class EditableTable(Table):
         for col_name in column_names:
             self._frm_quick_edit.set_default_content(col_name)
 
-    def quick_edit_save_value(self, value: str, row_index: int = None, col_index: int = None, tag=None) -> None:
+    def quick_edit_save_value(self, row_index: int = -1, col_index: int = -1, value: str = '', tag=None) -> None:
         """
         Save the cell content preview.
         :param value: The value to save.
@@ -1153,7 +1183,7 @@ class EditableTable(Table):
         typed_old_value = get_typed_value(sql_field=tag, value=old_value)
         typed_value = get_typed_value(sql_field=tag, value=value)
 
-        if row_index is None or row_index >= len(self.get_current_data()) or col_index is None or typed_old_value == typed_value:
+        if row_index < 0 or row_index >= self.current_count or col_index < 0 or typed_old_value == typed_value:
             return
         try:
             if not self.update_cell(row_index, col_index, typed_value):
@@ -1172,7 +1202,8 @@ class EditableTable(Table):
         :param row_index: The row index of the selected cell.
         :return: The image URL of the selected row.
         """
-        return '' if row_index is None else self.get_cell(row_index, 'Image')
+        row_index = self.get_row_index_with_offet(row_index)
+        return '' if row_index is None else self.get_cell(row_index, self.get_col_index('Image'))
 
     def open_asset_url(self, url: str = None):
         """

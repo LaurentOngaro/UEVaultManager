@@ -52,8 +52,8 @@ class FilterFrame(ttk.LabelFrame):
         data_func: Callable,
         update_func: Callable,
         save_filter_func: Callable,
-        title='Define view filters for the data table',
-        value_for_all='All'
+        title: str = 'Define view filters for the data table',
+        value_for_all: str = 'All'
     ):
         if container is None:
             raise ValueError('container cannot be None')
@@ -63,7 +63,7 @@ class FilterFrame(ttk.LabelFrame):
             raise ValueError('update_func cannot be None')
 
         super().__init__(container, text=title)
-        self.value_for_all = value_for_all
+        self.value_for_all: str = value_for_all
         self.container = container
         self.data_func = data_func
         self.save_filter_func = save_filter_func

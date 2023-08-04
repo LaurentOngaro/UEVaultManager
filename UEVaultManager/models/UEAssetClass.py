@@ -14,15 +14,15 @@ class UEAsset:
     A class to represent an Unreal Engine asset. With the EGS data and user data.
     :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete.
     """
+    data = {}
+    log = logging.getLogger('UEAsset')
 
-    def __init__(self, engine_version_for_obsolete_assets=None):
-        if engine_version_for_obsolete_assets is None:
+    def __init__(self, engine_version_for_obsolete_assets: str = ''):
+        self.log.setLevel(logging.INFO)
+        if not engine_version_for_obsolete_assets:
             self.engine_version_for_obsolete_assets = '4.26'  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
         else:
             self.engine_version_for_obsolete_assets = engine_version_for_obsolete_assets
-        self.data = {}
-        self.log = logging.getLogger('UEAsset')
-        self.log.setLevel(logging.INFO)
         self.init_data()
 
     def __str__(self) -> str:

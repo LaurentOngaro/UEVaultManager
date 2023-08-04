@@ -43,7 +43,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.show_prev_page)
         btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
         btn_prev_page.config(state=tk.DISABLED)
-        entry_current_page_var = tk.StringVar(value=data_table.current_page)
+        entry_current_page_var = tk.StringVar(value=str(data_table.current_page))
         entry_current_page = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_current_page_var)
         entry_current_page.pack(**pack_def_options, side=tk.LEFT)
         lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages}')

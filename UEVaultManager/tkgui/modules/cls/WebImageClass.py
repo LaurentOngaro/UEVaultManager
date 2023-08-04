@@ -24,7 +24,7 @@ class WebImage:
         # initialize instance variables
         self.__image_pil = None
         self.__image_tk = None
-        self.url = url
+        self.url: str = url
         try:
             # use requests to get the image content as bytes
             response = requests.get(url)
