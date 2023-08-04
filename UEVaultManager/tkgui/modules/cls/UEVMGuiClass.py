@@ -726,17 +726,22 @@ class UEVMGui(tk.Tk):
             return
         if isinstance(ue_asset_data, list):
             ue_asset_data = ue_asset_data[0]
-
+        table_data = self.editable_table.get_data()
+        col_index = self.editable_table.model.df.columns.get_loc('Asset_id')
+        asset_id = table_data.iat[row_index, col_index]
+        gui_f.log_info(f'Updating row {row_index} with asset_id={asset_id}')
         for key, value in ue_asset_data.items():
             typed_value = get_typed_value(sql_field=key, value=value)
             # get the column index of the key
             col_name = get_csv_field_name(key)
-            if is_on_state(col_name, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
+                continue
+            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             try:
                 col_index = self.editable_table.model.df.columns.get_loc(col_name)
                 # self.editable_table.model.df.iat[row_index, col_index] = typed_value
-                self.editable_table.get_data().iat[row_index, col_index] = typed_value
+                table_data.iat[row_index, col_index] = typed_value
             except (KeyError, IndexError) as error:
                 gui_f.log_warning(f'Error when updating row {row_index} and column {col_name}: {error}')
                 continue
