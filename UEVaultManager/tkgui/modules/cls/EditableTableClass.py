@@ -328,12 +328,12 @@ class EditableTable(Table):
                 row_index = self.get_row_index_with_offet(row_index)
                 # row_index -= number_deleted  # because the index changes after each deletion
                 asset_id = data.at[row_index, 'Asset_id']  # at checked
-                if box_yesno(f'Are you sure you want to delete the row #{row_index + 1} with asset_id={asset_id} ?'):
+                if box_yesno(f'Are you sure you want to delete the row #{row_index+1} with asset_id={asset_id} ?'):
                     index = data.index[row_index]
                     try:
                         data.drop(index, inplace=True)
                     except KeyError:
-                        log_warning(f'Could not delete row #{row_index + 1} with asset_id={asset_id} !')
+                        log_warning(f'Could not delete row #{row_index+1} with asset_id={asset_id} !')
                     self.add_to_asset_ids_to_delete(asset_id)
                     number_deleted += 1
         self.clearSelected()
