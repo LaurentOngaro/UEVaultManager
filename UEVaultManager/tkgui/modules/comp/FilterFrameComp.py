@@ -306,7 +306,7 @@ class FilterFrame(ttk.LabelFrame):
         Applie the filters and updates the caller.
         """
         self._add_to_filters()
-        self._update_filter_widgets()
+        # self._update_filter_widgets()
         self.update_controls()
         self.update_func(reset_page=True)
 
