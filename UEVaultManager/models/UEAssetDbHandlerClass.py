@@ -33,7 +33,7 @@ class UEAssetDbHandler:
 
     def __init__(self, database_name: str, reset_database: bool = False):
         self.logger = logging.getLogger(__name__)
-        # self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.DEBUG)
         self.database_name = database_name
         self.db_version = DbVersionNum.V0  # updated in check_and_upgrade_database()
         # the user fields that must be preserved when updating the database
@@ -42,10 +42,13 @@ class UEAssetDbHandler:
         self.user_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.USER])
         # the field we keep for previous data. NEED TO BE SEPARATED FROM self.user_fields
         # THEY WILL BE USED (BUT NOT FORCELY PRESERVED) when parsing the asset data
-        self.changed_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.CHANGED])
         self.preserved_data_fields = self.user_fields
         self.preserved_data_fields.append('id')
-        self.preserved_data_fields.extend(self.changed_fields)
+        changed_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.CHANGED])
+        self.preserved_data_fields.extend(changed_fields)
+        # we also need to preserve the values in the database that are not in the (CSV) table
+        asset_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.ASSET_ONLY])
+        self.preserved_data_fields.extend(asset_fields)
         self.connection = None
         self._init_connection()
         if reset_database:
@@ -311,8 +314,15 @@ class UEAssetDbHandler:
             upgrade_from_version = self.db_version
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
         if upgrade_from_version == DbVersionNum.V5:
+            # necessary steps to upgrade from version 5
+            # add changed fields
+            self._add_missing_columns('assets', required_columns={'tags': 'TEXT',})
+            self.db_version = DbVersionNum.V6
+            upgrade_from_version = self.db_version
+            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+        if upgrade_from_version == DbVersionNum.V6:
             """
-            necessary steps to upgrade from version 5
+            necessary steps to upgrade from version 6
             does not exist yet
             do stuff here
             self.db_version = DbVersionNum.V6
@@ -388,52 +398,44 @@ class UEAssetDbHandler:
                 asset['date_added_in_db'] = convert_to_str_datetime(
                     value=asset['date_added_in_db'], date_format=default_datetime_format, default=str_today
                 )
-                # Generate the SQL query
-                # this query will insert or update the asset if it already exists.
-                query = """
-                    REPLACE INTO assets (
-                        id, namespace, catalog_item_id, title, category, author, thumbnail_url,
-                        asset_slug, currency_code, description,
-                        technical_details, long_description, tags, comment_rating_id,
-                        rating_id, status, price, discount_price, discount_percentage,
-                        is_catalog_item, is_new, free, discounted, can_purchase,
-                        owned, review, review_count, asset_id, asset_url,
-                        comment, stars, must_buy, test_result, installed_folder, alternative, origin, added_manually, page_title,
-                        obsolete, supported_versions, creation_date, update_date, date_added_in_db, grab_result,
-                        old_price, custom_attributes
-                    ) VALUES (
-                        :id, :namespace, :catalog_item_id, :title, :category, :author, :thumbnail_url,
-                        :asset_slug, :currency_code, :description,
-                        :technical_details, :long_description, :tags, :comment_rating_id,
-                        :rating_id, :status, :price, :discount_price, :discount_percentage,
-                        :is_catalog_item, :is_new, :free, :discounted, :can_purchase,
-                        :owned, :review, :review_count, :asset_id, :asset_url,
-                        :comment, :stars, :must_buy, :test_result, :installed_folder, :alternative, :origin, :added_manually, :page_title, 
-                        :obsolete, :supported_versions, :creation_date, :update_date, :date_added_in_db, :grab_result,
-                        :old_price, :custom_attributes
-                    )
-                """
-                # Execute the SQL query
+                # remove all fields whith a None Value
+                filtered_fields = {k: v for k, v in asset.items() if (v is not None and v != 'None')}
+                if len(filtered_fields) == 0:
+                    return
+                # ckeck if the asset already exists in the database
+                cursor.execute(f"SELECT id FROM assets WHERE id='{asset['id']}'")
+                result = cursor.fetchone()
+                if result is None:
+                    # asset does not exist in the database, add it
+                    fields = ", ".join(f"{column}" for column in filtered_fields.keys())
+                    values = ", ".join(f":{column}" for column in filtered_fields.keys())
+                    # this query will insert or update the asset if it already exists.
+                    # noinspection SqlInsertValues
+                    query = f"REPLACE INTO assets ({fields}) VALUES ({values})"
+                else:
+                    # asset already exists in the database, update it
+                    fields = ", ".join(f"{column} = :{column}" for column in filtered_fields.keys())
+                    query = f"UPDATE assets SET {fields} WHERE id='{asset['id']}'"
                 try:
                     cursor.execute(query, asset)
                 except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
-                    self.logger.error(f"Error while inserting/updating asset '{asset['id']}' (tags='{asset['tags']}': {error!r}")
+                    self.logger.warning(f"Error while inserting/updating asset '{asset['id']}' (tags='{asset['tags']}': {error!r}")
         try:
             self.connection.commit()
         except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
-            self.logger.error(f'Error when committing the database changes: {error!r}')
+            self.logger.warning(f'Error when committing the database changes: {error!r}')
 
-    def get_assets_data(self, fields='*', id=None) -> dict:
+    def get_assets_data(self, fields='*', uid=None) -> dict:
         """
         Get data from all the assets in the 'assets' table.
         :param fields: list of fields to return.
-        :param id: The id of the asset to get data for. If None, all the assets will be returned.
+        :param uid: The id of the asset to get data for. If None, all the assets will be returned.
         :return: dictionary {ids, rows}.
         """
         if not isinstance(fields, str):
             fields = ', '.join(fields)
         row_data = {}
-        where_clause = f"WHERE id='{id}'" if id is not None else ''
+        where_clause = f"WHERE id='{uid}'" if id is not None else ''
         if self.connection is not None:
             self.connection.row_factory = sqlite3.Row
             cursor = self.connection.cursor()

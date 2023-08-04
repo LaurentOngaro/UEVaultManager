@@ -258,7 +258,7 @@ csv_sql_fields = {
     },
     'Tags': {
         'sql_name': 'tags',
-        'state': CSVFieldState.ASSET_ONLY,
+        'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.STR
     },
     'Comment rating id': {

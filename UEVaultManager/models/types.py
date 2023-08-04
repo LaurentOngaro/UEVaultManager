@@ -67,5 +67,6 @@ class DbVersionNum(Enum):
     V2 = 2  # add the columns used fo user data to the "standard" marketplace columns
     V3 = 3  # add the last_run table to get data about the last run of the app
     V4 = 4  # add custom_attributes field to the assets table
-    V5 = 5  # add added_manually column to the assets tablen
-    V6 = 6  # future version
+    V5 = 5  # add added_manually column to the assets table
+    V6 = 6  # add tags column to the assets table
+    V7 = 7  # future version
