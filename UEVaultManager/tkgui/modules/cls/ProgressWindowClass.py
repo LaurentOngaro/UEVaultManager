@@ -157,7 +157,10 @@ class ProgressWindow(tk.Toplevel):
             self.close_window(destroy_window=self.quit_on_close)  # the window is kept to allow further calls to the progress bar
 
     def mainloop(self, n=0):
-        """ Override of mainloop method with loggin function (for debugging)"""
+        """
+        Mainloop method
+        Override created to add loggin function (for debugging)
+        """
         gui_f.log_info(f'starting mainloop in {__name__}')
         self.tk.mainloop(n)
         gui_f.log_info(f'ending mainloop in {__name__}')

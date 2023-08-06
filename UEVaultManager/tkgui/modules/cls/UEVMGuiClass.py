@@ -243,7 +243,10 @@ class UEVMGui(tk.Tk):
         return value, widget
 
     def mainloop(self, n=0):
-        """ Override of mainloop method with loggin function (for debugging)"""
+        """
+        Mainloop method
+        Override created to add loggin function (for debugging)
+        """
         gui_f.log_info(f'starting mainloop in {__name__}')
         self.tk.mainloop(n)
         gui_f.log_info(f'ending mainloop in {__name__}')
@@ -399,6 +402,7 @@ class UEVMGui(tk.Tk):
         """
         Save the data to the current data source.
         :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file.
+        :return: the name of the file that was saved.
         """
         if self.editable_table.data_source_type == DataSourceType.FILE:
             if show_dialog:
@@ -693,7 +697,7 @@ class UEVMGui(tk.Tk):
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if asset_data is None or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
                 msg = f'Unable to grab data from {marketplace_url}'
-                gui_f.log_error(msg)
+                gui_f.log_warning(msg)
                 if show_message:
                     gui_f.box_message(msg)
                 return None
@@ -715,6 +719,11 @@ class UEVMGui(tk.Tk):
                 for key, value in forced_data.items():
                     asset_data[0][key] = value
             scraper.asset_db_handler.set_assets(asset_data)
+        else:
+            msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
+            gui_f.log_warning(msg)
+            if show_message:
+                gui_f.box_message(msg)
         return asset_data
 
     def scrap_row(self, marketplace_url: str = None, row_index: int = None, forced_data=None, show_message=True):
@@ -745,9 +754,8 @@ class UEVMGui(tk.Tk):
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
                     self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
-
-                if show_message:
-                    gui_f.box_message(f'Data for row {row_index + 1} have been updated from marketplace')
+                    if show_message:
+                        gui_f.box_message(f'Data for row {row_index + 1} have been updated from marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
