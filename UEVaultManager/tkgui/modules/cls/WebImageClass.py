@@ -16,6 +16,7 @@ class WebImage:
     Class to download an image from an url and get it as a PhotoImage.
     :param url: the url of the image to download.
     """
+    request_timeout = 4
 
     def __init__(self, url: str = None):
         # if no URL is given, return
@@ -27,7 +28,7 @@ class WebImage:
         self.url: str = url
         try:
             # use requests to get the image content as bytes
-            response = requests.get(url)
+            response = requests.get(url, timeout=self.request_timeout)
             # create a PIL.Image object from the bytes
             self.__image_pil = Image.open(BytesIO(response.content))
             # create a PhotoImage object from the PIL.Image

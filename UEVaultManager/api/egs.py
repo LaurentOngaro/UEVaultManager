@@ -538,7 +538,7 @@ class EPCAPI:
                     self.log.info(f'{asset_name} is already owned')
                 # grab the price on a non logged soup (price will be available on that page only)
                 try:
-                    response = requests.get(asset_url)  # not using session, so not logged in Epic game
+                    response = requests.get(asset_url, timeout=timeout)  # not using session, so not logged in Epic game
                     response.raise_for_status()
                     soup_not_logged = BeautifulSoup(response.text, 'html.parser')
                     owned_elt = soup_not_logged.find('div', class_='purchase')
