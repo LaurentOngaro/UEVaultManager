@@ -318,26 +318,30 @@ class EditableTable(Table):
         Delete the selected row in the table.
         :param row_indexes: The row to delete. If None, the selected row is deleted.
         """
-        number_deleted = 0
         data = self.get_current_data()
         if row_indexes is None:
             row_indexes = self.multiplerowlist
-        # if isinstance(rows, int):
-        #     rows = [rows]
-        row_indexes = sorted(row_indexes)  # MUST be sorted by ascending order
+        index_to_delete = []
         for row_index in row_indexes:
             if not data.empty and 0 <= row_index < len(data):
                 row_index = self.get_row_index_with_offet(row_index)
-                # row_index -= number_deleted  # because the index changes after each deletion
-                asset_id = data.at[row_index, 'Asset_id']  # at checked
-                if box_yesno(f'Are you sure you want to delete the row #{row_index + 1} with asset_id={asset_id} ?'):
+                asset_id = 'None'
+                try:
+                    asset_id = data.at[row_index, 'Asset_id']  # at checked
                     index = data.index[row_index]
-                    try:
-                        data.drop(index, inplace=True)
-                    except KeyError:
-                        log_warning(f'Could not delete row #{row_index + 1} with asset_id={asset_id} !')
+                    index_to_delete.append(index)
                     self.add_to_asset_ids_to_delete(asset_id)
-                    number_deleted += 1
+                    log_info(f'adding row #{row_index + 1} with asset_id={asset_id} to the list of index to delete')
+                except (IndexError, KeyError) as error:
+                    log_warning(f'Could add row #{row_index + 1} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
+        number_deleted = len(index_to_delete)
+        if box_yesno(f'Are you sure you want to delete {number_deleted} rows ? '):
+            try:
+                data.drop(index_to_delete, inplace=True)
+            except (IndexError, KeyError) as error:
+                log_warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
+
+        data.reset_index(drop=True, inplace=True)
         self.clearSelected()
         return number_deleted > 0
 
@@ -384,6 +388,7 @@ class EditableTable(Table):
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
+        self.update()  # mandatory : if not, the table will diplays all the rows and not only the current page
         box_message(f'Changed data has been saved to {self.data_source}')
 
     def reload_data(self) -> bool:
@@ -577,7 +582,7 @@ class EditableTable(Table):
         """
         Color individual cells in column(s). Requires that the rowcolors.
         dataframe has been set. This needs to be updated if the index is reset.
-        Override this method to check indexes when rebuildind data from en empty table.
+        Override created to check indexes when rebuildind data from en empty table.
         """
         # df = self.model.df
         df = self.get_data()  # to check
@@ -653,6 +658,15 @@ class EditableTable(Table):
         self.current_count = len(self._filtered)
 
         self.update_page()
+
+    def redraw(self, event=None, callback=None):
+        """
+        Redraw the table
+        Override created for debugging
+        :param event: The event that triggered the function call.
+        :param callback: The callback function to call after the table has been redrawn.
+        """
+        super().redraw(event, callback)
 
     def update_page(self) -> None:
         """
@@ -957,6 +971,9 @@ class EditableTable(Table):
             return
         # get and display the row data
         row_data = self.get_row(row_index, return_as_dict=True)
+        if row_data is None:
+            log_warning(f'edit_record: row_data is None for row_index={row_index}')
+            return
         entries = {}
         image_url = ''
         for i, (key, value) in enumerate(row_data.items()):
