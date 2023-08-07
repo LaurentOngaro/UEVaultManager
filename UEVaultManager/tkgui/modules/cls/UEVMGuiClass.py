@@ -17,6 +17,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import GrabResult
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
+from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
@@ -277,7 +278,7 @@ class UEVMGui(tk.Tk):
             return
         canvas_image = self._control_frame.canvas_image
         try:
-            row_index = self.editable_table.get_row_clicked(event)
+            row_index: int = self.editable_table.get_row_clicked(event)
             self.update_rows_text(row_index)
             image_url = self.editable_table.get_image_url(row_index)
             gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
@@ -298,7 +299,7 @@ class UEVMGui(tk.Tk):
         When the selection changes, show the selected row in the quick edit frame.
         :param event:
         """
-        row_index = self.editable_table.get_row_index_with_offet(event.widget.currentrow)
+        row_index: int = self.editable_table.get_row_index_with_offet(event.widget.currentrow)
         self.editable_table.update_quick_edit(row_index)
 
     def on_entry_current_page_changed(self, _event=None) -> None:
@@ -449,10 +450,7 @@ class UEVMGui(tk.Tk):
         # if self.editable_table.pagination_enabled and gui_f.box_yesno('To delete a row, The pagination must be disabled. Do you want to disable it now ?'):
         #     self.toggle_pagination(forced_value=False)
         #     return
-
-        if self.editable_table.del_row():
-            self.editable_table.must_save = True
-            self.editable_table.update()
+        self.editable_table.del_row()
 
     def search_for_url(self, folder: str, parent: str, check_if_valid=False) -> str:
         """
@@ -511,6 +509,7 @@ class UEVMGui(tk.Tk):
         Scan the folders to find files that can be loaded.
         """
         valid_folders = {}
+        invalid_folders = []
         folder_to_scan = gui_g.s.folders_to_scan
 
         if self.core is None:
@@ -587,14 +586,16 @@ class UEVMGui(tk.Tk):
                     for entry in os.scandir(full_folder):
                         entry_is_valid = entry.name.lower() not in gui_g.s.ue_invalid_folder_content
                         if entry.is_file():
-                            extension = os.path.splitext(entry.name)[1].lower()
-                            filename = os.path.splitext(entry.name)[0].lower()
+                            extension_lower = os.path.splitext(entry.name)[1].lower()
+                            filename_lower = os.path.splitext(entry.name)[0].lower()
                             # check if full_folder contains a "data" sub folder
-                            if filename == 'manifest' or extension in gui_g.s.ue_valid_file_content:
+                            if filename_lower == 'manifest' or extension_lower in gui_g.s.ue_valid_file_content:
                                 path = full_folder_abs
-                                has_data_folder = os.path.isdir(os.path.join(full_folder, 'data'))
-                                if filename == 'manifest':
-                                    if has_data_folder:
+                                has_valid_folder_inside = any(
+                                    os.path.isdir(os.path.join(full_folder, folder_inside)) for folder_inside in gui_g.s.ue_valid_manifest_content
+                                )
+                                if filename_lower == 'manifest':
+                                    if has_valid_folder_inside:
                                         asset_type = UEAssetType.Manifest
                                         # we need to move to parent folder to get the real names because manifest files are inside a specific sub folder
                                         folder_name = os.path.basename(parent_folder)
@@ -606,7 +607,7 @@ class UEVMGui(tk.Tk):
                                             f'{full_folder_abs} has a manifest file but no data folder.It will be considered as an asset'
                                         )
                                 else:
-                                    asset_type = UEAssetType.Plugin if extension == '.uplugin' else UEAssetType.Asset
+                                    asset_type = UEAssetType.Plugin if extension_lower == '.uplugin' else UEAssetType.Asset
 
                                 marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                                 grab_result = ''
@@ -620,11 +621,12 @@ class UEVMGui(tk.Tk):
                                     'marketplace_url': marketplace_url,
                                     'grab_result': grab_result
                                 }
-                                msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension in gui_g.s.ue_valid_file_content else f'-->Found {folder_name} containing a {asset_type.name}'
+                                msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_content else f'-->Found {folder_name} containing a {asset_type.name}'
                                 gui_f.log_debug(msg)
                                 if self.core.scan_assets_logger:
                                     self.core.scan_assets_logger.info(msg)
-
+                                if grab_result != GrabResult.NO_ERROR.name or not marketplace_url:
+                                    invalid_folders.append(folder_name)
                                 # remove all the subfolders from the list of folders to scan
                                 folder_to_scan = [folder for folder in folder_to_scan if not folder.startswith(full_folder_abs)]
                                 continue
@@ -649,6 +651,7 @@ class UEVMGui(tk.Tk):
         pw.reset(new_text='Scrapping data and adding assets to the table', new_max_value=count)
         pw.show_progress_bar()
         pw.update()
+        row_added = 0
         for name, content in valid_folders.items():
             if not pw.update_and_continue(increment=1, text=f'Adding {name}'):
                 break
@@ -665,13 +668,22 @@ class UEVMGui(tk.Tk):
                     'Added manually': True,
                 }
             )
-            # check if a value exists in column 'App name' and 'Origin' for a pandastable
-            row_exists = data['App name'].isin([name]).any() and data['Origin'].isin([content['path']]).any()
-            if not row_exists:
+            row_index = -1
+            try:
+                # get the indexes if value already exists in column 'Origin' for a pandastable
+                rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
+                row_indexes = rows_serie.index
+                if len(row_indexes) > 0:
+                    row_index = row_indexes[0]
+                    gui_f.log_info(f"An existing row at index {row_index} has been found with path {content['path']}")
+            except (IndexError, ValueError) as error:
+                gui_f.log_warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
+                invalid_folders.append(content["path"])
+                continue
+            if row_index == -1:
                 self.editable_table.create_row(row_data=row_data, add_to_existing=True)
-                row_index = data.index[-1]
-            else:
-                row_index = data[(data['App name'] == name) & (data['Origin'] == content['path'])].index[0]
+                row_index = 0  # added at the start of the table. As it, the index is always known
+                row_added += 1
             forced_data = {
                 # 'category': content['asset_type'].category_name,
                 'origin': content['path'],
@@ -681,12 +693,22 @@ class UEVMGui(tk.Tk):
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 self.scrap_row(marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False)
+            else:
+                self.editable_table.update_row(row_index=row_index, ue_asset_data=forced_data)
 
+                # self.editable_table.resetIndex(drop=False)
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
         pw.close_window()
+        if invalid_folders:
+            result = '\n'.join(invalid_folders)
+            result = f'The following folders have produce invalid results during the scan:\n{result}'
+            if gui_g.display_content_window_ref is None:
+                gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM: status command output', quit_on_close=False)
+                gui_g.display_content_window_ref.display(result)
+            gui_f.log_warning(result)
 
     def _scrap_from_url(self, marketplace_url: str, forced_data=None, show_message=False):
         asset_data = None
@@ -748,7 +770,7 @@ class UEVMGui(tk.Tk):
 
         if marketplace_url is None:
             for row_index in row_indexes:
-                row_index = self.editable_table.get_row_index_with_offet(row_index)
+                row_index: int = self.editable_table.get_row_index_with_offet(row_index)
                 row_data = self.editable_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
@@ -964,7 +986,7 @@ class UEVMGui(tk.Tk):
         if gui_g.UEVM_cli_ref is None:
             gui_f.from_cli_only_message()
             return
-        row_index = self.editable_table.getSelectedRow()
+        row_index: int = self.editable_table.getSelectedRow()
         app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('App name'))
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY
         # set default options for the cli command to execute

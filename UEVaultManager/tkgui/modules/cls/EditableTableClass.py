@@ -52,6 +52,7 @@ class EditableTable(Table):
 
     _frm_quick_edit = None
     _filter_frame = None
+    _filter_mask = None
 
     _edit_row_window = None
     _edit_row_entries = None
@@ -307,8 +308,9 @@ class EditableTable(Table):
                 table_row[col] = row_data[col]
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
-            self._data = pd.concat([self._data, table_row], copy=False, ignore_index=True)
-            self.add_to_rows_to_save(self._data.index[-1])
+            # row is added at the start of the table. As it, the index is always known
+            self._data = pd.concat([table_row, self._data], copy=False, ignore_index=True)
+            self.add_to_rows_to_save(0)
         else:
             self.must_rebuild = True
             self._data = table_row
@@ -318,31 +320,38 @@ class EditableTable(Table):
         Delete the selected row in the table.
         :param row_indexes: The row to delete. If None, the selected row is deleted.
         """
-        data = self.get_current_data()
+        data_current = self.get_current_data()
         if row_indexes is None:
             row_indexes = self.multiplerowlist
         index_to_delete = []
+        row_index = -1
+        asset_id = 'None'
         for row_index in row_indexes:
-            if not data.empty and 0 <= row_index < len(data):
+            asset_id = 'None'
+            if not data_current.empty and 0 <= row_index < len(data_current):
                 row_index = self.get_row_index_with_offet(row_index)
-                asset_id = 'None'
                 try:
-                    asset_id = data.at[row_index, 'Asset_id']  # at checked
-                    index = data.index[row_index]
+                    index = data_current.index[row_index]
+                    asset_id = data_current.at[index, 'Asset_id']  # at checked
                     index_to_delete.append(index)
                     self.add_to_asset_ids_to_delete(asset_id)
                     log_info(f'adding row #{row_index + 1} with asset_id={asset_id} to the list of index to delete')
                 except (IndexError, KeyError) as error:
                     log_warning(f'Could add row #{row_index + 1} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
         number_deleted = len(index_to_delete)
-        if box_yesno(f'Are you sure you want to delete {number_deleted} rows ? '):
+        asset_str = f'{number_deleted} rows' if number_deleted > 1 else f' row #{row_index + 1} with asset_id {asset_id}'
+        if number_deleted and box_yesno(f'Are you sure you want to delete {asset_str}? '):
             try:
-                data.drop(index_to_delete, inplace=True)
+                self._data.drop(index_to_delete, inplace=True, errors='ignore')
+                self._filtered.drop(index_to_delete, inplace=True, errors='ignore')
+                if self._filter_mask is not None:
+                    self._filter_mask.drop(index_to_delete, inplace=True, errors='ignore')
+                self.must_save = True
+                # self._data.reset_index(drop=True, inplace=True)
+                self.clearSelected()
+                self.update(keep_filters=True)
             except (IndexError, KeyError) as error:
                 log_warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
-
-        data.reset_index(drop=True, inplace=True)
-        self.clearSelected()
         return number_deleted > 0
 
     def save_data(self, source_type=None) -> None:
@@ -638,25 +647,27 @@ class EditableTable(Table):
         super().handle_right_click(event)
         self._generate_cell_selection_changed_event()
 
-    def update(self, reset_page=False) -> None:
+    def update(self, reset_page=False, keep_filters=False) -> None:
         """
-        Display the specified page of the table data.
+        Display the specified page of the table data.*
+        :param reset_page: Whether to reset the current page to 1.
+        :param keep_filters: Whether to keep the current filters.
         """
         if reset_page:
             self.current_page = 1
         data = self.get_data()  # get_data checked
-        mask = None
-        if self._filter_frame is not None:
-            mask = self._filter_frame.create_mask()
+        if not keep_filters:
+            mask = self._filter_frame.create_mask() if self._filter_frame is not None else None
+        else:
+            mask = self._filter_mask
         if mask is not None:
             self._filtered = data[mask]
             self.is_filtered = True
+            self.current_page = 1
         else:
             self._filtered = data
             self.is_filtered = False
-        self.data_count = len(data)
-        self.current_count = len(self._filtered)
-
+        self._filter_mask = mask
         self.update_page()
 
     def redraw(self, event=None, callback=None):
@@ -672,9 +683,10 @@ class EditableTable(Table):
         """
         Update the page.
         """
+        self.data_count = len(self._data)
+        self.current_count = len(self.get_current_data())
         if self.pagination_enabled:
-            data_count = len(self.get_current_data())
-            self.total_pages = (data_count-1) // self.rows_per_page + 1
+            self.total_pages = (self.current_count - 1) // self.rows_per_page + 1
             start = (self.current_page - 1) * self.rows_per_page
             end = start + self.rows_per_page
             try:
@@ -983,12 +995,12 @@ class EditableTable(Table):
                 continue
             label = key.replace('_', ' ').title()
             ttk.Label(edit_row_window.content_frame, text=label).grid(row=i, column=0, sticky=tk.W)
-            lower_key = key.lower()
+            key_lower = key.lower()
 
-            if lower_key == 'image':
+            if key_lower == 'image':
                 image_url = value
 
-            # if lower_key == 'url':
+            # if key_lower == 'url':
             #     # we add a button to open the url in an inner frame
             #     inner_frame_url = tk.Frame(self._edit_row_window.content_frame)
             #     inner_frame_url.grid(row=i, column=1, sticky=tk.EW)
