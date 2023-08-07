@@ -22,6 +22,7 @@ class FilterFrame(ttk.LabelFrame):
     """
     _filters = {}
     _quick_filters = {
+        # add ^ to the beginning of the value to search for the INVERSE the result
         'Owned': ['Owned', True],  #
         'Not Owned': ['Owned', False],  #
         'Obsolete': ['Obsolete', True],  #
@@ -32,6 +33,7 @@ class FilterFrame(ttk.LabelFrame):
         'Plugins only': ['Category', 'plugins'],  #
         'Free': ['Price', 0],  #
         'Dummy': ['Asset_id', 'dummy'],  #
+        'Not Marketplace': ['Origin', '^Marketplace'],  # aset with origin NOT in marketplace
     }
     frm_widgets = None
     cb_col_name = None
@@ -257,7 +259,11 @@ class FilterFrame(ttk.LabelFrame):
                         filter_value = filter_value.replace(',', '.')
                         mask = data[col_name].astype(float) == float(filter_value)
                     else:
-                        mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower())
+                        if filter_value[0] == '^':
+                            # ^ negates the filter
+                            mask = data[col_name].astype(str).str.lower().str.contains(filter_value[1:].lower()) == False
+                        else:
+                            mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower())
                 except ValueError:
                     box_message(f'the value {filter_value} does not correspond to the type of column {col_name}')
             final_mask = mask if final_mask is None else final_mask & mask
@@ -315,6 +321,7 @@ class FilterFrame(ttk.LabelFrame):
         Reset all filter conditions and update the caller.
         """
         self.cb_col_name.set('')
+        self.cb_quick_filter.set('')
         if isinstance(self.filter_widget, ttk.Checkbutton):
             self.filter_widget.state(['alternate'])
         else:
