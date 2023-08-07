@@ -104,6 +104,13 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         if folder_selected and folder_selected not in self._folders_to_scan:
             values = list(self._cb_folders_to_scan['values'])
             values.append(folder_selected)
+            # remove a folder if its parent is already in the list
+            folders = sorted(values)  # shorter paths are first, as it, parent folders are before their children
+            last_folder_lower = ''
+            for folder in folders:
+                if last_folder_lower != '' and folder.lower().startswith(last_folder_lower):
+                    values.remove(folder)
+                last_folder_lower = folder.lower()
             self._cb_folders_to_scan['values'] = values
             self._folders_to_scan = values
             self.save_folder_to_scan()
