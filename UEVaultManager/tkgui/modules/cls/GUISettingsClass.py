@@ -65,15 +65,15 @@ class GUISettings:
         self.app_title: str = f'{__name__} Gui v{__version__} ({__codename__})'
         self.app_monitor: int = 1
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
-        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
+        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder. MUST BE LOWERCASE
         self.ue_valid_file_content = ('.uplugin', '.uproject')
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder. MUST BE LOWERCASE
         self.ue_valid_folder_content = ('content', )
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file. MUST BE LOWERCASE
         self.ue_valid_manifest_content = ('data', )
-        # if a folder is in this tuple, the folder won't be scanned to find ue folders
+        # if a folder is in this tuple, the folder won't be scanned to find ue folders. MUST BE LOWERCASE
         self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data')
-        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
+        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure. MUST BE LOWERCASE
         self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')
 
         self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
@@ -85,7 +85,8 @@ class GUISettings:
         # some comparison are more fuzzy than others, so we can set a different score for each comparison
         # The key is a string that must be in the url file name or asset name
         # default value if no key is found
-        self.minimal_fuzzy_score_by_name = {'default': 70, 'brushify': 80, 'elite_landscapes': 90}
+        # MUST BE LOWERCASE
+        self.minimal_fuzzy_score_by_name = {'default': 80, 'brushify': 80, 'elite_landscapes': 90}  # TODO: move to config file
         self.preview_max_width: int = 150
         self.preview_max_height: int = 150
         self.default_global_search: str = 'Text to search...'
