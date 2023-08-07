@@ -81,11 +81,11 @@ class FilterFrame(ttk.LabelFrame):
         :param combobox: the Combobox to search in.
         """
         # Get the current text in the Combobox
-        current_text = combobox.get().lower()
-        if len(current_text) < 3:
+        text_lower = combobox.get().lower()
+        if len(text_lower) < 3:
             return
         for value in combobox['values']:
-            if value.lower().startswith(current_text):
+            if value.lower().startswith(text_lower):
                 combobox.set(value)
                 self._update_filter_widgets()
                 break
