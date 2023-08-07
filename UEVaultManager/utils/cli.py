@@ -78,13 +78,13 @@ def str_to_bool(val: str) -> bool:
     :param val: The string representation of truth.
     :return: True or False based on the string representation of truth.
     """
-    val = val.lower()
-    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+    val_lower = val.lower()
+    if val_lower in ('y', 'yes', 't', 'true', 'on', '1'):
         return True
-    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+    elif val_lower in ('n', 'no', 'f', 'false', 'off', '0'):
         return False
     else:
-        raise ValueError('Invalid truth value %r' % (val, ))
+        raise ValueError(f'Invalid value {val}')
 
 
 def str_is_bool(val: str) -> bool:
@@ -94,8 +94,8 @@ def str_is_bool(val: str) -> bool:
     :param val: The string representation of truth.
     :return: True if the string could be a boolean value, False otherwise.
     """
-    val = val.lower()
-    if val in ('y', 'yes', 't', 'true', 'on', '1', 'n', 'no', 'f', 'false', 'off', '0'):
+    val_lower = val.lower()
+    if val_lower in ('y', 'yes', 't', 'true', 'on', '1', 'n', 'no', 'f', 'false', 'off', '0'):
         return True
     else:
         return False

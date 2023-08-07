@@ -617,10 +617,10 @@ class AppCore:
             if not item_metadata:
                 self.log.info(f'Metadata for {app_name} are missing. It Will be ADDED to the FETCH list')
             else:
-                category = str(item_metadata.metadata['categories'][0]['path']).lower()
-                if filter_category and filter_category.lower() not in category:
+                category_lower = str(item_metadata.metadata['categories'][0]['path']).lower()
+                if filter_category and filter_category.lower() not in category_lower:
                     self.log.info(
-                        f'{app_name} has been FILTERED by category ("{filter_category}" text not found in "{category}").It has been added to the ignored_logger file'
+                        f'{app_name} has been FILTERED by category ("{filter_category}" text not found in "{category_lower}").It has been added to the ignored_logger file'
                     )
                     if self.ignored_logger:
                         self.ignored_logger.info(app_name)

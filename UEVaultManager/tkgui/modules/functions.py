@@ -35,11 +35,11 @@ def box_message(msg: str, level='info'):
     :param msg: the message to display.
     :param level: the level of the message (info, warning, error).
     """
-    level = level.lower()
-    if level == 'warning':
+    level_lower = level.lower()
+    if level_lower == 'warning':
         log_warning(msg)
         messagebox.showwarning(title=gui_g.s.app_title, message=msg)
-    elif level == 'error':
+    elif level_lower == 'error':
         messagebox.showerror(title=gui_g.s.app_title, message=msg)
         log_error(msg)
         # done in log_error
@@ -164,11 +164,12 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
     canvas.image = tk_image
 
 
-def show_asset_image(image_url: str, canvas_image=None) -> None:
+def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
     """
     Show the image of the given asset in the given canvas.
     :param image_url: the url of the image to display.
     :param canvas_image: the canvas to display the image in.
+    :param timeout: the timeout in seconds to wait for the image to be downloaded.
     """
     if canvas_image is None or image_url is None or not image_url or str(image_url) == gui_g.s.empty_cell:
         return
@@ -182,7 +183,7 @@ def show_asset_image(image_url: str, canvas_image=None) -> None:
             # Load the image from the cache folder
             image = Image.open(image_filename)
         else:
-            response = requests.get(image_url)
+            response = requests.get(image_url, timeout=timeout)
             image = Image.open(BytesIO(response.content))
 
             with open(image_filename, "wb") as f:

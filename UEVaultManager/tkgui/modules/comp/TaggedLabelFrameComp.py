@@ -61,41 +61,41 @@ class TaggedLabelFrame(ttk.LabelFrame):
         to the parent widget and in that case tag won't be available as an indentificator.
         If alternate_container is not None, the widget the layout of the child must be managed by the caller.
         """
-        tag = tag.lower()
+        tag_lower = tag.lower()
         if alternate_container is None:
             frame = ttk.Frame(self)
             frame.pack(**self.lblf_fw_options)
         else:
             frame = alternate_container
         if add_label_before:
-            lbl_name = ttk.Label(frame, text=ExtendedWidget.tag_to_label(tag))
+            lbl_name = ttk.Label(frame, text=ExtendedWidget.tag_to_label(tag_lower))
             lbl_name.pack(side=tk.LEFT, **self.pack_options)
         if widget_type == WidgetType.ENTRY:
-            child = ExtendedEntry(master=frame, tag=tag, default_content=default_content, height=height, width=width)
+            child = ExtendedEntry(master=frame, tag=tag_lower, default_content=default_content, height=height, width=width)
         elif widget_type == WidgetType.TEXT:
-            child = ExtendedText(master=frame, tag=tag, default_content=default_content, wrap=tk.WORD, height=height, width=width)
+            child = ExtendedText(master=frame, tag=tag_lower, default_content=default_content, wrap=tk.WORD, height=height, width=width)
         elif widget_type == WidgetType.LABEL:
-            child = ExtendedLabel(master=frame, tag=tag, default_content=default_content)
+            child = ExtendedLabel(master=frame, tag=tag_lower, default_content=default_content)
         elif widget_type == WidgetType.CHECKBUTTON:
-            child = ExtendedCheckButton(master=frame, tag=tag, default_content=default_content, label=label, images_folder=images_folder)
+            child = ExtendedCheckButton(master=frame, tag=tag_lower, default_content=default_content, label=label, images_folder=images_folder)
         elif widget_type == WidgetType.BUTTON:
-            child = ExtendedButton(master=frame, tag=tag, default_content=default_content)
+            child = ExtendedButton(master=frame, tag=tag_lower, default_content=default_content)
         else:
             error = f'Invalid widget type: {widget_type}'
             log_error(error)
             return None
 
-        self._tagged_child[tag] = child
+        self._tagged_child[tag_lower] = child
 
         layout_option = self.pack_fw_options if layout_option == '' else layout_option
         child.pack(side=tk.LEFT, **layout_option)
 
         if focus_out_callback is not None:
-            child.bind('<FocusOut>', lambda event: focus_out_callback(event=event, tag=tag))
+            child.bind('<FocusOut>', lambda event: focus_out_callback(event=event, tag=tag_lower))
         if focus_in_callback is not None:
-            child.bind('<FocusIn>', lambda event: focus_in_callback(event=event, tag=tag))
+            child.bind('<FocusIn>', lambda event: focus_in_callback(event=event, tag=tag_lower))
         if click_on_callback is not None:
-            child.bind('<Button-1>', lambda event: click_on_callback(event=event, tag=tag))
+            child.bind('<Button-1>', lambda event: click_on_callback(event=event, tag=tag_lower))
         return child
 
     def get_child_by_tag(self, tag: str):
@@ -104,8 +104,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param tag: Tag to search for (case-insensitive).
         :return: Child widget.
         """
-        tag = tag.lower()
-        return self._tagged_child.get(tag)
+        tag_lower = tag.lower()
+        return self._tagged_child.get(tag_lower)
 
     def get_children(self) -> dict:
         """
@@ -119,8 +119,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
         Set the default content of the child widget associated with the given tag.
         :param tag: Tag to search for (case-insensitive).
         """
-        tag = tag.lower()
-        widget = self.get_child_by_tag(tag)
+        tag_lower = tag.lower()
+        widget = self.get_child_by_tag(tag_lower)
         if widget is not None:
             widget.set_content(widget.default_content)
 
@@ -134,8 +134,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param row: Row index to set.
         :param col: Column index to set.
         """
-        tag = tag.lower()
-        widget = self.get_child_by_tag(tag)
+        tag_lower = tag.lower()
+        widget = self.get_child_by_tag(tag_lower)
         if widget is not None:
             widget.set_content(content)
             widget.row = row
@@ -144,6 +144,6 @@ class TaggedLabelFrame(ttk.LabelFrame):
                 try:
                     widget.set_label(label)
                 except AttributeError:
-                    log_debug(f'Widget with tag {tag} does not have a set_label method')
+                    log_debug(f'Widget with tag {tag_lower} does not have a set_label method')
         else:
-            log_warning(f'Widget with tag {tag} not found')
+            log_warning(f'Widget with tag {tag_lower} not found')

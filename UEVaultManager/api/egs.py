@@ -437,20 +437,20 @@ class EPCAPI:
         # SnakeCase
         # converted_name = inflection.underscore(converted_name)
         # Lower case
-        converted_name = converted_name.lower()
+        converted_name_lower = converted_name.lower()
         # Replace '_' by '-'
-        # converted_name = converted_name.replace('_', '-')
+        # converted_name_lower = converted_name_lower.replace('_', '-')
 
         # remove some not alphanumeric cars (NOT ALL, keep %)
         entry_list = [':', ',', '.', ';', '=', '?', '!', '#', "/", "$", "€"]
         for entry in entry_list:
-            converted_name = converted_name.replace(entry, '')
+            converted_name_lower = converted_name_lower.replace(entry, '')
 
         url = ''
-        asset_slug = converted_name
+        asset_slug = converted_name_lower
         # TODO: improve the following code to use the marketplace API instead of the website using beautifulsoup
         search_url_root = f'https://{self._search_url}/assets?keywords='
-        search_url_full = search_url_root + converted_name
+        search_url_full = search_url_root + converted_name_lower
         try:
             r = self.session.get(search_url_full, timeout=timeout)
         except requests.exceptions.Timeout:
