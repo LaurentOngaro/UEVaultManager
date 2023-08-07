@@ -81,12 +81,7 @@ class GUISettings:
         self.data_filetypes = (
             ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
         )
-        # minimal score required when looking for an url file comparing to an asset name.
-        # some comparison are more fuzzy than others, so we can set a different score for each comparison
-        # The key is a string that must be in the url file name or asset name
-        # default value if no key is found
-        # MUST BE LOWERCASE
-        self.minimal_fuzzy_score_by_name = {'default': 80, 'brushify': 80, 'elite_landscapes': 90}  # TODO: move to config file
+
         self.preview_max_width: int = 150
         self.preview_max_height: int = 150
         self.default_global_search: str = 'Text to search...'
@@ -291,6 +286,8 @@ class GUISettings:
     def get_folders_to_scan(self):
         """ Getter for folders_to_scan """
         json_str = self.config_vars['folders_to_scan']
+        if json_str == '':
+            return []
         try:
             values = json.loads(json_str)
         except json.decoder.JSONDecodeError:
@@ -306,6 +303,73 @@ class GUISettings:
         self.config_vars['folders_to_scan'] = json_str
 
     folders_to_scan = property(get_folders_to_scan, set_folders_to_scan)
+
+    def get_minimal_fuzzy_score_by_name(self):
+        """ Getter for minimal_fuzzy_score_by_name """
+        json_str = self.config_vars['minimal_fuzzy_score_by_name']
+        if json_str == '':
+            return []
+        try:
+            values = json.loads(json_str)
+        except json.decoder.JSONDecodeError:
+            values = []
+        return values
+
+    def set_minimal_fuzzy_score_by_name(self, values):
+        """ Setter for minimal_fuzzy_score_by_name """
+        if values is None or values == []:
+            json_str = ''
+        else:
+            json_str = json.dumps(values, skipkeys=True, allow_nan=True)
+        self.config_vars['minimal_fuzzy_score_by_name'] = json_str
+
+    minimal_fuzzy_score_by_name = property(get_minimal_fuzzy_score_by_name, set_minimal_fuzzy_score_by_name)
+
+    def get_col_ordering(self):
+        """ Getter for columns order """
+        json_str = self.config_vars['col_ordering']
+        if json_str == '':
+            return []
+        try:
+            values = json.loads(json_str)
+        except json.decoder.JSONDecodeError:
+            values = []
+        return values
+
+    def set_col_ordering(self, values):
+        """ Setter for columns order """
+        if values is None or values == []:
+            json_str = ''
+        else:
+            json_str = json.dumps(values, skipkeys=True, allow_nan=True)
+        self.config_vars['col_ordering'] = json_str
+
+    # used as property for keeping transparent access
+    col_ordering = property(get_col_ordering, set_col_ordering)
+
+    def get_col_widths(self):
+        """ Getter for columns width """
+        json_str = self.config_vars.get('col_widths', '')
+        if not json_str:
+            return []
+        try:
+            return [int(str_value) for str_value in json_str.split(',')]
+        except ValueError:
+            return []
+
+    def set_col_widths(self, values):
+        """ Setter for columns width """
+        if values is None or values == []:
+            json_str = ''
+        else:
+            json_str = ''
+            for value in values:
+                json_str += str(value) + ','
+            json_str = json_str[:-1]
+        self.config_vars['col_widths'] = json_str
+
+    # used as property for keeping transparent access
+    col_widths = property(get_col_widths, set_col_widths)
 
     def get_data_filters(self):
         """ Getter for data_filters """
@@ -358,23 +422,23 @@ class GUISettings:
                 'value': 36
             },
             'data_filters': {
-                'comment': 'Filters to apply to the datatable. Stored in json format',
+                'comment': 'Filters to apply to the datatable. Stored in json format. Automatically saved on quit',
                 'value': ''
             },
             'x_pos': {
-                'comment': 'X position of the main windows. Set to 0 to center the window',
+                'comment': 'X position of the main windows. Set to 0 to center the window. Automatically saved on quit',
                 'value': 0
             },
             'y_pos': {
-                'comment': 'Y position of the main windows. Set to 0 to center the window',
+                'comment': 'Y position of the main windows. Set to 0 to center the window. Automatically saved on quit',
                 'value': 0
             },
             'width': {
-                'comment': 'Width of the main windows',
+                'comment': 'Width of the main windows. Automatically saved on quit',
                 'value': 1750
             },
             'height': {
-                'comment': 'Height of the main windows',
+                'comment': 'Height of the main windows. Automatically saved on quit',
                 'value': 940
             },
             'debug_mode': {
@@ -394,7 +458,7 @@ class GUISettings:
                 'value': 'True'
             },
             'last_opened_file': {
-                'comment': 'File name of the last opened file',
+                'comment': 'File name of the last opened file. Automatically saved on quit',
                 'value': ''
             },
             'image_cache_max_time': {
@@ -416,6 +480,27 @@ class GUISettings:
             'folders_to_scan': {
                 'comment': 'List of Folders to scan for assets. Their content will be added to the list',
                 'value': ''
+            },
+            'col_ordering': {
+                'comment': 'Columns ordering of the table. Automatically saved on quit. Leave empty for default',
+                'value': ''
+            },
+            'col_widths': {
+                'comment': 'Columns width of the table. Automatically saved on quit. Leave empty for default',
+                'value': ''
+            },
+
+            # minimal score required when looking for an url file comparing to an asset name.
+            # some comparison are more fuzzy than others, so we can set a different score for each comparison
+            # The key is a string that must be in the url file name or asset name
+            # default value if no key is found
+            'minimal_fuzzy_score_by_name': {
+                'comment': 'Minimal score required when looking for an url file comparing to an asset name. MUST BE LOWERCASE',
+                'value': {
+                    'default': 80,
+                    'brushify': 80,
+                    'elite_landscapes': 90
+                }
             },
         }
 
@@ -458,6 +543,9 @@ class GUISettings:
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
+            'col_ordering': self.config.get('UEVaultManager', 'col_ordering'),
+            'col_widths': self.config.get('UEVaultManager', 'col_widths'),
+            'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
         }
         return config_vars
 

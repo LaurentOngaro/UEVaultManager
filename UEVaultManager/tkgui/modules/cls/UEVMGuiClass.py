@@ -126,9 +126,9 @@ class UEVMGui(tk.Tk):
             update_page_numbers_func=self.update_navigation,
             update_rows_text_func=self.update_rows_text
         )
-
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
         self.editable_table.show()
+        self.editable_table.resize_columns()  # must be done once, after the whole init of the EditableTable
         self.editable_table.update()
 
         toolbar_frame = UEVMGuiToolbarFrame(self, self.editable_table)
@@ -374,6 +374,9 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
+        gui_g.s.col_order = self.editable_table.get_data().columns.tolist()
+        # save the column width of the pandastable
+        gui_g.s.col_width = self.editable_table.columnwidths.values()
         gui_g.s.save_config_file()
         self.quit()
 

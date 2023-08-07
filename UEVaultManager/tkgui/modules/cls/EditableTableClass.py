@@ -103,6 +103,7 @@ class EditableTable(Table):
         Table.__init__(
             self, container, dataframe=self.get_data(), showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs
         )  # get_data checked
+        self.set_defaults()
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
     def _generate_cell_selection_changed_event(self) -> None:
@@ -176,6 +177,42 @@ class EditableTable(Table):
                     log_warning(f'Could not convert column "{col}" using {converter}. Error: {error}')
         # log_debug("\nCOL TYPES AFTER CONVERSION\n")
         # data.info()  # direct print info
+
+    def resize_columns(self) -> None:
+        """
+        Resize and reorder the columns of the table.
+        """
+        try:
+            # NOTE: self.model.df could be None if the data are not loaded yet
+            col_count = len(self.model.df.columns)
+        except AttributeError:
+            return
+
+        error_msg = ''
+        ordered_cols = gui_g.s.col_ordering
+        if len(ordered_cols) != col_count:
+            error_msg = f'The number of columns in data source ({col_count}) does not match the number of values in "col_ordering" from the config file ({len(ordered_cols)})'
+        else:
+            try:
+                self._data = self._data.reindex(columns=ordered_cols, fill_value='')  # reorder columns
+            except KeyError:
+                error_msg = 'Could not reorder the columns. The value "col_order" set in config file is invalid and will be reseted on quit'
+        if error_msg:
+            box_message('warning', error_msg)
+
+        col_widths = gui_g.s.col_widths
+        if len(col_widths) != col_count:
+            error_msg = f'The number of columns in data source ({col_count}) does not match the number of values in "col_widths" from the config file ({len(col_widths)})'
+        else:
+            col_names = self.model.df.columns.tolist()  # model.df checked
+            try:
+                for index, col_name in enumerate(col_names):
+                    self.columnwidths[col_name] = col_widths[index]
+                self.setColPositions()
+            except KeyError:
+                error_msg = 'Could not resize the columns. The value "col_widths" set in config file is invalid and will be reseted on quit'
+        if error_msg:
+            box_message('warning', error_msg)
 
     def get_data(self) -> pd.DataFrame:
         """
