@@ -509,6 +509,7 @@ class UEAssetDbHandler:
             ue_asset = UEAsset()
             ue_asset.data['asset_id'] = empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
             ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
+            ue_asset.data['added_manually'] = True
             ue_asset.data['id'] = uid
             self.save_ue_asset(ue_asset)
             if return_as_string:

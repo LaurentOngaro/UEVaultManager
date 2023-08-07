@@ -516,8 +516,8 @@ def create_empty_csv_row(return_as_string=False):
         data[key] = get_default_value(csv_field_name=key)
     data['Asset_id'] = gui_g.s.empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
     data['Image'] = gui_g.s.empty_cell  # avoid displaying image warning on mouse over
+    data['Added Manually'] = True
     data['Uid'] = uid
-
     if return_as_string:
         data = ','.join(str(value) for value in data.values())
     return data
