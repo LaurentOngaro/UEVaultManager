@@ -259,11 +259,11 @@ class FilterFrame(ttk.LabelFrame):
                         filter_value = filter_value.replace(',', '.')
                         mask = data[col_name].astype(float) == float(filter_value)
                     else:
+                        check_value = True
                         if filter_value[0] == '^':
                             # ^ negates the filter
-                            mask = data[col_name].astype(str).str.lower().str.contains(filter_value[1:].lower()) == False
-                        else:
-                            mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower())
+                            check_value = not check_value
+                        mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower()) == check_value
                 except ValueError:
                     box_message(f'the value {filter_value} does not correspond to the type of column {col_name}')
             final_mask = mask if final_mask is None else final_mask & mask

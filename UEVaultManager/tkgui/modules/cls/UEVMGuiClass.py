@@ -368,6 +368,7 @@ class UEVMGui(tk.Tk):
         Close the window.
         """
         self.save_settings()
+        self.quit()
 
     def save_settings(self) -> None:
         """
@@ -387,7 +388,6 @@ class UEVMGui(tk.Tk):
             col_infos[col]['width'] = self.editable_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
         gui_g.s.column_infos = col_infos
         gui_g.s.save_config_file()
-        self.quit()
 
     def open_file(self) -> str:
         """
