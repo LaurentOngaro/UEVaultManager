@@ -21,7 +21,7 @@ from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime
 
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
 
 
 def get_filename_from_asset_data(asset_data) -> str:

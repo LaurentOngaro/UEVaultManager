@@ -42,7 +42,7 @@ from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
 
 
 def init_gui_args(args, additional_args=None) -> None:
@@ -1200,10 +1200,10 @@ class UEVaultManagerCLI:
         ue_asset_per_page = 100  # a bigger value will be refused by UE API
 
         if test_only_mode:
-            start_row = 0  # debug only, shorter list
-            # start_row = 1700  # debug only, very shorter list
-            max_threads = 0  # debug only, see exceptions
-            owned_assets_only = True  # True for debug only
+            start_row = 0  # test only, shorter list
+            # start_row = 1700  # test only, very shorter list
+            max_threads = 0  # test only, see exceptions
+            owned_assets_only = True  # True for test only
         else:
             start_row = 0
             max_threads = get_max_threads()

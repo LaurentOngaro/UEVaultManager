@@ -19,7 +19,7 @@ from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime, create_uid
 from UEVaultManager.utils.cli import check_and_create_path
 
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
 
 
 class UEAssetDbHandler:

@@ -378,7 +378,7 @@ def is_on_state(csv_field_name: str, states: list[CSVFieldState], default=False)
         state = get_state(csv_field_name)
         return state in states
     except KeyError:
-        print(f'Key not found {csv_field_name} in is_on_state()')  # debug only. Will flood the console
+        # print(f'Key not found {csv_field_name} in is_on_state()')  # debug only. Will flood the console
         return default  # by default, we consider that the field is not on this state
 
 
@@ -396,7 +396,7 @@ def is_from_type(csv_field_name: str, types: list[CSVFieldType], default=False) 
         field_type = get_type(csv_field_name)
         return field_type in types
     except KeyError:
-        print(f'Key not found {csv_field_name} in is_from_type()')  # debug only. Will flood the console
+        # print(f'Key not found {csv_field_name} in is_from_type()')  # debug only. Will flood the console
         return default  # by default, we consider that the field is not on this type
 
 

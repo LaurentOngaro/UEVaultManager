@@ -995,7 +995,6 @@ class UEVMGui(tk.Tk):
         Execute a cli command and display the result in DisplayContentWindow.
         :param command_name: the name of the command to execute.
         """
-        self.editable_table.resize_columns()  # debug only
         if command_name == '':
             return
         if gui_g.UEVM_cli_ref is None:

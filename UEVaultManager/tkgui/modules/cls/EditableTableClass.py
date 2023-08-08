@@ -902,8 +902,6 @@ class EditableTable(Table):
             typed_value = get_typed_value(sql_field=key, value=value)
             # get the column index of the key
             col_name = get_csv_field_name(key)
-            # if col_name == 'Tags':
-            #     typed_value = 'ICICICI' # debug only
             if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):

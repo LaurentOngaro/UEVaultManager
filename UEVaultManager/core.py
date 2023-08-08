@@ -653,7 +653,7 @@ class AppCore:
 
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
         self.use_threads = len(fetch_list) > 5
-        # self.use_threads = False  # test only
+        # self.use_threads = False  # Debug only
         if fetch_list:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(
