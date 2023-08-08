@@ -179,6 +179,15 @@ class UEVMGui(tk.Tk):
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
 
+    def mainloop(self, n=0):
+        """
+        Mainloop method
+        Overrided to add loggin function for debugging
+        """
+        gui_f.log_info(f'starting mainloop in {__name__}')
+        self.tk.mainloop(n)
+        gui_f.log_info(f'ending mainloop in {__name__}')
+
     def _open_file_dialog(self, save_mode=False, filename=None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
@@ -242,15 +251,6 @@ class UEVMGui(tk.Tk):
             return None, widget
         value = widget.get_content()
         return value, widget
-
-    def mainloop(self, n=0):
-        """
-        Mainloop method
-        Override created to add loggin function (for debugging)
-        """
-        gui_f.log_info(f'starting mainloop in {__name__}')
-        self.tk.mainloop(n)
-        gui_f.log_info(f'ending mainloop in {__name__}')
 
     def on_key_press(self, event) -> None:
         """
@@ -360,12 +360,19 @@ class UEVMGui(tk.Tk):
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
-                self.save_file(show_dialog=False)
-        self.close_window()
+                self.save_all(show_dialog=False)  # will save the settings too
+        self.close_window()  # will save the settings too
 
     def close_window(self) -> None:
         """
         Close the window.
+        """
+        self.save_settings()
+
+    def save_settings(self) -> None:
+        """
+        Save the settings of the window.
+        :return:
         """
         if gui_g.s.reopen_last_file:
             gui_g.s.last_opened_file = self.editable_table.data_source
@@ -374,9 +381,11 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
-        gui_g.s.col_order = self.editable_table.get_data().columns.tolist()
-        # save the column width of the pandastable
-        gui_g.s.col_width = self.editable_table.columnwidths.values()
+        col_infos = {}
+        for col in self.editable_table.model.df.columns:
+            col_infos[col] = {}
+            col_infos[col]['width'] = self.editable_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
+        gui_g.s.column_infos = col_infos
         gui_g.s.save_config_file()
         self.quit()
 
@@ -402,12 +411,14 @@ class UEVMGui(tk.Tk):
             else:
                 gui_f.box_message('Operation cancelled')
 
-    def save_file(self, show_dialog=True) -> str:
+    def save_all(self, show_dialog=True) -> str:
         """
         Save the data to the current data source.
         :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file.
         :return: the name of the file that was saved.
         """
+        self.save_settings()
+
         if self.editable_table.data_source_type == DataSourceType.FILE:
             if show_dialog:
                 filename = self._open_file_dialog(filename=self.editable_table.data_source, save_mode=True)
@@ -984,6 +995,7 @@ class UEVMGui(tk.Tk):
         Execute a cli command and display the result in DisplayContentWindow.
         :param command_name: the name of the command to execute.
         """
+        self.editable_table.resize_columns()  # debug only
         if command_name == '':
             return
         if gui_g.UEVM_cli_ref is None:

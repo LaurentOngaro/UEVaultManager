@@ -106,6 +106,61 @@ class EditableTable(Table):
         self.set_defaults()
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
+    def redraw(self, event=None, callback=None):
+        """
+        Redraw the table
+        :param event: The event that triggered the function call.
+        :param callback: The callback function to call after the table has been redrawn.
+        Overrided for debugging
+        """
+        super().redraw(event, callback)
+
+    def colorRows(self):
+        """
+        Color individual cells in column(s). Requires that the rowcolors.
+        dataframe has been set. This needs to be updated if the index is reset.
+        Overrided to check indexes when rebuildind data from en empty table.
+        """
+        # df = self.model.df
+        df = self.get_data()  # to check
+        rc = self.rowcolors
+        rows = self.visiblerows
+        offset = rows[0]
+        try:
+            idx = df.index[rows]
+        except IndexError:
+            return
+        for col in self.visiblecols:
+            colname = df.columns[col]
+            if colname in list(rc.columns):
+                try:
+                    colors = rc[colname].loc[idx]  # loc checked
+                except KeyError:
+                    colors = None
+                if colors is not None:
+                    for row in rows:
+                        clr = colors.iloc[row - offset]  # iloc checked
+                        if not pd.isnull(clr):
+                            self.drawRect(row, col, color=clr, tag='colorrect', delete=0)
+
+    def resizeColumn(self, col, width):
+        """
+        Resize a column by dragging
+        :param col: The column to resize.
+        :param width: The new width of the column.
+        Overrided to remove the minimal size and for debugging
+        """
+
+        colname = self.model.getColumnName(col)
+        # if self.colheader.wrap:
+        #     if width < 40:
+        #         width = 40
+        self.columnwidths[colname] = width
+        self.setColPositions()
+        self.delete('colrect')
+        self.redraw()
+        return
+
     def _generate_cell_selection_changed_event(self) -> None:
         """
         Create the event bindings for the table.
@@ -184,35 +239,32 @@ class EditableTable(Table):
         """
         try:
             # NOTE: self.model.df could be None if the data are not loaded yet
-            col_count = len(self.model.df.columns)
+            col_count = self.model.getColumnCount()
         except AttributeError:
             return
-
         error_msg = ''
-        ordered_cols = gui_g.s.col_ordering
-        if len(ordered_cols) != col_count:
-            error_msg = f'The number of columns in data source ({col_count}) does not match the number of values in "col_ordering" from the config file ({len(ordered_cols)})'
+        column_infos = gui_g.s.column_infos
+        if len(column_infos) != col_count:
+            error_msg = f'The number of columns in data source ({col_count}) does not match the number of values in "column_infos" from the config file ({len(column_infos)}).'
         else:
             try:
-                self._data = self._data.reindex(columns=ordered_cols, fill_value='')  # reorder columns
+                self._data = self._data.reindex(columns=column_infos.keys(), fill_value='')  # reorder columns
             except KeyError:
-                error_msg = 'Could not reorder the columns. The value "col_order" set in config file is invalid and will be reseted on quit'
+                error_msg = 'Could not reorder the columns.'
+            else:
+                try:
+                    for colname, info in column_infos.items():
+                        width = int(info.get('width', -1))
+                        if width > 0:
+                            self.columnwidths[colname] = width
+                except KeyError:
+                    error_msg = 'Could not resize the columns.'
+                else:
+                    self.setColPositions()
+                    self.redraw()
         if error_msg:
-            box_message('warning', error_msg)
-
-        col_widths = gui_g.s.col_widths
-        if len(col_widths) != col_count:
-            error_msg = f'The number of columns in data source ({col_count}) does not match the number of values in "col_widths" from the config file ({len(col_widths)})'
-        else:
-            col_names = self.model.df.columns.tolist()  # model.df checked
-            try:
-                for index, col_name in enumerate(col_names):
-                    self.columnwidths[col_name] = col_widths[index]
-                self.setColPositions()
-            except KeyError:
-                error_msg = 'Could not resize the columns. The value "col_widths" set in config file is invalid and will be reseted on quit'
-        if error_msg:
-            box_message('warning', error_msg)
+            error_msg += '\nThe value "column_infos" set in config file is invalid and will be reseted on quit'
+            box_message(error_msg, 'warning')
 
     def get_data(self) -> pd.DataFrame:
         """
@@ -624,34 +676,6 @@ class EditableTable(Table):
         if default_pref is not None:
             config.apply_options(default_pref, self)
 
-    def colorRows(self):
-        """
-        Color individual cells in column(s). Requires that the rowcolors.
-        dataframe has been set. This needs to be updated if the index is reset.
-        Override created to check indexes when rebuildind data from en empty table.
-        """
-        # df = self.model.df
-        df = self.get_data()  # to check
-        rc = self.rowcolors
-        rows = self.visiblerows
-        offset = rows[0]
-        try:
-            idx = df.index[rows]
-        except IndexError:
-            return
-        for col in self.visiblecols:
-            colname = df.columns[col]
-            if colname in list(rc.columns):
-                try:
-                    colors = rc[colname].loc[idx]  # loc checked
-                except KeyError:
-                    colors = None
-                if colors is not None:
-                    for row in rows:
-                        clr = colors.iloc[row - offset]  # iloc checked
-                        if not pd.isnull(clr):
-                            self.drawRect(row, col, color=clr, tag='colorrect', delete=0)
-
     def set_colors(self) -> None:
         """
         Initialize the colors of some cells depending on their values.
@@ -706,15 +730,6 @@ class EditableTable(Table):
             self.is_filtered = False
         self._filter_mask = mask
         self.update_page()
-
-    def redraw(self, event=None, callback=None):
-        """
-        Redraw the table
-        Override created for debugging
-        :param event: The event that triggered the function call.
-        :param callback: The callback function to call after the table has been redrawn.
-        """
-        super().redraw(event, callback)
 
     def update_page(self) -> None:
         """

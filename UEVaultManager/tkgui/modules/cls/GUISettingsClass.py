@@ -325,9 +325,9 @@ class GUISettings:
 
     minimal_fuzzy_score_by_name = property(get_minimal_fuzzy_score_by_name, set_minimal_fuzzy_score_by_name)
 
-    def get_col_ordering(self):
+    def get_column_infos(self):
         """ Getter for columns order """
-        json_str = self.config_vars['col_ordering']
+        json_str = self.config_vars['column_infos']
         if json_str == '':
             return []
         try:
@@ -336,40 +336,16 @@ class GUISettings:
             values = []
         return values
 
-    def set_col_ordering(self, values):
+    def set_column_infos(self, values):
         """ Setter for columns order """
         if values is None or values == []:
             json_str = ''
         else:
             json_str = json.dumps(values, skipkeys=True, allow_nan=True)
-        self.config_vars['col_ordering'] = json_str
+        self.config_vars['column_infos'] = json_str
 
     # used as property for keeping transparent access
-    col_ordering = property(get_col_ordering, set_col_ordering)
-
-    def get_col_widths(self):
-        """ Getter for columns width """
-        json_str = self.config_vars.get('col_widths', '')
-        if not json_str:
-            return []
-        try:
-            return [int(str_value) for str_value in json_str.split(',')]
-        except ValueError:
-            return []
-
-    def set_col_widths(self, values):
-        """ Setter for columns width """
-        if values is None or values == []:
-            json_str = ''
-        else:
-            json_str = ''
-            for value in values:
-                json_str += str(value) + ','
-            json_str = json_str[:-1]
-        self.config_vars['col_widths'] = json_str
-
-    # used as property for keeping transparent access
-    col_widths = property(get_col_widths, set_col_widths)
+    column_infos = property(get_column_infos, set_column_infos)
 
     def get_data_filters(self):
         """ Getter for data_filters """
@@ -481,14 +457,11 @@ class GUISettings:
                 'comment': 'List of Folders to scan for assets. Their content will be added to the list',
                 'value': ''
             },
-            'col_ordering': {
-                'comment': 'Columns ordering of the table. Automatically saved on quit. Leave empty for default',
+            'column_infos': {
+                'comment': 'Infos about columns of the table. Automatically saved on quit. Leave empty for default',
                 'value': ''
             },
-            'col_widths': {
-                'comment': 'Columns width of the table. Automatically saved on quit. Leave empty for default',
-                'value': ''
-            },
+
 
             # minimal score required when looking for an url file comparing to an asset name.
             # some comparison are more fuzzy than others, so we can set a different score for each comparison
@@ -543,8 +516,7 @@ class GUISettings:
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
-            'col_ordering': self.config.get('UEVaultManager', 'col_ordering'),
-            'col_widths': self.config.get('UEVaultManager', 'col_widths'),
+            'column_infos': self.config.get('UEVaultManager', 'column_infos'),
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
         }
         return config_vars
