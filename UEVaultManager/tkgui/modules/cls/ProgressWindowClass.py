@@ -83,6 +83,15 @@ class ProgressWindow(tk.Toplevel):
         if self.control_frame is None or not show_start_button and self.function is not None:
             self.start_execution()
 
+    def mainloop(self, n=0):
+        """
+        Mainloop method
+        Overrided to add loggin function for debugging
+        """
+        gui_f.log_info(f'starting mainloop in {__name__}')
+        self.tk.mainloop(n)
+        gui_f.log_info(f'ending mainloop in {__name__}')
+
     def __del__(self):
         gui_f.log_debug(f'Destruction of {self.__class__.__name__} object')
         gui_g.progress_window_ref = None
@@ -155,15 +164,6 @@ class ProgressWindow(tk.Toplevel):
             gui_f.log_debug(f'Quitting {self.__class__.__name__}')
             self.function_return_value = self.result_queue.get()
             self.close_window(destroy_window=self.quit_on_close)  # the window is kept to allow further calls to the progress bar
-
-    def mainloop(self, n=0):
-        """
-        Mainloop method
-        Override created to add loggin function (for debugging)
-        """
-        gui_f.log_info(f'starting mainloop in {__name__}')
-        self.tk.mainloop(n)
-        gui_f.log_info(f'ending mainloop in {__name__}')
 
     def set_text(self, new_text: str) -> None:
         """

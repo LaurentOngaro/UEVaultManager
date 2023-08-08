@@ -89,7 +89,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             },  #
             {
                 "text": "Save",
-                "command": container.save_file
+                "command": container.save_all
             },  #
             {
                 "text": "Export",
