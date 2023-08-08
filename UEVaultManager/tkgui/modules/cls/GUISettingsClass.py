@@ -112,7 +112,7 @@ class GUISettings:
         }
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
 
-    def get_rows_per_page(self):
+    def get_rows_per_page(self) -> int:
         """ Getter for rows_per_page """
         return gui_fn.convert_to_int(self.config_vars['rows_per_page'])
 
@@ -123,7 +123,7 @@ class GUISettings:
     # used as property for keeping transparent access
     rows_per_page = property(get_rows_per_page, set_rows_per_page)
 
-    def get_data_filters(self):
+    def get_data_filters(self) -> dict:
         """ Getter for data_filters """
         json_str = self.config_vars['data_filters']
         try:
@@ -132,7 +132,7 @@ class GUISettings:
             values_dict = {}
         return values_dict
 
-    def set_data_filters(self, values_dict):
+    def set_data_filters(self, values_dict: dict):
         """ Setter for data_filters """
         if values_dict is None or values_dict == {}:
             json_str = ''
@@ -143,7 +143,7 @@ class GUISettings:
     # used as property for keeping transparent access
     data_filters = property(get_data_filters, set_data_filters)
 
-    def get_x_pos(self):
+    def get_x_pos(self) -> int:
         """ Getter for x_pos """
         return gui_fn.convert_to_int(self.config_vars['x_pos'])
 
@@ -154,7 +154,7 @@ class GUISettings:
     # used as property for keeping transparent access
     x_pos = property(get_x_pos, set_x_pos)
 
-    def get_y_pos(self):
+    def get_y_pos(self) -> int:
         """ Getter for y_pos """
         return gui_fn.convert_to_int(self.config_vars['y_pos'])
 
@@ -165,7 +165,7 @@ class GUISettings:
     # used as property for keeping transparent access
     y_pos = property(get_y_pos, set_y_pos)
 
-    def get_width(self):
+    def get_width(self) -> int:
         """ Getter for width """
         return gui_fn.convert_to_int(self.config_vars['width'])
 
@@ -176,7 +176,7 @@ class GUISettings:
     # used as property for keeping transparent access
     width = property(get_width, set_width)
 
-    def get_height(self):
+    def get_height(self) -> int:
         """ Getter for height """
         return gui_fn.convert_to_int(self.config_vars['height'])
 
@@ -187,9 +187,9 @@ class GUISettings:
     # used as property for keeping transparent access
     height = property(get_height, set_height)
 
-    def get_debug_mode(self):
+    def get_debug_mode(self) -> bool:
         """ Getter for debug_mode """
-        return self.config_vars['debug_mode']
+        return gui_fn.convert_to_bool(self.config_vars['debug_mode'])
 
     def set_debug_mode(self, value):
         """ Setter for debug_mode """
@@ -198,7 +198,7 @@ class GUISettings:
     # used as property for keeping transparent access
     debug_mode = property(get_debug_mode, set_debug_mode)
 
-    def get_never_update_data_files(self):
+    def get_never_update_data_files(self) -> bool:
         """ Getter for never_update_data_files """
         return gui_fn.convert_to_bool(self.config_vars['never_update_data_files'])
 
@@ -209,7 +209,7 @@ class GUISettings:
     # used as property for keeping transparent access
     never_update_data_files = property(get_never_update_data_files, set_never_update_data_files)
 
-    def get_reopen_last_file(self):
+    def get_reopen_last_file(self) -> bool:
         """ Getter for reopen_last_file """
         return gui_fn.convert_to_bool(self.config_vars['reopen_last_file'])
 
@@ -220,7 +220,7 @@ class GUISettings:
     # used as property for keeping transparent access
     reopen_last_file = property(get_reopen_last_file, set_reopen_last_file)
 
-    def get_use_colors_for_data(self):
+    def get_use_colors_for_data(self) -> bool:
         """ Getter for use_colors_for_data """
         return gui_fn.convert_to_bool(self.config_vars['use_colors_for_data'])
 
@@ -231,7 +231,7 @@ class GUISettings:
     # used as property for keeping transparent access
     use_colors_for_data = property(get_use_colors_for_data, set_use_colors_for_data)
 
-    def get_image_cache_max_time(self):
+    def get_image_cache_max_time(self) -> int:
         """ Getter for image_cache_max_time """
         return gui_fn.convert_to_int(self.config_vars['image_cache_max_time'])
 
@@ -242,7 +242,7 @@ class GUISettings:
     # used as property for keeping transparent access
     image_cache_max_time = property(get_image_cache_max_time, set_image_cache_max_time)
 
-    def get_last_opened_file(self):
+    def get_last_opened_file(self) -> str:
         """ Getter for last_opened_file """
         return self.config_vars['last_opened_file']
 
@@ -253,7 +253,7 @@ class GUISettings:
     # used as property for keeping transparent access
     last_opened_file = property(get_last_opened_file, set_last_opened_file)
 
-    def get_cache_folder(self):
+    def get_cache_folder(self) -> str:
         """ Getter for cache_folder """
         return self.config_vars['cache_folder']
 
@@ -264,7 +264,7 @@ class GUISettings:
     # not used as property to avoid storing absolute paths in the config file. Getter and setter could be used to store relative paths
     # cache_folder = property(get_cache_folder, set_cache_folder)
 
-    def get_results_folder(self):
+    def get_results_folder(self) -> str:
         """ Getter for results_folder """
         return self.config_vars['results_folder']
 
@@ -272,7 +272,7 @@ class GUISettings:
         """ Setter for results_folder """
         self.config_vars['results_folder'] = value
 
-    def get_scraping_folder(self):
+    def get_scraping_folder(self) -> str:
         """ Getter for scraping_folder """
         return self.config_vars['scraping_folder']
 
@@ -283,7 +283,7 @@ class GUISettings:
     # not used as property to avoid storing absolute paths in the config file. Getter and setter could be used to store relative paths
     # scraping_folder = property(get_scraping_folder, set_scraping_folder)
 
-    def get_folders_to_scan(self):
+    def get_folders_to_scan(self) -> list:
         """ Getter for folders_to_scan """
         json_str = self.config_vars['folders_to_scan']
         if json_str == '':
@@ -304,50 +304,50 @@ class GUISettings:
 
     folders_to_scan = property(get_folders_to_scan, set_folders_to_scan)
 
-    def get_minimal_fuzzy_score_by_name(self):
+    def get_minimal_fuzzy_score_by_name(self) -> dict:
         """ Getter for minimal_fuzzy_score_by_name """
         json_str = self.config_vars['minimal_fuzzy_score_by_name']
         if json_str == '':
-            return []
+            return {}
         try:
             values = json.loads(json_str)
         except json.decoder.JSONDecodeError:
-            values = []
+            values = {}
         return values
 
-    def set_minimal_fuzzy_score_by_name(self, values):
+    def set_minimal_fuzzy_score_by_name(self, values_dict: dict):
         """ Setter for minimal_fuzzy_score_by_name """
-        if values is None or values == []:
+        if values_dict is None or values_dict == {}:
             json_str = ''
         else:
-            json_str = json.dumps(values, skipkeys=True, allow_nan=True)
+            json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
         self.config_vars['minimal_fuzzy_score_by_name'] = json_str
 
     minimal_fuzzy_score_by_name = property(get_minimal_fuzzy_score_by_name, set_minimal_fuzzy_score_by_name)
 
-    def get_column_infos(self):
+    def get_column_infos(self) -> dict:
         """ Getter for columns order """
         json_str = self.config_vars['column_infos']
         if json_str == '':
-            return []
+            return {}
         try:
             values = json.loads(json_str)
         except json.decoder.JSONDecodeError:
-            values = []
+            values = {}
         return values
 
-    def set_column_infos(self, values):
+    def set_column_infos(self, values_dict: dict):
         """ Setter for columns order """
-        if values is None or values == []:
+        if values_dict is None or values_dict == {}:
             json_str = ''
         else:
-            json_str = json.dumps(values, skipkeys=True, allow_nan=True)
+            json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
         self.config_vars['column_infos'] = json_str
 
     # used as property for keeping transparent access
     column_infos = property(get_column_infos, set_column_infos)
 
-    def get_data_filters(self):
+    def get_data_filters(self) -> dict:
         """ Getter for data_filters """
         json_str = self.config_vars['data_filters']
         try:
@@ -356,7 +356,7 @@ class GUISettings:
             values_dict = {}
         return values_dict
 
-    def set_data_filters(self, values_dict):
+    def set_data_filters(self, values_dict: dict):
         """ Setter for data_filters """
         if values_dict is None or values_dict == {}:
             json_str = ''
@@ -461,7 +461,6 @@ class GUISettings:
                 'comment': 'Infos about columns of the table. Automatically saved on quit. Leave empty for default',
                 'value': ''
             },
-
 
             # minimal score required when looking for an url file comparing to an asset name.
             # some comparison are more fuzzy than others, so we can set a different score for each comparison

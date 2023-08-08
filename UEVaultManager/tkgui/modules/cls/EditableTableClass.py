@@ -248,7 +248,14 @@ class EditableTable(Table):
             error_msg = f'The number of columns in data source ({col_count}) does not match the number of values in "column_infos" from the config file ({len(column_infos)}).'
         else:
             try:
-                self._data = self._data.reindex(columns=column_infos.keys(), fill_value='')  # reorder columns
+                first_value = next(iter(column_infos.values()))
+                if first_value.get('pos', None) is None:
+                    # old format without the 'p' key (as position
+                    keys_ordered = column_infos.keys()
+                else:
+                    sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
+                    keys_ordered = sorted_cols_by_pos.keys()
+                self._data = self._data.reindex(columns=keys_ordered, fill_value='')  # reorder columns
             except KeyError:
                 error_msg = 'Could not reorder the columns.'
             else:
@@ -497,6 +504,7 @@ class EditableTable(Table):
         if not self.load_data():
             return False
         self.update()
+        self.resize_columns()
         return True
 
     def rebuild_data(self) -> bool:
@@ -913,7 +921,7 @@ class EditableTable(Table):
         if not no_table_update:
             self.add_to_rows_to_save(row_index)
             self.must_save = True
-            self.update()
+            self.update(keep_filters=True)
 
     def get_col_name(self, col_index: int) -> str:
         """

@@ -382,11 +382,13 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
-        col_infos = {}
-        for col in self.editable_table.model.df.columns:
-            col_infos[col] = {}
-            col_infos[col]['width'] = self.editable_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
-        gui_g.s.column_infos = col_infos
+        column_infos = {}
+        for index, col in enumerate(self.editable_table.model.df.columns):
+            column_infos[col] = {}
+            column_infos[col]['width'] = self.editable_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
+            column_infos[col]['pos'] = index
+        sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
+        gui_g.s.column_infos = sorted_cols_by_pos
         gui_g.s.save_config_file()
 
     def open_file(self) -> str:
