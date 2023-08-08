@@ -424,11 +424,11 @@ class EditableTable(Table):
                     asset_id = data_current.at[index, 'Asset_id']  # at checked
                     index_to_delete.append(index)
                     self.add_to_asset_ids_to_delete(asset_id)
-                    log_info(f'adding row #{row_index + 1} with asset_id={asset_id} to the list of index to delete')
+                    log_info(f'adding row {row_index} with asset_id={asset_id} to the list of index to delete')
                 except (IndexError, KeyError) as error:
-                    log_warning(f'Could add row #{row_index + 1} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
+                    log_warning(f'Could add row {row_index} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
         number_deleted = len(index_to_delete)
-        asset_str = f'{number_deleted} rows' if number_deleted > 1 else f' row #{row_index + 1} with asset_id {asset_id}'
+        asset_str = f'{number_deleted} rows' if number_deleted > 1 else f' row {row_index} with asset_id {asset_id}'
         if number_deleted and box_yesno(f'Are you sure you want to delete {asset_str}? '):
             try:
                 self._data.drop(index_to_delete, inplace=True, errors='ignore')

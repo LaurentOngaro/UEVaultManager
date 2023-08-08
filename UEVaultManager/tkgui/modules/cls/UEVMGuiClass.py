@@ -791,7 +791,7 @@ class UEVMGui(tk.Tk):
                 if asset_data is not None:
                     self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
                     if show_message:
-                        gui_f.box_message(f'Data for row {row_index + 1} have been updated from marketplace')
+                        gui_f.box_message(f'Data for row {row_index} have been updated from marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
