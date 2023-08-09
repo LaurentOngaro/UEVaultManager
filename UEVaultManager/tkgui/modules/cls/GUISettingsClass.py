@@ -318,6 +318,14 @@ class GUISettings:
 
     folders_to_scan = property(get_folders_to_scan, set_folders_to_scan)
 
+    def get_data_filters(self) -> dict:
+        """ Getter for data_filters """
+        return self._get_serialized('data_filters')
+
+    def set_data_filters(self, values: dict):
+        """ Setter for data_filters """
+        self._set_serialized('data_filters', values)
+
     def get_minimal_fuzzy_score_by_name(self) -> dict:
         """ Getter for minimal_fuzzy_score_by_name """
         return self._get_serialized('minimal_fuzzy_score_by_name')
@@ -339,13 +347,16 @@ class GUISettings:
     # used as property for keeping transparent access
     column_infos = property(get_column_infos, set_column_infos)
 
-    def get_data_filters(self) -> dict:
-        """ Getter for data_filters """
-        return self._get_serialized('data_filters')
+    def get_use_threads(self) -> bool:
+        """ Getter for use_threads """
+        return gui_fn.convert_to_bool(self.config_vars['use_threads'])
 
-    def set_data_filters(self, values: dict):
-        """ Setter for data_filters """
-        self._set_serialized('data_filters', values)
+    def set_use_threads(self, value):
+        """ Setter for use_threads """
+        self.config_vars['use_threads'] = value
+
+    # used as property for keeping transparent access
+    use_threads = property(get_use_threads, set_use_threads)
 
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -444,7 +455,6 @@ class GUISettings:
                 'comment': 'Infos about columns of the table. Automatically saved on quit. Leave empty for default',
                 'value': ''
             },
-
             # minimal score required when looking for an url file comparing to an asset name.
             # some comparison are more fuzzy than others, so we can set a different score for each comparison
             # The key is a string that must be in the url file name or asset name
@@ -456,6 +466,10 @@ class GUISettings:
                     'brushify': 80,
                     'elite_landscapes': 90
                 }
+            },
+            'use_threads': {
+                'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
+                'value': 'True'
             },
         }
 
@@ -500,6 +514,7 @@ class GUISettings:
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
             'column_infos': self.config.get('UEVaultManager', 'column_infos'),
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
+            'use_threads': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_threads')),
         }
         return config_vars
 

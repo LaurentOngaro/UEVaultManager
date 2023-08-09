@@ -1207,7 +1207,6 @@ class UEVaultManagerCLI:
         else:
             start_row = 0
             max_threads = get_max_threads()
-            # max_threads = 0  # debug only
             owned_assets_only = False
 
         if args.force_refresh:
