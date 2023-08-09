@@ -22,7 +22,7 @@ from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgres
 from UEVaultManager.tkgui.modules.functions import box_yesno
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime
 
-test_only_mode = True  # add some limitations to speed up the dev process - Set to True for Debug Only
+test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
 
 
 def get_filename_from_asset_data(asset_data) -> str:
@@ -230,7 +230,7 @@ class UEAssetScraper:
                 asset_data['asset_id'] = release_info[0]['appId']  # latest release
             except (KeyError, AttributeError):
                 grab_result = GrabResult.NO_APPID.name
-                asset_data['asset_id'] = uid
+                asset_data['asset_id'] = uid  # that's not the REAL asset_id, we use the uid instead
 
             # set url and (re) update data if needed
             try:
@@ -238,11 +238,11 @@ class UEAssetScraper:
                 if existing_url and asset_existing_data and asset_data['asset_url'] != existing_url and asset_existing_data.get(
                     'grab_result', GrabResult.NO_ERROR.name
                 ) != GrabResult.NO_ERROR.name:
-                    self._log_warning(f'URL have changed in database and asset for asset #{uid}. Parsing data from {existing_url}')
+                    self._log_warning(f'URL have changed in database and asset for asset with uid={uid}. Parsing data from {existing_url}')
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
                     # TODO: parse data from existing_url
             except (KeyError, TypeError) as error:
-                self._log_debug(f'Error checking asset_url for asset #{uid}: {error!r}')
+                self._log_debug(f'Error checking asset_url for asset with uid={uid}: {error!r}')
 
             # set prices and discount
             if asset_data.get('priceValue', 0) > 0:
@@ -290,7 +290,7 @@ class UEAssetScraper:
                 tmp_list = [','.join(item.get('compatibleApps')) for item in release_info]
                 supported_versions = ','.join(tmp_list)
             except TypeError as error:
-                self._log_debug(f'Error getting compatibleApps for asset #{uid}: {error!r}')
+                self._log_debug(f'Error getting compatibleApps for asset with uid={uid}: {error!r}')
             asset_data['supported_versions'] = supported_versions
             asset_data['origin'] = origin
 
@@ -336,17 +336,19 @@ class UEAssetScraper:
             ue_asset.init_from_dict(asset_data)
             tags = ue_asset.data.get('tags', [])
             tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
-
-            ue_asset.data['tags'] = tags_str
-            content.append(ue_asset.data)
-            message = f'Asset #{uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}\nTAGS:{tags_str}'
-            self._log_debug(message)
-            # print(message) # only if run from main
-            if self.store_ids:
-                try:
-                    self.scraped_ids.append(uid)
-                except (AttributeError, TypeError):
-                    self._log_debug(f'Error adding uid to self.scraped_ids')
+            try:
+                ue_asset.data['tags'] = tags_str
+                content.append(ue_asset.data)
+                message = f'Asset with uid={uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}\nTAGS:{tags_str}'
+                self._log_debug(message)
+                # print(message) # only if run from main
+                if self.store_ids:
+                    try:
+                        self.scraped_ids.append(uid)
+                    except (AttributeError, TypeError):
+                        self._log_debug(f'Error adding uid to self.scraped_ids')
+            except Exception as error:
+                self._log_debug(f'Error adding asset with uid={uid} to content: {error!r}')
         # end for asset_data in json_data['data']['elements']:
         return content
 
@@ -460,9 +462,11 @@ class UEAssetScraper:
                 task.cancel()
             self.thread_executor.shutdown(wait=False)
 
+        has_data = False
         if self.load_from_files:
-            self.load_from_json_files()
-        else:
+            has_data = self.load_from_json_files() > 0
+
+        if not has_data:
             # start_time = time.time()
             # self.get_owned_asset_ids()
             # message = f'It took {(time.time() - start_time):.3f} seconds to get {len(self.owned_asset_ids)} owned asset ids'
@@ -547,10 +551,11 @@ class UEAssetScraper:
             self._log_warning(f'The following error occured when saving data into {filename}:{error!r}')
             return False
 
-    def load_from_json_files(self, owned_assets_only=False) -> None:
+    def load_from_json_files(self, owned_assets_only=False) -> int:
         """
         Load all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param owned_assets_only: if True, only the owned assets are scraped.
+        :return: The number of files loaded.
         """
         start_time = time.time()
         self.files_count = 0
@@ -577,7 +582,7 @@ class UEAssetScraper:
                         self.scraped_data.append(asset_data)
                 self.files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
-                    return
+                    return self.files_count
                 if test_only_mode and self.files_count >= 100:
                     break
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self.files_count} files'
@@ -596,7 +601,8 @@ class UEAssetScraper:
             json.dump(content, fh)
 
         self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=0)
-        self._save_in_db(last_run_content=content)
+        # self._save_in_db(last_run_content=content) # duplicate with a caller
+        return self.files_count
 
     def save(self, owned_assets_only=False, save_last_run_file=True) -> None:
         """
