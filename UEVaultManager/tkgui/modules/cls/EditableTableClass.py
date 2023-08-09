@@ -143,6 +143,30 @@ class EditableTable(Table):
                         if not pd.isnull(clr):
                             self.drawRect(row, col, color=clr, tag='colorrect', delete=0)
 
+    def setColPositions(self):
+        """
+        Determine current column grid positions
+        Overrided to check get the filtered data if needed
+        """
+        df = self.get_current_data()
+        self.col_positions = []
+        w = self.cellwidth
+        x_pos = self.x_start
+        self.col_positions.append(x_pos)
+        for col in range(self.cols):
+            try:
+                colname = df.columns[col].encode('utf-8', 'ignore').decode('utf-8')
+            # noinspection PyBroadException
+            except:
+                colname = str(df.columns[col])
+            if colname in self.columnwidths:
+                x_pos = x_pos + self.columnwidths[colname]
+            else:
+                x_pos = x_pos + w
+            self.col_positions.append(x_pos)
+        self.tablewidth = self.col_positions[len(self.col_positions) - 1]
+        return
+
     def resizeColumn(self, col, width):
         """
         Resize a column by dragging
@@ -255,7 +279,8 @@ class EditableTable(Table):
                 else:
                     sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
                     keys_ordered = sorted_cols_by_pos.keys()
-                self._data = self._data.reindex(columns=keys_ordered, fill_value='')  # reorder columns
+                df = self._data.reindex(columns=keys_ordered, fill_value='')  # reorder columns
+                self.set_data(df)
             except KeyError:
                 error_msg = 'Could not reorder the columns.'
             else:
@@ -298,6 +323,17 @@ class EditableTable(Table):
         else:
             self.current_count = len(self._data)
             return self._data
+
+    def set_data(self, df: pd.DataFrame) -> None:
+        """
+        Set the data in the table. Switch automatically to the filtered data if the filter is enabled.
+        """
+        if self.is_filtered:
+            self._filtered = df
+            self.current_count = len(self._filtered)
+        else:
+            self._data = df
+            self.current_count = len(self._data)
 
     def get_row_index_with_offet(self, row_index=None) -> int:
         """
@@ -474,6 +510,9 @@ class EditableTable(Table):
                     # update the row in the database
                     if self._db_handler is None:
                         self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
+                        tags = ue_asset.data.get('tags', [])
+                        tags_str = self._db_handler.convert_tag_list_to_string(tags)
+                        ue_asset.data['tags'] = tags_str
                     self._db_handler.save_ue_asset(ue_asset)
                     asset_id = ue_asset.data.get('asset_id', '')
                     log_info(f'UE_asset ({asset_id}) for row #{row_index} has been saved to the database')
@@ -553,7 +592,8 @@ class EditableTable(Table):
                 store_in_files=True,
                 store_ids=False,  # useless for now
                 load_from_files=load_from_files,
-                clean_database=not test_only_mode,
+                # clean_database=not test_only_mode, # BE CAREFUL: if true, this will delete all the data in the database included user fields values !!!
+                clean_database=False,
                 engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
                 egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs,
                 progress_window=progress_window
