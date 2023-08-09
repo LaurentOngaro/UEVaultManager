@@ -83,7 +83,7 @@ class UEVMGui(tk.Tk):
 
     def __init__(
         self,
-        title: str,
+        title: str = 'UVMEGUI',
         icon='',
         screen_index: int = 0,
         data_source_type: DataSourceType = DataSourceType.FILE,
@@ -383,7 +383,7 @@ class UEVMGui(tk.Tk):
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
         column_infos = {}
-        for index, col in enumerate(self.editable_table.model.df.columns):
+        for index, col in enumerate(self.editable_table.model.df.columns):  # df.model checked
             column_infos[col] = {}
             column_infos[col]['width'] = self.editable_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
             column_infos[col]['pos'] = index

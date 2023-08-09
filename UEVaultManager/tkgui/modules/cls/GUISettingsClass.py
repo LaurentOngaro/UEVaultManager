@@ -62,7 +62,8 @@ class GUISettings:
 
         self.sqlite_filename: str = os.path.join(self.scraping_folder, 'assets.db')
 
-        self.app_title: str = f'{__name__} Gui v{__version__} ({__codename__})'
+        self.app_title_long: str = f'{__name__} Gui v{__version__} ({__codename__})'
+        self.app_title: str = __name__
         self.app_monitor: int = 1
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder. MUST BE LOWERCASE

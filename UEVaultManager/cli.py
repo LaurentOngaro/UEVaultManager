@@ -1164,7 +1164,7 @@ class UEVaultManagerCLI:
                 gui_g.UEVM_cli_args['input'] = data_source
                 gui_g.UEVM_cli_args['output'] = data_source
         gui_g.UEVM_gui_ref = UEVMGui(
-            title=gui_g.s.app_title,
+            title=gui_g.s.app_title_long,
             icon=gui_g.s.app_icon_filename,
             screen_index=0,
             data_source_type=data_source_type,

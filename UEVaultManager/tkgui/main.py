@@ -39,7 +39,7 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
             rebuild = True
     if open_mainwindow:
         main_window = UEVMGui(
-            title=gui_g.s.app_title,
+            title=gui_g.s.app_title_long,
             icon=gui_g.s.app_icon_filename,
             screen_index=0,
             data_source_type=data_source_type,
