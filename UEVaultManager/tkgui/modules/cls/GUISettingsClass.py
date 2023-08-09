@@ -42,6 +42,7 @@ class GUISettings:
         self.init_gui_config_file(config_file)
 
         self.config_vars = self.read_config_properties()
+        self._config_vars_deserialized = {}  # will store config_vars after they have been deserialized from json
         # the following folders are relative to the current file location
         # they must be used trought path_from_relative_to_absolute
         # following vars are not set as properties to avoid storing absolute paths in the config file
@@ -113,6 +114,38 @@ class GUISettings:
         }
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
 
+    def _get_serialized(self, var_name: str = '', is_dict=False):
+        """
+        Getter for a serialized config vars
+        :param var_name: name of the config var to get
+        :return: List or Dict
+        """
+        default = {} if is_dict else []
+        if self._config_vars_deserialized.get(var_name, None) is not None:
+            return self._config_vars_deserialized[var_name]
+        json_str = self.config_vars[var_name]
+        if json_str == '':
+            return default
+        try:
+            values = json.loads(json_str)
+            self._config_vars_deserialized[var_name] = values
+        except json.decoder.JSONDecodeError:
+            values = default
+        return values
+
+    def _set_serialized(self, var_name: str = '', values=None):
+        """
+        Setter for a serialized config vars
+        :param var_name: name of the config var to get
+        :param values: List or Dict to serialize
+        """
+        if values is None or values == {} or values == []:
+            json_str = ''
+        else:
+            json_str = json.dumps(values, skipkeys=True, allow_nan=True)
+        self._config_vars_deserialized[var_name] = json_str
+        self.config_vars[var_name] = json_str
+
     def get_rows_per_page(self) -> int:
         """ Getter for rows_per_page """
         return gui_fn.convert_to_int(self.config_vars['rows_per_page'])
@@ -126,20 +159,11 @@ class GUISettings:
 
     def get_data_filters(self) -> dict:
         """ Getter for data_filters """
-        json_str = self.config_vars['data_filters']
-        try:
-            values_dict = json.loads(json_str)
-        except json.decoder.JSONDecodeError:
-            values_dict = {}
-        return values_dict
+        return self._get_serialized('data_filters', is_dict=True)
 
-    def set_data_filters(self, values_dict: dict):
+    def set_data_filters(self, values: dict):
         """ Setter for data_filters """
-        if values_dict is None or values_dict == {}:
-            json_str = ''
-        else:
-            json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
-        self.config_vars['data_filters'] = json_str
+        self._set_serialized('data_filters', values)
 
     # used as property for keeping transparent access
     data_filters = property(get_data_filters, set_data_filters)
@@ -286,84 +310,42 @@ class GUISettings:
 
     def get_folders_to_scan(self) -> list:
         """ Getter for folders_to_scan """
-        json_str = self.config_vars['folders_to_scan']
-        if json_str == '':
-            return []
-        try:
-            values = json.loads(json_str)
-        except json.decoder.JSONDecodeError:
-            values = []
-        return values
+        return self._get_serialized('folders_to_scan')
 
     def set_folders_to_scan(self, values):
         """ Setter for folders_to_scan """
-        if values is None or values == []:
-            json_str = ''
-        else:
-            json_str = json.dumps(values, skipkeys=True, allow_nan=True)
-        self.config_vars['folders_to_scan'] = json_str
+        self._set_serialized('folders_to_scan', values)
 
     folders_to_scan = property(get_folders_to_scan, set_folders_to_scan)
 
     def get_minimal_fuzzy_score_by_name(self) -> dict:
         """ Getter for minimal_fuzzy_score_by_name """
-        json_str = self.config_vars['minimal_fuzzy_score_by_name']
-        if json_str == '':
-            return {}
-        try:
-            values = json.loads(json_str)
-        except json.decoder.JSONDecodeError:
-            values = {}
-        return values
+        return self._get_serialized('minimal_fuzzy_score_by_name')
 
-    def set_minimal_fuzzy_score_by_name(self, values_dict: dict):
+    def set_minimal_fuzzy_score_by_name(self, values: dict):
         """ Setter for minimal_fuzzy_score_by_name """
-        if values_dict is None or values_dict == {}:
-            json_str = ''
-        else:
-            json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
-        self.config_vars['minimal_fuzzy_score_by_name'] = json_str
+        self._set_serialized('minimal_fuzzy_score_by_name', values)
 
     minimal_fuzzy_score_by_name = property(get_minimal_fuzzy_score_by_name, set_minimal_fuzzy_score_by_name)
 
     def get_column_infos(self) -> dict:
-        """ Getter for columns order """
-        json_str = self.config_vars['column_infos']
-        if json_str == '':
-            return {}
-        try:
-            values = json.loads(json_str)
-        except json.decoder.JSONDecodeError:
-            values = {}
-        return values
+        """ Getter for columns infos """
+        return self._get_serialized('column_infos')
 
-    def set_column_infos(self, values_dict: dict):
-        """ Setter for columns order """
-        if values_dict is None or values_dict == {}:
-            json_str = ''
-        else:
-            json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
-        self.config_vars['column_infos'] = json_str
+    def set_column_infos(self, values: dict):
+        """ Setter for columns infos """
+        self._set_serialized('column_infos', values)
 
     # used as property for keeping transparent access
     column_infos = property(get_column_infos, set_column_infos)
 
     def get_data_filters(self) -> dict:
         """ Getter for data_filters """
-        json_str = self.config_vars['data_filters']
-        try:
-            values_dict = json.loads(json_str)
-        except json.decoder.JSONDecodeError:
-            values_dict = {}
-        return values_dict
+        return self._get_serialized('data_filters')
 
-    def set_data_filters(self, values_dict: dict):
+    def set_data_filters(self, values: dict):
         """ Setter for data_filters """
-        if values_dict is None or values_dict == {}:
-            json_str = ''
-        else:
-            json_str = json.dumps(values_dict, skipkeys=True, allow_nan=True)
-        self.config_vars['data_filters'] = json_str
+        self._set_serialized('data_filters', values)
 
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
