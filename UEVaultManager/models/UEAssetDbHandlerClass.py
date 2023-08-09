@@ -635,29 +635,34 @@ class UEAssetDbHandler:
             name = row['name'] if row else None
         return name
 
-    def convert_tag_list_to_string(self, tags: list) -> str:
+    def convert_tag_list_to_string(self, tags: None) -> str:
         """
         Convert a tags id list to a comma separated string of tag names.
         """
         tags_str = ''
-        if tags is not None and tags != [] and tags != {}:
-            if isinstance(tags, list):
-                names = []
-                for item in tags:
-                    if isinstance(item, int):
-                        # temp: use the tag id as a name
-                        name = self.get_tag_name_by_id(uid=item)
-                        if name is None:
-                            name = str(item)
-                    elif isinstance(item, dict):
-                        uid = item.get('id', None)  # not used for now
-                        name = item.get('name', '').title()
-                        self.save_tag({'id': uid, 'name': name})
-                    else:
-                        name = str(item).title()
-                    if name and name not in names:
-                        names.append(name)
-                tags_str = ','.join(names)
+        if tags is not None and tags != [] and tags != {} and tags != '':
+            if isinstance(tags, str):
+                # noinspection PyBroadException
+                try:
+                    tags = tags.split(',')  # convert the string to a list
+                except Exception:
+                    return tags_str
+            names = []
+            for item in tags:
+                if isinstance(item, int):
+                    # temp: use the tag id as a name
+                    name = self.get_tag_name_by_id(uid=item)
+                    if name is None:
+                        name = str(item)
+                elif isinstance(item, dict):
+                    uid = item.get('id', None)  # not used for now
+                    name = item.get('name', '').title()
+                    self.save_tag({'id': uid, 'name': name})
+                else:
+                    name = str(item).title()  # convert to string and capitalize
+                if name and name not in names:
+                    names.append(name)
+            tags_str = ','.join(names)
         return tags_str
 
     def drop_tables(self) -> None:
