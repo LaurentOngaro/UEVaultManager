@@ -109,7 +109,7 @@ class UEAssetScraper:
         self.assets_data_folder: str = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
         self.owned_assets_data_folder: str = os.path.join(gui_g.s.scraping_folder, 'assets', 'owned')
         self.db_name: str = os.path.join(gui_g.s.scraping_folder, 'assets.db')
-        self.max_threads: int = max_threads
+        self.max_threads: int = max_threads if gui_g.s.use_threads else 0
         self.threads_count: int = 0
 
         self.files_count: int = 0
@@ -336,19 +336,16 @@ class UEAssetScraper:
             ue_asset.init_from_dict(asset_data)
             tags = ue_asset.data.get('tags', [])
             tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
-            try:
-                ue_asset.data['tags'] = tags_str
-                content.append(ue_asset.data)
-                message = f'Asset with uid={uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}\nTAGS:{tags_str}'
-                self._log_debug(message)
-                # print(message) # only if run from main
-                if self.store_ids:
-                    try:
-                        self.scraped_ids.append(uid)
-                    except (AttributeError, TypeError):
-                        self._log_debug(f'Error adding uid to self.scraped_ids')
-            except Exception as error:
-                self._log_debug(f'Error adding asset with uid={uid} to content: {error!r}')
+            ue_asset.data['tags'] = tags_str
+            content.append(ue_asset.data)
+            message = f'Asset with uid={uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}'
+            # message += f'\nTAGS:{tags_str}' # this line seems to create BUGS in threads (WTF !!!!)
+            self._log_debug(message)
+            if self.store_ids:
+                try:
+                    self.scraped_ids.append(uid)
+                except (AttributeError, TypeError):
+                    self._log_debug(f'Error adding uid to self.scraped_ids')
         # end for asset_data in json_data['data']['elements']:
         return content
 
