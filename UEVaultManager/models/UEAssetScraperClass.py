@@ -22,7 +22,7 @@ from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgres
 from UEVaultManager.tkgui.modules.functions import box_yesno
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime
 
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
+test_only_mode = True  # add some limitations to speed up the dev process - Set to True for Debug Only
 
 
 def get_filename_from_asset_data(asset_data) -> str:
@@ -336,9 +336,10 @@ class UEAssetScraper:
             ue_asset.init_from_dict(asset_data)
             tags = ue_asset.data.get('tags', [])
             tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
+
             ue_asset.data['tags'] = tags_str
             content.append(ue_asset.data)
-            message = f'Asset #{uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}'
+            message = f'Asset #{uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}\nTAGS:{tags_str}'
             self._log_debug(message)
             # print(message) # only if run from main
             if self.store_ids:
