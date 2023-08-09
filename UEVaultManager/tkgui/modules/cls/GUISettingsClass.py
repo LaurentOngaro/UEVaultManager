@@ -143,7 +143,7 @@ class GUISettings:
             json_str = ''
         else:
             json_str = json.dumps(values, skipkeys=True, allow_nan=True)
-        self._config_vars_deserialized[var_name] = json_str
+        # self._config_vars_deserialized[var_name] = json_str
         self.config_vars[var_name] = json_str
 
     def get_rows_per_page(self) -> int:

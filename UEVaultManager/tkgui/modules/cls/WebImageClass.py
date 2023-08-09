@@ -35,7 +35,7 @@ class WebImage:
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as error:
             # log a warning if image cannot be downloaded or opened
-            log_warning(f'image could not be read from url {self.url}.\nError:{error}')
+            log_warning(f'image could not be read from url {self.url}.\nError:{error!r}')
 
     def get(self) -> ImageTk.PhotoImage:
         """
@@ -58,5 +58,5 @@ class WebImage:
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as error:
             # log a warning if image cannot be resized
-            log_warning(f'Could not get resized image from url {self.url}.\nError:{error}')
+            log_warning(f'Could not get resized image from url {self.url}.\nError:{error!r}')
         return self.__image_tk

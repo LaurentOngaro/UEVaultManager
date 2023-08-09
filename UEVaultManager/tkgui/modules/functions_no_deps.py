@@ -273,7 +273,6 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
     try:
         return value.strftime(date_format)
     except (TypeError, ValueError, AttributeError):
-        # print(f'Error while converting {value} to a datetime: {error}')
         return default
 
 
