@@ -42,8 +42,8 @@ class EditableTable(Table):
     :param update_rows_text_func: A function that updates the text that shows the number of rows.
     :param kwargs: Additional arguments to pass to the pandastable.Table class.
     """
-    _data = {}
-    _filtered = {}  # do not put the word "data" here to makje search in code easier
+    _data: pd.DataFrame = None
+    _filtered: pd.DataFrame = None  # do not put the word "data" here to make search in code easier
     _last_selected_row: int = -1
     _last_selected_col: int = -1
     _changed_rows = []
@@ -148,7 +148,9 @@ class EditableTable(Table):
         Determine current column grid positions
         Overrided to check get the filtered data if needed
         """
-        df = self.get_current_data()
+
+        df = self.model.df  # model.df checked. The only one that contains the new columns order
+        col_names = []  # use a varaible to be able to "clean" the column names. Sometime and extra \n is added
         self.col_positions = []
         w = self.cellwidth
         x_pos = self.x_start
@@ -164,8 +166,17 @@ class EditableTable(Table):
             else:
                 x_pos = x_pos + w
             self.col_positions.append(x_pos)
+
+            col_names.append(colname.strip('\n'))  # "clean" the column names. Sometime and extra \n is added
         self.tablewidth = self.col_positions[len(self.col_positions) - 1]
-        return
+
+        # need to apply the order change to the "not displayed" data
+        if not self.is_filtered and self._filtered is not None:
+            # data is not filtered , we update the _filtered dataframe
+            self._filtered = self._filtered.reindex(columns=col_names)
+        else:
+            # data is filtered , we update the _data dataframe
+            self._data = self._data.reindex(columns=col_names)
 
     def resizeColumn(self, col, width):
         """
@@ -183,7 +194,6 @@ class EditableTable(Table):
         self.setColPositions()
         self.delete('colrect')
         self.redraw()
-        return
 
     def _generate_cell_selection_changed_event(self) -> None:
         """
@@ -253,7 +263,7 @@ class EditableTable(Table):
                     else:
                         data[col] = data[col].astype(converter)
                 except (KeyError, ValueError) as error:
-                    log_warning(f'Could not convert column "{col}" using {converter}. Error: {error}')
+                    log_warning(f'Could not convert column "{col}" using {converter}. Error: {error!r}')
         # log_debug("\nCOL TYPES AFTER CONVERSION\n")
         # data.info()  # direct print info
 
@@ -279,8 +289,11 @@ class EditableTable(Table):
                 else:
                     sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
                     keys_ordered = sorted_cols_by_pos.keys()
-                df = self._data.reindex(columns=keys_ordered, fill_value='')  # reorder columns
-                self.set_data(df)
+                # reindex ALL the existing dataframes
+                self.model.df = self.model.df.reindex(columns=keys_ordered, fill_value='')  # reorder columns
+                self._data = self._data.reindex(columns=keys_ordered, fill_value='')  # reorder columns
+                if self._filtered is not None:
+                    self._filtered = self._filtered.reindex(columns=keys_ordered, fill_value='')  # reorder columns
             except KeyError:
                 error_msg = 'Could not reorder the columns.'
             else:
@@ -386,7 +399,7 @@ class EditableTable(Table):
                     self.create_row(add_to_existing=False)
                 # fill all 'NaN' like values with 'None', to be similar to the database
                 data.fillna('None', inplace=True)
-                self._data = data
+                self.set_data(data)
             elif self.data_source_type == DataSourceType.SQLITE:
                 data = self._db_handler.get_assets_data_for_csv()
                 column_names = self._db_handler.get_columns_name_for_csv()
@@ -394,7 +407,7 @@ class EditableTable(Table):
                     log_warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     self.create_row(add_to_existing=False)
                 else:
-                    self._data = pd.DataFrame(data, columns=column_names)
+                    self.set_data(pd.DataFrame(data, columns=column_names))
             else:
                 log_error(f'Unknown data source type: {self.data_source_type}')
                 return False
@@ -441,11 +454,11 @@ class EditableTable(Table):
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
             # row is added at the start of the table. As it, the index is always known
-            self._data = pd.concat([table_row, self._data], copy=False, ignore_index=True)
+            self.set_data(pd.concat([table_row, self._data], copy=False, ignore_index=True))
             self.add_to_rows_to_save(0)
-        else:
+        elif table_row is not None:
             self.must_rebuild = True
-            self._data = table_row
+            self.set_data(table_row)
 
     def del_row(self, row_indexes=None) -> bool:
         """
@@ -475,7 +488,8 @@ class EditableTable(Table):
         if number_deleted and box_yesno(f'Are you sure you want to delete {asset_str}? '):
             try:
                 self._data.drop(index_to_delete, inplace=True, errors='ignore')
-                self._filtered.drop(index_to_delete, inplace=True, errors='ignore')
+                if self._filtered is not None:
+                    self._filtered.drop(index_to_delete, inplace=True, errors='ignore')
                 if self._filter_mask is not None:
                     self._filter_mask.drop(index_to_delete, inplace=True, errors='ignore')
                 self.must_save = True
@@ -517,7 +531,7 @@ class EditableTable(Table):
                     asset_id = ue_asset.data.get('asset_id', '')
                     log_info(f'UE_asset ({asset_id}) for row #{row_index} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
-                    log_warning(f'Unable to save UE_asset for row #{row_index} to the database. Error: {error}')
+                    log_warning(f'Unable to save UE_asset for row #{row_index} to the database. Error: {error!r}')
             for asset_id in self._deleted_asset_ids:
                 try:
                     # delete the row in the database
@@ -526,7 +540,7 @@ class EditableTable(Table):
                     self._db_handler.delete_asset(asset_id=asset_id)
                     log_info(f'row with asset_id={asset_id} has been deleted from the database')
                 except (KeyError, ValueError, AttributeError) as error:
-                    log_warning(f'Unable to delete asset_id={asset_id} to the database. Error: {error}')
+                    log_warning(f'Unable to delete asset_id={asset_id} to the database. Error: {error!r}')
 
         # self.update()
         self.clear_rows_to_save()
@@ -770,12 +784,13 @@ class EditableTable(Table):
         else:
             mask = self._filter_mask
         if mask is not None:
-            self._filtered = data[mask]
+            # self. _filtered = data[mask]
             self.is_filtered = True
+            self.set_data(data[mask])
             self.current_page = 1
         else:
-            self._filtered = data
             self.is_filtered = False
+            # self. _filtered = data
         self._filter_mask = mask
         self.update_page()
 
