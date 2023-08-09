@@ -52,7 +52,6 @@ class UEAsset:
             self.init_data()
             # copy all the keys from the data dict to the self.data dict
             init_dict_from_data(self.data, data)
-            self.convert_tag_list_to_string()
 
     def init_from_list(self, data: list = None) -> None:
         """
@@ -65,31 +64,3 @@ class UEAsset:
             # Note: keep in mind that the order for the values of the list and must correspond to the order of the keys in self.data
             keys = self.data.keys()
             self.data = dict(zip(keys, data))
-            self.convert_tag_list_to_string()
-
-    def convert_tag_list_to_string(self) -> None:
-        """
-        INPLACE Convert the tags id list of an asset_data dict to a string.
-        """
-        tags = self.data.get('tags', None)
-        if tags is None or not tags or tags == [] or tags == {}:
-            tags = ''
-        else:
-            if isinstance(tags, list):
-                names = []
-                for item in tags:
-                    if isinstance(item, int):
-                        # temp: use the tag id as a name
-                        # TODO : get the value associated to each tag id. Not sure, it's possible using the API. If not, use a new table for that
-                        name = str(item)
-                    elif isinstance(item, dict):
-                        # id = item.get('id', None) # not used for now
-                        name = item.get('name', '').title()
-                        # TODO : store each new correspondance for a tag id and its name in a new table
-                    else:
-                        name = str(item).title()
-                    if name and name not in names:
-                        names.append(name)
-                tags = ','.join(names)
-        self.data['tags'] = tags
-        # print(f"{self.data['asset_id']} tags converted: {tags}") # debug only

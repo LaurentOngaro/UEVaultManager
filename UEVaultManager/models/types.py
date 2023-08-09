@@ -69,4 +69,5 @@ class DbVersionNum(Enum):
     V4 = 4  # add custom_attributes field to the assets table
     V5 = 5  # add added_manually column to the assets table
     V6 = 6  # add tags column to the assets table
-    V7 = 7  # future version
+    V7 = 7  # add the tags table
+    V8 = 8  # future version

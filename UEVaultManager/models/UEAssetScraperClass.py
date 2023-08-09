@@ -19,6 +19,7 @@ from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
+from UEVaultManager.tkgui.modules.functions import box_yesno
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime
 
 test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
@@ -119,6 +120,7 @@ class UEAssetScraper:
 
         self.egs = EPCAPI(timeout=timeout) if egs is None else egs
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(level=logging.DEBUG)
         self.asset_db_handler = UEAssetDbHandler(self.db_name)
         self.thread_executor = None
         self.thread_executor_must_stop: bool = False
@@ -193,12 +195,15 @@ class UEAssetScraper:
             # get the list of assets after a "scraping" of the json data using URL
             assets_data_list = json_data['data']['elements']
         except KeyError:
-            self._log_debug('data is not in a "scraped" format')
+            # this exception is raised when data come from a json file. Not an issue
             # create a list of one asset when data come from a json file
             assets_data_list = [json_data]
-
+        asset_count = len(assets_data_list)
+        if asset_count > 1:
+            self.progress_window.reset(new_value=0, new_text='Parsing Assets data', new_max_value=asset_count)
         for asset_data in assets_data_list:
             uid = asset_data.get('id', None)
+            self._log_debug(f"uid='{uid}'")  # debug only
             if uid is None:
                 # this should never occur
                 self._log_warning(f'No id found for asset {asset_data}. Passing to next asset')
@@ -332,6 +337,9 @@ class UEAssetScraper:
                         asset_data[field] = old_value
 
             ue_asset.init_from_dict(asset_data)
+            tags = ue_asset.data.get('tags', [])
+            tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
+            ue_asset.data['tags'] = tags_str
             content.append(ue_asset.data)
             message = f'Asset #{uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}'
             self._log_debug(message)
@@ -341,6 +349,9 @@ class UEAssetScraper:
                     self.scraped_ids.append(uid)
                 except (AttributeError, TypeError):
                     self._log_debug(f'Error adding uid to self.scraped_ids')
+
+            if asset_count > 1 and not self.progress_window.update_and_continue(increment=1):
+                return content
         # end for asset_data in json_data['data']['elements']:
         return content
 
@@ -355,10 +366,11 @@ class UEAssetScraper:
 
         if self.clean_database:
             # next line will delete all assets in the database
-            self.asset_db_handler.delete_all_assets()
-            self.asset_db_handler.set_assets(self.scraped_data)
-        else:
-            self.asset_db_handler.set_assets(self.scraped_data)
+            if box_yesno(
+                'Current settings and params are set to delete all existing data before rebuilding. All user fields values will be lost. Are you sure your want to do that ?'
+            ):
+                self.asset_db_handler.delete_all_assets(keep_added_manually=True)
+        self.asset_db_handler.set_assets(self.scraped_data)
         self.asset_db_handler.save_last_run(last_run_content)
 
     def gather_all_assets_urls(self, empty_list_before=False, save_result=True, owned_assets_only=False) -> None:

@@ -64,14 +64,14 @@ class UEAssetDbHandler:
 
         def __init__(self, database_name: str):
             self.database_name: str = database_name
-            self.conn = sqlite3.connect(self.database_name)
+            self.conn = sqlite3.connect(self.database_name, check_same_thread=False)
 
         def __enter__(self):
             """
             Open the database connection.
             :return: The sqlite3.Connection object.
             """
-            self.conn = sqlite3.connect(self.database_name)
+            self.conn = sqlite3.connect(self.database_name, check_same_thread=False)
             return self.conn
 
         def __exit__(self, exc_type, exc_val, exc_tb):
@@ -240,6 +240,14 @@ class UEAssetDbHandler:
                 cursor.execute(query)
                 self.connection.commit()
                 cursor.close()
+        if upgrade_to_version.value >= DbVersionNum.V7.value:
+            if not self.is_table_exist('tags'):
+                # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
+                cursor = self.connection.cursor()
+                query = "CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY NOT NULL, name TEXT)"
+                cursor.execute(query)
+                self.connection.commit()
+                cursor.close()
 
     def check_and_upgrade_database(self, upgrade_from_version: DbVersionNum = None) -> None:
         """
@@ -261,17 +269,15 @@ class UEAssetDbHandler:
         # all the following steps must be run sequentially
         if upgrade_from_version.value <= DbVersionNum.V1.value:
             # necessary steps to upgrade to version 1, aka create tables
-            self.create_tables(upgrade_to_version=DbVersionNum.V1)
             self.db_version = DbVersionNum.V2
-            upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            self.create_tables(upgrade_to_version=self.db_version)
+            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V2:
             # necessary steps to upgrade from version 2
             # add the last_run table to get data about the last run of the ap
-            self.create_tables(upgrade_to_version=DbVersionNum.V3)
             self.db_version = DbVersionNum.V3
-            upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            self.create_tables(upgrade_to_version=self.db_version)
+            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V3:
             # necessary steps to upgrade from version 3
             # add user fields
@@ -292,7 +298,7 @@ class UEAssetDbHandler:
             )
             self.db_version = DbVersionNum.V4
             upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V4:
             # necessary steps to upgrade from version 4
             # add changed fields
@@ -311,23 +317,26 @@ class UEAssetDbHandler:
                 }
             )
             self.db_version = DbVersionNum.V5
-            upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V5:
             # necessary steps to upgrade from version 5
             # add changed fields
             self._add_missing_columns('assets', required_columns={'tags': 'TEXT', })
             self.db_version = DbVersionNum.V6
-            upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V6:
+            self.db_version = DbVersionNum.V7
+            self.create_tables(upgrade_to_version=self.db_version)
+            self.logger.info(f'Database upgraded to {self.db_version}')
+        if upgrade_from_version == DbVersionNum.V7:
             """
-            necessary steps to upgrade from version 6
+            necessary steps to upgrade from version 7
             does not exist yet
-            do stuff here
-            self.db_version = DbVersionNum.V6
-            upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {upgrade_from_version}')
+            """
+            """
+            # do some stuff here
+            self.db_version = DbVersionNum.V8
+            self.logger.info(f'Database upgraded to {self.db_version}')
             """
             pass
         if previous_version != self.db_version:
@@ -361,6 +370,7 @@ class UEAssetDbHandler:
             cursor.close()
         return row_count
 
+    # noinspection DuplicatedCode
     def save_last_run(self, data: dict):
         """
         Save the last run data into the 'last_run' table.
@@ -398,6 +408,9 @@ class UEAssetDbHandler:
                 asset['date_added_in_db'] = convert_to_str_datetime(
                     value=asset['date_added_in_db'], date_format=default_datetime_format, default=str_today
                 )
+                tags = asset.get('tags', [])
+                tags_str = self.convert_tag_list_to_string(tags)
+                asset['tags'] = tags_str
                 # remove all fields whith a None Value
                 filtered_fields = {k: v for k, v in asset.items() if (v is not None and v != 'None')}
                 if len(filtered_fields) == 0:
@@ -557,13 +570,18 @@ class UEAssetDbHandler:
             self.connection.commit()
             cursor.close()
 
-    def delete_all_assets(self) -> None:
+    def delete_all_assets(self, keep_added_manually=True) -> None:
         """
         Delete all assets from the 'assets' table.
+        :param keep_added_manually: True to keep the assets added manually, False to delete all assets.
         """
+        if keep_added_manually:
+            where_clause = "added_manually = 0"
+        else:
+            where_clause = "1"
         if self.connection is not None:
             cursor = self.connection.cursor()
-            cursor.execute("DELETE FROM assets WHERE 1")
+            cursor.execute("DELETE FROM assets WHERE ?", (where_clause, ))
             self.connection.commit()
             cursor.close()
 
@@ -584,6 +602,64 @@ class UEAssetDbHandler:
             self.connection.commit()
             cursor.close()
 
+    # noinspection DuplicatedCode
+    def save_tag(self, data: dict):
+        """
+        Save a tag into the 'tag' table.
+        :param data: A dictionary containing the data to save.
+        """
+        # check if the database version is compatible with the current method
+        if not self._check_db_version(DbVersionNum.V7, caller_name=inspect.currentframe().f_code.co_name):
+            return
+        if data.get('id', None) is None or data.get('name', None) is None:
+            return
+        if self.get_tag_name_by_id(data['id']) is None:
+            cursor = self.connection.cursor()
+            query = "INSERT INTO tags (id, name) VALUES (:id, :name)"
+            cursor.execute(query, data)
+            cursor.close()
+            self.connection.commit()
+
+    def get_tag_name_by_id(self, uid: int) -> str:
+        """
+        Read a tag name using its id from the 'tags' table.
+        :param uid: The ID of the tag to get.
+        :return: name of the tag.
+        """
+        name = None
+        if self.connection is not None:
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT name from tags WHERE id = ?", (uid, ))
+            row = cursor.fetchone()
+            cursor.close()
+            name = row['name'] if row else None
+        return name
+
+    def convert_tag_list_to_string(self, tags: list) -> str:
+        """
+        Convert a tags id list to a comma separated string of tag names.
+        """
+        tags_str = ''
+        if tags is not None and tags != [] and tags != {}:
+            if isinstance(tags, list):
+                names = []
+                for item in tags:
+                    if isinstance(item, int):
+                        # temp: use the tag id as a name
+                        name = self.get_tag_name_by_id(uid=item)
+                        if name is None:
+                            name = str(item)
+                    elif isinstance(item, dict):
+                        uid = item.get('id', None)  # not used for now
+                        name = item.get('name', '').title()
+                        self.save_tag({'id': uid, 'name': name})
+                    else:
+                        name = str(item).title()
+                    if name and name not in names:
+                        names.append(name)
+                tags_str = ','.join(names)
+        return tags_str
+
     def drop_tables(self) -> None:
         """
         Drop the 'assets' and 'last_run' tables.
@@ -592,6 +668,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             cursor.execute("DROP TABLE IF EXISTS assets")
             cursor.execute("DROP TABLE IF EXISTS last_run")
+            cursor.execute("DROP TABLE IF EXISTS tags")
             self.connection.commit()
             cursor.close()
 
@@ -653,7 +730,7 @@ class UEAssetDbHandler:
                 'USD',  # currency_code
                 fake.text(),  # technical_details
                 fake.text(),  # long_description
-                [random.randint(0, 1000), random.randint(0, 1000), random.randint(0, 1000)],  # tags
+                [fake.word(), fake.word(), fake.word()],  # tags
                 fake.uuid4(),  # comment_rating_id
                 fake.uuid4(),  # rating_id
                 random.choice([0, 1]),  # is_catalog_item
