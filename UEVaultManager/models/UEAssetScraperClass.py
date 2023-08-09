@@ -198,12 +198,9 @@ class UEAssetScraper:
             # this exception is raised when data come from a json file. Not an issue
             # create a list of one asset when data come from a json file
             assets_data_list = [json_data]
-        asset_count = len(assets_data_list)
-        if asset_count > 1:
-            self.progress_window.reset(new_value=0, new_text='Parsing Assets data', new_max_value=asset_count)
         for asset_data in assets_data_list:
             uid = asset_data.get('id', None)
-            self._log_debug(f"uid='{uid}'")  # debug only
+            # self._log_debug(f"uid='{uid}'")  # debug only 'c77526fd4365450c9810e198450d2b91'
             if uid is None:
                 # this should never occur
                 self._log_warning(f'No id found for asset {asset_data}. Passing to next asset')
@@ -349,9 +346,6 @@ class UEAssetScraper:
                     self.scraped_ids.append(uid)
                 except (AttributeError, TypeError):
                     self._log_debug(f'Error adding uid to self.scraped_ids')
-
-            if asset_count > 1 and not self.progress_window.update_and_continue(increment=1):
-                return content
         # end for asset_data in json_data['data']['elements']:
         return content
 
