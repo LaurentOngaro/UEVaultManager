@@ -70,7 +70,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         cur_col = 0
         delete_extra_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extra_data', False))
         delete_extra_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extra_data(delete_extra_data_var.get()))
-        ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete metadata (cleanup)', variable=delete_extra_data_var)
+        ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete extra data (cleanup)', variable=delete_extra_data_var)
         ck_delete_extra_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
         # Folders To scan frame
