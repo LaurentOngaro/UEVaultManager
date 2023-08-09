@@ -154,9 +154,9 @@ class EditableTable(Table):
         x_pos = self.x_start
         self.col_positions.append(x_pos)
         for col in range(self.cols):
+            # noinspection PyBroadException
             try:
                 colname = df.columns[col].encode('utf-8', 'ignore').decode('utf-8')
-            # noinspection PyBroadException
             except:
                 colname = str(df.columns[col])
             if colname in self.columnwidths:
