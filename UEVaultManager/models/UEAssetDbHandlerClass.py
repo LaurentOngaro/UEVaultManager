@@ -475,9 +475,12 @@ class UEAssetDbHandler:
                 query += f" WHERE {where_clause}"
             if test_only_mode:
                 query += ' ORDER BY date_added_in_db DESC LIMIT 3000'
-            cursor.execute(query)
-            rows = cursor.fetchall()
-            cursor.close()
+            try:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+                cursor.close()
+            except sqlite3.OperationalError as error:
+                self.logger.warning(f"Error while getting assets data: {error!r}")
         return rows
 
     def get_columns_name_for_csv(self) -> list:
@@ -491,12 +494,14 @@ class UEAssetDbHandler:
             # generate column names for the CSV file using AS to rename the columns
             fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
             query = f"SELECT {fields} FROM assets ORDER BY date_added_in_db DESC LIMIT 1"
-            cursor.execute(query)
-            csv_column_names = [
-                description[0] for description in cursor.description
-            ]  # by using the 'AS' in the SQL query, the column names are the CSV column names
-            cursor.close()
-
+            try:
+                cursor.execute(query)
+                csv_column_names = [
+                    description[0] for description in cursor.description
+                ]  # by using the 'AS' in the SQL query, the column names are the CSV column names
+                cursor.close()
+            except sqlite3.OperationalError as error:
+                self.logger.warning(f"Error while getting columns name: {error!r}")
         return csv_column_names
 
     def create_empty_row(self, return_as_string=True, empty_cell='None', empty_row_prefix='dummy_row_'):
