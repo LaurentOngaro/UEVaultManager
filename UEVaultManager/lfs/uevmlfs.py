@@ -3,6 +3,7 @@
 Implementation for:
 - UEVMLFS: Local File System.
 """
+import filecmp
 import json
 import logging
 import os
@@ -13,6 +14,7 @@ from UEVaultManager.models.app import *
 from UEVaultManager.models.config import AppConf
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 from .utils import clean_filename
+from ..tkgui.modules.functions import create_file_backup
 
 
 class UEVMLFS:
@@ -421,18 +423,13 @@ class UEVMLFS:
         # do not save if in read-only mode or file hasn't changed
         if self.config.read_only or not self.config.modified:
             return
-        # if config file has been modified externally, back-up the user-modified version before writing
-        if os.path.exists(self.config_file):
-            if (mod_time := int(os.stat(self.config_file).st_mtime)) != self.config.mod_time:
-                new_filename = f'config.{mod_time}.ini'
-                self.log.warning(
-                    f'Configuration file has been modified while UEVaultManager was running, '
-                    f'user-modified config will be renamed to "{new_filename}"...'
-                )
-                os.rename(self.config_file, os.path.join(os.path.dirname(self.config_file), new_filename))
 
+        file_backup = create_file_backup(self.config_file)
         with open(self.config_file, 'w') as cf:
             self.config.write(cf)
+        # delete the backup if the files and the backup are identical
+        if filecmp.cmp(self.config_file, file_backup):
+            os.remove(file_backup)
 
     def get_dir_size(self) -> int:
         """

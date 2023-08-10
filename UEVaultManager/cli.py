@@ -8,7 +8,6 @@ import csv
 import json
 import logging
 import os
-import shutil
 import subprocess
 import sys
 import time
@@ -35,7 +34,7 @@ from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.tkgui.modules.functions import custom_print, box_message  # simplier way to use the custom_print function
+from UEVaultManager.tkgui.modules.functions import custom_print, box_message, create_file_backup  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads, remove_command_argument
@@ -161,34 +160,14 @@ class UEVaultManagerCLI:
         ql.start()
         return ql
 
-    def create_file_backup(self, file_src: str) -> None:
-        """
-        Create a backup of a file.
-        :param file_src: path to the file to back up.
-        """
-        # make a backup of the existing file
-
-        # for files defined relatively to the config folder
-        file_src = file_src.replace('~/.config', self.core.uevmlfs.path)
-
-        if not file_src:
-            return
-        try:
-            file_name_no_ext, file_ext = os.path.splitext(file_src)
-            file_backup = f'{file_name_no_ext}.BACKUP_{datetime.now().strftime("%y-%m-%d_%H-%M-%S")}{file_ext}'
-            shutil.copy(file_src, file_backup)
-            self.logger.info(f'File {file_src} has been copied to {file_backup}')
-        except FileNotFoundError:
-            self.logger.info(f'File {file_src} has not been found')
-
     def create_log_file_backup(self) -> None:
         """
         Create a backup of the log files.
         """
-        self.create_file_backup(self.core.ignored_assets_filename_log)
-        self.create_file_backup(self.core.notfound_assets_filename_log)
-        self.create_file_backup(self.core.bad_data_assets_filename_log)
-        self.create_file_backup(self.core.scan_assets_filename_log)
+        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
+        create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
+        create_file_backup(self.core.bad_data_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
+        create_file_backup(self.core.scan_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
 
     # noinspection PyUnusedLocal
     def create_asset_from_data(
@@ -591,7 +570,7 @@ class UEVaultManagerCLI:
 
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
-            self.create_file_backup(args.output)
+            create_file_backup(args.output)
 
         if args.csv or args.tsv:
             if args.output:

@@ -5,9 +5,11 @@ These functions depend on the globals.py module and can generate circular depend
 """
 import logging
 import os
+import shutil
 import sys
 import time
 import tkinter as tk
+from datetime import datetime
 from io import BytesIO
 from tkinter import messagebox
 
@@ -304,3 +306,28 @@ def close_progress(parent) -> None:
     if parent.progress_window is not None:
         parent.progress_window.close_window()
         parent.progress_window = None
+
+
+def create_file_backup(file_src: str, logger: logging.Logger = None, path: str = '') -> str:
+    """
+    Create a backup of a file.
+    :param file_src: path to the file to back up.
+    :param logger: the logger to use to display info. Could be None.
+    :param path: the path to the config folder.
+    :return: the full path to the backup file.
+    """
+    # for files defined relatively to the config folder
+    file_src = file_src.replace('~/.config', path)
+    file_backup = ''
+    if not file_src:
+        return ''
+    try:
+        file_name_no_ext, file_ext = os.path.splitext(file_src)
+        file_backup = f'{file_name_no_ext}.BACKUP_{datetime.now().strftime("%y-%m-%d_%H-%M-%S")}{file_ext}'
+        shutil.copy(file_src, file_backup)
+        if logger is not None:
+            logger.info(f'File {file_src} has been copied to {file_backup}')
+    except FileNotFoundError:
+        if logger is not None:
+            logger.info(f'File {file_src} has not been found')
+    return file_backup

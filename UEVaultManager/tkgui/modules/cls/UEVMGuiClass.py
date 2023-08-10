@@ -3,6 +3,7 @@
 Implementation for:
 - UEVMGui: the main window of the application.
 """
+import filecmp
 import os
 import re
 import shutil
@@ -390,7 +391,11 @@ class UEVMGui(tk.Tk):
             column_infos[col]['pos'] = index
         sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
         gui_g.s.column_infos = sorted_cols_by_pos
+        file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui)
         gui_g.s.save_config_file()
+        # delete the backup if the files and the backup are identical
+        if filecmp.cmp(gui_g.s.config_file_gui, file_backup):
+            os.remove(file_backup)
 
     def open_file(self) -> str:
         """
