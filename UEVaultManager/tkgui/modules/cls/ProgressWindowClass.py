@@ -63,24 +63,22 @@ class ProgressWindow(tk.Toplevel):
         self.content_frame = self.ContentFrame(self)
         self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
-        if not show_start_button and not show_stop_button:
-            self.control_frame = None
-        else:
-            self.control_frame = self.ControlFrame(self)
+        self.control_frame = self.ControlFrame(self)
+        if show_start_button or show_stop_button:
             self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         gui_g.progress_window_ref = self
 
         if not show_progress:
             self.hide_progress_bar()
-        if self.control_frame and not show_start_button:
-            self.control_frame.button_start.pack_forget()
-        if self.control_frame and not show_stop_button:
-            self.control_frame.button_stop.pack_forget()
+        if not show_start_button:
+            self.hide_start_button()
+        if not show_stop_button:
+            self.hide_stop_button()
 
         # Start the execution if not control frame is present
         # important because the control frame is not present when the function is set after the window is created
-        if self.control_frame is None or not show_start_button and self.function is not None:
+        if not show_start_button and self.function is not None:
             self.start_execution()
 
     def mainloop(self, n=0):
@@ -170,8 +168,6 @@ class ProgressWindow(tk.Toplevel):
         Set the text of the label.
         :param new_text: the new text.
         """
-        if self.content_frame is None or self.content_frame.lbl_function is None:
-            return
         self.content_frame.lbl_function.config(text=new_text)
 
     def set_value(self, new_value: int) -> None:
@@ -180,8 +176,6 @@ class ProgressWindow(tk.Toplevel):
         :param new_value: the new value.
         """
         new_value = max(0, new_value)
-        if self.content_frame is None or self.content_frame.progress_bar is None:
-            return
         self.content_frame.progress_bar["value"] = new_value
 
     def set_max_value(self, new_max_value: int) -> None:
@@ -189,8 +183,6 @@ class ProgressWindow(tk.Toplevel):
         Set the maximum value of the progress bar.
         :param new_max_value: the new maximum value.
         """
-        if self.content_frame is None or self.content_frame.progress_bar is None:
-            return
         self.max_value = new_max_value
         self.content_frame.progress_bar["maximum"] = new_max_value
 
@@ -222,39 +214,34 @@ class ProgressWindow(tk.Toplevel):
         """
         Show the progress bar.
         """
-        self.content_frame.progress_bar.pack(self.content_frame.pack_def_options)
+        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.content_frame.progress_bar.pack(**self.content_frame.pack_def_options)
 
     def hide_start_button(self) -> None:
         """
         Hide the start button.
         """
-        if self.control_frame is None or self.control_frame.button_start is None:
-            return
         self.control_frame.button_start.pack_forget()
 
     def show_start_button(self) -> None:
         """
         Show the start button.
         """
-        if self.control_frame is None or self.control_frame.button_start is None:
-            return
-        self.control_frame.button_start.pack(self.control_frame.pack_def_options)
+        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.control_frame.button_start.pack(**self.control_frame.pack_def_options, side=tk.LEFT)
 
     def hide_stop_button(self) -> None:
         """
         Hide the stop button.
         """
-        if self.control_frame is None or self.control_frame.button_stop is None:
-            return
         self.control_frame.button_stop.pack_forget()
 
     def show_stop_button(self) -> None:
         """
         Show the stop button.
         """
-        if self.control_frame is None or self.control_frame.button_stop is None:
-            return
-        self.control_frame.button_stop.pack(self.control_frame.pack_def_options)
+        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.control_frame.button_stop.pack(**self.control_frame.pack_def_options, side=tk.RIGHT)
 
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None) -> None:
         """
@@ -318,8 +305,6 @@ class ProgressWindow(tk.Toplevel):
         """
         Sets the activation state of the control buttons.
         """
-        if self.control_frame is None:
-            return
         start_state = tk.NORMAL if activate else tk.DISABLED
         stop_state = tk.DISABLED if activate else tk.NORMAL
         if self.control_frame.button_start is not None:
