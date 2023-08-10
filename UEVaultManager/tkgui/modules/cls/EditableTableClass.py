@@ -20,6 +20,7 @@ from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
+from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
@@ -58,7 +59,7 @@ class EditableTable(Table):
     _edit_cell_row_index: int = -1
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
-    progress_window = None
+    progress_window: FakeProgressWindow = None
     pagination_enabled: bool = True
     is_filtered: bool = False
     current_page: int = 1
@@ -592,6 +593,7 @@ class EditableTable(Table):
             if not self.load_data():
                 return False
             self.update()
+            self.resize_columns()
             close_progress(self)
             return True
         else:
