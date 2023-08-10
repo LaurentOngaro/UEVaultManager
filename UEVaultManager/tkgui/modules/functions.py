@@ -261,14 +261,18 @@ def custom_print(text='', keep_mode=True) -> None:
         print(text)
 
 
-def show_progress(parent, text='Loading...Please wait', width=500, height=120, lshow_progress=False) -> ProgressWindow:
+def show_progress(
+    parent, text='Working...Please wait', width=500, height=120, max_value_l=0, show_progress_l=False, show_stop_button_l=False
+) -> ProgressWindow:
     """
     Show the progress window.
     :param parent: The parent window.
     :param text: The text to display in the progress window.
     :param width: The width of the progress window.
     :param height: The height of the progress window.
-    :param lshow_progress: Whether to show the progress bar.
+    :param max_value_l: The maximum value of the progress bar.
+    :param show_progress_l: Whether to show the progress bar.
+    :param show_stop_button_l: Whether to show the stop button.
     :return: The progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
@@ -278,9 +282,9 @@ def show_progress(parent, text='Loading...Please wait', width=500, height=120, l
             icon=gui_g.s.app_icon_filename,
             width=width,
             height=height,
-            show_stop_button=False,
-            show_progress=lshow_progress,
-            max_value=0
+            show_stop_button=show_stop_button_l,
+            show_progress=show_progress_l,
+            max_value=max_value_l
         )
         parent.progress_window = pw
     else:
