@@ -342,9 +342,9 @@ Each asset will also have its data saved in to different json files:
 
 -  for the all the assets available in the marketplace (including the owned ones):
 
-  -  the folder ``<scrapping folder>/assets``: contains a json file for each
+  -  the folder ``<Scraping folder>/assets``: contains a json file for each
      asset (identified by its `asset_id` is the asset has one) to store its metadata (get from
-     a call to the epic API). The <scrapping folder> can be set in the ``<config folder>/config_gui.ini`` configuration file
+     a call to the epic API). The <Scraping folder> can be set in the ``<config folder>/config_gui.ini`` configuration file
 
 -  for the assets OWNED by the user
 

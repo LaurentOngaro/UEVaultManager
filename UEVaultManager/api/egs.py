@@ -497,7 +497,7 @@ class EPCAPI:
         # try to find the url of the asset by doing a search in the marketplace
         asset_url, asset_slug, error_code = self.search_for_asset_url(asset_title, timeout)
 
-        # TODO: improve the following code to use the marketplace API instead of scrapping using beautifulsoup
+        # TODO: improve the following code to use the marketplace API instead of Scraping using beautifulsoup
         if asset_url == '' or error_code != GrabResult.NO_ERROR.name:
             self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
             no_result['grab_result'] = error_code
