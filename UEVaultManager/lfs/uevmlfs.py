@@ -57,12 +57,12 @@ class UEVMLFS:
             # if user specified a valid relative/absolute path use that,
             # otherwise create file in UEVaultManager config directory
             if os.path.exists(config_file):
-                self.config_path = os.path.abspath(config_file)
+                self.config_file = os.path.abspath(config_file)
             else:
-                self.config_path = os.path.join(self.path, clean_filename(config_file))
-            self.log.info(f'UEVMLFS is using non-default config file "{self.config_path}"')
+                self.config_file = os.path.join(self.path, clean_filename(config_file))
+            self.log.info(f'UEVMLFS is using non-default config file "{self.config_file}"')
         else:
-            self.config_path = os.path.join(self.path, 'config.ini')
+            self.config_file = os.path.join(self.path, 'config.ini')
 
         # ensure folders exist.
 
@@ -98,7 +98,7 @@ class UEVMLFS:
 
         # try loading config
         try:
-            self.config.read(self.config_path)
+            self.config.read(self.config_file)
         except Exception as error:
             self.log.error(f'Unable to read configuration file, please ensure that file is valid!:Error: {error!r}')
             self.log.warning('Continuing with blank config in safe-mode...')
@@ -422,16 +422,16 @@ class UEVMLFS:
         if self.config.read_only or not self.config.modified:
             return
         # if config file has been modified externally, back-up the user-modified version before writing
-        if os.path.exists(self.config_path):
-            if (mod_time := int(os.stat(self.config_path).st_mtime)) != self.config.mod_time:
+        if os.path.exists(self.config_file):
+            if (mod_time := int(os.stat(self.config_file).st_mtime)) != self.config.mod_time:
                 new_filename = f'config.{mod_time}.ini'
                 self.log.warning(
                     f'Configuration file has been modified while UEVaultManager was running, '
                     f'user-modified config will be renamed to "{new_filename}"...'
                 )
-                os.rename(self.config_path, os.path.join(os.path.dirname(self.config_path), new_filename))
+                os.rename(self.config_file, os.path.join(os.path.dirname(self.config_file), new_filename))
 
-        with open(self.config_path, 'w') as cf:
+        with open(self.config_file, 'w') as cf:
             self.config.write(cf)
 
     def get_dir_size(self) -> int:

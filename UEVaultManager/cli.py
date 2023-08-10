@@ -1522,6 +1522,9 @@ def main():
         'UEVaultManager', 'engine_version_for_obsolete_assets', fallback=gui_g.s.engine_version_for_obsolete_assets
     )
 
+    # copy the name of the config file used to the gui global variable
+    gui_g.s.config_file = cli.core.uevmlfs.config_file
+
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
         args.yes = True

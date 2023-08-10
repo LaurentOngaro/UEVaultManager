@@ -34,7 +34,8 @@ class GUISettings:
 .
     """
     path: str = ''
-    config_path: str = ''
+    config_file_gui: str = ''  # config file path for gui part (tkgui)
+    config_file: str = ''  # config file path for cli part (cli). Set by the cli part
 
     def __init__(self, config_file=None):
         self.config = AppConf(comment_prefixes='/', allow_no_value=True)
@@ -371,16 +372,16 @@ class GUISettings:
             os.makedirs(self.path)
         if config_file:
             if os.path.exists(config_file):
-                self.config_path = os.path.abspath(config_file)
+                self.config_file_gui = os.path.abspath(config_file)
             else:
-                self.config_path = os.path.join(self.path, clean_filename(config_file))
-            log_info(f'UEVMGui is using non-default config file "{self.config_path}"')
+                self.config_file_gui = os.path.join(self.path, clean_filename(config_file))
+            log_info(f'UEVMGui is using non-default config file "{self.config_file_gui}"')
         else:
-            self.config_path = os.path.join(self.path, 'config_gui.ini')
+            self.config_file_gui = os.path.join(self.path, 'config_gui.ini')
 
         # try loading config
         try:
-            self.config.read(self.config_path)
+            self.config.read(self.config_file_gui)
         except Exception as error:
             log_info(f'Unable to read configuration file, please ensure that file is valid!:Error: {error!r}')
             log_info('Continuing with blank config in safe-mode...')
@@ -538,13 +539,13 @@ class GUISettings:
             return
 
         # if config file has been modified externally, back-up the user-modified version before writing
-        if os.path.exists(self.config_path):
-            if (mod_time := int(os.stat(self.config_path).st_mtime)) != self.config.mod_time:
+        if os.path.exists(self.config_file_gui):
+            if (mod_time := int(os.stat(self.config_file_gui).st_mtime)) != self.config.mod_time:
                 new_filename = f'config.{mod_time}.ini'
                 log_info(
                     f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
                 )
-                os.rename(self.config_path, os.path.join(os.path.dirname(self.config_path), new_filename))
+                os.rename(self.config_file_gui, os.path.join(os.path.dirname(self.config_file_gui), new_filename))
 
-        with open(self.config_path, 'w') as cf:
+        with open(self.config_file_gui, 'w') as cf:
             self.config.write(cf)
