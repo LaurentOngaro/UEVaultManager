@@ -19,6 +19,7 @@ from UEVaultManager.api.egs import GrabResult
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
+from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
@@ -73,7 +74,7 @@ class UEVMGui(tk.Tk):
     :param show_open_file_dialog: If True, the open file dialog will be shown at startup.
     """
     editable_table: EditableTable = None
-    progress_window = None
+    progress_window: FakeProgressWindow = None
     _toolbar_frame: UEVMGuiToolbarFrame = None
     _control_frame: UEVMGuiControlFrame = None
     _options_frame: UEVMGuiOptionsFrame = None
@@ -251,7 +252,6 @@ class UEVMGui(tk.Tk):
             return None, widget
         value = widget.get_content()
         return value, widget
-
 
     def on_key_press(self, event) -> None:
         """
@@ -530,9 +530,9 @@ class UEVMGui(tk.Tk):
         folder_to_scan = gui_g.s.folders_to_scan
 
         if self.core is None:
-            gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
+            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
 
-        pw = gui_f.show_progress(self,text='Scanning folders for new assets', width=500, height=120, show_progress=False)
+        pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False)
 
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
@@ -543,7 +543,7 @@ class UEVMGui(tk.Tk):
 
             msg = f'Scanning folder {full_folder}'
             gui_f.log_info(msg)
-            if not pw.update_and_continue(value=0, text=f'Scanning folder:\n{full_folder}'):
+            if not pw.update_and_continue(value=0, text=f'Scanning folder:\n{gui_fn.shorten_text(full_folder, 30)}'):
                 gui_f.close_progress(self)
                 return
 
@@ -663,7 +663,7 @@ class UEVMGui(tk.Tk):
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         data = self.editable_table.get_data()  # get_data checked
         count = len(valid_folders.items())
-        pw.reset(new_text='Scrapping data and adding assets to the table', new_max_value=count)
+        pw.reset(new_text='Scraping data and adding assets to the table', new_max_value=count)
         pw.show_progress_bar()
         pw.update()
         row_added = 0
@@ -672,7 +672,7 @@ class UEVMGui(tk.Tk):
                 break
             marketplace_url = content['marketplace_url']
             gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
-            # set default values for the row, some will be replaced by scrapping
+            # set default values for the row, some will be replaced by Scraping
             row_data.update(
                 {
                     'App name': name,
@@ -774,7 +774,7 @@ class UEVMGui(tk.Tk):
         """
 
         if self.core is None:
-            gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
+            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
 
         row_indexes = self.editable_table.multiplerowlist
@@ -784,16 +784,26 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message('You must select a row first')
             return
         row_count = len(row_indexes)
+        pw = None
         if marketplace_url is None:
+            base_text = 'Scraping assets data. Could take a while...'
+            if row_count > 1:
+                pw = gui_f.show_progress(self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_stop_button_l=True)
             for row_index in row_indexes:
                 row_index: int = self.editable_table.get_row_index_with_offet(row_index)
                 row_data = self.editable_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
+                text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
+                if pw and not pw.update_and_continue(increment=1, text=text):
+                    gui_f.close_progress(self)
+                    return
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
                     self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
                     if show_message and row_count == 1:
                         gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
+
+            gui_f.close_progress(self)
             if show_message and row_count >= 1:
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
