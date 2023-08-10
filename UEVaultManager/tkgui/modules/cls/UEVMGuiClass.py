@@ -788,7 +788,9 @@ class UEVMGui(tk.Tk):
         if marketplace_url is None:
             base_text = 'Scraping assets data. Could take a while...'
             if row_count > 1:
-                pw = gui_f.show_progress(self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_stop_button_l=True)
+                pw = gui_f.show_progress(
+                    self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_stop_button_l=True
+                )
             for row_index in row_indexes:
                 row_index: int = self.editable_table.get_row_index_with_offet(row_index)
                 row_data = self.editable_table.get_row(row_index, return_as_dict=True)
