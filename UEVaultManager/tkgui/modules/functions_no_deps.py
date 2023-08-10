@@ -282,3 +282,16 @@ def create_uid() -> str:
     :return: a unique id.
     """
     return str(uuid.uuid4())[:8]
+
+
+def shorten_text(url: str, limit: int = 30) -> str:
+    """
+    Shorten an url. Get its last part
+    :param url:  the url to shorten
+    :param limit: the limit of characters to keep
+    :return: the shortened url
+    """
+    if len(url) < limit:
+        return url
+    else:
+        return '...' + url[-limit:]
