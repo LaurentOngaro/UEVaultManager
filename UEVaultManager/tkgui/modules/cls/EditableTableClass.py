@@ -20,7 +20,6 @@ from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
-from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
@@ -49,22 +48,17 @@ class EditableTable(Table):
     _changed_rows = []
     _deleted_asset_ids = []
     _db_handler = None
-
     _frm_quick_edit = None
     _filter_frame = None
     _filter_mask = None
-
     _edit_row_window = None
     _edit_row_entries = None
     _edit_row_index: int = -1
-
     _edit_cell_window = None
     _edit_cell_row_index: int = -1
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
-
-    _progress_window = None
-
+    progress_window = None
     pagination_enabled: bool = True
     is_filtered: bool = False
     current_page: int = 1
@@ -205,28 +199,6 @@ class EditableTable(Table):
             self._last_selected_row = selected_row
             self._last_selected_col = selected_col
             self.event_generate('<<CellSelectionChanged>>')
-
-    def _show_progress(self, text='Loading...Please wait') -> None:
-        """
-        Show the progress window.
-        :param text: The text to display in the progress window.
-        :return:
-        """
-        if self._progress_window is None:
-            self._progress_window = ProgressWindow(
-                title=gui_g.s.app_title, icon=gui_g.s.app_icon_filename, show_stop_button=False, show_progress=False, max_value=0
-            )
-        self._progress_window.set_text(text)
-        self._progress_window.set_activation(False)
-        self._progress_window.update()
-
-    def _close_progress(self) -> None:
-        """
-        Close the progress window.
-        """
-        if self._progress_window is not None:
-            self._progress_window.close_window()
-            self._progress_window = None
 
     def set_filter_frame(self, filter_frame=None) -> None:
         """
@@ -382,7 +354,7 @@ class EditableTable(Table):
         Load data from the specified CSV file into the table.
         :return: True if the data has been loaded successfully, False otherwise.
         """
-        self._show_progress('Loading Data from data source...')
+        show_progress(self, text='Loading Data from data source...')
         """
         if self.data_source is None or not os.path.isfile(self.data_source):
             log_warning(f'File to read data from is not defined or not found: {self.data_source}')
@@ -420,7 +392,7 @@ class EditableTable(Table):
             return False
         self.format_columns()  # could take some time with lots of rows
         self.total_pages = (self.data_count - 1) // self.rows_per_page + 1
-        self._close_progress()
+        close_progress(self)
         return True
 
     def create_row(self, row_data=None, add_to_existing=True) -> None:
@@ -565,8 +537,7 @@ class EditableTable(Table):
          Rebuild the data in the table.
          :return: True if the data was successfully rebuilt, False otherwise.
          """
-        self._show_progress('Rebuilding Data from database...')
-        progress_window = self._progress_window
+        pw = show_progress(self, 'Rebuilding Data from database...')
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
@@ -610,21 +581,21 @@ class EditableTable(Table):
                 clean_database=False,
                 engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
                 egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs,
-                progress_window=progress_window
+                progress_window=pw
             )
             scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
-            if not progress_window.continue_execution:
-                self._close_progress()
+            if not pw.continue_execution:
+                close_progress(self)
                 return False
             scraper.save(owned_assets_only=owned_assets_only)
             self.current_page = 1
             if not self.load_data():
                 return False
             self.update()
-            self._close_progress()
+            close_progress(self)
             return True
         else:
-            self._close_progress()
+            close_progress(self)
             return False
 
     def gradient_color_cells(self, col_names=None, cmap='sunset', alpha=1) -> None:

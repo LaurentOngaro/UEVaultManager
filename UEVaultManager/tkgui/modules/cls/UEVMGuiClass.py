@@ -19,7 +19,6 @@ from UEVaultManager.api.egs import GrabResult
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
-from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
@@ -74,6 +73,7 @@ class UEVMGui(tk.Tk):
     :param show_open_file_dialog: If True, the open file dialog will be shown at startup.
     """
     editable_table: EditableTable = None
+    progress_window = None
     _toolbar_frame: UEVMGuiToolbarFrame = None
     _control_frame: UEVMGuiControlFrame = None
     _options_frame: UEVMGuiOptionsFrame = None
@@ -251,6 +251,7 @@ class UEVMGui(tk.Tk):
             return None, widget
         value = widget.get_content()
         return value, widget
+
 
     def on_key_press(self, event) -> None:
         """
@@ -531,9 +532,7 @@ class UEVMGui(tk.Tk):
         if self.core is None:
             gui_f.from_cli_only_message('URL scrapping and scanning features are only accessible')
 
-        pw = ProgressWindow(title='Scanning folders for new assets', width=500, height=120)
-        pw.hide_progress_bar()
-        pw.set_activation(False)
+        pw = gui_f.show_progress(self,text='Scanning folders for new assets', width=500, height=120, show_progress=False)
 
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
@@ -545,7 +544,7 @@ class UEVMGui(tk.Tk):
             msg = f'Scanning folder {full_folder}'
             gui_f.log_info(msg)
             if not pw.update_and_continue(value=0, text=f'Scanning folder:\n{full_folder}'):
-                pw.close_window()
+                gui_f.close_progress(self)
                 return
 
             if os.path.isdir(full_folder):
@@ -717,7 +716,8 @@ class UEVMGui(tk.Tk):
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
-        pw.close_window()
+        gui_f.close_progress(self)
+
         if invalid_folders:
             result = '\n'.join(invalid_folders)
             result = f'The following folders have produce invalid results during the scan:\n{result}'
@@ -783,7 +783,7 @@ class UEVMGui(tk.Tk):
             if show_message:
                 gui_f.box_message('You must select a row first')
             return
-
+        row_count = len(row_indexes)
         if marketplace_url is None:
             for row_index in row_indexes:
                 row_index: int = self.editable_table.get_row_index_with_offet(row_index)
@@ -792,8 +792,10 @@ class UEVMGui(tk.Tk):
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
                     self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
-                    if show_message:
-                        gui_f.box_message(f'Data for row {row_index} have been updated from marketplace')
+                    if show_message and row_count == 1:
+                        gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
+            if show_message and row_count >= 1:
+                gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)

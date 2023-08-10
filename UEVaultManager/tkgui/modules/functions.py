@@ -16,6 +16,7 @@ from PIL import ImageTk, Image
 from termcolor import colored
 
 from UEVaultManager.tkgui.modules import globals as gui_g
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 
 
 def log_format_message(name: str, levelname: str, message: str) -> str:
@@ -258,3 +259,44 @@ def custom_print(text='', keep_mode=True) -> None:
         gui_g.display_content_window_ref.display(content=text + '\n', keep_mode=keep_mode)
     else:
         print(text)
+
+
+def show_progress(parent, text='Loading...Please wait', width=500, height=120, lshow_progress=False) -> ProgressWindow:
+    """
+    Show the progress window.
+    :param parent: The parent window.
+    :param text: The text to display in the progress window.
+    :param width: The width of the progress window.
+    :param height: The height of the progress window.
+    :param lshow_progress: Whether to show the progress bar.
+    :return: The progress window.
+    It will create a new progress window if one does not exist and update parent._progress_window
+    """
+    if parent.progress_window is None:
+        pw = ProgressWindow(
+            title=gui_g.s.app_title,
+            icon=gui_g.s.app_icon_filename,
+            width=width,
+            height=height,
+            show_stop_button=False,
+            show_progress=lshow_progress,
+            max_value=0
+        )
+        parent.progress_window = pw
+    else:
+        pw = parent.progress_window
+    pw.set_text(text)
+    pw.set_activation(False)
+    pw.update()
+    return pw
+
+
+def close_progress(parent) -> None:
+    """
+    Close the progress window.
+    :param parent: The parent window.
+    It accesses to the parent.progress_window property
+    """
+    if parent.progress_window is not None:
+        parent.progress_window.close_window()
+        parent.progress_window = None
