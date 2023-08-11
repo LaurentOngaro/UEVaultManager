@@ -241,7 +241,7 @@ class UEAssetDbHandler:
         if upgrade_to_version.value >= DbVersionNum.V7.value:
             # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
             cursor = self.connection.cursor()
-            query = "CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY NOT NULL, name TEXT)"
+            query = "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY NOT NULL, name TEXT)"
             cursor.execute(query)
             self.connection.commit()
             cursor.close()
