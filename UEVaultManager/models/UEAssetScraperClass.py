@@ -437,6 +437,7 @@ class UEAssetScraper:
         if json_data:
             if self.store_in_files and self.use_raw_format:
                 # store the result file in the raw format
+                # noinspection PyBroadException
                 try:
                     url_vars = extract_variables_from_url(url)
                     start = int(url_vars['start'])
