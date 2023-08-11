@@ -70,7 +70,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_zoom_out = ttk.Button(lblf_display, text='Zoom Out', command=data_table.zoom_out)
         btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
-        lblf_commands = ttk.LabelFrame(self, text='Cli commands')
+        lblf_commands = ttk.LabelFrame(self, text='Other commands')
         lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
         btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
         btn_help.pack(**pack_def_options, side=tk.LEFT)
@@ -82,6 +82,8 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_list_files.pack(**pack_def_options, side=tk.LEFT)
         btn_cleanup = ttk.Button(lblf_commands, text='Cleanup', command=lambda: container.run_uevm_command('cleanup'))
         btn_cleanup.pack(**pack_def_options, side=tk.LEFT)
+        btn_json_processing = ttk.Button(lblf_commands, text='Get Json Data', command=lambda: container.json_processing())
+        btn_json_processing.pack(**pack_def_options, side=tk.LEFT)
 
         lblf_actions = ttk.LabelFrame(self, text='Actions')
         lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)

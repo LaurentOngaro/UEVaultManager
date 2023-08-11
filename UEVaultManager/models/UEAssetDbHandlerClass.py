@@ -643,7 +643,7 @@ class UEAssetDbHandler:
             cursor.execute("SELECT name from tags WHERE id = ?", (uid, ))
             row = cursor.fetchone()
             cursor.close()
-            result = row['name'] if row else None
+            result = row['name'] if row else result
         return result
 
     # noinspection DuplicatedCode
@@ -670,13 +670,13 @@ class UEAssetDbHandler:
         :param uid: The ID of the ratings to get.
         :return: tuple (averageRating, total)
         """
-        result = None
+        result = (None, None)
         if self.connection is not None:
             cursor = self.connection.cursor()
             cursor.execute("SELECT averageRating, total from ratings WHERE id = ?", (uid, ))
             row = cursor.fetchone()
             cursor.close()
-            result = (row['averageRating'], row['total']) if result else None
+            result = (row['averageRating'], row['total']) if row else result
         return result
 
     def convert_tag_list_to_string(self, tags: None) -> str:

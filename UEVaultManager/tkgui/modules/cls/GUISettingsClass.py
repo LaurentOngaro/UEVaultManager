@@ -79,6 +79,10 @@ class GUISettings:
         # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure. MUST BE LOWERCASE
         self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')
 
+        self.assets_data_folder: str = os.path.join(self.scraping_folder, 'assets', 'marketplace')
+        self.owned_assets_data_folder: str = os.path.join(self.scraping_folder, 'assets', 'owned')
+        self.assets_global_folder: str = os.path.join(self.scraping_folder, 'global')
+
         self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
         self.data_filetypes = (

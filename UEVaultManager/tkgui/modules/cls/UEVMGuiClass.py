@@ -21,6 +21,7 @@ from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
+from UEVaultManager.tkgui.modules.cls.JsonProcessingWindowClass import JsonProcessingWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
@@ -1055,3 +1056,18 @@ class UEVMGui(tk.Tk):
         url, widget = self._check_and_get_widget_value(tag='Url')
         if url:
             self.editable_table.open_asset_url(url=url)
+
+    def json_processing(self) -> None:
+        """
+        Run the window to update missing data in database from json files.
+        """
+        if self.editable_table.data_source_type != DataSourceType.SQLITE:
+            gui_f.box_message('This command can only by run with a database as data source')
+            return
+        JsonProcessingWindow(
+            title='Json Files Data Processing',
+            icon=gui_g.s.app_icon_filename,
+            db_path=self.editable_table.data_source,
+            folder_for_tags_path=gui_g.s.assets_data_folder,
+            folder_for_rating_path=gui_g.s.assets_global_folder
+        )

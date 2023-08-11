@@ -107,9 +107,7 @@ class UEAssetScraper:
 
         self.last_run_filename: str = 'last_run.json'
         self.urls_list_filename: str = 'urls_list.txt'
-        self.assets_data_folder: str = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
-        self.owned_assets_data_folder: str = os.path.join(gui_g.s.scraping_folder, 'assets', 'owned')
-        self.owned_assets_global_folder: str = os.path.join(gui_g.s.scraping_folder, 'global')
+
         self.db_name: str = os.path.join(gui_g.s.scraping_folder, 'assets.db')
         self.max_threads: int = max_threads if gui_g.s.use_threads else 0
         self.threads_count: int = 0
@@ -141,9 +139,9 @@ class UEAssetScraper:
             self.logger.error(f'assets_per_page must be between 1 and 100. Set to 100')
 
         message = f'UEAssetScraper initialized with max_threads= {max_threads}, start= {start}, stop= {stop}, assets_per_page= {assets_per_page}, sort_by= {sort_by}, sort_order= {sort_order}'
-        message += f'\nData will be load from files in {self.assets_data_folder}' if self.load_from_files else ''
-        message += f'\nAsset Data will be saved in files in {self.assets_data_folder}' if self.store_in_files else ''
-        message += f'\nOwned Asset Data will be saved in files in {self.owned_assets_data_folder}' if self.store_in_files else ''
+        message += f'\nData will be load from files in {gui_g.s.assets_data_folder}' if self.load_from_files else ''
+        message += f'\nAsset Data will be saved in files in {gui_g.s.assets_data_folder}' if self.store_in_files else ''
+        message += f'\nOwned Asset Data will be saved in files in {gui_g.s.owned_assets_data_folder}' if self.store_in_files else ''
         message += f'\nData will be saved in database in {self.db_name}' if self.store_in_db else ''
         message += f'\nAsset Ids will be saved in {self.last_run_filename} or in database' if self.store_ids else ''
         self._log_info(message)
@@ -214,8 +212,6 @@ class UEAssetScraper:
             price = 0
             discount_price = 0
             discount_percentage = 0
-            average_rating = 0
-            rating_total = 0
             supported_versions = no_text_data
             origin = 'Marketplace'  # by default when scraped from marketplace
             date_now = datetime.now().strftime(default_datetime_format)
@@ -270,9 +266,9 @@ class UEAssetScraper:
                 rating_total = asset_data['rating']['total']
             except KeyError:
                 self.logger.debug(f'No rating for {asset_data["title"]}')
-                # TODO: get rating from API
-            asset_data['review'] = average_rating
-            asset_data['review_count'] = rating_total
+                average_rating, rating_total = self.asset_db_handler.get_rating_by_id(uid)
+            asset_data['review'] = average_rating if average_rating else 0
+            asset_data['review_count'] = rating_total if rating_total else 0
 
             # custom attributes
             asset_data['custom_attributes'] = ''
@@ -541,8 +537,8 @@ class UEAssetScraper:
             self._log_warning('No data to save')
             return False
 
-        folder = self.owned_assets_data_folder if is_owned else self.assets_data_folder
-        folder = self.owned_assets_global_folder if is_global else folder
+        folder = gui_g.s.owned_assets_data_folder if is_owned else gui_g.s.assets_data_folder
+        folder = gui_g.s.assets_global_folder if is_global else folder
 
         _, folder = check_and_get_folder(folder)
         if filename is None:
@@ -575,7 +571,7 @@ class UEAssetScraper:
         self.files_count = 0
         self.scraped_ids = []
         self.scraped_data = []
-        folder = self.owned_assets_data_folder if owned_assets_only else self.assets_data_folder
+        folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
 
         files = os.listdir(folder)
         files_count = len(files)
@@ -658,7 +654,7 @@ class UEAssetScraper:
         content['files_count'] = self.files_count
         content['scraped_ids'] = self.scraped_ids if self.store_ids else ''
         if save_last_run_file:
-            folder = self.owned_assets_data_folder if owned_assets_only else self.assets_data_folder
+            folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
             filename = os.path.join(folder, self.last_run_filename)
             with open(filename, 'w') as fh:
                 json.dump(content, fh)
