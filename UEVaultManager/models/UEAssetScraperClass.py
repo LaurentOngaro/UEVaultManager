@@ -180,7 +180,7 @@ class UEAssetScraper:
 
     def _parse_data(self, json_data: dict = None, owned_assets_only=False) -> []:
         """
-        Parses on or more asset data from the response of an url query.
+        Parse on or more asset data from the response of an url query.
         :param json_data: A dictionary containing the data to parse.
         :param owned_assets_only: if True, only the owned assets are scraped.
         :return: A list containing the parsed data.
@@ -369,7 +369,7 @@ class UEAssetScraper:
 
     def gather_all_assets_urls(self, empty_list_before=False, save_result=True, owned_assets_only=False) -> None:
         """
-        Gathers all the URLs (with pagination) to be parsed and stores them in a list for further use.
+        Gather all the URLs (with pagination) to be parsed and stores them in a list for further use.
         :param empty_list_before: if True, the list of URLs is emptied before adding the new ones.
         :param save_result: if True, the list of URLs is saved in the database.
         :param owned_assets_only: if True, only the owned assets are scraped.
@@ -399,7 +399,7 @@ class UEAssetScraper:
 
     def get_data_from_url(self, url='', owned_assets_only=False) -> None:
         """
-        Grabs the data from the given url and stores it in the scraped_data property.
+        Grab the data from the given url and stores it in the scraped_data property.
         :param url: The url to grab the data from. If not given, uses the url property of the class.
         :param owned_assets_only: if True, only the owned assets are scraped.
         """
@@ -443,7 +443,7 @@ class UEAssetScraper:
 
     def get_scraped_data(self, owned_assets_only=False) -> None:
         """
-        Loads from files or downloads the items from the URLs and stores them in the scraped_data property.
+        Load from files or downloads the items from the URLs and stores them in the scraped_data property.
         The execution is done in parallel using threads.
         :param owned_assets_only: if True, only the owned assets are scraped
 
@@ -510,7 +510,7 @@ class UEAssetScraper:
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False) -> bool:
         """
-        Saves JSON data to a file.
+        Save JSON data to a file.
         :param data: A dictionary containing the data to save. Defaults to None. If None, the data will be used.
         :param prefix: A string representing the prefix to use for the file name. Defaults to 'assets'.
         :param filename: A string representing the file name to use. Defaults to None. If None, a file name will be generated using the prefix and the start and count properties.
@@ -603,7 +603,7 @@ class UEAssetScraper:
 
     def save(self, owned_assets_only=False, save_last_run_file=True) -> None:
         """
-        Saves all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
+        Save all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param owned_assets_only: if True, only the owned assets are scraped.
         :param save_last_run_file: if True, the last_run file is saved.
         """
