@@ -70,4 +70,5 @@ class DbVersionNum(Enum):
     V5 = 5  # add added_manually column to the assets table
     V6 = 6  # add tags column to the assets table
     V7 = 7  # add the tags table
-    V8 = 8  # future version
+    V8 = 8  # add the ratings tags table
+    V9 = 9  # future version

@@ -190,64 +190,68 @@ class UEAssetDbHandler:
         """
         # all the following steps must be run sequentially
         if upgrade_to_version.value >= DbVersionNum.V1.value:
-            if not self.is_table_exist('assets'):
-                if self.connection is not None:
-                    cursor = self.connection.cursor()
-                    # create the first version of the database
-                    # Note:
-                    # - this table has the same structure as the json files saved inside the method UEAssetScraper.save_to_file()
-                    # - the order of columns must match the order of the fields in UEAsset.init_data() method.
-                    query = """
-                    CREATE TABLE IF NOT EXISTS assets ( 
-                        id TEXT PRIMARY KEY NOT NULL, 
-                        namespace TEXT, 
-                        catalog_item_id TEXT, 
-                        title TEXT, 
-                        category TEXT, 
-                        author TEXT, 
-                        thumbnail_url TEXT, 
-                        asset_slug TEXT, 
-                        currency_code TEXT, 
-                        description TEXT, 
-                        technical_details TEXT, 
-                        long_description TEXT, 
-                        tags TEXT, 
-                        comment_rating_id TEXT, 
-                        rating_id TEXT, 
-                        status TEXT, 
-                        price REAL, 
-                        discount_price REAL, 
-                        discount_percentage REAL, 
-                        is_catalog_item BOOLEAN, 
-                        is_new BOOLEAN, 
-                        free BOOLEAN, 
-                        discounted BOOLEAN, 
-                        can_purchase BOOLEAN, 
-                        owned INTEGER, 
-                        review REAL, 
-                        review_count INTEGER,
-                        custom_attributes TEXT
-                    )
-                    """
-                    cursor.execute(query)
-                    self.connection.commit()
-                    cursor.close()
+            if self.connection is not None:
+                cursor = self.connection.cursor()
+                # create the first version of the database
+                # Note:
+                # - this table has the same structure as the json files saved inside the method UEAssetScraper.save_to_file()
+                # - the order of columns must match the order of the fields in UEAsset.init_data() method.
+                query = """
+                CREATE TABLE IF NOT EXISTS assets ( 
+                    id TEXT PRIMARY KEY NOT NULL, 
+                    namespace TEXT, 
+                    catalog_item_id TEXT, 
+                    title TEXT, 
+                    category TEXT, 
+                    author TEXT, 
+                    thumbnail_url TEXT, 
+                    asset_slug TEXT, 
+                    currency_code TEXT, 
+                    description TEXT, 
+                    technical_details TEXT, 
+                    long_description TEXT, 
+                    tags TEXT, 
+                    comment_rating_id TEXT, 
+                    rating_id TEXT, 
+                    status TEXT, 
+                    price REAL, 
+                    discount_price REAL, 
+                    discount_percentage REAL, 
+                    is_catalog_item BOOLEAN, 
+                    is_new BOOLEAN, 
+                    free BOOLEAN, 
+                    discounted BOOLEAN, 
+                    can_purchase BOOLEAN, 
+                    owned INTEGER, 
+                    review REAL, 
+                    review_count INTEGER,
+                    custom_attributes TEXT
+                )
+                """
+                cursor.execute(query)
+                self.connection.commit()
+                cursor.close()
         if upgrade_to_version.value >= DbVersionNum.V3.value:
-            if not self.is_table_exist('last_run'):
-                # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
-                cursor = self.connection.cursor()
-                query = "CREATE TABLE IF NOT EXISTS last_run (date DATETIME, mode TEXT, files_count INTEGER, items_count INTEGER, scraped_ids TEXT)"
-                cursor.execute(query)
-                self.connection.commit()
-                cursor.close()
+            # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
+            cursor = self.connection.cursor()
+            query = "CREATE TABLE IF NOT EXISTS last_run (date DATETIME, mode TEXT, files_count INTEGER, items_count INTEGER, scraped_ids TEXT)"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
         if upgrade_to_version.value >= DbVersionNum.V7.value:
-            if not self.is_table_exist('tags'):
-                # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
-                cursor = self.connection.cursor()
-                query = "CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY NOT NULL, name TEXT)"
-                cursor.execute(query)
-                self.connection.commit()
-                cursor.close()
+            # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
+            cursor = self.connection.cursor()
+            query = "CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY NOT NULL, name TEXT)"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
+        if upgrade_to_version.value >= DbVersionNum.V8.value:
+            # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
+            cursor = self.connection.cursor()
+            query = "CREATE TABLE IF NOT EXISTS ratings (id TEXT PRIMARY KEY NOT NULL, averageRating REAL, total INTEGER)"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
 
     def check_and_upgrade_database(self, upgrade_from_version: DbVersionNum = None) -> None:
         """
@@ -256,6 +260,10 @@ class UEAssetDbHandler:
         """
         if not self.is_table_exist('assets'):
             previous_version = DbVersionNum.V0
+        elif not self.is_table_exist('tags'):
+            previous_version = DbVersionNum.V6
+        elif not self.is_table_exist('ratings'):
+            previous_version = DbVersionNum.V7
         else:
             # force an update of the db_version property
             previous_version = self._get_db_version()
@@ -263,6 +271,7 @@ class UEAssetDbHandler:
             #    raise Exception("Invalid database version or database is badly initialized")
 
         self.db_version = previous_version
+
         if upgrade_from_version is None:
             upgrade_from_version = self.db_version
 
@@ -271,13 +280,11 @@ class UEAssetDbHandler:
             # necessary steps to upgrade to version 1, aka create tables
             self.db_version = DbVersionNum.V2
             self.create_tables(upgrade_to_version=self.db_version)
-            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V2:
             # necessary steps to upgrade from version 2
             # add the last_run table to get data about the last run of the ap
             self.db_version = DbVersionNum.V3
             self.create_tables(upgrade_to_version=self.db_version)
-            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V3:
             # necessary steps to upgrade from version 3
             # add user fields
@@ -298,7 +305,6 @@ class UEAssetDbHandler:
             )
             self.db_version = DbVersionNum.V4
             upgrade_from_version = self.db_version
-            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V4:
             # necessary steps to upgrade from version 4
             # add changed fields
@@ -317,29 +323,29 @@ class UEAssetDbHandler:
                 }
             )
             self.db_version = DbVersionNum.V5
-            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V5:
             # necessary steps to upgrade from version 5
             # add changed fields
             self._add_missing_columns('assets', required_columns={'tags': 'TEXT', })
             self.db_version = DbVersionNum.V6
-            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V6:
             self.db_version = DbVersionNum.V7
             self.create_tables(upgrade_to_version=self.db_version)
-            self.logger.info(f'Database upgraded to {self.db_version}')
         if upgrade_from_version == DbVersionNum.V7:
+            self.db_version = DbVersionNum.V8
+            self.create_tables(upgrade_to_version=self.db_version)
+        if upgrade_from_version == DbVersionNum.V8:
             """
-            necessary steps to upgrade from version 7
+            necessary steps to upgrade from version 8
             does not exist yet
             """
             """
             # do some stuff here
             self.db_version = DbVersionNum.V8
-            self.logger.info(f'Database upgraded to {self.db_version}')
             """
             pass
         if previous_version != self.db_version:
+            self.logger.info(f'Database upgraded to {self.db_version}')
             self._set_db_version(self.db_version)
 
     def is_table_exist(self, table_name) -> bool:
@@ -618,27 +624,60 @@ class UEAssetDbHandler:
             return
         if data.get('id', None) is None or data.get('name', None) is None:
             return
-        if self.get_tag_name_by_id(data['id']) is None:
+        if self.get_tag_by_id(data['id']) is None:
             cursor = self.connection.cursor()
             query = "INSERT INTO tags (id, name) VALUES (:id, :name)"
             cursor.execute(query, data)
             cursor.close()
             self.connection.commit()
 
-    def get_tag_name_by_id(self, uid: int) -> str:
+    def get_tag_by_id(self, uid: int) -> str:
         """
         Read a tag name using its id from the 'tags' table.
         :param uid: The ID of the tag to get.
         :return: name of the tag.
         """
-        name = None
+        result = None
         if self.connection is not None:
             cursor = self.connection.cursor()
             cursor.execute("SELECT name from tags WHERE id = ?", (uid, ))
             row = cursor.fetchone()
             cursor.close()
-            name = row['name'] if row else None
-        return name
+            result = row['name'] if row else None
+        return result
+
+    # noinspection DuplicatedCode
+    def save_rating(self, data: dict):
+        """
+        Save a tag into the 'rating' table.
+        :param data: A dictionary containing the data to save.
+        """
+        # check if the database version is compatible with the current method
+        if not self._check_db_version(DbVersionNum.V8, caller_name=inspect.currentframe().f_code.co_name):
+            return
+        if data.get('id', None) is None or data.get('averageRating', None) is None:
+            return
+        if self.get_rating_by_id(data['id']) is None:
+            cursor = self.connection.cursor()
+            query = "INSERT INTO ratings (id, averageRating, total) VALUES (:id, :averageRating, :total)"
+            cursor.execute(query, data)
+            cursor.close()
+            self.connection.commit()
+
+    def get_rating_by_id(self, uid: int) -> ():
+        """
+        Read a rating using its id from the 'ratings' table.
+        :param uid: The ID of the ratings to get.
+        :return: tuple (averageRating, total)
+        """
+        result = None
+        if self.connection is not None:
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT averageRating, total from ratings WHERE id = ?", (uid, ))
+            row = cursor.fetchone()
+            cursor.close()
+            result = (row['averageRating'], row['total']) if result else None
+        return result
 
     def convert_tag_list_to_string(self, tags: None) -> str:
         """
@@ -656,7 +695,7 @@ class UEAssetDbHandler:
             for item in tags:
                 if isinstance(item, int):
                     # temp: use the tag id as a name
-                    name = self.get_tag_name_by_id(uid=item)
+                    name = self.get_tag_by_id(uid=item)
                     if name is None:
                         name = str(item)
                 elif isinstance(item, dict):
