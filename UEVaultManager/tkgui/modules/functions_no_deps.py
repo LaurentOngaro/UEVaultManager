@@ -295,3 +295,21 @@ def shorten_text(url: str, limit: int = 30) -> str:
         return url
     else:
         return '...' + url[-limit:]
+
+
+def extract_variables_from_url(url: str) -> dict:
+    """
+    Extract variables from an url.
+    :param url: the url to extract variables from
+    :return: a dict containing the variables
+    """
+    result = {}
+    url_parts = url.split('?')
+    if len(url_parts) == 2:
+        url_params = url_parts[1].split('&')
+        extracted_data = {}
+        for param in url_params:
+            key, value = param.split('=')
+            extracted_data[key] = value
+        result = extracted_data
+    return result
