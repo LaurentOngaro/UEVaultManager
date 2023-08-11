@@ -20,7 +20,8 @@ from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions import box_yesno
-from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime, \
+    extract_variables_from_url
 
 test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
 
@@ -108,6 +109,7 @@ class UEAssetScraper:
         self.urls_list_filename: str = 'urls_list.txt'
         self.assets_data_folder: str = os.path.join(gui_g.s.scraping_folder, 'assets', 'marketplace')
         self.owned_assets_data_folder: str = os.path.join(gui_g.s.scraping_folder, 'assets', 'owned')
+        self.owned_assets_global_folder: str = os.path.join(gui_g.s.scraping_folder, 'global')
         self.db_name: str = os.path.join(gui_g.s.scraping_folder, 'assets.db')
         self.max_threads: int = max_threads if gui_g.s.use_threads else 0
         self.threads_count: int = 0
@@ -434,6 +436,18 @@ class UEAssetScraper:
 
         if json_data:
             if self.store_in_files and self.use_raw_format:
+                # store the result file in the raw format
+                try:
+                    url_vars = extract_variables_from_url(url)
+                    start = int(url_vars['start'])
+                    count = int(url_vars['count'])
+                    suffix = f'{start}-{start+count-1}'
+                except Exception:
+                    suffix = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+                filename = f'assets_{suffix}.json'
+                self.save_to_file(filename=filename, data=json_data, is_global=True)
+
+                # store the individial asset in file
                 for asset_data in json_data['data']['elements']:
                     filename = get_filename_from_asset_data(asset_data)
                     self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
@@ -508,7 +522,7 @@ class UEAssetScraper:
             # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
             self.scraped_data = list(chain.from_iterable(self.scraped_data))
 
-    def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False) -> bool:
+    def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
         """
         Save JSON data to a file.
         :param data: A dictionary containing the data to save. Defaults to None. If None, the data will be used.
@@ -516,6 +530,7 @@ class UEAssetScraper:
         :param filename: A string representing the file name to use. Defaults to None. If None, a file name will be generated using the prefix and the start and count properties.
         :param is_json: A boolean indicating whether the data is JSON or not. Defaults to True.
         :param is_owned: A boolean indicating whether the data is owned assets or not. Defaults to False.
+        :param is_global: A boolean indicating whether if the data to save id the "global" result, as produced by the url scraping. Defaults to False.
         :return: A boolean indicating whether the file was saved successfully.
         """
         if data is None:
@@ -526,6 +541,7 @@ class UEAssetScraper:
             return False
 
         folder = self.owned_assets_data_folder if is_owned else self.assets_data_folder
+        folder = self.owned_assets_global_folder if is_global else folder
 
         _, folder = check_and_get_folder(folder)
         if filename is None:
