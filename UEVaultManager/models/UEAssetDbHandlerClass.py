@@ -232,23 +232,37 @@ class UEAssetDbHandler:
                 self.connection.commit()
                 cursor.close()
         if upgrade_to_version.value >= DbVersionNum.V3.value:
-            # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
             cursor = self.connection.cursor()
             query = "CREATE TABLE IF NOT EXISTS last_run (date DATETIME, mode TEXT, files_count INTEGER, items_count INTEGER, scraped_ids TEXT)"
             cursor.execute(query)
             self.connection.commit()
             cursor.close()
         if upgrade_to_version.value >= DbVersionNum.V7.value:
-            # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
             cursor = self.connection.cursor()
             query = "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY NOT NULL, name TEXT)"
             cursor.execute(query)
             self.connection.commit()
             cursor.close()
         if upgrade_to_version.value >= DbVersionNum.V8.value:
-            # Note: this table has the same structure as the data saved in the last_run_filename inside the method UEAssetScraper.save_all_to_files()
             cursor = self.connection.cursor()
             query = "CREATE TABLE IF NOT EXISTS ratings (id TEXT PRIMARY KEY NOT NULL, averageRating REAL, total INTEGER)"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
+        if upgrade_to_version.value >= DbVersionNum.V9.value:
+            cursor = self.connection.cursor()
+            query = """
+                    CREATE VIEW IF NOT EXISTS assets_tags AS
+                    WITH RECURSIVE split(asset_id, tags, tag, rest) AS (
+                        SELECT asset_id, tags, '', tags || ','
+                        FROM assets
+                        UNION ALL
+                        SELECT asset_id, tags, substr(rest, 0, instr(rest, ',')), substr(rest, instr(rest, ',')+1)
+                        FROM split
+                        WHERE rest <> ''
+                    )
+                    SELECT asset_id, tag FROM split WHERE tag <> '';
+                    """
             cursor.execute(query)
             self.connection.commit()
             cursor.close()
@@ -335,13 +349,16 @@ class UEAssetDbHandler:
             self.db_version = DbVersionNum.V8
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V8:
+            self.db_version = DbVersionNum.V9
+            self.create_tables(upgrade_to_version=self.db_version)
+        if upgrade_from_version == DbVersionNum.V9:
             """
-            necessary steps to upgrade from version 8
+            necessary steps to upgrade from version 9
             does not exist yet
             """
             """
             # do some stuff here
-            self.db_version = DbVersionNum.V8
+            self.db_version = DbVersionNum.V10
             """
             pass
         if previous_version != self.db_version:
@@ -678,6 +695,26 @@ class UEAssetDbHandler:
             cursor.close()
             result = (row['averageRating'], row['total']) if row else result
         return result
+
+    def get_rows_with_tags_to_convert(self, tag_value: int = None) -> list:
+        """
+        Get all rows from the 'assets_tags' table that could be scrapped to fix their tags.
+        :param tag_value: If not None, only get the rows that have a tag == tag_value.
+        :return: A list of asset_id.
+        Note: if tag_value is None, the returned list contains the asset_id that have at least a tag in the tags field that is an id in the tag table
+        """
+        rows = []
+        if self.connection is not None:
+            cursor = self.connection.cursor()
+            if tag_value is None:
+                # get the asset_id that have at least a tag in the tags field that is an id in the tag table
+                cursor.execute("SELECT DISTINCT asset_id FROM assets_tags WHERE tag GLOB '*[^0-9]*' = 0 AND tag IN (SELECT id FROM tags)")
+            else:
+                # get the asset_id that have at least a tag in the tags field that is id == tag_value
+                cursor.execute("SELECT asset_id FROM assets_tags WHERE CAST(tag AS INTEGER) == ?", tag_value)
+            rows = cursor.fetchall()
+            cursor.close()
+        return [row[0] for row in rows]
 
     def convert_tag_list_to_string(self, tags: None) -> str:
         """

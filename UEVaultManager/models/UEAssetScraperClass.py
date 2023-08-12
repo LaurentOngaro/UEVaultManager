@@ -342,8 +342,8 @@ class UEAssetScraper:
             if self.store_ids:
                 try:
                     self.scraped_ids.append(uid)
-                except (AttributeError, TypeError):
-                    self._log_debug(f'Error adding uid to self.scraped_ids')
+                except (AttributeError, TypeError) as error:
+                    self._log_debug(f'Error when adding uid to self.scraped_ids: {error!r}')
         # end for asset_data in json_data['data']['elements']:
         return content
 

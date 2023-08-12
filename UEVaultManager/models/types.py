@@ -71,4 +71,5 @@ class DbVersionNum(Enum):
     V6 = 6  # add tags column to the assets table
     V7 = 7  # add the tags table
     V8 = 8  # add the ratings tags table
-    V9 = 9  # future version
+    V9 = 9  # create the "assets_tags" view for the tags in the assets table
+    V10 = 10  # future version
