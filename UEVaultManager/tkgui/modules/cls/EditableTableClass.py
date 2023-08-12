@@ -59,6 +59,7 @@ class EditableTable(Table):
     _edit_cell_row_index: int = -1
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
+    model = None  # setup in table.__init__
     progress_window: FakeProgressWindow = None
     pagination_enabled: bool = True
     is_filtered: bool = False
@@ -116,7 +117,6 @@ class EditableTable(Table):
         dataframe has been set. This needs to be updated if the index is reset.
         Overrided to check indexes when rebuildind data from en empty table.
         """
-        # df = self.model.df
         df = self.get_data()  # to check
         rc = self.rowcolors
         rows = self.visiblerows
@@ -144,7 +144,7 @@ class EditableTable(Table):
         Overrided to check get the filtered data if needed
         """
 
-        df = self.model.df  # model.df checked. The only one that contains the new columns order
+        df = self.model.df  # model.df checked. This is only one that contains the new columns order
         col_names = []  # use a varaible to be able to "clean" the column names. Sometime and extra \n is added
         self.col_positions = []
         w = self.cellwidth
@@ -165,13 +165,9 @@ class EditableTable(Table):
             col_names.append(colname.strip('\n'))  # "clean" the column names. Sometime and extra \n is added
         self.tablewidth = self.col_positions[len(self.col_positions) - 1]
 
-        # need to apply the order change to the "not displayed" data
-        if not self.is_filtered and self._filtered is not None:
-            # data is not filtered , we update the _filtered dataframe
+        self._data = self._data.reindex(columns=col_names) #_data checked
+        if self._filtered is not None:
             self._filtered = self._filtered.reindex(columns=col_names)
-        else:
-            # data is filtered , we update the _data dataframe
-            self._data = self._data.reindex(columns=col_names)
 
     def resizeColumn(self, col, width):
         """
@@ -262,11 +258,13 @@ class EditableTable(Table):
                 else:
                     sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
                     keys_ordered = sorted_cols_by_pos.keys()
-                # reindex ALL the existing dataframes
                 self.model.df = self.model.df.reindex(columns=keys_ordered, fill_value='')  # reorder columns
+                """
+                # Done in setColPositions below
                 self._data = self._data.reindex(columns=keys_ordered, fill_value='')  # reorder columns
                 if self._filtered is not None:
                     self._filtered = self._filtered.reindex(columns=keys_ordered, fill_value='')  # reorder columns
+                """
             except KeyError:
                 error_msg = 'Could not reorder the columns.'
             else:
@@ -314,12 +312,10 @@ class EditableTable(Table):
         """
         Set the data in the table. Switch automatically to the filtered data if the filter is enabled.
         """
-        if self.is_filtered:
-            self._filtered = df
-            self.current_count = len(self._filtered)
-        else:
-            self._data = df
-            self.current_count = len(self._data)
+        self._data = df # _data checked
+        self.data_count = len(self._data)
+        if self.model is not None:  # could be None before table.__init__ call in self.__init__
+            self.model.df = df  # model.df checked
 
     def get_row_index_with_offet(self, row_index=None) -> int:
         """
@@ -519,7 +515,7 @@ class EditableTable(Table):
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
-        self.update()  # mandatory : if not, the table will diplays all the rows and not only the current page
+        self.update_page()
         box_message(f'Changed data has been saved to {self.data_source}')
 
     def reload_data(self) -> bool:
@@ -757,13 +753,11 @@ class EditableTable(Table):
         else:
             mask = self._filter_mask
         if mask is not None:
-            # self. _filtered = data[mask]
+            self._filtered = data[mask]
             self.is_filtered = True
-            self.set_data(data[mask])
             self.current_page = 1
         else:
             self.is_filtered = False
-            # self. _filtered = data
         self._filter_mask = mask
         self.update_page()
 
@@ -779,7 +773,7 @@ class EditableTable(Table):
             end = start + self.rows_per_page
             try:
                 # could be empty before load_data is called
-                self.model.df = self.get_current_data().iloc[start:end]  # iloc checked
+                self.model.df = self.get_current_data().iloc[start:end]  # model.df checked iloc checked
             except IndexError:
                 self.current_page = self.total_pages
         else:
@@ -800,7 +794,7 @@ class EditableTable(Table):
         """
         if self.current_page < self.total_pages:
             self.current_page += 1
-            self.update()
+            self.update_page()
 
     def prev_page(self) -> None:
         """
@@ -808,21 +802,21 @@ class EditableTable(Table):
         """
         if self.current_page > 1:
             self.current_page -= 1
-            self.update()
+            self.update_page()
 
     def first_page(self) -> None:
         """
         Navigate to the first page of the table data.
         """
         self.current_page = 1
-        self.update()
+        self.update_page()
 
     def last_page(self) -> None:
         """
         Navigate to the last page of the table data.
         """
         self.current_page = self.total_pages
-        self.update()
+        self.update_page()
 
     def expand_columns(self) -> None:
         """
@@ -949,7 +943,7 @@ class EditableTable(Table):
         if not no_table_update:
             self.add_to_rows_to_save(row_index)
             self.must_save = True
-            self.update(keep_filters=True)
+            self.update_page()
 
     def get_col_name(self, col_index: int) -> str:
         """
@@ -998,8 +992,10 @@ class EditableTable(Table):
         if row_index < 0 or col_index < 0:
             return False
         try:
-            # TODO: PB ICI CAR _data et _filtered sont différent. Quel est celui utilisé par l'affichage ?
-            self.get_current_data().iat[row_index, col_index] = value  # iat checked
+            self._data.iat[row_index, col_index] = value  # iat checked
+            self.model.df.iat[row_index, col_index] = value  # iat checked
+            if self.is_filtered is not None:
+                self._filtered.iat[row_index, col_index] = value  # iat checked
             """
             # debug only
             asset_id_current = self.get_current_data().iat[row_index, 0]
@@ -1156,7 +1152,7 @@ class EditableTable(Table):
         Navigate to the next row in the table and opens the edit row window.
         """
         row_selected = self.getSelectedRow()
-        max_displayed_rows = self.model.df.shape[0] - 1  # df checked: best way to get the number of displayed rows
+        max_displayed_rows = self.model.df.shape[0] - 1  # model.df checked: best way to get the number of displayed rows
         if row_selected is None or row_selected >= max_displayed_rows:
             return
         self.setSelectedRow(row_selected + 1)

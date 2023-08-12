@@ -132,7 +132,6 @@ class UEVMGui(tk.Tk):
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
         self.editable_table.show()
         self.editable_table.resize_columns()  # must be done once, after the whole init of the EditableTable
-        self.editable_table.update()
 
         toolbar_frame = UEVMGuiToolbarFrame(self, self.editable_table)
         self._toolbar_frame = toolbar_frame
@@ -176,7 +175,8 @@ class UEVMGui(tk.Tk):
         self.editable_table.update_quick_edit(0)
         if gui_g.s.data_filters:
             self.load_filters(gui_g.s.data_filters)
-
+        else:
+            self.editable_table.update()
         show_option_fist = False  # debug_only
         if show_option_fist:
             self.toggle_options_panel(True)
@@ -840,7 +840,7 @@ class UEVMGui(tk.Tk):
             self.editable_table.pagination_enabled = forced_value
         else:
             self.editable_table.pagination_enabled = not self.editable_table.pagination_enabled
-        self.editable_table.update()
+        self.editable_table.update_page()
         if not self.editable_table.pagination_enabled:
             # Disable prev/next buttons when pagination is disabled
             self._change_navigation_state(tk.DISABLED)
