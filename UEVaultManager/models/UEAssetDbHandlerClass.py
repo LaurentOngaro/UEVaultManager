@@ -752,9 +752,10 @@ class UEAssetDbHandler:
         """
         if self.connection is not None:
             cursor = self.connection.cursor()
-            cursor.execute("DROP TABLE IF EXISTS assets")
-            cursor.execute("DROP TABLE IF EXISTS last_run")
+            cursor.execute("DROP VIEW IF EXISTS assets_tags")
             cursor.execute("DROP TABLE IF EXISTS tags")
+            cursor.execute("DROP TABLE IF EXISTS last_run")
+            cursor.execute("DROP TABLE IF EXISTS assets")
             self.connection.commit()
             cursor.close()
 
