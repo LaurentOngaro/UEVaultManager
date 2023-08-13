@@ -165,7 +165,7 @@ class EditableTable(Table):
             col_names.append(colname.strip('\n'))  # "clean" the column names. Sometime and extra \n is added
         self.tablewidth = self.col_positions[len(self.col_positions) - 1]
 
-        self._data = self._data.reindex(columns=col_names) #_data checked
+        self._data = self._data.reindex(columns=col_names)  # _data checked
         if self._filtered is not None:
             self._filtered = self._filtered.reindex(columns=col_names)
 
@@ -312,7 +312,7 @@ class EditableTable(Table):
         """
         Set the data in the table. Switch automatically to the filtered data if the filter is enabled.
         """
-        self._data = df # _data checked
+        self._data = df  # _data checked
         self.data_count = len(self._data)
         if self.model is not None:  # could be None before table.__init__ call in self.__init__
             self.model.df = df  # model.df checked
@@ -914,13 +914,11 @@ class EditableTable(Table):
         except IndexError:
             return None
 
-    def update_row(self, row_index: int, ue_asset_data: dict, no_table_update=False):
+    def update_row(self, row_index: int, ue_asset_data: dict) -> None:
         """
         Update the row with the data from ue_asset_data
         :param row_index: row index. This value must be offsetted BEFORE if needed
-        :param ue_asset_data:
-        :param no_table_update:
-        :return:
+        :param ue_asset_data: the data to update the row with
         """
         if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
             return
@@ -938,18 +936,15 @@ class EditableTable(Table):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
             if col_index >= 0 and not self.update_cell(row_index, col_index, typed_value):
-                log_warning(f'Failed to update the cell ({row_index}, {col_name}) value')
+                log_warning(f'Failed to update cell ({row_index}, {col_name}) value')
                 continue
-        if not no_table_update:
-            self.add_to_rows_to_save(row_index)
-            self.must_save = True
-            self.update_page()
+        self.update_page()
 
     def get_col_name(self, col_index: int) -> str:
         """
-        Return the name of the column at the specified index.
-        :param col_index: column index. This value must be offsetted BEFORE if needed
-        :return: the name of the column at the specified index.
+
+        :param col_index:
+        :return:
         """
         try:
             return self.get_current_data().columns[col_index]  # get_current_data checked

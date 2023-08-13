@@ -716,8 +716,8 @@ class UEVMGui(tk.Tk):
                 self.scrap_row(marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False)
             else:
                 self.editable_table.update_row(row_index=row_index, ue_asset_data=forced_data)
-
-                # self.editable_table.resetIndex(drop=False)
+                self.editable_table.add_to_rows_to_save(row_index)
+                self.editable_table.must_save = True
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
