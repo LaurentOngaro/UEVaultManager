@@ -126,7 +126,7 @@ class UEVMGui(tk.Tk):
             data_source=data_source,
             rows_per_page=36,
             show_statusbar=True,
-            update_page_numbers_func=self.update_navigation,
+            update_page_numbers_func=self.update_controls,
             update_rows_text_func=self.update_rows_text
         )
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
@@ -224,17 +224,6 @@ class UEVMGui(tk.Tk):
             )
         return filename
 
-    def _change_navigation_state(self, state: str) -> None:
-        """
-        Change the state of the navigation buttons.
-        :param state: 'normal' or 'disabled'.
-        """
-        self._toolbar_frame.btn_first_page.config(state=state)
-        self._toolbar_frame.btn_prev_page.config(state=state)
-        self._toolbar_frame.btn_next_page.config(state=state)
-        self._toolbar_frame.btn_last_page.config(state=state)
-        self._toolbar_frame.entry_current_page.config(state=state)
-
     def _check_and_get_widget_value(self, tag):
         """
         Check if the widget with the given tags exists and return its value and itself.
@@ -305,20 +294,26 @@ class UEVMGui(tk.Tk):
         row_index: int = self.editable_table.get_row_index_with_offset(event.widget.currentrow)
         self.editable_table.update_quick_edit(row_index)
 
-    def on_entry_current_page_changed(self, _event=None) -> None:
+    def on_entry_current_item_changed(self, _event=None) -> None:
         """
-        When the page number changes, show the corresponding page.
+        When the item (i.e. row or page) number changes, show the corresponding item.
         :param _event:
         """
-        page_num = 1
+        item_num = 'None'
         try:
-            page_num = self._toolbar_frame.entry_current_page.get()
-            page_num = int(page_num)
-            gui_f.log_debug(f'showing page {page_num}')
-            self.editable_table.current_page = page_num
-            self.editable_table.update()
+            item_num = self._toolbar_frame.entry_current_item.get()
+            item_num = int(item_num)
         except (ValueError, UnboundLocalError) as error:
-            gui_f.log_error(f'could not convert page number {page_num} to int. {error!r}')
+            gui_f.log_error(f'could not convert item number {item_num} to int. {error!r}')
+            return
+
+        if self.editable_table.pagination_enabled:
+            gui_f.log_debug(f'showing page {item_num}')
+            self.editable_table.current_page = item_num
+            self.editable_table.update_page()
+        else:
+            gui_f.log_debug(f'showing row {item_num}')
+            self.editable_table.move_to_row(item_num)
 
     # noinspection PyUnusedLocal
     def on_quick_edit_focus_out(self, event=None, tag='') -> None:
@@ -413,7 +408,7 @@ class UEVMGui(tk.Tk):
                     return filename
                 data_table.current_page = 1
                 data_table.update()
-                self.update_navigation()
+                self.update_controls()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
                 return filename
@@ -534,7 +529,9 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = gui_g.s.folders_to_scan
-        if not gui_f.box_yesno('Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'):
+        if not gui_f.box_yesno(
+            'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
+        ):
             return
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
@@ -845,52 +842,60 @@ class UEVMGui(tk.Tk):
             self.editable_table.pagination_enabled = not self.editable_table.pagination_enabled
         self.editable_table.update_page()
         if not self.editable_table.pagination_enabled:
-            # Disable prev/next buttons when pagination is disabled
-            self._change_navigation_state(tk.DISABLED)
             self._toolbar_frame.btn_toggle_pagination.config(text='Enable  Pagination')
         else:
-            self.update_navigation()  # will also update buttons status
             self._toolbar_frame.btn_toggle_pagination.config(text='Disable Pagination')
+        self.update_controls()  # will also update buttons status
 
-    def show_first_page(self) -> None:
+    def first_item(self) -> None:
         """
         Show the first page of the table.
         """
-        self.editable_table.first_page()
-        self.update_navigation()
+        if self.editable_table.pagination_enabled:
+            self.editable_table.first_page()
+        else:
+            self.editable_table.move_to_row(0)
+            # TODO: find a way to move to the scroll bar to the top. Not sure it's possible
+        self.update_controls()
 
-    def show_prev_page(self) -> None:
+    def last_item(self) -> None:
+        """
+        Show the last page of the table.
+        """
+        if self.editable_table.pagination_enabled:
+            self.editable_table.last_page()
+        else:
+            self.editable_table.move_to_row(self.editable_table.current_count - 1)
+            # TODO: find a way to move to the scroll bar to the bottom. Not sure it's possible
+        self.update_controls()
+
+    def prev_page(self) -> None:
         """
         Show the previous page of the table.
         """
         self.editable_table.prev_page()
-        self.update_navigation()
+        self.update_controls()
 
-    def show_next_page(self) -> None:
+    def next_page(self) -> None:
         """
         Show the next page of the table.
         """
         self.editable_table.next_page()
-        self.update_navigation()
-
-    def show_last_page(self) -> None:
-        """
-        Show the last page of the table.
-        """
-        self.editable_table.last_page()
-        self.update_navigation()
+        self.update_controls()
 
     def prev_asset(self) -> None:
         """
         Move to the previous asset in the table.
         """
-        self.editable_table.move_to_prev_record()
+        self.editable_table.prev_row()
+        self.update_controls()
 
     def next_asset(self) -> None:
         """
         Move to the next asset in the table.
         """
-        self.editable_table.move_to_next_record()
+        self.editable_table.next_row()
+        self.update_controls()
 
     # noinspection DuplicatedCode
     def toggle_actions_panel(self, force_showing=None) -> None:
@@ -927,28 +932,70 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_toggle_options.config(text='Show Options')
             self._toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
 
-    def update_navigation(self) -> None:
+    def update_controls(self) -> None:
         """
-        Update the page numbers in the toolbar.
+        Update some controls in the toolbar.
         """
         if self._toolbar_frame is None:
             # toolbar not created yet
             return
-        current_page = self.editable_table.current_page
-        total_pages = self.editable_table.total_pages
-        self._toolbar_frame.entry_current_page_var.set(current_page)
-        self._toolbar_frame.lbl_page_count.config(text=f' / {total_pages}')
-        # enable all buttons by default
-        self._change_navigation_state(tk.NORMAL)
+
+        # List of buttons
+        buttons = [
+            self._toolbar_frame.btn_first_item,  #
+            self._toolbar_frame.btn_last_item,  #
+            self._toolbar_frame.btn_prev_page,  #
+            self._toolbar_frame.btn_next_page,  #
+            self._toolbar_frame.btn_prev_asset,  #
+            self._toolbar_frame.btn_next_asset,  #
+            self._toolbar_frame.entry_current_item,  # 
+        ]
+
+        # Enable all buttons by default
+        for button in buttons:
+            button.config(state=tk.NORMAL)
+
+        current_value = self.editable_table.getSelectedRow()
+        max_value = self.editable_table.current_count
+        current_value = self.editable_table.get_row_index_with_offset(current_value)
+        if current_value <= 0:
+            self._toolbar_frame.btn_prev_asset.config(state=tk.DISABLED)
+        elif current_value >= max_value - 1:
+            self._toolbar_frame.btn_next_asset.config(state=tk.DISABLED)
 
         if not self.editable_table.pagination_enabled:
-            self._toolbar_frame.entry_current_page.config(state=tk.NORMAL)
-        if current_page <= 1:
-            self._toolbar_frame.btn_first_page.config(state=tk.DISABLED)
+            first_item_text = 'First Asset'
+            last_item_text = 'Last Asset'
             self._toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
-        if current_page >= total_pages:
             self._toolbar_frame.btn_next_page.config(state=tk.DISABLED)
-            self._toolbar_frame.btn_last_page.config(state=tk.DISABLED)
+            if current_value <= 0:
+                self._toolbar_frame.btn_first_item.config(state=tk.DISABLED)
+                self._toolbar_frame.btn_prev_asset.config(state=tk.DISABLED)
+                # move the scrollbar of a dataframe to the top
+
+            if current_value >= max_value - 1:
+                self._toolbar_frame.btn_last_item.config(state=tk.DISABLED)
+                self._toolbar_frame.btn_next_asset.config(state=tk.DISABLED)
+        else:
+            current_value = self.editable_table.current_page
+            max_value = self.editable_table.total_pages
+            first_item_text = 'First Page'
+            last_item_text = 'Last Page'
+            if current_value <= 1:
+                self._toolbar_frame.btn_first_item.config(state=tk.DISABLED)
+                self._toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
+            if current_value >= max_value:
+                self._toolbar_frame.btn_last_item.config(state=tk.DISABLED)
+                self._toolbar_frame.btn_next_page.config(state=tk.DISABLED)
+
+        # Update entry_current_item_var and lbl_page_count
+        self._toolbar_frame.entry_current_item_var.set(current_value)
+        self._toolbar_frame.lbl_page_count.config(text=f' / {max_value}')
+
+        # Update btn_first_item and btn_last_item text
+        self._toolbar_frame.btn_first_item.config(text=first_item_text)
+        self._toolbar_frame.btn_last_item.config(text=last_item_text)
+        self.editable_table.redraw()
 
     def update_data_source(self) -> None:
         """
@@ -1011,7 +1058,7 @@ class UEVMGui(tk.Tk):
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
             if self.editable_table.rebuild_data():
-                self.update_navigation()
+                self.update_controls()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {self.editable_table.data_source}')
 

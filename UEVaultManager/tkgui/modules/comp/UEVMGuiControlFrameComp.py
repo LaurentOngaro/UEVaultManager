@@ -72,7 +72,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             },  #
             {
                 "text": "Edit",
-                "command": data_table.create_edit_record_window
+                "command": data_table.create_edit_row_window
             },  #
             {
                 "text": "Scrap",

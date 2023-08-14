@@ -74,10 +74,10 @@ class EditRowWindow(tk.Toplevel):
 
             lblf_navigation = ttk.LabelFrame(self, text='Navigation')
             lblf_navigation.grid(row=0, column=0, **grid_def_options)
-            btn_prev = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
-            btn_prev.pack(**pack_def_options, side=tk.LEFT)
-            btn_next = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
-            btn_next.pack(**pack_def_options, side=tk.RIGHT)
+            btn_prev_asset = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
+            btn_prev_asset.pack(**pack_def_options, side=tk.LEFT)
+            btn_next_asset = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
+            btn_next_asset.pack(**pack_def_options, side=tk.RIGHT)
 
             lbf_preview = ttk.LabelFrame(self, text='Image Preview')
             lbf_preview.grid(row=0, column=1, **grid_def_options)
@@ -139,19 +139,21 @@ class EditRowWindow(tk.Toplevel):
         Save the changes (Wrapper).
         """
         self.must_save = False
-        self.editable_table.save_edit_row_record()
+        self.editable_table.save_edit_row()
 
     def prev_asset(self) -> None:
         """
         Go to the previous asset (Wrapper).
         """
-        self.editable_table.move_to_prev_record()
+        row_index = self.editable_table.prev_row()
+        self.editable_table.edit_row(row_index)
 
     def next_asset(self) -> None:
         """
         Go to the next asset (Wrapper).
         """
-        self.editable_table.move_to_next_record()
+        row_index = self.editable_table.next_row()
+        self.editable_table.edit_row(row_index)
 
     def open_asset_url(self) -> None:
         """
