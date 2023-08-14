@@ -84,4 +84,4 @@ def set_use_threads(value: bool) -> None:
     Set the value of the settings use_threads. Mandadory fot the associated ttk.ckbutton to work.
     :param value: True or False.
     """
-    s.set_use_threads(value)
+    s.use_threads = value
