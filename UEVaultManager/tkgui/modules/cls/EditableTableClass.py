@@ -317,16 +317,22 @@ class EditableTable(Table):
         if self.model is not None:  # could be None before table.__init__ call in self.__init__
             self.model.df = df  # model.df checked
 
-    def get_row_index_with_offset(self, row_index=None) -> int:
+    def get_row_index_with_offset(self, row_index=None, remove_offset=False) -> int:
         """
         Return the "valid" row index depending on the context. It takes into account the pagination and the current page.
+        :param row_index: The row index to convert.
+        :param remove_offset: If True, the offset is removed from the row index. If False, the offset is added to the row index.
         :return: The row index with a correct offset.
         """
         if row_index is None:
             row_index = self.currentrow
 
         if self.pagination_enabled:
-            row_index += self.rows_per_page * (self.current_page - 1)
+            offset = self.rows_per_page * (self.current_page - 1)
+            if remove_offset:
+                row_index -= offset
+            else:
+                row_index += offset
 
         return row_index
 
@@ -988,9 +994,10 @@ class EditableTable(Table):
             return False
         try:
             self._data.iat[row_index, col_index] = value  # iat checked
-            if self.is_filtered is not None:
+            if self._filtered is not None:
                 self._filtered.iat[row_index, col_index] = value  # iat checked
-            self.model.df.iat[row_index, col_index] = value  # iat checked
+            row_index_fixed = self.get_row_index_with_offset(row_index, remove_offset=True)
+            self.model.df.iat[row_index_fixed, col_index] = value  # model.df checked iat checked
             """
             # debug only
             asset_id_current = self.get_current_data().iat[row_index, 0]
@@ -1116,11 +1123,15 @@ class EditableTable(Table):
         """
         Save the edited row values to the table data.
         """
-        for key, value in self.get_edited_row_values().items():
+        row_index = self._edit_row_index
+        for col_name, value in self.get_edited_row_values().items():
             # if is_from_type(key, [CSVFieldType.BOOL]):
             #    value = convert_to_bool(value)
-            value = get_typed_value(csv_field=key, value=value)
-            self.get_current_data().at[self._edit_row_index, key] = value  # at checked
+            typed_value = get_typed_value(csv_field=col_name, value=value)
+            col_index = self.get_col_index(col_name)
+            if not self.update_cell(row_index, col_index, typed_value):
+                log_warning(f'Failed to update the cell ({row_index}, {col_index}) value')
+                continue
         row = self._edit_row_index
         self._edit_row_entries = None
         self._edit_row_index = -1
