@@ -158,7 +158,7 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
     target_height = gui_g.s.preview_max_height
     aspect_ratio = float(image.width) / float(image.height)
     target_width = int(target_height * aspect_ratio)
-    resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
+    resized_image = image.resize((target_width, target_height), Image.BILINEAR)
     tk_image = ImageTk.PhotoImage(resized_image)
     # Calculate center coordinates
     x = (canvas.winfo_width() - tk_image.width()) // 2
