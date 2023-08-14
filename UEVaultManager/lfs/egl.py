@@ -1,16 +1,15 @@
 # coding: utf-8
 """
 implementation for:
-- EPCLFS: Epic Games Encrypted Config Filesystem
+- EPCLFS: Epic Games Encrypted Config Filesystem.
 """
-
 import configparser
 import os
 
 
 class EPCLFS:
     """
-    Epic Games Encrypted Config Filesystem Class
+    Epic Games Encrypted Config Filesystem Class.
     """
     # Known encryption key(s) for JSON user data
     # encrypted using AES-256-ECB mode
@@ -30,7 +29,7 @@ class EPCLFS:
 
     def read_config(self):
         """
-        Reads the EGS config files
+        Read the EGS config files.
         """
         if not self.appdata_path:
             raise ValueError('EGS AppData path is not set')

@@ -193,7 +193,7 @@ class App(tk.Tk):
         scrollbar.pack(side="right", fill="y")
 
         # Treeview
-        treeview = ttk.Treeview(pane_1, selectmode="browse", yscrollcommand=scrollbar.set, columns=(1, 2), height=10,)
+        treeview = ttk.Treeview(pane_1, selectmode="browse", yscrollcommand=scrollbar.set, columns=(1, 2), height=10, )
         treeview.pack(expand=True, fill="both")
         scrollbar.config(command=treeview.yview)
 
@@ -249,7 +249,7 @@ class App(tk.Tk):
         notebook.add(tab_1, text="Tab 1")
 
         # Scale
-        scale = ttk.Scale(tab_1, from_=100, to=0, variable=self.var_5, command=lambda event: var_5.set(scale.get()),)
+        scale = ttk.Scale(tab_1, from_=100, to=0, variable=self.var_5, command=lambda event: var_5.set(scale.get()), )
         scale.grid(row=0, column=0, padx=(20, 10), pady=(20, 0), sticky="ew")
 
         # Progressbar
@@ -257,7 +257,7 @@ class App(tk.Tk):
         progress.grid(row=0, column=1, padx=(10, 20), pady=(20, 0), sticky="ew")
 
         # Label
-        label = ttk.Label(tab_1, text="Ttk Widget Demo", justify="center", font=("-size", 15, "-weight", "bold"),)
+        label = ttk.Label(tab_1, text="Ttk Widget Demo", justify="center", font=("-size", 15, "-weight", "bold"), )
         label.grid(row=1, column=0, pady=10, columnspan=2)
 
         # Tab #2

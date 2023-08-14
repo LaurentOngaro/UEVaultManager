@@ -1,23 +1,23 @@
 # coding=utf-8
 """
 implementation for:
-- FakeProgressWindow: a fake ProgressWindow object to use when no ProgressWindow object is provided and provide the same interface
+- FakeProgressWindow: a fake ProgressWindow object to use when no ProgressWindow object is provided and provide the same interface.
 """
 
 
 class FakeProgressWindow:
     """
     A fake ProgressWindow object to use when no ProgressWindow object is provided and provide the same interface
-    Usefull to avoid importing the ProgressWindow class and all its dependencies (all the tkinter stuff)
+    Usefull to avoid importing the ProgressWindow class and all its dependencies (all the tkinter stuff).
     """
+    text: str = ''
+    value: int = 0
+    max_value: int = 0
+    quit_on_close: bool = False
+    continue_execution: bool = True
 
-    def __init__(self, title='Dummy'):
-        self.title = title
-        self.text = ''
-        self.value = 0
-        self.max_value = 0
-        self.quit_on_close = False
-        self.continue_execution = True
+    def __init__(self, title: str = 'Dummy'):
+        self.title: str = title
 
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None) -> None:
         """ FAKE METHOD"""

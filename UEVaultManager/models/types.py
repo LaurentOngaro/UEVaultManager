@@ -14,7 +14,7 @@ from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_int, conve
 class CSVFieldState(Enum):
     """
     Enum for the state of a field in the database
-    Used for filtering the fields regarding the context
+    Used for filtering the fields regarding the context.
     """
     CSV_ONLY = 0  # field is only in the CSV result file
     SQL_ONLY = 1  # field is only in the database
@@ -27,7 +27,7 @@ class CSVFieldState(Enum):
 class CSVFieldType(Enum):
     """
     Enum for the (simplified) type of field in the database
-    Used for selecting the good format and/or control to show the value
+    Used for selecting the good format and/or control to show the value.
     """
     STR = 0  # short text (ie ttk.ENTRY)
     INT = 1
@@ -39,9 +39,9 @@ class CSVFieldType(Enum):
 
     def cast(self, value):
         """
-        Cast the value to the type of the field
-        :param value: value to cast
-        :return: value with the cast type
+        Cast the value to the type of the field.
+        :param value: value to cast.
+        :return: value with the cast type.
         """
         if self == self.INT:
             return convert_to_int(value)
@@ -57,7 +57,7 @@ class CSVFieldType(Enum):
 class DbVersionNum(Enum):
     """
     The version of the database or/and class.
-    Used when checking if database must be upgraded by comparing with the class version
+    Used when checking if database must be upgraded by comparing with the class version.
     """
     # when a new version is added to the DbVersionNum enum
     # - add code for the new version to the create_tables() method
@@ -67,5 +67,9 @@ class DbVersionNum(Enum):
     V2 = 2  # add the columns used fo user data to the "standard" marketplace columns
     V3 = 3  # add the last_run table to get data about the last run of the app
     V4 = 4  # add custom_attributes field to the assets table
-    V5 = 5  # add added_manually column to the assets tablen
-    V6 = 6  # future version
+    V5 = 5  # add added_manually column to the assets table
+    V6 = 6  # add tags column to the assets table
+    V7 = 7  # add the tags table
+    V8 = 8  # add the ratings tags table
+    V9 = 9  # create the "assets_tags" view for the tags in the assets table
+    V10 = 10  # future version

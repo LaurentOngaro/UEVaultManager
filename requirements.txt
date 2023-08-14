@@ -1,5 +1,5 @@
 # dynamic version of requirements
-# works well for pip install BUT it's not parsed by pycharm
+# work well for pip install BUT it's not parsed by pycharm
 # so "Unsatisfied package requirements inspection" will raises weak warnings
 # --index-url https://pypi.python.org/uevaultmanager/
 # -e .
@@ -19,4 +19,5 @@ ttkbootstrap>=1.10
 packaging>=23
 UEVaultManager>=1.7.1
 Faker>=18.11.1
-requirements-parser>=0.2.0
+rapidfuzz>=3.1.1
+Jinja2>=3.0.2

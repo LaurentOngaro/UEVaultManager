@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- WebImage: class to download an image from an url and get it as a PhotoImage
+- WebImage: class to download an image from an url and get it as a PhotoImage.
 """
 from io import BytesIO
 
@@ -13,9 +13,10 @@ from UEVaultManager.tkgui.modules.functions import log_warning
 
 class WebImage:
     """
-    Class to download an image from an url and get it as a PhotoImage
-    :param url: the url of the image to download
+    Class to download an image from an url and get it as a PhotoImage.
+    :param url: the url of the image to download.
     """
+    request_timeout = 4
 
     def __init__(self, url: str = None):
         # if no URL is given, return
@@ -24,31 +25,31 @@ class WebImage:
         # initialize instance variables
         self.__image_pil = None
         self.__image_tk = None
-        self.url = url
+        self.url: str = url
         try:
             # use requests to get the image content as bytes
-            response = requests.get(url)
+            response = requests.get(url, timeout=self.request_timeout)
             # create a PIL.Image object from the bytes
             self.__image_pil = Image.open(BytesIO(response.content))
             # create a PhotoImage object from the PIL.Image
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as error:
             # log a warning if image cannot be downloaded or opened
-            log_warning(f'image could not be read from url {self.url}.\nError:{error}')
+            log_warning(f'image could not be read from url {self.url}.\nError:{error!r}')
 
     def get(self) -> ImageTk.PhotoImage:
         """
-        Get the downloaded image
-        :return: the image
+        Get the downloaded image.
+        :return: the image.
         """
         return self.__image_tk
 
     def get_resized(self, new_width: int, new_height: int) -> ImageTk.PhotoImage:
         """
-        Get the downloaded image resized to the given size
-        :param new_width: width of the resized image
-        :param new_height: height of the resized image
-        :return: the resized image
+        Get the downloaded image resized to the given size.
+        :param new_width: width of the resized image.
+        :param new_height: height of the resized image.
+        :return: the resized image.
         """
         try:
             # resize the PIL.Image object in place
@@ -57,5 +58,5 @@ class WebImage:
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as error:
             # log a warning if image cannot be resized
-            log_warning(f'Could not get resized image from url {self.url}.\nError:{error}')
+            log_warning(f'Could not get resized image from url {self.url}.\nError:{error!r}')
         return self.__image_tk

@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Utilities functions and tools
-These functions DO NOT depend on the globals.py module and be freely imported
+These functions DO NOT depend on the globals.py module and be freely imported.
 """
 import ctypes as ct
 import datetime
@@ -15,11 +15,10 @@ from screeninfo import get_monitors
 
 def path_from_relative_to_absolute(path: str) -> str:
     """
-    Build the path of the file to reference relative to the currently running script
-    :param path: the relative path to the file. If the path is already absolute, it is returned as is
-    :return: the absolute path of the file
+    Build the path of the file to reference relative to the currently running script.
+    :param path: the relative path to the file. If the path is already absolute, it is returned as is.
+    :return: the absolute path of the file.
     """
-
     if os.path.isabs(path):
         return path
 
@@ -43,11 +42,11 @@ def path_from_relative_to_absolute(path: str) -> str:
 
 def center_window_on_screen(screen_index: int, width: int, height: int) -> str:
     """
-    Calculate the geometry of the window to display in the center of the given screen
-    :param screen_index: the index of the screen to use
-    :param width: the width of the window
-    :param height: the height of the window
-    :return: the geometry string to use to display the window in the center of the screen
+    Calculate the geometry of the window to display in the center of the given screen.
+    :param screen_index: the index of the screen to use.
+    :param width: the width of the window.
+    :param height: the height of the window.
+    :return: the geometry string to use to display the window in the center of the screen.
     """
     x, y = get_center_screen_positions(screen_index, width, height)
     geometry: str = f'{width}x{height}+{x}+{y}'
@@ -56,11 +55,11 @@ def center_window_on_screen(screen_index: int, width: int, height: int) -> str:
 
 def get_center_screen_positions(screen_index: int, width: int, height: int) -> (int, int):
     """
-    Return the x and y positions of the window to display in the center of the given screen
-    :param screen_index: the index of the screen to use
-    :param width: the width of the window
-    :param height: the height of the window
-    :return: the geometry string to use to display the window in the center of the screen
+    Return the x and y positions of the window to display in the center of the given screen.
+    :param screen_index: the index of the screen to use.
+    :param width: the width of the window.
+    :param height: the height of the window.
+    :return: the geometry string to use to display the window in the center of the screen.
     """
     monitors = get_monitors()
     if screen_index > len(monitors):
@@ -77,8 +76,8 @@ def get_center_screen_positions(screen_index: int, width: int, height: int) -> (
 
 def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
     """
-    Set the custom style for the application
-    :return: the style object
+    Set the custom style for the application.
+    :return: the style object.
     """
     style = ttk.Style(theme_name)
     # option possible for ttk widgets:
@@ -100,8 +99,8 @@ def set_toolbar_style(tk_window) -> None:
     """
     Remove the minimize and maximize buttons from a tkinter window.
     This version is compatible with Windows AND Non-windows OS
-    # see https://stackoverflow.com/questions/2969870/removing-minimize-maximize-buttons-in-tkinter
-    :param tk_window: the tkinter window
+    # see https://stackoverflow.com/questions/2969870/removing-minimize-maximize-buttons-in-tkinter.
+    :param tk_window: the tkinter window.
     """
     try:
         set_window_pos = ct.windll.user32.SetWindowPos
@@ -129,8 +128,8 @@ def set_toolbar_style(tk_window) -> None:
 
 def set_icon_and_minmax(tk_window, icon=None) -> None:
     """
-    Set the icon and remove the min/max buttons of the window if no icon is provided
-    :param tk_window:
+    Set the icon and remove the min/max buttons of the window if no icon is provided.
+    :param tk_window:.
     :param icon:
     """
     if icon is None:
@@ -151,9 +150,9 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
 
 def create_empty_file(file_path: str) -> (bool, str):
     """
-    Create an empty file
-    :param file_path: the path of the file to create
-    :return: (True if path was valid, the corrected path of the file)
+    Create an empty file.
+    :param file_path: the path of the file to create.
+    :return: (True if path was valid, the corrected path of the file).
     """
     path, file = os.path.split(file_path)
     is_valid, path = check_and_get_folder(path)
@@ -164,9 +163,9 @@ def create_empty_file(file_path: str) -> (bool, str):
 
 def check_and_get_folder(folder_path: str) -> (bool, str):
     """
-    Check if the folder exists. If not, create it or use the default one
-    :param folder_path: the path of the folder to check
-    :return: (True if path was valid, the corrected path of the folder)
+    Check if the folder exists. If not, create it or use the default one.
+    :param folder_path: the path of the folder to check.
+    :return: (True if path was valid, the corrected path of the folder).
     """
     path = folder_path
     is_valid = True
@@ -191,7 +190,7 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
 
 def convert_to_bool(value) -> bool:
     """
-    Convert a value to a boolean. Useful for None values
+    Convert a value to a boolean. Useful for None values.
     :param value: the value to convert. If the value is not a boolean, it will be converted to a string and then to a boolean.
     :return:
     """
@@ -206,9 +205,9 @@ def convert_to_bool(value) -> bool:
 
 def convert_to_int(value) -> int:
     """
-    Convert a value to an integer
+    Convert a value to an integer.
     :param value: the value to convert.
-    :return: the integer value or 0 if the value is None or not an integer
+    :return: the integer value or 0 if the value is None or not an integer.
     """
     try:
         value = int(value)
@@ -219,9 +218,9 @@ def convert_to_int(value) -> int:
 
 def convert_to_float(value) -> float:
     """
-    Convert a value to a float. Useful for None values
+    Convert a value to a float. Useful for None values.
     :param value: the value to convert.
-    :return: the float value or 0.0 if the value is None or not a float
+    :return: the float value or 0.0 if the value is None or not a float.
     """
     try:
         value = float(value)
@@ -232,11 +231,11 @@ def convert_to_float(value) -> float:
 
 def convert_to_datetime(value: str, formats_to_use='%Y-%m-%d %H:%M:%S', default=None) -> datetime.datetime:
     """
-    Convert a value to a datetime object
+    Convert a value to a datetime object.
     :param value: the value to convert. If the value is not a datetime, it will be converted to a string and then to a datetime.
-    :param formats_to_use: list of format to use to trye to convert the value. They will be tried in order
-    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
-    :return: the datetime value
+    :param formats_to_use: list of format to use to trye to convert the value. They will be tried in order.
+    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00.
+    :return: the datetime value.
     """
     if default is None:
         default = datetime.datetime(1970, 1, 1)
@@ -257,11 +256,11 @@ def convert_to_datetime(value: str, formats_to_use='%Y-%m-%d %H:%M:%S', default=
 
 def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None) -> str:
     """
-    Convert a value to a datetime string
-    :param value: the value to convert. If the value is not a datetime
-    :param date_format: the format of value
-    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
-    :return: the string value of the datetime
+    Convert a value to a datetime string.
+    :param value: the value to convert. If the value is not a datetime.
+    :param date_format: the format of value.
+    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00.
+    :return: the string value of the datetime.
     """
     # we convert only datetime object
     if isinstance(value, str):
@@ -274,13 +273,43 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
     try:
         return value.strftime(date_format)
     except (TypeError, ValueError, AttributeError):
-        # print(f'Error while converting {value} to a datetime: {error}')
         return default
 
 
 def create_uid() -> str:
     """
-    Create a unique id
-    :return: a unique id
+    Create a unique id.
+    :return: a unique id.
     """
     return str(uuid.uuid4())[:8]
+
+
+def shorten_text(url: str, limit: int = 30) -> str:
+    """
+    Shorten an url. Get its last part
+    :param url:  the url to shorten
+    :param limit: the limit of characters to keep
+    :return: the shortened url
+    """
+    if len(url) < limit:
+        return url
+    else:
+        return '...' + url[-limit:]
+
+
+def extract_variables_from_url(url: str) -> dict:
+    """
+    Extract variables from an url.
+    :param url: the url to extract variables from
+    :return: a dict containing the variables
+    """
+    result = {}
+    url_parts = url.split('?')
+    if len(url_parts) == 2:
+        url_params = url_parts[1].split('&')
+        extracted_data = {}
+        for param in url_params:
+            key, value = param.split('=')
+            extracted_data[key] = value
+        result = extracted_data
+    return result

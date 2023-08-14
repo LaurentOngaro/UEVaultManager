@@ -44,6 +44,7 @@ This is an example of this file content and the settings you can change:
     ignored_assets_filename_log = ~/.config/ignored_assets.log
     notfound_assets_filename_log = ~/.config/notfound_assets.log
     bad_data_assets_filename_log = ~/.config/bad_data_assets.log
+    scan_assets_filename_log = ~/.config/scan_assets.log
     ; Minimal unreal engine version to check for obsolete assets (default is 4.26)
     engine_version_for_obsolete_assets = 4.26
 

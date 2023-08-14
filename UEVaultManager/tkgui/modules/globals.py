@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-global variables and references to global objects
+global variables and references to global objects.
 """
 # circular import error
 # import UEVaultManager.tkgui.modules.DisplayContentWindowClass as DisplayContentWindow
@@ -41,39 +41,47 @@ s = GUISettings()  # using the shortest variable name for GUISettings for conven
 # options that can be changed in the GUI
 def set_args_force_refresh(value: bool) -> None:
     """
-    Set the value of the argument force_refresh. Mandadory fot the associated ttk.ckbutton to work
-    :param value: True or False
+    Set the value of the argument force_refresh. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
     """
     UEVM_cli_args['force_refresh'] = value
 
 
 def set_args_debug(value: bool) -> None:
     """
-    Set the value of the argument debug. Mandadory fot the associated ttk.ckbutton to work
-    :param value: True or False
+    Set the value of the argument debug. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
     """
     UEVM_cli_args['debug'] = value
 
 
 def set_args_offline(value: bool) -> None:
     """
-    Set the value of the argument offline. Mandadory fot the associated ttk.ckbutton to work
-    :param value:  True or False
+    Set the value of the argument offline. Mandadory fot the associated ttk.ckbutton to work.
+    :param value:  True or False.
     """
     UEVM_cli_args['offline'] = value
 
 
 def set_args_delete_metadata(value: bool) -> None:
     """
-    Set the value of the argument delete_metadata. Mandadory fot the associated ttk.ckbutton to work
-    :param value:  True or False
+    Set the value of the argument delete_metadata. Mandadory fot the associated ttk.ckbutton to work.
+    :param value:  True or False.
     """
     UEVM_cli_args['delete_metadata'] = value
 
 
-def set_args_delete_extras_data(value: bool) -> None:
+def set_args_delete_extra_data(value: bool) -> None:
     """
-    Set the value of the argument delete_extras_data. Mandadory fot the associated ttk.ckbutton to work
-    :param value:  True or False
+    Set the value of the argument delete_extra_data. Mandadory fot the associated ttk.ckbutton to work.
+    :param value:  True or False.
     """
-    UEVM_cli_args['delete_extras_data'] = value
+    UEVM_cli_args['delete_extra_data'] = value
+
+
+def set_use_threads(value: bool) -> None:
+    """
+    Set the value of the settings use_threads. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
+    """
+    s.use_threads = value

@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiToolbarFrame: a toolbar frame for the UEVMGui Class
+- UEVMGuiToolbarFrame: a toolbar frame for the UEVMGui Class.
 """
 import tkinter as tk
 
@@ -13,9 +13,9 @@ from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 
 class UEVMGuiToolbarFrame(ttk.Frame):
     """
-    A toolbar frame for the UEVMGui Class
+    A toolbar frame for the UEVMGui Class.
     :param container: The parent container.
-    :param data_table: The EditableTable instance
+    :param data_table: The EditableTable instance.
     """
 
     def __init__(self, container, data_table: EditableTable):
@@ -43,7 +43,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.show_prev_page)
         btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
         btn_prev_page.config(state=tk.DISABLED)
-        entry_current_page_var = tk.StringVar(value=data_table.current_page)
+        entry_current_page_var = tk.StringVar(value=str(data_table.current_page))
         entry_current_page = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_current_page_var)
         entry_current_page.pack(**pack_def_options, side=tk.LEFT)
         lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages}')
@@ -70,7 +70,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_zoom_out = ttk.Button(lblf_display, text='Zoom Out', command=data_table.zoom_out)
         btn_zoom_out.pack(**pack_def_options, side=tk.LEFT)
 
-        lblf_commands = ttk.LabelFrame(self, text='Cli commands')
+        lblf_commands = ttk.LabelFrame(self, text='Other commands')
         lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
         btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
         btn_help.pack(**pack_def_options, side=tk.LEFT)
@@ -82,14 +82,16 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_list_files.pack(**pack_def_options, side=tk.LEFT)
         btn_cleanup = ttk.Button(lblf_commands, text='Cleanup', command=lambda: container.run_uevm_command('cleanup'))
         btn_cleanup.pack(**pack_def_options, side=tk.LEFT)
+        btn_json_processing = ttk.Button(lblf_commands, text='Get Json Data', command=lambda: container.json_processing())
+        btn_json_processing.pack(**pack_def_options, side=tk.LEFT)
 
         lblf_actions = ttk.LabelFrame(self, text='Actions')
         lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
         # noinspection PyArgumentList
-        btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_pane, state=tk.DISABLED)
+        btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_panel, state=tk.DISABLED)
         btn_toggle_options.pack(**pack_def_options, side=tk.LEFT)
         # noinspection PyArgumentList
-        btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Controls', command=container.toggle_controls_pane)
+        btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Actions', command=container.toggle_actions_panel)
         btn_toggle_controls.pack(**pack_def_options, side=tk.LEFT)
         # noinspection PyArgumentList
         btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)

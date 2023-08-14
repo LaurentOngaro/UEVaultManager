@@ -368,11 +368,9 @@ class CDL:
     def get_chunk_by_guid(self, guid):
         """
         Get chunk by GUID string or number, creates index of chunks on first call
-
         Integer GUIDs are usually faster and require less memory, use those when possible.
-
-        :param guid:
-        :return:
+        :param guid: GUID string or number
+        :return: Chunk.
         """
         if isinstance(guid, int):
             return self.get_chunk_by_guid_num(guid)

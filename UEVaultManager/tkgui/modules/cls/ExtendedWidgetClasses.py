@@ -6,9 +6,8 @@ Implementation for:
 - ExtendedText: extended text widget
 - ExtendedLabel: extended label widget
 - ExtendedCheckButton: extended checkbutton widget
-- ExtendedButton: extended button widget
+- ExtendedButton: extended button widget.
 """
-
 import inspect
 import os
 import tkinter as tk
@@ -23,17 +22,17 @@ from UEVaultManager.tkgui.modules.types import WidgetType
 class ExtendedWidget:
     """
     Base class for all widgets in the app.
-    :param tag: tag of the widget
-    :param row: row of the widget
-    :param col: column of the widget
-    :return: ExtendedWidget instance
+    :param tag: tag of the widget.
+    :param row: row of the widget.
+    :param col: column of the widget.
+    :return: ExtendedWidget instance.
     """
 
-    def __init__(self, tag=None, row=-1, col=-1, default_content=''):
-        self.tag = tag
-        self.col = col
-        self.row = row
-        self.default_content = default_content if default_content else self.tag_to_label(tag)
+    def __init__(self, tag=None, row: int = -1, col: int = -1, default_content=''):
+        self.tag: str = tag
+        self.col: int = col
+        self.row: int = row
+        self.default_content = default_content if default_content is not None else self.tag_to_label(tag)
         # can't call this here because the set_content function is specific and overridden in the derived classes
         # self.reset_content()
 
@@ -54,7 +53,7 @@ class ExtendedWidget:
         Extracts the extended args from the kwargs.
         :param kwargs: args to extract from. Note that the kwargs will be modified and the extended args will be removed.
         :param function_signature: function to get the signature from. We can't use a non-static method because the init function will be the derived class's init function.
-        :return: dict of extended args
+        :return: dict of extended args.
         """
         init_args = inspect.signature(function_signature)
         result = {}
@@ -67,9 +66,9 @@ class ExtendedWidget:
     @staticmethod
     def tag_to_label(tag: str or None) -> str:
         """
-        Convert a tag to a label
-        :param tag: the tag to convert
-        :return: the label
+        Convert a tag to a label.
+        :param tag: the tag to convert.
+        :return: the label.
         """
         if tag is None:
             return ''
@@ -79,7 +78,7 @@ class ExtendedWidget:
     def set_content(self, content='') -> None:
         """
         Sets the content of the widget.
-        :param content: content to set
+        :param content: content to set.
         """
         try:
             # noinspection PyUnresolvedReferences
@@ -90,7 +89,7 @@ class ExtendedWidget:
     def get_content(self) -> str:
         """
         Gets the content of the widget.
-        :return: content of the widget
+        :return: content of the widget.
         """
         try:
             # noinspection PyUnresolvedReferences
@@ -108,7 +107,7 @@ class ExtendedWidget:
     def get_style(self) -> ttk.Style:
         """
         Get the ttk.Style object of the widget.
-        :return: ttk.Style object
+        :return: ttk.Style object.
         """
         try:
             # noinspection PyUnresolvedReferences
@@ -142,9 +141,9 @@ class ExtendedWidget:
 class ExtendedEntry(ExtendedWidget, ttk.Entry):
     """
     Extended widget version of a ttk.Entry class.
-    :param master: container for the widget
-    :param kwargs: kwargs to pass to the widget
-    :return: ExtendedEntry instance
+    :param master: container for the widget.
+    :param kwargs: kwargs to pass to the widget.
+    :return: ExtendedEntry instance.
     """
 
     def __init__(self, master=None, **kwargs):
@@ -161,7 +160,7 @@ class ExtendedEntry(ExtendedWidget, ttk.Entry):
     def set_content(self, content='') -> None:
         """
         Sets the content of the widget.
-        :param content: content to set
+        :param content: content to set.
         """
         self.delete(0, tk.END)
         self.insert(0, content)
@@ -170,9 +169,9 @@ class ExtendedEntry(ExtendedWidget, ttk.Entry):
 class ExtendedText(ExtendedWidget, tk.Text):
     """
     Extended widget version of a ttk.Text. Also add a "ttk.style" like property to the widget.
-    :param master: container for the widget
-    :param kwargs: kwargs to pass to the widget
-    :return: ExtendedText instance
+    :param master: container for the widget.
+    :param kwargs: kwargs to pass to the widget.
+    :return: ExtendedText instance.
     """
 
     def __init__(self, master=None, **kwargs):
@@ -207,7 +206,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
     def set_content(self, content='') -> None:
         """
         Sets the content of the widget.
-        :param content: content to set
+        :param content: content to set.
         """
         try:
             self.delete('1.0', tk.END)
@@ -218,7 +217,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
     def get_content(self) -> str:
         """
         Gets the content of the widget.
-        :return: content of the widget
+        :return: content of the widget.
         """
         try:
             # Note that by using END you're also getting the trailing newline that tkinter automatically adds.
@@ -233,10 +232,10 @@ class ExtendedText(ExtendedWidget, tk.Text):
 class ExtendedLabel(ExtendedWidget, ttk.Label):
     """
     Extended widget version of a ttk.Label.
-    :param master: container for the widget
-    :param text: Text to display next to the checkbutton
-    :param kwargs: kwargs to pass to the widget
-    :return: ExtendedLabel instance
+    :param master: container for the widget.
+    :param text: Text to display next to the checkbutton.
+    :param kwargs: kwargs to pass to the widget.
+    :return: ExtendedLabel instance.
     """
 
     def __init__(self, master=None, **kwargs):
@@ -255,28 +254,28 @@ class ExtendedCheckButton(ExtendedWidget):
     """
     Create a new widget version of a ttk.Checkbutton.
     Note: We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
-    :param master: Parent widget
-    :param label: Text to display next to the checkbutton
-    :param images_folder: Path to the folder containing the images for the checkbutton. If empty, the './assets' folder will be used
-    :param change_state_on_click: If True, the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method
-    :param kwargs: kwargs to pass to the widget
-    :return: ExtendedCheckButton instance
+    :param master: Parent widget.
+    :param label: Text to display next to the checkbutton.
+    :param images_folder: Path to the folder containing the images for the checkbutton. If empty, the './assets' folder will be used.
+    :param change_state_on_click: If True, the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method.
+    :param kwargs: kwargs to pass to the widget.
+    :return: ExtendedCheckButton instance.
     """
+    default_content = False
 
-    def __init__(self, master, label=None, images_folder=None, change_state_on_click=True, **kwargs):
+    def __init__(self, master, label: str = None, images_folder: str = '', change_state_on_click: bool = True, **kwargs):
         if master is None:
             print('A container is needed to display this widget')
             return
         ext_args = self._extract_extended_args(kwargs, function_signature=ExtendedWidget.__init__)
         ExtendedWidget.__init__(self, **ext_args)
         # by default , images are searched in a folder named 'statics' in the directory of this file
-        if images_folder is None:
+        if not images_folder:
             images_folder = path_from_relative_to_absolute('./assets/')
         self._img_checked = tk.PhotoImage(file=os.path.join(images_folder, 'checked_16.png'))  # Path to the checked image
         self._img_uncheckked = tk.PhotoImage(file=os.path.join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
         self.widget_type = WidgetType.CHECKBUTTON
-        self.default_content = False
-        self._var = tk.BooleanVar(value=self.default_content)
+        self._var = tk.BooleanVar(value=bool(self.default_content))
         frm_inner = ttk.Frame(master=master)
         lbl_text = ttk.Label(frm_inner, text='')  # no text bydefault
         check_label = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
@@ -290,14 +289,14 @@ class ExtendedCheckButton(ExtendedWidget):
             self.set_label(label)
         # noinspection PyTypeChecker
         # keep "bad" type to keep compatible signatures with overriden methods
-        self.set_content(self.default_content)
+        self.set_content(bool(self.default_content))
 
         if change_state_on_click:
             self.bind("<Button-1>", self.switch_state)
 
     def _update_state(self) -> None:
         """
-        Updates the image of the checkbutton
+        Updates the image of the checkbutton.
         """
         current_state = self._var.get()
         if current_state:
@@ -307,23 +306,23 @@ class ExtendedCheckButton(ExtendedWidget):
 
     def pack(self, **kwargs) -> None:
         """
-        Packs the widget
-        :param kwargs: kwargs to pass to the widget
+        Packs the widget.
+        :param kwargs: kwargs to pass to the widget.
         """
         self._frm_inner.pack(**kwargs)
 
     def grid(self, **kwargs) -> None:
         """
-        Grids the widget
-        :param kwargs: kwargs to pass to the widget
+        Grids the widget.
+        :param kwargs: kwargs to pass to the widget.
         """
         self._frm_inner.grid(**kwargs)
 
     def bind(self, sequence=None, command=None) -> None:
         """
-        Binds a callback to the widget
-        :param sequence: Sequence to bind to
-        :param command:  function to bind
+        Binds a callback to the widget.
+        :param sequence: Sequence to bind to.
+        :param command:  function to bind.
         """
         self._lbl_text.bind(sequence, command)
         self._check_label.bind(sequence, command)
@@ -331,8 +330,8 @@ class ExtendedCheckButton(ExtendedWidget):
     # noinspection PyUnusedLocal
     def switch_state(self, event=None) -> bool:
         """
-        Switches the state of the checkbutton
-        :param event: event that triggered the call
+        Switches the state of the checkbutton.
+        :param event: event that triggered the call.
         """
         value = bool(self._var.get())
         # print(f'Current state: {value} event: {event}   ')
@@ -343,15 +342,15 @@ class ExtendedCheckButton(ExtendedWidget):
 
     def set_label(self, text='') -> None:
         """
-        Sets the label of the widget
-        :param text: text to set
+        Sets the label of the widget.
+        :param text: text to set.
         """
         self._check_label.config(text=text)
 
     def set_content(self, content='') -> None:
         """
-        Sets the content of the widget. True, 'True' and '1' will be considered as True, everything else will be considered as False
-        :param content: content to set
+        Sets the content of the widget. True, 'True' and '1' will be considered as True, everything else will be considered as False.
+        :param content: content to set.
         """
         try:
             if content or type(content) is bool:
@@ -374,21 +373,21 @@ class ExtendedCheckButton(ExtendedWidget):
     def get_content(self) -> bool:
         """
         Gets the content of the widget.
-        :return: True if the checkbutton is checked, False otherwise
+        :return: True if the checkbutton is checked, False otherwise.
         """
         return bool(self._var.get())
 
 
 class ExtendedButton(ExtendedWidget, ttk.Button):
     """
-    Extended widget version of a ttk.Button
-    :param master: container for the widget
-    :param command: function to call when the button is clicked
-    :param kwargs: kwargs to pass to the widget
-    :return: ExtendedButton instance
+    Extended widget version of a ttk.Button.
+    :param master: container for the widget.
+    :param command: function to call when the button is clicked.
+    :param kwargs: kwargs to pass to the widget.
+    :return: ExtendedButton instance.
     """
 
-    def __init__(self, master=None, command='', **kwargs):
+    def __init__(self, master=None, command: str = '', **kwargs):
         if master is None:
             print('A container is needed to display this widget')
             return

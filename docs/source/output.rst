@@ -22,17 +22,24 @@ or set to '' the corresponding log feature will be disabled.
    -  file is defined by the setting: `notfound_assets_filename_log`
       (default is ``~/.config/notfound_assets.log``)
    -  each asset listed in the file has not been found during the
-      grabbing process (extras data). Possible reasons are: invalid,
+      grabbing process (extra data). Possible reasons are: invalid,
       obsolete or removed from the marketplace
 
 -  bad data assets log
 
    -  file is defined by the setting: `bad_data_assets_filename_log`
       (default is ``~/.config/bad_data_assets.log``)
-   -  each asset listed has different value in extras data and metadata.
+   -  each asset listed has different value in extra data and metadata.
       Reasons is: ambiguous asset name that leaded to an invalid search
       result during the grabbing process. See the :ref:`how-to-fix-invalid-search-result-during-the-grabbing-process`
       section.
+
+-  scan for assets log
+
+   -  file is defined by the setting: `scan_assets_filename_log`
+      (default is ``~/.config/scan_assets_filename_log.log``)
+   -  each scanned folder is listed here whith the result of the scan
+
 
 The output file
 ~~~~~~~~~~~~~~~
@@ -335,27 +342,27 @@ Each asset will also have its data saved in to different json files:
 
 -  for the all the assets available in the marketplace (including the owned ones):
 
-  -  the folder ``<scrapping folder>/assets``: contains a json file for each
+  -  the folder ``<Scraping folder>/assets``: contains a json file for each
      asset (identified by its `asset_id` is the asset has one) to store its metadata (get from
-     a call to the epic API). The <scrapping folder> can be set in the ``<config folder>/config_gui.ini`` configuration file
+     a call to the epic API). The <Scraping folder> can be set in the ``<config folder>/config_gui.ini`` configuration file
 
 -  for the assets OWNED by the user
 
   -  the folder ``<data folder>/metadata``: contains a json file for each
      asset (identified by its `asset_id`) to store its metadata (get from
      a call to the epic API)
-  -  the folder ``<data folder>/extras``: contains a json file for each
-     asset (identified by its `asset_id`) to store its ''extras data''
+  -  the folder ``<data folder>/extra``: contains a json file for each
+     asset (identified by its `asset_id`) to store its ''extra data''
      (grabbed from the marketplace page of the asset)
 
 Note:
 
 -  filtering data (using the -fc optional arguments) occurs BEFORE
-   saving extras data
--  some `extras` json files can be missing where the corresponding
+   saving extra data
+-  some `extra` json files can be missing where the corresponding
    `metadata` json file is present, that's because some data could have
    not been grabbed or the asset page not found during the process.
--  the grabbing processing for extras data is using a text based search,
+-  the grabbing processing for extra data is using a text based search,
    so the analysed asset page could be the bad one and results could be
    taken for another asset. See the :ref:`how-to-fix-invalid-search-result-during-the-grabbing-process`
    section.
@@ -365,7 +372,7 @@ Note:
 how to fix invalid search result during the grabbing process
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The grabbing processing for extras data is using a text based search
+The grabbing processing for extra data is using a text based search
 (partial and case-insensitive). By default, only the first result of
 this search is taken as the corresponding asset. When the asset name,
 which must be converted to be used as a search keyword, is ambiguous,
