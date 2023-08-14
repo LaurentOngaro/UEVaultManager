@@ -302,7 +302,7 @@ class UEVMGui(tk.Tk):
         When the selection changes, show the selected row in the quick edit frame.
         :param event:
         """
-        row_index: int = self.editable_table.get_row_index_with_offet(event.widget.currentrow)
+        row_index: int = self.editable_table.get_row_index_with_offset(event.widget.currentrow)
         self.editable_table.update_quick_edit(row_index)
 
     def on_entry_current_page_changed(self, _event=None) -> None:
@@ -798,7 +798,7 @@ class UEVMGui(tk.Tk):
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_stop_button_l=True
                 )
             for row_index in row_indexes:
-                row_index: int = self.editable_table.get_row_index_with_offet(row_index)
+                row_index: int = self.editable_table.get_row_index_with_offset(row_index)
                 row_data = self.editable_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'

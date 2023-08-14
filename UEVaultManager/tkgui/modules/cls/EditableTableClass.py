@@ -317,7 +317,7 @@ class EditableTable(Table):
         if self.model is not None:  # could be None before table.__init__ call in self.__init__
             self.model.df = df  # model.df checked
 
-    def get_row_index_with_offet(self, row_index=None) -> int:
+    def get_row_index_with_offset(self, row_index=None) -> int:
         """
         Return the "valid" row index depending on the context. It takes into account the pagination and the current page.
         :return: The row index with a correct offset.
@@ -443,7 +443,7 @@ class EditableTable(Table):
         for row_index in row_indexes:
             asset_id = 'None'
             if not data_current.empty and 0 <= row_index < len(data_current):
-                row_index = self.get_row_index_with_offet(row_index)
+                row_index = self.get_row_index_with_offset(row_index)
                 try:
                     index = data_current.index[row_index]
                     asset_id = data_current.at[index, 'Asset_id']  # at checked
@@ -988,9 +988,9 @@ class EditableTable(Table):
             return False
         try:
             self._data.iat[row_index, col_index] = value  # iat checked
-            self.model.df.iat[row_index, col_index] = value  # iat checked
             if self.is_filtered is not None:
                 self._filtered.iat[row_index, col_index] = value  # iat checked
+            self.model.df.iat[row_index, col_index] = value  # iat checked
             """
             # debug only
             asset_id_current = self.get_current_data().iat[row_index, 0]
@@ -1029,7 +1029,7 @@ class EditableTable(Table):
         Create the edit row window for the selected row in the table.
         """
         row_index = self.getSelectedRow()
-        row_index = self.get_row_index_with_offet(row_index)
+        row_index = self.get_row_index_with_offset(row_index)
         if row_index is None:
             return
 
@@ -1164,7 +1164,7 @@ class EditableTable(Table):
         col_index = self.get_col_clicked(event)
         if row_index is None or col_index is None:
             return None
-        row_index = self.get_row_index_with_offet(row_index)
+        row_index = self.get_row_index_with_offset(row_index)
         cell_value = self.get_cell(row_index, col_index)
         title = 'Edit current cell values'
         width = 300
@@ -1308,7 +1308,7 @@ class EditableTable(Table):
         :param row_index: The row index of the selected cell.
         :return: The image URL of the selected row.
         """
-        row_index = self.get_row_index_with_offet(row_index)
+        row_index = self.get_row_index_with_offset(row_index)
         return '' if row_index is None else self.get_cell(row_index, self.get_col_index('Image'))
 
     def open_asset_url(self, url: str = None):
