@@ -77,3 +77,11 @@ def set_args_delete_extra_data(value: bool) -> None:
     :param value:  True or False.
     """
     UEVM_cli_args['delete_extra_data'] = value
+
+
+def set_use_threads(value: bool) -> None:
+    """
+    Set the value of the settings use_threads. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
+    """
+    s.set_use_threads(value)

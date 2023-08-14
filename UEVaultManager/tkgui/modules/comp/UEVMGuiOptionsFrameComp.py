@@ -33,31 +33,31 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         lblf_options = ttk.Frame(self)
         lblf_options.pack(side=tk.TOP, **{'ipadx': 1, 'ipady': 1, 'fill': tk.BOTH, 'expand': True})
 
-        # Command Options frame
-        lblf_command_options = ttk.LabelFrame(lblf_options, text='Command Options')
+        # Options for Commands frame
+        lblf_command_options = ttk.LabelFrame(lblf_options, text='Options for Commands')
         lblf_command_options.pack(side=tk.TOP, **lblf_def_options)
-        # lblf_options row
+        # lblf_command_options row
         cur_col = 0
         cur_row = 0
         force_refresh_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('force', False))
         force_refresh_var.trace_add('write', lambda name, index, mode: gui_g.set_args_force_refresh(force_refresh_var.get()))
         ck_force_refresh = ttk.Checkbutton(lblf_command_options, text='Force refresh', variable=force_refresh_var)
         ck_force_refresh.grid(row=cur_row, column=cur_col, **grid_fw_options)
-        # lblf_options row
+        # lblf_command_options row
         cur_row += 1
         cur_col = 0
         offline_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('offline', False))
         offline_var.trace_add('write', lambda name, index, mode: gui_g.set_args_offline(offline_var.get()))
         ck_offline = ttk.Checkbutton(lblf_command_options, text='Offline Mode', variable=offline_var)
         ck_offline.grid(row=cur_row, column=cur_col, **grid_fw_options)
-        # lblf_options row
+        # lblf_command_options row
         cur_row += 1
         cur_col = 0
         debug_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('debug', False))
         debug_var.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(debug_var.get()))
         ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode', variable=debug_var)
         ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
-        # lblf_options row
+        # lblf_command_options row
         # delete_extra_data'] = True
         cur_row += 1
         cur_col = 0
@@ -65,13 +65,24 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         delete_metadata_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_metadata(delete_metadata_var.get()))
         ck_delete_metadata = ttk.Checkbutton(lblf_command_options, text='Delete metadata (cleanup)', variable=delete_metadata_var)
         ck_delete_metadata.grid(row=cur_row, column=cur_col, **grid_fw_options)
-        # lblf_options row
+        # lblf_command_options row
         cur_row += 1
         cur_col = 0
         delete_extra_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extra_data', False))
         delete_extra_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extra_data(delete_extra_data_var.get()))
         ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete extra data (cleanup)', variable=delete_extra_data_var)
         ck_delete_extra_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
+
+        # Settings for GUI frame
+        lblf_gui_settings = ttk.LabelFrame(lblf_options, text='Settings for GUI')
+        lblf_gui_settings.pack(side=tk.TOP, **lblf_def_options)
+        # lblf_gui_settings row
+        cur_row = 0
+        cur_col = 0
+        use_threads_var = tk.BooleanVar(value=gui_g.s.use_threads)
+        use_threads_var.trace_add('write', lambda name, index, mode: gui_g.set_use_threads(use_threads_var.get()))
+        ck_use_threads = ttk.Checkbutton(lblf_gui_settings, text='Use threads', variable=use_threads_var)
+        ck_use_threads.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
         # Folders To scan frame
         lblf_folders_to_scan = ttk.LabelFrame(lblf_options, text='Folders To scan (add/remove)')
