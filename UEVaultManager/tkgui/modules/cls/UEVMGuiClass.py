@@ -534,11 +534,12 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = gui_g.s.folders_to_scan
-
+        if not gui_f.box_yesno('Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'):
+            return
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
 
-        pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False)
+        pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False, show_stop_button_l=True)
 
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
@@ -722,6 +723,8 @@ class UEVMGui(tk.Tk):
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
+        # self.editable_table.update_page()
+        self.editable_table.resize_columns()
         gui_f.close_progress(self)
 
         if invalid_folders:
