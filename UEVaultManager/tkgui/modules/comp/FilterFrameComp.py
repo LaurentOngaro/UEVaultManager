@@ -265,12 +265,12 @@ class FilterFrame(ttk.LabelFrame):
                     elif value_type_str == 'float':
                         filter_value = filter_value.replace(',', '.')
                         mask = data[col_name].astype(float) == float(filter_value)
-                    if value_type_str.lower() in ('callable', 'method') and filter_value != '':
+                    elif value_type_str.lower() in ('callable', 'method') and filter_value != '':
                         # filter_value is a function that returns a mask (boolean Series)
                         mask = filter_value()
                     else:
                         check_value = True
-                        if filter_value[0] == '^':
+                        if isinstance(filter_value, str) and filter_value.startswith('^'):
                             # ^ negates the filter
                             check_value = not check_value
                         mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower()) == check_value
