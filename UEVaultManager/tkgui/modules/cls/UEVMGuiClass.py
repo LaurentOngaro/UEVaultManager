@@ -700,7 +700,7 @@ class UEVMGui(tk.Tk):
                 invalid_folders.append(content["path"])
                 continue
             if row_index == -1:
-                self.editable_table.create_row(row_data=row_data, add_to_existing=True)
+                self.editable_table.create_row(row_data=row_data, add_to_existing=True, do_not_save=True)
                 row_index = 0  # added at the start of the table. As it, the index is always known
                 row_added += 1
             forced_data = {

@@ -398,11 +398,12 @@ class EditableTable(Table):
         close_progress(self)
         return True
 
-    def create_row(self, row_data=None, add_to_existing=True) -> None:
+    def create_row(self, row_data=None, add_to_existing=True, do_not_save=False) -> None:
         """
         Create an empty row in the table.
         :param row_data: The data to add to the row.
         :param add_to_existing: True to add the row to the existing data, False to replace the existing data.
+        :param do_not_save: True to not save the row in the database.
         """
         table_row = None
         if self.data_source_type == DataSourceType.FILE:
@@ -416,7 +417,7 @@ class EditableTable(Table):
                 self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
             # create an empty row (in the database) with the correct columns
             data = self._db_handler.create_empty_row(
-                return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix
+                return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
             )  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
             table_row = pd.DataFrame(data, columns=column_names)
@@ -473,6 +474,7 @@ class EditableTable(Table):
                 self.update(keep_filters=True)
             except (IndexError, KeyError) as error:
                 log_warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
+        self.clearSelected()
         return number_deleted > 0
 
     def save_data(self, source_type=None) -> None:

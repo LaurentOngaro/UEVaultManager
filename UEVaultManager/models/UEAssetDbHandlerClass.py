@@ -527,12 +527,13 @@ class UEAssetDbHandler:
                 self.logger.warning(f"Error while getting columns name: {error!r}")
         return csv_column_names
 
-    def create_empty_row(self, return_as_string=True, empty_cell='None', empty_row_prefix='dummy_row_'):
+    def create_empty_row(self, return_as_string=True, empty_cell='None', empty_row_prefix='dummy_row_', do_not_save=False):
         """
         Create an empty row in the 'assets' table.
         :param return_as_string: True to return the row as a string, False to.
         :param empty_cell: The value to use for empty cells.
         :param empty_row_prefix: The prefix to use for the row ID.
+        :param do_not_save: True to not save the row in the database.
         :return: A row (dict) or a string representing the empty row.
         """
         result = '' if return_as_string else {}
@@ -552,7 +553,8 @@ class UEAssetDbHandler:
             ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
             ue_asset.data['added_manually'] = True
             ue_asset.data['id'] = uid
-            self.save_ue_asset(ue_asset)
+            if not do_not_save:
+                self.save_ue_asset(ue_asset)
             if return_as_string:
                 result = str(ue_asset)
             else:
