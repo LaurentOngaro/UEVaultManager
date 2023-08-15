@@ -276,6 +276,21 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
         return default
 
 
+def is_an_int(value) -> bool:
+    """
+    Check if a value is an integer.
+    :param value: the value to check.
+    :return:  True if the value is an integer, False otherwise.
+    """
+    try:
+        float_n = float(value)
+        int_n = int(float_n)
+    except ValueError:
+        return False
+    else:
+        return float_n == int_n
+
+
 def create_uid() -> str:
     """
     Create a unique id.
