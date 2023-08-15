@@ -812,7 +812,7 @@ class UEVMGui(tk.Tk):
                         gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
 
             gui_f.close_progress(self)
-            if show_message and row_count >= 1:
+            if show_message and row_count > 1:
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
