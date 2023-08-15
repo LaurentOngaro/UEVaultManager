@@ -61,56 +61,67 @@ class UEVMGuiControlFrame(ttk.Frame):
         entry_data_source.grid(row=cur_row, column=0, columnspan=max_col, **grid_fw_options)
         cur_row += 1
         cur_col = 0
-        buttons = [
-            {
-                "text": "Add",
-                "command": container.add_row
+        self.buttons = {
+            'Add': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.add_row
             },  #
-            {
-                "text": "Del",
-                "command": container.del_row
+            'Del': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.del_row
             },  #
-            {
-                "text": "Edit",
-                "command": data_table.create_edit_record_window
+            'Edit': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': data_table.create_edit_row_window
             },  #
-            {
-                "text": "Scrap",
-                "command": container.scrap_row
+            'Scrap': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.scrap_row
             },  #
-            {
-                "text": "Scan Folders",
-                "command": container.scan_folders
+            'Scan Folders': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.scan_folders
             },  #
-            # row
-            {
-                "text": "Load",
-                "command": container.open_file
+            'Load': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.open_file
             },  #
-            {
-                "text": "Save",
-                "command": container.save_all
+            'Save': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.save_all
             },  #
-            {
-                "text": "Export",
-                "command": container.export_selection
+            'Export': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.export_selection
             },  #
-            {
-                "text": "Reload",
-                "command": container.reload_data
+            'Reload': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.reload_data
             },  #
-            {
-                "text": "Rebuild",
-                "command": container.rebuild_data
+            'Rebuild': {
+                'text': '',  # if empty, the key of the dict will be used
+                'widget': None,  # add in the loop bellow
+                'command': container.rebuild_data
             },  #
-        ]
-        for _, button in enumerate(buttons):
-            btn = ttk.Button(lblf_content, text=button["text"], command=button["command"])
+        }
+        for key, values in self.buttons.items():
+            text = values['text'] if values['text'] else key
+            btn = ttk.Button(lblf_content, text=text, command=values['command'])
             btn.grid(row=cur_row, column=cur_col, **grid_fw_options)
             cur_col += 1
             if cur_col % max_col == 0:
                 cur_row += 1
                 cur_col = 0
+            self.buttons[key]['widget'] = btn
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
         filter_frame = FilterFrame(
@@ -118,7 +129,8 @@ class UEVMGuiControlFrame(ttk.Frame):
             data_func=data_table.get_data,
             update_func=data_table.update,
             save_filter_func=self.save_filters,
-            value_for_all=gui_g.s.default_value_for_all
+            value_for_all=gui_g.s.default_value_for_all,
+            dynamic_filters_func=container.create_dynamic_filters,
         )
         filter_frame.pack(**lblf_def_options)
         container._filter_frame = filter_frame

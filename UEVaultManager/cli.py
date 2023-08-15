@@ -133,7 +133,8 @@ class UEVaultManagerCLI:
         else:
             print(json.dumps(data))
 
-    def _log_gui_wrapper(self, log_function, message: str, must_quit=False) -> None:
+    @staticmethod
+    def _log_gui_wrapper(log_function, message: str) -> None:
         """
         Wrapper for the log function to display a messagebox if the gui is active.
         :param log_function: function to use to log.
@@ -142,11 +143,8 @@ class UEVaultManagerCLI:
         if not UEVaultManagerCLI.is_gui:
             log_function(message)
             return
-        if must_quit:
-            box_message(message, level='critical')
-            self.core.clean_exit(1)
-        else:
-            box_message(message, level='error')
+
+        box_message(message, level='error')  # level='error' will force the app to quit
 
     def setup_threaded_logging(self) -> QueueListener:
         """
@@ -308,7 +306,7 @@ class UEVaultManagerCLI:
                     self.core.clean_exit(1)
             except Exception as error:
                 message = f'No EGS login session found, please login manually. (Exception: {error!r})'
-                self._log_gui_wrapper(self.logger.critical, message, True)
+                self._log_gui_wrapper(self.logger.critical, message)
 
         exchange_token = ''
         auth_code = ''
@@ -479,16 +477,16 @@ class UEVaultManagerCLI:
             # test if the folder is writable
             if not check_and_create_path(file_src):
                 message = f'Could not create folder for {file_src}. Exiting...'
-                self._log_gui_wrapper(self.logger.critical, message, True)
+                self._log_gui_wrapper(self.logger.critical, message)
             # we try to open it for writing
             if not os.access(file_src, os.W_OK):
                 message = f'Could not create result file {file_src}. Exiting...'
-                self._log_gui_wrapper(self.logger.critical, message, True)
+                self._log_gui_wrapper(self.logger.critical, message)
 
         self.logger.info('Logging in...')
         if not self.core.login():
             message = 'Login failed, cannot continue!'
-            self._log_gui_wrapper(self.logger.critical, message, True)
+            self._log_gui_wrapper(self.logger.critical, message)
 
         if args.force_refresh:
             self.logger.info(
@@ -712,12 +710,16 @@ class UEVaultManagerCLI:
             self.logger.info(f'Logging in and downloading manifest for {args.app_name}')
             if not self.core.login():
                 message = 'Login failed! Cannot continue with download process.'
-                self._log_gui_wrapper(self.logger.error, message, False)
+                self._log_gui_wrapper(self.logger.error, message)
             update_meta = args.force_refresh
             item = self.core.get_item(args.app_name, update_meta=update_meta)
             if not item:
                 message = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)'
-                self._log_gui_wrapper(self.logger.error, message, False)
+                try:
+                    self._log_gui_wrapper(self.logger.error, message)  # it will quit here
+                    # print(message)
+                except Exception as error:
+                    print(f'Error: {error!r}')
             manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
 
         manifest = self.core.load_manifest(manifest_data)
@@ -765,7 +767,7 @@ class UEVaultManagerCLI:
             try:
                 if not self.core.login():
                     message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message, True)
+                    self._log_gui_wrapper(self.logger.critical, message)
             except ValueError:
                 pass
             # if automatic checks are off force an update here
@@ -836,7 +838,7 @@ class UEVaultManagerCLI:
             try:
                 if not self.core.login():
                     message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message, True)
+                    self._log_gui_wrapper(self.logger.critical, message)
             except ValueError:
                 pass
 
@@ -1166,7 +1168,7 @@ class UEVaultManagerCLI:
             try:
                 if not self.core.login():
                     message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message, True)
+                    self._log_gui_wrapper(self.logger.critical, message)
             except ValueError:
                 pass
             # if automatic checks are off force an update here

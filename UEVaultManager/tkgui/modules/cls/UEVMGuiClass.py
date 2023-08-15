@@ -11,6 +11,7 @@ import tkinter as tk
 from datetime import datetime
 from tkinter import filedialog as fd
 
+import pandas as pd
 from rapidfuzz import fuzz
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
@@ -27,7 +28,7 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiCon
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOptionsFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
-from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
+from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style, is_an_int
 from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType
 
 
@@ -126,7 +127,7 @@ class UEVMGui(tk.Tk):
             data_source=data_source,
             rows_per_page=36,
             show_statusbar=True,
-            update_page_numbers_func=self.update_navigation,
+            update_page_numbers_func=self.update_controls_and_redraw,
             update_rows_text_func=self.update_rows_text
         )
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
@@ -151,6 +152,8 @@ class UEVMGui(tk.Tk):
         self.editable_table.bind('<Motion>', self.on_mouse_over_cell)
         self.editable_table.bind('<Leave>', self.on_mouse_leave_cell)
         self.editable_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
+        self.bind('<Button-1>', self.on_left_click)
+
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
         if not show_open_file_dialog and (rebuild_data or self.editable_table.must_rebuild):
@@ -224,17 +227,6 @@ class UEVMGui(tk.Tk):
             )
         return filename
 
-    def _change_navigation_state(self, state: str) -> None:
-        """
-        Change the state of the navigation buttons.
-        :param state: 'normal' or 'disabled'.
-        """
-        self._toolbar_frame.btn_first_page.config(state=state)
-        self._toolbar_frame.btn_prev_page.config(state=state)
-        self._toolbar_frame.btn_next_page.config(state=state)
-        self._toolbar_frame.btn_last_page.config(state=state)
-        self._toolbar_frame.entry_current_page.config(state=state)
-
     def _check_and_get_widget_value(self, tag):
         """
         Check if the widget with the given tags exists and return its value and itself.
@@ -304,21 +296,41 @@ class UEVMGui(tk.Tk):
         """
         row_index: int = self.editable_table.get_row_index_with_offset(event.widget.currentrow)
         self.editable_table.update_quick_edit(row_index)
+        self.update_controls_and_redraw()
 
-    def on_entry_current_page_changed(self, _event=None) -> None:
+    def on_left_click(self, event=None) -> None:
         """
-        When the page number changes, show the corresponding page.
+        When the left mouse button is clicked, show the selected row in the quick edit frame.
+        :param event:
+        """
+        table = self.editable_table  # shortcut
+        # if the clic is on a frame (i.e. an empty zone), clean the selection in the table
+        if event.widget.widgetName == 'ttk::frame':
+            table.selectNone()
+            table.clearSelected()
+            table.delete('rowrect')  # remove the highlight rect
+        self.update_controls_and_redraw()
+
+    def on_entry_current_item_changed(self, _event=None) -> None:
+        """
+        When the item (i.e. row or page) number changes, show the corresponding item.
         :param _event:
         """
-        page_num = 1
+        item_num = 'None'
         try:
-            page_num = self._toolbar_frame.entry_current_page.get()
-            page_num = int(page_num)
-            gui_f.log_debug(f'showing page {page_num}')
-            self.editable_table.current_page = page_num
-            self.editable_table.update()
+            item_num = self._toolbar_frame.entry_current_item.get()
+            item_num = int(item_num)
         except (ValueError, UnboundLocalError) as error:
-            gui_f.log_error(f'could not convert page number {page_num} to int. {error!r}')
+            gui_f.log_error(f'could not convert item number {item_num} to int. {error!r}')
+            return
+
+        if self.editable_table.pagination_enabled:
+            gui_f.log_debug(f'showing page {item_num}')
+            self.editable_table.current_page = item_num
+            self.editable_table.update_page()
+        else:
+            gui_f.log_debug(f'showing row {item_num}')
+            self.editable_table.move_to_row(item_num)
 
     # noinspection PyUnusedLocal
     def on_quick_edit_focus_out(self, event=None, tag='') -> None:
@@ -413,7 +425,7 @@ class UEVMGui(tk.Tk):
                     return filename
                 data_table.current_page = 1
                 data_table.update()
-                self.update_navigation()
+                self.update_controls_and_redraw()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
                 return filename
@@ -534,7 +546,9 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = gui_g.s.folders_to_scan
-        if not gui_f.box_yesno('Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'):
+        if not gui_f.box_yesno(
+            'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
+        ):
             return
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
@@ -703,7 +717,7 @@ class UEVMGui(tk.Tk):
                 invalid_folders.append(content["path"])
                 continue
             if row_index == -1:
-                self.editable_table.create_row(row_data=row_data, add_to_existing=True)
+                self.editable_table.create_row(row_data=row_data, add_to_existing=True, do_not_save=True)
                 row_index = 0  # added at the start of the table. As it, the index is always known
                 row_added += 1
             forced_data = {
@@ -815,7 +829,7 @@ class UEVMGui(tk.Tk):
                         gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
 
             gui_f.close_progress(self)
-            if show_message and row_count >= 1:
+            if show_message and row_count > 1:
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
@@ -845,52 +859,62 @@ class UEVMGui(tk.Tk):
             self.editable_table.pagination_enabled = not self.editable_table.pagination_enabled
         self.editable_table.update_page()
         if not self.editable_table.pagination_enabled:
-            # Disable prev/next buttons when pagination is disabled
-            self._change_navigation_state(tk.DISABLED)
             self._toolbar_frame.btn_toggle_pagination.config(text='Enable  Pagination')
         else:
-            self.update_navigation()  # will also update buttons status
             self._toolbar_frame.btn_toggle_pagination.config(text='Disable Pagination')
+        self.update_controls_and_redraw()  # will also update buttons status
 
-    def show_first_page(self) -> None:
+    def first_item(self) -> None:
         """
         Show the first page of the table.
         """
-        self.editable_table.first_page()
-        self.update_navigation()
+        if self.editable_table.pagination_enabled:
+            self.editable_table.first_page()
+        else:
+            self.editable_table.move_to_row(0)
+            self.editable_table.yview_moveto(0)
+            self.editable_table.redrawVisible()
+        self.update_controls_and_redraw()
 
-    def show_prev_page(self) -> None:
+    def last_item(self) -> None:
+        """
+        Show the last page of the table.
+        """
+        if self.editable_table.pagination_enabled:
+            self.editable_table.last_page()
+        else:
+            self.editable_table.move_to_row(self.editable_table.current_count - 1)
+            self.editable_table.yview_moveto(1)
+            self.editable_table.redrawVisible()
+        self.update_controls_and_redraw()
+
+    def prev_page(self) -> None:
         """
         Show the previous page of the table.
         """
         self.editable_table.prev_page()
-        self.update_navigation()
+        self.update_controls_and_redraw()
 
-    def show_next_page(self) -> None:
+    def next_page(self) -> None:
         """
         Show the next page of the table.
         """
         self.editable_table.next_page()
-        self.update_navigation()
-
-    def show_last_page(self) -> None:
-        """
-        Show the last page of the table.
-        """
-        self.editable_table.last_page()
-        self.update_navigation()
+        self.update_controls_and_redraw()
 
     def prev_asset(self) -> None:
         """
         Move to the previous asset in the table.
         """
-        self.editable_table.move_to_prev_record()
+        self.editable_table.prev_row()
+        self.update_controls_and_redraw()
 
     def next_asset(self) -> None:
         """
         Move to the next asset in the table.
         """
-        self.editable_table.move_to_next_record()
+        self.editable_table.next_row()
+        self.update_controls_and_redraw()
 
     # noinspection DuplicatedCode
     def toggle_actions_panel(self, force_showing=None) -> None:
@@ -927,28 +951,85 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_toggle_options.config(text='Show Options')
             self._toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
 
-    def update_navigation(self) -> None:
+    def update_controls_and_redraw(self) -> None:
         """
-        Update the page numbers in the toolbar.
+        Update some controls in the toolbar.
         """
         if self._toolbar_frame is None:
             # toolbar not created yet
             return
-        current_page = self.editable_table.current_page
-        total_pages = self.editable_table.total_pages
-        self._toolbar_frame.entry_current_page_var.set(current_page)
-        self._toolbar_frame.lbl_page_count.config(text=f' / {total_pages}')
-        # enable all buttons by default
-        self._change_navigation_state(tk.NORMAL)
+
+        # List of buttons
+        buttons = [
+            self._toolbar_frame.btn_first_item,  #
+            self._toolbar_frame.btn_last_item,  #
+            self._toolbar_frame.btn_prev_page,  #
+            self._toolbar_frame.btn_next_page,  #
+            self._toolbar_frame.btn_prev_asset,  #
+            self._toolbar_frame.btn_next_asset,  #
+            self._toolbar_frame.entry_current_item,  #
+            self._control_frame.buttons['Scrap']['widget'],  #
+            self._control_frame.buttons['Del']['widget'],  #
+            self._control_frame.buttons['Edit']['widget'],  #
+            self._control_frame.buttons['Save']['widget'],  #
+        ]
+
+        # Enable all buttons by default
+        for button in buttons:
+            button.config(state=tk.NORMAL)
+
+        # Disable some buttons if needed
+
+        current_value = self.editable_table.getSelectedRow()
+        max_value = self.editable_table.current_count
+
+        if len(self.editable_table.multiplerowlist) < 1:
+            self._control_frame.buttons['Scrap']['widget'].config(state=tk.DISABLED)
+            self._control_frame.buttons['Del']['widget'].config(state=tk.DISABLED)
+            self._control_frame.buttons['Edit']['widget'].config(state=tk.DISABLED)
+
+        if not self.editable_table.must_save:
+            self._control_frame.buttons['Save']['widget'].config(state=tk.DISABLED)
+
+        current_value = self.editable_table.get_row_index_with_offset(current_value)
+        if current_value <= 0:
+            self._toolbar_frame.btn_prev_asset.config(state=tk.DISABLED)
+        elif current_value >= max_value - 1:
+            self._toolbar_frame.btn_next_asset.config(state=tk.DISABLED)
 
         if not self.editable_table.pagination_enabled:
-            self._toolbar_frame.entry_current_page.config(state=tk.NORMAL)
-        if current_page <= 1:
-            self._toolbar_frame.btn_first_page.config(state=tk.DISABLED)
+            first_item_text = 'First Asset'
+            last_item_text = 'Last Asset'
             self._toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
-        if current_page >= total_pages:
             self._toolbar_frame.btn_next_page.config(state=tk.DISABLED)
-            self._toolbar_frame.btn_last_page.config(state=tk.DISABLED)
+            if current_value <= 0:
+                self._toolbar_frame.btn_first_item.config(state=tk.DISABLED)
+                self._toolbar_frame.btn_prev_asset.config(state=tk.DISABLED)
+                # move the scrollbar of a dataframe to the top
+
+            if current_value >= max_value - 1:
+                self._toolbar_frame.btn_last_item.config(state=tk.DISABLED)
+                self._toolbar_frame.btn_next_asset.config(state=tk.DISABLED)
+        else:
+            current_value = self.editable_table.current_page
+            max_value = self.editable_table.total_pages
+            first_item_text = 'First Page'
+            last_item_text = 'Last Page'
+            if current_value <= 1:
+                self._toolbar_frame.btn_first_item.config(state=tk.DISABLED)
+                self._toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
+            if current_value >= max_value:
+                self._toolbar_frame.btn_last_item.config(state=tk.DISABLED)
+                self._toolbar_frame.btn_next_page.config(state=tk.DISABLED)
+
+        # Update entry_current_item_var and lbl_page_count
+        self._toolbar_frame.entry_current_item_var.set(current_value)
+        self._toolbar_frame.lbl_page_count.config(text=f' / {max_value}')
+
+        # Update btn_first_item and btn_last_item text
+        self._toolbar_frame.btn_first_item.config(text=first_item_text)
+        self._toolbar_frame.btn_last_item.config(text=last_item_text)
+        # self.editable_table.redraw()
 
     def update_data_source(self) -> None:
         """
@@ -1011,7 +1092,7 @@ class UEVMGui(tk.Tk):
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
             if self.editable_table.rebuild_data():
-                self.update_navigation()
+                self.update_controls_and_redraw()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {self.editable_table.data_source}')
 
@@ -1074,3 +1155,22 @@ class UEVMGui(tk.Tk):
             folder_for_tags_path=gui_g.s.assets_data_folder,
             folder_for_rating_path=gui_g.s.assets_global_folder
         )
+
+    def create_dynamic_filters(self) -> {str: []}:
+        """
+        Create a dynamic filters list that can be added to the filter frame quick filter list.
+        :return: a dict that will be added to the FilterFrame quick filters list.
+        Note: it returns a dict where each entry must respect the folowing format: "{'<label>': ['callable': <callable> ]}"
+            where:
+             <label> is the label to display in the quick filter list
+             <callable> is the function to call to get the mask.
+        """
+        return {'Numeric Tags': ['callable', self.dynamic_filter_for_tags]}
+
+    def dynamic_filter_for_tags(self) -> pd.Series:
+        """
+        Create a mask to filter the data with tags that contains an integer.
+        :return: a mask to filter the data with tags.
+        """
+        mask = self.editable_table.get_data()['Tags'].str.split(',').apply(lambda x: any(is_an_int(i) for i in x))
+        return mask

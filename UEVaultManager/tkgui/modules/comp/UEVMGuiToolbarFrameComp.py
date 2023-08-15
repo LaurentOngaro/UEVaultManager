@@ -37,25 +37,25 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_toggle_pagination = ttk.Button(lblf_navigation, text='Disable Pagination', command=container.toggle_pagination)
         # noinspection PyArgumentList
         btn_toggle_pagination.pack(**pack_def_options, side=tk.LEFT)
-        btn_first_page = ttk.Button(lblf_navigation, text='First Page', command=container.show_first_page)
-        btn_first_page.pack(**pack_def_options, side=tk.LEFT)
-        btn_first_page.config(state=tk.DISABLED)
-        btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.show_prev_page)
+        btn_first_item = ttk.Button(lblf_navigation, text='First Page', command=container.first_item)
+        btn_first_item.pack(**pack_def_options, side=tk.LEFT)
+        btn_first_item.config(state=tk.DISABLED)
+        btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.prev_page)
         btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
         btn_prev_page.config(state=tk.DISABLED)
-        entry_current_page_var = tk.StringVar(value=str(data_table.current_page))
-        entry_current_page = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_current_page_var)
-        entry_current_page.pack(**pack_def_options, side=tk.LEFT)
+        entry_current_item_var = tk.StringVar(value=str(data_table.current_page))
+        entry_current_item = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_current_item_var)
+        entry_current_item.pack(**pack_def_options, side=tk.LEFT)
         lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages}')
         lbl_page_count.pack(**pack_def_options, side=tk.LEFT)
-        btn_next_page = ttk.Button(lblf_navigation, text='Next Page', command=container.show_next_page)
+        btn_next_page = ttk.Button(lblf_navigation, text='Next Page', command=container.next_page)
         btn_next_page.pack(**pack_def_options, side=tk.LEFT)
-        btn_last_page = ttk.Button(lblf_navigation, text='Last Page', command=container.show_last_page)
-        btn_last_page.pack(**pack_def_options, side=tk.LEFT)
-        btn_prev = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
-        btn_prev.pack(**pack_def_options, side=tk.LEFT)
-        btn_next = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
-        btn_next.pack(**pack_def_options, side=tk.RIGHT)
+        btn_last_item = ttk.Button(lblf_navigation, text='Last Page', command=container.last_item)
+        btn_last_item.pack(**pack_def_options, side=tk.LEFT)
+        btn_prev_asset = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
+        btn_prev_asset.pack(**pack_def_options, side=tk.LEFT)
+        btn_next_asset = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
+        btn_next_asset.pack(**pack_def_options, side=tk.RIGHT)
 
         lblf_display = ttk.LabelFrame(self, text='Display')
         lblf_display.pack(side=tk.LEFT, **lblf_def_options)
@@ -98,16 +98,18 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
 
         # Bind events for the Entry widget
-        entry_current_page.bind('<FocusOut>', container.on_entry_current_page_changed)
-        entry_current_page.bind('<Return>', container.on_entry_current_page_changed)
+        entry_current_item.bind('<FocusOut>', container.on_entry_current_item_changed)
+        entry_current_item.bind('<Return>', container.on_entry_current_item_changed)
 
         self.btn_toggle_pagination = btn_toggle_pagination
-        self.btn_first_page = btn_first_page
+        self.btn_prev_asset = btn_prev_asset
+        self.btn_next_asset = btn_next_asset
+        self.btn_first_item = btn_first_item
         self.btn_prev_page = btn_prev_page
         self.btn_next_page = btn_next_page
-        self.btn_last_page = btn_last_page
+        self.btn_last_item = btn_last_item
         self.btn_toggle_options = btn_toggle_options
         self.btn_toggle_controls = btn_toggle_controls
         self.lbl_page_count = lbl_page_count
-        self.entry_current_page = entry_current_page
-        self.entry_current_page_var = entry_current_page_var
+        self.entry_current_item = entry_current_item
+        self.entry_current_item_var = entry_current_item_var

@@ -325,7 +325,7 @@ class UEAssetScraper:
             ue_asset = UEAsset()
 
             # we use copy data for user_fields to preserve user data
-            if asset_existing_data:  # TODO: fix empty asset_existing_data here
+            if asset_existing_data:
                 for field in self.asset_db_handler.user_fields:
                     old_value = asset_existing_data.get(field, None)
                     if old_value:

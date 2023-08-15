@@ -240,15 +240,10 @@ class EditableTable(Table):
         """
         Resize and reorder the columns of the table.
         """
-        try:
-            # NOTE: self.model.df could be None if the data are not loaded yet
-            col_count = self.model.getColumnCount()
-        except AttributeError:
-            return
         error_msg = ''
         column_infos = gui_g.s.column_infos
-        if len(column_infos) != col_count:
-            error_msg = f'The number of columns in data source ({col_count}) does not match the number of values in "column_infos" from the config file ({len(column_infos)}).'
+        if len(column_infos) != self.cols:
+            error_msg = f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({len(column_infos)}).'
         else:
             try:
                 first_value = next(iter(column_infos.values()))
@@ -398,11 +393,12 @@ class EditableTable(Table):
         close_progress(self)
         return True
 
-    def create_row(self, row_data=None, add_to_existing=True) -> None:
+    def create_row(self, row_data=None, add_to_existing=True, do_not_save=False) -> None:
         """
         Create an empty row in the table.
         :param row_data: The data to add to the row.
         :param add_to_existing: True to add the row to the existing data, False to replace the existing data.
+        :param do_not_save: True to not save the row in the database.
         """
         table_row = None
         if self.data_source_type == DataSourceType.FILE:
@@ -416,7 +412,7 @@ class EditableTable(Table):
                 self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
             # create an empty row (in the database) with the correct columns
             data = self._db_handler.create_empty_row(
-                return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix
+                return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
             )  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
             table_row = pd.DataFrame(data, columns=column_names)
@@ -469,7 +465,7 @@ class EditableTable(Table):
                     self._filter_mask.drop(index_to_delete, inplace=True, errors='ignore')
                 self.must_save = True
                 # self._data.reset_index(drop=True, inplace=True)
-                self.clearSelected()
+                self.selectNone()
                 self.update(keep_filters=True)
             except (IndexError, KeyError) as error:
                 log_warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
@@ -517,7 +513,6 @@ class EditableTable(Table):
                 except (KeyError, ValueError, AttributeError) as error:
                     log_warning(f'Unable to delete asset_id={asset_id} to the database. Error: {error!r}')
 
-        # self.update()
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
@@ -794,6 +789,40 @@ class EditableTable(Table):
         if self.update_page_numbers_func is not None:
             self.update_rows_text_func()
 
+    def move_to_row(self, row_index) -> None:
+        """
+        Navigate to the specified row in the table.
+        :param row_index: The index of the row to navigate to.
+        """
+        self.setSelectedRow(row_index)
+        self.redraw()
+        self._generate_cell_selection_changed_event()
+
+    def prev_row(self) -> int:
+        """
+        Navigate to the previous row in the table and opens the edit row window.
+        :return: The index of the previous row or -1 if the first row is already selected.
+        """
+        row_selected = self.getSelectedRow()
+        if row_selected is None or row_selected == 0:
+            return -1
+        row_selected -= 1
+        self.move_to_row(row_selected)
+        return row_selected
+
+    def next_row(self) -> int:
+        """
+        Navigate to the next row in the table and opens the edit row window.
+        :return: The index of the next row, or -1 if the last row is already selected.
+        """
+        row_selected = self.getSelectedRow()
+        max_displayed_rows = self.model.df.shape[0] - 1  # model.df checked: best way to get the number of displayed rows
+        if row_selected is None or row_selected >= max_displayed_rows:
+            return -1
+        row_selected += 1
+        self.move_to_row(row_selected)
+        return row_selected
+
     def next_page(self) -> None:
         """
         Navigate to the next page of the table data.
@@ -909,14 +938,14 @@ class EditableTable(Table):
         """
         try:
 
-            record = self.get_current_data().iloc[row_index]  # iloc checked
+            row = self.get_current_data().iloc[row_index]  # iloc checked
             # get the row of the pandastable
             # (not the row of the dataframe, which is offsetted by the pagination)
 
             if return_as_dict:
-                return record.to_dict()
+                return row.to_dict()
             else:
-                return record
+                return row
         except IndexError:
             return None
 
@@ -948,7 +977,7 @@ class EditableTable(Table):
 
     def get_col_name(self, col_index: int) -> str:
         """
-
+        Return the name of the column at the specified index.
         :param col_index:
         :return:
         """
@@ -1031,7 +1060,7 @@ class EditableTable(Table):
             entries_values[key] = value
         return entries_values
 
-    def create_edit_record_window(self) -> None:
+    def create_edit_row_window(self) -> None:
         """
         Create the edit row window for the selected row in the table.
         """
@@ -1055,9 +1084,9 @@ class EditableTable(Table):
         edit_row_window.content_frame.columnconfigure(0, weight=0)
         edit_row_window.content_frame.columnconfigure(1, weight=1)
 
-        self.edit_record(row_index)
+        self.edit_row(row_index)
 
-    def edit_record(self, row_index: int = None) -> None:
+    def edit_row(self, row_index: int = None) -> None:
         """
         Edit the values of the specified row in the table.
         :param row_index: The index of the row to edit.
@@ -1068,7 +1097,7 @@ class EditableTable(Table):
         # get and display the row data
         row_data = self.get_row(row_index, return_as_dict=True)
         if row_data is None:
-            log_warning(f'edit_record: row_data is None for row_index={row_index}')
+            log_warning(f'edit_row: row_data is None for row_index={row_index}')
             return
         entries = {}
         image_url = ''
@@ -1119,7 +1148,7 @@ class EditableTable(Table):
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
 
-    def save_edit_row_record(self) -> None:
+    def save_edit_row(self) -> None:
         """
         Save the edited row values to the table data.
         """
@@ -1140,31 +1169,6 @@ class EditableTable(Table):
         self._edit_row_window.close_window()
         self.add_to_rows_to_save(row)
         self.update_quick_edit(row)
-
-    def move_to_prev_record(self) -> None:
-        """
-        Navigate to the previous row in the table and opens the edit row window.
-        """
-        row_selected = self.getSelectedRow()
-        if row_selected is None or row_selected == 0:
-            return
-        self.setSelectedRow(row_selected - 1)
-        self.redraw()
-        self._generate_cell_selection_changed_event()
-        self.edit_record(row_selected - 1)
-
-    def move_to_next_record(self) -> None:
-        """
-        Navigate to the next row in the table and opens the edit row window.
-        """
-        row_selected = self.getSelectedRow()
-        max_displayed_rows = self.model.df.shape[0] - 1  # model.df checked: best way to get the number of displayed rows
-        if row_selected is None or row_selected >= max_displayed_rows:
-            return
-        self.setSelectedRow(row_selected + 1)
-        self.redraw()
-        self._generate_cell_selection_changed_event()
-        self.edit_record(row_selected + 1)
 
     def create_edit_cell_window(self, event) -> None:
         """
