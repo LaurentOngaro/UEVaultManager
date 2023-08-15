@@ -151,6 +151,8 @@ class UEVMGui(tk.Tk):
         self.editable_table.bind('<Motion>', self.on_mouse_over_cell)
         self.editable_table.bind('<Leave>', self.on_mouse_leave_cell)
         self.editable_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
+        self.bind('<Button-1>', self.on_left_click)
+
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
         if not show_open_file_dialog and (rebuild_data or self.editable_table.must_rebuild):
@@ -293,6 +295,22 @@ class UEVMGui(tk.Tk):
         """
         row_index: int = self.editable_table.get_row_index_with_offset(event.widget.currentrow)
         self.editable_table.update_quick_edit(row_index)
+        self.update_controls_and_redraw()
+
+    def on_left_click(self, event=None) -> None:
+        """
+        When the left mouse button is clicked, show the selected row in the quick edit frame.
+        :param event:
+        """
+        table = self.editable_table  # shortcut
+        row_index: int = table.get_row_clicked(event)
+        if event.widget != table or row_index is None:
+            table.selectNone()
+            table.clearSelected()
+            table.delete('rowrect') # remove the highlight rect
+        else:
+            table.setSelectedRow(row_index)
+            table.update_quick_edit(row_index)
         self.update_controls_and_redraw()
 
     def on_entry_current_item_changed(self, _event=None) -> None:
@@ -856,7 +874,8 @@ class UEVMGui(tk.Tk):
             self.editable_table.first_page()
         else:
             self.editable_table.move_to_row(0)
-            # TODO: find a way to move to the scroll bar to the top. Not sure it's possible
+            self.editable_table.yview_moveto(0)
+            self.editable_table.redrawVisible()
         self.update_controls_and_redraw()
 
     def last_item(self) -> None:
@@ -867,7 +886,8 @@ class UEVMGui(tk.Tk):
             self.editable_table.last_page()
         else:
             self.editable_table.move_to_row(self.editable_table.current_count - 1)
-            # TODO: find a way to move to the scroll bar to the bottom. Not sure it's possible
+            self.editable_table.yview_moveto(1)
+            self.editable_table.redrawVisible()
         self.update_controls_and_redraw()
 
     def prev_page(self) -> None:
