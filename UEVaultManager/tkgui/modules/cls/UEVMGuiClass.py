@@ -307,7 +307,7 @@ class UEVMGui(tk.Tk):
         if event.widget != table or row_index is None:
             table.selectNone()
             table.clearSelected()
-            table.delete('rowrect') # remove the highlight rect
+            table.delete('rowrect')  # remove the highlight rect
         else:
             table.setSelectedRow(row_index)
             table.update_quick_edit(row_index)
