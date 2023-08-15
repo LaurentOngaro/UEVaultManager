@@ -11,6 +11,7 @@ import tkinter as tk
 from datetime import datetime
 from tkinter import filedialog as fd
 
+import pandas as pd
 from rapidfuzz import fuzz
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
@@ -27,7 +28,7 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiCon
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOptionsFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
-from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style
+from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style, is_an_int
 from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType
 
 
@@ -1157,3 +1158,22 @@ class UEVMGui(tk.Tk):
             folder_for_tags_path=gui_g.s.assets_data_folder,
             folder_for_rating_path=gui_g.s.assets_global_folder
         )
+
+    def create_dynamic_filters(self) -> {str: []}:
+        """
+        Create a dynamic filters list that can be added to the filter frame quick filter list.
+        :return: a dict that will be added to the FilterFrame quick filters list.
+        Note: it returns a dict where each entry must respect the folowing format: "{'<label>': ['callable': <callable> ]}"
+            where:
+             <label> is the label to display in the quick filter list
+             <callable> is the function to call to get the mask.
+        """
+        return {'Numeric Tags': ['callable', self.dynamic_filter_for_tags]}
+
+    def dynamic_filter_for_tags(self) -> pd.Series:
+        """
+        Create a mask to filter the data with tags that contains an integer.
+        :return: a mask to filter the data with tags.
+        """
+        mask = self.editable_table.get_data()['Tags'].str.split(',').apply(lambda x: any(is_an_int(i) for i in x))
+        return mask

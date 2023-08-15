@@ -33,7 +33,7 @@ class FilterFrame(ttk.LabelFrame):
         'Plugins only': ['Category', 'plugins'],  #
         'Free': ['Price', 0],  #
         'Dummy': ['Asset_id', 'dummy'],  #
-        'Not Marketplace': ['Origin', '^Marketplace'],  # aset with origin NOT in marketplace
+        'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin NOT in marketplace
     }
     frm_widgets = None
     cb_col_name = None
@@ -54,8 +54,9 @@ class FilterFrame(ttk.LabelFrame):
         data_func: Callable,
         update_func: Callable,
         save_filter_func: Callable,
+        dynamic_filters_func: Callable = None,
         title: str = 'Define view filters for the data table',
-        value_for_all: str = 'All'
+        value_for_all: str = 'All',
     ):
         if container is None:
             raise ValueError('container cannot be None')
@@ -69,11 +70,17 @@ class FilterFrame(ttk.LabelFrame):
         self.container = container
         self.data_func = data_func
         self.save_filter_func = save_filter_func
+        self.dynamic_filters_func = dynamic_filters_func
         if self.data_func is None:
             raise ValueError('data_func cannot be None')
         self.update_func = update_func
         if self.update_func is None:
             raise ValueError('update_func cannot be None')
+        # call the dynamic filters function to add dynamic filters to the quick filters
+        if self.dynamic_filters_func is not None:
+            dynamic_filters = self.dynamic_filters_func()
+            if dynamic_filters is not None:
+                self._quick_filters.update(dynamic_filters)
         self._create_filter_widgets()
 
     def _search_combobox(self, _event, combobox) -> None:
@@ -258,6 +265,9 @@ class FilterFrame(ttk.LabelFrame):
                     elif value_type_str == 'float':
                         filter_value = filter_value.replace(',', '.')
                         mask = data[col_name].astype(float) == float(filter_value)
+                    if value_type_str.lower() in ('callable', 'method') and filter_value != '':
+                        # filter_value is a function that returns a mask (boolean Series)
+                        mask = filter_value()
                     else:
                         check_value = True
                         if filter_value[0] == '^':
@@ -300,7 +310,7 @@ class FilterFrame(ttk.LabelFrame):
 
         self.filters_count_var.set(f'Filters ({filter_count})')
 
-    def get_filters(self) -> Dict[str, Tuple[type, Any]]:
+    def get_filters(self) -> Dict[str, Tuple[str, Any]]:
         """
         Get the filter dictionary.
         :return: The filter dictionary containing the filter conditions.
