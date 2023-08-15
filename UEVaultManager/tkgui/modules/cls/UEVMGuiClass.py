@@ -293,6 +293,7 @@ class UEVMGui(tk.Tk):
         """
         row_index: int = self.editable_table.get_row_index_with_offset(event.widget.currentrow)
         self.editable_table.update_quick_edit(row_index)
+        self.update_controls_and_redraw()
 
     def on_entry_current_item_changed(self, _event=None) -> None:
         """
@@ -948,15 +949,30 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_next_page,  #
             self._toolbar_frame.btn_prev_asset,  #
             self._toolbar_frame.btn_next_asset,  #
-            self._toolbar_frame.entry_current_item,  # 
+            self._toolbar_frame.entry_current_item,  #
+            self._control_frame.buttons['Scrap']['widget'],  #
+            self._control_frame.buttons['Del']['widget'],  #
+            self._control_frame.buttons['Edit']['widget'],  #
+            self._control_frame.buttons['Save']['widget'],  #
         ]
 
         # Enable all buttons by default
         for button in buttons:
             button.config(state=tk.NORMAL)
 
+        # Disable some buttons if needed
+
         current_value = self.editable_table.getSelectedRow()
         max_value = self.editable_table.current_count
+
+        if len(self.editable_table.multiplerowlist) < 1:
+            self._control_frame.buttons['Scrap']['widget'].config(state=tk.DISABLED)
+            self._control_frame.buttons['Del']['widget'].config(state=tk.DISABLED)
+            self._control_frame.buttons['Edit']['widget'].config(state=tk.DISABLED)
+
+        if not self.editable_table.must_save:
+            self._control_frame.buttons['Save']['widget'].config(state=tk.DISABLED)
+
         current_value = self.editable_table.get_row_index_with_offset(current_value)
         if current_value <= 0:
             self._toolbar_frame.btn_prev_asset.config(state=tk.DISABLED)
@@ -995,7 +1011,7 @@ class UEVMGui(tk.Tk):
         # Update btn_first_item and btn_last_item text
         self._toolbar_frame.btn_first_item.config(text=first_item_text)
         self._toolbar_frame.btn_last_item.config(text=last_item_text)
-        self.editable_table.redraw()
+        # self.editable_table.redraw()
 
     def update_data_source(self) -> None:
         """

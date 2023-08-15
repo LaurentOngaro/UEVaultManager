@@ -470,11 +470,10 @@ class EditableTable(Table):
                     self._filter_mask.drop(index_to_delete, inplace=True, errors='ignore')
                 self.must_save = True
                 # self._data.reset_index(drop=True, inplace=True)
-                self.clearSelected()
+                self.selectNone()
                 self.update(keep_filters=True)
             except (IndexError, KeyError) as error:
                 log_warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
-        self.clearSelected()
         return number_deleted > 0
 
     def save_data(self, source_type=None) -> None:
