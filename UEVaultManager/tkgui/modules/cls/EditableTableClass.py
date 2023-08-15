@@ -240,15 +240,10 @@ class EditableTable(Table):
         """
         Resize and reorder the columns of the table.
         """
-        try:
-            # NOTE: self.model.df could be None if the data are not loaded yet
-            col_count = self.model.getColumnCount()
-        except AttributeError:
-            return
         error_msg = ''
         column_infos = gui_g.s.column_infos
-        if len(column_infos) != col_count:
-            error_msg = f'The number of columns in data source ({col_count}) does not match the number of values in "column_infos" from the config file ({len(column_infos)}).'
+        if len(column_infos) != self.cols:
+            error_msg = f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({len(column_infos)}).'
         else:
             try:
                 first_value = next(iter(column_infos.values()))

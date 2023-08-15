@@ -304,14 +304,11 @@ class UEVMGui(tk.Tk):
         :param event:
         """
         table = self.editable_table  # shortcut
-        row_index: int = table.get_row_clicked(event)
-        if event.widget != table or row_index is None:
+        # if the clic is on a frame (i.e. an empty zone), clean the selection in the table
+        if event.widget.widgetName == 'ttk::frame':
             table.selectNone()
             table.clearSelected()
             table.delete('rowrect')  # remove the highlight rect
-        else:
-            table.setSelectedRow(row_index)
-            table.update_quick_edit(row_index)
         self.update_controls_and_redraw()
 
     def on_entry_current_item_changed(self, _event=None) -> None:
