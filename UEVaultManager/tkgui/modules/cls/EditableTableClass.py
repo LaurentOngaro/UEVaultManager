@@ -517,7 +517,6 @@ class EditableTable(Table):
                 except (KeyError, ValueError, AttributeError) as error:
                     log_warning(f'Unable to delete asset_id={asset_id} to the database. Error: {error!r}')
 
-        # self.update()
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
