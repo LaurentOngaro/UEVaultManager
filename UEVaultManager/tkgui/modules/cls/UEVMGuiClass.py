@@ -126,7 +126,7 @@ class UEVMGui(tk.Tk):
             data_source=data_source,
             rows_per_page=36,
             show_statusbar=True,
-            update_page_numbers_func=self.update_controls,
+            update_page_numbers_func=self.update_controls_and_redraw,
             update_rows_text_func=self.update_rows_text
         )
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
@@ -408,7 +408,7 @@ class UEVMGui(tk.Tk):
                     return filename
                 data_table.current_page = 1
                 data_table.update()
-                self.update_controls()
+                self.update_controls_and_redraw()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
                 return filename
@@ -845,7 +845,7 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_toggle_pagination.config(text='Enable  Pagination')
         else:
             self._toolbar_frame.btn_toggle_pagination.config(text='Disable Pagination')
-        self.update_controls()  # will also update buttons status
+        self.update_controls_and_redraw()  # will also update buttons status
 
     def first_item(self) -> None:
         """
@@ -856,7 +856,7 @@ class UEVMGui(tk.Tk):
         else:
             self.editable_table.move_to_row(0)
             # TODO: find a way to move to the scroll bar to the top. Not sure it's possible
-        self.update_controls()
+        self.update_controls_and_redraw()
 
     def last_item(self) -> None:
         """
@@ -867,35 +867,35 @@ class UEVMGui(tk.Tk):
         else:
             self.editable_table.move_to_row(self.editable_table.current_count - 1)
             # TODO: find a way to move to the scroll bar to the bottom. Not sure it's possible
-        self.update_controls()
+        self.update_controls_and_redraw()
 
     def prev_page(self) -> None:
         """
         Show the previous page of the table.
         """
         self.editable_table.prev_page()
-        self.update_controls()
+        self.update_controls_and_redraw()
 
     def next_page(self) -> None:
         """
         Show the next page of the table.
         """
         self.editable_table.next_page()
-        self.update_controls()
+        self.update_controls_and_redraw()
 
     def prev_asset(self) -> None:
         """
         Move to the previous asset in the table.
         """
         self.editable_table.prev_row()
-        self.update_controls()
+        self.update_controls_and_redraw()
 
     def next_asset(self) -> None:
         """
         Move to the next asset in the table.
         """
         self.editable_table.next_row()
-        self.update_controls()
+        self.update_controls_and_redraw()
 
     # noinspection DuplicatedCode
     def toggle_actions_panel(self, force_showing=None) -> None:
@@ -932,7 +932,7 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_toggle_options.config(text='Show Options')
             self._toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
 
-    def update_controls(self) -> None:
+    def update_controls_and_redraw(self) -> None:
         """
         Update some controls in the toolbar.
         """
@@ -1058,7 +1058,7 @@ class UEVMGui(tk.Tk):
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
             if self.editable_table.rebuild_data():
-                self.update_controls()
+                self.update_controls_and_redraw()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {self.editable_table.data_source}')
 
