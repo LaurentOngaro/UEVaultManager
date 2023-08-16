@@ -201,7 +201,6 @@ class UEVMGui(tk.Tk):
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
 
-
     def mainloop(self, n=0):
         """
         Mainloop method
