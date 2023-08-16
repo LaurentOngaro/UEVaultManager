@@ -128,7 +128,8 @@ class UEVMGui(tk.Tk):
             rows_per_page=36,
             show_statusbar=True,
             update_page_numbers_func=self.update_controls_and_redraw,
-            update_rows_text_func=self.update_rows_text
+            update_rows_text_func=self.update_rows_text,
+            set_control_state_func=self.set_control_state
         )
         self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
         self.editable_table.show()
@@ -155,6 +156,21 @@ class UEVMGui(tk.Tk):
         self.bind('<Button-1>', self.on_left_click)
 
         self.protocol('WM_DELETE_WINDOW', self.on_close)
+
+        # List of controls for activating/deactivating them when needed
+        self.controls = {
+            'first_item': self._toolbar_frame.btn_first_item,  #
+            'last_item': self._toolbar_frame.btn_last_item,  #
+            'prev_page': self._toolbar_frame.btn_prev_page,  #
+            'next_page': self._toolbar_frame.btn_next_page,  #
+            'prev_asset': self._toolbar_frame.btn_prev_asset,  #
+            'next_asset': self._toolbar_frame.btn_next_asset,  #
+            'current_item': self._toolbar_frame.entry_current_item,  #
+            'scrap': self._control_frame.buttons['Scrap']['widget'],  #
+            'del': self._control_frame.buttons['Del']['widget'],  #
+            'edit': self._control_frame.buttons['Edit']['widget'],  #
+            'save': self._control_frame.buttons['Save']['widget'],  #
+        }
 
         if not show_open_file_dialog and (rebuild_data or self.editable_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
@@ -184,6 +200,7 @@ class UEVMGui(tk.Tk):
         if show_option_fist:
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
+
 
     def mainloop(self, n=0):
         """
@@ -731,8 +748,7 @@ class UEVMGui(tk.Tk):
                 self.scrap_row(marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False)
             else:
                 self.editable_table.update_row(row_index=row_index, ue_asset_data=forced_data)
-                self.editable_table.add_to_rows_to_save(row_index)
-                self.editable_table.must_save = True
+                self.editable_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
@@ -951,6 +967,33 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_toggle_options.config(text='Show Options')
             self._toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
 
+    def set_control_state(self, name: str, is_enabled) -> None:
+        """
+        Enable or disable a control.
+        :param name: name of the control.
+        :param is_enabled: if True, enable the control, if False, disable it.
+        """
+        control = self.controls.get(name, None)
+        if control is not None:
+            if is_enabled:
+                control.config(state=tk.NORMAL)
+            else:
+                control.config(state=tk.DISABLED)
+
+    def enable_control(self, name: str) -> None:
+        """
+        Enable a control.
+        :param name: name of the control.
+        """
+        self.set_control_state(name, True)
+
+    def disable_control(self, name: str) -> None:
+        """
+        Disable a control.
+        :param name: name of the control.
+        """
+        self.set_control_state(name, False)
+
     def update_controls_and_redraw(self) -> None:
         """
         Update some controls in the toolbar.
@@ -959,24 +1002,9 @@ class UEVMGui(tk.Tk):
             # toolbar not created yet
             return
 
-        # List of buttons
-        buttons = [
-            self._toolbar_frame.btn_first_item,  #
-            self._toolbar_frame.btn_last_item,  #
-            self._toolbar_frame.btn_prev_page,  #
-            self._toolbar_frame.btn_next_page,  #
-            self._toolbar_frame.btn_prev_asset,  #
-            self._toolbar_frame.btn_next_asset,  #
-            self._toolbar_frame.entry_current_item,  #
-            self._control_frame.buttons['Scrap']['widget'],  #
-            self._control_frame.buttons['Del']['widget'],  #
-            self._control_frame.buttons['Edit']['widget'],  #
-            self._control_frame.buttons['Save']['widget'],  #
-        ]
-
-        # Enable all buttons by default
-        for button in buttons:
-            button.config(state=tk.NORMAL)
+        # Enable all controls by default
+        for key in self.controls.keys():
+            self.enable_control(key)
 
         # Disable some buttons if needed
 
@@ -984,43 +1012,39 @@ class UEVMGui(tk.Tk):
         max_value = self.editable_table.current_count
 
         if len(self.editable_table.multiplerowlist) < 1:
-            self._control_frame.buttons['Scrap']['widget'].config(state=tk.DISABLED)
-            self._control_frame.buttons['Del']['widget'].config(state=tk.DISABLED)
-            self._control_frame.buttons['Edit']['widget'].config(state=tk.DISABLED)
+            self.disable_control('scrap')
+            self.disable_control('del')
+            self.disable_control('edit')
 
         if not self.editable_table.must_save:
-            self._control_frame.buttons['Save']['widget'].config(state=tk.DISABLED)
+            self.controls['save'].config(state=tk.DISABLED)
 
         current_value = self.editable_table.get_row_index_with_offset(current_value)
         if current_value <= 0:
-            self._toolbar_frame.btn_prev_asset.config(state=tk.DISABLED)
+            self.disable_control('prev_asset')
         elif current_value >= max_value - 1:
-            self._toolbar_frame.btn_next_asset.config(state=tk.DISABLED)
+            self.disable_control('next_asset')
 
         if not self.editable_table.pagination_enabled:
             first_item_text = 'First Asset'
             last_item_text = 'Last Asset'
-            self._toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
-            self._toolbar_frame.btn_next_page.config(state=tk.DISABLED)
+            self.disable_control('prev_page')
+            self.disable_control('next_page')
             if current_value <= 0:
-                self._toolbar_frame.btn_first_item.config(state=tk.DISABLED)
-                self._toolbar_frame.btn_prev_asset.config(state=tk.DISABLED)
-                # move the scrollbar of a dataframe to the top
-
+                self.disable_control('first_item')
             if current_value >= max_value - 1:
-                self._toolbar_frame.btn_last_item.config(state=tk.DISABLED)
-                self._toolbar_frame.btn_next_asset.config(state=tk.DISABLED)
+                self.disable_control('last_item')
         else:
             current_value = self.editable_table.current_page
             max_value = self.editable_table.total_pages
             first_item_text = 'First Page'
             last_item_text = 'Last Page'
             if current_value <= 1:
-                self._toolbar_frame.btn_first_item.config(state=tk.DISABLED)
-                self._toolbar_frame.btn_prev_page.config(state=tk.DISABLED)
+                self.disable_control('first_item')
+                self.disable_control('prev_page')
             if current_value >= max_value:
-                self._toolbar_frame.btn_last_item.config(state=tk.DISABLED)
-                self._toolbar_frame.btn_next_page.config(state=tk.DISABLED)
+                self.disable_control('last_item')
+                self.disable_control('next_page')
 
         # Update entry_current_item_var and lbl_page_count
         self._toolbar_frame.entry_current_item_var.set(current_value)
@@ -1029,7 +1053,6 @@ class UEVMGui(tk.Tk):
         # Update btn_first_item and btn_last_item text
         self._toolbar_frame.btn_first_item.config(text=first_item_text)
         self._toolbar_frame.btn_last_item.config(text=last_item_text)
-        # self.editable_table.redraw()
 
     def update_data_source(self) -> None:
         """
@@ -1165,12 +1188,22 @@ class UEVMGui(tk.Tk):
              <label> is the label to display in the quick filter list
              <callable> is the function to call to get the mask.
         """
-        return {'Numeric Tags': ['callable', self.dynamic_filter_for_tags]}
+        return {'Tags with number': ['callable', self.filter_tags_with_number], 'With comment': ['callable', self.filter_with_comment], }
 
-    def dynamic_filter_for_tags(self) -> pd.Series:
+    def filter_tags_with_number(self) -> pd.Series:
         """
         Create a mask to filter the data with tags that contains an integer.
         :return: a mask to filter the data with tags.
         """
-        mask = self.editable_table.get_data()['Tags'].str.split(',').apply(lambda x: any(is_an_int(i) for i in x))
+        df = self.editable_table.get_data()
+        mask = df['Tags'].str.split(',').apply(lambda x: any(is_an_int(i) for i in x))
+        return mask
+
+    def filter_with_comment(self) -> pd.Series:
+        """
+        Create a mask to filter the data with tags that contains an integer.
+        :return: a mask to filter the data with tags.
+        """
+        df = self.editable_table.get_data()
+        mask = df['Comment'].notnull() & df['Comment'].ne('') & df['Comment'].ne('None')  # not None and not empty string
         return mask
