@@ -76,10 +76,13 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_help.pack(**pack_def_options, side=tk.LEFT)
         btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_uevm_command('status'))
         btn_status.pack(**pack_def_options, side=tk.LEFT)
+        """
+        # following commands are messy and not really useful
         btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_uevm_command('info'))
         btn_info.pack(**pack_def_options, side=tk.LEFT)
         btn_list_files = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_uevm_command('list_files'))
         btn_list_files.pack(**pack_def_options, side=tk.LEFT)
+        """
         btn_cleanup = ttk.Button(lblf_commands, text='Cleanup', command=lambda: container.run_uevm_command('cleanup'))
         btn_cleanup.pack(**pack_def_options, side=tk.LEFT)
         btn_json_processing = ttk.Button(lblf_commands, text='Get Json Data', command=lambda: container.json_processing())
