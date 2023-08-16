@@ -263,22 +263,26 @@ class UEVMGui(tk.Tk):
         value = widget.get_content()
         return value, widget
 
-    def on_key_press(self, event) -> None:
+    def on_key_press(self, event):
         """
         Handle key press events.
         :param event:
         """
+        # Note: this event will be triggered AFTER the event in the editabletable
+
+        # shift_pressed = event.state == 1 or event.state & 0x00001 != 0
+        # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
+        # control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             if gui_g.edit_cell_window_ref:
-                gui_g.edit_cell_window_ref.quit()
+                gui_g.edit_cell_window_ref.on_close()
                 gui_g.edit_cell_window_ref = None
             elif gui_g.edit_row_window_ref:
-                gui_g.edit_row_window_ref.quit()
+                gui_g.edit_row_window_ref.on_close()
                 gui_g.edit_row_window_ref = None
             else:
                 self.on_close()
-        elif event.keysym == 'Return':
-            self.editable_table.create_edit_cell_window(event)
+        # return 'break'  # stop event propagation
 
     def on_mouse_over_cell(self, event=None) -> None:
         """
