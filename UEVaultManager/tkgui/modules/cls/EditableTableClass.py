@@ -925,7 +925,7 @@ class EditableTable(Table):
             return
         self._changed_rows.append(row_index)
         self.must_save = True
-        self._container.set_control_state_func('save', True)
+        self.set_control_state_func('save', True)
 
     def clear_rows_to_save(self) -> None:
         """
