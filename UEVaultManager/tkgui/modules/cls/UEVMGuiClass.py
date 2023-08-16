@@ -837,6 +837,17 @@ class UEVMGui(tk.Tk):
                 row_index: int = self.editable_table.get_row_index_with_offset(row_index)
                 row_data = self.editable_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
+                asset_slug_from_url = marketplace_url.split('/')[-1]
+                asset_slug_from_row = row_data['Asset slug']
+                asset_id = row_data['Asset_id']
+                if asset_slug_from_url != asset_slug_from_row:
+                    msg = f'The Asset slug is different from the given Url and from the row data for the asset with uid={asset_id}'
+                    gui_f.log_warning(msg)
+                    # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
+                    if gui_f.box_yesno(f'{msg}.\nDo you wan to recreate the Url from the Asset slug and use it for scraping ?'):
+                        marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
+                        col_index = self.editable_table.get_col_index('Url')
+                        self.editable_table.update_cell(row_index, col_index, marketplace_url)
                 text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
                 if pw and not pw.update_and_continue(increment=1, text=text):
                     gui_f.close_progress(self)

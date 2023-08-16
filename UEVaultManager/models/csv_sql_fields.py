@@ -232,7 +232,7 @@ csv_sql_fields = {
     },
     'Asset slug': {
         'sql_name': 'asset_slug',
-        'state': CSVFieldState.ASSET_ONLY,
+        'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.STR
     },
     'urlSlug': {
