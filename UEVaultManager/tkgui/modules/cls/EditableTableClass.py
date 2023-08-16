@@ -80,6 +80,7 @@ class EditableTable(Table):
         show_statusbar: bool = False,
         update_page_numbers_func=None,
         update_rows_text_func=None,
+        set_control_state_func=None,
         **kwargs
     ):
         if container is None:
@@ -92,6 +93,7 @@ class EditableTable(Table):
         self.rows_per_page: int = rows_per_page
         self.update_page_numbers_func = update_page_numbers_func
         self.update_rows_text_func = update_rows_text_func
+        self.set_control_state_func = set_control_state_func
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
         if not self.load_data():
@@ -426,7 +428,7 @@ class EditableTable(Table):
             self.must_rebuild = False
             # row is added at the start of the table. As it, the index is always known
             self.set_data(pd.concat([table_row, self._data], copy=False, ignore_index=True))
-            self.add_to_rows_to_save(0)
+            self.add_to_rows_to_save(0)  # done inside self.must_save = True
         elif table_row is not None:
             self.must_rebuild = True
             self.set_data(table_row)
@@ -896,6 +898,8 @@ class EditableTable(Table):
         if row_index < 0 or row_index > self.current_count or row_index in self._changed_rows:  # get_data checked
             return
         self._changed_rows.append(row_index)
+        self.must_save = True
+        self._container.set_control_state_func('save', True)
 
     def clear_rows_to_save(self) -> None:
         """
@@ -1161,22 +1165,24 @@ class EditableTable(Table):
             if not self.update_cell(row_index, col_index, typed_value):
                 log_warning(f'Failed to update the cell ({row_index}, {col_index}) value')
                 continue
-        row = self._edit_row_index
         self._edit_row_entries = None
         self._edit_row_index = -1
         self.redraw()
-        self.must_save = True
         self._edit_row_window.close_window()
-        self.add_to_rows_to_save(row)
-        self.update_quick_edit(row)
+        self.add_to_rows_to_save(row_index)  # done inside self.must_save = True
+        self.update_quick_edit(row_index)
 
     def create_edit_cell_window(self, event) -> None:
         """
         Create the edit cell window for the selected cell in the table.
         :param event: The event that triggered the creation of the edit cell window.
         """
-        row_index = self.get_row_clicked(event)
-        col_index = self.get_col_clicked(event)
+        if event.type != tk.EventType.KeyPress:
+            row_index = self.get_row_clicked(event)
+            col_index = self.get_col_clicked(event)
+        else:
+            row_index = self.getSelectedRow()
+            col_index = self.getSelectedColumn()
         if row_index is None or col_index is None:
             return None
         row_index = self.get_row_index_with_offset(row_index)
@@ -1194,9 +1200,10 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.get_col_name(col_index)
         ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
+        cell_value_str = str(cell_value) if cell_value != 'None' else ''
         if is_from_type(col_name, [CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
-            widget.set_content(str(cell_value))
+            widget.set_content(cell_value_str)
             widget.focus_set()
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
         elif is_from_type(col_name, [CSVFieldType.BOOL]):
@@ -1205,7 +1212,7 @@ class EditableTable(Table):
         else:
             # other field is just a ExtendedEntry
             widget = ExtendedEntry(edit_cell_window.content_frame, tag=col_name)
-            widget.insert(0, str(cell_value))
+            widget.insert(0, cell_value_str)
             widget.focus_set()
 
         widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -1244,7 +1251,6 @@ class EditableTable(Table):
             if not self.update_cell(row_index, col_index, typed_value):
                 log_warning(f'Failed to update the cell ({row_index}, {col_index}) value')
                 return
-            self.must_save = True
             self._edit_cell_widget = None
             self._edit_cell_row_index = -1
             self._edit_cell_col_index = -1
@@ -1252,8 +1258,8 @@ class EditableTable(Table):
             log_warning(f'Failed to get content of {widget}')
         self.redraw()
         self._edit_cell_window.close_window()
-        self.add_to_rows_to_save(row_index)
-        self.update_quick_edit(row_index=row_index)
+        self.add_to_rows_to_save(row_index)  # done inside self.must_save = True
+        self.update_quick_edit(row_index)
 
     def update_quick_edit(self, row_index: int = None) -> None:
         """
@@ -1311,9 +1317,8 @@ class EditableTable(Table):
                 log_warning(f'Failed to update the cell ({row_index}, {col_index}) value')
                 return
             self.redraw()
-            self.must_save = True
             log_debug(f'Save preview value {typed_value} at row={row_index} col={col_index}')
-            self.add_to_rows_to_save(row_index)
+            self.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         except IndexError:
             log_warning(f'Failed to save preview value {typed_value} at row={row_index} col={col_index}')
 

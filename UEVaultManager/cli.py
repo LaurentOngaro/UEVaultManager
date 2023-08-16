@@ -134,17 +134,18 @@ class UEVaultManagerCLI:
             print(json.dumps(data))
 
     @staticmethod
-    def _log_gui_wrapper(log_function, message: str) -> None:
+    def _log_gui_wrapper(log_function, message: str, dont_quit=False) -> None:
         """
         Wrapper for the log function to display a messagebox if the gui is active.
         :param log_function: function to use to log.
         :param message: message to log.
+        :param dont_quit: if True, the app will not quit if the log level is 'error'.
         """
         if not UEVaultManagerCLI.is_gui:
             log_function(message)
             return
 
-        box_message(message, level='error')  # level='error' will force the app to quit
+        box_message(message, level='warning' if dont_quit else 'error')  # level='error' will force the app to quit
 
     def setup_threaded_logging(self) -> QueueListener:
         """
@@ -715,11 +716,9 @@ class UEVaultManagerCLI:
             item = self.core.get_item(args.app_name, update_meta=update_meta)
             if not item:
                 message = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)'
-                try:
-                    self._log_gui_wrapper(self.logger.error, message)  # it will quit here
-                    # print(message)
-                except Exception as error:
-                    print(f'Error: {error!r}')
+                self._log_gui_wrapper(self.logger.error, message, True)  # App will quit here if self.logger.error
+                return
+
             manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
 
         manifest = self.core.load_manifest(manifest_data)
@@ -767,7 +766,7 @@ class UEVaultManagerCLI:
             try:
                 if not self.core.login():
                     message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message)
+                    self._log_gui_wrapper(self.logger.critical, message, True)
             except ValueError:
                 pass
             # if automatic checks are off force an update here
@@ -838,7 +837,7 @@ class UEVaultManagerCLI:
             try:
                 if not self.core.login():
                     message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message)
+                    self._log_gui_wrapper(self.logger.critical, message, True)
             except ValueError:
                 pass
 
@@ -1132,6 +1131,11 @@ class UEVaultManagerCLI:
 
         # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
         init_gui_args(args, additional_args={'output': data_source})
+
+        if not self.core.login():
+            message = 'Log in failed!. Some functionalities could be disabled and data could be wrong.'
+            self._log_gui_wrapper(self.logger.warning, message)
+
         rebuild = False
         if not os.path.isfile(data_source):
             is_valid, data_source = gui_fn.create_empty_file(data_source)
@@ -1168,7 +1172,7 @@ class UEVaultManagerCLI:
             try:
                 if not self.core.login():
                     message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message)
+                    self._log_gui_wrapper(self.logger.critical, message, True)
             except ValueError:
                 pass
             # if automatic checks are off force an update here

@@ -221,27 +221,39 @@ class ProgressWindow(tk.Toplevel):
         """
         Hide the start button.
         """
-        self.control_frame.button_start.pack_forget()
+        try:
+            self.control_frame.button_start.pack_forget()
+        except tk.TclError:
+            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
 
     def show_start_button(self) -> None:
         """
         Show the start button.
         """
-        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-        self.control_frame.button_start.pack(**self.control_frame.pack_def_options, side=tk.LEFT)
+        try:
+            self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+            self.control_frame.button_start.pack(**self.control_frame.pack_def_options, side=tk.LEFT)
+        except tk.TclError:
+            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
 
     def hide_stop_button(self) -> None:
         """
         Hide the stop button.
         """
-        self.control_frame.button_stop.pack_forget()
+        try:
+            self.control_frame.button_stop.pack_forget()
+        except tk.TclError:
+            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
 
     def show_stop_button(self) -> None:
         """
         Show the stop button.
         """
-        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-        self.control_frame.button_stop.pack(**self.control_frame.pack_def_options, side=tk.RIGHT)
+        try:
+            self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+            self.control_frame.button_stop.pack(**self.control_frame.pack_def_options, side=tk.RIGHT)
+        except tk.TclError:
+            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
 
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None) -> None:
         """
