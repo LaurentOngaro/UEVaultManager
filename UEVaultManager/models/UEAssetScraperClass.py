@@ -185,12 +185,47 @@ class UEAssetScraper:
         :param owned_assets_only: if True, only the owned assets are scraped.
         :return: A list containing the parsed data.
         """
+
+        def _check_data(asset_data_l: dict, check_url=True) -> (str, dict):
+            """
+            Check the data and return the uid if the data are valid.
+            :param asset_data_l: the data to check.
+            :param check_url: if treu, check if the url has changed from the existing and update data if needed
+            :return: (uid if the data are valid and an empty string otherwise, the asset_existing_data)
+            """
+            uid_l = asset_data_l.get('id', None)
+            if uid_l is None:
+                # this should never occur
+                self._log_warning(f'No id found for asset {asset_data_l}. Passing to next asset')
+                return ''
+            existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid_l)
+            asset_existing_data_l = existing_data.get(uid_l, None)
+
+            # set url and (re) update data if needed
+            asset_data_l['asset_url'] = self.egs.get_marketplace_product_url(asset_data_l.get('urlSlug', None))
+            if check_url:
+                try:
+                    existing_url = asset_existing_data_l.get('asset_url', '') if asset_existing_data_l else ''
+                    if existing_url and asset_existing_data_l and asset_data_l['asset_url'] != existing_url and asset_existing_data_l.get(
+                        'grab_result', GrabResult.NO_ERROR.name
+                    ) != GrabResult.NO_ERROR.name:
+                        self._log_warning(f'URL have changed in database and asset for asset with uid={uid_l}. Parsing data from {existing_url}')
+                        # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
+                        if box_yesno(f'URL have changed in database and asset for asset with uid={uid_l}). Do you wan to parse the existing url ?'):
+                            json_data_existing = self.egs.get_json_data_from_url(existing_url)
+                            if json_data_existing.get('errorCode', '') != '':
+                                self._log_error(f'Error getting data from url {existing_url}: {json_data_existing["errorCode"]}')
+                                return ''
+                            uid_l = _check_data(json_data_existing, check_url=False)
+                except (KeyError, TypeError) as error_l:
+                    self._log_debug(f'Error checking asset_url for asset with uid={uid_l}: {error_l!r}')
+                    return ''
+            return uid_l, asset_existing_data_l
+
         content = []
         no_text_data = ''
-
         if json_data is None:
             return content
-
         try:
             # get the list of assets after a "scraping" of the json data using URL
             assets_data_list = json_data['data']['elements']
@@ -199,16 +234,13 @@ class UEAssetScraper:
             # create a list of one asset when data come from a json file
             assets_data_list = [json_data]
         for asset_data in assets_data_list:
-            uid = asset_data.get('id', None)
-            # self._log_debug(f"uid='{uid}'")  # debug only 'c77526fd4365450c9810e198450d2b91'
-            if uid is None:
-                # this should never occur
-                self._log_warning(f'No id found for asset {asset_data}. Passing to next asset')
+            uid, asset_existing_data = _check_data(asset_data)
+            if not uid:
                 continue
+            # self._log_debug(f"uid='{uid}'")  # debug only ex:'c77526fd4365450c9810e198450d2b91'
+
             categories = asset_data.get('categories', None)
             release_info = asset_data.get('releaseInfo', {})
-            existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
-            asset_existing_data = existing_data.get(uid, None)
             price = 0
             discount_price = 0
             discount_percentage = 0
@@ -223,24 +255,11 @@ class UEAssetScraper:
             asset_data['thumbnail_url'] = asset_data['thumbnail']
             asset_data['category'] = categories[0]['name'] if categories else ''
             asset_data['author'] = asset_data['seller']['name']
-            asset_data['asset_url'] = self.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
             try:
                 asset_data['asset_id'] = release_info[0]['appId']  # latest release
             except (KeyError, AttributeError):
                 grab_result = GrabResult.NO_APPID.name
                 asset_data['asset_id'] = uid  # that's not the REAL asset_id, we use the uid instead
-
-            # set url and (re) update data if needed
-            try:
-                existing_url = asset_existing_data.get('asset_url', '') if asset_existing_data else ''
-                if existing_url and asset_existing_data and asset_data['asset_url'] != existing_url and asset_existing_data.get(
-                    'grab_result', GrabResult.NO_ERROR.name
-                ) != GrabResult.NO_ERROR.name:
-                    self._log_warning(f'URL have changed in database and asset for asset with uid={uid}. Parsing data from {existing_url}')
-                    # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
-                    # TODO: parse data from existing_url
-            except (KeyError, TypeError) as error:
-                self._log_debug(f'Error checking asset_url for asset with uid={uid}: {error!r}')
 
             # set prices and discount
             if asset_data.get('priceValue', 0) > 0:

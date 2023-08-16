@@ -184,7 +184,7 @@ csv_sql_fields = {
     },
     'Url': {
         'sql_name': 'asset_url',
-        'state': CSVFieldState.NOT_PRESERVED,
+        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR
     },
     'Compatible versions': {
