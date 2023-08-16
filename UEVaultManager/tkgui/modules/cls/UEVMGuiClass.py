@@ -1191,12 +1191,29 @@ class UEVMGui(tk.Tk):
              <label> is the label to display in the quick filter list
              <callable> is the function to call to get the mask.
         """
-        return {'Tags with number': ['callable', self.filter_tags_with_number], 'With comment': ['callable', self.filter_with_comment], }
+        return {
+            # add ^ to the beginning of the value to search for the INVERSE the result
+            'Owned': ['Owned', True],  #
+            'Not Owned': ['Owned', False],  #
+            'Obsolete': ['Obsolete', True],  #
+            'Not Obsolete': ['Obsolete', False],  #
+            'Must buy': ['Must buy', True],  #
+            'Added manually': ['Added manually', True],  #
+            'Result OK': ['Grab result', 'NO_ERROR'],  #
+            'Result Not OK': ['Grab result', '^NO_ERROR'],  #
+            'Plugins only': ['Category', 'plugins'],  #
+            'Free': ['Price', 0],  #
+            'Asset_id is Dummy': ['Asset_id', 'dummy'],  #
+            'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
+            'Tags with number': ['callable', self.filter_tags_with_number],  #
+            'With comment': ['callable', self.filter_with_comment],  #
+            'Free and not owned': ['callable', self.filter_free_and_not_owned],  #
+        }
 
     def filter_tags_with_number(self) -> pd.Series:
         """
         Create a mask to filter the data with tags that contains an integer.
-        :return: a mask to filter the data with tags.
+        :return: a mask to filter the data.
         """
         df = self.editable_table.get_data()
         mask = df['Tags'].str.split(',').apply(lambda x: any(is_an_int(i) for i in x))
@@ -1205,8 +1222,23 @@ class UEVMGui(tk.Tk):
     def filter_with_comment(self) -> pd.Series:
         """
         Create a mask to filter the data with tags that contains an integer.
-        :return: a mask to filter the data with tags.
+        :return: a mask to filter the data.
         """
         df = self.editable_table.get_data()
         mask = df['Comment'].notnull() & df['Comment'].ne('') & df['Comment'].ne('None')  # not None and not empty string
+        return mask
+
+    def filter_free_and_not_owned(self) -> pd.Series:
+        """
+        Create a mask to filter the data that are not owned and with a price <=0.5 or free.
+        Assets that custom attributes contains external_link are also filtered.
+        :return: a mask to filter the data.
+        """
+        df = self.editable_table.get_data()
+        # Ensure 'Discount price' and 'Price' are float type
+        df['Discount price'] = df['Discount price'].astype(float)
+        df['Price'] = df['Price'].astype(float)
+        mask = df['Owned'].ne(True) & ~df['Custom attributes'].str.contains('external_link') & (
+            df['Free'].eq(True) | df['Discount price'].le(0.5) | df['Price'].le(0.5)
+        )
         return mask
