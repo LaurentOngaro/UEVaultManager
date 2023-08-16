@@ -263,22 +263,26 @@ class UEVMGui(tk.Tk):
         value = widget.get_content()
         return value, widget
 
-    def on_key_press(self, event) -> None:
+    def on_key_press(self, event):
         """
         Handle key press events.
         :param event:
         """
+        # Note: this event will be triggered AFTER the event in the editabletable
+
+        # shift_pressed = event.state == 1 or event.state & 0x00001 != 0
+        # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
+        # control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             if gui_g.edit_cell_window_ref:
-                gui_g.edit_cell_window_ref.quit()
+                gui_g.edit_cell_window_ref.on_close()
                 gui_g.edit_cell_window_ref = None
             elif gui_g.edit_row_window_ref:
-                gui_g.edit_row_window_ref.quit()
+                gui_g.edit_row_window_ref.on_close()
                 gui_g.edit_row_window_ref = None
             else:
                 self.on_close()
-        elif event.keysym == 'Return':
-            self.editable_table.create_edit_cell_window(event)
+        # return 'break'  # stop event propagation
 
     def on_mouse_over_cell(self, event=None) -> None:
         """
@@ -833,6 +837,17 @@ class UEVMGui(tk.Tk):
                 row_index: int = self.editable_table.get_row_index_with_offset(row_index)
                 row_data = self.editable_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
+                asset_slug_from_url = marketplace_url.split('/')[-1]
+                asset_slug_from_row = row_data['Asset slug']
+                asset_id = row_data['Asset_id']
+                if asset_slug_from_url != asset_slug_from_row:
+                    msg = f'The Asset slug is different from the given Url and from the row data for the asset with uid={asset_id}'
+                    gui_f.log_warning(msg)
+                    # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
+                    if gui_f.box_yesno(f'{msg}.\nDo you wan to recreate the Url from the Asset slug and use it for scraping ?'):
+                        marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
+                        col_index = self.editable_table.get_col_index('Url')
+                        self.editable_table.update_cell(row_index, col_index, marketplace_url)
                 text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
                 if pw and not pw.update_and_continue(increment=1, text=text):
                     gui_f.close_progress(self)
@@ -1187,12 +1202,29 @@ class UEVMGui(tk.Tk):
              <label> is the label to display in the quick filter list
              <callable> is the function to call to get the mask.
         """
-        return {'Tags with number': ['callable', self.filter_tags_with_number], 'With comment': ['callable', self.filter_with_comment], }
+        return {
+            # add ^ to the beginning of the value to search for the INVERSE the result
+            'Owned': ['Owned', True],  #
+            'Not Owned': ['Owned', False],  #
+            'Obsolete': ['Obsolete', True],  #
+            'Not Obsolete': ['Obsolete', False],  #
+            'Must buy': ['Must buy', True],  #
+            'Added manually': ['Added manually', True],  #
+            'Result OK': ['Grab result', 'NO_ERROR'],  #
+            'Result Not OK': ['Grab result', '^NO_ERROR'],  #
+            'Plugins only': ['Category', 'plugins'],  #
+            'Free': ['Price', 0],  #
+            'Asset_id is Dummy': ['Asset_id', 'dummy'],  #
+            'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
+            'Tags with number': ['callable', self.filter_tags_with_number],  #
+            'With comment': ['callable', self.filter_with_comment],  #
+            'Free and not owned': ['callable', self.filter_free_and_not_owned],  #
+        }
 
     def filter_tags_with_number(self) -> pd.Series:
         """
         Create a mask to filter the data with tags that contains an integer.
-        :return: a mask to filter the data with tags.
+        :return: a mask to filter the data.
         """
         df = self.editable_table.get_data()
         mask = df['Tags'].str.split(',').apply(lambda x: any(is_an_int(i) for i in x))
@@ -1201,8 +1233,23 @@ class UEVMGui(tk.Tk):
     def filter_with_comment(self) -> pd.Series:
         """
         Create a mask to filter the data with tags that contains an integer.
-        :return: a mask to filter the data with tags.
+        :return: a mask to filter the data.
         """
         df = self.editable_table.get_data()
         mask = df['Comment'].notnull() & df['Comment'].ne('') & df['Comment'].ne('None')  # not None and not empty string
+        return mask
+
+    def filter_free_and_not_owned(self) -> pd.Series:
+        """
+        Create a mask to filter the data that are not owned and with a price <=0.5 or free.
+        Assets that custom attributes contains external_link are also filtered.
+        :return: a mask to filter the data.
+        """
+        df = self.editable_table.get_data()
+        # Ensure 'Discount price' and 'Price' are float type
+        df['Discount price'] = df['Discount price'].astype(float)
+        df['Price'] = df['Price'].astype(float)
+        mask = df['Owned'].ne(True) & ~df['Custom attributes'].str.contains('external_link') & (
+            df['Free'].eq(True) | df['Discount price'].le(0.5) | df['Price'].le(0.5)
+        )
         return mask

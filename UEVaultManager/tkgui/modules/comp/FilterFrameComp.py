@@ -21,20 +21,7 @@ class FilterFrame(ttk.LabelFrame):
     :param value_for_all: The value to use for the 'All' option.
     """
     _filters = {}
-    _quick_filters = {
-        # add ^ to the beginning of the value to search for the INVERSE the result
-        'Owned': ['Owned', True],  #
-        'Not Owned': ['Owned', False],  #
-        'Obsolete': ['Obsolete', True],  #
-        'Not Obsolete': ['Obsolete', False],  #
-        'Must buy': ['Must buy', True],  #
-        'Added manually': ['Added manually', True],  #
-        'Grab OK': ['Grab result', 'NO_ERROR'],  #
-        'Plugins only': ['Category', 'plugins'],  #
-        'Free': ['Price', 0],  #
-        'Dummy': ['Asset_id', 'dummy'],  #
-        'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin NOT in marketplace
-    }
+    _quick_filters = {}
     frm_widgets = None
     cb_col_name = None
     cb_quick_filter = None

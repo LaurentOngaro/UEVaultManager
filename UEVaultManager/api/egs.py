@@ -640,7 +640,6 @@ class EPCAPI:
 
         Note: This is the only way I know to get the id of an asset from its slug (or url)
         """
-
         empty_data = {
             'id': '',
             'name': '',

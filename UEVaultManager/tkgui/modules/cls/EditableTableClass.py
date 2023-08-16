@@ -104,6 +104,32 @@ class EditableTable(Table):
         self.set_defaults()
         self.bind('<Double-Button-1>', self.create_edit_cell_window)
 
+    def handle_arrow_keys(self, event):
+        """
+        Handle arrow keys events.
+        :param event: The event that triggered the function call.
+        """
+        control_pressed = event.state == 4 or event.state & 0x00004 != 0
+        if event.keysym == 'Return':
+            if control_pressed:
+                self.create_edit_row_window(event)
+            else:
+                self.create_edit_cell_window(event)
+            return 'break'
+        elif event.keysym == 'Right' and control_pressed:
+            self.next_page()
+            return 'break'
+        elif event.keysym == 'Left' and control_pressed:
+            self.prev_page()
+            return 'break'
+        elif event.keysym == 'Up' and control_pressed:
+            self.prev_row()
+            return 'break'
+        elif event.keysym == 'Down' and control_pressed:
+            self.next_row()
+            return 'break'
+        super().handle_arrow_keys(event)
+
     def redraw(self, event=None, callback=None):
         """
         Redraw the table
@@ -899,7 +925,7 @@ class EditableTable(Table):
             return
         self._changed_rows.append(row_index)
         self.must_save = True
-        self._container.set_control_state_func('save', True)
+        self.set_control_state_func('save', True)
 
     def clear_rows_to_save(self) -> None:
         """
@@ -1064,15 +1090,21 @@ class EditableTable(Table):
             entries_values[key] = value
         return entries_values
 
-    def create_edit_row_window(self) -> None:
+    def create_edit_row_window(self, event=None) -> None:
         """
         Create the edit row window for the selected row in the table.
+        :param event: The event that triggered the function call.
         """
-        row_index = self.getSelectedRow()
-        row_index = self.get_row_index_with_offset(row_index)
+        if event is not None:
+            if event.type != tk.EventType.KeyPress:
+                row_index = self.get_row_clicked(event)
+            else:
+                row_index = self.getSelectedRow()
+        else:
+            row_index = self.getSelectedRow()
         if row_index is None:
-            return
-
+            return None
+        row_index = self.get_row_index_with_offset(row_index)
         title = 'Edit current row'
         width = 900
         height = 1000
