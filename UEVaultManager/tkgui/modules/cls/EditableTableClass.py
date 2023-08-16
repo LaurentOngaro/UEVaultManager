@@ -1175,8 +1175,12 @@ class EditableTable(Table):
         Create the edit cell window for the selected cell in the table.
         :param event: The event that triggered the creation of the edit cell window.
         """
-        row_index = self.get_row_clicked(event)
-        col_index = self.get_col_clicked(event)
+        if event.type != tk.EventType.KeyPress:
+            row_index = self.get_row_clicked(event)
+            col_index = self.get_col_clicked(event)
+        else:
+            row_index = self.getSelectedRow()
+            col_index = self.getSelectedColumn()
         if row_index is None or col_index is None:
             return None
         row_index = self.get_row_index_with_offset(row_index)
@@ -1194,9 +1198,10 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.get_col_name(col_index)
         ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
+        cell_value_str = str(cell_value) if cell_value != 'None' else ''
         if is_from_type(col_name, [CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
-            widget.set_content(str(cell_value))
+            widget.set_content(cell_value_str)
             widget.focus_set()
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
         elif is_from_type(col_name, [CSVFieldType.BOOL]):
@@ -1205,7 +1210,7 @@ class EditableTable(Table):
         else:
             # other field is just a ExtendedEntry
             widget = ExtendedEntry(edit_cell_window.content_frame, tag=col_name)
-            widget.insert(0, str(cell_value))
+            widget.insert(0, cell_value_str)
             widget.focus_set()
 
         widget.pack(side=tk.LEFT, fill=tk.X, expand=True)

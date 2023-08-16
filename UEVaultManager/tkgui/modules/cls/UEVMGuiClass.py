@@ -261,8 +261,8 @@ class UEVMGui(tk.Tk):
                 gui_g.edit_row_window_ref = None
             else:
                 self.on_close()
-        # elif event.keysym == 'Return':
-        #    self.editable_table.create_edit_record_window()
+        elif event.keysym == 'Return':
+            self.editable_table.create_edit_cell_window(event)
 
     def on_mouse_over_cell(self, event=None) -> None:
         """
