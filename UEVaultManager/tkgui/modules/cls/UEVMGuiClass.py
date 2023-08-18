@@ -188,7 +188,7 @@ class UEVMGui(tk.Tk):
         if gui_g.s.data_filters:
             self.load_filters(gui_g.s.data_filters)
         else:
-            data_table.update()
+            data_table.update(update_format=True)
         # Quick edit the first row
         # self.editable_table.update_quick_edit(0)
         show_option_fist = False  # debug_only
@@ -357,7 +357,7 @@ class UEVMGui(tk.Tk):
         """
         value, widget = self._check_and_get_widget_value(tag)
         if widget:
-            self.editable_table.quick_edit_save_value(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
+            self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
     def on_quick_edit_focus_in(self, tag: str, event=None) -> None:
@@ -382,7 +382,7 @@ class UEVMGui(tk.Tk):
         _, widget = self._check_and_get_widget_value(tag)
         if widget:
             value = widget.switch_state(event=event)
-            self.editable_table.quick_edit_save_value(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
+            self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     def on_close(self, _event=None) -> None:
         """
@@ -441,7 +441,7 @@ class UEVMGui(tk.Tk):
                     gui_f.box_message('Error when loading data')
                     return filename
                 data_table.current_page = 1
-                data_table.update()
+                data_table.update(update_format=True)
                 self.update_controls_and_redraw()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
@@ -467,10 +467,11 @@ class UEVMGui(tk.Tk):
             if filename:
                 data_table.save_data()
                 self.update_data_source()
-            return filename
         else:
             data_table.save_data()
-            return ''
+            filename = ''
+        gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
+        return filename
 
     def export_selection(self) -> None:
         """
@@ -495,9 +496,13 @@ class UEVMGui(tk.Tk):
         :param row_data: data to add to the row.
         """
         data_table = self.editable_table  # shortcut
-        data_table.create_row(row_data=row_data)
+        row = data_table.create_row(row_data=row_data)
+        data_table.update_index_copy_column()
+        data_table.update(update_format=True)
+        data_table.move_to_row(0)
         data_table.must_save = True
-        data_table.update()
+        text = f' with asset_id={ row["Asset_id"][0]}' if row is not None else ''
+        gui_f.box_message(f'A new row{text} has been added at the top of the table')
 
     def del_row(self) -> None:
         """
@@ -820,7 +825,6 @@ class UEVMGui(tk.Tk):
             return
         data_table = self.editable_table  # shortcut
         row_numbers = data_table.multiplerowlist
-
         if marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
                 gui_f.box_message('You must select a row first')
@@ -864,6 +868,7 @@ class UEVMGui(tk.Tk):
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             data_table.update_row(row_number, ue_asset_data=asset_data)
+        self.update()
 
     def load_filters(self, filters: {} = None):
         """

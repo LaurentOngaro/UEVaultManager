@@ -11,9 +11,7 @@ import pandas as pd
 from pandas.errors import EmptyDataError
 from pandastable import Table, TableModel, config
 
-from UEVaultManager.models.csv_sql_fields import create_empty_csv_row, get_csv_field_name_list, convert_csv_row_to_sql_row, is_on_state, \
-    CSVFieldState, \
-    CSVFieldType, is_from_type, get_typed_value, get_converters, get_csv_field_name
+from UEVaultManager.models.csv_sql_fields import *
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -111,6 +109,7 @@ class EditableTable(Table):
         :param event: The event that triggered the function call.
         """
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
+        # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
         if event.keysym == 'Return':
             if control_pressed:
                 self.create_edit_row_window(event)
@@ -183,6 +182,45 @@ class EditableTable(Table):
         self.delete('colrect')
         self._set_with_for_hidden_columns()
         self.redraw()
+
+    # noinspection PyPep8Naming
+    def sortTable(self, columnIndex=None, ascending=1, index=False):
+        """
+        Sort the table by a column.
+        :param columnIndex:
+        :param ascending:
+        :param index:
+        Overrided to allow fixing index_copy column
+        """
+        # super().sortTable(columnIndex, ascending, index)
+
+        df = self.get_data()
+        if columnIndex is None:
+            columnIndex = self.multiplecollist
+        if isinstance(columnIndex, int):
+            columnIndex = [columnIndex]
+
+        if index:
+            df.sort_index(inplace=True)
+        else:
+            colnames = list(df.columns[columnIndex])
+            # noinspection PyBroadException
+            try:
+                # noinspection PyTypeChecker
+                df.sort_values(by=colnames, inplace=True, ascending=ascending)
+            except Exception as error:
+                log_warning(f'Could not sort the columns. Error: {error!r}')
+
+        self.update_index_copy_column()
+        self.update()
+        return
+
+    def tableChanged(self) -> None:
+        """
+        Called when the table is changed.
+        Overrided for debugging
+        """
+        super().tableChanged()
 
     def _set_with_for_hidden_columns(self) -> None:
         """
@@ -259,7 +297,6 @@ class EditableTable(Table):
         if add_page_offset:
             row_number = self.add_page_offset(row_number)
         # get the REAL index of the row from its backup
-        col_index = self.get_col_index(gui_g.s.index_copy_col_name)
         if df_type == DataFrameUsed.AUTO:
             if self.filtered:
                 df = self.df_filtered
@@ -276,7 +313,13 @@ class EditableTable(Table):
             return int(self.get_real_index(row_number))
         else:
             return int(self.get_real_index(row_number))
-        return int(df.iat[row_number, col_index])
+        col_index = self.get_col_index(gui_g.s.index_copy_col_name)
+        if col_index < 0:
+            log_warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
+            result = int(df.index[row_number])
+        else:
+            result = int(df.iat[row_number, col_index])
+        return result
 
     def get_data(self, df_type: DataFrameUsed = DataFrameUsed.UNFILTERED) -> pd.DataFrame:
         """
@@ -327,12 +370,12 @@ class EditableTable(Table):
         Resize and reorder the columns of the table.
         """
         column_infos = gui_g.s.column_infos
-        num_cols = len(column_infos) - 1  # -1 because the index_copy column is added to the datatable later
+        num_cols = len(column_infos)
         if num_cols <= 0:
             return
-        if num_cols != self.cols:
+        if abs(num_cols - self.cols) > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
             box_message(
-                f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({len(column_infos)}).'
+                f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({num_cols}).'
             )
         try:
             # reordering columns
@@ -499,44 +542,56 @@ class EditableTable(Table):
             self.add_to_rows_to_save(0)  # done inside self.must_save = True
         elif table_row is not None:
             self.must_rebuild = True
-            return table_row
+        return table_row
 
-    def del_row(self, row_indexes=None) -> bool:
+    def del_row(self, row_numbers=None) -> bool:
         """
         Delete the selected row in the table.
-        :param row_indexes: The row to delete. If None, the selected row is deleted.
+        :param row_numbers: The row to delete. If None, the selected row is deleted.
         """
         df = self.get_data()
-        if row_indexes is None:
-            row_indexes = self.multiplerowlist
+        if row_numbers is None:
+            row_numbers = self.multiplerowlist
         index_to_delete = []
-        row_index = -1
+        row_number = -1
         asset_id = 'None'
-        for row_index in row_indexes:
+        for row_number in row_numbers:
             asset_id = 'None'
-            if not df.empty and 0 <= row_index < len(df):
-                row_index = self.add_page_offset(row_index)
+            idx = self.get_real_index(row_number, add_page_offset=True)
+            if 0 <= idx <= len(df):
                 try:
-                    index = df.index[row_index]
-                    asset_id = df.at[index, 'Asset_id']  # at checked
-                    index_to_delete.append(index)
+                    asset_id = df.at[idx, 'Asset_id']  # at checked
+                    index_to_delete.append(idx)
                     self.add_to_asset_ids_to_delete(asset_id)
-                    log_info(f'adding row {row_index} with asset_id={asset_id} to the list of index to delete')
+                    log_info(f'adding row {idx} with asset_id={asset_id} to the list of index to delete')
                 except (IndexError, KeyError) as error:
-                    log_warning(f'Could add row {row_index} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
+                    log_warning(f'Could add row {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
         number_deleted = len(index_to_delete)
-        asset_str = f'{number_deleted} rows' if number_deleted > 1 else f' row {row_index} with asset_id {asset_id}'
+        asset_str = f'{number_deleted} rows' if number_deleted > 1 else f' row #{row_number} with asset_id {asset_id}'
         if number_deleted and box_yesno(f'Are you sure you want to delete {asset_str}? '):
-            try:
-                # self.model.df.drop(index_to_delete, inplace=True, errors='ignore')  # model. df checked
-                df.drop(index_to_delete, inplace=True, errors='ignore')  # changes are made in self.unfiltered_df
-                if self._filter_mask is not None:
-                    self._filter_mask.drop(index_to_delete, inplace=True, errors='ignore')
-                self.must_save = True
-                self.selectNone()
-                self.update()  # this call will copy the changes to model. df AND to self.filtered_df
-            except (IndexError, KeyError) as error:
-                log_warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
+            # self.model.df.drop(index_to_delete, inplace=True, errors='ignore')  # model. df checked
+            for row_index in index_to_delete:
+                df = self.get_data()
+                # update the index copy column because index is changed after each deletion
+                df[gui_g.s.index_copy_col_name] = df.index
+                check_asset_id = df.at[row_index, 'Asset_id']
+                # done one by on to check if the asset_id is still OK
+                if check_asset_id not in self._deleted_asset_ids:
+                    log_error(f'The row to delete with asset_id={check_asset_id} is not the good one')
+                else:
+                    try:
+                        df.drop(row_index, inplace=True)
+                        self.model.df.drop(
+                            row_index, inplace=True
+                        )  # only to, make the changes visible during the process. Will be updated later in the update() call
+                        # if self._filter_mask is not None:
+                        #    self._filter_mask.drop(idx, inplace=True, errors='ignore')
+                    except (IndexError, KeyError) as error:
+                        log_warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
+
+            self.must_save = True
+            self.selectNone()
+            self.update_index_copy_column()
         return number_deleted > 0
 
     def save_data(self, source_type: DataSourceType = None) -> None:
@@ -585,7 +640,6 @@ class EditableTable(Table):
         self.clear_asset_ids_to_delete()
         self.must_save = False
         self.update_page()
-        box_message(f'Changed data has been saved to {self.data_source}')
 
     def reload_data(self) -> bool:
         """
@@ -595,9 +649,8 @@ class EditableTable(Table):
         df_loaded = self.read_data()  # fill the UNFILTERED dataframe
         if df_loaded is None:
             return False
-        self.set_data(self.set_columns_type(df_loaded), df_type=DataFrameUsed.UNFILTERED)
-        self.resize_columns()
-        self.update()  # this call will copy the changes to model. df AND to self.filtered_df
+        self.set_data(df_loaded)
+        self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
         return True
 
     def rebuild_data(self) -> bool:
@@ -662,9 +715,8 @@ class EditableTable(Table):
             df_loaded = self.read_data()
             if df_loaded is None:
                 return False
-            self.set_data(self.set_columns_type(df_loaded), df_type=DataFrameUsed.UNFILTERED)
-            self.resize_columns()
-            self.update()  # this call will copy the changes to model. df AND to self.filtered_df
+            self.set_data(df_loaded)
+            self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
             close_progress(self)
             return True
         else:
@@ -818,15 +870,30 @@ class EditableTable(Table):
         super().handle_right_click(event)
         self._generate_cell_selection_changed_event()
 
-    def update(self, reset_page: bool = False, keep_filters: bool = True) -> None:
+    def update_index_copy_column(self) -> None:
+        """
+        Update the index copy column for the 3 dataframes. Must be called when rows are added or deleted
+        """
+        self.df_unfiltered.reset_index(drop=True, inplace=True)
+        self.df_unfiltered[gui_g.s.index_copy_col_name] = self.df_unfiltered.index
+        if self.df_filtered is not None:
+            self.df_filtered[gui_g.s.index_copy_col_name] = self.df_filtered.index
+        if self.model.df is not None:
+            self.model.df[gui_g.s.index_copy_col_name] = self.model.df.index
+
+    def update(self, reset_page: bool = False, keep_filters: bool = True, update_format: bool = False) -> None:
         """
         Display the specified page of the table data.*
         :param reset_page: Whether to reset the current page to 1.
         :param keep_filters: Whether to keep the current filters.
+        :param update_format: Whether to update the table format.
         """
+        df = self.get_data()
+        if update_format:
+            self.set_data(self.set_columns_type(df))
+            self.resize_columns()
         if reset_page:
             self.current_page = 1
-        df = self.get_data()
         if not keep_filters:
             mask = self._filter_frame.create_mask() if self._filter_frame is not None else None
         else:
@@ -1109,6 +1176,11 @@ class EditableTable(Table):
             df = self.get_data(df_type=DataFrameUsed.UNFILTERED)  # always used the unfiltered because the real index is set from unfiltered dataframe
             df.iat[idx, col_index] = value  # iat checked
             return True
+        except TypeError as error:
+            if 'Cannot setitem on a Categorical with a new category' in str(error):
+                col_name = self.get_col_name(col_index)
+                box_message(f'You can not use a value that is not an existing category for field {col_name}.')
+            return False
         except IndexError:
             return False
 
@@ -1135,6 +1207,10 @@ class EditableTable(Table):
         Create the edit row window for the selected row in the table.
         :param event: The event that triggered the function call.
         """
+        if gui_g.edit_row_window_ref is not None and gui_g.edit_row_window_ref.winfo_viewable():
+            gui_g.edit_row_window_ref.focus_set()
+            return
+
         if event is not None:
             if event.type != tk.EventType.KeyPress:
                 row_number = self.get_row_clicked(event)
@@ -1158,6 +1234,7 @@ class EditableTable(Table):
         # configure the grid
         edit_row_window.content_frame.columnconfigure(0, weight=0)
         edit_row_window.content_frame.columnconfigure(1, weight=1)
+        edit_row_window.focus_set()
         self.edit_row(row_number)
 
     def edit_row(self, row_number: int = None) -> None:
@@ -1217,6 +1294,11 @@ class EditableTable(Table):
         row_number = self._edit_row_number
         for col_name, value in self.get_edited_row_values().items():
             typed_value = get_typed_value(csv_field=col_name, value=value)
+            try:
+                typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
+            except AttributeError:
+                # no strip method
+                pass
             col_index = self.get_col_index(col_name)
             if not self.update_cell(row_number, col_index, typed_value):
                 log_warning(f'Failed to update the cell ({row_number}, {col_index}) value')
@@ -1234,6 +1316,10 @@ class EditableTable(Table):
         Create the edit cell window for the selected cell in the table.
         :param event: The event that triggered the creation of the edit cell window.
         """
+        if gui_g.edit_cell_window_ref is not None and gui_g.edit_cell_window_ref.winfo_viewable():
+            gui_g.edit_cell_window_ref.focus_set()
+            return
+
         if event.type != tk.EventType.KeyPress:
             row_number = self.get_row_clicked(event)
             col_index = self.get_col_clicked(event)
@@ -1303,6 +1389,11 @@ class EditableTable(Table):
             row_number = self._edit_cell_row_number
             col_index = self._edit_cell_col_index
             typed_value = get_typed_value(csv_field=tag, value=value)
+            try:
+                typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
+            except AttributeError:
+                # no strip method
+                pass
             if not self.update_cell(row_number, col_index, typed_value):
                 log_warning(f'Failed to update the cell ({row_number}, {col_index}) value')
                 return
@@ -1354,7 +1445,7 @@ class EditableTable(Table):
         for col_name in column_names:
             self._frm_quick_edit.set_default_content(col_name)
 
-    def quick_edit_save_value(self, row_number: int = -1, col_index: int = -1, value: str = '', tag: str = None) -> None:
+    def save_quick_edit_cell(self, row_number: int = -1, col_index: int = -1, value: str = '', tag: str = None) -> None:
         """
         Save the cell content preview.
         :param value: The value to save.
@@ -1366,7 +1457,11 @@ class EditableTable(Table):
 
         typed_old_value = get_typed_value(sql_field=tag, value=old_value)
         typed_value = get_typed_value(sql_field=tag, value=value)
-
+        try:
+            typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
+        except AttributeError:
+            # no strip method
+            pass
         if row_number < 0 or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or col_index < 0 or typed_old_value == typed_value:
             return
         try:

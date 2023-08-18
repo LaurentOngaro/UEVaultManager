@@ -86,15 +86,19 @@ class EditCellWindow(tk.Toplevel):
         geometry = gui_fn.center_window_on_screen(0, width, height)
         self.geometry(geometry)
 
-    def on_key_press(self, event) -> None:
+    # noinspection DuplicatedCode
+    def on_key_press(self, event):
         """
         Event when a key is pressed.
         :param event: the event that triggered the call of this function.
         """
+        # print(event.keysym)
+        control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             self.on_close()
-        elif event.keysym == 'Return':
+        elif control_pressed and (event.keysym == 's'):
             self.save_change()
+        return 'break'
 
     def on_close(self, _event=None) -> None:
         """
