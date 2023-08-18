@@ -145,15 +145,15 @@ class EditRowWindow(tk.Toplevel):
         """
         Go to the previous asset (Wrapper).
         """
-        row_index = self.editable_table.prev_row()
-        self.editable_table.edit_row(row_index)
+        row_number = self.editable_table.prev_row()
+        self.editable_table.edit_row(row_number)
 
     def next_asset(self) -> None:
         """
         Go to the next asset (Wrapper).
         """
-        row_index = self.editable_table.next_row()
-        self.editable_table.edit_row(row_index)
+        row_number = self.editable_table.next_row()
+        self.editable_table.edit_row(row_number)
 
     def open_asset_url(self) -> None:
         """

@@ -29,7 +29,7 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiCon
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOptionsFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
 from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style, is_an_int
-from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType
+from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType, DataFrameUsed
 
 
 def clean_ue_asset_name(name_to_clean: str) -> str:
@@ -116,12 +116,7 @@ class UEVMGui(tk.Tk):
         self._content_frame = content_frame
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
 
-        # gui_g.UEVM_gui_ref = self  # important ! Must be donne before any use of a ProgressWindow. If not, an UEVMGuiHiddenRootClass will be created and the ProgressWindow still be displayed after the init
-        # reading from CSV file version
-        # self.editable_table = EditableTable(container=content_frame, data_source=data_source, rows_per_page=36, show_statusbar=True)
-
-        # reading from database file version
-        self.editable_table = EditableTable(
+        data_table = EditableTable(
             container=content_frame,
             data_source_type=data_source_type,
             data_source=data_source,
@@ -131,13 +126,13 @@ class UEVMGui(tk.Tk):
             update_rows_text_func=self.update_rows_text,
             set_control_state_func=self.set_control_state
         )
-        self.editable_table.set_preferences(gui_g.s.datatable_default_pref)
-        self.editable_table.show()
-        self.editable_table.resize_columns()  # must be done once, after the whole init of the EditableTable
+        self.editable_table = data_table
+        data_table.set_preferences(gui_g.s.datatable_default_pref)
+        data_table.show()
 
-        toolbar_frame = UEVMGuiToolbarFrame(self, self.editable_table)
+        toolbar_frame = UEVMGuiToolbarFrame(self, data_table)
         self._toolbar_frame = toolbar_frame
-        control_frame = UEVMGuiControlFrame(self, self.editable_table)
+        control_frame = UEVMGuiControlFrame(self, data_table)
         self._control_frame = control_frame
         options_frame = UEVMGuiOptionsFrame(self)
         self._options_frame = options_frame
@@ -150,9 +145,9 @@ class UEVMGui(tk.Tk):
 
         self.bind('<Key>', self.on_key_press)
         # Bind the table to the mouse motion event
-        self.editable_table.bind('<Motion>', self.on_mouse_over_cell)
-        self.editable_table.bind('<Leave>', self.on_mouse_leave_cell)
-        self.editable_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
+        data_table.bind('<Motion>', self.on_mouse_over_cell)
+        data_table.bind('<Leave>', self.on_mouse_leave_cell)
+        data_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
         self.bind('<Button-1>', self.on_left_click)
 
         self.protocol('WM_DELETE_WINDOW', self.on_close)
@@ -172,9 +167,9 @@ class UEVMGui(tk.Tk):
             'save': self._control_frame.buttons['Save']['widget'],  #
         }
 
-        if not show_open_file_dialog and (rebuild_data or self.editable_table.must_rebuild):
+        if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
-                if not self.editable_table.rebuild_data():
+                if not data_table.rebuild_data():
                     gui_f.log_error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
@@ -190,12 +185,12 @@ class UEVMGui(tk.Tk):
             if self.open_file() == '':
                 gui_f.log_error('This application could not run without a file to read data from')
                 self.quit()
-        # Quick edit the first row
-        self.editable_table.update_quick_edit(0)
         if gui_g.s.data_filters:
             self.load_filters(gui_g.s.data_filters)
         else:
-            self.editable_table.update()
+            data_table.update()
+        # Quick edit the first row
+        # self.editable_table.update_quick_edit(0)
         show_option_fist = False  # debug_only
         if show_option_fist:
             self.toggle_options_panel(True)
@@ -210,7 +205,7 @@ class UEVMGui(tk.Tk):
         self.tk.mainloop(n)
         gui_f.log_info(f'ending mainloop in {__name__}')
 
-    def _open_file_dialog(self, save_mode=False, filename=None) -> str:
+    def _open_file_dialog(self, save_mode: bool = False, filename: str = None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
         :param save_mode: if True, the dialog will be in saving mode, else in loading mode.
@@ -243,7 +238,7 @@ class UEVMGui(tk.Tk):
             )
         return filename
 
-    def _check_and_get_widget_value(self, tag):
+    def _check_and_get_widget_value(self, tag: str):
         """
         Check if the widget with the given tags exists and return its value and itself.
         :param tag: tag of the widget that triggered the event.
@@ -293,9 +288,9 @@ class UEVMGui(tk.Tk):
             return
         canvas_image = self._control_frame.canvas_image
         try:
-            row_index: int = self.editable_table.get_row_clicked(event)
-            self.update_rows_text(row_index)
-            image_url = self.editable_table.get_image_url(row_index)
+            row_number: int = self.editable_table.get_row_clicked(event)
+            self.update_rows_text(row_number)
+            image_url = self.editable_table.get_image_url(row_number)
             gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
         except IndexError:
             gui_f.show_default_image(canvas_image)
@@ -314,8 +309,8 @@ class UEVMGui(tk.Tk):
         When the selection changes, show the selected row in the quick edit frame.
         :param event:
         """
-        row_index: int = self.editable_table.get_row_index_with_offset(event.widget.currentrow)
-        self.editable_table.update_quick_edit(row_index)
+        row_number = event.widget.currentrow
+        self.editable_table.update_quick_edit(row_number)
         self.update_controls_and_redraw()
 
     def on_left_click(self, event=None) -> None:
@@ -323,12 +318,12 @@ class UEVMGui(tk.Tk):
         When the left mouse button is clicked, show the selected row in the quick edit frame.
         :param event:
         """
-        table = self.editable_table  # shortcut
+        data_table = self.editable_table  # shortcut
         # if the clic is on a frame (i.e. an empty zone), clean the selection in the table
         if event.widget.widgetName == 'ttk::frame':
-            table.selectNone()
-            table.clearSelected()
-            table.delete('rowrect')  # remove the highlight rect
+            data_table.selectNone()
+            data_table.clearSelected()
+            data_table.delete('rowrect')  # remove the highlight rect
         self.update_controls_and_redraw()
 
     def on_entry_current_item_changed(self, _event=None) -> None:
@@ -344,16 +339,17 @@ class UEVMGui(tk.Tk):
             gui_f.log_error(f'could not convert item number {item_num} to int. {error!r}')
             return
 
-        if self.editable_table.pagination_enabled:
+        data_table = self.editable_table  # shortcut
+        if data_table.pagination_enabled:
             gui_f.log_debug(f'showing page {item_num}')
-            self.editable_table.current_page = item_num
-            self.editable_table.update_page()
+            data_table.current_page = item_num
+            data_table.update_page()
         else:
             gui_f.log_debug(f'showing row {item_num}')
-            self.editable_table.move_to_row(item_num)
+            data_table.move_to_row(item_num)
 
     # noinspection PyUnusedLocal
-    def on_quick_edit_focus_out(self, event=None, tag='') -> None:
+    def on_quick_edit_focus_out(self, tag: str, event=None) -> None:
         """
         When the focus leaves a quick edit widget, save the value.
         :param event: ignored but required for an event handler.
@@ -361,10 +357,10 @@ class UEVMGui(tk.Tk):
         """
         value, widget = self._check_and_get_widget_value(tag)
         if widget:
-            self.editable_table.quick_edit_save_value(row_index=widget.row, col_index=widget.col, value=value, tag=tag)
+            self.editable_table.quick_edit_save_value(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
-    def on_quick_edit_focus_in(self, event=None, tag='') -> None:
+    def on_quick_edit_focus_in(self, tag: str, event=None) -> None:
         """
         When the focus enter a quick edit widget, check (and clean) the value.
         :param event: ignored but required for an event handler.
@@ -377,7 +373,7 @@ class UEVMGui(tk.Tk):
             widget.set_content(value)
 
     # noinspection PyUnusedLocal
-    def on_switch_edit_flag(self, event=None, tag='') -> None:
+    def on_switch_edit_flag(self, tag: str, event=None) -> None:
         """
         When the focus leaves a quick edit widget, save the value.
         :param event: event that triggered the call.
@@ -386,7 +382,7 @@ class UEVMGui(tk.Tk):
         _, widget = self._check_and_get_widget_value(tag)
         if widget:
             value = widget.switch_state(event=event)
-            self.editable_table.quick_edit_save_value(row_index=widget.row, col_index=widget.col, value=value, tag=tag)
+            self.editable_table.quick_edit_save_value(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     def on_close(self, _event=None) -> None:
         """
@@ -410,17 +406,18 @@ class UEVMGui(tk.Tk):
         Save the settings of the window.
         :return:
         """
+        data_table = self.editable_table  # shortcut
         if gui_g.s.reopen_last_file:
-            gui_g.s.last_opened_file = self.editable_table.data_source
+            gui_g.s.last_opened_file = data_table.data_source
         # store window geometry in config settings
         gui_g.s.width = self.winfo_width()
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
         column_infos = {}
-        for index, col in enumerate(self.editable_table.model.df.columns):  # df.model checked
+        for index, col in enumerate(data_table.model.df.columns):  # df.model checked
             column_infos[col] = {}
-            column_infos[col]['width'] = self.editable_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
+            column_infos[col]['width'] = data_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
             column_infos[col]['pos'] = index
         sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
         gui_g.s.column_infos = sorted_cols_by_pos
@@ -435,12 +432,12 @@ class UEVMGui(tk.Tk):
         Open a file and Load data from it.
         :return: the name of the file that was loaded.
         """
-        data_table = self.editable_table
+        data_table = self.editable_table  # shortcut
         filename = self._open_file_dialog(filename=data_table.data_source)
         if filename and os.path.isfile(filename):
             data_table.data_source = filename
             if data_table.valid_source_type(filename):
-                if not data_table.load_data():
+                if not data_table.read_data():
                     gui_f.box_message('Error when loading data')
                     return filename
                 data_table.current_page = 1
@@ -452,37 +449,40 @@ class UEVMGui(tk.Tk):
             else:
                 gui_f.box_message('Operation cancelled')
 
-    def save_all(self, show_dialog=True) -> str:
+    def save_all(self, show_dialog: bool = True) -> str:
         """
         Save the data to the current data source.
         :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file.
         :return: the name of the file that was saved.
         """
         self.save_settings()
-
-        if self.editable_table.data_source_type == DataSourceType.FILE:
+        data_table = self.editable_table  # shortcut
+        if data_table.data_source_type == DataSourceType.FILE:
             if show_dialog:
-                filename = self._open_file_dialog(filename=self.editable_table.data_source, save_mode=True)
+                filename = self._open_file_dialog(filename=data_table.data_source, save_mode=True)
                 if filename:
-                    self.editable_table.data_source = filename
+                    data_table.data_source = filename
             else:
-                filename = self.editable_table.data_source
+                filename = data_table.data_source
             if filename:
-                self.editable_table.save_data()
+                data_table.save_data()
                 self.update_data_source()
             return filename
         else:
-            self.editable_table.save_data()
+            data_table.save_data()
             return ''
 
     def export_selection(self) -> None:
         """
         Export the selected rows to a file.
         """
-        # Get selected row indices
-        selected_rows = self.editable_table.get_selected_rows()
+        data_table = self.editable_table  # shortcut
+        selected_rows = []
+        selected_row_indices = data_table.multiplerowlist
+        if selected_row_indices:
+            selected_rows = data_table.get_data().iloc[selected_row_indices]  # iloc checked
         if len(selected_rows):
-            filename = self._open_file_dialog(save_mode=True, filename=self.editable_table.data_source)
+            filename = self._open_file_dialog(save_mode=True, filename=data_table.data_source)
             if filename:
                 selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
@@ -494,20 +494,18 @@ class UEVMGui(tk.Tk):
         Add a new row at the current position.
         :param row_data: data to add to the row.
         """
-        self.editable_table.create_row(row_data=row_data, add_to_existing=True)
-        self.editable_table.must_save = True
-        self.editable_table.update()
+        data_table = self.editable_table  # shortcut
+        data_table.create_row(row_data=row_data)
+        data_table.must_save = True
+        data_table.update()
 
     def del_row(self) -> None:
         """
         Remove the selected row from the DataFrame.
         """
-        # if self.editable_table.pagination_enabled and gui_f.box_yesno('To delete a row, The pagination must be disabled. Do you want to disable it now ?'):
-        #     self.toggle_pagination(forced_value=False)
-        #     return
         self.editable_table.del_row()
 
-    def search_for_url(self, folder: str, parent: str, check_if_valid=False) -> str:
+    def search_for_url(self, folder: str, parent: str, check_if_valid: bool = False) -> str:
         """
         Search for a marketplace_url file that matches a folder name in a given folder.
         :param folder: name to search for.
@@ -516,7 +514,7 @@ class UEVMGui(tk.Tk):
         :return: the marketplace_url found in the file or an empty string if not found.
         """
 
-        def read_from_url_file(entry, folder_name, returned_urls: [str]) -> bool:
+        def read_from_url_file(entry, folder_name: str, returned_urls: [str]) -> bool:
             """
             Read an url from a .url file and add it to the list of urls to return.
             :param entry: the entry to process.
@@ -574,7 +572,7 @@ class UEVMGui(tk.Tk):
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
 
         pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False, show_stop_button_l=True)
-
+        data_table = self.editable_table  # shortcut
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
             full_folder_abs = os.path.abspath(full_folder)
@@ -702,7 +700,7 @@ class UEVMGui(tk.Tk):
             self.core.scan_assets_logger.info(msg)
         date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
-        data = self.editable_table.get_data()  # get_data checked
+        data = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         count = len(valid_folders.items())
         pw.reset(new_text='Scraping data and adding assets to the table', new_max_value=count)
         pw.show_progress_bar()
@@ -724,21 +722,22 @@ class UEVMGui(tk.Tk):
                     'Added manually': True,
                 }
             )
-            row_index = -1
+            row_number = -1
             try:
                 # get the indexes if value already exists in column 'Origin' for a pandastable
                 rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
-                row_indexes = rows_serie.index
+                row_indexes = rows_serie.index  # TODO: check if these are real indexes or a row numbers
+                # if it s a real indexes, need to get a row number
                 if len(row_indexes) > 0:
-                    row_index = row_indexes[0]
-                    gui_f.log_info(f"An existing row at index {row_index} has been found with path {content['path']}")
+                    row_number = row_indexes[0]
+                    gui_f.log_info(f"An existing row #{row_number} has been found with path {content['path']}")
             except (IndexError, ValueError) as error:
                 gui_f.log_warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
                 invalid_folders.append(content["path"])
                 continue
-            if row_index == -1:
-                self.editable_table.create_row(row_data=row_data, add_to_existing=True, do_not_save=True)
-                row_index = 0  # added at the start of the table. As it, the index is always known
+            if row_number == -1:
+                data_table.create_row(row_data=row_data, do_not_save=True)
+                row_number = 0  # added at the start of the table. As it, the index is always known
                 row_added += 1
             forced_data = {
                 # 'category': content['asset_type'].category_name,
@@ -748,16 +747,17 @@ class UEVMGui(tk.Tk):
                 'added_manually': True,
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
-                self.scrap_row(marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False)
+                self.scrap_row(marketplace_url=marketplace_url, row_number=row_number, forced_data=forced_data, show_message=False)
             else:
-                self.editable_table.update_row(row_index=row_index, ue_asset_data=forced_data)
-                self.editable_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
+                data_table.update_row(row_number=row_number, ue_asset_data=forced_data)
+                idx = data_table.get_real_index(row_number)  # TODO: check if idx must be 0 if the row is created
+                data_table.add_to_rows_to_save(idx)  # done inside self.must_save = True
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
-        # self.editable_table.update_page()
-        self.editable_table.resize_columns()
+        # data_table.update_page()
+        data_table.resize_columns()
         gui_f.close_progress(self)
 
         if invalid_folders:
@@ -768,7 +768,7 @@ class UEVMGui(tk.Tk):
                 gui_g.display_content_window_ref.display(result)
             gui_f.log_warning(result)
 
-    def _scrap_from_url(self, marketplace_url: str, forced_data=None, show_message=False):
+    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False):
         asset_data = None
         # check if the marketplace_url is a marketplace marketplace_url
         ue_marketplace_url = self.core.egs.get_marketplace_product_url()
@@ -806,11 +806,11 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(msg)
         return asset_data
 
-    def scrap_row(self, marketplace_url: str = None, row_index: int = None, forced_data=None, show_message=True):
+    def scrap_row(self, marketplace_url: str = None, row_number: int = None, forced_data: {} = None, show_message: bool = True):
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param row_index: row index to scrap.
+        :param row_number: row number from a datatable. Will be converted into real row index.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
         :param show_message: if True, show a message if the marketplace_url is not valid
         """
@@ -818,14 +818,14 @@ class UEVMGui(tk.Tk):
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
+        data_table = self.editable_table  # shortcut
+        row_numbers = data_table.multiplerowlist
 
-        row_indexes = self.editable_table.multiplerowlist
-
-        if marketplace_url is None and row_indexes is None and len(row_indexes) < 1:
+        if marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
                 gui_f.box_message('You must select a row first')
             return
-        row_count = len(row_indexes)
+        row_count = len(row_numbers)
         pw = None
         if marketplace_url is None:
             base_text = 'Scraping assets data. Could take a while...'
@@ -833,9 +833,9 @@ class UEVMGui(tk.Tk):
                 pw = gui_f.show_progress(
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_stop_button_l=True
                 )
-            for row_index in row_indexes:
-                row_index: int = self.editable_table.get_row_index_with_offset(row_index)
-                row_data = self.editable_table.get_row(row_index, return_as_dict=True)
+            for row_number in row_numbers:
+                idx = data_table.get_real_index(row_number)
+                row_data = data_table.get_row(idx, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 asset_slug_from_row = row_data['Asset slug']
@@ -846,26 +846,26 @@ class UEVMGui(tk.Tk):
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
                     if gui_f.box_yesno(f'{msg}.\nDo you wan to recreate the Url from the Asset slug and use it for scraping ?'):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
-                        col_index = self.editable_table.get_col_index('Url')
-                        self.editable_table.update_cell(row_index, col_index, marketplace_url)
-                text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
+                        col_index = data_table.get_col_index('Url')
+                        data_table.update_cell(row_number, col_index, marketplace_url)
+                text = base_text + f'\n Row {row_number}: scraping {gui_fn.shorten_text(marketplace_url)}'
                 if pw and not pw.update_and_continue(increment=1, text=text):
                     gui_f.close_progress(self)
                     return
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
-                    self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
+                    data_table.update_row(row_number, ue_asset_data=asset_data)
                     if show_message and row_count == 1:
-                        gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
+                        gui_f.box_message(f'Data for row {row_number} have been updated from the marketplace')
 
             gui_f.close_progress(self)
             if show_message and row_count > 1:
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-            self.editable_table.update_row(row_index=row_index, ue_asset_data=asset_data)
+            data_table.update_row(row_number, ue_asset_data=asset_data)
 
-    def load_filters(self, filters=None):
+    def load_filters(self, filters: {} = None):
         """
         Load the filters from a dictionary.
         :param filters: filters.
@@ -878,17 +878,18 @@ class UEVMGui(tk.Tk):
         except Exception as error:
             gui_f.log_error(f'Error loading filters: {error!r}')
 
-    def toggle_pagination(self, forced_value=None) -> None:
+    def toggle_pagination(self, forced_value: bool = None) -> None:
         """
         Toggle pagination. Will change the navigation buttons states when pagination is changed.
         :param forced_value: if not None, will force the pagination to the given value.
         """
+        data_table = self.editable_table  # shortcut
         if forced_value is not None:
-            self.editable_table.pagination_enabled = forced_value
+            data_table.pagination_enabled = forced_value
         else:
-            self.editable_table.pagination_enabled = not self.editable_table.pagination_enabled
-        self.editable_table.update_page()
-        if not self.editable_table.pagination_enabled:
+            data_table.pagination_enabled = not data_table.pagination_enabled
+        data_table.update_page()
+        if not data_table.pagination_enabled:
             self._toolbar_frame.btn_toggle_pagination.config(text='Enable  Pagination')
         else:
             self._toolbar_frame.btn_toggle_pagination.config(text='Disable Pagination')
@@ -898,24 +899,26 @@ class UEVMGui(tk.Tk):
         """
         Show the first page of the table.
         """
-        if self.editable_table.pagination_enabled:
-            self.editable_table.first_page()
+        data_table = self.editable_table  # shortcut
+        if data_table.pagination_enabled:
+            data_table.first_page()
         else:
-            self.editable_table.move_to_row(0)
-            self.editable_table.yview_moveto(0)
-            self.editable_table.redrawVisible()
+            data_table.move_to_row(0)
+            data_table.yview_moveto(0)
+            data_table.redrawVisible()
         self.update_controls_and_redraw()
 
     def last_item(self) -> None:
         """
         Show the last page of the table.
         """
-        if self.editable_table.pagination_enabled:
-            self.editable_table.last_page()
+        data_table = self.editable_table  # shortcut
+        if data_table.pagination_enabled:
+            data_table.last_page()
         else:
-            self.editable_table.move_to_row(self.editable_table.current_count - 1)
-            self.editable_table.yview_moveto(1)
-            self.editable_table.redrawVisible()
+            data_table.move_to_row(len(data_table.get_data()) - 1)
+            data_table.yview_moveto(1)
+            data_table.redrawVisible()
         self.update_controls_and_redraw()
 
     def prev_page(self) -> None:
@@ -947,7 +950,7 @@ class UEVMGui(tk.Tk):
         self.update_controls_and_redraw()
 
     # noinspection DuplicatedCode
-    def toggle_actions_panel(self, force_showing=None) -> None:
+    def toggle_actions_panel(self, force_showing: bool = None) -> None:
         """
         Toggle the visibility of the Actions panel.
         :param force_showing: if True, will force showing the actions panel, if False, will force hiding it.If None, will toggle the visibility.
@@ -964,7 +967,7 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_toggle_options.config(state=tk.NORMAL)
 
     # noinspection DuplicatedCode
-    def toggle_options_panel(self, force_showing=None) -> None:
+    def toggle_options_panel(self, force_showing: bool = None) -> None:
         """
         Toggle the visibility of the Options panel.
         :param force_showing: if True, will force showing the options panel, if False, will force hiding it.If None, will toggle the visibility.
@@ -981,7 +984,7 @@ class UEVMGui(tk.Tk):
             self._toolbar_frame.btn_toggle_options.config(text='Show Options')
             self._toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
 
-    def set_control_state(self, name: str, is_enabled) -> None:
+    def set_control_state(self, name: str, is_enabled: bool) -> None:
         """
         Enable or disable a control.
         :param name: name of the control.
@@ -1020,49 +1023,49 @@ class UEVMGui(tk.Tk):
         for key in self.controls.keys():
             self.enable_control(key)
 
+        data_table = self.editable_table  # shortcut
         # Disable some buttons if needed
+        current_index = data_table.getSelectedRow()
+        max_index = len(data_table.get_data())
 
-        current_value = self.editable_table.getSelectedRow()
-        max_value = self.editable_table.current_count
-
-        if len(self.editable_table.multiplerowlist) < 1:
+        if len(data_table.multiplerowlist) < 1:
             self.disable_control('scrap')
             self.disable_control('del')
             self.disable_control('edit')
 
-        if not self.editable_table.must_save:
+        if not data_table.must_save:
             self.controls['save'].config(state=tk.DISABLED)
 
-        current_value = self.editable_table.get_row_index_with_offset(current_value)
-        if current_value <= 0:
+        current_index = data_table.add_page_offset(current_index)
+        if current_index <= 0:
             self.disable_control('prev_asset')
-        elif current_value >= max_value - 1:
+        elif current_index >= max_index - 1:
             self.disable_control('next_asset')
 
-        if not self.editable_table.pagination_enabled:
+        if not data_table.pagination_enabled:
             first_item_text = 'First Asset'
             last_item_text = 'Last Asset'
             self.disable_control('prev_page')
             self.disable_control('next_page')
-            if current_value <= 0:
+            if current_index <= 0:
                 self.disable_control('first_item')
-            if current_value >= max_value - 1:
+            if current_index >= max_index - 1:
                 self.disable_control('last_item')
         else:
-            current_value = self.editable_table.current_page
-            max_value = self.editable_table.total_pages
+            current_index = data_table.current_page
+            max_index = data_table.total_pages
             first_item_text = 'First Page'
             last_item_text = 'Last Page'
-            if current_value <= 1:
+            if current_index <= 1:
                 self.disable_control('first_item')
                 self.disable_control('prev_page')
-            if current_value >= max_value:
+            if current_index >= max_index:
                 self.disable_control('last_item')
                 self.disable_control('next_page')
 
         # Update entry_current_item_var and lbl_page_count
-        self._toolbar_frame.entry_current_item_var.set(current_value)
-        self._toolbar_frame.lbl_page_count.config(text=f' / {max_value}')
+        self._toolbar_frame.entry_current_item_var.set(current_index)
+        self._toolbar_frame.lbl_page_count.config(text=f' / {max_index}')
 
         # Update btn_first_item and btn_last_item text
         self._toolbar_frame.btn_first_item.config(text=first_item_text)
@@ -1080,32 +1083,36 @@ class UEVMGui(tk.Tk):
         Update the category variable with the current categories in the data.
         :return: a dict with the new categories list as value and the key is the name of the variable.
         """
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-            categories = list(self.editable_table.get_data()['Category'].cat.categories)  # get_data checked
+            categories = list(df['Category'].cat.categories)
         except (AttributeError, TypeError, KeyError):
             categories = []
         categories.insert(0, gui_g.s.default_value_for_all)
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
-            grab_results = list(self.editable_table.get_data()['Grab result'].cat.categories)  # get_data checked
+            grab_results = list(df['Grab result'].cat.categories)
         except (AttributeError, TypeError, KeyError):
             grab_results = []
         grab_results.insert(0, gui_g.s.default_value_for_all)
         return {'categories': categories, 'grab_results': grab_results}
 
-    def update_rows_text(self, row_index=None):
+    def update_rows_text(self, row_number: int = -1):
         """
         Set the text to display in the preview frame about the number of rows.
+        :param row_number: row number from a datatable. Will be converted into real row index.
         """
         if self._control_frame is None:
             return
-        row_count_filtered = self.editable_table.current_count
-        row_count = self.editable_table.data_count
-        row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered count | {row_count} rows count'
-        if row_index is not None:
-            row_offset = (self.editable_table.current_page - 1) * self.editable_table.rows_per_page + 1
-            self._control_frame.lbt_image_preview.config(text=f'Image Preview for row {row_index + row_offset} {row_text}')
+        data_table = self.editable_table  # shortcut
+        df_filtered = data_table.get_data(df_type=DataFrameUsed.FILTERED)
+        row_count_filtered = len(df_filtered) if df_filtered is not None else 0
+        row_count = len(data_table.get_data(df_type=DataFrameUsed.UNFILTERED))
+        row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered | {row_count} total'
+        if row_number >= 0:
+            idx = data_table.get_real_index(row_number)
+            self._control_frame.lbt_image_preview.config(text=f'Image Preview - Row Index {idx} {row_text}')
         else:
             self._control_frame.lbt_image_preview.config(text=f'No Image Preview {row_text}')
 
@@ -1113,15 +1120,16 @@ class UEVMGui(tk.Tk):
         """
         Reload the data from the data source.
         """
-        if not self.editable_table.must_save or (
-            self.editable_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
+        data_table = self.editable_table  # shortcut
+        if not data_table.must_save or (
+            data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
-            if self.editable_table.reload_data():
+            if data_table.reload_data():
                 # self.update_page_numbers() done in reload_data
                 self.update_category_var()
-                gui_f.box_message(f'Data Reloaded from {self.editable_table.data_source}')
+                gui_f.box_message(f'Data Reloaded from {data_table.data_source}')
             else:
-                gui_f.box_message(f'Failed to reload data from {self.editable_table.data_source}')
+                gui_f.box_message(f'Failed to reload data from {data_table.data_source}')
 
     def rebuild_data(self) -> None:
         """
@@ -1226,7 +1234,7 @@ class UEVMGui(tk.Tk):
         Create a mask to filter the data with tags that contains an integer.
         :return: a mask to filter the data.
         """
-        df = self.editable_table.get_data()
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         mask = df['Tags'].str.split(',').apply(lambda x: any(is_an_int(i) for i in x))
         return mask
 
@@ -1235,7 +1243,7 @@ class UEVMGui(tk.Tk):
         Create a mask to filter the data with tags that contains an integer.
         :return: a mask to filter the data.
         """
-        df = self.editable_table.get_data()
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         mask = df['Comment'].notnull() & df['Comment'].ne('') & df['Comment'].ne('None')  # not None and not empty string
         return mask
 
@@ -1245,7 +1253,7 @@ class UEVMGui(tk.Tk):
         Assets that custom attributes contains external_link are also filtered.
         :return: a mask to filter the data.
         """
-        df = self.editable_table.get_data()
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         # Ensure 'Discount price' and 'Price' are float type
         df['Discount price'] = df['Discount price'].astype(float)
         df['Price'] = df['Price'].astype(float)

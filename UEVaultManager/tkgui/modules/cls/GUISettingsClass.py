@@ -118,6 +118,7 @@ class GUISettings:
             'textcolor': 'black'  #
         }
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
+        self.index_copy_col_name = 'Index copy'  # name of the column that will be used to store the index in datatables. It will be added by default to the hidden columns list
 
     def _get_serialized(self, var_name: str = '', is_dict=False):
         """
@@ -133,9 +134,10 @@ class GUISettings:
             return default
         try:
             values = json.loads(json_str)
-            self._config_vars_deserialized[var_name] = values
         except json.decoder.JSONDecodeError:
+            log_info(f'Unable to decode json string for {var_name} in config file. Using default value')
             values = default
+        self._config_vars_deserialized[var_name] = values
         return values
 
     def _set_serialized(self, var_name: str = '', values=None):
@@ -363,6 +365,16 @@ class GUISettings:
     # used as property for keeping transparent access
     use_threads = property(get_use_threads, set_use_threads)
 
+    def get_hidden_column_names(self) -> list:
+        """ Getter for hidden_column_names """
+        return self._get_serialized('hidden_column_names')
+
+    def set_hidden_column_names(self, values):
+        """ Setter for hidden_column_names """
+        self._set_serialized('hidden_column_names', values)
+
+    hidden_column_names = property(get_hidden_column_names, set_hidden_column_names)
+
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
         Initialize the config file for the gui.
@@ -456,9 +468,10 @@ class GUISettings:
                 'comment': 'List of Folders to scan for assets. Their content will be added to the list',
                 'value': ''
             },
-            'column_infos': {
-                'comment': 'Infos about columns of the table. Automatically saved on quit. Leave empty for default',
-                'value': ''
+            'hidden_column_names': {
+                'comment':
+                'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
+                'value': ['Uid']
             },
             # minimal score required when looking for an url file comparing to an asset name.
             # some comparison are more fuzzy than others, so we can set a different score for each comparison
@@ -475,6 +488,10 @@ class GUISettings:
             'use_threads': {
                 'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
                 'value': 'True'
+            },
+            'column_infos': {
+                'comment': 'Infos about columns of the table. Automatically saved on quit. Leave empty for default',
+                'value': ''
             },
         }
 
@@ -520,6 +537,7 @@ class GUISettings:
             'column_infos': self.config.get('UEVaultManager', 'column_infos'),
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
             'use_threads': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_threads')),
+            'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
         }
         return config_vars
 

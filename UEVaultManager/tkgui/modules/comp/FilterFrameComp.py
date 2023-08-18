@@ -311,7 +311,7 @@ class FilterFrame(ttk.LabelFrame):
         self._add_to_filters()
         # self._update_filter_widgets()
         self.update_controls()
-        self.update_func(reset_page=True)
+        self.update_func(reset_page=True, keep_filters=False)
 
     def reset_filters(self) -> None:
         """
@@ -325,7 +325,7 @@ class FilterFrame(ttk.LabelFrame):
             self.filter_widget.delete(0, 'end')
         self._filters = {}
         self._update_filter_widgets()
-        self.update_func(reset_page=True)
+        self.update_func(reset_page=True, keep_filters=False)
 
     def view_filters(self) -> None:
         """
@@ -347,7 +347,7 @@ class FilterFrame(ttk.LabelFrame):
             store_filters = self._filters.copy()
             str_type = type(quick_filter[1]).__name__
             self._filters = {quick_filter[0]: (str_type, quick_filter[1])}
-            self.update_func()
+            self.update_func(reset_page=True, keep_filters=False)
             self._filters = store_filters
 
     def load_filters(self, filters: Dict[str, Tuple[type, Any]]) -> None:
@@ -359,4 +359,4 @@ class FilterFrame(ttk.LabelFrame):
             return
         self._filters = filters.copy()
         self._update_filter_widgets()
-        self.update_func()
+        self.update_func(reset_page=True, keep_filters=False)
