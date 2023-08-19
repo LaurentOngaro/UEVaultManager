@@ -821,7 +821,7 @@ class UEVMGui(tk.Tk):
                 egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
             )
             scraper.get_data_from_url(api_product_url)
-            asset_data = scraper.scraped_data.pop()  # returns a list of one element
+            asset_data = scraper.pop_last_scrapped_data()  # returns a list of one element
             if forced_data is not None:
                 for key, value in forced_data.items():
                     asset_data[0][key] = value

@@ -12,6 +12,7 @@ import sqlite3
 
 from faker import Faker
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, CSVFieldState
 from UEVaultManager.models.types import DbVersionNum
@@ -31,7 +32,7 @@ class UEAssetDbHandler:
     Note: The database will be created if it doesn't exist.
     """
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     db_version: DbVersionNum = DbVersionNum.V0  # updated in check_and_upgrade_database()
     connection = None
 
