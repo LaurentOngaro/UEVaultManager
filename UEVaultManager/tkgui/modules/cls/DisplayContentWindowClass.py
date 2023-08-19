@@ -43,10 +43,23 @@ class DisplayContentWindow(tk.Toplevel):
         self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
+        self.bind('<Tab>', self._focus_next_widget)
+        self.bind('<Control-Tab>', self._focus_next_widget)
+        self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         gui_g.display_content_window_ref = self
+
+    @staticmethod
+    def _focus_next_widget(event):
+        event.widget.tk_focusNext().focus()
+        return 'break'
+
+    @staticmethod
+    def _focus_prev_widget(event):
+        event.widget.tk_focusPrev().focus()
+        return 'break'
 
     class ContentFrame(ttk.Frame):
         """
@@ -82,17 +95,22 @@ class DisplayContentWindow(tk.Toplevel):
             # noinspection PyArgumentList
             ttk.Button(lblf_commands, text='Clean content', command=container.clean).pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
-            ttk.Button(lblf_commands, text='Save To File', command=container.save_to_file).pack(**pack_def_options, side=tk.LEFT)
+            ttk.Button(lblf_commands, text='Save To File', command=container.save_changes).pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             ttk.Button(lblf_commands, text='Close', command=container.on_close, bootstyle=WARNING).pack(**pack_def_options, side=tk.RIGHT)
 
-    def on_key_press(self, event) -> None:
+    # noinspection DuplicatedCode
+    def on_key_press(self, event):
         """
-        Event when a key is pressed.
-        :param event: the event that triggered the call of this function.
-        """
+                Event when a key is pressed.
+                :param event: the event that triggered the call of this function.
+                """
+        control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             self.on_close()
+        elif control_pressed and (event.keysym == 's' or event.keysym == 'S'):
+            self.save_changes()
+        return 'break'
 
     def on_close(self, _event=None) -> None:
         """
@@ -132,7 +150,7 @@ class DisplayContentWindow(tk.Toplevel):
         """
         self.content_frame.text_content.delete('1.0', tk.END)
 
-    def save_to_file(self) -> str:
+    def save_changes(self) -> str:
         """
         Save the content displayed to a file.
         """

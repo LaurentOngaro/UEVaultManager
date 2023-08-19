@@ -43,10 +43,23 @@ class EditCellWindow(tk.Toplevel):
         self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
+        self.bind('<Tab>', self._focus_next_widget)
+        self.bind('<Control-Tab>', self._focus_next_widget)
+        self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         gui_g.edit_cell_window_ref = self
+
+    @staticmethod
+    def _focus_next_widget(event):
+        event.widget.tk_focusNext().focus()
+        return 'break'
+
+    @staticmethod
+    def _focus_prev_widget(event):
+        event.widget.tk_focusPrev().focus()
+        return 'break'
 
     class ContentFrame(ttk.Frame):
         """
@@ -69,7 +82,7 @@ class EditCellWindow(tk.Toplevel):
             # (bootstyle is not recognized by PyCharm)
             ttk.Label(self, text='Respect the initial format when changing a value').grid(row=0, column=0, columnspan=2, **grid_def_options)
             # noinspection PyArgumentList
-            ttk.Button(self, text='Save Changes', command=container.save_change, bootstyle=INFO).grid(row=1, column=0, **grid_def_options)
+            ttk.Button(self, text='Save Changes', command=container.save_changes, bootstyle=INFO).grid(row=1, column=0, **grid_def_options)
             # noinspection PyArgumentList
             ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING).grid(row=1, column=1, **grid_def_options)
             self.columnconfigure('all', weight=1)
@@ -96,8 +109,8 @@ class EditCellWindow(tk.Toplevel):
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             self.on_close()
-        elif control_pressed and (event.keysym == 's'):
-            self.save_change()
+        elif control_pressed and (event.keysym == 's' or event.keysym == 'S'):
+            self.save_changes()
         return 'break'
 
     def on_close(self, _event=None) -> None:
@@ -106,11 +119,11 @@ class EditCellWindow(tk.Toplevel):
         :param _event: the event that triggered the call of this function.
         """
         current_values = self.editable_table.get_edit_cell_values()
-        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changes()
+        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
         self.must_save = current_values and self.initial_values != current_values
         if self.must_save:
             if gui_f.box_yesno('Changes have been made in the window. Do you want to keep them ?'):
-                self.save_change()
+                self.save_changes()
         self.close_window()
 
     def close_window(self) -> None:
@@ -121,7 +134,7 @@ class EditCellWindow(tk.Toplevel):
         self.editable_table.reset_style()
         self.destroy()
 
-    def save_change(self) -> None:
+    def save_changes(self) -> None:
         """
         Save the changes made in the window  (Wrapper).
         """

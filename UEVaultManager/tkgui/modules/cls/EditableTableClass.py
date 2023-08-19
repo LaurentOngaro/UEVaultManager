@@ -110,22 +110,16 @@ class EditableTable(Table):
         """
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
-        if event.keysym == 'Return':
-            if control_pressed:
-                self.create_edit_row_window(event)
-            else:
-                self.create_edit_cell_window(event)
-            return 'break'
-        elif event.keysym == 'Right' and control_pressed:
+        if control_pressed and event.keysym == 'Right':
             self.next_page()
             return 'break'
-        elif event.keysym == 'Left' and control_pressed:
+        elif control_pressed and event.keysym == 'Left':
             self.prev_page()
             return 'break'
-        elif event.keysym == 'Up' and control_pressed:
+        elif control_pressed and event.keysym == 'Up':
             self.prev_row()
             return 'break'
-        elif event.keysym == 'Down' and control_pressed:
+        elif control_pressed and event.keysym == 'Down':
             self.next_row()
             return 'break'
         super().handle_arrow_keys(event)
@@ -1145,7 +1139,7 @@ class EditableTable(Table):
         except KeyError:
             return -1
 
-    def get_cell(self, row_number: int, col_index: int):
+    def get_cell(self, row_number: int = -1, col_index: int = -1):
         """
         Return the value of the cell at the specified row and column from the FILTERED or UNFILTERED data
         :param row_number: row number from a datatable. Will be converted into real row index.
@@ -1161,7 +1155,7 @@ class EditableTable(Table):
         except IndexError:
             return None
 
-    def update_cell(self, row_number: int, col_index: int, value) -> bool:
+    def update_cell(self, row_number: int = -1, col_index: int = -1, value=None) -> bool:
         """
         Update the value of the cell at the specified row and column from the FILTERED or UNFILTERED data.
         :param row_number: row number from a datatable. Will be converted into real row index.
@@ -1169,7 +1163,7 @@ class EditableTable(Table):
         :param value: the new value of the cell.
         :return: True if the cell was updated, False otherwise.
         """
-        if row_number < 0 or col_index < 0:
+        if row_number < 0 or col_index < 0 or value is None:
             return False
         try:
             idx = self.get_real_index(row_number)
@@ -1347,6 +1341,8 @@ class EditableTable(Table):
             widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
             widget.set_content(cell_value_str)
             widget.focus_set()
+            widget.tag_add('sel', '1.0', tk.END)  # select the content
+
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
         elif is_from_type(col_name, [CSVFieldType.BOOL]):
             widget = ExtendedCheckButton(edit_cell_window.content_frame, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
@@ -1356,6 +1352,7 @@ class EditableTable(Table):
             widget = ExtendedEntry(edit_cell_window.content_frame, tag=col_name)
             widget.insert(0, cell_value_str)
             widget.focus_set()
+            widget.selection_range(0, tk.END)  # select the content
 
         widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self._edit_cell_widget = widget

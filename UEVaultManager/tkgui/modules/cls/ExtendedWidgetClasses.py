@@ -33,6 +33,7 @@ class ExtendedWidget:
         self.col: int = col
         self.row: int = row
         self.default_content = default_content if default_content is not None else self.tag_to_label(tag)
+
         # can't call this here because the set_content function is specific and overridden in the derived classes
         # self.reset_content()
 

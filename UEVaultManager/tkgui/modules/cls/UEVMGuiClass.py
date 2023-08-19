@@ -143,6 +143,9 @@ class UEVMGui(tk.Tk):
         # not displayed at start
         # _options_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
 
+        self.bind('<Tab>', self._focus_next_widget)
+        self.bind('<Control-Tab>', self._focus_next_widget)
+        self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
         # Bind the table to the mouse motion event
         data_table.bind('<Motion>', self.on_mouse_over_cell)
@@ -205,6 +208,16 @@ class UEVMGui(tk.Tk):
         self.tk.mainloop(n)
         gui_f.log_info(f'ending mainloop in {__name__}')
 
+    @staticmethod
+    def _focus_next_widget(event):
+        event.widget.tk_focusNext().focus()
+        return 'break'
+
+    @staticmethod
+    def _focus_prev_widget(event):
+        event.widget.tk_focusPrev().focus()
+        return 'break'
+    
     def _open_file_dialog(self, save_mode: bool = False, filename: str = None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
@@ -264,10 +277,11 @@ class UEVMGui(tk.Tk):
         :param event:
         """
         # Note: this event will be triggered AFTER the event in the editabletable
-
+        # print(event.keysym)
         # shift_pressed = event.state == 1 or event.state & 0x00001 != 0
         # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
-        # control_pressed = event.state == 4 or event.state & 0x00004 != 0
+        # 4ere touches du clavier: ampersand eacute quotedbl apostrophe
+        control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             if gui_g.edit_cell_window_ref:
                 gui_g.edit_cell_window_ref.on_close()
@@ -277,6 +291,14 @@ class UEVMGui(tk.Tk):
                 gui_g.edit_row_window_ref = None
             else:
                 self.on_close()
+        elif control_pressed and (event.keysym == 's' or event.keysym == 'S'):
+            self.save_changes()
+        elif control_pressed and (event.keysym == '1' or event.keysym == 'ampersand'):
+            self.editable_table.create_edit_cell_window(event)
+        elif control_pressed and (event.keysym == '2' or event.keysym == 'eacute'):
+            self.editable_table.create_edit_row_window(event)
+        return 'break'
+
         # return 'break'  # stop event propagation
 
     def on_mouse_over_cell(self, event=None) -> None:
@@ -356,7 +378,7 @@ class UEVMGui(tk.Tk):
         :param tag: tag of the widget that triggered the event.
         """
         value, widget = self._check_and_get_widget_value(tag)
-        if widget:
+        if widget and widget.row and widget.col:
             self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
@@ -391,7 +413,7 @@ class UEVMGui(tk.Tk):
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
-                self.save_all(show_dialog=False)  # will save the settings too
+                self.save_changes(show_dialog=False)  # will save the settings too
         self.close_window()  # will save the settings too
 
     def close_window(self) -> None:
@@ -449,7 +471,7 @@ class UEVMGui(tk.Tk):
             else:
                 gui_f.box_message('Operation cancelled')
 
-    def save_all(self, show_dialog: bool = True) -> str:
+    def save_changes(self, show_dialog: bool = True) -> str:
         """
         Save the data to the current data source.
         :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file.
