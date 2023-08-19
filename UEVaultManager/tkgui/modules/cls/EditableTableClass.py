@@ -56,7 +56,7 @@ class EditableTable(Table):
     _edit_cell_row_number: int = -1
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     model: TableModel = None  # setup in table.__init__
     df_unfiltered: pd.DataFrame = None  # unfiltered dataframe (default)

@@ -74,7 +74,7 @@ class UEAssetScraper:
     _scraped_ids = []  # store IDs of all items
     _owned_asset_ids = []  # store IDs of all owned items
     _urls = []  # list of all urls to scrap
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     thread_executor_must_stop: bool = False
 

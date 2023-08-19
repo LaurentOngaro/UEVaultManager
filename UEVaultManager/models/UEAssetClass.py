@@ -13,7 +13,7 @@ class UEAsset:
     A class to represent an Unreal Engine asset. With the EGS data and user data.
     :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete.
     """
-    # unused logger = logging.getLogger(__name__)
+    # unused logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     # unused logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     data = {}
 

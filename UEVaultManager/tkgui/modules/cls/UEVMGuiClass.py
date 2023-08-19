@@ -217,7 +217,7 @@ class UEVMGui(tk.Tk):
     def _focus_prev_widget(event):
         event.widget.tk_focusPrev().focus()
         return 'break'
-    
+
     def _open_file_dialog(self, save_mode: bool = False, filename: str = None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.

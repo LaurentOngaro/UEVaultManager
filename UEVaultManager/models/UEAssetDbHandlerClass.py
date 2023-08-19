@@ -31,7 +31,7 @@ class UEAssetDbHandler:
 
     Note: The database will be created if it doesn't exist.
     """
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     db_version: DbVersionNum = DbVersionNum.V0  # updated in check_and_upgrade_database()
     connection = None
