@@ -8,6 +8,15 @@ Definition for the types used in this module:
 from enum import Enum
 
 
+class DataFrameUsed(Enum):
+    """ Enum to represent the data frame used for getting or setting the data"""
+    AUTO = 0  # Automatically select the data frame wether it is filtered or not
+    UNFILTERED = 1  # Use the data frame with unfiltered data
+    FILTERED = 2  # Use the data frame with filtered data
+    MODEL = 3  # Use the model.df.
+    BOTH = 4  # Use both data frames
+
+
 class UEAssetType(Enum):
     """ Enum to represent the asset type """
     Unknown = 0

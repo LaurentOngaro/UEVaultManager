@@ -95,7 +95,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             'Save': {
                 'text': '',  # if empty, the key of the dict will be used
                 'widget': None,  # add in the loop bellow
-                'command': container.save_all
+                'command': container.save_changes
             },  #
             'Export': {
                 'text': '',  # if empty, the key of the dict will be used
