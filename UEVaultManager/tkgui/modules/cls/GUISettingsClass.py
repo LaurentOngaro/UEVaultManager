@@ -135,7 +135,7 @@ class GUISettings:
         try:
             values = json.loads(json_str)
         except json.decoder.JSONDecodeError:
-            log_info(f'Unable to decode json string for {var_name} in config file. Using default value')
+            log_info(f'Failed to decode json string for {var_name} in config file. Using default value')
             values = default
         self._config_vars_deserialized[var_name] = values
         return values
@@ -399,7 +399,7 @@ class GUISettings:
         try:
             self.config.read(self.config_file_gui)
         except Exception as error:
-            log_info(f'Unable to read configuration file, please ensure that file is valid!:Error: {error!r}')
+            log_info(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
             log_info('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {

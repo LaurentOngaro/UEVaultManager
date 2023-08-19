@@ -620,7 +620,7 @@ class EditableTable(Table):
                     asset_id = ue_asset.data.get('asset_id', '')
                     self.logger.info(f'UE_asset ({asset_id}) for row #{row_number} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
-                    self.logger.warning(f'Unable to save UE_asset for row #{row_number} to the database. Error: {error!r}')
+                    self.logger.warning(f'Failed to save UE_asset for row #{row_number} to the database. Error: {error!r}')
             for asset_id in self._deleted_asset_ids:
                 try:
                     # delete the row in the database
@@ -629,7 +629,7 @@ class EditableTable(Table):
                     self._db_handler.delete_asset(asset_id=asset_id)
                     self.logger.info(f'row with asset_id={asset_id} has been deleted from the database')
                 except (KeyError, ValueError, AttributeError) as error:
-                    self.logger.warning(f'Unable to delete asset_id={asset_id} to the database. Error: {error!r}')
+                    self.logger.warning(f'Failed to delete asset_id={asset_id} to the database. Error: {error!r}')
 
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
@@ -1092,18 +1092,20 @@ class EditableTable(Table):
             self.logger.warning(f'Could not get row {row_index} from the table data')
             return None
 
-    def update_row(self, row_number: int, ue_asset_data: dict) -> None:
+    def update_row(self, row_number: int, ue_asset_data: dict,convert_row_number_to_row_index:bool=False) -> None:
         """
         Update the row with the data from ue_asset_data
         :param row_number: row number from a datatable. Will be converted into real row index.
         :param ue_asset_data: the data to update the row with
+        :param convert_row_number_to_row_index: set to True to convert the row_number to a row index
         """
         if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
             return
         if isinstance(ue_asset_data, list):
             ue_asset_data = ue_asset_data[0]
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'))
-        self.logger.info(f'Updating row {row_number} with asset_id={asset_id}')
+        text=f'row #{row_number}' if convert_row_number_to_row_index else f'row {row_number}'
+        self.logger.info(f'Updating {text} with asset_id={asset_id}')
         for key, value in ue_asset_data.items():
             typed_value = get_typed_value(sql_field=key, value=value)
             # get the column index of the key
@@ -1113,8 +1115,8 @@ class EditableTable(Table):
             if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
-            if col_index >= 0 and not self.update_cell(row_number, col_index, typed_value):
-                self.logger.warning(f'Failed to update cell ({row_number}, {col_name}) value')
+            if col_index >= 0 and not self.update_cell(row_number, col_index, typed_value,convert_row_number_to_row_index):
+                self.logger.warning(f'Failed to update {text}')
                 continue
         self.update_page()
 
@@ -1296,7 +1298,7 @@ class EditableTable(Table):
                 pass
             col_index = self.get_col_index(col_name)
             if not self.update_cell(row_number, col_index, typed_value):
-                self.logger.warning(f'Failed to update the cell ({row_number}, {col_index}) value')
+                self.logger.warning(f'Failed to update the row #{row_number}')
                 continue
         self._edit_row_entries = None
         self._edit_row_number = -1
@@ -1393,7 +1395,7 @@ class EditableTable(Table):
                 # no strip method
                 pass
             if not self.update_cell(row_number, col_index, typed_value):
-                self.logger.warning(f'Failed to update the cell ({row_number}, {col_index}) value')
+                self.logger.warning(f'Failed to update the row #{row_number}')
                 return
             self._edit_cell_widget = None
             self._edit_cell_row_number = -1
@@ -1464,14 +1466,14 @@ class EditableTable(Table):
             return
         try:
             if not self.update_cell(row_number, col_index, typed_value):
-                self.logger.warning(f'Failed to update the cell ({row_number}, {col_index}) value')
+                self.logger.warning(f'Failed to update the row #{row_number}')
                 return
             idx = self.get_real_index(row_number)
             self.add_to_rows_to_save(idx)  # self.must_save = True is done inside
-            self.logger.debug(f'Save preview value {typed_value} at row_index={idx} col={col_index}')
+            self.logger.debug(f'Saved cell value {typed_value} at ({row_number},{col_index})')
             self.update()  # this call will copy the changes to model. df AND to self.filtered_df
         except IndexError:
-            self.logger.warning(f'Failed to save preview value {typed_value} at row={row_number} col={col_index}')
+            self.logger.warning(f'Failed to save cell value {typed_value} at ({row_number},{col_index})')
 
     def get_image_url(self, row_number: int = None) -> str:
         """
