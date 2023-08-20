@@ -34,7 +34,8 @@ from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.tkgui.modules.functions import custom_print, box_message, create_file_backup  # simplier way to use the custom_print function
+from UEVaultManager.tkgui.modules.functions import custom_print, box_message, create_file_backup, \
+    show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads, remove_command_argument
@@ -81,8 +82,9 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
     else:
         uewm_gui_exists = True
     force_refresh = True if args.force_refresh else False
-    window = ProgressWindow(
-        title='Updating Assets List',
+    pw = show_progress(
+        parent=gui_g.UEVM_gui_ref,
+        text='Updating Assets List',
         quit_on_close=not uewm_gui_exists,
         function=callback,
         function_parameters={
@@ -90,7 +92,7 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
             'force_refresh': force_refresh,
         }
     )
-    return uewm_gui_exists, window
+    return uewm_gui_exists, pw
 
 
 def init_display_window(logger=None) -> (bool, DisplayContentWindow):

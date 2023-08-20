@@ -188,6 +188,7 @@ class UEVMGui(tk.Tk):
             if self.open_file() == '':
                 gui_f.log_error('This application could not run without a file to read data from')
                 self.quit()
+        gui_f.show_progress(self, text='Initializing Data Table...')
         if gui_g.s.data_filters:
             self.load_filters(gui_g.s.data_filters)
         else:
@@ -195,6 +196,7 @@ class UEVMGui(tk.Tk):
         # Quick edit the first row
         # self.editable_table.update_quick_edit(0)
         show_option_fist = False  # debug_only
+        gui_f.close_progress(self)
         if show_option_fist:
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
@@ -461,14 +463,17 @@ class UEVMGui(tk.Tk):
         if filename and os.path.isfile(filename):
             data_table.data_source = filename
             if data_table.valid_source_type(filename):
+                gui_f.show_progress(self, text='Loading Data from file...')
                 if not data_table.read_data():
                     gui_f.box_message('Error when loading data')
+                    gui_f.close_progress(self)
                     return filename
                 data_table.current_page = 1
                 data_table.update(update_format=True)
                 self.update_controls_and_redraw()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
+                gui_f.close_progress(self)
                 return filename
             else:
                 gui_f.box_message('Operation cancelled')

@@ -92,6 +92,7 @@ class EditableTable(Table):
         self.update_page_numbers_func = update_page_numbers_func
         self.update_rows_text_func = update_rows_text_func
         self.set_control_state_func = set_control_state_func
+        show_progress(container, text='Loading Data from data source...')
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
         df_loaded = self.read_data()
@@ -104,6 +105,7 @@ class EditableTable(Table):
             self.resize_columns()
             self.set_defaults()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
+        close_progress(self)
 
     def handle_arrow_keys(self, event):
         """
@@ -447,7 +449,6 @@ class EditableTable(Table):
         Load data from the specified CSV file or database.
         :return: The data loaded from the file.
         """
-        show_progress(self, text='Loading Data from data source...')
         """
         if self.data_source is None or not os.path.isfile(self.data_source):
             self.logger.warning(f'File to read data from is not defined or not found: {self.data_source}')
@@ -492,10 +493,7 @@ class EditableTable(Table):
             # noinspection PyTypeChecker
             return None
         else:
-            # TODO: check if copy is needed, ensure that changes will also be made in the unfiltered dataframe by a further self.update call
-            # self.set_data(df.copy(), df_type=DataFrameUsed.UNFILTERED)
             self.total_pages = (data_count-1) // self.rows_per_page + 1
-            close_progress(self)
             return df
 
     def create_row(self, row_data=None, add_to_existing: bool = True, do_not_save: bool = False) -> pd.DataFrame:
@@ -587,7 +585,7 @@ class EditableTable(Table):
             self.must_save = True
             self.selectNone()
             self.update_index_copy_column()
-            self.redraw() # TODO: check if we need to self.update() instead to refresh all the datatables
+            self.redraw()  # TODO: check if we need to self.update() instead to refresh all the datatables
         return number_deleted > 0
 
     def save_data(self, source_type: DataSourceType = None) -> None:
@@ -642,11 +640,13 @@ class EditableTable(Table):
         Reload data from the CSV file and refreshes the table display.
         :return: True if the data has been loaded successfully, False otherwise.
         """
+        show_progress(self, text='Reloading Data from data source...')
         df_loaded = self.read_data()  # fill the UNFILTERED dataframe
         if df_loaded is None:
             return False
         self.set_data(df_loaded)
         self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
+        close_progress(self)
         return True
 
     def rebuild_data(self) -> bool:
@@ -654,7 +654,6 @@ class EditableTable(Table):
          Rebuild the data in the table.
          :return: True if the data was successfully rebuilt, False otherwise.
          """
-        pw = show_progress(self, 'Rebuilding Data from database...')
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
@@ -666,13 +665,16 @@ class EditableTable(Table):
             else:
                 gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
                 self.current_page = 1
+                show_progress(self, 'Rebuilding Data from file...')
                 df_loaded = self.read_data()
                 if df_loaded is None:
                     return False
                 self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)
                 self.update()  # this call will copy the changes to model. df AND to self.filtered_df
+                close_progress(self)
                 return True
         elif self.data_source_type == DataSourceType.SQLITE:
+            pw = show_progress(self, 'Rebuilding Data from database...')
             # we create the progress window here to avoid lots of imports in UEAssetScraper class
             max_threads = get_max_threads()
             owned_assets_only = False
@@ -710,13 +712,13 @@ class EditableTable(Table):
             self.current_page = 1
             df_loaded = self.read_data()
             if df_loaded is None:
+                close_progress(self)
                 return False
             self.set_data(df_loaded)
             self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
             close_progress(self)
             return True
         else:
-            close_progress(self)
             return False
 
     def gradient_color_cells(self, col_names: [] = None, cmap: str = 'sunset', alpha: float = 1) -> None:
@@ -886,6 +888,7 @@ class EditableTable(Table):
         """
         df = self.get_data()
         if update_format:
+            show_progress(self, text='Formating and converting DataTable...')
             self.set_data(self.set_columns_type(df))
             self.resize_columns()
         if reset_page:
@@ -1201,6 +1204,13 @@ class EditableTable(Table):
                 value = entry.get('1.0', tk.END)
             entries_values[key] = value
         return entries_values
+
+    def get_container(self) -> ttk.Frame:
+        """
+        Return the container of the table.
+        :return: The container of the table.
+        """
+        return self._container
 
     def create_edit_row_window(self, event=None) -> None:
         """
