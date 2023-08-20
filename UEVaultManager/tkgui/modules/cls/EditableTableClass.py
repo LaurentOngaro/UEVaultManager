@@ -407,24 +407,24 @@ class EditableTable(Table):
         self.setColPositions()
         self.redraw()
 
-    def add_page_offset(self, row_index: int = None, remove_offset: bool = False) -> int:
+    def add_page_offset(self, value: int = None, remove_offset: bool = False) -> int:
         """
         Return the "valid" row index depending on the context. It takes into account the pagination and the current page.
-        :param row_index: The row index to convert.
+        :param value: The value to add or remove offset to. It could be a row number or a row index. If None, the selected row number will be used.
         :param remove_offset: If True, the offset is removed from the row index. If False, the offset is added to the row index.
         :return: The row index with a correct offset.
         """
-        if row_index is None:
-            row_index = self.currentrow
+        if value is None:
+            value = self.currentrow
 
         if self.pagination_enabled:
             offset = self.rows_per_page * (self.current_page - 1)
             if remove_offset:
-                row_index -= offset
+                value -= offset
             else:
-                row_index += offset
+                value += offset
 
-        return row_index
+        return value
 
     def valid_source_type(self, filename: str) -> bool:
         """
@@ -587,6 +587,7 @@ class EditableTable(Table):
             self.must_save = True
             self.selectNone()
             self.update_index_copy_column()
+            self.redraw() # TODO: check if we need to self.update() instead to refresh all the datatables
         return number_deleted > 0
 
     def save_data(self, source_type: DataSourceType = None) -> None:
@@ -937,7 +938,7 @@ class EditableTable(Table):
     def move_to_row(self, row_index: int) -> None:
         """
         Navigate to the specified row in the table.
-        :param row_index: The index of the row to navigate to.
+        :param row_index: The (real) ndex of the row to navigate to.
         """
         self.setSelectedRow(row_index)
         self.redraw()
@@ -1045,7 +1046,7 @@ class EditableTable(Table):
     def add_to_rows_to_save(self, row_index: int) -> None:
         """
         Adds the specified row to the list of rows to save.
-        :param row_index: The index of the row to save.
+        :param row_index: The (real) index of the row to save.
         """
         if row_index < 0 or row_index > len(self.get_data()) or row_index in self._changed_rows:
             return
@@ -1077,7 +1078,7 @@ class EditableTable(Table):
     def get_row(self, row_index: int, return_as_dict: bool = False):
         """
         Return the row at the specified index.
-        :param row_index: row index. This value must be offsetted BEFORE if needed
+        :param row_index: The (real) index of the row to get.
         :param return_as_dict: Set to True to return the row as a dict
         :return: the row at the specified index.
         """
@@ -1092,19 +1093,19 @@ class EditableTable(Table):
             self.logger.warning(f'Could not get row {row_index} from the table data')
             return None
 
-    def update_row(self, row_number: int, ue_asset_data: dict,convert_row_number_to_row_index:bool=False) -> None:
+    def update_row(self, row_number: int, ue_asset_data: dict, convert_row_number_to_row_index: bool = False) -> None:
         """
         Update the row with the data from ue_asset_data
         :param row_number: row number from a datatable. Will be converted into real row index.
         :param ue_asset_data: the data to update the row with
-        :param convert_row_number_to_row_index: set to True to convert the row_number to a row index
+        :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value
         """
         if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
             return
         if isinstance(ue_asset_data, list):
             ue_asset_data = ue_asset_data[0]
-        asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'))
-        text=f'row #{row_number}' if convert_row_number_to_row_index else f'row {row_number}'
+        asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
+        text = f'row #{row_number}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         for key, value in ue_asset_data.items():
             typed_value = get_typed_value(sql_field=key, value=value)
@@ -1115,7 +1116,7 @@ class EditableTable(Table):
             if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
-            if col_index >= 0 and not self.update_cell(row_number, col_index, typed_value,convert_row_number_to_row_index):
+            if col_index >= 0 and not self.update_cell(row_number, col_index, typed_value, convert_row_number_to_row_index):
                 self.logger.warning(f'Failed to update {text}')
                 continue
         self.update_page()
@@ -1142,34 +1143,36 @@ class EditableTable(Table):
         except KeyError:
             return -1
 
-    def get_cell(self, row_number: int = -1, col_index: int = -1):
+    def get_cell(self, row_number: int = -1, col_index: int = -1, convert_row_number_to_row_index: bool = True):
         """
         Return the value of the cell at the specified row and column from the FILTERED or UNFILTERED data
-        :param row_number: row number from a datatable. Will be converted into real row index.
+        :param row_number: row number from a datatable. Will be converted into real row index if convert_row_number_to_row_index is set to True. Done by default.
         :param col_index: column index.
+        :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value.
         :return: the value of the cell or None if the row or column index is out of range.
         """
         if row_number < 0 or col_index < 0:
             return None
         try:
-            idx = self.get_real_index(row_number)
+            idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
             df = self.get_data(df_type=DataFrameUsed.UNFILTERED)  # always used the unfiltered because the real index is set from unfiltered dataframe
             return df.iat[idx, col_index]  # iat checked
         except IndexError:
             return None
 
-    def update_cell(self, row_number: int = -1, col_index: int = -1, value=None) -> bool:
+    def update_cell(self, row_number: int = -1, col_index: int = -1, value=None, convert_row_number_to_row_index: bool = True) -> bool:
         """
         Update the value of the cell at the specified row and column from the FILTERED or UNFILTERED data.
-        :param row_number: row number from a datatable. Will be converted into real row index.
-        :param col_index: column index or column name.
+        :param row_number: row number from a datatable. Will be converted into real row index if convert_row_number_to_row_index is set to True. Done by default.
+        :param col_index: column index.
         :param value: the new value of the cell.
+        :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value.
         :return: True if the cell was updated, False otherwise.
         """
         if row_number < 0 or col_index < 0 or value is None:
             return False
         try:
-            idx = self.get_real_index(row_number)
+            idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
             df = self.get_data(df_type=DataFrameUsed.UNFILTERED)  # always used the unfiltered because the real index is set from unfiltered dataframe
             df.iat[idx, col_index] = value  # iat checked
             return True

@@ -280,7 +280,7 @@ class UEVMGui(tk.Tk):
         # print(event.keysym)
         # shift_pressed = event.state == 1 or event.state & 0x00001 != 0
         # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
-        # 4ere touches du clavier: ampersand eacute quotedbl apostrophe
+        # 4th keys of (FRENCH) keyboard: ampersand eacute quotedbl apostrophe
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             if gui_g.edit_cell_window_ref:
@@ -297,6 +297,8 @@ class UEVMGui(tk.Tk):
             self.editable_table.create_edit_cell_window(event)
         elif control_pressed and (event.keysym == '2' or event.keysym == 'eacute'):
             self.editable_table.create_edit_row_window(event)
+        elif control_pressed and (event.keysym == '3' or event.keysym == 'quotedbl'):
+            self.scrap_row()
         return 'break'
 
         # return 'break'  # stop event propagation
@@ -749,22 +751,21 @@ class UEVMGui(tk.Tk):
                     'Added manually': True,
                 }
             )
-            row_number = -1
+            row_index = -1
             try:
                 # get the indexes if value already exists in column 'Origin' for a pandastable
                 rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
                 row_indexes = rows_serie.index  # TODO: check if these are real indexes or a row numbers
-                # if it s a real indexes, need to get a row number
                 if len(row_indexes) > 0:
-                    row_number = row_indexes[0]
-                    gui_f.log_info(f"An existing row #{row_number} has been found with path {content['path']}")
+                    row_index = row_indexes[0]
+                    gui_f.log_info(f"An existing row {row_index} has been found with path {content['path']}")
             except (IndexError, ValueError) as error:
                 gui_f.log_warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
                 invalid_folders.append(content["path"])
                 continue
-            if row_number == -1:
+            if row_index == -1:
                 data_table.create_row(row_data=row_data, do_not_save=True)
-                row_number = 0  # added at the start of the table. As it, the index is always known
+                row_index = 0  # added at the start of the table. As it, the index is always known
                 row_added += 1
             forced_data = {
                 # 'category': content['asset_type'].category_name,
@@ -774,16 +775,19 @@ class UEVMGui(tk.Tk):
                 'added_manually': True,
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
-                self.scrap_row(marketplace_url=marketplace_url, row_number=row_number, forced_data=forced_data, show_message=False)
+                self.scrap_row(
+                    marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
+                )
             else:
-                data_table.update_row(row_number=row_number, ue_asset_data=forced_data)
-                idx = data_table.get_real_index(row_number)  # TODO: check if idx must be 0 if the row is created
-                data_table.add_to_rows_to_save(idx)  # done inside self.must_save = True
+                data_table.update_row(
+                    row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False
+                )  # TODO: change update row to also use a row index
+                data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
-        # data_table.update_page()
+        data_table.update()
         data_table.resize_columns()
         gui_f.close_progress(self)
 
@@ -803,7 +807,7 @@ class UEVMGui(tk.Tk):
             # get the data from the marketplace marketplace_url
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if asset_data is None or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
-                msg = f'Unable to grab data from {marketplace_url}'
+                msg = f'Failed to grab data from {marketplace_url}'
                 gui_f.log_warning(msg)
                 if show_message:
                     gui_f.box_message(msg)
@@ -833,13 +837,16 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(msg)
         return asset_data
 
-    def scrap_row(self, marketplace_url: str = None, row_number: int = None, forced_data: {} = None, show_message: bool = True):
+    def scrap_row(
+        self, marketplace_url: str = None, row_index: int = -1, forced_data: {} = None, show_message: bool = True, update_dataframe: bool = True
+    ):
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param row_number: row number from a datatable. Will be converted into real row index.
+        :param row_index: the (real) index of the row to scrap.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
         :param show_message: if True, show a message if the marketplace_url is not valid
+        :param update_dataframe: if True, update the dataframe after scraping
         """
 
         if self.core is None:
@@ -847,21 +854,26 @@ class UEVMGui(tk.Tk):
             return
         data_table = self.editable_table  # shortcut
         row_numbers = data_table.multiplerowlist
-        if marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
+        if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
                 gui_f.box_message('You must select a row first')
             return
-        row_count = len(row_numbers)
+        if row_index >= 0:
+            # a row index has been given, we scrap only this row
+            row_indexes = [row_index]
+        else:
+            # convert row numbers to row indexes
+            row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
         pw = None
+        row_count = len(row_indexes)
         if marketplace_url is None:
             base_text = 'Scraping assets data. Could take a while...'
             if row_count > 1:
                 pw = gui_f.show_progress(
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_stop_button_l=True
                 )
-            for row_number in row_numbers:
-                idx = data_table.get_real_index(row_number)
-                row_data = data_table.get_row(idx, return_as_dict=True)
+            for row_index in row_indexes:
+                row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 asset_slug_from_row = row_data['Asset slug']
@@ -873,24 +885,25 @@ class UEVMGui(tk.Tk):
                     if gui_f.box_yesno(f'{msg}.\nDo you wan to recreate the Url from the Asset slug and use it for scraping ?'):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
-                        data_table.update_cell(row_number, col_index, marketplace_url)
-                text = base_text + f'\n Row {row_number}: scraping {gui_fn.shorten_text(marketplace_url)}'
+                        data_table.update_cell(row_index, col_index, marketplace_url, convert_row_number_to_row_index=False)
+                text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
                 if pw and not pw.update_and_continue(increment=1, text=text):
                     gui_f.close_progress(self)
                     return
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
-                    data_table.update_row(row_number, ue_asset_data=asset_data)
+                    data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                     if show_message and row_count == 1:
-                        gui_f.box_message(f'Data for row {row_number} have been updated from the marketplace')
+                        gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
 
             gui_f.close_progress(self)
             if show_message and row_count > 1:
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-            data_table.update_row(row_number, ue_asset_data=asset_data)
-        self.update()
+            data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+        if update_dataframe:
+            data_table.update()
 
     def load_filters(self, filters: {} = None):
         """
