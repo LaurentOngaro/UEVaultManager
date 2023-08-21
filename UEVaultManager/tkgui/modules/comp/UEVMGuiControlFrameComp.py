@@ -93,7 +93,7 @@ class UEVMGuiControlFrame(ttk.Frame):
                 'command': container.open_file
             },  #
             'Save': {
-                'text': '',  # if empty, the key of the dict will be used
+                'text': ' Save ',  # if empty, the key of the dict will be used
                 'widget': None,  # add in the loop bellow
                 'command': container.save_changes
             },  #

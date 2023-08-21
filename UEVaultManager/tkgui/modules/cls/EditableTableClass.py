@@ -57,7 +57,9 @@ class EditableTable(Table):
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
     _dftype_for_coloring = DataFrameUsed.UNFILTERED  # type of dataframe used for coloring
-    _is_scanning = False
+    _is_scanning = False  # True when a folders scan is in progress
+    _column_infos_stored = False  # used to see if column_infos has changed
+    is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     model: TableModel = None  # setup in table.__init__
@@ -114,6 +116,7 @@ class EditableTable(Table):
         """
         Handle arrow keys events.
         :param event: The event that triggered the function call.
+        Overrided to add new key bindings
         """
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
@@ -130,6 +133,34 @@ class EditableTable(Table):
             self.next_row()
             return 'break'
         super().handle_arrow_keys(event)
+
+    def on_header_drag(self, event):
+        """
+        Handle left mouse button release events.
+        :param event: The event that triggered the function call.
+        Overrided for handle columns reordering.
+        Just a placeholder for now.
+        """
+        # print("header drag")
+        self.colheader.handle_mouse_drag(event)  # mandatory to propagate the event in the col headers
+        self.is_header_dragged = True
+
+    def on_header_release(self, event):
+        """
+        Handle left mouse button release events.
+        :param event: The event that triggered the function call.
+        Overrided for handle columns reordering
+        Just a placeholder for now.
+        """
+        self.colheader.handle_left_release(event)  # mandatory to propagate the event in the col headers
+        # print(str(event.type))
+        # Check if the event is a button release
+        if str(event.type) == '5' and self.is_header_dragged:
+            # button is release after a drag in the col headers
+            self.is_header_dragged = False
+            # print("release")
+            # not usefull here because the columns are not reodered yet
+            # self.update_col_infos()
 
     def redraw(self, event=None, callback=None):
         """
@@ -211,7 +242,6 @@ class EditableTable(Table):
                 df.sort_values(by=colnames, inplace=True, ascending=ascending)
             except Exception as error:
                 self.logger.warning(f'Could not sort the columns. Error: {error!r}')
-
         self.update_index_copy_column()
         self.update()
         return
@@ -222,16 +252,6 @@ class EditableTable(Table):
         Overrided for debugging
         """
         super().tableChanged()
-
-    def moveColumns(self, names=None, pos='start'):
-        """
-        Move column(s) to start/end, used for large tables
-        :param names:
-        :param pos:
-        :return:
-        Overrided for debugging
-        """
-        super().moveColumns(names, pos)
 
     def _set_with_for_hidden_columns(self) -> None:
         """
@@ -293,6 +313,36 @@ class EditableTable(Table):
         # self.logger.debug("\nCOL TYPES AFTER CONVERSION\n")
         # df.info()  # direct print info
         return df
+
+    def get_col_infos(self) -> dict:
+        """
+        GHet the current column infos sorted
+        :return: The current column infos sorted by position.
+        Note that the config file is not saved here.
+        """
+        col_infos = {}
+        for index, col in enumerate(self.model.df.columns):  # df.model checked
+            col_infos[col] = {}
+            col_infos[col]['width'] = self.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
+            col_infos[col]['pos'] = index
+        sorted_cols_by_pos = dict(sorted(col_infos.items(), key=lambda item: item[1]['pos']))
+        if gui_g.s.index_copy_col_name not in sorted_cols_by_pos:
+            # add the index_copy column to sorted cols list at the last position if missing
+            sorted_cols_by_pos[gui_g.s.index_copy_col_name] = {'width': -1, 'pos': len(sorted_cols_by_pos)}
+        return sorted_cols_by_pos
+
+    def update_col_infos(self, updated_info: dict = None, apply_resize_cols: bool = True):
+        """
+        Update the column infos in the config file.
+        :param updated_info: The updated column infos.
+        :param apply_resize_cols: True to apply the new column width, False otherwise.
+        Note that the config file is not saved here.
+        """
+        if updated_info is None:
+            updated_info = self.get_col_infos()
+        gui_g.s.column_infos = updated_info
+        if apply_resize_cols:
+            self.resize_columns()
 
     def get_real_index(self, row_number: int, df_type: DataFrameUsed = DataFrameUsed.AUTO, add_page_offset: bool = True) -> int:
         """
@@ -371,13 +421,15 @@ class EditableTable(Table):
                 self.df_unfiltered = df
         elif df_type == DataFrameUsed.UNFILTERED:
             self.df_unfiltered = df
+            self.set_colors()
         elif df_type == DataFrameUsed.FILTERED:
             self.df_filtered = df
         elif df_type == DataFrameUsed.BOTH:
             self.df_unfiltered = df
             self.df_filtered = df
         elif df_type == DataFrameUsed.MODEL:
-            self.logger.error("The df_type parameter can't be DataFrameUsed.MODEL in that case. THIS MUST NOT OCCUR. Exiting App...")
+            self.model.df = df
+            # self.logger.error("The df_type parameter can't be DataFrameUsed.MODEL in that case. THIS MUST NOT OCCUR. Exiting App...")
             # previous line will quit the app
 
     def resize_columns(self) -> None:
@@ -401,8 +453,11 @@ class EditableTable(Table):
             else:
                 sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
                 keys_ordered = sorted_cols_by_pos.keys()
-            df = self.get_data(DataFrameUsed.UNFILTERED).reindex(columns=keys_ordered, fill_value='')  # reorder columns
+            # reorder columns
+            df = self.get_data(DataFrameUsed.UNFILTERED).reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.UNFILTERED)
+            df = self.get_data(DataFrameUsed.MODEL).reindex(columns=keys_ordered, fill_value='')
+            self.set_data(df, DataFrameUsed.MODEL)
             df = self.get_data(DataFrameUsed.FILTERED)
             if df is not None:
                 df.reindex(columns=keys_ordered, fill_value='')  # reorder columns
@@ -416,12 +471,8 @@ class EditableTable(Table):
                     width = int(info.get('width', -1))
                     if width > 0:
                         self.columnwidths[colname] = width
-                # col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
-                # for colname in col_list:
-                #     self.columnwidths[colname] = 2
             except KeyError:
                 self.logger.warning('Error when resizing the columns.')
-
         self._set_with_for_hidden_columns()
         self.setColPositions()
         self.redraw()
@@ -541,7 +592,7 @@ class EditableTable(Table):
             column_names = self._db_handler.get_columns_name_for_csv()
             try:
                 new_index = data_frame.index.max() + 1
-            except:
+            except ValueError:
                 new_index = len(data_frame) + 1
             table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
             try:
@@ -916,6 +967,7 @@ class EditableTable(Table):
         :param keep_filters: Whether to keep the current filters.
         :param update_format: Whether to update the table format.
         """
+        self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data()
         if reset_page:
             self.current_page = 1
@@ -934,14 +986,15 @@ class EditableTable(Table):
             show_progress(self, text='Formating and converting DataTable...')
             self.update_index_copy_column()
             self.set_data(self.set_columns_type(df))
-            self.resize_columns()
         self._filter_mask = mask
-        self.update_page()
+        self.update_page(keep_col_infos=True)
 
-    def update_page(self) -> None:
+    def update_page(self,keep_col_infos=False) -> None:
         """
         Update the page.
         """
+        if not keep_col_infos:
+            self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data(df_type=DataFrameUsed.AUTO)
         try:
             # self.model could be None before load_data is called
@@ -962,7 +1015,13 @@ class EditableTable(Table):
         self.model.df[gui_g.s.index_copy_col_name] = self.model.df.index
         if self.df_filtered is not None:
             self.df_filtered[gui_g.s.index_copy_col_name] = self.df_filtered.index
-        # self.redraw() # done in set_colors
+
+        new_cols_infos = self.get_col_infos()
+        if self._column_infos_stored != new_cols_infos:
+            self.update_col_infos(
+                updated_info=self._column_infos_stored, apply_resize_cols=True
+            )  # resize the columns using the data stored before the update
+
         self.set_colors()
         if self.update_page_numbers_func is not None:
             self.update_page_numbers_func()

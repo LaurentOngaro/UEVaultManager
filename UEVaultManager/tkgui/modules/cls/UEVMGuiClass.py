@@ -151,8 +151,13 @@ class UEVMGui(tk.Tk):
         data_table.bind('<Motion>', self.on_mouse_over_cell)
         data_table.bind('<Leave>', self.on_mouse_leave_cell)
         data_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
-        self.bind('<Button-1>', self.on_left_click)
+        # Bind mouse drag event on column header.
+        # THIS COULD NOT BE DONE IN THE CLASS __init__ METHOD because the widget is not yet created
+        data_table.colheader.bind('<B1-Motion>', self.on_header_drag)
+        data_table.colheader.bind('<ButtonRelease-1>', self.on_header_release)
+        data_table.showIndex = True
 
+        self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
         # List of controls for activating/deactivating them when needed
@@ -412,6 +417,21 @@ class UEVMGui(tk.Tk):
             value = widget.switch_state(event=event)
             self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
+    def on_header_drag(self, event):
+        """
+        When the mouse is dragged on the header.
+        :param event: event that triggered the call.
+        """
+        self.editable_table.on_header_drag(event)
+
+    def on_header_release(self, event):
+        """
+        When the mouse is released on the header.
+        :param event: event that triggered the call.
+        """
+        self.editable_table.on_header_release(event)
+        self.enable_control('save')
+
     def on_close(self, _event=None) -> None:
         """
         When the window is closed, check if there are unsaved changes and ask the user if he wants to save them.
@@ -442,13 +462,7 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
-        column_infos = {}
-        for index, col in enumerate(data_table.model.df.columns):  # df.model checked
-            column_infos[col] = {}
-            column_infos[col]['width'] = data_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
-            column_infos[col]['pos'] = index
-        sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
-        gui_g.s.column_infos = sorted_cols_by_pos
+        data_table.update_col_infos()
         file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui)
         gui_g.s.save_config_file()
         # delete the backup if the files and the backup are identical
@@ -1039,10 +1053,13 @@ class UEVMGui(tk.Tk):
         """
         control = self.controls.get(name, None)
         if control is not None:
-            if is_enabled:
-                control.config(state=tk.NORMAL)
+            if name == 'save':
+                # the save buttons is always on. Only its text change
+                text = 'Save *' if is_enabled else 'Save  '
+                control.config(text=text)
             else:
-                control.config(state=tk.DISABLED)
+                state = tk.NORMAL if is_enabled else tk.DISABLED
+                control.config(state=state)
 
     def enable_control(self, name: str) -> None:
         """
@@ -1081,7 +1098,7 @@ class UEVMGui(tk.Tk):
             self.disable_control('edit')
 
         if not data_table.must_save:
-            self.controls['save'].config(state=tk.DISABLED)
+            self.disable_control('save')
 
         current_index = data_table.add_page_offset(current_index)
         if current_index <= 0:
@@ -1171,6 +1188,7 @@ class UEVMGui(tk.Tk):
         if not data_table.must_save or (
             data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
+            self.save_settings()  # save columns order and size
             if data_table.reload_data():
                 # self.update_page_numbers() done in reload_data
                 self.update_category_var()
@@ -1183,6 +1201,7 @@ class UEVMGui(tk.Tk):
         Rebuild the data from the data source. Will ask for confirmation before rebuilding.
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
+            self.save_settings()  # save columns order and size
             if self.editable_table.rebuild_data():
                 self.update_controls_and_redraw()
                 self.update_category_var()
