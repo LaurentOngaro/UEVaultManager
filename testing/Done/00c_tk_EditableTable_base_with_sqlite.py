@@ -7,7 +7,7 @@ import pandas as pd
 import sqlite3
 from pandastable import Table
 
-db_name = '../../scraping/assets.db'
+db_name = 'K:/UE/UEVM/scraping/assets.db'
 
 
 def columns_to_CSV_heading(word: str) -> str:
