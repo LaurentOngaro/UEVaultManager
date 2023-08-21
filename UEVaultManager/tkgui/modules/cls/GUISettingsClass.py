@@ -128,12 +128,16 @@ class GUISettings:
         """
         default = {} if is_dict else []
         if self._config_vars_deserialized.get(var_name, None) is not None:
-            return self._config_vars_deserialized[var_name]
-        json_str = self.config_vars[var_name]
-        if json_str == '':
+            # it could be a dict, a list a str to decode
+            read_value = self._config_vars_deserialized[var_name]
+        else:
+            read_value = self.config_vars[var_name]
+        if read_value == '':
             return default
+        if isinstance(read_value, dict) or isinstance(read_value, list):
+            return read_value
         try:
-            values = json.loads(json_str)
+            values = json.loads(read_value)
         except json.decoder.JSONDecodeError:
             log_info(f'Failed to decode json string for {var_name} in config file. Using default value')
             values = default
@@ -150,7 +154,7 @@ class GUISettings:
             json_str = ''
         else:
             json_str = json.dumps(values, skipkeys=True, allow_nan=True)
-        # self._config_vars_deserialized[var_name] = json_str
+        self._config_vars_deserialized[var_name] = json_str
         self.config_vars[var_name] = json_str
 
     def get_rows_per_page(self) -> int:
