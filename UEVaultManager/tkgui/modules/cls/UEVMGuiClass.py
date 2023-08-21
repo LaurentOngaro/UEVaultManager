@@ -527,13 +527,12 @@ class UEVMGui(tk.Tk):
         :param row_data: data to add to the row.
         """
         data_table = self.editable_table  # shortcut
-        row = data_table.create_row(row_data=row_data)
-        data_table.update_index_copy_column()
+        row,new_index = data_table.create_row(row_data=row_data)
         data_table.update(update_format=True)
-        data_table.move_to_row(0)
+        data_table.move_to_row(new_index)
         data_table.must_save = True
         text = f' with asset_id={ row["Asset_id"][0]}' if row is not None else ''
-        gui_f.box_message(f'A new row{text} has been added at the top of the table')
+        gui_f.box_message(f'A new row{text} has been added at index {new_index} of the datatable')
 
     def del_row(self) -> None:
         """
@@ -742,6 +741,7 @@ class UEVMGui(tk.Tk):
         pw.show_progress_bar()
         pw.update()
         row_added = 0
+        data_table.is_scanning = True
         for name, content in valid_folders.items():
             if not pw.update_and_continue(increment=1, text=f'Adding {name}'):
                 break
@@ -762,7 +762,7 @@ class UEVMGui(tk.Tk):
             try:
                 # get the indexes if value already exists in column 'Origin' for a pandastable
                 rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
-                row_indexes = rows_serie.index  # TODO: check if these are real indexes or a row numbers
+                row_indexes = rows_serie.index
                 if len(row_indexes) > 0:
                     row_index = row_indexes[0]
                     gui_f.log_info(f"An existing row {row_index} has been found with path {content['path']}")
@@ -771,8 +771,9 @@ class UEVMGui(tk.Tk):
                 invalid_folders.append(content["path"])
                 continue
             if row_index == -1:
-                data_table.create_row(row_data=row_data, do_not_save=True)
-                row_index = 0  # added at the start of the table. As it, the index is always known
+                # row_index = 0  # added at the start of the table. As it, the index is always known
+                _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
+                gui_f.log_info(f"A row is created at {row_index} for the path {content['path']}")
                 row_added += 1
             forced_data = {
                 # 'category': content['asset_type'].category_name,
@@ -788,12 +789,13 @@ class UEVMGui(tk.Tk):
             else:
                 data_table.update_row(
                     row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False
-                )  # TODO: change update row to also use a row index
+                )
                 data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
+        data_table.is_scanning = False
         data_table.update()
         data_table.resize_columns()
         gui_f.close_progress(self)

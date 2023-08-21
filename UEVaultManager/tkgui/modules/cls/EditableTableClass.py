@@ -57,6 +57,7 @@ class EditableTable(Table):
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
     _dftype_for_coloring = DataFrameUsed.UNFILTERED  # type of dataframe used for coloring
+    _is_scanning = False
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     model: TableModel = None  # setup in table.__init__
@@ -230,7 +231,7 @@ class EditableTable(Table):
         :return:
         Overrided for debugging
         """
-        super().moveColumns(names,pos)
+        super().moveColumns(names, pos)
 
     def _set_with_for_hidden_columns(self) -> None:
         """
@@ -327,7 +328,7 @@ class EditableTable(Table):
         try:
             result = int(df.index[row_number])
             if copy_col_index >= 0:
-                result = df.iat[row_number, copy_col_index] # could return '' if the column is empty
+                result = df.iat[row_number, copy_col_index]  # could return '' if the column is empty
                 result = int(result) if result != '' else -1
             else:
                 self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
@@ -402,7 +403,6 @@ class EditableTable(Table):
                 keys_ordered = sorted_cols_by_pos.keys()
             df = self.get_data(DataFrameUsed.UNFILTERED).reindex(columns=keys_ordered, fill_value='')  # reorder columns
             self.set_data(df, DataFrameUsed.UNFILTERED)
-            # TODO: check if the filtered dataframe should be reordered too (not necessary if self.update is called after)
             df = self.get_data(DataFrameUsed.FILTERED)
             if df is not None:
                 df.reindex(columns=keys_ordered, fill_value='')  # reorder columns
@@ -481,7 +481,7 @@ class EditableTable(Table):
                 data_count = len(df)  # model. df checked
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
-                    df = self.create_row(add_to_existing=False)
+                    df, _ = self.create_row(add_to_existing=False)
                 # fill all 'NaN' like values with 'None', to be similar to the database
                 df.fillna('None', inplace=True)
                 self.df_unfiltered = df
@@ -490,7 +490,7 @@ class EditableTable(Table):
                 data_count = len(data)
                 if data_count <= 0 or data[0][0] is None:
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
-                    df = self.create_row(add_to_existing=False)
+                    df, _ = self.create_row(add_to_existing=False)
                 else:
                     column_names = self._db_handler.get_columns_name_for_csv()
                     df = pd.DataFrame(data, columns=column_names)
@@ -502,7 +502,7 @@ class EditableTable(Table):
                 return None
         except EmptyDataError:
             self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
-            df = self.create_row(add_to_existing=False)
+            df, _ = self.create_row(add_to_existing=False)
             data_count = len(df)
         if df is None or len(df) == 0:
             self.logger.error(f'No data found in data source: {self.data_source}')
@@ -513,14 +513,18 @@ class EditableTable(Table):
             self.total_pages = (data_count-1) // self.rows_per_page + 1
             return df
 
-    def create_row(self, row_data=None, add_to_existing: bool = True, do_not_save: bool = False) -> pd.DataFrame:
+    def create_row(self, row_data=None, add_to_existing: bool = True, do_not_save: bool = False) -> (pd.DataFrame, int):
         """
         Create an empty row in the table.
         :param row_data: The data to add to the row.
         :param add_to_existing: True to add the row to the existing data, False to replace the existing data.
         :param do_not_save: True to not save the row in the database.
+        :return: (The created row, the index of the created row)
+        Note: be sure to call self.update() after calling this function to copy the changes in all the dataframes.
         """
         table_row = None
+        new_index = 0
+        data_frame = self.get_data()
         if self.data_source_type == DataSourceType.FILE:
             # create an empty row with the correct columns
             str_data = get_csv_field_name_list(return_as_string=True)  # column names
@@ -535,7 +539,15 @@ class EditableTable(Table):
                 return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
             )  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
-            table_row = pd.DataFrame(data, columns=column_names)
+            try:
+                new_index = data_frame.index.max() + 1
+            except:
+                new_index = len(data_frame) + 1
+            table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
+            try:
+                table_row[gui_g.s.index_copy_col_name] = new_index
+            except KeyError:
+                self.logger.warning(f'Could not add column "{gui_g.s.index_copy_col_name}" to the row')
         else:
             self.logger.error(f'Unknown data source type: {self.data_source_type}')
             # previous line will quit the app
@@ -546,13 +558,13 @@ class EditableTable(Table):
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
             # row is added at the start of the table. As it, the index is always known
-            df = pd.concat([table_row, self.get_data(df_type=DataFrameUsed.AUTO)], copy=False, ignore_index=True)
-            self.set_data(df, df_type=DataFrameUsed.AUTO)
-            # TODO : check how to update the other dataframe . maybe update the unfiltered and call self.update ?
-            self.add_to_rows_to_save(0)  # done inside self.must_save = True
+            # df = pd.concat([table_row, self.get_data(df_type=DataFrameUsed.AUTO)], copy=False, ignore_index=True)
+            new_df = pd.concat([data_frame, table_row], copy=False, ignore_index=True)
+            self.set_data(new_df)
+            self.add_to_rows_to_save(new_index)  # done inside self.must_save = True
         elif table_row is not None:
             self.must_rebuild = True
-        return table_row
+        return table_row, new_index
 
     def del_row(self, row_numbers=None) -> bool:
         """
@@ -573,7 +585,7 @@ class EditableTable(Table):
                     asset_id = df.at[idx, 'Asset_id']  # at checked
                     index_to_delete.append(idx)
                     self.add_to_asset_ids_to_delete(asset_id)
-                    self.logger.info(f'adding row {idx} with asset_id={asset_id} to the list of index to delete')
+                    self.logger.info(f'Adding row {idx} with asset_id={asset_id} to the list of index to delete')
                 except (IndexError, KeyError) as error:
                     self.logger.warning(f'Could add row {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
         number_deleted = len(index_to_delete)
@@ -602,7 +614,8 @@ class EditableTable(Table):
             self.must_save = True
             self.selectNone()
             self.update_index_copy_column()
-            self.redraw()  # TODO: check if we need to self.update() instead to refresh all the datatables
+            # self.redraw()  # TODO: check if we need to self.update() instead to refresh all the datatables
+            self.update()
         return number_deleted > 0
 
     def save_data(self, source_type: DataSourceType = None) -> None:
@@ -643,7 +656,7 @@ class EditableTable(Table):
                     if self._db_handler is None:
                         self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
                     self._db_handler.delete_asset(asset_id=asset_id)
-                    self.logger.info(f'row with asset_id={asset_id} has been deleted from the database')
+                    self.logger.info(f'Row with asset_id={asset_id} has been deleted from the database')
                 except (KeyError, ValueError, AttributeError) as error:
                     self.logger.warning(f'Failed to delete asset_id={asset_id} to the database. Error: {error!r}')
 
@@ -919,6 +932,7 @@ class EditableTable(Table):
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             show_progress(self, text='Formating and converting DataTable...')
+            self.update_index_copy_column()
             self.set_data(self.set_columns_type(df))
             self.resize_columns()
         self._filter_mask = mask
@@ -1197,7 +1211,7 @@ class EditableTable(Table):
             df.iat[idx, col_index] = value  # iat checked
             return True
         except TypeError as error:
-            if 'Cannot setitem on a Categorical with a new category' in str(error):
+            if not self._is_scanning and 'Cannot setitem on a Categorical with a new category' in str(error):
                 col_name = self.get_col_name(col_index)
                 box_message(f'You can not use a value that is not an existing category for field {col_name}.')
             return False
