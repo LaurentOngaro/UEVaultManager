@@ -590,10 +590,15 @@ class EditableTable(Table):
                 return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
             )  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
-            try:
-                new_index = data_frame.index.max() + 1
-            except ValueError:
-                new_index = len(data_frame) + 1
+            if data_frame is not None:
+                try:
+                    new_index = data_frame.index.max() + 1
+                except (AttributeError, ValueError):
+                    pass
+                else:
+                    new_index = len(data_frame) + 1
+            else:
+                new_index = 1
             table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
             try:
                 table_row[gui_g.s.index_copy_col_name] = new_index
