@@ -177,7 +177,7 @@ def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
     if canvas_image is None or image_url is None or not image_url or str(image_url) in ['nan', gui_g.s.empty_cell]:
         return
     try:
-        print(image_url)
+        # print(image_url)
         # noinspection DuplicatedCode
         if not os.path.isdir(gui_g.s.cache_folder):
             os.mkdir(gui_g.s.cache_folder)
