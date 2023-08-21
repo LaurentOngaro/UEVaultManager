@@ -994,7 +994,7 @@ class EditableTable(Table):
         self._filter_mask = mask
         self.update_page(keep_col_infos=True)
 
-    def update_page(self,keep_col_infos=False) -> None:
+    def update_page(self, keep_col_infos=False) -> None:
         """
         Update the page.
         """
