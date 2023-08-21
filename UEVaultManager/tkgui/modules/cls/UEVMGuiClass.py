@@ -527,7 +527,7 @@ class UEVMGui(tk.Tk):
         :param row_data: data to add to the row.
         """
         data_table = self.editable_table  # shortcut
-        row,new_index = data_table.create_row(row_data=row_data)
+        row, new_index = data_table.create_row(row_data=row_data)
         data_table.update(update_format=True)
         data_table.move_to_row(new_index)
         data_table.must_save = True
@@ -787,9 +787,7 @@ class UEVMGui(tk.Tk):
                     marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
                 )
             else:
-                data_table.update_row(
-                    row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False
-                )
+                data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
                 data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         pw.hide_progress_bar()
         pw.hide_stop_button()
