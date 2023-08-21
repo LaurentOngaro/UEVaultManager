@@ -109,8 +109,9 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         """
         Add a folder to scan.
         """
+        cb_selection = self._cb_folders_to_scan.get()
         # open a file dialog to select a folder
-        folder_selected = filedialog.askdirectory(title='Select a folder to scan for UE assets', initialdir='.')
+        folder_selected = filedialog.askdirectory(title='Select a folder to scan for UE assets', initialdir=cb_selection)
         # add the folder to the list
         if folder_selected and folder_selected not in self._folders_to_scan:
             values = list(self._cb_folders_to_scan['values'])
@@ -123,6 +124,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
                     values.remove(folder)
                 last_folder_lower = folder.lower()
             self._cb_folders_to_scan['values'] = values
+            self._cb_folders_to_scan.current(len(values) - 1)  # select the last item
             self._folders_to_scan = values
             self.save_folder_to_scan()
 
@@ -135,6 +137,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
             values = list(self._cb_folders_to_scan['values'])
             values.remove(cb_selection)
             self._cb_folders_to_scan['values'] = values
+            self._cb_folders_to_scan.current(len(values) - 1)  # select the last item
             self._folders_to_scan = values
             self.save_folder_to_scan()
 
