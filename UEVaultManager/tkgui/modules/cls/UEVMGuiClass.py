@@ -315,6 +315,8 @@ class UEVMGui(tk.Tk):
         canvas_image = self._control_frame.canvas_image
         try:
             row_number: int = self.editable_table.get_row_clicked(event)
+            if row_number < 0 or row_number == '':
+                return
             self.update_rows_text(row_number)
             image_url = self.editable_table.get_image_url(row_number)
             gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)

@@ -56,6 +56,7 @@ class EditableTable(Table):
     _edit_cell_row_number: int = -1
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
+    _dftype_for_coloring = DataFrameUsed.UNFILTERED  # type of dataframe used for coloring
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     model: TableModel = None  # setup in table.__init__
@@ -101,7 +102,8 @@ class EditableTable(Table):
             # previous line will quit the app
         else:
             Table.__init__(self, container, dataframe=df_loaded, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
-            self.set_data(self.set_columns_type(df_loaded), df_type=DataFrameUsed.UNFILTERED)
+            # self.set_data(self.set_columns_type(df_loaded), df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
+            self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
             self.resize_columns()
             self.set_defaults()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
@@ -143,7 +145,7 @@ class EditableTable(Table):
         dataframe has been set. This needs to be updated if the index is reset.
         Overrided to check indexes when rebuildind data from en empty table.
         """
-        df = self.get_data(df_type=DataFrameUsed.AUTO)
+        df = self.get_data(df_type=self._dftype_for_coloring)
         rc = self.rowcolors
         rows = self.visiblerows
         offset = rows[0]
@@ -220,6 +222,16 @@ class EditableTable(Table):
         """
         super().tableChanged()
 
+    def moveColumns(self, names=None, pos='start'):
+        """
+        Move column(s) to start/end, used for large tables
+        :param names:
+        :param pos:
+        :return:
+        Overrided for debugging
+        """
+        super().moveColumns(names,pos)
+
     def _set_with_for_hidden_columns(self) -> None:
         """
         Set the with for the hidden columns.
@@ -264,8 +276,8 @@ class EditableTable(Table):
         :return: The formatted dataframe.
 
         """
-        # self.logger.debug("\nCOL TYPES BEFORE CONVERSION\n")
-        # data.info()  # direct print info
+        # self.logger.info("\nCOL TYPES BEFORE CONVERSION\n")
+        # df.info()  # direct print info
         for col in df.columns:
             converters = get_converters(col)
             # at least 2 converters are expected: one for the convertion function and one for column type
@@ -278,7 +290,7 @@ class EditableTable(Table):
                 except (KeyError, ValueError) as error:
                     self.logger.warning(f'Could not convert column "{col}" using {converter}. Error: {error!r}')
         # self.logger.debug("\nCOL TYPES AFTER CONVERSION\n")
-        # data.info()  # direct print info
+        # df.info()  # direct print info
         return df
 
     def get_real_index(self, row_number: int, df_type: DataFrameUsed = DataFrameUsed.AUTO, add_page_offset: bool = True) -> int:
@@ -289,7 +301,7 @@ class EditableTable(Table):
         :param add_page_offset: True to add the page offset to the row number, False otherwise.
         :return:
         """
-        if row_number < 0:
+        if row_number < 0 or row_number == '':
             return -1
         if add_page_offset:
             row_number = self.add_page_offset(row_number)
@@ -310,12 +322,17 @@ class EditableTable(Table):
             return int(self.get_real_index(row_number))
         else:
             return int(self.get_real_index(row_number))
-        col_index = self.get_col_index(gui_g.s.index_copy_col_name)
-        if col_index < 0:
-            self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
+        copy_col_index = self.get_col_index(gui_g.s.index_copy_col_name)
+        result = -1
+        try:
             result = int(df.index[row_number])
-        else:
-            result = int(df.iat[row_number, col_index])
+            if copy_col_index >= 0:
+                result = df.iat[row_number, copy_col_index] # could return '' if the column is empty
+                result = int(result) if result != '' else -1
+            else:
+                self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
+        except ValueError:
+            self.logger.warning(f'Could not get the real index for row number {row_number}')
         return result
 
     def get_data(self, df_type: DataFrameUsed = DataFrameUsed.UNFILTERED) -> pd.DataFrame:
@@ -741,7 +758,7 @@ class EditableTable(Table):
         #  'tab20c', 'terrain', 'winter'
         if col_names is None:
             return
-        df = self.get_data(df_type=DataFrameUsed.AUTO)
+        df = self.get_data(df_type=self._dftype_for_coloring)
         for col_name in col_names:
             try:
                 x = df[col_name]
@@ -763,7 +780,7 @@ class EditableTable(Table):
         """
         if col_names is None:
             return
-        df = self.get_data(df_type=DataFrameUsed.AUTO)
+        df = self.get_data(df_type=self._dftype_for_coloring)
         for col_name in col_names:
             try:
                 mask = df[col_name] == value_to_check
@@ -782,7 +799,7 @@ class EditableTable(Table):
         """
         if col_names is None:
             return
-        df = self.get_data(df_type=DataFrameUsed.AUTO)
+        df = self.get_data(df_type=self._dftype_for_coloring)
         for col_name in col_names:
             try:
                 mask = df[col_name] != value_to_check
@@ -801,7 +818,7 @@ class EditableTable(Table):
         """
         if col_names is None:
             return
-        df = self.get_data(df_type=DataFrameUsed.AUTO)
+        df = self.get_data(df_type=self._dftype_for_coloring)
         for col_name in col_names:
             row_indices = []
             if col_name not in df.columns:
@@ -887,10 +904,6 @@ class EditableTable(Table):
         :param update_format: Whether to update the table format.
         """
         df = self.get_data()
-        if update_format:
-            show_progress(self, text='Formating and converting DataTable...')
-            self.set_data(self.set_columns_type(df))
-            self.resize_columns()
         if reset_page:
             self.current_page = 1
         if not keep_filters:
@@ -904,6 +917,10 @@ class EditableTable(Table):
         else:
             self.filtered = False
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
+        if update_format:
+            show_progress(self, text='Formating and converting DataTable...')
+            self.set_data(self.set_columns_type(df))
+            self.resize_columns()
         self._filter_mask = mask
         self.update_page()
 
