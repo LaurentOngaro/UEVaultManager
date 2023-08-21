@@ -44,7 +44,14 @@ class EditableTable(tk.Frame):
         self.pagination_btn = tk.Button(self.parent, text='Toggle Pagination', command=self.toggle_pagination)
         self.pagination_btn.pack(side='bottom')
 
+        # Bind mouse drag event on column header
+        self.table.colheader.bind('<B1-Motion>', self.on_column_header_drag)
         self.update_table()
+
+    def on_column_header_drag(self, event) -> None:
+        # Handle mouse drag event on column header
+        print(f"Mouse dragged on column header: {event}")
+        self.table.colheader.handle_mouse_drag(event)
 
     def load_data_from_db(self, db_name: str) -> pd.DataFrame:
         conn = sqlite3.connect(db_name)

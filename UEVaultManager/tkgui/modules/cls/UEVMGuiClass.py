@@ -151,8 +151,13 @@ class UEVMGui(tk.Tk):
         data_table.bind('<Motion>', self.on_mouse_over_cell)
         data_table.bind('<Leave>', self.on_mouse_leave_cell)
         data_table.bind('<<CellSelectionChanged>>', self.on_selection_change)
-        self.bind('<Button-1>', self.on_left_click)
+        # Bind mouse drag event on column header.
+        # THIS COULD NOT BE DONE IN THE CLASS __init__ METHOD because the widget is not yet created
+        data_table.colheader.bind('<B1-Motion>', self.on_header_drag)
+        data_table.colheader.bind('<ButtonRelease-1>', self.on_header_release)
+        data_table.showIndex = True
 
+        self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
         # List of controls for activating/deactivating them when needed
@@ -188,6 +193,7 @@ class UEVMGui(tk.Tk):
             if self.open_file() == '':
                 gui_f.log_error('This application could not run without a file to read data from')
                 self.quit()
+        gui_f.show_progress(self, text='Initializing Data Table...')
         if gui_g.s.data_filters:
             self.load_filters(gui_g.s.data_filters)
         else:
@@ -195,6 +201,7 @@ class UEVMGui(tk.Tk):
         # Quick edit the first row
         # self.editable_table.update_quick_edit(0)
         show_option_fist = False  # debug_only
+        gui_f.close_progress(self)
         if show_option_fist:
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
@@ -217,7 +224,7 @@ class UEVMGui(tk.Tk):
     def _focus_prev_widget(event):
         event.widget.tk_focusPrev().focus()
         return 'break'
-    
+
     def _open_file_dialog(self, save_mode: bool = False, filename: str = None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
@@ -280,7 +287,7 @@ class UEVMGui(tk.Tk):
         # print(event.keysym)
         # shift_pressed = event.state == 1 or event.state & 0x00001 != 0
         # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
-        # 4ere touches du clavier: ampersand eacute quotedbl apostrophe
+        # 4th keys of (FRENCH) keyboard: ampersand eacute quotedbl apostrophe
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             if gui_g.edit_cell_window_ref:
@@ -297,6 +304,8 @@ class UEVMGui(tk.Tk):
             self.editable_table.create_edit_cell_window(event)
         elif control_pressed and (event.keysym == '2' or event.keysym == 'eacute'):
             self.editable_table.create_edit_row_window(event)
+        elif control_pressed and (event.keysym == '3' or event.keysym == 'quotedbl'):
+            self.scrap_row()
         return 'break'
 
         # return 'break'  # stop event propagation
@@ -311,6 +320,8 @@ class UEVMGui(tk.Tk):
         canvas_image = self._control_frame.canvas_image
         try:
             row_number: int = self.editable_table.get_row_clicked(event)
+            if row_number < 0 or row_number == '':
+                return
             self.update_rows_text(row_number)
             image_url = self.editable_table.get_image_url(row_number)
             gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
@@ -406,6 +417,21 @@ class UEVMGui(tk.Tk):
             value = widget.switch_state(event=event)
             self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
+    def on_header_drag(self, event):
+        """
+        When the mouse is dragged on the header.
+        :param event: event that triggered the call.
+        """
+        self.editable_table.on_header_drag(event)
+
+    def on_header_release(self, event):
+        """
+        When the mouse is released on the header.
+        :param event: event that triggered the call.
+        """
+        self.editable_table.on_header_release(event)
+        self.enable_control('save')
+
     def on_close(self, _event=None) -> None:
         """
         When the window is closed, check if there are unsaved changes and ask the user if he wants to save them.
@@ -436,13 +462,7 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
-        column_infos = {}
-        for index, col in enumerate(data_table.model.df.columns):  # df.model checked
-            column_infos[col] = {}
-            column_infos[col]['width'] = data_table.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
-            column_infos[col]['pos'] = index
-        sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
-        gui_g.s.column_infos = sorted_cols_by_pos
+        data_table.update_col_infos()
         file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui)
         gui_g.s.save_config_file()
         # delete the backup if the files and the backup are identical
@@ -459,14 +479,17 @@ class UEVMGui(tk.Tk):
         if filename and os.path.isfile(filename):
             data_table.data_source = filename
             if data_table.valid_source_type(filename):
+                gui_f.show_progress(self, text='Loading Data from file...')
                 if not data_table.read_data():
                     gui_f.box_message('Error when loading data')
+                    gui_f.close_progress(self)
                     return filename
                 data_table.current_page = 1
                 data_table.update(update_format=True)
                 self.update_controls_and_redraw()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
+                gui_f.close_progress(self)
                 return filename
             else:
                 gui_f.box_message('Operation cancelled')
@@ -518,13 +541,12 @@ class UEVMGui(tk.Tk):
         :param row_data: data to add to the row.
         """
         data_table = self.editable_table  # shortcut
-        row = data_table.create_row(row_data=row_data)
-        data_table.update_index_copy_column()
+        row, new_index = data_table.create_row(row_data=row_data)
         data_table.update(update_format=True)
-        data_table.move_to_row(0)
+        data_table.move_to_row(new_index)
         data_table.must_save = True
         text = f' with asset_id={ row["Asset_id"][0]}' if row is not None else ''
-        gui_f.box_message(f'A new row{text} has been added at the top of the table')
+        gui_f.box_message(f'A new row{text} has been added at index {new_index} of the datatable')
 
     def del_row(self) -> None:
         """
@@ -733,6 +755,7 @@ class UEVMGui(tk.Tk):
         pw.show_progress_bar()
         pw.update()
         row_added = 0
+        data_table.is_scanning = True
         for name, content in valid_folders.items():
             if not pw.update_and_continue(increment=1, text=f'Adding {name}'):
                 break
@@ -749,22 +772,22 @@ class UEVMGui(tk.Tk):
                     'Added manually': True,
                 }
             )
-            row_number = -1
+            row_index = -1
             try:
                 # get the indexes if value already exists in column 'Origin' for a pandastable
                 rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
-                row_indexes = rows_serie.index  # TODO: check if these are real indexes or a row numbers
-                # if it s a real indexes, need to get a row number
+                row_indexes = rows_serie.index
                 if len(row_indexes) > 0:
-                    row_number = row_indexes[0]
-                    gui_f.log_info(f"An existing row #{row_number} has been found with path {content['path']}")
+                    row_index = row_indexes[0]
+                    gui_f.log_info(f"An existing row {row_index} has been found with path {content['path']}")
             except (IndexError, ValueError) as error:
                 gui_f.log_warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
                 invalid_folders.append(content["path"])
                 continue
-            if row_number == -1:
-                data_table.create_row(row_data=row_data, do_not_save=True)
-                row_number = 0  # added at the start of the table. As it, the index is always known
+            if row_index == -1:
+                # row_index = 0  # added at the start of the table. As it, the index is always known
+                _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
+                gui_f.log_info(f"A row is created at {row_index} for the path {content['path']}")
                 row_added += 1
             forced_data = {
                 # 'category': content['asset_type'].category_name,
@@ -774,16 +797,18 @@ class UEVMGui(tk.Tk):
                 'added_manually': True,
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
-                self.scrap_row(marketplace_url=marketplace_url, row_number=row_number, forced_data=forced_data, show_message=False)
+                self.scrap_row(
+                    marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
+                )
             else:
-                data_table.update_row(row_number=row_number, ue_asset_data=forced_data)
-                idx = data_table.get_real_index(row_number)  # TODO: check if idx must be 0 if the row is created
-                data_table.add_to_rows_to_save(idx)  # done inside self.must_save = True
+                data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
+                data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         pw.hide_progress_bar()
         pw.hide_stop_button()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
-        # data_table.update_page()
+        data_table.is_scanning = False
+        data_table.update()
         data_table.resize_columns()
         gui_f.close_progress(self)
 
@@ -803,7 +828,7 @@ class UEVMGui(tk.Tk):
             # get the data from the marketplace marketplace_url
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if asset_data is None or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
-                msg = f'Unable to grab data from {marketplace_url}'
+                msg = f'Failed to grab data from {marketplace_url}'
                 gui_f.log_warning(msg)
                 if show_message:
                     gui_f.box_message(msg)
@@ -821,7 +846,7 @@ class UEVMGui(tk.Tk):
                 egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
             )
             scraper.get_data_from_url(api_product_url)
-            asset_data = scraper.scraped_data.pop()  # returns a list of one element
+            asset_data = scraper.pop_last_scrapped_data()  # returns a list of one element
             if forced_data is not None:
                 for key, value in forced_data.items():
                     asset_data[0][key] = value
@@ -833,13 +858,16 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(msg)
         return asset_data
 
-    def scrap_row(self, marketplace_url: str = None, row_number: int = None, forced_data: {} = None, show_message: bool = True):
+    def scrap_row(
+        self, marketplace_url: str = None, row_index: int = -1, forced_data: {} = None, show_message: bool = True, update_dataframe: bool = True
+    ):
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param row_number: row number from a datatable. Will be converted into real row index.
+        :param row_index: the (real) index of the row to scrap.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
         :param show_message: if True, show a message if the marketplace_url is not valid
+        :param update_dataframe: if True, update the dataframe after scraping
         """
 
         if self.core is None:
@@ -847,21 +875,26 @@ class UEVMGui(tk.Tk):
             return
         data_table = self.editable_table  # shortcut
         row_numbers = data_table.multiplerowlist
-        if marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
+        if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
                 gui_f.box_message('You must select a row first')
             return
-        row_count = len(row_numbers)
+        if row_index >= 0:
+            # a row index has been given, we scrap only this row
+            row_indexes = [row_index]
+        else:
+            # convert row numbers to row indexes
+            row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
         pw = None
+        row_count = len(row_indexes)
         if marketplace_url is None:
             base_text = 'Scraping assets data. Could take a while...'
             if row_count > 1:
                 pw = gui_f.show_progress(
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_stop_button_l=True
                 )
-            for row_number in row_numbers:
-                idx = data_table.get_real_index(row_number)
-                row_data = data_table.get_row(idx, return_as_dict=True)
+            for row_index in row_indexes:
+                row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 asset_slug_from_row = row_data['Asset slug']
@@ -873,24 +906,25 @@ class UEVMGui(tk.Tk):
                     if gui_f.box_yesno(f'{msg}.\nDo you wan to recreate the Url from the Asset slug and use it for scraping ?'):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
-                        data_table.update_cell(row_number, col_index, marketplace_url)
-                text = base_text + f'\n Row {row_number}: scraping {gui_fn.shorten_text(marketplace_url)}'
+                        data_table.update_cell(row_index, col_index, marketplace_url, convert_row_number_to_row_index=False)
+                text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
                 if pw and not pw.update_and_continue(increment=1, text=text):
                     gui_f.close_progress(self)
                     return
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
-                    data_table.update_row(row_number, ue_asset_data=asset_data)
+                    data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                     if show_message and row_count == 1:
-                        gui_f.box_message(f'Data for row {row_number} have been updated from the marketplace')
+                        gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
 
             gui_f.close_progress(self)
             if show_message and row_count > 1:
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-            data_table.update_row(row_number, ue_asset_data=asset_data)
-        self.update()
+            data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+        if update_dataframe:
+            data_table.update()
 
     def load_filters(self, filters: {} = None):
         """
@@ -1019,10 +1053,13 @@ class UEVMGui(tk.Tk):
         """
         control = self.controls.get(name, None)
         if control is not None:
-            if is_enabled:
-                control.config(state=tk.NORMAL)
+            if name == 'save':
+                # the save buttons is always on. Only its text change
+                text = 'Save *' if is_enabled else 'Save  '
+                control.config(text=text)
             else:
-                control.config(state=tk.DISABLED)
+                state = tk.NORMAL if is_enabled else tk.DISABLED
+                control.config(state=state)
 
     def enable_control(self, name: str) -> None:
         """
@@ -1061,7 +1098,7 @@ class UEVMGui(tk.Tk):
             self.disable_control('edit')
 
         if not data_table.must_save:
-            self.controls['save'].config(state=tk.DISABLED)
+            self.disable_control('save')
 
         current_index = data_table.add_page_offset(current_index)
         if current_index <= 0:
@@ -1151,6 +1188,7 @@ class UEVMGui(tk.Tk):
         if not data_table.must_save or (
             data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
+            self.save_settings()  # save columns order and size
             if data_table.reload_data():
                 # self.update_page_numbers() done in reload_data
                 self.update_category_var()
@@ -1163,6 +1201,7 @@ class UEVMGui(tk.Tk):
         Rebuild the data from the data source. Will ask for confirmation before rebuilding.
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
+            self.save_settings()  # save columns order and size
             if self.editable_table.rebuild_data():
                 self.update_controls_and_redraw()
                 self.update_category_var()

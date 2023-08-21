@@ -12,6 +12,7 @@ import sqlite3
 
 from faker import Faker
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, CSVFieldState
 from UEVaultManager.models.types import DbVersionNum
@@ -30,8 +31,8 @@ class UEAssetDbHandler:
 
     Note: The database will be created if it doesn't exist.
     """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
+    logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
+    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     db_version: DbVersionNum = DbVersionNum.V0  # updated in check_and_upgrade_database()
     connection = None
 
@@ -730,22 +731,23 @@ class UEAssetDbHandler:
                     tags = tags.split(',')  # convert the string to a list
                 except Exception:
                     return tags_str
-            names = []
-            for item in tags:
-                if isinstance(item, int):
-                    # temp: use the tag id as a name
-                    name = self.get_tag_by_id(uid=item)
-                    if name is None:
-                        name = str(item)
-                elif isinstance(item, dict):
-                    uid = item.get('id', None)  # not used for now
-                    name = item.get('name', '').title()
-                    self.save_tag({'id': uid, 'name': name})
-                else:
-                    name = str(item).title()  # convert to string and capitalize
-                if name and name not in names:
-                    names.append(name)
-            tags_str = ','.join(names)
+            if isinstance(tags, list):
+                names = []
+                for item in tags:
+                    if isinstance(item, int):
+                        # temp: use the tag id as a name
+                        name = self.get_tag_by_id(uid=item)
+                        if name is None:
+                            name = str(item)
+                    elif isinstance(item, dict):
+                        uid = item.get('id', None)  # not used for now
+                        name = item.get('name', '').title()
+                        self.save_tag({'id': uid, 'name': name})
+                    else:
+                        name = str(item).title()  # convert to string and capitalize
+                    if name and name not in names:
+                        names.append(name)
+                tags_str = ','.join(names)
         return tags_str
 
     def drop_tables(self) -> None:

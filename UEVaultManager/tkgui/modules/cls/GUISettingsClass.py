@@ -128,14 +128,18 @@ class GUISettings:
         """
         default = {} if is_dict else []
         if self._config_vars_deserialized.get(var_name, None) is not None:
-            return self._config_vars_deserialized[var_name]
-        json_str = self.config_vars[var_name]
-        if json_str == '':
+            # it could be a dict, a list a str to decode
+            read_value = self._config_vars_deserialized[var_name]
+        else:
+            read_value = self.config_vars[var_name]
+        if read_value == '':
             return default
+        if isinstance(read_value, dict) or isinstance(read_value, list):
+            return read_value
         try:
-            values = json.loads(json_str)
+            values = json.loads(read_value)
         except json.decoder.JSONDecodeError:
-            log_info(f'Unable to decode json string for {var_name} in config file. Using default value')
+            log_info(f'Failed to decode json string for {var_name} in config file. Using default value')
             values = default
         self._config_vars_deserialized[var_name] = values
         return values
@@ -150,7 +154,7 @@ class GUISettings:
             json_str = ''
         else:
             json_str = json.dumps(values, skipkeys=True, allow_nan=True)
-        # self._config_vars_deserialized[var_name] = json_str
+        self._config_vars_deserialized[var_name] = json_str
         self.config_vars[var_name] = json_str
 
     def get_rows_per_page(self) -> int:
@@ -399,7 +403,7 @@ class GUISettings:
         try:
             self.config.read(self.config_file_gui)
         except Exception as error:
-            log_info(f'Unable to read configuration file, please ensure that file is valid!:Error: {error!r}')
+            log_info(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
             log_info('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {

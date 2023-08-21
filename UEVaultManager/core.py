@@ -138,7 +138,7 @@ class AppCore:
                 logger.info(message)
                 return logger
             else:
-                self.log.warning(f'Unable to create logger for file: {filename_log}')
+                self.log.warning(f'Failed to create logger for file: {filename_log}')
                 return None
 
         formatter = logging.Formatter('%(message)s')
@@ -921,7 +921,7 @@ class AppCore:
             try:
                 r = self.egs.unauth_session.get(url, timeout=10.0)
             except Exception as error:
-                self.log.warning(f'Unable to download manifest from "{urlparse(url).netloc}" '
+                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" '
                                  f'(Exception: {error!r}), trying next URL...')
                 continue
 
@@ -929,10 +929,10 @@ class AppCore:
                 manifest_bytes = r.content
                 break
             else:
-                self.log.warning(f'Unable to download manifest from "{urlparse(url).netloc}" '
+                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" '
                                  f'(status: {r.status_code}), trying next URL...')
         else:
-            raise ValueError(f'Unable to get manifest from any CDN URL, last result: {r.status_code} ({r.reason})')
+            raise ValueError(f'Failed to get manifest from any CDN URL, last result: {r.status_code} ({r.reason})')
 
         if sha1(manifest_bytes).hexdigest() != manifest_hash:
             raise ValueError('Manifest sha hash mismatch!')

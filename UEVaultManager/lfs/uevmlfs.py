@@ -102,7 +102,7 @@ class UEVMLFS:
         try:
             self.config.read(self.config_file)
         except Exception as error:
-            self.log.error(f'Unable to read configuration file, please ensure that file is valid!:Error: {error!r}')
+            self.log.error(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
             self.log.warning('Continuing with blank config in safe-mode...')
             self.config.read_only = True
 

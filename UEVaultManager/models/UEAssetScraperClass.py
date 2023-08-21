@@ -64,6 +64,19 @@ class UEAssetScraper:
     :param egs: An EPCAPI object (session handler). Defaults to None. If None, a new EPCAPI object will be created and the session used WON'T BE LOGGED.
     :param progress_window: A ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
     """
+    _last_run_filename: str = 'last_run.json'
+    _urls_list_filename: str = 'urls_list.txt'
+    _threads_count: int = 0
+    _files_count: int = 0
+    _thread_executor = None
+    _scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
+    _db_name: str = os.path.join(gui_g.s.scraping_folder, 'assets.db')
+    _scraped_ids = []  # store IDs of all items
+    _owned_asset_ids = []  # store IDs of all owned items
+    _urls = []  # list of all urls to scrap
+    logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
+    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    thread_executor_must_stop: bool = False
 
     def __init__(
         self,
@@ -89,6 +102,7 @@ class UEAssetScraper:
         self.assets_per_page: int = assets_per_page
         self.sort_by: str = sort_by
         self.sort_order: str = sort_order
+        self.max_threads: int = max_threads if gui_g.s.use_threads else 0
         self.load_from_files: bool = load_from_files
         self.store_in_files: bool = store_in_files
         self.store_in_db: bool = store_in_db
@@ -105,31 +119,13 @@ class UEAssetScraper:
         except Exception:
             self.engine_version_for_obsolete_assets = None
 
-        self.last_run_filename: str = 'last_run.json'
-        self.urls_list_filename: str = 'urls_list.txt'
-
-        self.db_name: str = os.path.join(gui_g.s.scraping_folder, 'assets.db')
-        self.max_threads: int = max_threads if gui_g.s.use_threads else 0
-        self.threads_count: int = 0
-
-        self.files_count: int = 0
-        self.scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
-        self.scraped_ids = []  # store IDs of all items
-        self.owned_asset_ids = []  # store IDs of all owned items
-        self.urls = []  # list of all urls to scrap
-
         self.egs = EPCAPI(timeout=timeout) if egs is None else egs
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(level=logging.DEBUG)
-        self.asset_db_handler = UEAssetDbHandler(self.db_name)
-        self.thread_executor = None
-        self.thread_executor_must_stop: bool = False
+        self.asset_db_handler = UEAssetDbHandler(self._db_name)
 
         if progress_window is None:
             progress_window = FakeProgressWindow()
         self.progress_window = progress_window
 
-        # self.logger.setLevel(logging.DEBUG)
         if self.load_from_files:
             self.store_in_files = False
             self.store_in_db = True
@@ -142,8 +138,8 @@ class UEAssetScraper:
         message += f'\nData will be load from files in {gui_g.s.assets_data_folder}' if self.load_from_files else ''
         message += f'\nAsset Data will be saved in files in {gui_g.s.assets_data_folder}' if self.store_in_files else ''
         message += f'\nOwned Asset Data will be saved in files in {gui_g.s.owned_assets_data_folder}' if self.store_in_files else ''
-        message += f'\nData will be saved in database in {self.db_name}' if self.store_in_db else ''
-        message += f'\nAsset Ids will be saved in {self.last_run_filename} or in database' if self.store_ids else ''
+        message += f'\nData will be saved in database in {self._db_name}' if self.store_in_db else ''
+        message += f'\nAsset Ids will be saved in {self._last_run_filename} or in database' if self.store_ids else ''
         self._log_info(message)
 
     def _log_debug(self, message):
@@ -332,7 +328,7 @@ class UEAssetScraper:
             self._log_debug(message)
             if self.store_ids:
                 try:
-                    self.scraped_ids.append(uid)
+                    self._scraped_ids.append(uid)
                 except (AttributeError, TypeError) as error:
                     self._log_debug(f'Error when adding uid to self.scraped_ids: {error!r}')
         # end for asset_data in json_data['data']['elements']:
@@ -345,7 +341,7 @@ class UEAssetScraper:
         if not self.store_in_db:
             return
         # convert the list of ids to a string for the database only
-        last_run_content['scraped_ids'] = ','.join(self.scraped_ids) if self.store_ids else ''
+        last_run_content['scraped_ids'] = ','.join(self._scraped_ids) if self.store_ids else ''
 
         if self.clean_database:
             # next line will delete all assets in the database
@@ -353,7 +349,7 @@ class UEAssetScraper:
                 'Current settings and params are set to delete all existing data before rebuilding. All user fields values will be lost. Are you sure your want to do that ?'
             ):
                 self.asset_db_handler.delete_all_assets(keep_added_manually=True)
-        self.asset_db_handler.set_assets(self.scraped_data)
+        self.asset_db_handler.set_assets(self._scraped_data)
         self.asset_db_handler.save_last_run(last_run_content)
 
     def gather_all_assets_urls(self, empty_list_before=False, save_result=True, owned_assets_only=False) -> None:
@@ -364,7 +360,7 @@ class UEAssetScraper:
         :param owned_assets_only: if True, only the owned assets are scraped.
         """
         if empty_list_before:
-            self.urls = []
+            self._urls = []
         start_time = time.time()
         if self.stop <= 0:
             self.stop = self.egs.get_scraped_asset_count(owned_assets_only=owned_assets_only)
@@ -381,10 +377,10 @@ class UEAssetScraper:
                 url = self.egs.get_owned_scrap_url(start, self.assets_per_page)
             else:
                 url = self.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
-            self.urls.append(url)
-        self._log_info(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self.urls)} urls')
+            self._urls.append(url)
+        self._log_info(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
         if save_result:
-            self.save_to_file(filename=self.urls_list_filename, data=self.urls, is_json=False, is_owned=owned_assets_only)
+            self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=owned_assets_only)
 
     def get_data_from_url(self, url='', owned_assets_only=False) -> None:
         """
@@ -400,7 +396,7 @@ class UEAssetScraper:
             return
 
         thread_data = ''
-        if self.threads_count > 1:
+        if self._threads_count > 1:
             # add a delay when multiple threads are used
             time.sleep(random.uniform(1.0, 3.0))
             thread = current_thread()
@@ -439,9 +435,9 @@ class UEAssetScraper:
                 for asset_data in json_data['data']['elements']:
                     filename = get_filename_from_asset_data(asset_data)
                     self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
-                    self.files_count += 1
+                    self._files_count += 1
             content = self._parse_data(json_data)
-            self.scraped_data.append(content)
+            self._scraped_data.append(content)
 
     def get_scraped_data(self, owned_assets_only=False) -> None:
         """
@@ -459,7 +455,7 @@ class UEAssetScraper:
             """
             for _, task in tasks.items():
                 task.cancel()
-            self.thread_executor.shutdown(wait=False)
+            self._thread_executor.shutdown(wait=False)
 
         has_data = False
         if self.load_from_files:
@@ -472,20 +468,20 @@ class UEAssetScraper:
             # self._log_info(message)
 
             start_time = time.time()
-            if self.urls is None or len(self.urls) == 0:
+            if self._urls is None or len(self._urls) == 0:
                 self.gather_all_assets_urls(owned_assets_only=owned_assets_only)
-            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=len(self.urls))
+            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=len(self._urls))
             if self.max_threads > 0:
-                self.threads_count = min(self.max_threads, len(self.urls))
+                self._threads_count = min(self.max_threads, len(self._urls))
                 # threading processing COULD be stopped by the progress window
                 self.progress_window.show_stop_button()
-                self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.threads_count, thread_name_prefix="Asset_Scaper")
+                self._thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self._threads_count, thread_name_prefix="Asset_Scaper")
                 futures = {}
                 # for url in self.urls:
-                while len(self.urls) > 0:
-                    url = self.urls.pop()
+                while len(self._urls) > 0:
+                    url = self._urls.pop()
                     # Submit the task and add its Future to the dictionary
-                    future = self.thread_executor.submit(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), url)
+                    future = self._thread_executor.submit(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), url)
                     futures[url] = future
 
                 with concurrent.futures.ThreadPoolExecutor():
@@ -498,17 +494,17 @@ class UEAssetScraper:
                         if not self.progress_window.update_and_continue(increment=1):
                             # self._log_info(f'User stop has been pressed. Stopping running threads....')   # will flood console
                             stop_executor(futures)
-                self.thread_executor.shutdown(wait=False)
+                self._thread_executor.shutdown(wait=False)
             else:
-                for url in self.urls:
+                for url in self._urls:
                     self.get_data_from_url(url, owned_assets_only)
             if self.store_in_files and self.use_raw_format:
-                message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self.urls)} urls and store the data in {self.files_count} files'
+                message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self._urls)} urls and store the data in {self._files_count} files'
             else:
-                message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self.urls)} urls'
+                message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self._urls)} urls'
             self._log_info(message)
             # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
-            self.scraped_data = list(chain.from_iterable(self.scraped_data))
+            self._scraped_data = list(chain.from_iterable(self._scraped_data))
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
         """
@@ -522,7 +518,7 @@ class UEAssetScraper:
         :return: A boolean indicating whether the file was saved successfully.
         """
         if data is None:
-            data = self.scraped_data
+            data = self._scraped_data
 
         if data is None or len(data) == 0:
             self._log_warning('No data to save')
@@ -559,9 +555,9 @@ class UEAssetScraper:
         :return: The number of files loaded.
         """
         start_time = time.time()
-        self.files_count = 0
-        self.scraped_ids = []
-        self.scraped_data = []
+        self._files_count = 0
+        self._scraped_ids = []
+        self._scraped_data = []
         folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
 
         files = os.listdir(folder)
@@ -570,7 +566,7 @@ class UEAssetScraper:
         self._log_info(f'Loading {files_count} files from {folder}')
         self.progress_window.reset(new_value=0, new_text='Loading asset data from json files', new_max_value=files_count)
         for filename in files:
-            if filename.endswith('.json') and filename != self.last_run_filename:
+            if filename.endswith('.json') and filename != self._last_run_filename:
                 # self._log_debug(f'Loading {filename}')
                 with open(os.path.join(folder, filename), 'r') as fh:
                     try:
@@ -580,30 +576,30 @@ class UEAssetScraper:
                         continue
                     assets_data = self._parse_data(json_data)  # self._parse_data returns a list of assets
                     for asset_data in assets_data:
-                        self.scraped_data.append(asset_data)
-                self.files_count += 1
+                        self._scraped_data.append(asset_data)
+                self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
-                    return self.files_count
-                if test_only_mode and self.files_count >= 100:
+                    return self._files_count
+                if test_only_mode and self._files_count >= 100:
                     break
-        message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self.files_count} files'
+        message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self._files_count} files'
         self._log_info(message)
 
         # save results in the last_run file
         content = {
             'date': str(datetime.now()),
             'mode': 'load_owned' if owned_assets_only else 'load',
-            'files_count': self.files_count,
-            'items_count': len(self.scraped_data),
-            'scraped_ids': self.scraped_ids if self.store_ids else ''
+            'files_count': self._files_count,
+            'items_count': len(self._scraped_data),
+            'scraped_ids': self._scraped_ids if self.store_ids else ''
         }
-        filename = os.path.join(folder, self.last_run_filename)
+        filename = os.path.join(folder, self._last_run_filename)
         with open(filename, 'w') as fh:
             json.dump(content, fh)
 
         self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=0)
         # self._save_in_db(last_run_content=content) # duplicate with a caller
-        return self.files_count
+        return self._files_count
 
     def save(self, owned_assets_only=False, save_last_run_file=True) -> None:
         """
@@ -623,36 +619,43 @@ class UEAssetScraper:
             'date': str(datetime.now()),
             'mode': 'save_owned' if owned_assets_only else 'save',
             'files_count': 0,
-            'items_count': len(self.scraped_data),
+            'items_count': len(self._scraped_data),
             'scraped_ids': ''
         }
 
         start_time = time.time()
         if self.store_in_files and not self.use_raw_format:
-            self.progress_window.reset(new_value=0, new_text='Saving into files', new_max_value=len(self.scraped_data))
+            self.progress_window.reset(new_value=0, new_text='Saving into files', new_max_value=len(self._scraped_data))
             # store the data in a AFTER parsing it
-            self.files_count = 0
-            for asset_data in self.scraped_data:
+            self._files_count = 0
+            for asset_data in self._scraped_data:
                 filename = get_filename_from_asset_data(asset_data)
                 self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
-                self.files_count += 1
+                self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
                     return
-            message = f'It took {(time.time() - start_time):.3f} seconds to save the data in {self.files_count} files'
+            message = f'It took {(time.time() - start_time):.3f} seconds to save the data in {self._files_count} files'
             self._log_info(message)
 
         # save results in the last_run file
-        content['files_count'] = self.files_count
-        content['scraped_ids'] = self.scraped_ids if self.store_ids else ''
+        content['files_count'] = self._files_count
+        content['scraped_ids'] = self._scraped_ids if self.store_ids else ''
         if save_last_run_file:
             folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
-            filename = os.path.join(folder, self.last_run_filename)
+            filename = os.path.join(folder, self._last_run_filename)
             with open(filename, 'w') as fh:
                 json.dump(content, fh)
 
         self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=None)
         self._save_in_db(last_run_content=content)
         self._log_info('data saved')
+
+    def pop_last_scrapped_data(self) -> []:
+        """
+        Pop the last scraped data from the scraped_data property.
+        :return: the last scraped data.
+        """
+        return self._scraped_data.pop()
 
 
 if __name__ == '__main__':

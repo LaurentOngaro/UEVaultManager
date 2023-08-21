@@ -174,9 +174,10 @@ def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
     :param canvas_image: the canvas to display the image in.
     :param timeout: the timeout in seconds to wait for the image to be downloaded.
     """
-    if canvas_image is None or image_url is None or not image_url or str(image_url) == gui_g.s.empty_cell:
+    if canvas_image is None or image_url is None or not image_url or str(image_url) in ['nan', gui_g.s.empty_cell]:
         return
     try:
+        # print(image_url)
         # noinspection DuplicatedCode
         if not os.path.isdir(gui_g.s.cache_folder):
             os.mkdir(gui_g.s.cache_folder)
@@ -263,11 +264,36 @@ def custom_print(text='', keep_mode=True) -> None:
         print(text)
 
 
+def get_tk_root(container) -> tk.Tk:
+    """
+    Get the root window.
+    :param container:  the container window or object
+    :return: the root window
+    """
+    # get the root window to avoid creatinf multiple progress windows
+    try:
+        # a tk window chid class
+        root = container.winfo_toplevel()
+    except AttributeError:
+        # an editableTable class
+        root = container.get_container.winfo_toplevel()
+    return root
+
+
 def show_progress(
-    parent, text='Working...Please wait', width=500, height=120, max_value_l=0, show_progress_l=False, show_stop_button_l=False
+    parent,
+    text='Working...Please wait',
+    width=500,
+    height=120,
+    max_value_l=0,
+    show_progress_l=False,
+    show_stop_button_l=False,
+    quit_on_close: bool = False,
+    function: callable = None,
+    function_parameters: dict = None
 ) -> ProgressWindow:
     """
-    Show the progress window.
+    Show the progress window. If the progress window does not exist, it will be created.
     :param parent: The parent window.
     :param text: The text to display in the progress window.
     :param width: The width of the progress window.
@@ -275,10 +301,14 @@ def show_progress(
     :param max_value_l: The maximum value of the progress bar.
     :param show_progress_l: Whether to show the progress bar.
     :param show_stop_button_l: Whether to show the stop button.
+    :param function: the function to execute.
+    :param function_parameters: the parameters of the function.
+    :param quit_on_close: whether to quit the application when the window is closed.
     :return: The progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
-    if parent.progress_window is None:
+    root = get_tk_root(parent)
+    if root.progress_window is None:
         pw = ProgressWindow(
             title=gui_g.s.app_title,
             icon=gui_g.s.app_icon_filename,
@@ -286,11 +316,14 @@ def show_progress(
             height=height,
             show_stop_button=show_stop_button_l,
             show_progress=show_progress_l,
-            max_value=max_value_l
+            max_value=max_value_l,
+            quit_on_close=quit_on_close,
+            function=function,
+            function_parameters=function_parameters
         )
-        parent.progress_window = pw
+        root.progress_window = pw
     else:
-        pw = parent.progress_window
+        pw = root.progress_window
     pw.set_text(text)
     pw.set_activation(False)
     pw.update()
@@ -303,9 +336,10 @@ def close_progress(parent) -> None:
     :param parent: The parent window.
     It accesses to the parent.progress_window property
     """
-    if parent.progress_window is not None:
-        parent.progress_window.close_window()
-        parent.progress_window = None
+    root = get_tk_root(parent)
+    if root.progress_window is not None:
+        root.progress_window.close_window()
+        root.progress_window = None
 
 
 def create_file_backup(file_src: str, logger: logging.Logger = None, path: str = '') -> str:
