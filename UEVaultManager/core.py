@@ -250,7 +250,7 @@ class AppCore:
     def login(self, force_refresh=False) -> bool:
         """
         Attempts logging in with existing credentials.
-        :param force_refresh: if True, force a refresh of the session.
+        :param force_refresh: Whether to force a refresh of the session.
         :return: True if successful, False otherwise.
         """
         if not self.uevmlfs.userdata:
@@ -356,7 +356,7 @@ class AppCore:
     def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
         """
         Returns a list of assets for the given platform.
-        :param update_assets: if True, always fetches a new list of assets from the server.
+        :param update_assets: Whether to always fetches a new list of assets from the server.
         :param platform: platform to fetch assets for.
         :return: list of AppAsset objects.
         """
@@ -819,7 +819,7 @@ class AppCore:
         """
         Save the extra data for the given assets.
         :param extra: Dict of extra data to save.
-        :param update_global_dict: if True, update the global dict.
+        :param update_global_dict: Whether to update the global dict.
         """
         self.log.info('Saving extra data in files... could take some time')
         for app_name, eg_extra in extra.items():

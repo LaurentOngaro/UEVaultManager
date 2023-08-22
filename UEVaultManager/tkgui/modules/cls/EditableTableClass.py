@@ -492,7 +492,7 @@ class EditableTable(Table):
         """
         Return the "valid" row index depending on the context. It takes into account the pagination and the current page.
         :param value: The value to add or remove offset to. It could be a row number or a row index. If None, the selected row number will be used.
-        :param remove_offset: If True, the offset is removed from the row index. If False, the offset is added to the row index.
+        :param remove_offset: Whether the offset is removed from the row index. If False, the offset is added to the row index.
         :return: The row index with a correct offset.
         """
         if value is None:
@@ -802,7 +802,7 @@ class EditableTable(Table):
                 store_in_files=True,
                 store_ids=False,  # useless for now
                 load_from_files=load_from_files,
-                # clean_database=not test_only_mode, # BE CAREFUL: if true, this will delete all the data in the database included user fields values !!!
+                # clean_database=not test_only_mode, # BE CAREFUL: Whether to this will delete all the data in the database included user fields values !!!
                 clean_database=False,
                 engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
                 egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs,

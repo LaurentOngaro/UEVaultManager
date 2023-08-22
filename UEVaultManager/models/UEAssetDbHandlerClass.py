@@ -27,7 +27,7 @@ class UEAssetDbHandler:
     """
     Handles database operations for the UE Assets.
     :param database_name: The name of the database file.
-    :param reset_database: If True, the database will be reset.
+    :param reset_database: Whether the database will be reset.
 
     Note: The database will be created if it doesn't exist.
     """

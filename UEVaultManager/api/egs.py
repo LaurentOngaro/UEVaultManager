@@ -228,7 +228,7 @@ class EPCAPI:
     def get_scraped_asset_count(self, owned_assets_only=False) -> int:
         """
         Return the number of assets in the marketplace.
-        :param owned_assets_only: If True, only the owned assets are counted.
+        :param owned_assets_only: Whether to only the owned assets are counted.
         """
         assets_count = 0
         if owned_assets_only:

@@ -75,7 +75,7 @@ class UEVMGui(tk.Tk):
     :param screen_index: The screen index where the window will be displayed.
     :param data_source: The source where the data is stored or read from.
     :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
-    :param show_open_file_dialog: If True, the open file dialog will be shown at startup.
+    :param show_open_file_dialog: Whether the open file dialog will be shown at startup.
     """
     editable_table: EditableTable = None
     progress_window: FakeProgressWindow = None
@@ -231,7 +231,7 @@ class UEVMGui(tk.Tk):
     def _open_file_dialog(self, save_mode: bool = False, filename: str = None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
-        :param save_mode: if True, the dialog will be in saving mode, else in loading mode.
+        :param save_mode: Whether the dialog will be in saving mode, else in loading mode.
         :param filename: the default filename to use.
         :return: the chosen filename.
         """
@@ -500,7 +500,7 @@ class UEVMGui(tk.Tk):
     def save_changes(self, show_dialog: bool = True) -> str:
         """
         Save the data to the current data source.
-        :param show_dialog: if True, show a dialog to select the file to save to, if False, use the current file.
+        :param show_dialog: Whether to show a dialog to select the file to save to, if False, use the current file.
         :return: the name of the file that was saved.
         """
         self.save_settings()
@@ -562,7 +562,7 @@ class UEVMGui(tk.Tk):
         Search for a marketplace_url file that matches a folder name in a given folder.
         :param folder: name to search for.
         :param parent: parent folder to search in.
-        :param check_if_valid: if True, check if the marketplace_url is valid. Return an empty string if not.
+        :param check_if_valid: Whether to check if the marketplace_url is valid. Return an empty string if not.
         :return: the marketplace_url found in the file or an empty string if not found.
         """
 
@@ -874,8 +874,8 @@ class UEVMGui(tk.Tk):
         :param marketplace_url: marketplace_url to scrap.
         :param row_index: the (real) index of the row to scrap.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
-        :param show_message: if True, show a message if the marketplace_url is not valid
-        :param update_dataframe: if True, update the dataframe after scraping
+        :param show_message: Whether to show a message if the marketplace_url is not valid
+        :param update_dataframe: Whether to update the dataframe after scraping
         """
 
         if self.core is None:
@@ -1023,7 +1023,7 @@ class UEVMGui(tk.Tk):
     def toggle_actions_panel(self, force_showing: bool = None) -> None:
         """
         Toggle the visibility of the Actions panel.
-        :param force_showing: if True, will force showing the actions panel, if False, will force hiding it.If None, will toggle the visibility.
+        :param force_showing: Whether to will force showing the actions panel, if False, will force hiding it.If None, will toggle the visibility.
         """
         if force_showing is None:
             force_showing = not self._control_frame.winfo_ismapped()
@@ -1040,7 +1040,7 @@ class UEVMGui(tk.Tk):
     def toggle_options_panel(self, force_showing: bool = None) -> None:
         """
         Toggle the visibility of the Options panel.
-        :param force_showing: if True, will force showing the options panel, if False, will force hiding it.If None, will toggle the visibility.
+        :param force_showing: Whether to will force showing the options panel, if False, will force hiding it.If None, will toggle the visibility.
         """
         # noinspection DuplicatedCode
         if force_showing is None:
@@ -1058,7 +1058,7 @@ class UEVMGui(tk.Tk):
         """
         Enable or disable a control.
         :param name: name of the control.
-        :param is_enabled: if True, enable the control, if False, disable it.
+        :param is_enabled: Whether to enable the control, if False, disable it.
         """
         control = self.controls.get(name, None)
         if control is not None:
