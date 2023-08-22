@@ -671,8 +671,6 @@ class EditableTable(Table):
                             # self.model.df.drop(idx, inplace=True)
                             # if self.df_filtered is not None:
                             #    self.df_filtered.drop(idx, inplace=True)
-                            # if self._filter_mask is not None:
-                            #    self._filter_mask.drop(row_index, inplace=True, errors='ignore')
                         except (IndexError, KeyError) as error:
                             self.logger.warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
 
@@ -685,7 +683,7 @@ class EditableTable(Table):
                 # or move to the prev row if the last row has been deleted
                 self.prev_row()
             # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
-            self.update()
+            self.update(update_filters=True)
             return number_deleted > 0
         else:
             return False
@@ -705,6 +703,10 @@ class EditableTable(Table):
             for row_number in self._changed_rows:
                 row_data = self.get_row(row_number, return_as_dict=True)
                 if row_data is None:
+                    continue
+                asset_id = row_data.get('Asset_id', '')
+                if asset_id in self._deleted_asset_ids:
+                    # do not update an asset if that will be deleted
                     continue
                 # convert the key names to the database column names
                 asset_data = convert_csv_row_to_sql_row(row_data)
@@ -981,18 +983,18 @@ class EditableTable(Table):
         if self.model.df is not None:
             self.model.df[gui_g.s.index_copy_col_name] = self.model.df.index
 
-    def update(self, reset_page: bool = False, keep_filters: bool = True, update_format: bool = False) -> None:
+    def update(self, reset_page: bool = False, update_filters: bool = False, update_format: bool = False) -> None:
         """
         Display the specified page of the table data.*
         :param reset_page: Whether to reset the current page to 1.
-        :param keep_filters: Whether to keep the current filters.
+        :param update_filters: Whether to update the current filters.
         :param update_format: Whether to update the table format.
         """
         self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data()
         if reset_page:
             self.current_page = 1
-        if not keep_filters:
+        if update_filters:
             mask = self._filter_frame.create_mask() if self._filter_frame is not None else None
         else:
             mask = self._filter_mask
@@ -1221,6 +1223,7 @@ class EditableTable(Table):
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
         text = f'row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
+        error_count = 0
         for key, value in ue_asset_data.items():
             typed_value = get_typed_value(sql_field=key, value=value)
             # get the column index of the key
@@ -1231,8 +1234,10 @@ class EditableTable(Table):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
             if col_index >= 0 and not self.update_cell(row_number, col_index, typed_value, convert_row_number_to_row_index):
-                self.logger.warning(f'Failed to update {text}')
+                error_count += 1
                 continue
+        if error_count > 0:
+            self.logger.warning(f'{error_count} Errors occured when updating {len(ue_asset_data.items())} cells for row {text}')
         self.update_page()
 
     def get_col_name(self, col_index: int) -> str:

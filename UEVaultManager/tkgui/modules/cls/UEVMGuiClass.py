@@ -782,8 +782,8 @@ class UEVMGui(tk.Tk):
                 row_indexes = rows_serie.index
                 if len(row_indexes) > 0:
                     row_index = row_indexes[0]
-                    self.logger.info(f"An existing row {row_index} has been found with path {content['path']}")
                     text = f'Updating {name} at row {row_index}'
+                    self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
                 self.logger.warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
                 invalid_folders.append(content["path"])
@@ -793,9 +793,9 @@ class UEVMGui(tk.Tk):
             if row_index == -1:
                 # row_index = 0  # added at the start of the table. As it, the index is always known
                 _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
-                self.logger.info(f"A row is created at {row_index} for the path {content['path']}")
-                row_added += 1
                 text = f'Adding {name} at row {row_index}'
+                self.logger.info(f"{text} with path {content['path']}")
+                row_added += 1
             if not pw.update_and_continue(increment=1, text=text):
                 break
             forced_data = {
@@ -930,7 +930,8 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-            data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+            if asset_data is not None:
+                data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
         if update_dataframe:
             data_table.update()
 
