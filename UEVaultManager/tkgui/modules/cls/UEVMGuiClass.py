@@ -634,7 +634,7 @@ class UEVMGui(tk.Tk):
 
             msg = f'Scanning folder {full_folder}'
             self.logger.info(msg)
-            if not pw.update_and_continue(value=0, text=f'Scanning folder:\n{gui_fn.shorten_text(full_folder, 30)}'):
+            if not pw.update_and_continue(value=0, text=f'Scanning folder:\n{gui_fn.shorten_text(full_folder, 70)}'):
                 gui_f.close_progress(self)
                 return
 
