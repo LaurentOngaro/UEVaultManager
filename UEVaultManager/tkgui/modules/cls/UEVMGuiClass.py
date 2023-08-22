@@ -462,7 +462,7 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
-        data_table.update_col_infos()
+        data_table.update_col_infos(apply_resize_cols=False)
         file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui)
         gui_g.s.save_config_file()
         # delete the backup if the files and the backup are identical
@@ -751,14 +751,13 @@ class UEVMGui(tk.Tk):
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         data = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         count = len(valid_folders.items())
-        pw.reset(new_text='Scraping data and adding assets to the table', new_max_value=count)
+        pw.reset(new_text='Scraping data and updating assets', new_max_value=count)
         pw.show_progress_bar()
         pw.update()
         row_added = 0
         data_table.is_scanning = True
         for name, content in valid_folders.items():
-            if not pw.update_and_continue(increment=1, text=f'Adding {name}'):
-                break
+
             marketplace_url = content['marketplace_url']
             gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
             # set default values for the row, some will be replaced by Scraping
@@ -773,6 +772,7 @@ class UEVMGui(tk.Tk):
                 }
             )
             row_index = -1
+            text = f'Checking {name}'
             try:
                 # get the indexes if value already exists in column 'Origin' for a pandastable
                 rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
@@ -780,15 +780,21 @@ class UEVMGui(tk.Tk):
                 if len(row_indexes) > 0:
                     row_index = row_indexes[0]
                     gui_f.log_info(f"An existing row {row_index} has been found with path {content['path']}")
+                    text = f'Updating {name} at row {row_index}'
             except (IndexError, ValueError) as error:
                 gui_f.log_warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
                 invalid_folders.append(content["path"])
+                text = f'An Error occured when cheking {name}'
+                pw.set_text(text)
                 continue
             if row_index == -1:
                 # row_index = 0  # added at the start of the table. As it, the index is always known
                 _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
                 gui_f.log_info(f"A row is created at {row_index} for the path {content['path']}")
                 row_added += 1
+                text = f'Adding {name} at row {row_index}'
+            if not pw.update_and_continue(increment=1, text=text):
+                break
             forced_data = {
                 # 'category': content['asset_type'].category_name,
                 'origin': content['path'],
@@ -808,8 +814,7 @@ class UEVMGui(tk.Tk):
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
         data_table.is_scanning = False
-        data_table.update()
-        data_table.resize_columns()
+        data_table.update(update_format=True)
         gui_f.close_progress(self)
 
         if invalid_folders:

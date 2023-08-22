@@ -96,7 +96,7 @@ class EditableTable(Table):
         self.update_page_numbers_func = update_page_numbers_func
         self.update_rows_text_func = update_rows_text_func
         self.set_control_state_func = set_control_state_func
-        self.set_defaults() # will create and reset all the table properties. To be done FIRST
+        self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         show_progress(container, text='Loading Data from data source...')
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
