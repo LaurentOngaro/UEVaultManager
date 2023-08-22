@@ -4,6 +4,7 @@ Implementation for:
 - UEVMGui: the main window of the application.
 """
 import filecmp
+import logging
 import os
 import re
 import shutil
@@ -83,6 +84,8 @@ class UEVMGui(tk.Tk):
     _options_frame: UEVMGuiOptionsFrame = None
     _content_frame: UEVMGuiContentFrame = None
     _filter_frame: FilterFrame = None
+    logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
+    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
     egs = None
 
     def __init__(
@@ -576,7 +579,7 @@ class UEVMGui(tk.Tk):
                 file_name = os.path.splitext(entry.name)[0]
                 file_name_cleaned = clean_ue_asset_name(file_name)
                 fuzz_score = fuzz.ratio(folder_name_cleaned, file_name_cleaned)
-                gui_f.log_debug(f'Fuzzy compare {folder_name} ({folder_name_cleaned}) with {file_name} ({file_name_cleaned}): {fuzz_score}')
+                self.logger.debug(f'Fuzzy compare {folder_name} ({folder_name_cleaned}) with {file_name} ({file_name_cleaned}): {fuzz_score}')
                 minimal_score = gui_g.s.minimal_fuzzy_score_by_name.get('default', 70)
                 for key, value in gui_g.s.minimal_fuzzy_score_by_name.items():
                     key = key.lower()
@@ -630,7 +633,7 @@ class UEVMGui(tk.Tk):
             folder_name_lower = folder_name.lower()
 
             msg = f'Scanning folder {full_folder}'
-            gui_f.log_info(msg)
+            self.logger.info(msg)
             if not pw.update_and_continue(value=0, text=f'Scanning folder:\n{gui_fn.shorten_text(full_folder, 30)}'):
                 gui_f.close_progress(self)
                 return
@@ -649,7 +652,7 @@ class UEVMGui(tk.Tk):
                     pw.set_text(f'{folder_name} as a valid folder.\nChecking asset url...')
                     pw.update()
                     msg = f'-->Found {folder_name} as a valid project'
-                    gui_f.log_info(msg)
+                    self.logger.info(msg)
                     marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                     grab_result = ''
                     if marketplace_url:
@@ -679,7 +682,7 @@ class UEVMGui(tk.Tk):
                                     if path in folder_to_scan:
                                         folder_to_scan.remove(path)
                         msg = f'-->Found {parent_folder}. The folder has been restructured as a valid project'
-                        gui_f.log_debug(msg)
+                        self.logger.debug(msg)
                         if full_folder in folder_to_scan:
                             folder_to_scan.remove(full_folder)
                         if parent_folder not in folder_to_scan:
@@ -706,7 +709,7 @@ class UEVMGui(tk.Tk):
                                         path = os.path.dirname(full_folder_abs)
                                     else:
                                         asset_type = UEAssetType.Asset
-                                        gui_f.log_warning(
+                                        self.logger.warning(
                                             f'{full_folder_abs} has a manifest file but no data folder.It will be considered as an asset'
                                         )
                                 else:
@@ -725,7 +728,7 @@ class UEVMGui(tk.Tk):
                                     'grab_result': grab_result
                                 }
                                 msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_content else f'-->Found {folder_name} containing a {asset_type.name}'
-                                gui_f.log_debug(msg)
+                                self.logger.debug(msg)
                                 if self.core.scan_assets_logger:
                                     self.core.scan_assets_logger.info(msg)
                                 if grab_result != GrabResult.NO_ERROR.name or not marketplace_url:
@@ -738,13 +741,13 @@ class UEVMGui(tk.Tk):
                         elif entry.is_dir() and entry_is_valid:
                             folder_to_scan.append(entry.path)
                 except FileNotFoundError:
-                    gui_f.log_debug(f'{full_folder_abs} has been removed during the scan')
+                    self.logger.debug(f'{full_folder_abs} has been removed during the scan')
 
             # sort the list to have the parent folder POPED (by the end) before the subfolders
             folder_to_scan = sorted(folder_to_scan, key=lambda x: len(x), reverse=True)
 
         msg = '\n\nValid folders found after scan:\n'
-        gui_f.log_info(msg)
+        self.logger.info(msg)
         if self.core.scan_assets_logger:
             self.core.scan_assets_logger.info(msg)
         date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
@@ -759,7 +762,7 @@ class UEVMGui(tk.Tk):
         for name, content in valid_folders.items():
 
             marketplace_url = content['marketplace_url']
-            gui_f.log_info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
+            self.logger.info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
             # set default values for the row, some will be replaced by Scraping
             row_data.update(
                 {
@@ -779,10 +782,10 @@ class UEVMGui(tk.Tk):
                 row_indexes = rows_serie.index
                 if len(row_indexes) > 0:
                     row_index = row_indexes[0]
-                    gui_f.log_info(f"An existing row {row_index} has been found with path {content['path']}")
+                    self.logger.info(f"An existing row {row_index} has been found with path {content['path']}")
                     text = f'Updating {name} at row {row_index}'
             except (IndexError, ValueError) as error:
-                gui_f.log_warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
+                self.logger.warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
                 invalid_folders.append(content["path"])
                 text = f'An Error occured when cheking {name}'
                 pw.set_text(text)
@@ -790,7 +793,7 @@ class UEVMGui(tk.Tk):
             if row_index == -1:
                 # row_index = 0  # added at the start of the table. As it, the index is always known
                 _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
-                gui_f.log_info(f"A row is created at {row_index} for the path {content['path']}")
+                self.logger.info(f"A row is created at {row_index} for the path {content['path']}")
                 row_added += 1
                 text = f'Adding {name} at row {row_index}'
             if not pw.update_and_continue(increment=1, text=text):
@@ -823,7 +826,7 @@ class UEVMGui(tk.Tk):
             if gui_g.display_content_window_ref is None:
                 gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM: status command output', quit_on_close=False)
                 gui_g.display_content_window_ref.display(result)
-            gui_f.log_warning(result)
+            self.logger.warning(result)
 
     def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False):
         asset_data = None
@@ -834,7 +837,7 @@ class UEVMGui(tk.Tk):
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if asset_data is None or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
                 msg = f'Failed to grab data from {marketplace_url}'
-                gui_f.log_warning(msg)
+                self.logger.warning(msg)
                 if show_message:
                     gui_f.box_message(msg)
                 return None
@@ -858,7 +861,7 @@ class UEVMGui(tk.Tk):
             scraper.asset_db_handler.set_assets(asset_data)
         else:
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
-            gui_f.log_warning(msg)
+            self.logger.warning(msg)
             if show_message:
                 gui_f.box_message(msg)
         return asset_data
@@ -906,7 +909,7 @@ class UEVMGui(tk.Tk):
                 asset_id = row_data['Asset_id']
                 if asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Asset slug is different from the given Url and from the row data for the asset with uid={asset_id}'
-                    gui_f.log_warning(msg)
+                    self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
                     if gui_f.box_yesno(f'{msg}.\nDo you wan to recreate the Url from the Asset slug and use it for scraping ?'):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
@@ -942,7 +945,7 @@ class UEVMGui(tk.Tk):
             self._filter_frame.load_filters(filters)
             # self.update_navigation() # done in load_filters and inner calls
         except Exception as error:
-            gui_f.log_error(f'Error loading filters: {error!r}')
+            self.logger.error(f'Error loading filters: {error!r}')
 
     def toggle_pagination(self, forced_value: bool = None) -> None:
         """
