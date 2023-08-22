@@ -293,12 +293,12 @@ class UEAssetDbHandler:
         # all the following steps must be run sequentially
         if upgrade_from_version.value <= DbVersionNum.V1.value:
             # necessary steps to upgrade to version 1, aka create tables
-            self.db_version = DbVersionNum.V2
+            self.db_version = upgrade_from_version = DbVersionNum.V2
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V2:
             # necessary steps to upgrade from version 2
             # add the last_run table to get data about the last run of the ap
-            self.db_version = DbVersionNum.V3
+            self.db_version = upgrade_from_version = DbVersionNum.V3
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V3:
             # necessary steps to upgrade from version 3
@@ -318,8 +318,7 @@ class UEAssetDbHandler:
                     'added_manually': 'BOOLEAN'
                 }
             )
-            self.db_version = DbVersionNum.V4
-            upgrade_from_version = self.db_version
+            self.db_version = upgrade_from_version = DbVersionNum.V4
         if upgrade_from_version == DbVersionNum.V4:
             # necessary steps to upgrade from version 4
             # add changed fields
@@ -337,20 +336,20 @@ class UEAssetDbHandler:
                     'old_price': 'REAL'
                 }
             )
-            self.db_version = DbVersionNum.V5
+            self.db_version = upgrade_from_version = DbVersionNum.V5
         if upgrade_from_version == DbVersionNum.V5:
             # necessary steps to upgrade from version 5
             # add changed fields
             self._add_missing_columns('assets', required_columns={'tags': 'TEXT', })
-            self.db_version = DbVersionNum.V6
+            self.db_version = upgrade_from_version = DbVersionNum.V6
         if upgrade_from_version == DbVersionNum.V6:
-            self.db_version = DbVersionNum.V7
+            self.db_version = upgrade_from_version = DbVersionNum.V7
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V7:
-            self.db_version = DbVersionNum.V8
+            self.db_version = upgrade_from_version = DbVersionNum.V8
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V8:
-            self.db_version = DbVersionNum.V9
+            self.db_version = upgrade_from_version = DbVersionNum.V9
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V9:
             """
@@ -359,7 +358,7 @@ class UEAssetDbHandler:
             """
             """
             # do some stuff here
-            self.db_version = DbVersionNum.V10
+            self.db_version = upgrade_from_version = DbVersionNum.V10
             """
             pass
         if previous_version != self.db_version:
