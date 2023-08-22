@@ -96,6 +96,7 @@ class EditableTable(Table):
         self.update_page_numbers_func = update_page_numbers_func
         self.update_rows_text_func = update_rows_text_func
         self.set_control_state_func = set_control_state_func
+        self.set_defaults() # will create and reset all the table properties. To be done FIRST
         show_progress(container, text='Loading Data from data source...')
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
@@ -108,7 +109,6 @@ class EditableTable(Table):
             # self.set_data(self.set_columns_type(df_loaded), df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
             self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
             self.resize_columns()
-            self.set_defaults()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
         close_progress(self)
 
@@ -197,6 +197,13 @@ class EditableTable(Table):
                         clr = colors.iloc[row - offset]  # iloc checked
                         if not pd.isnull(clr):
                             self.drawRect(row, col, color=clr, tag='colorrect', delete=0)
+
+    def setColPositions(self):
+        """
+        Determine current column grid positions
+        Overrided for debugging
+        """
+        super().setColPositions()
 
     def resizeColumn(self, col: int, width: int):
         """
