@@ -664,9 +664,7 @@ class EditableTable(Table):
                     self.logger.error(f'The row to delete with asset_id={check_asset_id} is not the good one')
                 else:
                     try:
-                        self.model.df.drop(
-                            row_index, inplace=True
-                        )
+                        self.model.df.drop(row_index, inplace=True)
                         df.drop(row_index, inplace=True)
                         if self.df_filtered is not None:
                             self.df_filtered.drop(row_index, inplace=True)
@@ -677,7 +675,7 @@ class EditableTable(Table):
 
             self.must_save = True
             self.update_index_copy_column()
-            if self.getSelectedRow() < len(self.model.df)-1:
+            if self.getSelectedRow() < len(self.model.df) - 1:
                 # move to the next row
                 self.next_row()
             else:
