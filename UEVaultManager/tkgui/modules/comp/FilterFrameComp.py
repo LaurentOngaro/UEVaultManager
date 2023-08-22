@@ -7,6 +7,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Tuple, Any, Dict
 
+import pandas as pd
+
 from UEVaultManager.tkgui.modules.functions import log_info, box_message
 
 
@@ -22,6 +24,7 @@ class FilterFrame(ttk.LabelFrame):
     """
     _filters = {}
     _quick_filters = {}
+    _filter_mask = None
     frm_widgets = None
     cb_col_name = None
     cb_quick_filter = None
@@ -230,15 +233,25 @@ class FilterFrame(ttk.LabelFrame):
         # value_type_str = re.sub(r"<class '(.*)'>", r'\1', str(value_type))
         return value_type_str, filter_value
 
-    def create_mask(self):
+    def create_mask(self, filters=None):
         """
         Create a boolean mask for specified column based on filter value in a pandas DataFrame.
-        :return: Boolean Series (mask) where True indicates rows that meet the condition.
         """
-        data = self.data_func()
+        # if filters is None or len(filters) == 0:
+        #     # load quick filter first
+        #     filters = self.quick_filter(only_return_filter=True).items()
+        # if filters is None or len(filters) == 0:
+        #     filters = self._filters.items()
+
+        if filters is None or len(filters) == 0:
+            quick_filters:dict = self.quick_filter(only_return_filter=True)
+            filters:dict = self._filters.copy()
+            filters.update(quick_filters)
+
         final_mask = None
         mask = False
-        for col_name, (value_type_str, filter_value) in self.get_filters().items():
+        data = self.data_func()
+        for col_name, (value_type_str, filter_value) in filters.items():
             if col_name == self.value_for_all:
                 mask = False
                 for col in data.columns:
@@ -264,8 +277,14 @@ class FilterFrame(ttk.LabelFrame):
                 except ValueError:
                     box_message(f'the value {filter_value} does not correspond to the type of column {col_name}')
             final_mask = mask if final_mask is None else final_mask & mask
+        self._filter_mask = final_mask
 
-        return final_mask
+    def get_filter_mask(self) -> pd.Series:
+        """
+        Get the boolean mask for specified column based on filter value in a pandas DataFrame.
+        :return:
+        """
+        return self._filter_mask
 
     def update_controls(self) -> None:
         """
@@ -297,13 +316,6 @@ class FilterFrame(ttk.LabelFrame):
 
         self.filters_count_var.set(f'Filters ({filter_count})')
 
-    def get_filters(self) -> Dict[str, Tuple[str, Any]]:
-        """
-        Get the filter dictionary.
-        :return: The filter dictionary containing the filter conditions.
-        """
-        return self._filters
-
     def apply_filters(self) -> None:
         """
         Applie the filters and updates the caller.
@@ -311,7 +323,8 @@ class FilterFrame(ttk.LabelFrame):
         self._add_to_filters()
         # self._update_filter_widgets()
         self.update_controls()
-        self.update_func(reset_page=True, keep_filters=False)
+        # self.create_mask(self._filters.items())
+        self.update_func(reset_page=True, update_filters=True)
 
     def reset_filters(self) -> None:
         """
@@ -324,8 +337,9 @@ class FilterFrame(ttk.LabelFrame):
         else:
             self.filter_widget.delete(0, 'end')
         self._filters = {}
+        self._filter_mask = None
         self._update_filter_widgets()
-        self.update_func(reset_page=True, keep_filters=False)
+        self.update_func(reset_page=True)
 
     def view_filters(self) -> None:
         """
@@ -337,18 +351,22 @@ class FilterFrame(ttk.LabelFrame):
             self.clipboard_clear()
             self.clipboard_append(values)
 
-    def quick_filter(self) -> None:
+    def quick_filter(self, only_return_filter=False) -> dict:
         """
         Update the widgets that are used for filtering based on the selected column.
+        :param only_return_filter: If True, only return the filter string without applying it.
+        :return: The filter dict.
         """
+        filter_dict = {}
         selected_filter = self.cb_quick_filter.get()
         quick_filter = self._quick_filters.get(selected_filter, None)
         if selected_filter and quick_filter:
-            store_filters = self._filters.copy()
             str_type = type(quick_filter[1]).__name__
-            self._filters = {quick_filter[0]: (str_type, quick_filter[1])}
-            self.update_func(reset_page=True, keep_filters=False)
-            self._filters = store_filters
+            filter_dict = {quick_filter[0]: (str_type, quick_filter[1])}
+            if not only_return_filter:
+                # self.create_mask(filter_dict.items())
+                self.update_func(reset_page=True, update_filters=True)
+        return filter_dict
 
     def load_filters(self, filters: Dict[str, Tuple[type, Any]]) -> None:
         """
@@ -359,4 +377,4 @@ class FilterFrame(ttk.LabelFrame):
             return
         self._filters = filters.copy()
         self._update_filter_widgets()
-        self.update_func(reset_page=True, keep_filters=False)
+        self.update_func(reset_page=True, update_filters=True)

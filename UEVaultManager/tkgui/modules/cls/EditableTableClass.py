@@ -48,7 +48,6 @@ class EditableTable(Table):
     _db_handler = None
     _frm_quick_edit = None
     _filter_frame = None
-    _filter_mask = None
     _edit_row_window = None
     _edit_row_entries = None
     _edit_row_number: int = -1
@@ -992,24 +991,24 @@ class EditableTable(Table):
         """
         self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data()
-        if reset_page:
-            self.current_page = 1
         if update_filters:
-            mask = self._filter_frame.create_mask() if self._filter_frame is not None else None
-        else:
-            mask = self._filter_mask
+           self._filter_frame.create_mask()
+        mask = self._filter_frame.get_filter_mask() if self._filter_frame is not None else None
         if mask is not None:
             self.filtered = True
             # self.current_page = 1
             self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
         else:
             self.filtered = False
+            self.set_data(df, df_type=DataFrameUsed.FILTERED)
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             show_progress(self, text='Formating and converting DataTable...')
             self.update_index_copy_column()
             self.set_data(self.set_columns_type(df))
-        self._filter_mask = mask
+        if reset_page:
+            self.current_page = 1
+            self.update_rows_text_func()
         self.update_page(keep_col_infos=True)
 
     def update_page(self, keep_col_infos=False) -> None:
