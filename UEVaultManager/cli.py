@@ -141,7 +141,7 @@ class UEVaultManagerCLI:
         Wrapper for the log function to display a messagebox if the gui is active.
         :param log_function: function to use to log.
         :param message: message to log.
-        :param dont_quit: if True, the app will not quit if the log level is 'error'.
+        :param dont_quit: Whether the app will not quit if the log level is 'error'.
         """
         if not UEVaultManagerCLI.is_gui:
             log_function(message)
@@ -1219,7 +1219,7 @@ class UEVaultManagerCLI:
         Prints the help for the command.
         :param args:.
         :param parser: command line parser. If not provided, gui_g.UEVM_parser_ref will be used.
-        :param forced: if True, the help will be printed even if the --help option is not present.
+        :param forced: Whether the help will be printed even if the --help option is not present.
         """
         if parser is None:
             parser = gui_g.UEVM_parser_ref

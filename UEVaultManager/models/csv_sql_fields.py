@@ -288,9 +288,9 @@ csv_sql_fields = {
 def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, return_as_string=False, filter_on_states=None):
     """
     Get the csv fields list.
-    :param exclude_sql_only: if True, exclude the sql only fields from result.
-    :param include_asset_only: if True, include the asset only fields from result.
-    :param return_as_string: if True, return a string instead of a list.
+    :param exclude_sql_only: Whether to exclude the sql only fields from result.
+    :param include_asset_only: Whether to include the asset only fields from result.
+    :param return_as_string: Whether to return a string instead of a list.
     :param filter_on_states: if not empty, only return the fields in the given states.
     :return: csv headings.
     """
@@ -311,10 +311,10 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
 def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, return_as_string=False, add_alias=False, filter_on_states=None):
     """
     Get the sql fields list.
-    :param exclude_csv_only: if True, exclude the csv only fields from result.
-    :param include_asset_only: if True, include the asset only fields from result.
-    :param return_as_string: if True, return a string instead of a list.
-    :param add_alias: if True, add the csv name as alias to the sql field name.
+    :param exclude_csv_only: Whether to exclude the csv only fields from result.
+    :param include_asset_only: Whether to include the asset only fields from result.
+    :param return_as_string: Whether to return a string instead of a list.
+    :param add_alias: Whether to add the csv name as alias to the sql field name.
     :param filter_on_states: if not empty, only return the fields in the given states.
     :return: sql headings.
     """

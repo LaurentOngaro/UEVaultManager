@@ -258,7 +258,7 @@ class ExtendedCheckButton(ExtendedWidget):
     :param master: Parent widget.
     :param label: Text to display next to the checkbutton.
     :param images_folder: Path to the folder containing the images for the checkbutton. If empty, the './assets' folder will be used.
-    :param change_state_on_click: If True, the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method.
+    :param change_state_on_click: Whether the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method.
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedCheckButton instance.
     """

@@ -55,7 +55,7 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         cur_col = 0
         debug_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('debug', False))
         debug_var.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(debug_var.get()))
-        ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode', variable=debug_var)
+        ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode (CLI)', variable=debug_var)
         ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_command_options row
         # delete_extra_data'] = True
@@ -83,6 +83,13 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         use_threads_var.trace_add('write', lambda name, index, mode: gui_g.set_use_threads(use_threads_var.get()))
         ck_use_threads = ttk.Checkbutton(lblf_gui_settings, text='Use threads', variable=use_threads_var)
         ck_use_threads.grid(row=cur_row, column=cur_col, **grid_fw_options)
+        # lblf_gui_settings row
+        cur_row += 1
+        cur_col = 0
+        debug_gui_var = tk.BooleanVar(value=gui_g.s.debug_mode)
+        debug_gui_var.trace_add('write', lambda name, index, mode: gui_g.s.set_debug_mode(debug_gui_var.get()))
+        ck_debug_gui = ttk.Checkbutton(lblf_gui_settings, text='Debug mode (GUI)', variable=debug_gui_var)
+        ck_debug_gui.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
         # Folders To scan frame
         lblf_folders_to_scan = ttk.LabelFrame(lblf_options, text='Folders To scan (add/remove)')

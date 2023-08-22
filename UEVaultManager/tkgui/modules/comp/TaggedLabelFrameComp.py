@@ -50,7 +50,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param default_content: Default content of the child widget.
         :param layout_option: Layout options to use. Default, full width.
         :param images_folder: folder for image used by some widgets.
-        :param add_label_before: If True, adds a label before the child widget.
+        :param add_label_before: Whether to adds a label before the child widget.
         :param focus_out_callback: Callback to call when the child widget loses focus.
         :param focus_in_callback: Callback to call when the child widget get focus.
         :param click_on_callback: Callback to call when the child widget is clicked or checked.
