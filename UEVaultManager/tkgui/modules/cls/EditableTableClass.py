@@ -389,7 +389,7 @@ class EditableTable(Table):
             result = int(idx)
             if copy_col_index >= 0:
                 idx_copy = df.iat[row_number, copy_col_index]  # could return '' if the column is empty
-                result = int(idx_copy) if idx_copy != '' else -1
+                result = int(idx_copy) if str(idx_copy) != '' else -1
             else:
                 self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
         except (ValueError, IndexError) as error:
@@ -600,15 +600,17 @@ class EditableTable(Table):
                 return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
             )  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
-            if data_frame is not None:
-                try:
-                    new_index = data_frame.index.max() + 1
-                except (AttributeError, ValueError):
-                    pass
-                else:
-                    new_index = len(data_frame) + 1
-            else:
-                new_index = 1
+            # getting the last index for the new row
+            # THIS CAN CAUSES ISSUE: using the first index (0) is much simple
+            # if data_frame is not None:
+            #     try:
+            #         new_index = data_frame.index.max() + 1
+            #     except (AttributeError, ValueError):
+            #         pass
+            #     else:
+            #         new_index = len(data_frame) + 1
+            # else:
+            #     new_index = 1
             table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
             try:
                 table_row[gui_g.s.index_copy_col_name] = new_index
@@ -621,11 +623,15 @@ class EditableTable(Table):
             # add the data to the row
             for col in row_data:
                 table_row[col] = row_data[col]
+            table_row.fillna('None', inplace=True)
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
-            # row is added at the start of the table. As it, the index is always known
-            # df = pd.concat([table_row, self.get_data(df_type=DataFrameUsed.AUTO)], copy=False, ignore_index=True)
-            new_df = pd.concat([data_frame, table_row], copy=False, ignore_index=True)
+            if new_index == 0:
+                # the row is added at the start of the table. As it, the index is always known
+                new_df = pd.concat([table_row, data_frame], copy=False, ignore_index=True)
+            else:
+                # the row is added at the end
+                new_df = pd.concat([data_frame, table_row], copy=False, ignore_index=True)
             self.set_data(new_df)
             self.add_to_rows_to_save(new_index)  # done inside self.must_save = True
         elif table_row is not None:
@@ -675,12 +681,13 @@ class EditableTable(Table):
 
             self.must_save = True
             self.update_index_copy_column()
-            if self.getSelectedRow() < len(self.model.df) - 1:
+            cur_row = self.getSelectedRow()
+            if cur_row < number_deleted:
                 # move to the next row
-                self.next_row()
+                self.move_to_row(cur_row)
             else:
-                # or move to the prev row if the last row has been deleted
-                self.prev_row()
+                # or move to the prev row of the first deleted row
+                self.move_to_row(cur_row - number_deleted)
             # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
             self.update(update_filters=True)
             return number_deleted > 0
@@ -992,7 +999,7 @@ class EditableTable(Table):
         self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data()
         if update_filters:
-           self._filter_frame.create_mask()
+            self._filter_frame.create_mask()
         mask = self._filter_frame.get_filter_mask() if self._filter_frame is not None else None
         if mask is not None:
             self.filtered = True
@@ -1055,6 +1062,8 @@ class EditableTable(Table):
         Navigate to the specified row in the table.
         :param row_index: The (real) ndex of the row to navigate to.
         """
+        if row_index < 0 or row_index > len(self.get_data()) - 1:
+            return
         self.setSelectedRow(row_index)
         self.redraw()
         self._generate_cell_selection_changed_event()
@@ -1220,6 +1229,8 @@ class EditableTable(Table):
         if isinstance(ue_asset_data, list):
             ue_asset_data = ue_asset_data[0]
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
+        if asset_id in ('', 'None', 'nan'):
+            asset_id = ue_asset_data.get('asset_id', 'None')
         text = f'row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
@@ -1232,9 +1243,9 @@ class EditableTable(Table):
             if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
-            if col_index >= 0 and not self.update_cell(row_number, col_index, typed_value, convert_row_number_to_row_index):
-                error_count += 1
-                continue
+            if col_index >= 0:
+                if not self.update_cell(row_number, col_index, typed_value, convert_row_number_to_row_index):
+                    error_count += 1
         if error_count > 0:
             self.logger.warning(f'{error_count} Errors occured when updating {len(ue_asset_data.items())} cells for row {text}')
         self.update_page()
@@ -1293,7 +1304,7 @@ class EditableTable(Table):
             return False
         try:
             idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
-            df = self.get_data(df_type=DataFrameUsed.UNFILTERED)  # always used the unfiltered because the real index is set from unfiltered dataframe
+            df = self.get_data()  # always used the unfiltered because the real index is set from unfiltered dataframe
             if idx < 0 or idx >= len(df):
                 return False
             df.iat[idx, col_index] = value  # iat checked
