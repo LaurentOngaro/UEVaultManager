@@ -654,7 +654,6 @@ class EditableTable(Table):
         number_deleted = len(index_to_delete)
         asset_str = f'{number_deleted} rows' if number_deleted > 1 else f' row #{row_number} with asset_id {asset_id}'
         if number_deleted and box_yesno(f'Are you sure you want to delete {asset_str}? '):
-            # self.model.df.drop(index_to_delete, inplace=True, errors='ignore')  # model. df checked
             for row_index in index_to_delete:
                 df = self.get_data()
                 # update the index copy column because index is changed after each deletion
@@ -665,20 +664,26 @@ class EditableTable(Table):
                     self.logger.error(f'The row to delete with asset_id={check_asset_id} is not the good one')
                 else:
                     try:
-                        df.drop(row_index, inplace=True)
                         self.model.df.drop(
                             row_index, inplace=True
-                        )  # only to, make the changes visible during the process. Will be updated later in the update() call
+                        )
+                        df.drop(row_index, inplace=True)
+                        if self.df_filtered is not None:
+                            self.df_filtered.drop(row_index, inplace=True)
                         # if self._filter_mask is not None:
-                        #    self._filter_mask.drop(idx, inplace=True, errors='ignore')
+                        #    self._filter_mask.drop(row_index, inplace=True, errors='ignore')
                     except (IndexError, KeyError) as error:
                         self.logger.warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
 
             self.must_save = True
-            self.selectNone()
             self.update_index_copy_column()
-            # self.redraw()  # TODO: check if we need to self.update() instead to refresh all the datatables
-            self.update()
+            if self.getSelectedRow() < len(self.model.df)-1:
+                # move to the next row
+                self.next_row()
+            else:
+                # or move to the prev row if the last row has been deleted
+                self.prev_row()
+            self.redraw()
         return number_deleted > 0
 
     def save_data(self, source_type: DataSourceType = None) -> None:
