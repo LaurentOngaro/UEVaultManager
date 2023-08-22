@@ -181,7 +181,7 @@ class UEVMGui(tk.Tk):
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
                 if not data_table.rebuild_data():
-                    gui_f.log_error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
+                    self.logger.error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
             elif data_source_type == DataSourceType.FILE and gui_f.box_yesno(
@@ -190,11 +190,11 @@ class UEVMGui(tk.Tk):
                 show_open_file_dialog = True
             else:
                 self.destroy()  # self.quit() won't work here
-                gui_f.log_error('No valid source to read data from. Application will be closed', )
+                self.logger.error('No valid source to read data from. Application will be closed', )
 
         if show_open_file_dialog:
             if self.open_file() == '':
-                gui_f.log_error('This application could not run without a file to read data from')
+                self.logger.error('This application could not run without a file to read data from')
                 self.quit()
         gui_f.show_progress(self, text='Initializing Data Table...')
         if gui_g.s.data_filters:
@@ -214,9 +214,9 @@ class UEVMGui(tk.Tk):
         Mainloop method
         Overrided to add loggin function for debugging
         """
-        gui_f.log_info(f'starting mainloop in {__name__}')
+        self.logger.info(f'starting mainloop in {__name__}')
         self.tk.mainloop(n)
-        gui_f.log_info(f'ending mainloop in {__name__}')
+        self.logger.info(f'ending mainloop in {__name__}')
 
     @staticmethod
     def _focus_next_widget(event):
@@ -271,12 +271,12 @@ class UEVMGui(tk.Tk):
             return None, None
         widget = self._control_frame.lbtf_quick_edit.get_child_by_tag(tag)
         if widget is None:
-            gui_f.log_warning(f'Could not find a widget with tag {tag}')
+            self.logger.warning(f'Could not find a widget with tag {tag}')
             return None, None
         col = widget.col
         row = widget.row
         if col is None or row is None or col < 0 or row < 0:
-            gui_f.log_debug(f'invalid values for row={row} and col={col}')
+            self.logger.debug(f'invalid values for row={row} and col={col}')
             return None, widget
         value = widget.get_content()
         return value, widget
@@ -372,16 +372,16 @@ class UEVMGui(tk.Tk):
             item_num = self._toolbar_frame.entry_current_item.get()
             item_num = int(item_num)
         except (ValueError, UnboundLocalError) as error:
-            gui_f.log_error(f'could not convert item number {item_num} to int. {error!r}')
+            self.logger.error(f'could not convert item number {item_num} to int. {error!r}')
             return
 
         data_table = self.editable_table  # shortcut
         if data_table.pagination_enabled:
-            gui_f.log_debug(f'showing page {item_num}')
+            self.logger.debug(f'showing page {item_num}')
             data_table.current_page = item_num
             data_table.update_page()
         else:
-            gui_f.log_debug(f'showing row {item_num}')
+            self.logger.debug(f'showing row {item_num}')
             data_table.move_to_row(item_num)
 
     # noinspection PyUnusedLocal
