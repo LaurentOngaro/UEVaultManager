@@ -872,6 +872,7 @@ class UEAssetDbHandler:
                     continue
                 if delete_content:
                     cursor.execute(f"DELETE FROM {table_name} WHERE 1")
+                    self.connection.commit()
                 try:
                     with open(file_name, 'r', newline='', encoding='utf-8') as f:
                         reader = csv.reader(f, dialect='unix')
@@ -899,7 +900,7 @@ class UEAssetDbHandler:
                     msg = f'Error while importing table "{table_name}" from CSV file "{file_name}"'
                     result.append(msg)
                     self.logger.warning(f'{msg}: {error!r}')
-                self.connection.commit()
+            self.connection.commit()
             cursor.close()
         return result, must_reload
 
