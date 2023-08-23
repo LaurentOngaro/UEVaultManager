@@ -1334,7 +1334,7 @@ class UEVMGui(tk.Tk):
             'Result Not OK': ['Grab result', '^NO_ERROR'],  #
             'Plugins only': ['Category', 'plugins'],  #
             'Free': ['Price', 0],  #
-            'Asset_id is Dummy': ['Asset_id', gui_g.s.empty_row_prefix],  #
+            'Dummy rows': ['Asset_id', gui_g.s.empty_row_prefix],  #
             'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
             'Tags with number': ['callable', self.filter_tags_with_number],  #
             'With comment': ['callable', self.filter_with_comment],  #
