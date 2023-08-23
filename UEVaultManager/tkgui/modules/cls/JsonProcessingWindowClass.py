@@ -25,7 +25,7 @@ class JSPW_Settings:
 
 class JsonProcessingWindow(tk.Toplevel):
     """
-    This app processes JSON files and stores some data in a database.
+    This window processes JSON files and stores some data in a database.
     :param title: the title.
     :param width: the width.
     :param height: the height.
@@ -40,14 +40,13 @@ class JsonProcessingWindow(tk.Toplevel):
         self,
         title: str = 'Json Processing Window',
         width: int = 400,
-        height: int = 370,
+        height: int = 400,
         icon=None,
         screen_index: int = 0,
         folder_for_tags_path: str = '',
         folder_for_rating_path: str = '',
         db_path: str = ''
     ):
-
         super().__init__()
         self.title(title)
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
@@ -70,14 +69,14 @@ class JsonProcessingWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            self.container = container
-            self.processing = False
+            self.container: JsonProcessingWindow = container
+            self.processing: bool = False
 
-            self.label = tk.Label(self, text='File Data Processing App', font=('Helvetica', 16, 'bold'))
+            self.label = tk.Label(self, text='File Data Processing Window', font=('Helvetica', 16, 'bold'))
             self.label.pack(pady=10)
 
             self.goal_label = tk.Label(
-                self, text='This app processes JSON files and stores some data in a database.', wraplength=350, justify='center'
+                self, text='This window processes JSON files and stores some data in a database.', wraplength=350, justify='center'
             )
             self.goal_label.pack(pady=5)
 
@@ -300,7 +299,7 @@ if __name__ == '__main__':
     main = tk.Tk()
     main.title('FAKE MAIN Window')
     main.geometry('200x100')
-    app = JsonProcessingWindow(
+    window = JsonProcessingWindow(
         title=st.title, db_path=st.db_path, folder_for_tags_path=st.folder_for_tags_path, folder_for_rating_path=st.folder_for_rating_path
     )
     main.mainloop()

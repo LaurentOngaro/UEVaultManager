@@ -3,12 +3,14 @@
 implementation for:
 - UEAssetDbHandler: Handles database operations for the UE Assets.
 """
+import csv
 import datetime
 import inspect
 import logging
 import os
 import random
 import sqlite3
+from pathlib import Path
 
 from faker import Faker
 
@@ -647,8 +649,8 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             query = "INSERT INTO tags (id, name) VALUES (:id, :name)"
             cursor.execute(query, data)
-            cursor.close()
             self.connection.commit()
+            cursor.close()
 
     def get_tag_by_id(self, uid: int) -> str:
         """
@@ -680,8 +682,8 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             query = "INSERT INTO ratings (id, averageRating, total) VALUES (:id, :averageRating, :total)"
             cursor.execute(query, data)
-            cursor.close()
             self.connection.commit()
+            cursor.close()
 
     def get_rating_by_id(self, uid: int) -> ():
         """
@@ -761,6 +763,145 @@ class UEAssetDbHandler:
             cursor.execute("DROP TABLE IF EXISTS assets")
             self.connection.commit()
             cursor.close()
+
+    def get_table_names(self) -> list:
+        """
+        Get the names of all the tables in the database.
+        :return: A list of table names.
+        """
+        result = []
+        if self.connection is not None:
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            result = [name[0] for name in cursor.fetchall()]
+            cursor.close()
+        return result
+
+    def export_to_csv(self, folder_for_csv_files: str, table_name: str = '', suffix_separator: str = '_##', suffix: str = '') -> [str]:
+        """
+        Export the database to a CSV file.
+        :param folder_for_csv_files: The folder where the CSV files will be saved.
+        :param table_name: The name of the table to export. If None, all the tables will be exported.
+        :param suffix_separator: The separator used to separate the table name from the suffix in the CSV file name.
+        :param suffix: A suffix to add to the CSV file name.
+        :return: list of CSV files that have been writen, [] if none.
+        Note: each table will be exported to a separate CSV file using the table name as the file name.
+        """
+        result = []
+        if self.connection is not None:
+            folder_for_csv_files = Path(folder_for_csv_files)
+            if not folder_for_csv_files.exists():
+                folder_for_csv_files.mkdir(parents=True)
+                self.logger.info(f'Folder "{folder_for_csv_files}" has been created.')
+            cursor = self.connection.cursor()
+            if table_name:
+                table_names = [table_name]
+            else:
+                table_names = self.get_table_names()
+            for table_name in table_names:
+                suffix_all = suffix_separator + suffix if suffix and suffix_separator else ''
+                file_name = folder_for_csv_files / f'{table_name}{suffix_all}.csv'
+                # Get column names
+                cursor.execute(f"PRAGMA table_info({table_name});")
+                column_names = [column[1] for column in cursor.fetchall()]
+                rows = cursor.execute(f"SELECT * FROM {table_name};").fetchall()
+                try:
+                    with open(file_name, 'w', newline='', encoding='utf-8') as f:
+                        writer = csv.writer(f, dialect='unix')
+                        # Write column names
+                        writer.writerow(column_names)
+                        # Write rows
+                        writer.writerows(rows)
+                        result.append(f'Write: {str(file_name)}')
+                except Exception as error:
+                    msg = f'Error while exporting table "{table_name}" to CSV file "{file_name}"'
+                    result.append(msg)
+                    self.logger.warning(f'{msg}: {error!r}')
+            cursor.close()
+        return result
+
+    def import_from_csv(self,
+                        folder_for_csv_files: str,
+                        table_name: str = '',
+                        delete_content: bool = False,
+                        suffix_separator: str = '_##') -> ([str], bool):
+        """
+        Import the database from a CSV file.
+        :param folder_for_csv_files: The folder containing the CSV files to import.
+        :param table_name: The name of the table to import. If None, all the tables will be imported.
+        :param delete_content: True to delete the content of the table before importing the data, False to append the data to the table.
+        :param suffix_separator: The separator used to separate the table name from the suffix in the CSV file name.
+        :return: (list of CSV files that have been read, True if the database must be reloaded).
+        """
+        result = []
+        must_reload = False
+        if self.connection is not None:
+            folder_for_csv_files = Path(folder_for_csv_files)
+            if not folder_for_csv_files.exists():
+                self.logger.error(f'Folder "{folder_for_csv_files}" does not exist.')
+                return False
+            cursor = self.connection.cursor()
+            table_is_done = []  # used to avoid importing the same table multiple times
+            csv_files = list(folder_for_csv_files.glob('*.csv'))
+            # sort the list in reverse order, as it when the same table has multiple files to import from, we import the last one (with datetime suffix) first
+            csv_files = sorted(csv_files, reverse=True)
+            given_table_name = table_name
+            for file_name in csv_files:
+                # check if the file is not empty
+                if not file_name.exists() or file_name.stat().st_size == 0:
+                    msg = f'The CSV file "{file_name}" does not exist or is empty and will not be imported.'
+                    result.append(msg)
+                    self.logger.info(msg)
+                    continue
+
+                if given_table_name:
+                    # check if the given table_name is in the file name
+                    if given_table_name not in file_name.name:
+                        continue
+                else:
+                    table_name = file_name.stem
+                    # remove the suffix if it exists
+                    check: list = table_name.split(suffix_separator) if suffix_separator else []
+                    if len(check) == 2:
+                        table_name = check[0]
+                if table_name in table_is_done:
+                    continue
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';")
+                if not cursor.fetchone():
+                    self.logger.info(f'Table "{table_name}" does not exist and the data will not be imported from {file_name.name}.')
+                    continue
+                if delete_content:
+                    cursor.execute(f"DELETE FROM {table_name} WHERE 1")
+                try:
+                    with open(file_name, 'r', newline='', encoding='utf-8') as f:
+                        reader = csv.reader(f, dialect='unix')
+                        csv_columns = next(reader)
+                        # Get column names from database
+                        cursor.execute(f"PRAGMA table_info({table_name});")
+                        db_columns = [column[1] for column in cursor.fetchall()]
+                        # Check if columns match
+                        if csv_columns != db_columns:
+                            msg = f'Columns in CSV file "{file_name}" do not match columns in table "{table_name}".'
+                            result.append(msg)
+                            self.logger.info(msg)
+                            continue
+                        query = f"INSERT OR REPLACE INTO {table_name} ({','.join(csv_columns)}) VALUES ({','.join('?' * len(csv_columns))})"
+                        for row in reader:
+                            if not row:
+                                continue
+                            cursor.execute(query, row)
+                        result.append(f'Read: {str(file_name)}')
+                        must_reload = True
+                        table_is_done.append(table_name)
+                        if given_table_name and given_table_name == table_name:
+                            break
+                except Exception as error:
+                    msg = f'Error while importing table "{table_name}" from CSV file "{file_name}"'
+                    result.append(msg)
+                    self.logger.warning(f'{msg}: {error!r}')
+                self.connection.commit()
+            cursor.close()
+        return result, must_reload
 
     def generate_test_data(self, number_of_rows=1) -> None:
         """
