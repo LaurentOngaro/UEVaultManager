@@ -14,7 +14,7 @@ class UEAsset:
     :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete.
     """
     # unused logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    # unused logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    # unused update_loggers_level(logger)
     data = {}
 
     def __init__(self, engine_version_for_obsolete_assets: str = ''):

@@ -12,6 +12,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __name__, __version__, __codename__
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.models.config import AppConf
+from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
 
 # NOTE: we can't import the following modules here because of circular dependencies
@@ -231,6 +232,7 @@ class GUISettings:
     def set_debug_mode(self, value):
         """ Setter for debug_mode """
         self.config_vars['debug_mode'] = value
+        update_loggers_level(debug_value=value)
 
     # used as property for keeping transparent access
     debug_mode = property(get_debug_mode, set_debug_mode)

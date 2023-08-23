@@ -8,7 +8,7 @@ import webbrowser
 from tkinter import ttk
 
 import pandas as pd
-from pandas.errors import EmptyDataError
+from pandas.errors import EmptyDataError, IndexingError
 from pandastable import Table, TableModel, config
 
 from UEVaultManager.models.csv_sql_fields import *
@@ -60,7 +60,7 @@ class EditableTable(Table):
     _column_infos_stored = False  # used to see if column_infos has changed
     is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    update_loggers_level(logger)
     model: TableModel = None  # setup in table.__init__
     df_unfiltered: pd.DataFrame = None  # unfiltered dataframe (default)
     df_filtered: pd.DataFrame = None  # filtered dataframe
@@ -1004,10 +1004,21 @@ class EditableTable(Table):
         if mask is not None:
             self.filtered = True
             # self.current_page = 1
-            self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
+            try:
+                self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
+            except IndexingError:
+                self.logger.warning(f'IndexingError with defined filters. Updating filter...')
+                self._filter_frame.create_mask()
+                try:
+                    self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
+                except IndexingError:
+                    self.logger.warning(f'Still an IndexingError with defined filters. Deleting mask...')
+                    self._filter_frame.clear_mask()
+                    self.set_data(df, df_type=DataFrameUsed.FILTERED)
+                    self.filtered = False
         else:
-            self.filtered = False
             self.set_data(df, df_type=DataFrameUsed.FILTERED)
+            self.filtered = False
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             show_progress(self, text='Formating and converting DataTable...')

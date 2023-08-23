@@ -34,6 +34,7 @@ UEVM_parser_ref = None
 # noinspection PyTypeChecker
 UEVM_cli_args: SaferDict = {}
 UEVM_filter_category = ''
+UEVM_logger_names = []  # list of logger names used by UEVM classes
 
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 

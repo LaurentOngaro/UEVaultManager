@@ -370,3 +370,20 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, path: str =
         if logger is not None:
             logger.info(f'File {file_src} has not been found')
     return file_backup
+
+
+def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> None:
+    """
+    Change the logger level of debug depending on the debug mode.
+    :param logger: the logger
+    :param debug_value: the value to set. If None, it will use the value of gui_g.s.debug_mode
+    NOTE: will also update all the loggers level of the UEVM classes.
+    Call this function when the debug mode is changed.
+    """
+    if logger is not None:
+        if logger.name not in gui_g.UEVM_logger_names:
+            gui_g.UEVM_logger_names.append(logger.name)
+    debug_value = gui_g.s.debug_mode if debug_value is None else debug_value
+    for logger_name in gui_g.UEVM_logger_names:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(level=logging.DEBUG if debug_value else logging.INFO)

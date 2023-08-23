@@ -142,11 +142,15 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         cb_selection = self._cb_folders_to_scan.get()
         if cb_selection:
             values = list(self._cb_folders_to_scan['values'])
-            values.remove(cb_selection)
-            self._cb_folders_to_scan['values'] = values
-            self._cb_folders_to_scan.current(len(values) - 1)  # select the last item
-            self._folders_to_scan = values
-            self.save_folder_to_scan()
+            try:
+                values.remove(cb_selection)
+            except ValueError:
+                pass
+            else:
+                self._cb_folders_to_scan['values'] = values
+                self._cb_folders_to_scan.current(len(values) - 1)  # select the last item
+                self._folders_to_scan = values
+                self.save_folder_to_scan()
 
     def save_folder_to_scan(self):
         """

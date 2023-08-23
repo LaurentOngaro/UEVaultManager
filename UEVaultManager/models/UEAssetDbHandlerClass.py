@@ -14,12 +14,13 @@ from pathlib import Path
 
 from faker import Faker
 
-import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, CSVFieldState
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
+from UEVaultManager.tkgui.modules.functions import update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime, create_uid
+from UEVaultManager.tkgui.modules.types import UEAssetType
 from UEVaultManager.utils.cli import check_and_create_path
 
 test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
@@ -34,7 +35,7 @@ class UEAssetDbHandler:
     Note: The database will be created if it doesn't exist.
     """
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    update_loggers_level(logger)
     db_version: DbVersionNum = DbVersionNum.V0  # updated in check_and_upgrade_database()
     connection = None
 
@@ -555,6 +556,7 @@ class UEAssetDbHandler:
             ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
             ue_asset.data['added_manually'] = True
             ue_asset.data['id'] = uid
+            ue_asset.data['category'] = UEAssetType.Unknown.category_name
             if not do_not_save:
                 self.save_ue_asset(ue_asset)
             if return_as_string:

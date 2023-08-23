@@ -88,7 +88,7 @@ class UEVMGui(tk.Tk):
     _content_frame: UEVMGuiContentFrame = None
     _filter_frame: FilterFrame = None
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    gui_f.update_loggers_level(logger)
     egs = None
 
     def __init__(
@@ -836,7 +836,7 @@ class UEVMGui(tk.Tk):
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
         data_table.is_scanning = False
-        data_table.update(update_format=True)
+        data_table.update(update_format=True, update_filters=True)
         gui_f.close_progress(self)
 
         if invalid_folders:

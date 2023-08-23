@@ -19,7 +19,7 @@ from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions import box_yesno
+from UEVaultManager.tkgui.modules.functions import box_yesno, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime, \
     extract_variables_from_url
 
@@ -75,7 +75,7 @@ class UEAssetScraper:
     _owned_asset_ids = []  # store IDs of all owned items
     _urls = []  # list of all urls to scrap
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    update_loggers_level(logger)
     thread_executor_must_stop: bool = False
 
     def __init__(
