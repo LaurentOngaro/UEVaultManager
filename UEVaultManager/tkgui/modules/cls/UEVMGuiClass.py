@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import tkinter as tk
 from datetime import datetime
 from time import sleep
@@ -198,6 +199,8 @@ class UEVMGui(tk.Tk):
             if self.open_file() == '':
                 self.logger.error('This application could not run without a file to read data from')
                 self.quit()
+                sys.exit(1)
+
         gui_f.show_progress(self, text='Initializing Data Table...')
         if gui_g.s.data_filters:
             self.load_filters(gui_g.s.data_filters)
@@ -1331,7 +1334,7 @@ class UEVMGui(tk.Tk):
             'Result Not OK': ['Grab result', '^NO_ERROR'],  #
             'Plugins only': ['Category', 'plugins'],  #
             'Free': ['Price', 0],  #
-            'Asset_id is Dummy': ['Asset_id', 'dummy'],  #
+            'Asset_id is Dummy': ['Asset_id', gui_g.s.empty_row_prefix],  #
             'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
             'Tags with number': ['callable', self.filter_tags_with_number],  #
             'With comment': ['callable', self.filter_with_comment],  #
