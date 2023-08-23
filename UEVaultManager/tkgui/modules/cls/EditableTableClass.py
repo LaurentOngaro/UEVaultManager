@@ -755,7 +755,7 @@ class EditableTable(Table):
         if df_loaded is None:
             return False
         self.set_data(df_loaded)
-        self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
+        self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
         close_progress(self)
         return True
 
@@ -998,6 +998,10 @@ class EditableTable(Table):
         """
         self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data()
+        if update_format:
+            # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
+            show_progress(self, text='Formating and converting DataTable...')
+            self.set_data(self.set_columns_type(df))
         if update_filters:
             self._filter_frame.create_mask()
         mask = self._filter_frame.get_filter_mask() if self._filter_frame is not None else None
@@ -1021,9 +1025,7 @@ class EditableTable(Table):
             self.filtered = False
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
-            show_progress(self, text='Formating and converting DataTable...')
             self.update_index_copy_column()
-            self.set_data(self.set_columns_type(df))
         if reset_page:
             self.current_page = 1
             self.update_rows_text_func()
