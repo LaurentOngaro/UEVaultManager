@@ -10,6 +10,7 @@ import re
 import shutil
 import tkinter as tk
 from datetime import datetime
+from time import sleep
 from tkinter import filedialog as fd
 
 import pandas as pd
@@ -20,6 +21,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import GrabResult
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
+from UEVaultManager.tkgui.modules.cls.DbFilesWindowClass import DbFilesWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
@@ -280,6 +282,20 @@ class UEVMGui(tk.Tk):
             return None, widget
         value = widget.get_content()
         return value, widget
+
+    def _wait_for_window(self, window: tk.Toplevel) -> None:
+        """
+        Wait for a window to be closed.
+        :param window: the window to wait for.
+        """
+        try:
+            while window.winfo_viewable():
+                sleep(0.5)
+                self.update()
+                self.update_idletasks()
+        except tk.TclError:
+            # the window has been closed so an error is raised
+            pass
 
     def on_key_press(self, event):
         """
@@ -1268,13 +1284,31 @@ class UEVMGui(tk.Tk):
         if self.editable_table.data_source_type != DataSourceType.SQLITE:
             gui_f.box_message('This command can only by run with a database as data source')
             return
-        JsonProcessingWindow(
+        tool_window = JsonProcessingWindow(
             title='Json Files Data Processing',
             icon=gui_g.s.app_icon_filename,
             db_path=self.editable_table.data_source,
             folder_for_tags_path=gui_g.s.assets_data_folder,
-            folder_for_rating_path=gui_g.s.assets_global_folder
+            folder_for_rating_path=gui_g.s.assets_csv_files_folder
         )
+        self._wait_for_window(tool_window)
+
+    def database_processing(self) -> None:
+        """
+        Run the window to import/export database to csv files.
+        """
+        if self.editable_table.data_source_type != DataSourceType.SQLITE:
+            gui_f.box_message('This command can only by run with a database as data source')
+            return
+        tool_window = DbFilesWindowClass(
+            title='Database Import/Export Window',
+            icon=gui_g.s.app_icon_filename,
+            db_path=self.editable_table.data_source,
+            folder_for_csv_files=gui_g.s.assets_csv_files_folder
+        )
+        self._wait_for_window(tool_window)
+        if tool_window.must_reload and gui_f.box_yesno('Some data has been imported into the database. Do you want to reload the data ?'):
+            self.reload_data()
 
     def create_dynamic_filters(self) -> {str: []}:
         """

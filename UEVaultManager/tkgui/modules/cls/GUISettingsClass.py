@@ -82,6 +82,7 @@ class GUISettings:
         self.assets_data_folder: str = os.path.join(self.scraping_folder, 'assets', 'marketplace')
         self.owned_assets_data_folder: str = os.path.join(self.scraping_folder, 'assets', 'owned')
         self.assets_global_folder: str = os.path.join(self.scraping_folder, 'global')
+        self.assets_csv_files_folder: str = os.path.join(self.scraping_folder, 'csv')
 
         self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'

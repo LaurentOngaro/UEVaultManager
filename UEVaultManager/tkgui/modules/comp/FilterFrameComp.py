@@ -244,8 +244,8 @@ class FilterFrame(ttk.LabelFrame):
         #     filters = self._filters.items()
 
         if filters is None or len(filters) == 0:
-            quick_filters:dict = self.quick_filter(only_return_filter=True)
-            filters:dict = self._filters.copy()
+            quick_filters: dict = self.quick_filter(only_return_filter=True)
+            filters: dict = self._filters.copy()
             filters.update(quick_filters)
 
         final_mask = None
