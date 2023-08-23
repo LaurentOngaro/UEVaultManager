@@ -275,11 +275,11 @@ def get_tk_root(container) -> tk.Tk:
     :param container:  the container window or object
     :return: the root window
     """
-    # get the root window to avoid creatinf multiple progress windows
+    # get the root window to avoid creating multiple progress windows
     try:
         # a tk window chid class
         root = container.winfo_toplevel()
-    except AttributeError:
+    except (AttributeError, tk.TclError):
         # an editableTable class
         root = container.get_container.winfo_toplevel()
     return root

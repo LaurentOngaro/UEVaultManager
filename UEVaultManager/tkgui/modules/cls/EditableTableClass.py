@@ -98,7 +98,7 @@ class EditableTable(Table):
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         show_progress(container, text='Loading Data from data source...')
         if self.data_source_type == DataSourceType.SQLITE:
-            self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
+            self._db_handler = UEAssetDbHandler(database_name=self.data_source)
         df_loaded = self.read_data()
         if df_loaded is None:
             self.logger.error('Failed to load data from data source when initializing the table')
