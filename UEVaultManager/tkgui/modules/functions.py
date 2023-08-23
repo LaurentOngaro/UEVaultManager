@@ -166,8 +166,8 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
     resized_image = image.resize((target_width, target_height), Image.BILINEAR)
     tk_image = ImageTk.PhotoImage(resized_image)
     # Calculate center coordinates
-    x = (canvas.winfo_width() - tk_image.width()) // 2
-    y = (canvas.winfo_height() - tk_image.height()) // 2
+    x = max(0, (canvas.winfo_width() - tk_image.width()) // 2)
+    y = max(0, (canvas.winfo_height() - tk_image.height()) // 2)
     canvas.create_image(x, y, anchor=tk.NW, image=tk_image)
     canvas.image = tk_image
 
