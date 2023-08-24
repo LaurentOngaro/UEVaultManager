@@ -81,11 +81,11 @@ class JsonProcessingWindow(tk.Toplevel):
             self.goal_label.pack(pady=5)
 
             self.button_frame = tk.Frame(self)
-            self.button_frame.pack(pady=10)
-
+            self.button_frame.pack(pady=5)
+            self.close_button = ttk.Button(self.button_frame, text='Close Window', command=self.close_window)
+            self.close_button.pack(side=tk.RIGHT, padx=5)
             self.start_button = ttk.Button(self.button_frame, text='Start Processing', command=self.start_processing)
             self.start_button.pack(side=tk.LEFT, padx=5)
-
             self.stop_button = ttk.Button(self.button_frame, text='Stop Processing', command=self.stop_processing, state='disabled')
             self.stop_button.pack(side=tk.LEFT, padx=5)
 
@@ -129,6 +129,12 @@ class JsonProcessingWindow(tk.Toplevel):
             """
             self.status_label.config(text=text)
             self.update()
+
+        def close_window(self) -> None:
+            """
+            Close the window.
+            """
+            self.container.destroy()
 
         def activate_processing(self, for_start=True):
             """
