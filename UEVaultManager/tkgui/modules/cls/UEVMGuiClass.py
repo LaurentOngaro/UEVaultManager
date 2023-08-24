@@ -192,14 +192,13 @@ class UEVMGui(tk.Tk):
             ):
                 show_open_file_dialog = True
             else:
-                self.destroy()  # self.quit() won't work here
                 self.logger.error('No valid source to read data from. Application will be closed', )
+                self.close_window(True)
 
         if show_open_file_dialog:
             if self.open_file() == '':
                 self.logger.error('This application could not run without a file to read data from')
-                self.quit()
-                sys.exit(1)
+                self.close_window(True)
 
         gui_f.show_progress(self, text='Initializing Data Table...')
         if gui_g.s.data_filters:
@@ -464,12 +463,14 @@ class UEVMGui(tk.Tk):
                 self.save_changes(show_dialog=False)  # will save the settings too
         self.close_window()  # will save the settings too
 
-    def close_window(self) -> None:
+    def close_window(self, force_quit=False) -> None:
         """
         Close the window.
         """
         self.save_settings()
         self.quit()
+        if force_quit:
+            sys.exit(0)
 
     def save_settings(self) -> None:
         """
