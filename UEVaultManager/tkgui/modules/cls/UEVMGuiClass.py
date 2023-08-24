@@ -192,8 +192,10 @@ class UEVMGui(tk.Tk):
             ):
                 show_open_file_dialog = True
             else:
-                self.logger.error('No valid source to read data from. Application will be closed', )
-                self.close_window(True)
+                # self.logger.error('No valid source to read data from. Application will be closed', )
+                # self.close_window(True)
+                msg = 'No valid source to read data from. The datatable will contain fake data. You should rebuild ou import real data from a file or a database.'
+                gui_f.box_message(msg, level='warning')
 
         if show_open_file_dialog:
             if self.open_file() == '':
@@ -504,7 +506,7 @@ class UEVMGui(tk.Tk):
             if data_table.valid_source_type(filename):
                 gui_f.show_progress(self, text='Loading Data from file...')
                 if not data_table.read_data():
-                    gui_f.box_message('Error when loading data')
+                    gui_f.box_message('Error when loading data', level='warning')
                     gui_f.close_progress(self)
                     return filename
                 data_table.current_page = 1
@@ -556,7 +558,7 @@ class UEVMGui(tk.Tk):
                 selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
         else:
-            gui_f.box_message('Select at least one row first')
+            gui_f.box_message('Select at least one row first', level='warning')
 
     def add_row(self, row_data=None) -> None:
         """
@@ -857,9 +859,10 @@ class UEVMGui(tk.Tk):
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if asset_data is None or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
                 msg = f'Failed to grab data from {marketplace_url}'
-                self.logger.warning(msg)
                 if show_message:
-                    gui_f.box_message(msg)
+                    gui_f.box_message(msg, level='warning')
+                else:
+                    self.logger.warning(msg)
                 return None
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
@@ -881,9 +884,10 @@ class UEVMGui(tk.Tk):
             scraper.asset_db_handler.set_assets(asset_data)
         else:
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
-            self.logger.warning(msg)
             if show_message:
-                gui_f.box_message(msg)
+                gui_f.box_message(msg, level='warning')
+            else:
+                self.logger.warning(msg)
         return asset_data
 
     def scrap_row(
@@ -905,7 +909,7 @@ class UEVMGui(tk.Tk):
         row_numbers = data_table.multiplerowlist
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
-                gui_f.box_message('You must select a row first')
+                gui_f.box_message('You must select a row first', level='warning')
             return
         if row_index >= 0:
             # a row index has been given, we scrap only this row
@@ -1223,7 +1227,7 @@ class UEVMGui(tk.Tk):
                 self.update_category_var()
                 gui_f.box_message(f'Data Reloaded from {data_table.data_source}')
             else:
-                gui_f.box_message(f'Failed to reload data from {data_table.data_source}')
+                gui_f.box_message(f'Failed to reload data from {data_table.data_source}', level='warning')
 
     def rebuild_data(self) -> None:
         """
@@ -1286,7 +1290,7 @@ class UEVMGui(tk.Tk):
         Run the window to update missing data in database from json files.
         """
         if self.editable_table.data_source_type != DataSourceType.SQLITE:
-            gui_f.box_message('This command can only by run with a database as data source')
+            gui_f.box_message('This command can only by run with a database as data source', level='warning')
             return
         tool_window = JsonProcessingWindow(
             title='Json Files Data Processing',
@@ -1302,7 +1306,7 @@ class UEVMGui(tk.Tk):
         Run the window to import/export database to csv files.
         """
         if self.editable_table.data_source_type != DataSourceType.SQLITE:
-            gui_f.box_message('This command can only by run with a database as data source')
+            gui_f.box_message('This command can only by run with a database as data source', level='warning')
             return
         tool_window = DbFilesWindowClass(
             title='Database Import/Export Window',
