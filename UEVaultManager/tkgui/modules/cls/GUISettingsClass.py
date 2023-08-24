@@ -70,9 +70,9 @@ class GUISettings:
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder. MUST BE LOWERCASE
         self.ue_valid_file_content = ('.uplugin', '.uproject')
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder. MUST BE LOWERCASE
-        self.ue_valid_folder_content = ('content',)
+        self.ue_valid_folder_content = ('content', '')  # must be a tuple
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file. MUST BE LOWERCASE
-        self.ue_valid_manifest_content = ('data',)
+        self.ue_valid_manifest_content = ('data', '')  # must be a tuple
         # if a folder is in this tuple, the folder won't be scanned to find ue folders. MUST BE LOWERCASE
         self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data')
         # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure. MUST BE LOWERCASE
@@ -411,7 +411,7 @@ class GUISettings:
         config_defaults = {
             'rows_per_page': {
                 'comment':
-                    'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
+                'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
                 'value': 36
             },
             'data_filters': {
@@ -476,7 +476,7 @@ class GUISettings:
             },
             'hidden_column_names': {
                 'comment':
-                    'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
+                'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
                 'value': ['Uid']
             },
             # minimal score required when looking for an url file comparing to an asset name.
