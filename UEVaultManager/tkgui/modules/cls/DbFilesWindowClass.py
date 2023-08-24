@@ -41,7 +41,7 @@ class DbFilesWindowClass(tk.Toplevel):
         self,
         title: str = 'Database Import/Export Window',
         width: int = 400,
-        height: int = 440,
+        height: int = 450,
         icon=None,
         screen_index: int = 0,
         folder_for_csv_files: str = '',
