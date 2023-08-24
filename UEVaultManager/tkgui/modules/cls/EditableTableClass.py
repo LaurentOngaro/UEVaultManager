@@ -547,13 +547,15 @@ class EditableTable(Table):
                 df.fillna('None', inplace=True)
                 self.df_unfiltered = df
             elif self.data_source_type == DataSourceType.SQLITE:
+                column_names: list = self._db_handler.get_columns_name_for_csv()
+                col_index = column_names.index('Uid')
                 data = self._db_handler.get_assets_data_for_csv()
                 data_count = len(data)
-                if data_count <= 0 or data[0][0] is None:
+                # check to see if the first row has a value in the Uid column
+                if data_count <= 0 or data[0][col_index] is None:
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
                 else:
-                    column_names = self._db_handler.get_columns_name_for_csv()
                     df = pd.DataFrame(data, columns=column_names)
                 self.df_unfiltered = df
             else:
