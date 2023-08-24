@@ -21,7 +21,7 @@ from platform import platform
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
-from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_codename
+from UEVaultManager import __codename__ as UEVM_codename, __version__ as UEVM_version
 from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
@@ -34,11 +34,11 @@ from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.tkgui.modules.functions import custom_print, box_message, create_file_backup, \
+from UEVaultManager.tkgui.modules.functions import box_message, create_file_backup, custom_print, \
     show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
-from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads, remove_command_argument
+from UEVaultManager.utils.cli import check_and_create_path, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)

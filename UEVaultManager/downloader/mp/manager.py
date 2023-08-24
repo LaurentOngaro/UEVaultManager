@@ -15,7 +15,7 @@ from threading import Condition, Thread
 
 from UEVaultManager.downloader.mp.workers import DLWorker, FileWorker
 from UEVaultManager.models.downloading import *
-from UEVaultManager.models.manifest import ManifestComparison, Manifest
+from UEVaultManager.models.manifest import Manifest, ManifestComparison
 
 
 class DLManager(Process):

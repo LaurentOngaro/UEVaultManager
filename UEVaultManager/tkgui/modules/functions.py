@@ -14,7 +14,7 @@ from io import BytesIO
 from tkinter import messagebox
 
 import requests
-from PIL import ImageTk, Image
+from PIL import Image, ImageTk
 from termcolor import colored
 
 from UEVaultManager.tkgui.modules import globals as gui_g

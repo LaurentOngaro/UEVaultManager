@@ -4,7 +4,7 @@ Implementation for:
 - TaggedLabelFrame: a custom LabelFrame widget that allows child widgets to be identified by tags.
 """
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import *
-from UEVaultManager.tkgui.modules.functions import log_error, log_warning, log_debug
+from UEVaultManager.tkgui.modules.functions import log_debug, log_error, log_warning
 from UEVaultManager.tkgui.modules.types import WidgetType
 
 

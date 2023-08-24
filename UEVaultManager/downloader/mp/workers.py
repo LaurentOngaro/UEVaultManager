@@ -11,7 +11,7 @@ from queue import Empty
 import requests
 
 from UEVaultManager.models.chunk import Chunk
-from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, WriterTask, WriterTaskResult, TerminateWorkerTask, TaskFlags)
+from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, TaskFlags, TerminateWorkerTask, WriterTask, WriterTaskResult)
 
 
 class DLWorker(Process):

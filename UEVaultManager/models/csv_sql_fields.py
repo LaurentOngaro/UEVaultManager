@@ -6,7 +6,7 @@ from datetime import datetime
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_int, convert_to_bool, convert_to_float, create_uid, convert_to_datetime
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int, create_uid
 
 csv_sql_fields = {
     # fields mapping from csv to sql

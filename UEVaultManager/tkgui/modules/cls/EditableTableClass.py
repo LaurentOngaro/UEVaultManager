@@ -9,7 +9,7 @@ from tkinter import ttk
 
 import pandas as pd
 from pandas.errors import EmptyDataError, IndexingError
-from pandastable import Table, TableModel, config
+from pandastable import config, Table, TableModel
 
 from UEVaultManager.models.csv_sql_fields import *
 from UEVaultManager.models.UEAssetClass import UEAsset
@@ -17,10 +17,10 @@ from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
-from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
+from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions import *
-from UEVaultManager.tkgui.modules.types import DataSourceType, DataFrameUsed
+from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
 test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only

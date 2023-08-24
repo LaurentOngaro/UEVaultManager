@@ -4,7 +4,7 @@ import json
 import struct
 from copy import deepcopy
 
-from UEVaultManager.models.manifest import (Manifest, ManifestMeta, CDL, ChunkPart, ChunkInfo, FML, FileManifest, CustomFields)
+from UEVaultManager.models.manifest import (CDL, ChunkInfo, ChunkPart, CustomFields, FileManifest, FML, Manifest, ManifestMeta)
 
 
 def blob_to_num(in_str):

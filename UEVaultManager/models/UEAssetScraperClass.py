@@ -20,7 +20,7 @@ from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions import box_yesno, update_loggers_level
-from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime, \
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, convert_to_datetime, convert_to_str_datetime, create_uid, \
     extract_variables_from_url
 
 test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only

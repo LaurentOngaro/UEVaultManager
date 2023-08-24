@@ -6,7 +6,7 @@ Implementation for:
 from io import BytesIO
 
 import requests
-from PIL import ImageTk, Image
+from PIL import Image, ImageTk
 
 from UEVaultManager.tkgui.modules.functions import log_warning
 

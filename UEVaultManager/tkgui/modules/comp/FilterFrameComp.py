@@ -4,12 +4,12 @@ Implementation for:
 - FilterFrame class: a frame that contains widgets for filtering a DataFrame.
 """
 import tkinter as tk
-from tkinter import ttk, messagebox
-from typing import Callable, Tuple, Any, Dict
+from tkinter import messagebox, ttk
+from typing import Any, Callable, Dict, Tuple
 
 import pandas as pd
 
-from UEVaultManager.tkgui.modules.functions import log_info, box_message
+from UEVaultManager.tkgui.modules.functions import box_message, log_info
 
 
 class FilterFrame(ttk.LabelFrame):

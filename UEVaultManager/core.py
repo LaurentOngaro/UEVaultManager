@@ -19,7 +19,7 @@ from threading import current_thread, enumerate as thread_enumerate
 from urllib.parse import urlparse
 
 from requests import session
-from requests.exceptions import HTTPError, ConnectionError
+from requests.exceptions import ConnectionError, HTTPError
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming

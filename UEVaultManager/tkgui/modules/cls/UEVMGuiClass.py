@@ -32,8 +32,8 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiCon
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOptionsFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
-from UEVaultManager.tkgui.modules.functions_no_deps import set_custom_style, is_an_int
-from UEVaultManager.tkgui.modules.types import DataSourceType, UEAssetType, DataFrameUsed
+from UEVaultManager.tkgui.modules.functions_no_deps import is_an_int, set_custom_style
+from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
 
 
 def clean_ue_asset_name(name_to_clean: str) -> str:

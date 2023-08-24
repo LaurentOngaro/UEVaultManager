@@ -4,7 +4,7 @@ implementation for:
 - UEAsset:  A class to represent an Unreal Engine asset.
 """
 
-from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, get_default_value
+from UEVaultManager.models.csv_sql_fields import get_default_value, get_sql_field_name_list
 from UEVaultManager.utils.cli import init_dict_from_data
 
 

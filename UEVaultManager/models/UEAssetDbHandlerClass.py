@@ -15,11 +15,11 @@ from pathlib import Path
 from faker import Faker
 
 from UEVaultManager.core import default_datetime_format
-from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, CSVFieldState
+from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
-from UEVaultManager.tkgui.modules.functions import update_loggers_level, create_file_backup
-from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime, create_uid
+from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, path_from_relative_to_absolute
 from UEVaultManager.tkgui.modules.types import UEAssetType
 from UEVaultManager.utils.cli import check_and_create_path
 

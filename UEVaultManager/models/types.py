@@ -8,7 +8,7 @@ Definition for the types used in this module:
 from enum import Enum
 
 from UEVaultManager.tkgui.modules import globals as gui_g
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_int, convert_to_float, convert_to_bool, convert_to_datetime
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int
 
 
 class CSVFieldState(Enum):
