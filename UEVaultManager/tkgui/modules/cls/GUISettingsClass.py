@@ -382,6 +382,7 @@ class GUISettings:
 
     hidden_column_names = property(get_hidden_column_names, set_hidden_column_names)
 
+    # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
         Initialize the config file for the gui.
@@ -410,13 +411,11 @@ class GUISettings:
             log_info('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {
-            'rows_per_page':
-                {
-                    'comment':
-                        'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
-                    'value':
-                        36
-                },
+            'rows_per_page': {
+                'comment':
+                'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
+                'value': 36
+            },
             'data_filters': {
                 'comment': 'Filters to apply to the datatable. Stored in json format. Automatically saved on quit',
                 'value': ''
@@ -441,67 +440,59 @@ class GUISettings:
                 'comment': 'Set to True to print debug information (GUI related only)',
                 'value': 'False'
             },
-            'never_update_data_files':
-                {
-                    'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
-                    'value': 'False'
-                },
+            'never_update_data_files': {
+                'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
+                'value': 'False'
+            },
             'reopen_last_file': {
                 'comment': 'Set to True to re-open the last file at startup if no input file is given',
                 'value': 'True'
             },
-            'use_colors_for_data':
-                {
-                    'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
-                    'value': 'True'
-                },
+            'use_colors_for_data': {
+                'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
+                'value': 'True'
+            },
             'last_opened_file': {
                 'comment': 'File name of the last opened file. Automatically saved on quit',
                 'value': ''
             },
-            'image_cache_max_time':
-                {
-                    'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
-                    'value': str(60 * 60 * 24 * 15)
-                },
-            'cache_folder':
-                {
-                    'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
-                    'value': '../../../cache'
-                },
-            'results_folder':
-                {
-                    'comment': 'Folder (relative or absolute) to store result files to read and save data from',
-                    'value': '../../../results'
-                },
-            'scraping_folder':
-                {
-                    'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
-                    'value': '../../../scraping'
-                },
+            'image_cache_max_time': {
+                'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
+                'value': str(60 * 60 * 24 * 15)
+            },
+            'cache_folder': {
+                'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
+                'value': '../../../cache'
+            },
+            'results_folder': {
+                'comment': 'Folder (relative or absolute) to store result files to read and save data from',
+                'value': '../../../results'
+            },
+            'scraping_folder': {
+                'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
+                'value': '../../../scraping'
+            },
             'folders_to_scan': {
                 'comment': 'List of Folders to scan for assets. Their content will be added to the list',
                 'value': ''
             },
-            'hidden_column_names':
-                {
-                    'comment':
-                        'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
-                    'value': ['Uid']
-                },
+            'hidden_column_names': {
+                'comment':
+                'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
+                'value': ['Uid']
+            },
             # minimal score required when looking for an url file comparing to an asset name.
             # some comparison are more fuzzy than others, so we can set a different score for each comparison
             # The key is a string that must be in the url file name or asset name
             # default value if no key is found
-            'minimal_fuzzy_score_by_name':
-                {
-                    'comment': 'Minimal score required when looking for an url file comparing to an asset name. MUST BE LOWERCASE',
-                    'value': {
-                        'default': 80,
-                        'brushify': 80,
-                        'elite_landscapes': 90
-                    }
-                },
+            'minimal_fuzzy_score_by_name': {
+                'comment': 'Minimal score required when looking for an url file comparing to an asset name. MUST BE LOWERCASE',
+                'value': {
+                    'default': 80,
+                    'brushify': 80,
+                    'elite_landscapes': 90
+                }
+            },
             'use_threads': {
                 'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
                 'value': 'True'
