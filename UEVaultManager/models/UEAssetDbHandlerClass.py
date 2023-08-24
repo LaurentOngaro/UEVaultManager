@@ -18,7 +18,7 @@ from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, CSVFieldState
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
-from UEVaultManager.tkgui.modules.functions import update_loggers_level
+from UEVaultManager.tkgui.modules.functions import update_loggers_level, create_file_backup
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime, create_uid
 from UEVaultManager.tkgui.modules.types import UEAssetType
 from UEVaultManager.utils.cli import check_and_create_path
@@ -779,11 +779,21 @@ class UEAssetDbHandler:
             cursor.close()
         return result
 
-    def export_to_csv(self, folder_for_csv_files: str, table_name: str = '', suffix_separator: str = '_##', suffix: str = '') -> [str]:
+    def export_to_csv(
+        self,
+        folder_for_csv_files: str,
+        table_name: str = '',
+        fields: str = '',
+        backup_existing=False,
+        suffix_separator: str = '_##',
+        suffix: str = ''
+    ) -> [str]:
         """
         Export the database to a CSV file.
         :param folder_for_csv_files: The folder where the CSV files will be saved.
         :param table_name: The name of the table to export. If None, all the tables will be exported.
+        :param fields: The fields to export. If None, all the fields will be exported.
+        :param backup_existing: True to back up the existing CSV file before overwriting it.
         :param suffix_separator: The separator used to separate the table name from the suffix in the CSV file name.
         :param suffix: A suffix to add to the CSV file name.
         :return: list of CSV files that have been writen, [] if none.
@@ -791,32 +801,41 @@ class UEAssetDbHandler:
         """
         result = []
         if self.connection is not None:
-            folder_for_csv_files = Path(folder_for_csv_files)
-            if not folder_for_csv_files.exists():
-                folder_for_csv_files.mkdir(parents=True)
-                self.logger.info(f'Folder "{folder_for_csv_files}" has been created.')
+            folder_for_csv_files_p = Path(folder_for_csv_files)
+            if not folder_for_csv_files_p.exists():
+                folder_for_csv_files_p.mkdir(parents=True)
+                self.logger.info(f'Folder "{folder_for_csv_files_p}" has been created.')
             cursor = self.connection.cursor()
+            if not fields:
+                fields = '*'
             if table_name:
                 table_names = [table_name]
             else:
                 table_names = self.get_table_names()
             for table_name in table_names:
                 suffix_all = suffix_separator + suffix if suffix and suffix_separator else ''
-                file_name = folder_for_csv_files / f'{table_name}{suffix_all}.csv'
+                file_name_p = folder_for_csv_files_p / f'{table_name}{suffix_all}.csv'
+                file_name = str(file_name_p)
+                if backup_existing:
+                    create_file_backup(file_src=file_name, path=folder_for_csv_files)
                 # Get column names
-                cursor.execute(f"PRAGMA table_info({table_name});")
-                column_names = [column[1] for column in cursor.fetchall()]
-                rows = cursor.execute(f"SELECT * FROM {table_name};").fetchall()
+                if fields == '*':
+                    cursor.execute(f"PRAGMA table_info({table_name});")
+                    column_names = [column[1] for column in cursor.fetchall()]
+                else:
+                    column_names = fields.split(',')
+                query = f"SELECT {fields} FROM {table_name}"
+                rows = cursor.execute(query).fetchall()
                 try:
-                    with open(file_name, 'w', newline='', encoding='utf-8') as f:
+                    with open(file_name_p, 'w', newline='', encoding='utf-8') as f:
                         writer = csv.writer(f, dialect='unix')
                         # Write column names
                         writer.writerow(column_names)
                         # Write rows
                         writer.writerows(rows)
-                        result.append(f'Write: {str(file_name)}')
+                        result.append(f'Write: {file_name}')
                 except Exception as error:
-                    msg = f'Error while exporting table "{table_name}" to CSV file "{file_name}"'
+                    msg = f'Error while exporting table "{table_name}" to CSV file "{file_name_p}"'
                     result.append(msg)
                     self.logger.warning(f'{msg}: {error!r}')
             cursor.close()
@@ -826,12 +845,14 @@ class UEAssetDbHandler:
                         folder_for_csv_files: str,
                         table_name: str = '',
                         delete_content: bool = False,
+                        check_columns: bool = True,
                         suffix_separator: str = '_##') -> ([str], bool):
         """
         Import the database from a CSV file.
         :param folder_for_csv_files: The folder containing the CSV files to import.
         :param table_name: The name of the table to import. If None, all the tables will be imported.
         :param delete_content: True to delete the content of the table before importing the data, False to append the data to the table.
+        :param check_columns: True to check if the columns in the CSV file match the columns in the table, False to skip the check.
         :param suffix_separator: The separator used to separate the table name from the suffix in the CSV file name.
         :return: (list of CSV files that have been read, True if the database must be reloaded).
         """
@@ -868,6 +889,7 @@ class UEAssetDbHandler:
                         table_name = check[0]
                 if table_name in table_is_done:
                     continue
+
                 cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';")
                 if not cursor.fetchone():
                     self.logger.info(f'Table "{table_name}" does not exist and the data will not be imported from {file_name.name}.')
@@ -883,7 +905,7 @@ class UEAssetDbHandler:
                         cursor.execute(f"PRAGMA table_info({table_name});")
                         db_columns = [column[1] for column in cursor.fetchall()]
                         # Check if columns match
-                        if csv_columns != db_columns:
+                        if check_columns and csv_columns != db_columns:
                             msg = f'Columns in CSV file "{file_name}" do not match columns in table "{table_name}".'
                             result.append(msg)
                             self.logger.info(msg)

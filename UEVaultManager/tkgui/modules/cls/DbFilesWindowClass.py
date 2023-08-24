@@ -2,7 +2,6 @@
 """
 Implementation for:
 """
-import datetime
 import os
 import tkinter as tk
 from tkinter import messagebox
@@ -81,15 +80,20 @@ class DbFilesWindowClass(tk.Toplevel):
             var_table_names.insert(0, container.value_for_all)
             self.cb_table = ttk.Combobox(self, values=var_table_names, state='readonly')
             self.cb_table.pack(fill=tk.X, padx=10, pady=1)
-            self.var_add_suffix = tk.BooleanVar(value=True)
-            self.ck_add_suffix = tk.Checkbutton(self, text='Add a datetime suffix when exporting', variable=self.var_add_suffix)
-            self.ck_add_suffix.pack(fill=tk.X, padx=2, pady=1, anchor=tk.W)
+            self.var_backup_on_export = tk.BooleanVar(value=True)
+            self.ck_backup_on_export = tk.Checkbutton(self, text='Backup exiting files when exporting', variable=self.var_backup_on_export)
+            self.ck_backup_on_export.pack(fill=tk.X, padx=2, pady=1, anchor=tk.W)
             self.var_delete_content = tk.BooleanVar(value=False)
             self.ck_delete_content = tk.Checkbutton(self, text='Delete content before import', variable=self.var_delete_content)
             self.ck_delete_content.pack(fill=tk.X, padx=2, pady=1, anchor=tk.W)
+            self.var_user_fields = tk.BooleanVar(value=True)
+            self.ck_user_fields = tk.Checkbutton(self, text='Export user fields in assets', variable=self.var_user_fields)
+            self.ck_user_fields.pack(fill=tk.X, padx=2, pady=1, anchor=tk.W)
 
             self.button_frame = tk.Frame(self)
             self.button_frame.pack(pady=5)
+            self.close_button = ttk.Button(self.button_frame, text='Close Window', command=self.close_window)
+            self.close_button.pack(side=tk.RIGHT, padx=5)
             self.import_button = ttk.Button(self.button_frame, text='Import from files', command=self.import_data)
             self.import_button.pack(side=tk.LEFT, padx=5)
             self.export_button = ttk.Button(self.button_frame, text='Export to files', command=self.export_data)
@@ -133,6 +137,12 @@ class DbFilesWindowClass(tk.Toplevel):
             self.status_label.config(text=text)
             self.update()
 
+        def close_window(self) -> None:
+            """
+            Close the window.
+            """
+            self.container.destroy()
+
         def import_data(self) -> None:
             """
             Import data from CSV files to the database.
@@ -149,9 +159,13 @@ class DbFilesWindowClass(tk.Toplevel):
             if table_name == self.container.value_for_all:
                 table_name = ''
             files, must_reload = self.container.db_handler.import_from_csv(
-                self.container.folder_for_csv_files, table_name, suffix_separator=self.container.suffix_separator, delete_content=delete_content
+                self.container.folder_for_csv_files,
+                table_name,
+                delete_content=delete_content,
+                check_columns=False, # necessary for user_fields imports
+                suffix_separator=self.container.suffix_separator
             )
-            self.add_result('Importing data from files:')
+            self.add_result('Data imported from files:')
             for file in files:
                 self.add_result(file)
             self.add_result('Import finished.')
@@ -173,11 +187,16 @@ class DbFilesWindowClass(tk.Toplevel):
             table_name = self.cb_table.get()
             if table_name == self.container.value_for_all:
                 table_name = ''
-            suffix = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') if self.var_add_suffix.get() else ''
-            files = self.container.db_handler.export_to_csv(
-                self.container.folder_for_csv_files, table_name, suffix_separator=self.container.suffix_separator, suffix=suffix
-            )
-            self.add_result('Exporting data to files:')
+            backup_on_export = self.var_backup_on_export.get()
+            files = self.container.db_handler.export_to_csv(self.container.folder_for_csv_files, table_name, backup_existing=backup_on_export)
+
+            if self.var_user_fields.get():
+                fields = ','.join(self.container.db_handler.user_fields)
+                files += self.container.db_handler.export_to_csv(
+                    self.container.folder_for_csv_files, 'assets', fields=fields, backup_existing=backup_on_export, suffix='_user_fields'
+                )
+
+            self.add_result('Data exported to files:')
             for file in files:
                 self.add_result(file)
             self.add_result('Export finished.')

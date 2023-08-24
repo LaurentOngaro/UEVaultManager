@@ -362,7 +362,7 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, path: str =
         return ''
     try:
         file_name_no_ext, file_ext = os.path.splitext(file_src)
-        file_backup = f'{file_name_no_ext}.BACKUP_{datetime.now().strftime("%y-%m-%d_%H-%M-%S")}{file_ext}'
+        file_backup = f'{file_name_no_ext}_{datetime.now().strftime("%y-%m-%d_%H-%M-%S")}{file_ext}.BAK'
         shutil.copy(file_src, file_backup)
         if logger is not None:
             logger.info(f'File {file_src} has been copied to {file_backup}')
