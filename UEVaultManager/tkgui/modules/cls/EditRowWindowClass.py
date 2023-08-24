@@ -29,7 +29,11 @@ class EditRowWindow(tk.Toplevel):
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
         super().__init__(parent)
         self.title(title)
-        self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        try:
+            # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
+            self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        except Exception as error:
+            gui_f.log_warning(f'Error in EditCellWindowClass: {error}')
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
