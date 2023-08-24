@@ -40,12 +40,13 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.FLOAT
     },
-    'Review count': {
-        # not in "standard/result" csv file
-        'sql_name': 'review_count',
-        'state': CSVFieldState.SQL_ONLY,
-        'field_type': CSVFieldType.INT
-    },
+    'Review count':
+        {
+            # not in "standard/result" csv file
+            'sql_name': 'review_count',
+            'state': CSVFieldState.SQL_ONLY,
+            'field_type': CSVFieldType.INT
+        },
     'Developer': {
         'sql_name': 'author',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -88,12 +89,13 @@ csv_sql_fields = {
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.BOOL
     },
-    'Can purchase': {
-        # not in "standard/result" csv file
-        'sql_name': 'can_purchase',
-        'state': CSVFieldState.SQL_ONLY,
-        'field_type': CSVFieldType.BOOL
-    },
+    'Can purchase':
+        {
+            # not in "standard/result" csv file
+            'sql_name': 'can_purchase',
+            'state': CSVFieldState.SQL_ONLY,
+            'field_type': CSVFieldType.BOOL
+        },
     'Owned': {
         'sql_name': 'owned',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -166,12 +168,13 @@ csv_sql_fields = {
         'field_type': CSVFieldType.BOOL
     },
     # ## less important fields
-    'Custom attributes': {
-        # not in "standard/result" csv file
-        'sql_name': 'custom_attributes',
-        'state': CSVFieldState.SQL_ONLY,
-        'field_type': CSVFieldType.STR
-    },
+    'Custom attributes':
+        {
+            # not in "standard/result" csv file
+            'sql_name': 'custom_attributes',
+            'state': CSVFieldState.SQL_ONLY,
+            'field_type': CSVFieldType.STR
+        },
     'Page title': {
         'sql_name': 'page_title',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -340,7 +343,7 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
     return result
 
 
-def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
+def get_typed_value(csv_field='', sql_field='', value='') -> (any, ):
     """
     Get the typed value for a field in CSV or SQL format. Only one of the two fields is required.
     :param csv_field: name of the field (csv format).

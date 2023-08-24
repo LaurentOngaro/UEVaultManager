@@ -72,46 +72,54 @@ class UEVMGuiControlFrame(ttk.Frame):
                 'widget': None,  # add in the loop bellow
                 'command': container.del_row
             },  #
-            'Edit': {
-                'text': '',  # if empty, the key of the dict will be used
-                'widget': None,  # add in the loop bellow
-                'command': data_table.create_edit_row_window
-            },  #
-            'Scrap': {
-                'text': '',  # if empty, the key of the dict will be used
-                'widget': None,  # add in the loop bellow
-                'command': container.scrap_row
-            },  #
-            'Scan Folders': {
-                'text': '',  # if empty, the key of the dict will be used
-                'widget': None,  # add in the loop bellow
-                'command': container.scan_folders
-            },  #
-            'Load': {
-                'text': '',  # if empty, the key of the dict will be used
-                'widget': None,  # add in the loop bellow
-                'command': container.open_file
-            },  #
-            'Save': {
-                'text': ' Save ',  # if empty, the key of the dict will be used
-                'widget': None,  # add in the loop bellow
-                'command': container.save_changes
-            },  #
-            'Export': {
-                'text': '',  # if empty, the key of the dict will be used
-                'widget': None,  # add in the loop bellow
-                'command': container.export_selection
-            },  #
-            'Reload': {
-                'text': '',  # if empty, the key of the dict will be used
-                'widget': None,  # add in the loop bellow
-                'command': container.reload_data
-            },  #
-            'Rebuild': {
-                'text': '',  # if empty, the key of the dict will be used
-                'widget': None,  # add in the loop bellow
-                'command': container.rebuild_data
-            },  #
+            'Edit':
+                {
+                    'text': '',  # if empty, the key of the dict will be used
+                    'widget': None,  # add in the loop bellow
+                    'command': data_table.create_edit_row_window
+                },  #
+            'Scrap':
+                {
+                    'text': '',  # if empty, the key of the dict will be used
+                    'widget': None,  # add in the loop bellow
+                    'command': container.scrap_row
+                },  #
+            'Scan Folders':
+                {
+                    'text': '',  # if empty, the key of the dict will be used
+                    'widget': None,  # add in the loop bellow
+                    'command': container.scan_folders
+                },  #
+            'Load':
+                {
+                    'text': '',  # if empty, the key of the dict will be used
+                    'widget': None,  # add in the loop bellow
+                    'command': container.open_file
+                },  #
+            'Save':
+                {
+                    'text': ' Save ',  # if empty, the key of the dict will be used
+                    'widget': None,  # add in the loop bellow
+                    'command': container.save_changes
+                },  #
+            'Export':
+                {
+                    'text': '',  # if empty, the key of the dict will be used
+                    'widget': None,  # add in the loop bellow
+                    'command': container.export_selection
+                },  #
+            'Reload':
+                {
+                    'text': '',  # if empty, the key of the dict will be used
+                    'widget': None,  # add in the loop bellow
+                    'command': container.reload_data
+                },  #
+            'Rebuild':
+                {
+                    'text': '',  # if empty, the key of the dict will be used
+                    'widget': None,  # add in the loop bellow
+                    'command': container.rebuild_data
+                },  #
         }
         for key, values in self.buttons.items():
             text = values['text'] if values['text'] else key

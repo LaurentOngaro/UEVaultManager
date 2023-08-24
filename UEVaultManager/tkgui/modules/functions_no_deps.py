@@ -69,8 +69,8 @@ def get_center_screen_positions(screen_index: int, width: int, height: int) -> (
     target_screen = monitors[screen_index]
     screen_width = target_screen.width
     screen_height = target_screen.height
-    x = target_screen.x + (screen_width-width) // 2
-    y = target_screen.y + (screen_height-height) // 2
+    x = target_screen.x + (screen_width - width) // 2
+    y = target_screen.y + (screen_height - height) // 2
     return x, y
 
 

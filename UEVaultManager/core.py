@@ -162,20 +162,16 @@ class AppCore:
         s = session()
         s.headers.update(
             {
-                'X-Epic-Event-Action':
-                'login',
-                'X-Epic-Event-Category':
-                'login',
-                'X-Epic-Strategy-Flags':
-                '',
-                'X-Requested-With':
-                'XMLHttpRequest',
+                'X-Epic-Event-Action': 'login',
+                'X-Epic-Event-Category': 'login',
+                'X-Epic-Strategy-Flags': '',
+                'X-Requested-With': 'XMLHttpRequest',
                 'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                f'EpicGamesLauncher/{self._egl_version} '
-                'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
-                'Chrome/84.0.4147.38 Safari/537.36'
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                    'AppleWebKit/537.36 (KHTML, like Gecko) '
+                    f'EpicGamesLauncher/{self._egl_version} '
+                    'UnrealEngine/4.23.0-14907503+++Portal+Release-Live '
+                    'Chrome/84.0.4147.38 Safari/537.36'
             }
         )
         s.cookies['EPIC_COUNTRY'] = self.country_code.upper()

@@ -254,7 +254,7 @@ class JsonProcessingWindow(tk.Toplevel):
             if isinstance(tag, dict):
                 uid = tag.get('id')
                 tag_name = tag.get('name')
-                is_existing = cursor.execute('SELECT id FROM tags WHERE id = ?', (uid,)).fetchone()
+                is_existing = cursor.execute('SELECT id FROM tags WHERE id = ?', (uid, )).fetchone()
                 if is_existing:
                     self.updated += 1
                     cursor.execute("UPDATE tags SET name = ? WHERE id=?", (tag_name, uid))
@@ -283,7 +283,7 @@ class JsonProcessingWindow(tk.Toplevel):
                         rating_data = element['rating']
                         average_rating = rating_data['averageRating']
                         total_rating = rating_data['total']
-                        is_existing = cursor.execute('SELECT id FROM ratings WHERE id = ?', (uid,)).fetchone()
+                        is_existing = cursor.execute('SELECT id FROM ratings WHERE id = ?', (uid, )).fetchone()
                         if is_existing:
                             self.updated += 1
                             cursor.execute("UPDATE ratings SET averageRating = ?, total = ? WHERE id=?", (average_rating, total_rating, uid))

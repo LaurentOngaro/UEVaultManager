@@ -571,7 +571,7 @@ class EditableTable(Table):
             # noinspection PyTypeChecker
             return None
         else:
-            self.total_pages = (data_count-1) // self.rows_per_page + 1
+            self.total_pages = (data_count - 1) // self.rows_per_page + 1
             return df
 
     def create_row(self, row_data=None, add_to_existing: bool = True, do_not_save: bool = False) -> (pd.DataFrame, int):

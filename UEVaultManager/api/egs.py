@@ -613,7 +613,7 @@ class EPCAPI:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
             review = not_found_review
         discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int(
-            (price-discount_price) / price * 100.0
+            (price - discount_price) / price * 100.0
         )
         discounted = (discount_price < price) or discount_percentage > 0.0
 
