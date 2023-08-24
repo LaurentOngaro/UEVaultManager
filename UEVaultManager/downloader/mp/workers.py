@@ -61,7 +61,7 @@ class DLWorker(Process):
                 while tries < self.max_retries:
                     # retry once immediately, otherwise do exponential backoff
                     if tries > 1:
-                        sleep_time = 2**(tries - 1)
+                        sleep_time = 2 ** (tries - 1)
                         logger.info(f'Sleeping {sleep_time} seconds before retrying.')
                         time.sleep(sleep_time)
 
