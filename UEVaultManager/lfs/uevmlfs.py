@@ -264,7 +264,9 @@ class UEVMLFS:
 
         self._assets = assets
         json.dump(
-            {platform: [a.__dict__ for a in assets] for platform, assets in self._assets.items()},
+            {
+                platform: [a.__dict__ for a in assets] for platform, assets in self._assets.items()
+            },
             open(os.path.join(self.path, 'assets.json'), 'w'),
             indent=2,
             sort_keys=True

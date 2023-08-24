@@ -570,7 +570,7 @@ class UEVMGui(tk.Tk):
         data_table.update(update_format=True)
         data_table.move_to_row(new_index)
         data_table.must_save = True
-        text = f' with asset_id={ row["Asset_id"][0]}' if row is not None else ''
+        text = f' with asset_id={row["Asset_id"][0]}' if row is not None else ''
         gui_f.box_message(f'A new row{text} has been added at index {new_index} of the datatable')
 
     def del_row(self) -> None:

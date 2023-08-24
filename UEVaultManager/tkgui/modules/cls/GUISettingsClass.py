@@ -72,9 +72,9 @@ class GUISettings:
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder. MUST BE LOWERCASE
         self.ue_valid_file_content = ('.uplugin', '.uproject')
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder. MUST BE LOWERCASE
-        self.ue_valid_folder_content = ('content', )
+        self.ue_valid_folder_content = ('content',)
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file. MUST BE LOWERCASE
-        self.ue_valid_manifest_content = ('data', )
+        self.ue_valid_manifest_content = ('data',)
         # if a folder is in this tuple, the folder won't be scanned to find ue folders. MUST BE LOWERCASE
         self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data')
         # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure. MUST BE LOWERCASE

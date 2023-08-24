@@ -340,7 +340,7 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
     return result
 
 
-def get_typed_value(csv_field='', sql_field='', value='') -> (any, ):
+def get_typed_value(csv_field='', sql_field='', value='') -> (any,):
     """
     Get the typed value for a field in CSV or SQL format. Only one of the two fields is required.
     :param csv_field: name of the field (csv format).

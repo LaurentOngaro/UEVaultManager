@@ -343,7 +343,7 @@ class UEAssetDbHandler:
         if upgrade_from_version == DbVersionNum.V5:
             # necessary steps to upgrade from version 5
             # add changed fields
-            self._add_missing_columns('assets', required_columns={'tags': 'TEXT', })
+            self._add_missing_columns('assets', required_columns={'tags': 'TEXT',})
             self.db_version = upgrade_from_version = DbVersionNum.V6
         if upgrade_from_version == DbVersionNum.V6:
             self.db_version = upgrade_from_version = DbVersionNum.V7
@@ -548,7 +548,7 @@ class UEAssetDbHandler:
             count = 1
             while count > 0:
                 uid = create_uid()
-                cursor.execute("SELECT COUNT(*) FROM assets WHERE id = ?", (uid, ))
+                cursor.execute("SELECT COUNT(*) FROM assets WHERE id = ?", (uid,))
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
@@ -575,7 +575,7 @@ class UEAssetDbHandler:
         ue_asset = None
         if self.connection is not None:
             cursor = self.connection.cursor()
-            cursor.execute("SELECT * assets WHERE id = ?", (uid, ))
+            cursor.execute("SELECT * assets WHERE id = ?", (uid,))
             row = cursor.fetchone()
             cursor.close()
             ue_asset = UEAsset()
@@ -598,9 +598,9 @@ class UEAssetDbHandler:
         if self.connection is not None and (uid or asset_id):
             cursor = self.connection.cursor()
             if not asset_id:
-                cursor.execute("DELETE FROM assets WHERE id = ?", (uid, ))
+                cursor.execute("DELETE FROM assets WHERE id = ?", (uid,))
             else:
-                cursor.execute("DELETE FROM assets WHERE asset_id = ?", (asset_id, ))
+                cursor.execute("DELETE FROM assets WHERE asset_id = ?", (asset_id,))
             self.connection.commit()
             cursor.close()
 
@@ -615,7 +615,7 @@ class UEAssetDbHandler:
             where_clause = "1"
         if self.connection is not None:
             cursor = self.connection.cursor()
-            cursor.execute("DELETE FROM assets WHERE ?", (where_clause, ))
+            cursor.execute("DELETE FROM assets WHERE ?", (where_clause,))
             self.connection.commit()
             cursor.close()
 
@@ -663,7 +663,7 @@ class UEAssetDbHandler:
         result = None
         if self.connection is not None:
             cursor = self.connection.cursor()
-            cursor.execute("SELECT name from tags WHERE id = ?", (uid, ))
+            cursor.execute("SELECT name from tags WHERE id = ?", (uid,))
             row = cursor.fetchone()
             cursor.close()
             result = row['name'] if row else result
@@ -696,7 +696,7 @@ class UEAssetDbHandler:
         result = (None, None)
         if self.connection is not None:
             cursor = self.connection.cursor()
-            cursor.execute("SELECT averageRating, total from ratings WHERE id = ?", (uid, ))
+            cursor.execute("SELECT averageRating, total from ratings WHERE id = ?", (uid,))
             row = cursor.fetchone()
             cursor.close()
             result = (row['averageRating'], row['total']) if row else result
@@ -841,12 +841,14 @@ class UEAssetDbHandler:
             cursor.close()
         return result
 
-    def import_from_csv(self,
-                        folder_for_csv_files: str,
-                        table_name: str = '',
-                        delete_content: bool = False,
-                        check_columns: bool = True,
-                        suffix_separator: str = '_##') -> ([str], bool):
+    def import_from_csv(
+        self,
+        folder_for_csv_files: str,
+        table_name: str = '',
+        delete_content: bool = False,
+        check_columns: bool = True,
+        suffix_separator: str = '_##'
+    ) -> ([str], bool):
         """
         Import the database from a CSV file.
         :param folder_for_csv_files: The folder containing the CSV files to import.

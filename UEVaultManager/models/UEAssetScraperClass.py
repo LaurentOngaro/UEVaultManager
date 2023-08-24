@@ -425,7 +425,7 @@ class UEAssetScraper:
                     url_vars = extract_variables_from_url(url)
                     start = int(url_vars['start'])
                     count = int(url_vars['count'])
-                    suffix = f'{start}-{start+count-1}'
+                    suffix = f'{start}-{start + count - 1}'
                 except Exception:
                     suffix = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
                 filename = f'assets_{suffix}.json'

@@ -694,8 +694,8 @@ class DLManager(Process):
         # start threads
         s_time = time.time()
         self.threads.append(Thread(target=self.download_job_manager, args=(task_cond, shm_cond)))
-        self.threads.append(Thread(target=self.dl_results_handler, args=(task_cond, )))
-        self.threads.append(Thread(target=self.fw_results_handler, args=(shm_cond, )))
+        self.threads.append(Thread(target=self.dl_results_handler, args=(task_cond,)))
+        self.threads.append(Thread(target=self.fw_results_handler, args=(shm_cond,)))
 
         for t in self.threads:
             t.start()

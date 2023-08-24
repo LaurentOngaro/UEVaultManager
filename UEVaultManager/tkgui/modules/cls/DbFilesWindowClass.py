@@ -162,7 +162,7 @@ class DbFilesWindowClass(tk.Toplevel):
                 self.container.folder_for_csv_files,
                 table_name,
                 delete_content=delete_content,
-                check_columns=False, # necessary for user_fields imports
+                check_columns=False,  # necessary for user_fields imports
                 suffix_separator=self.container.suffix_separator
             )
             self.add_result('Data imported from files:')
