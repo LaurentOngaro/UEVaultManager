@@ -180,6 +180,25 @@ class UEAssetDbHandler:
             self.connection.commit()
             cursor.close()
 
+    def _run_query(self, query: str, data: dict = None) -> list:
+        """
+        Run a query.
+        :param query: The query to run.
+        :param data: A dictionary containing the data to use in the query.
+        :return: The result of the query.
+        """
+        result = None
+        if self.connection is not None:
+            cursor = self.connection.cursor()
+            if data is None:
+                cursor.execute(query)
+            else:
+                cursor.execute(query, data)
+            self.connection.commit()
+            result = cursor.fetchall()
+            cursor.close()
+        return result
+
     def _insert_or_update_row(self, table_name: str, row_data: dict) -> bool:
         """
         Insert or update a row in the given table.
@@ -387,10 +406,21 @@ class UEAssetDbHandler:
             self.db_version = upgrade_from_version = DbVersionNum.V9
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V9:
-            self._add_missing_columns('last_run', required_columns={'id': 'INTEGER not null', })
+            # next line produce error: sqlite3.OperationalError: Cannot add a PRIMARY KEY column
+            # self._add_missing_columns('last_run', required_columns={'id': 'INTEGER PRIMARY KEY AUTOINCREMENT'})
+            query = "DROP TABLE last_run"
+            self._run_query(query)
+            query = """
+            CREATE TABLE last_run (
+                date        DATETIME,
+                mode        TEXT,
+                files_count INTEGER,
+                items_count INTEGER,
+                scraped_ids TEXT,
+                id          INTEGER PRIMARY KEY AUTOINCREMENT
+            );"""
+            self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V10
-            # alter table last_run
-            #     add id integer not null /*autoincrement needs PK*/;
         if upgrade_from_version == DbVersionNum.V10:
             """
             does not exist yet
@@ -905,16 +935,20 @@ class UEAssetDbHandler:
                     # check if the given table_name is in the file name
                     if given_table_name not in file_name_p.name:
                         continue
-                else:
-                    table_name = file_name_p.stem
-                    # remove the suffix if it exists
-                    check: list = table_name.split(suffix_separator) if suffix_separator else []
-                    if len(check) == 2:
-                        table_name = check[0]
-                        suffix = check[1].lower()
-                        if suffix in suffix_to_ignore:
-                            continue
-                if table_name in table_is_done:
+                table_name = file_name_p.stem
+                # remove the suffix if it exists
+                check: list = table_name.split(suffix_separator) if suffix_separator else []
+                if len(check) == 2:
+                    table_name = check[0]
+                    suffix = check[1].lower()
+                    if suffix in suffix_to_ignore:
+                        continue
+                elif is_partial:
+                    # if we have a partial import, we need to have a suffix !!!
+                    # because if not, it's the file with full data to import only when not partial
+                    continue
+                if not is_partial and table_name in table_is_done:
+                    # if we have a partial import, same table can be imported multiple times
                     continue
 
                 cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';")
