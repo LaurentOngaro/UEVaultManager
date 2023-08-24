@@ -72,4 +72,5 @@ class DbVersionNum(Enum):
     V7 = 7  # add the tags table
     V8 = 8  # add the ratings tags table
     V9 = 9  # create the "assets_tags" view for the tags in the assets table
-    V10 = 10  # future version
+    V10 = 10  # add an autoincrement id to the last_run table
+    V11 = 11  # future version

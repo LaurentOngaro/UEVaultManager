@@ -180,6 +180,47 @@ class UEAssetDbHandler:
             self.connection.commit()
             cursor.close()
 
+    def _insert_or_update_row(self, table_name: str, row_data: dict) -> bool:
+        """
+        Insert or update a row in the given table.
+        :param table_name: The name of the table.
+        :param row_data: A dictionary representing the row to insert or update.
+        :return: True if the row was inserted or updated, otherwise False.
+        """
+        if not table_name or not row_data:
+            return False
+        uid = row_data.get('id', None)  # check if the row as an id to check
+        # remove all fields whith a None Value
+        filtered_fields = {k: v for k, v in row_data.items() if (v is not None and v != 'None')}
+        if len(filtered_fields) == 0:
+            return False
+        column_list = filtered_fields.keys()
+        cursor = self.connection.cursor()
+        if uid is not None:
+            # check if the asset already exists in the database
+            query = "SELECT id FROM " + table_name + " WHERE id = ?"  # we don't use a {table_name} here to avoid inspection warning
+            cursor.execute(query, (uid, ))
+            result = cursor.fetchone()
+        else:
+            result = None
+        if result is None:
+            # uid is not in row fields, or the row with uid does not exist in the database, add it
+            fields = ", ".join(f"{column}" for column in column_list)
+            values = ", ".join(f":{column}" for column in column_list)
+            # this query will insert or update the asset if it already exists.
+            # noinspection SqlInsertValues
+            query = f"REPLACE INTO {table_name} ({fields}) VALUES ({values})"
+        else:
+            # the row with uid already exists in the database, update it
+            fields = ", ".join(f"{column} = :{column}" for column in column_list)
+            query = "UPDATE " + table_name + f" SET {fields} WHERE id = '{uid}'"  # we don't use a {table_name} here to avoid inspection warning
+        try:
+            cursor.execute(query, row_data)
+            return True
+        except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
+            self.logger.warning(f"Error while inserting/updating row with id '{uid}': {error!r}")
+            return False
+
     def db_exists(self) -> bool:
         """
         Check if the database file exists.
@@ -295,17 +336,12 @@ class UEAssetDbHandler:
 
         # all the following steps must be run sequentially
         if upgrade_from_version.value <= DbVersionNum.V1.value:
-            # necessary steps to upgrade to version 1, aka create tables
             self.db_version = upgrade_from_version = DbVersionNum.V2
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V2:
-            # necessary steps to upgrade from version 2
-            # add the last_run table to get data about the last run of the ap
             self.db_version = upgrade_from_version = DbVersionNum.V3
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V3:
-            # necessary steps to upgrade from version 3
-            # add user fields
             self._add_missing_columns(
                 'assets',
                 required_columns={
@@ -323,8 +359,6 @@ class UEAssetDbHandler:
             )
             self.db_version = upgrade_from_version = DbVersionNum.V4
         if upgrade_from_version == DbVersionNum.V4:
-            # necessary steps to upgrade from version 4
-            # add changed fields
             self._add_missing_columns(
                 'assets',
                 required_columns={
@@ -341,8 +375,6 @@ class UEAssetDbHandler:
             )
             self.db_version = upgrade_from_version = DbVersionNum.V5
         if upgrade_from_version == DbVersionNum.V5:
-            # necessary steps to upgrade from version 5
-            # add changed fields
             self._add_missing_columns('assets', required_columns={'tags': 'TEXT', })
             self.db_version = upgrade_from_version = DbVersionNum.V6
         if upgrade_from_version == DbVersionNum.V6:
@@ -355,13 +387,17 @@ class UEAssetDbHandler:
             self.db_version = upgrade_from_version = DbVersionNum.V9
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V9:
+            self._add_missing_columns('last_run', required_columns={'id': 'INTEGER not null', })
+            self.db_version = upgrade_from_version = DbVersionNum.V10
+            # alter table last_run
+            #     add id integer not null /*autoincrement needs PK*/;
+        if upgrade_from_version == DbVersionNum.V10:
             """
-            necessary steps to upgrade from version 9
             does not exist yet
             """
             """
             # do some stuff here
-            self.db_version = upgrade_from_version = DbVersionNum.V10
+            self.db_version = upgrade_from_version = DbVersionNum.V11
             """
             pass
         if previous_version != self.db_version:
@@ -423,7 +459,6 @@ class UEAssetDbHandler:
         if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
             return
         if self.connection is not None:
-            cursor = self.connection.cursor()
             if not isinstance(assets, list):
                 assets = [assets]
             str_today = datetime.datetime.now().strftime(default_datetime_format)
@@ -437,28 +472,7 @@ class UEAssetDbHandler:
                 tags = asset.get('tags', [])
                 tags_str = self.convert_tag_list_to_string(tags)
                 asset['tags'] = tags_str
-                # remove all fields whith a None Value
-                filtered_fields = {k: v for k, v in asset.items() if (v is not None and v != 'None')}
-                if len(filtered_fields) == 0:
-                    return
-                # ckeck if the asset already exists in the database
-                cursor.execute(f"SELECT id FROM assets WHERE id='{asset['id']}'")
-                result = cursor.fetchone()
-                if result is None:
-                    # asset does not exist in the database, add it
-                    fields = ", ".join(f"{column}" for column in filtered_fields.keys())
-                    values = ", ".join(f":{column}" for column in filtered_fields.keys())
-                    # this query will insert or update the asset if it already exists.
-                    # noinspection SqlInsertValues
-                    query = f"REPLACE INTO assets ({fields}) VALUES ({values})"
-                else:
-                    # asset already exists in the database, update it
-                    fields = ", ".join(f"{column} = :{column}" for column in filtered_fields.keys())
-                    query = f"UPDATE assets SET {fields} WHERE id='{asset['id']}'"
-                try:
-                    cursor.execute(query, asset)
-                except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
-                    self.logger.warning(f"Error while inserting/updating asset '{asset['id']}' (tags='{asset['tags']}': {error!r}")
+                self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
         except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
@@ -833,7 +847,7 @@ class UEAssetDbHandler:
                         writer.writerow(column_names)
                         # Write rows
                         writer.writerows(rows)
-                        result.append(f'Write: {file_name}')
+                        result.append(f'Export: {file_name}')
                 except Exception as error:
                     msg = f'Error while exporting table "{table_name}" to CSV file "{file_name}"'
                     result.append(msg)
@@ -876,6 +890,8 @@ class UEAssetDbHandler:
             # csv_files = sorted(csv_files, reverse=True)
             given_table_name = table_name
             for file_name_p in csv_files:
+                success_count = 0
+                fails_count = 0
                 file_name = str(file_name_p)
 
                 # check if the file is not empty
@@ -921,12 +937,16 @@ class UEAssetDbHandler:
                             result.append(msg)
                             self.logger.info(msg)
                             continue
-                        query = f"INSERT OR REPLACE INTO {table_name} ({','.join(csv_columns)}) VALUES ({','.join('?' * len(csv_columns))})"
                         for row in reader:
                             if not row:
                                 continue
-                            cursor.execute(query, row)
-                        result.append(f'Read: {file_name}')
+                            data_dict = dict(zip(csv_columns, row))
+                            if self._insert_or_update_row(table_name, data_dict):
+                                success_count += 1
+                            else:
+                                fails_count += 1
+                        result.append(f'Import: {file_name}')
+                        result.append(f'-> Success: {success_count} Fails:{fails_count}')
                         must_reload = True
                         table_is_done.append(table_name)
                         if given_table_name and given_table_name == table_name:
