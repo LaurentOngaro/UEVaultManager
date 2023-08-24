@@ -88,7 +88,7 @@ class DbFilesWindowClass(tk.Toplevel):
             self.ck_delete_content = tk.Checkbutton(self, text='Delete content before import', variable=self.var_delete_content)
             self.ck_delete_content.pack(fill=tk.X, padx=2, pady=1, anchor=tk.W)
             self.var_user_fields = tk.BooleanVar(value=True)
-            self.ck_user_fields = tk.Checkbutton(self, text='Export user fields in assets', variable=self.var_user_fields)
+            self.ck_user_fields = tk.Checkbutton(self, text='Export/Import user fields data assets', variable=self.var_user_fields)
             self.ck_user_fields.pack(fill=tk.X, padx=2, pady=1, anchor=tk.W)
 
             self.button_frame = tk.Frame(self)
