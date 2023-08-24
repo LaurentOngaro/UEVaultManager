@@ -32,6 +32,7 @@ class DbFilesWindowClass(tk.Toplevel):
     :param db_path: the path to the database.
     """
 
+    _user_fields_suffix = '_user_fields'
     value_for_all: str = 'All'
     suffix_separator: str = '_##'
     must_reload: bool = False
@@ -40,7 +41,7 @@ class DbFilesWindowClass(tk.Toplevel):
         self,
         title: str = 'Database Import/Export Window',
         width: int = 400,
-        height: int = 420,
+        height: int = 440,
         icon=None,
         screen_index: int = 0,
         folder_for_csv_files: str = '',
@@ -162,9 +163,21 @@ class DbFilesWindowClass(tk.Toplevel):
                 self.container.folder_for_csv_files,
                 table_name,
                 delete_content=delete_content,
-                check_columns=False,  # necessary for user_fields imports
-                suffix_separator=self.container.suffix_separator
+                is_partial=False,
+                suffix_separator=self.container.suffix_separator,
+                suffix_to_ignore=[self.container._user_fields_suffix]
             )
+            if self.var_user_fields.get():
+                files_u, must_reload_u = self.container.db_handler.import_from_csv(
+                    self.container.folder_for_csv_files,
+                    'assets',
+                    delete_content=False,
+                    is_partial=True,  # necessary for user_fields imports
+                    suffix_separator=self.container.suffix_separator
+                )
+                files += files_u
+                must_reload = must_reload or must_reload_u
+
             self.add_result('Data imported from files:')
             for file in files:
                 self.add_result(file)
@@ -193,7 +206,7 @@ class DbFilesWindowClass(tk.Toplevel):
             if self.var_user_fields.get():
                 fields = ','.join(self.container.db_handler.user_fields)
                 files += self.container.db_handler.export_to_csv(
-                    self.container.folder_for_csv_files, 'assets', fields=fields, backup_existing=backup_on_export, suffix='_user_fields'
+                    self.container.folder_for_csv_files, 'assets', fields=fields, backup_existing=backup_on_export, suffix=self.container._user_fields_suffix
                 )
 
             self.add_result('Data exported to files:')

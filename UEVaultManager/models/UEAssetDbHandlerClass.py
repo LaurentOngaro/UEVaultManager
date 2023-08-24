@@ -835,7 +835,7 @@ class UEAssetDbHandler:
                         writer.writerows(rows)
                         result.append(f'Write: {file_name}')
                 except Exception as error:
-                    msg = f'Error while exporting table "{table_name}" to CSV file "{file_name_p}"'
+                    msg = f'Error while exporting table "{table_name}" to CSV file "{file_name}"'
                     result.append(msg)
                     self.logger.warning(f'{msg}: {error!r}')
             cursor.close()
@@ -846,18 +846,22 @@ class UEAssetDbHandler:
         folder_for_csv_files: str,
         table_name: str = '',
         delete_content: bool = False,
-        check_columns: bool = True,
-        suffix_separator: str = '_##'
+        is_partial: bool = False,
+        suffix_separator: str = '_##',
+        suffix_to_ignore=None
     ) -> ([str], bool):
         """
         Import the database from a CSV file.
         :param folder_for_csv_files: The folder containing the CSV files to import.
         :param table_name: The name of the table to import. If None, all the tables will be imported.
         :param delete_content: True to delete the content of the table before importing the data, False to append the data to the table.
-        :param check_columns: True to check if the columns in the CSV file match the columns in the table, False to skip the check.
+        :param is_partial: True to indicate the import is partial. It True, only some fields are imported and the columns will not be checked.
         :param suffix_separator: The separator used to separate the table name from the suffix in the CSV file name.
+        :param suffix_to_ignore: A list of suffix to ignore when importing the CSV files.
         :return: (list of CSV files that have been read, True if the database must be reloaded).
         """
+        if suffix_to_ignore is None:
+            suffix_to_ignore = []
         result = []
         must_reload = False
         if self.connection is not None:
@@ -869,11 +873,13 @@ class UEAssetDbHandler:
             table_is_done = []  # used to avoid importing the same table multiple times
             csv_files = list(folder_for_csv_files.glob('*.csv'))
             # sort the list in reverse order, as it when the same table has multiple files to import from, we import the last one (with datetime suffix) first
-            csv_files = sorted(csv_files, reverse=True)
+            # csv_files = sorted(csv_files, reverse=True)
             given_table_name = table_name
-            for file_name in csv_files:
+            for file_name_p in csv_files:
+                file_name = str(file_name_p)
+
                 # check if the file is not empty
-                if not file_name.exists() or file_name.stat().st_size == 0:
+                if not file_name_p.exists() or file_name_p.stat().st_size == 0:
                     msg = f'The CSV file "{file_name}" does not exist or is empty and will not be imported.'
                     result.append(msg)
                     self.logger.info(msg)
@@ -881,33 +887,36 @@ class UEAssetDbHandler:
 
                 if given_table_name:
                     # check if the given table_name is in the file name
-                    if given_table_name not in file_name.name:
+                    if given_table_name not in file_name_p.name:
                         continue
                 else:
-                    table_name = file_name.stem
+                    table_name = file_name_p.stem
                     # remove the suffix if it exists
                     check: list = table_name.split(suffix_separator) if suffix_separator else []
                     if len(check) == 2:
                         table_name = check[0]
+                        suffix = check[1].lower()
+                        if suffix in suffix_to_ignore:
+                            continue
                 if table_name in table_is_done:
                     continue
 
                 cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';")
                 if not cursor.fetchone():
-                    self.logger.info(f'Table "{table_name}" does not exist and the data will not be imported from {file_name.name}.')
+                    self.logger.info(f'Table "{table_name}" does not exist and the data will not be imported from {file_name_p.name}.')
                     continue
                 if delete_content:
                     cursor.execute(f"DELETE FROM {table_name} WHERE 1")
                     self.connection.commit()
                 try:
-                    with open(file_name, 'r', newline='', encoding='utf-8') as f:
+                    with open(file_name_p, 'r', newline='', encoding='utf-8') as f:
                         reader = csv.reader(f, dialect='unix')
                         csv_columns = next(reader)
                         # Get column names from database
                         cursor.execute(f"PRAGMA table_info({table_name});")
                         db_columns = [column[1] for column in cursor.fetchall()]
                         # Check if columns match
-                        if check_columns and csv_columns != db_columns:
+                        if not is_partial and csv_columns != db_columns:
                             msg = f'Columns in CSV file "{file_name}" do not match columns in table "{table_name}".'
                             result.append(msg)
                             self.logger.info(msg)
@@ -917,7 +926,7 @@ class UEAssetDbHandler:
                             if not row:
                                 continue
                             cursor.execute(query, row)
-                        result.append(f'Read: {str(file_name)}')
+                        result.append(f'Read: {file_name}')
                         must_reload = True
                         table_is_done.append(table_name)
                         if given_table_name and given_table_name == table_name:
