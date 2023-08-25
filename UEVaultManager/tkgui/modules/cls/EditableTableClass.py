@@ -249,7 +249,7 @@ class EditableTable(Table):
             except Exception as error:
                 self.logger.warning(f'Could not sort the columns. Error: {error!r}')
         self.update_index_copy_column()
-        self.update()
+        self.update(update_filters=True)
         return
 
     def tableChanged(self) -> None:
@@ -259,7 +259,7 @@ class EditableTable(Table):
         """
         super().tableChanged()
 
-    def handle_left_release(self,event):
+    def handle_left_release(self, event):
         """
         Handle left mouse button release events.
         :param event: The event that triggered the function call.
