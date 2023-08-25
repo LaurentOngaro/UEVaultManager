@@ -120,23 +120,30 @@ class GUISettings:
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
         self.index_copy_col_name = 'Index copy'  # name of the column that will be used to store the index in datatables. It will be added by default to the hidden columns list
 
-    def _get_serialized(self, var_name: str = '', is_dict=False):
+    def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
         Getter for a serialized config vars
         :param var_name: name of the config var to get
+        :param is_dict: True if the value is a dict, False if it's a list
+        :param force_reload: True to force reloading the value from the config file and update the deserialized value
         :return: List or Dict
         """
         default = {} if is_dict else []
-        if self._config_vars_deserialized.get(var_name, None) is not None:
+        if not force_reload and self._config_vars_deserialized.get(var_name, None) is not None:
             # it could be a dict, a list a str to decode
             read_value = self._config_vars_deserialized[var_name]
         else:
             read_value = self.config_vars[var_name]
+
         if read_value == '':
             return default
-        # the "len(read_value) > 0" check is for solving "empty dict issue" after storing a bad value in self._config_vars_deserialized[var_name]
-        if isinstance(read_value, dict) or isinstance(read_value, list) and len(read_value) > 0:
-            return read_value
+        if isinstance(read_value, dict) or isinstance(read_value, list):
+            if len(read_value) > 0:
+                return read_value
+            elif not force_reload:
+                # the "len(read_value) < 0" we have and "empty dict issue" after storing a bad value in self._config_vars_deserialized[var_name]
+                # so we force reloading the value from the config file
+                return self._get_serialized(var_name, is_dict=is_dict, force_reload=True)
         try:
             values = json.loads(read_value)
         except json.decoder.JSONDecodeError:
