@@ -134,7 +134,8 @@ class GUISettings:
             read_value = self.config_vars[var_name]
         if read_value == '':
             return default
-        if isinstance(read_value, dict) or isinstance(read_value, list):
+        # the "len(read_value) > 0" check is for solving "empty dict issue" after storing a bad value in self._config_vars_deserialized[var_name]
+        if isinstance(read_value, dict) or isinstance(read_value, list) and len(read_value) > 0:
             return read_value
         try:
             values = json.loads(read_value)
