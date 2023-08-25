@@ -655,7 +655,10 @@ class UEAssetScraper:
         Pop the last scraped data from the scraped_data property.
         :return: the last scraped data.
         """
-        return self._scraped_data.pop()
+        result = []
+        if len(self._scraped_data) > 0:
+            result = self._scraped_data.pop()
+        return result
 
 
 if __name__ == '__main__':
