@@ -259,6 +259,18 @@ class EditableTable(Table):
         """
         super().tableChanged()
 
+    def handle_left_release(self,event):
+        """
+        Handle left mouse button release events.
+        :param event: The event that triggered the function call.
+        Overrided to trap raised error when clicking on an empty row
+        """
+        try:
+            super().handle_left_release(event)
+        except IndexError:
+            pass
+        # self._generate_cell_selection_changed_event()
+
     def _set_with_for_hidden_columns(self) -> None:
         """
         Set the with for the hidden columns.
@@ -567,7 +579,7 @@ class EditableTable(Table):
             self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
             df, _ = self.create_row(add_to_existing=False)
             data_count = len(df)
-        if df is None or len(df) == 0:
+        if df is None or df.empty:
             self.logger.error(f'No data found in data source: {self.data_source}')
             # previous line will quit the app
             # noinspection PyTypeChecker
@@ -625,7 +637,7 @@ class EditableTable(Table):
             # add the data to the row
             for col in row_data:
                 table_row[col] = row_data[col]
-            table_row.fillna('None', inplace=True)
+            table_row.fillna('None', inplace=True)  # put 'None' in empty cells
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
             if new_index == 0:
@@ -1059,7 +1071,7 @@ class EditableTable(Table):
         self.model.df[gui_g.s.index_copy_col_name] = self.model.df.index
         if self.df_filtered is not None:
             self.df_filtered[gui_g.s.index_copy_col_name] = self.df_filtered.index
-
+        # check if the columns order has changed
         new_cols_infos = self.get_col_infos()
         if self._column_infos_stored != new_cols_infos:
             self.update_col_infos(
@@ -1326,8 +1338,9 @@ class EditableTable(Table):
             return True
         except TypeError as error:
             if not self._is_scanning and 'Cannot setitem on a Categorical with a new category' in str(error):
+                # this will occur when scanning folder with category that are not in the table yet
                 col_name = self.get_col_name(col_index)
-                box_message(f'You can not use a value that is not an existing category for field {col_name}.')
+                log_warning(f'Trying to set a value that is not an existing category for field {col_name}.')
             return False
         except IndexError:
             return False

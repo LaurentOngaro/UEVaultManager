@@ -16,6 +16,7 @@ from tkinter import filedialog as fd
 
 import pandas as pd
 from rapidfuzz import fuzz
+from requests import ReadTimeout
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
@@ -638,12 +639,16 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = gui_g.s.folders_to_scan
+        if self.core is None:
+            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
+            return
+        if not folder_to_scan:
+            gui_f.box_message('No folder to scan. Please add some in the config file', level='warning')
+            return
         if not gui_f.box_yesno(
             'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
         ):
             return
-        if self.core is None:
-            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
 
         pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False, show_stop_button_l=True)
         data_table = self.editable_table  # shortcut
@@ -678,7 +683,16 @@ class UEVMGui(tk.Tk):
                     marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                     grab_result = ''
                     if marketplace_url:
-                        grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
+                        try:
+                            grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
+                        except ReadTimeout:
+                            gui_f.box_message(
+                                f'Request timeout when acessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
+                                level='warning'
+                            )
+                            gui_f.close_progress(self)
+                            # grab_result = GrabResult.TIMEOUT.name
+                            return
                     valid_folders[folder_name] = {
                         'path': path,
                         'asset_type': UEAssetType.Asset,
@@ -740,9 +754,16 @@ class UEVMGui(tk.Tk):
                                 marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                                 grab_result = ''
                                 if marketplace_url:
-                                    grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(
-                                        marketplace_url
-                                    ) else GrabResult.NO_RESPONSE.name
+                                    try:
+                                        grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(
+                                            marketplace_url
+                                        ) else GrabResult.TIMEOUT.name
+                                    except ReadTimeout:
+                                        gui_f.box_message(
+                                            f'Request timeout when acessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
+                                            level='warning'
+                                        )
+                                        grab_result = GrabResult.TIMEOUT.name
                                 valid_folders[folder_name] = {
                                     'path': path,
                                     'asset_type': asset_type,
@@ -781,6 +802,7 @@ class UEVMGui(tk.Tk):
         pw.update()
         row_added = 0
         data_table.is_scanning = True
+        # copy_col_index = data_table.get_col_index(gui_g.s.index_copy_col_name)
         for name, content in valid_folders.items():
             marketplace_url = content['marketplace_url']
             self.logger.info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
@@ -788,11 +810,11 @@ class UEVMGui(tk.Tk):
             row_data.update(
                 {
                     'App name': name,
-                    'Category': content['asset_type'].category_name,
                     'Origin': content['path'],
                     'Url': content['marketplace_url'],
                     'Grab result': content['grab_result'],
                     'Added manually': True,
+                    'Category': content['asset_type'].category_name,
                 }
             )
             row_index = -1
@@ -800,10 +822,10 @@ class UEVMGui(tk.Tk):
             try:
                 # get the indexes if value already exists in column 'Origin' for a pandastable
                 rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
-                row_indexes = rows_serie.index
-                if len(row_indexes) > 0:
+                row_indexes = rows_serie.index  # returns a list of indexes. It should contain only 1 value
+                if not row_indexes.empty:
                     row_index = row_indexes[0]
-                    text = f'Updating {name} at row {row_index}'
+                    text = f'Updating {name} at row {row_index}. Old name is {data.loc[row_index, "App name"]}'
                     self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
                 self.logger.warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
@@ -825,11 +847,19 @@ class UEVMGui(tk.Tk):
                 'asset_url': content['marketplace_url'],
                 'grab_result': content['grab_result'],
                 'added_manually': True,
+                'category': content['asset_type'].category_name,
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
-                self.scrap_row(
-                    marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
-                )
+                try:
+                    self.scrap_row(
+                        marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
+                    )
+                except ReadTimeout:
+                    gui_f.box_message(
+                        f'Request timeout when acessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
+                        level='warning'
+                    )
+                    forced_data ['grab_result'] = GrabResult.TIMEOUT.name
             else:
                 data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
                 data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
@@ -929,12 +959,13 @@ class UEVMGui(tk.Tk):
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 asset_slug_from_row = row_data['Asset slug']
-                asset_id = row_data['Asset_id']
                 if asset_slug_from_url != asset_slug_from_row:
-                    msg = f'The Asset slug is different from the given Url and from the row data for the asset with uid={asset_id}'
+                    msg = f'The Asset slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
-                    if gui_f.box_yesno(f'{msg}.\nDo you wan to recreate the Url from the Asset slug and use it for scraping ?'):
+                    if gui_f.box_yesno(
+                        f'{msg}.\nDo you wan to create a new Url with {asset_slug_from_row} and use it for scraping ?\nIf no, the given url with {asset_slug_from_url} will be used'
+                    ):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
                         data_table.update_cell(row_index, col_index, marketplace_url, convert_row_number_to_row_index=False)
