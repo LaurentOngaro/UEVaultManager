@@ -636,6 +636,31 @@ class UEVMGui(tk.Tk):
         """
         Scan the folders to find files that can be loaded.
         """
+
+        def _fix_folder_structure(content_folder_name='Content'):
+            """
+            Fix the folder structure by moving all the subfolders inside a "Content" subfolder.
+            :param content_folder_name: the name of the subfolder to create.
+            """
+            if gui_f.box_yesno(
+                f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
+            ):
+                content_folder = os.path.join(parent_folder, content_folder_name)
+                if not os.path.isdir(content_folder):
+                    os.makedirs(content_folder, exist_ok=True)
+                    for entry_p in os.scandir(parent_folder):
+                        if entry_p.name != content_folder_name:
+                            path_p = entry_p.path
+                            shutil.move(path_p, content_folder)
+                            if path_p in folder_to_scan:
+                                folder_to_scan.remove(path_p)
+                msg_p = f'-->Found {parent_folder}. The folder has been restructured as a valid UE folder'
+                self.logger.debug(msg_p)
+                if full_folder in folder_to_scan:
+                    folder_to_scan.remove(full_folder)
+                if parent_folder not in folder_to_scan:
+                    folder_to_scan.append(parent_folder)
+
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = gui_g.s.folders_to_scan
@@ -704,25 +729,7 @@ class UEVMGui(tk.Tk):
                     continue
                 elif parent_could_be_valid:
                     # the parent folder contains some UE folders but with a bad structure
-                    content_folder_name = 'Content'
-                    if gui_f.box_yesno(
-                        f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
-                    ):
-                        content_folder = os.path.join(parent_folder, content_folder_name)
-                        if not os.path.isdir(content_folder):
-                            os.makedirs(content_folder, exist_ok=True)
-                            for entry in os.scandir(parent_folder):
-                                if entry.name != content_folder_name:
-                                    path = entry.path
-                                    shutil.move(path, content_folder)
-                                    if path in folder_to_scan:
-                                        folder_to_scan.remove(path)
-                        msg = f'-->Found {parent_folder}. The folder has been restructured as a valid project'
-                        self.logger.debug(msg)
-                        if full_folder in folder_to_scan:
-                            folder_to_scan.remove(full_folder)
-                        if parent_folder not in folder_to_scan:
-                            folder_to_scan.append(parent_folder)
+                    _fix_folder_structure('Content')
 
                 try:
                     for entry in os.scandir(full_folder):
@@ -738,11 +745,20 @@ class UEVMGui(tk.Tk):
                                 )
                                 if filename_lower == 'manifest':
                                     if has_valid_folder_inside:
-                                        asset_type = UEAssetType.Manifest
-                                        # we need to move to parent folder to get the real names because manifest files are inside a specific sub folder
                                         folder_name = os.path.basename(parent_folder)
-                                        parent_folder = os.path.dirname(parent_folder)
-                                        path = os.path.dirname(full_folder_abs)
+                                        # the manifest file MUST be in a "two level" folder structure
+                                        name_to_check = os.path.basename(full_folder_abs)
+                                        if name_to_check == folder_name:
+                                            # we need to move to parent folder to get the real names because manifest files are inside a specific sub folder
+                                            asset_type = UEAssetType.Manifest
+                                            parent_folder = os.path.dirname(parent_folder)
+                                            path = os.path.dirname(full_folder_abs)
+                                        else:
+                                            # we miss a folder between the folder with the "asset name" and the manifest file
+                                            # we create a subfolder with the asset name and move the manifest file and the content inside
+                                            parent_folder = full_folder_abs
+                                            _fix_folder_structure(name_to_check)
+                                            continue
                                     else:
                                         asset_type = UEAssetType.Asset
                                         self.logger.warning(
@@ -859,7 +875,7 @@ class UEVMGui(tk.Tk):
                         f'Request timeout when acessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                         level='warning'
                     )
-                    forced_data ['grab_result'] = GrabResult.TIMEOUT.name
+                    forced_data['grab_result'] = GrabResult.TIMEOUT.name
             else:
                 data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
                 data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
