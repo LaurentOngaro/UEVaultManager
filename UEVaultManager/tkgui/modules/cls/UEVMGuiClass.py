@@ -754,7 +754,7 @@ class UEVMGui(tk.Tk):
                                 if self.core.scan_assets_logger:
                                     self.core.scan_assets_logger.info(msg)
                                 if grab_result != GrabResult.NO_ERROR.name or not marketplace_url:
-                                    invalid_folders.append(folder_name)
+                                    invalid_folders.append(full_folder)
                                 # remove all the subfolders from the list of folders to scan
                                 folder_to_scan = [folder for folder in folder_to_scan if not folder.startswith(full_folder_abs)]
                                 continue
@@ -782,7 +782,6 @@ class UEVMGui(tk.Tk):
         row_added = 0
         data_table.is_scanning = True
         for name, content in valid_folders.items():
-
             marketplace_url = content['marketplace_url']
             self.logger.info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
             # set default values for the row, some will be replaced by Scraping
