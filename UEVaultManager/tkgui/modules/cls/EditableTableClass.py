@@ -1031,7 +1031,7 @@ class EditableTable(Table):
                     self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
                 except IndexingError:
                     self.logger.warning(f'Still an IndexingError with defined filters. Deleting mask...')
-                    self._filter_frame.clear_mask()
+                    self._filter_frame.reset_filters()
                     self.set_data(df, df_type=DataFrameUsed.FILTERED)
                     self.filtered = False
         else:
