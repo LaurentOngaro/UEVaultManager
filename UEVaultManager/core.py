@@ -991,3 +991,34 @@ class AppCore:
         self.uevmlfs.save_config()
         logging.shutdown()
         sys.exit(code)
+
+    def open_manifest_file(self, file_path: str) -> dict:
+        """
+        Open a manifest file and return its data.
+        :param file_path: Path to the manifest file.
+        :return: Manifest data.
+        """
+        try:
+            with open(file_path, 'rb') as file:
+                manifest_data = file.read()
+        except FileNotFoundError:
+            self.log.warning(f'The file {file_path} does not exist.')
+            return {}
+        manifest_info = {}
+        manifest = self.load_manifest(manifest_data)
+        manifest_info['app_name'] = manifest.meta.app_name
+
+        # file and chunk count
+        manifest_info['num_files'] = manifest.file_manifest_list.count
+        manifest_info['num_chunks'] = manifest.chunk_data_list.count
+        # total file size
+        total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
+        file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+        manifest_info['file_size'] = file_size
+        manifest_info['disk_size'] = total_size
+        # total chunk size
+        total_size = sum(c.file_size for c in manifest.chunk_data_list.elements)
+        chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+        manifest_info['chunk_size'] = chunk_size
+        manifest_info['download_size'] = total_size
+        return manifest_info
