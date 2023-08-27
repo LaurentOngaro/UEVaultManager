@@ -1261,6 +1261,16 @@ class UEVaultManagerCLI:
         if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
             gui_g.UEVM_gui_ref.mainloop()
 
+    def run_test(self, args) -> None:
+        """
+        Prints the version of UEVaultManager and exit.
+        """
+        print('UEVaultManager RUN TEST')
+        print('"opening a manifest file from disk...')
+        # read manifest_data from file
+        file_path = "G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_III/EliteLane90e1a8f98bbV1/manifest"
+        json_print_key_val(self.core.open_manifest_file(file_path))
+
     @staticmethod
     def print_version():
         """
@@ -1283,6 +1293,7 @@ def main():
     # noinspection DuplicatedCode
     parser.add_argument('-y', '--yes', dest='yes', action='store_true', help='Default to yes for all prompts')
     parser.add_argument('-V', '--version', dest='version', action='store_true', help='Print version and exit')
+    parser.add_argument('-T', '--runtest', dest='runtest', action='store_true', help='Run a test command using a CLI prompt. Just for developpers')
     parser.add_argument(
         '-c', '--config-file', dest='config_file', action='store', metavar='<path/name>', help='Overwrite the default configuration file name to use'
     )
@@ -1472,12 +1483,15 @@ def main():
 
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
+    cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
 
     if args.version:
         UEVaultManagerCLI.print_version()
         return
 
-    cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
+    if args.runtest:
+        cli.run_test(args)
+        return
 
     start_in_edit_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'start_in_edit_mode', fallback=False))
 
