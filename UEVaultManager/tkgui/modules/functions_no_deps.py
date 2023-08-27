@@ -6,11 +6,21 @@ These functions DO NOT depend on the globals.py module and be freely imported.
 import ctypes as ct
 import datetime
 import os
+import subprocess
 import sys
 import uuid
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
+
+
+def log(message: str) -> None:
+    """
+    Log a message in the console.
+    :param message: the message to log.
+    """
+    # keep this function as simple as possible to avoid circular import
+    print(message)
 
 
 def path_from_relative_to_absolute(path: str) -> str:
@@ -63,7 +73,7 @@ def get_center_screen_positions(screen_index: int, width: int, height: int) -> (
     """
     monitors = get_monitors()
     if screen_index > len(monitors):
-        print(f'The screen #{screen_index} is not available. Using 0 as screen index.')  # no use of log functions here to prevent circular import
+        log(f'The screen #{screen_index} is not available. Using 0 as screen index.')  # no use of log functions here to prevent circular import
         screen_index = 0
     # Position the window in the center of the screen
     target_screen = monitors[screen_index]
@@ -109,7 +119,7 @@ def set_toolbar_style(tk_window) -> None:
         get_parent = ct.windll.user32.GetParent
     except AttributeError:
         # Non-windows OS
-        print('Non-windows OS detected. No need to remove the minimize and maximize buttons from the window.')
+        log('Non-windows OS detected. No need to remove the minimize and maximize buttons from the window.')
         return
     # Identifiers
     gwl_style = -16
@@ -145,7 +155,7 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
                 tk_window.iconbitmap(icon)
             except Exception as error:
                 # in linux, the ico can exist but not be readable
-                print(f'Error while setting the icon: {error!r}')
+                log(f'Error while setting the icon: {error!r}')
 
 
 def create_empty_file(file_path: str) -> (bool, str):
@@ -174,7 +184,7 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
             os.makedirs(path)
         except (OSError, PermissionError) as e:
             is_valid = False
-            print(f'Error while creating the directory {path}: {e}')
+            log(f'Error while creating the directory {path}: {e}')
             if home_dir := os.environ.get('XDG_CONFIG_HOME'):
                 path = os.path.join(home_dir, 'UEVaultManager')
             else:
@@ -182,7 +192,7 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
             if not os.path.exists(path):
                 os.makedirs(path)
                 path = os.path.normpath(path)
-            print(f'The following folder {path} will be used as default')
+            log(f'The following folder {path} will be used as default')
 
     path = os.path.normpath(path)
     return is_valid, path
@@ -328,3 +338,31 @@ def extract_variables_from_url(url: str) -> dict:
             extracted_data[key] = value
         result = extracted_data
     return result
+
+
+def open_folder_in_file_explorer(folder_path) -> bool:
+    """
+    Open a folder in the file explorer.
+    :param folder_path: the path of the folder to open.
+    """
+    if os.path.exists(folder_path):
+        try:
+            # For Windows
+            if os.name == 'nt':
+                # if we use check = True, it will raise an error even if the folder is opened, because this command always return 1 on windows
+                process = subprocess.run(['explorer', folder_path], check=False)
+                result = process.returncode == 0 or process.returncode == 1
+            # For macOS
+            elif os.name == 'posix':
+                process = subprocess.run(['open', folder_path], check=False)
+                result = process.returncode == 0
+            # For Linux
+            else:
+                process = subprocess.run(['xdg-open', folder_path], check=False)
+                result = process.returncode == 0
+            return result
+        except subprocess.CalledProcessError as error:
+            log(f'Failed to open {folder_path} in file explorer.Error code: {error!r}')
+            return False
+    else:
+        return False
