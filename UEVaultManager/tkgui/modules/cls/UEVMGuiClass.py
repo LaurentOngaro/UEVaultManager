@@ -1331,6 +1331,12 @@ class UEVMGui(tk.Tk):
         if url:
             self.editable_table.open_asset_url(url=url)
 
+    def open_asset_folder(self) -> None:
+        """
+        Open the asset URL (Wrapper).
+        """
+        self.editable_table.open_origin_folder()
+
     def json_processing(self) -> None:
         """
         Run the window to update missing data in database from json files.

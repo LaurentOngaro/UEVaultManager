@@ -59,6 +59,8 @@ class EditRowWindow(tk.Toplevel):
 
         gui_g.edit_row_window_ref = self
 
+        self.btn_open_folder = self.control_frame.btn_open_folder
+
     @staticmethod
     def _focus_next_widget(event):
         event.widget.tk_focusNext().focus()
@@ -86,7 +88,7 @@ class EditRowWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.X, 'anchor': tk.NW}
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'anchor': tk.NW}
             grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
 
             lblf_navigation = ttk.LabelFrame(self, text='Navigation')
@@ -106,6 +108,8 @@ class EditRowWindow(tk.Toplevel):
             lblf_actions.grid(row=0, column=2, **grid_def_options)
             btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
+            btn_open_folder = ttk.Button(lblf_actions, text="Open Folder", command=container.open_asset_folder)
+            btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             btn_on_close = ttk.Button(lblf_actions, text='Close', command=container.on_close, bootstyle=WARNING)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
@@ -119,6 +123,7 @@ class EditRowWindow(tk.Toplevel):
             self.columnconfigure(2, weight=1)
 
             self.canvas_image = canvas_image
+            self.btn_open_folder = btn_open_folder
 
     def on_close(self, _event=None) -> None:
         """
@@ -180,3 +185,9 @@ class EditRowWindow(tk.Toplevel):
         Open the asset URL (Wrapper).
         """
         self.editable_table.open_asset_url()
+
+    def open_asset_folder(self) -> None:
+        """
+        Open the asset URL (Wrapper).
+        """
+        self.editable_table.open_origin_folder()

@@ -147,6 +147,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         lbl_desc.grid(row=0, column=0, **grid_def_options)
         bt_open_url = ttk.Button(frm_inner_frame, text='Open Url', command=container.open_asset_url)
         bt_open_url.grid(row=0, column=1, **grid_def_options)
+        btn_open_folder = ttk.Button(frm_inner_frame, text='Open Folder', command=container.open_asset_folder)
+        btn_open_folder.grid(row=0, column=2, **grid_def_options)
         frm_inner_frame.pack()
 
         lbtf_quick_edit.add_child(
@@ -236,6 +238,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.lbtf_quick_edit = lbtf_quick_edit
         self.lbt_image_preview = lbt_image_preview
         self.canvas_image = canvas_image
+        self.btn_open_folder = btn_open_folder
 
     @staticmethod
     def save_filters(filters: dict):

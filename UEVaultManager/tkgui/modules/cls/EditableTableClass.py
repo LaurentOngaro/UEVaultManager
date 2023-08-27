@@ -20,6 +20,7 @@ from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions import *
+from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_explorer
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
@@ -1670,6 +1671,23 @@ class EditableTable(Table):
             self.logger.info('asset URL is empty for this asset')
             return
         webbrowser.open(asset_url)
+
+    def open_origin_folder(self) -> None:
+        """
+        Open the asset origin folder.
+        """
+        row_number = self.getSelectedRow()
+        if row_number is None or row_number < 0:
+            return
+        added = self.get_cell(row_number, self.get_col_index('Added manually'))
+        # open the folder of the asset
+        if added:
+            origin = self.get_cell(row_number, self.get_col_index('Origin'))
+            # open the folder of the asset
+            if not open_folder_in_file_explorer(origin):
+                box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
+        else:
+            box_message('Only possible with asset that have been mannualy added.', 'info')
 
     def reset_style(self) -> None:
         """
