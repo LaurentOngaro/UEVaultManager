@@ -321,6 +321,7 @@ def show_progress(
     if root.progress_window is None:
         pw = ProgressWindow(
             title=gui_g.s.app_title,
+            parent=parent,
             icon=gui_g.s.app_icon_filename,
             width=width,
             height=height,

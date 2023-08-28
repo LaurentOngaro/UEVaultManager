@@ -17,6 +17,7 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 class ProgressWindow(tk.Toplevel):
     """
     The window to display the progress of a function.
+    :param parent: the parent window.
     :param title: the title.
     :param width: the width.
     :param height: the height.
@@ -33,6 +34,7 @@ class ProgressWindow(tk.Toplevel):
 
     def __init__(
         self,
+        parent,
         title: str,
         width: int = 300,
         height: int = 150,
@@ -46,7 +48,7 @@ class ProgressWindow(tk.Toplevel):
         function_parameters: dict = None,
         quit_on_close: bool = False
     ):
-        super().__init__()
+        super().__init__(parent)
         self.title(title)
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
@@ -68,6 +70,9 @@ class ProgressWindow(tk.Toplevel):
             self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         gui_g.progress_window_ref = self
+
+        self.focus_set()
+        self.attributes('-topmost', True)  # keep the window on top. Windows only
 
         if not show_progress:
             self.hide_progress_bar()

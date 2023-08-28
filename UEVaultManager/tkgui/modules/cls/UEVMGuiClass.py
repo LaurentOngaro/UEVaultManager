@@ -225,6 +225,11 @@ class UEVMGui(tk.Tk):
         """
         self.logger.info(f'starting mainloop in {__name__}')
         self.tk.mainloop(n)
+        # check is a child window is still open
+        # child_windows = self.progress_window or gui_g.edit_cell_window_ref or gui_g.edit_row_window_ref
+        # print('root loop')
+        # if child_windows:
+        #     self._wait_for_window(child_windows)
         self.logger.info(f'ending mainloop in {__name__}')
 
     @staticmethod
@@ -297,6 +302,8 @@ class UEVMGui(tk.Tk):
         """
         try:
             while window.winfo_viewable():
+                window.focus_set()
+                window.attributes('-topmost', True)  # keep the window on top. Windows only
                 sleep(0.5)
                 self.update()
                 self.update_idletasks()
