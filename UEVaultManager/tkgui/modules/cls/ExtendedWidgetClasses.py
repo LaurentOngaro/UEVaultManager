@@ -139,7 +139,7 @@ class ExtendedWidget:
         return default_font
 
 
-class ExtendedEntry(ExtendedWidget):
+class ExtendedEntry(ExtendedWidget, ttk.Entry):
     """
     Extended widget version of a ttk.Entry class.
     :param master: container for the widget.
