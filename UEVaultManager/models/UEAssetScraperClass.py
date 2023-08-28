@@ -192,6 +192,7 @@ class UEAssetScraper:
 
             categories = asset_data.get('categories', None)
             release_info = asset_data.get('releaseInfo', {})
+            latest_release = release_info[0] if release_info else {}
             price = 0
             discount_price = 0
             discount_percentage = 0
@@ -207,8 +208,8 @@ class UEAssetScraper:
             asset_data['category'] = categories[0]['name'] if categories else ''
             asset_data['author'] = asset_data['seller']['name']
             try:
-                asset_data['asset_id'] = release_info[0]['appId']  # latest release
-            except (KeyError, AttributeError):
+                asset_data['asset_id'] = latest_release['appId']  # latest release
+            except (KeyError, AttributeError, IndexError):
                 grab_result = GrabResult.NO_APPID.name
                 asset_data['asset_id'] = uid  # that's not the REAL asset_id, we use the uid instead
 
@@ -252,7 +253,7 @@ class UEAssetScraper:
             except (KeyError, AttributeError):
                 asset_data['custom_attributes'] = ''
 
-            # set origin
+            # set various fields
             asset_data['page_title'] = asset_data['title']
             try:
                 tmp_list = [','.join(item.get('compatibleApps')) for item in release_info]
@@ -263,7 +264,7 @@ class UEAssetScraper:
             asset_data['origin'] = origin
 
             asset_data['update_date'] = date_now
-            tmp_date = release_info[0].get('dateAdded', no_text_data) if release_info else no_text_data
+            tmp_date = latest_release.get('dateAdded', no_text_data) if latest_release else no_text_data
             tmp_date = convert_to_datetime(tmp_date, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])
             tmp_date = convert_to_str_datetime(tmp_date, gui_g.s.csv_datetime_format)
             asset_data['creation_date'] = tmp_date
