@@ -1605,10 +1605,10 @@ class EditableTable(Table):
         for col_name in column_names:
             col_index = self.get_col_index(col_name)
             value = self.get_cell(row_number, col_index)
-            if col_name == 'Asset_id':
-                asset_id = value
-                quick_edit_frame.config(text=f'Quick Editing Asset: {asset_id}')
-                continue
+            # if col_name == 'Asset_id':
+            #     asset_id = value
+            #     quick_edit_frame.config(text=f'Quick Editing Asset: {asset_id}')
+            #     continue
             typed_value = get_typed_value(csv_field=col_name, value=value)
             if col_index >= 0:
                 quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row_number, col=col_index)

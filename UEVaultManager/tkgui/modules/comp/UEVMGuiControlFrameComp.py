@@ -143,7 +143,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         data_table.set_quick_edit_frame(lbtf_quick_edit)
 
         frm_inner_frame = ttk.Frame(lbtf_quick_edit)
-        lbl_desc = ttk.Label(frm_inner_frame, text='Changing this values will change the values of \nthe selected row when losing focus')
+        lbl_desc = ttk.Label(frm_inner_frame, text='Changing the values bellow will update \nthe selected row when losing focus')
         lbl_desc.grid(row=0, column=0, **grid_def_options)
         bt_open_url = ttk.Button(frm_inner_frame, text='Open Url', command=container.open_asset_url)
         bt_open_url.grid(row=0, column=1, **grid_def_options)
@@ -151,6 +151,12 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_open_folder.grid(row=0, column=2, **grid_def_options)
         frm_inner_frame.pack()
 
+        lbtf_quick_edit.add_child(
+            widget_type=WidgetType.ENTRY,
+            tag='Asset_id',
+            state='readonly',
+            label='Asset id (click to copy)',
+        )
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Url',
