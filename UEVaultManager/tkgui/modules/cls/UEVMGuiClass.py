@@ -658,8 +658,8 @@ class UEVMGui(tk.Tk):
                                 folder_to_scan.remove(path_p)
                 msg_p = f'-->Found {parent_folder}. The folder has been restructured as a valid UE folder'
                 self.logger.debug(msg_p)
-                if full_folder in folder_to_scan:
-                    folder_to_scan.remove(full_folder)
+                # if full_folder in folder_to_scan:
+                #     folder_to_scan.remove(full_folder)
                 if parent_folder not in folder_to_scan:
                     folder_to_scan.append(parent_folder)
 
@@ -670,7 +670,8 @@ class UEVMGui(tk.Tk):
             folder_to_scan = [
                 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
                 'G:/Assets/pour UE/00 A trier/Warez/Battle Royale Island Pack',  #
-                'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature'
+                'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature',  #
+                'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
             ]
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
@@ -766,13 +767,14 @@ class UEVMGui(tk.Tk):
                                         if app_name_from_manifest == folder_name:
                                             # we need to move to parent folder to get the real names because manifest files are inside a specific sub folder
                                             asset_type = UEAssetType.Manifest
+                                            folder_name = os.path.basename(parent_folder)
                                             parent_folder = os.path.dirname(parent_folder)
                                             path = os.path.dirname(full_folder_abs)
                                             manifest_is_valid = True
                                         else:
                                             # we miss a folder between the folder with the "asset name" and the manifest file
                                             # we create a subfolder with the asset name and move the manifest file and the content inside
-                                            parent_folder = full_folder_abs
+                                            parent_folder = full_folder
                                             _fix_folder_structure(app_name_from_manifest)
                                             continue
                                     if not manifest_is_valid:
