@@ -785,19 +785,20 @@ class UEAssetDbHandler:
                 names = []
                 for item in tags:
                     # remove the prefix if it exists to check if these id has a name in the tag table since the last check
-                    if isinstance(item, str) and item.startswith(gui_g.s.tag_prefix):
+                    if isinstance(item, str) and item.startswith(prefix):
+                        # the tag (number) as already be checked but its name was not in the database yet
                         item = item[len(prefix):]
-                        # convert to int
                         try:
                             item = int(item)
                         except ValueError:
                             pass
                     if isinstance(item, int):
-                        # temp: use the tag id as a name
+                        # the tag is a number (old version), whe check if it's in the database and get its name
                         name = self.get_tag_by_id(uid=item)
                         if name is None:
                             name = prefix + str(item)  # we add a suffix to the tag that has been checked
                     elif isinstance(item, dict):
+                        # the tag is a dict (new version), we get its name and add it to the database if it's not already there
                         uid = item.get('id', None)  # not used for now
                         name = item.get('name', '').title()
                         self.save_tag({'id': uid, 'name': name})
