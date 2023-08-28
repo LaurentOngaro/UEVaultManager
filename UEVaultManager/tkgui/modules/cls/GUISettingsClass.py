@@ -442,7 +442,7 @@ class GUISettings:
             'rows_per_page': {
                 'comment':
                 'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
-                'value': 36
+                'value': 37
             },
             'data_filters': {
                 'comment': 'Filters to apply to the datatable. Stored in json format. Automatically saved on quit',
@@ -458,11 +458,11 @@ class GUISettings:
             },
             'width': {
                 'comment': 'Width of the main windows. Automatically saved on quit',
-                'value': 1750
+                'value': 1880
             },
             'height': {
                 'comment': 'Height of the main windows. Automatically saved on quit',
-                'value': 940
+                'value': 960
             },
             'debug_mode': {
                 'comment': 'Set to True to print debug information (GUI related only)',

@@ -86,7 +86,7 @@ This is an example of this file content and the settings you can change:
   ;Filters to apply to the datatable. Stored in json format
   data_filters = {"Grab result": "NO_ERROR"}
   ;Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value
-  rows_per_page = 36
+  rows_per_page = 37
   ;Folder (relative or absolute) to store the scraped files for the assets in markeplace
   scraping_folder = ../../../scraping
 
