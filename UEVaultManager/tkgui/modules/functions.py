@@ -94,6 +94,7 @@ def log_info(msg: str) -> None:
     """
     Log an info message.
     :param msg: the message to log.
+
     Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
@@ -107,8 +108,10 @@ def log_debug(msg: str) -> None:
     """
     Log a debug message.
     :param msg: the message to log.
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
-    Note: this message will only be logged if the debug mode is enabled.
+
+    Note:
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+        This message will only be logged if the debug mode is enabled.
     """
     if not gui_g.s.debug_mode:
         return
@@ -128,6 +131,7 @@ def log_warning(msg: str) -> None:
     """
     Log a warning message.
     :param msg: the message to log.
+
     Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
@@ -141,6 +145,7 @@ def log_error(msg: str) -> None:
     """
     Log an error message.
     :param msg: the message to log. Note that the app will exit after logging the message.
+
     Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
@@ -377,8 +382,10 @@ def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> Non
     Change the logger level of debug depending on the debug mode.
     :param logger: the logger
     :param debug_value: the value to set. If None, it will use the value of gui_g.s.debug_mode
-    NOTE: will also update all the loggers level of the UEVM classes.
-    Call this function when the debug mode is changed.
+
+    Note:
+        Will also update all the loggers level of the UEVM classes.
+        Call this function when the debug mode is changed.
     """
     if logger is not None:
         if logger.name not in gui_g.UEVM_logger_names:

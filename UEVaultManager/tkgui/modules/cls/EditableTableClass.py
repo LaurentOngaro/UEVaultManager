@@ -414,7 +414,7 @@ class EditableTable(Table):
         Get a dataframe content depending on the df_type parameter. By default, the unfiltered dataframe is returned.
         :param df_type: The dataframe type to get. See DataFrameUsed type description for more details
         :return: The dataframe.
-        NOTE: the unfiltered dataframe must be returned by default because it's used in by the FilterFrame class.
+        Note: the unfiltered dataframe must be returned by default because it's used in by the FilterFrame class.
         """
         if df_type == DataFrameUsed.AUTO:
             if self.filtered:
@@ -596,6 +596,7 @@ class EditableTable(Table):
         :param add_to_existing: True to add the row to the existing data, False to replace the existing data.
         :param do_not_save: True to not save the row in the database.
         :return: (The created row, the index of the created row)
+
         Note: be sure to call self.update() after calling this function to copy the changes in all the dataframes.
         """
         table_row = None
@@ -852,7 +853,8 @@ class EditableTable(Table):
         :param col_names: The names of the columns to create a gradient color for.
         :param cmap: name of the colormap to use.
         :param alpha: alpha value for the color.
-        NOTE: called by set_colors() on each update
+
+        Note: called by set_colors() on each update
         """
         # import pylab as plt
         # cmaps = sorted(m for m in plt.cm.datad if not m.endswith("_r"))
@@ -884,7 +886,8 @@ class EditableTable(Table):
         :param col_names: The names of the columns to create a gradient color for.
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
-        NOTE: called by set_colors() on each update
+
+        Note: called by set_colors() on each update
         """
         if col_names is None:
             return
@@ -903,7 +906,8 @@ class EditableTable(Table):
         :param col_names: The names of the columns to create a gradient color for.
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
-        NOTE: called by set_colors() on each update
+
+        Note: called by set_colors() on each update
         """
         if col_names is None:
             return
@@ -922,7 +926,8 @@ class EditableTable(Table):
         :param col_names: The names of the columns to check for the value.
         :param color: The color to set the row to.
         :param value_to_check: The value to check for.
-        NOTE: called by set_colors() on each update
+
+        Note: called by set_colors() on each update
         """
         if col_names is None:
             return

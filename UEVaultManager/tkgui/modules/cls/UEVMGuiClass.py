@@ -1396,6 +1396,7 @@ class UEVMGui(tk.Tk):
         """
         Create a dynamic filters list that can be added to the filter frame quick filter list.
         :return: a dict that will be added to the FilterFrame quick filters list.
+
         Note: it returns a dict where each entry must respect the folowing format: "{'<label>': ['callable': <callable> ]}"
             where:
              <label> is the label to display in the quick filter list

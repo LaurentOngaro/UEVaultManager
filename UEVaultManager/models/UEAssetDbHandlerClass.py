@@ -167,7 +167,7 @@ class UEAssetDbHandler:
         :param table_name: Name of the table.
         :param required_columns: Dictionary of columns to add. Key is the column name, value is the data type.
 
-        NOTE: the AFTER parameter in SQL is not supported in the SQLite version used.
+        Note: the AFTER parameter in SQL is not supported in the SQLite version used.
         """
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -483,7 +483,7 @@ class UEAssetDbHandler:
         Insert or update assets into the 'assets' table.
         :param assets: A dictionary or a list of dictionaries representing assets.
 
-        NOTE: the (existing) user fields data should have already been added or merged the asset dictionary.
+        Note: the (existing) user fields data should have already been added or merged the asset dictionary.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
@@ -751,6 +751,7 @@ class UEAssetDbHandler:
         Get all rows from the 'assets_tags' table that could be scrapped to fix their tags.
         :param tag_value: If not None, only get the rows that have a tag == tag_value.
         :return: A list of asset_id.
+
         Note: if tag_value is None, the returned list contains the asset_id that have at least a tag in the tags field that is an id in the tag table
         """
         rows = []
@@ -850,6 +851,7 @@ class UEAssetDbHandler:
         :param suffix_separator: The separator used to separate the table name from the suffix in the CSV file name.
         :param suffix: A suffix to add to the CSV file name.
         :return: list of CSV files that have been writen, [] if none.
+
         Note: each table will be exported to a separate CSV file using the table name as the file name.
         """
         result = []

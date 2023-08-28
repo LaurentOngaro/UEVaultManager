@@ -407,7 +407,7 @@ class UEVaultManagerCLI:
                             _price = gui_fn.convert_to_float(_csv_record[price_index])
                             old_price = gui_fn.convert_to_float(
                                 item_in_file[csv_field]
-                            )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                            )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                         elif csv_field == 'Origin':
                             # all the folders when the asset came from are stored in a comma separated list
                             folder_list = value.split(',')
@@ -457,7 +457,7 @@ class UEVaultManagerCLI:
                     _price = float(_json_record['Price'])
                     old_price = float(
                         _items_in_file[_asset_id]['Price']
-                    )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                    )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                 except Exception as _error:
                     self.logger.warning(f'Old price values can not be converted for asset {_asset_id}\nError:{_error!r}')
                 _json_record['Old price'] = old_price
@@ -1167,7 +1167,7 @@ class UEVaultManagerCLI:
         Scrap assets from the Epic Games Store or from previously saved files.
         :param args: options passed to the command
 
-        NOTE: ! Unlike the list_asset method, this method is not intended to be called trhough the GUI. So there is no need to add a ProgressWindow setup here.
+        Note: ! Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
         """
         if not args.offline:
             load_from_files = False
