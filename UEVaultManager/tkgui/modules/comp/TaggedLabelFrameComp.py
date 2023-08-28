@@ -36,11 +36,10 @@ class TaggedLabelFrame(ttk.LabelFrame):
         layout_option='',
         images_folder=None,
         add_label_before=True,
-        textvariable = None,
+        textvariable=None,
         focus_out_callback=None,
         focus_in_callback=None,
         click_on_callback=None,
-
     ):
         """
         Adds a child widget to the LabelFrame and associates it with the given tag.
@@ -77,7 +76,9 @@ class TaggedLabelFrame(ttk.LabelFrame):
             lbl_name = ttk.Label(frame, text=lbl_text)
             lbl_name.pack(side=tk.LEFT, **self.pack_options)
         if widget_type == WidgetType.ENTRY:
-            child = ExtendedEntry(master=frame, tag=tag_lower, default_content=default_content, height=height, width=width, state=state, textvariable=textvariable)
+            child = ExtendedEntry(
+                master=frame, tag=tag_lower, default_content=default_content, height=height, width=width, state=state, textvariable=textvariable
+            )
         elif widget_type == WidgetType.TEXT:
             child = ExtendedText(master=frame, tag=tag_lower, default_content=default_content, wrap=tk.WORD, height=height, width=width, state=state)
         elif widget_type == WidgetType.LABEL:
