@@ -12,7 +12,7 @@ from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.functions import log_error
 from UEVaultManager.tkgui.modules.types import DataSourceType
 
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
+test_only_mode = (gui_g.s.testing_switch == 1)
 
 
 def init_gui(open_mainwindow=True, use_db=False) -> str:

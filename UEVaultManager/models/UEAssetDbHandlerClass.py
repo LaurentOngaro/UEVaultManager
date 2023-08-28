@@ -24,7 +24,7 @@ from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_dateti
 from UEVaultManager.tkgui.modules.types import UEAssetType
 from UEVaultManager.utils.cli import check_and_create_path
 
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
+test_only_mode = (gui_g.s.testing_switch == 1)
 
 
 class UEAssetDbHandler:

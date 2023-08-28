@@ -24,7 +24,7 @@ from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_e
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
+test_only_mode = (gui_g.s.testing_switch == 1)
 
 
 class EditableTable(Table):

@@ -86,11 +86,20 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         # lblf_gui_settings row
         cur_row += 1
         cur_col = 0
-        debug_gui_var = tk.BooleanVar(value=gui_g.s.debug_mode)
-        debug_gui_var.trace_add('write', lambda name, index, mode: gui_g.s.set_debug_mode(debug_gui_var.get()))
-        ck_debug_gui = ttk.Checkbutton(lblf_gui_settings, text='Debug mode (GUI)', variable=debug_gui_var)
+        self.debug_gui_var = tk.BooleanVar(value=gui_g.s.debug_mode)
+        self.debug_gui_var.trace_add('write', lambda name, index, mode: self.update_gui_options())
+        ck_debug_gui = ttk.Checkbutton(lblf_gui_settings, text='Debug mode (GUI)', variable=self.debug_gui_var)
         ck_debug_gui.grid(row=cur_row, column=cur_col, **grid_fw_options)
-
+        # lblf_gui_settings row
+        cur_row += 1
+        cur_col = 0
+        lbl_testing_switch = ttk.Label(lblf_gui_settings, text='Testing switch:')
+        lbl_testing_switch.grid(row=cur_row, column=cur_col, **grid_fw_options)
+        cur_col += 1
+        self.testing_switch_var = tk.IntVar(value=gui_g.s.testing_switch)
+        self.testing_switch_var.trace_add('write', lambda name, index, mode: self.update_gui_options())
+        entry_testing_switch = ttk.Entry(lblf_gui_settings, textvariable=self.testing_switch_var, width=2)
+        entry_testing_switch.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # Folders To scan frame
         lblf_folders_to_scan = ttk.LabelFrame(lblf_options, text='Folders To scan (add/remove)')
         lblf_folders_to_scan.pack(side=tk.TOP, **lblf_def_options)
@@ -111,6 +120,29 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         cur_col += 1
         btn_remove_folder = ttk.Button(lblf_folders_to_scan, text='Remove Folder', command=self.remove_folder_to_scan)
         btn_remove_folder.grid(row=cur_row, column=cur_col, **grid_fw_options)
+
+    def update_gui_options(self):
+        """
+        Update the GUI options.
+        """
+        value = 0
+        try:
+            value = int(self.testing_switch_var.get())  # tkinter will raise an error is the value can be converted to an int
+        except (ValueError, tk.TclError):
+            pass
+        self.testing_switch_var.set(value)
+        value = False
+        try:
+            value = bool(self.debug_gui_var.get())
+        except (ValueError, tk.TclError):
+            pass
+        gui_g.s.set_debug_mode(value)
+
+        try:
+            self._container.update_controls_and_redraw()  # will update the title of the window
+        except AttributeError:
+            # the container is not a UEVMGui instance,
+            pass
 
     def add_folder_to_scan(self):
         """

@@ -63,8 +63,6 @@ class GUISettings:
 
         self.sqlite_filename: str = os.path.join(self.scraping_folder, 'assets.db')
 
-        self.app_title_long: str = f'{__name__} Gui v{__version__} ({__codename__})'
-        self.app_title: str = __name__
         self.app_monitor: int = 1
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder. MUST BE LOWERCASE
@@ -121,6 +119,10 @@ class GUISettings:
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
         self.index_copy_col_name = 'Index copy'  # name of the column that will be used to store the index in datatables. It will be added by default to the hidden columns list
 
+        # keep at the end
+        self._app_title_long: str = ''  # use a getter to upddate the value in live
+        self.app_title: str = __name__
+
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
         Getter for a serialized config vars
@@ -165,6 +167,14 @@ class GUISettings:
             json_str = json.dumps(values, skipkeys=True, allow_nan=True)
         self._config_vars_deserialized[var_name] = json_str
         self.config_vars[var_name] = json_str
+
+    @property
+    def app_title_long(self) -> str:
+        """ Getter for app_title_long """
+        self._app_title_long: str = f'{__name__} Gui v{__version__} ({__codename__})'
+        self._app_title_long += ' - DEBUG MODE' if self.debug_mode else ''
+        self._app_title_long += f' - SWITCH VALUE {self.testing_switch} ' if self.testing_switch > 0 else ''
+        return self._app_title_long
 
     def get_rows_per_page(self) -> int:
         """ Getter for rows_per_page """
@@ -389,6 +399,17 @@ class GUISettings:
 
     hidden_column_names = property(get_hidden_column_names, set_hidden_column_names)
 
+    def get_testing_switch(self) -> int:
+        """ Getter for testing_switch """
+        return gui_fn.convert_to_int(self.config_vars['testing_switch'])
+
+    def set_testing_switch(self, value):
+        """ Setter for testing_switch """
+        self.config_vars['testing_switch'] = value
+
+    # used as property for keeping transparent access
+    testing_switch = property(get_testing_switch, set_testing_switch)
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -508,6 +529,11 @@ class GUISettings:
                 'comment': 'Infos about columns of the table. Automatically saved on quit. Leave empty for default',
                 'value': ''
             },
+            'testing_switch': {
+                'comment':
+                'A value that can be changed in live to switch some behaviours whithout quitting. DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING',
+                'value': 0
+            },
         }
 
         has_changed = False
@@ -553,6 +579,7 @@ class GUISettings:
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
             'use_threads': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_threads')),
             'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
+            'testing_switch': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'testing_switch')),
         }
         return config_vars
 

@@ -1180,6 +1180,8 @@ class UEVMGui(tk.Tk):
         """
         Update some controls in the toolbar.
         """
+        self.title(gui_g.s.app_title_long)  # the title can change with live settings
+
         if self._toolbar_frame is None:
             # toolbar not created yet
             return
