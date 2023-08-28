@@ -151,11 +151,15 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_open_folder.grid(row=0, column=2, **grid_def_options)
         frm_inner_frame.pack()
 
+        var_asset_id = tk.StringVar(value='')
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Asset_id',
             state='readonly',
             label='Asset id (click to copy)',
+            width=5,
+            click_on_callback=container.copy_asset_id,
+            textvariable=var_asset_id,
         )
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
@@ -245,6 +249,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.lbt_image_preview = lbt_image_preview
         self.canvas_image = canvas_image
         self.btn_open_folder = btn_open_folder
+        self.var_asset_id = var_asset_id
 
     @staticmethod
     def save_filters(filters: dict):

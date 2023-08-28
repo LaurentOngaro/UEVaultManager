@@ -129,7 +129,7 @@ class UEVMGui(tk.Tk):
             container=content_frame,
             data_source_type=data_source_type,
             data_source=data_source,
-            rows_per_page=36,
+            rows_per_page=37,
             show_statusbar=True,
             update_page_numbers_func=self.update_controls_and_redraw,
             update_rows_text_func=self.update_rows_text,
@@ -1360,6 +1360,26 @@ class UEVMGui(tk.Tk):
         Open the asset URL (Wrapper).
         """
         self.editable_table.open_origin_folder()
+
+    # noinspection PyUnusedLocal
+    def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback
+        """
+        Copy the asset id into the clipboard.
+        """
+        control_frame: UEVMGuiControlFrame = self._control_frame
+        value = control_frame.var_asset_id.get()
+        if not value:
+            return
+        self.clipboard_clear()
+        self.clipboard_append(value)
+        self.logger.info(f'{value} copied to the clipboard.')
+
+    def set_asset_id(self, value: str) -> None:
+        """
+        Set the asset id in the control frame.
+        :param value: the value to set.
+        """
+        self._control_frame.var_asset_id.set(value)
 
     def json_processing(self) -> None:
         """

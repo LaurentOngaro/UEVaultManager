@@ -77,7 +77,7 @@ class EditableTable(Table):
         container=None,
         data_source_type: DataSourceType = DataSourceType.FILE,
         data_source=None,
-        rows_per_page: int = 36,
+        rows_per_page: int = 37,
         show_toolbar: bool = False,
         show_statusbar: bool = False,
         update_page_numbers_func=None,
@@ -303,7 +303,7 @@ class EditableTable(Table):
     def set_quick_edit_frame(self, quick_edit_frame=None) -> None:
         """
         Set the quick edit frame.
-        :param quick_edit_frame:  The quick edit frame.
+        :param quick_edit_frame: The quick edit frame.
         """
         if quick_edit_frame is None:
             raise ValueError('quick_edit_frame cannot be None')
@@ -314,7 +314,6 @@ class EditableTable(Table):
         Set the columns format for the table.
         :param df: The dataframe to format.
         :return: The formatted dataframe.
-
         """
         # self.logger.info("\nCOL TYPES BEFORE CONVERSION\n")
         # df.info()  # direct print info
@@ -1605,10 +1604,13 @@ class EditableTable(Table):
         for col_name in column_names:
             col_index = self.get_col_index(col_name)
             value = self.get_cell(row_number, col_index)
-            # if col_name == 'Asset_id':
-            #     asset_id = value
-            #     quick_edit_frame.config(text=f'Quick Editing Asset: {asset_id}')
-            #     continue
+            if col_name == 'Asset_id':
+                # quick_edit_frame.config(text=f'Quick Editing Asset: {value}')
+                # TODO: check if a nicer method could be used here whithout a big refactoring
+                content_frame = self._container
+                uevm_gui = content_frame.container
+                uevm_gui.set_asset_id(value)
+                continue
             typed_value = get_typed_value(csv_field=col_name, value=value)
             if col_index >= 0:
                 quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row_number, col=col_index)
