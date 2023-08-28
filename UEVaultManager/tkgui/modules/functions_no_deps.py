@@ -213,12 +213,16 @@ def convert_to_bool(value) -> bool:
         return False
 
 
-def convert_to_int(value) -> int:
+def convert_to_int(value, prefix: str = '') -> int:
     """
     Convert a value to an integer.
     :param value: the value to convert.
+    :param prefix: a prefix to remove from the value before converting it to an integer.
     :return: the integer value or 0 if the value is None or not an integer.
     """
+    # remove prefix if any
+    if prefix and isinstance(value, str) and value.startswith(prefix):
+        value = value[len(prefix):]
     try:
         value = int(value)
         return value
@@ -286,12 +290,16 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
         return default
 
 
-def is_an_int(value) -> bool:
+def is_an_int(value, prefix: str = '') -> bool:
     """
     Check if a value is an integer.
     :param value: the value to check.
+    :param prefix: a prefix to remove from the value before checking if it is an integer.
     :return:  True if the value is an integer, False otherwise.
     """
+    # remove prefix if any
+    if prefix and isinstance(value, str) and value.startswith(prefix):
+        value = value[len(prefix):]
     try:
         float_n = float(value)
         int_n = int(float_n)

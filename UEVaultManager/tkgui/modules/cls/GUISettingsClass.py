@@ -95,6 +95,7 @@ class GUISettings:
         self.default_value_for_all: str = 'All'
         self.empty_cell: str = 'None'
         self.empty_row_prefix: str = 'dummy_row_'
+        self.tag_prefix = 't_'
         self.expand_columns_factor: int = 20
         self.contract_columns_factor: int = 20
         # ttkbootstrap themes:

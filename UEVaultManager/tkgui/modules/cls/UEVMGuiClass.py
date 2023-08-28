@@ -1427,7 +1427,7 @@ class UEVMGui(tk.Tk):
         :return: a mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Tags'].str.split(',').apply(lambda x: any(is_an_int(i) for i in x))
+        mask = df['Tags'].str.split(',').apply(lambda x: any(is_an_int(i, gui_g.s.tag_prefix) for i in x))
         return mask
 
     def filter_with_comment(self) -> pd.Series:

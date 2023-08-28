@@ -14,6 +14,7 @@ from pathlib import Path
 
 from faker import Faker
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list
 from UEVaultManager.models.types import DbVersionNum
@@ -772,7 +773,7 @@ class UEAssetDbHandler:
         Convert a tags id list to a comma separated string of tag names.
         """
         tags_str = ''
-        prefix = 't_'  # prefix to add to the tag that has been checked
+        prefix = gui_g.s.tag_prefix  # prefix to add to the tag that has been checked
         if tags is not None and tags != [] and tags != {} and tags != '':
             if isinstance(tags, str):
                 # noinspection PyBroadException
@@ -784,7 +785,7 @@ class UEAssetDbHandler:
                 names = []
                 for item in tags:
                     # remove the prefix if it exists to check if these id has a name in the tag table since the last check
-                    if isinstance(item, str) and item.startswith(prefix):
+                    if isinstance(item, str) and item.startswith(gui_g.s.tag_prefix):
                         item = item[len(prefix):]
                         # convert to int
                         try:
