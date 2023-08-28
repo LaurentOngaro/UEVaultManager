@@ -139,10 +139,11 @@ class ExtendedWidget:
         return default_font
 
 
-class ExtendedEntry(ExtendedWidget, ttk.Entry):
+class ExtendedEntry(ExtendedWidget):
     """
     Extended widget version of a ttk.Entry class.
     :param master: container for the widget.
+    :param label: Text to display next to the checkbutton.
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedEntry instance.
     """
@@ -285,7 +286,7 @@ class ExtendedCheckButton(ExtendedWidget):
         check_label.pack(side=tk.LEFT)
         self._frm_inner = frm_inner
         self._lbl_text = lbl_text
-        self._check_label = check_label
+        self._lbl_check = check_label
 
         if label is not None:
             self.set_label(label)
@@ -302,9 +303,9 @@ class ExtendedCheckButton(ExtendedWidget):
         """
         current_state = self._var.get()
         if current_state:
-            self._check_label.config(image=self._img_checked)
+            self._lbl_check.config(image=self._img_checked)
         else:
-            self._check_label.config(image=self._img_uncheckked)
+            self._lbl_check.config(image=self._img_uncheckked)
 
     def pack(self, **kwargs) -> None:
         """
@@ -327,7 +328,7 @@ class ExtendedCheckButton(ExtendedWidget):
         :param command:  function to bind.
         """
         self._lbl_text.bind(sequence, command)
-        self._check_label.bind(sequence, command)
+        self._lbl_check.bind(sequence, command)
 
     # noinspection PyUnusedLocal
     def switch_state(self, event=None) -> bool:
@@ -347,7 +348,7 @@ class ExtendedCheckButton(ExtendedWidget):
         Sets the label of the widget.
         :param text: text to set.
         """
-        self._check_label.config(text=text)
+        self._lbl_check.config(text=text)
 
     def set_content(self, content='') -> None:
         """
