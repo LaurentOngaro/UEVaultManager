@@ -771,6 +771,7 @@ class UEAssetDbHandler:
         Convert a tags id list to a comma separated string of tag names.
         """
         tags_str = ''
+        prefix = 't_'  # prefix to add to the tag that has been checked
         if tags is not None and tags != [] and tags != {} and tags != '':
             if isinstance(tags, str):
                 # noinspection PyBroadException
@@ -781,11 +782,19 @@ class UEAssetDbHandler:
             if isinstance(tags, list):
                 names = []
                 for item in tags:
+                    # remove the prefix if it exists to check if these id has a name in the tag table since the last check
+                    if isinstance(item, str) and item.startswith(prefix):
+                        item = item[len(prefix):]
+                        # convert to int
+                        try:
+                            item = int(item)
+                        except ValueError:
+                            pass
                     if isinstance(item, int):
                         # temp: use the tag id as a name
                         name = self.get_tag_by_id(uid=item)
                         if name is None:
-                            name = str(item)
+                            name = prefix + str(item)  # we add a suffix to the tag that has been checked
                     elif isinstance(item, dict):
                         uid = item.get('id', None)  # not used for now
                         name = item.get('name', '').title()
