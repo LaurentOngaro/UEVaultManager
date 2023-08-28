@@ -123,7 +123,7 @@ class UEVaultManagerCLI:
     """
     is_gui = False
 
-    def __init__(self, override_config=None, api_timeout=None):
+    def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
         self.logger = logging.getLogger('Cli')
         self.logging_queue = None
@@ -1261,7 +1261,7 @@ class UEVaultManagerCLI:
         if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
             gui_g.UEVM_gui_ref.mainloop()
 
-    def run_test(self, args) -> None:
+    def run_test(self, _args) -> None:
         """
         Prints the version of UEVaultManager and exit.
         """
@@ -1304,10 +1304,10 @@ def main():
         dest='api_timeout',
         action='store',
         type=float,
-        default=10,
+        default=(7, 7),
         metavar='<seconds>',
         help='API HTTP request timeout (default: 10 seconds)'
-    )
+    )  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
     parser.add_argument(
         '-g',
         '--gui',

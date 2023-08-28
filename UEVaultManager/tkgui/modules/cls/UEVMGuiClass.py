@@ -36,6 +36,8 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToo
 from UEVaultManager.tkgui.modules.functions_no_deps import is_an_int, set_custom_style
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
 
+test_only_mode = True  # add some limitations to speed up the dev process - Set to True for Debug Only
+
 
 def clean_ue_asset_name(name_to_clean: str) -> str:
     """
@@ -664,6 +666,12 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = gui_g.s.folders_to_scan
+        if test_only_mode:
+            folder_to_scan = [
+                'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
+                'G:/Assets/pour UE/00 A trier/Warez/Battle Royale Island Pack',  #
+                'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature'
+            ]
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
@@ -707,12 +715,13 @@ class UEVMGui(tk.Tk):
                     self.logger.info(msg)
                     marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                     grab_result = ''
+                    comment = ''
                     if marketplace_url:
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
                         except ReadTimeout:
                             gui_f.box_message(
-                                f'Request timeout when acessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
+                                f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                                 level='warning'
                             )
                             gui_f.close_progress(self)
@@ -722,7 +731,8 @@ class UEVMGui(tk.Tk):
                         'path': path,
                         'asset_type': UEAssetType.Asset,
                         'marketplace_url': marketplace_url,
-                        'grab_result': grab_result
+                        'grab_result': grab_result,
+                        'comment': comment
                     }
                     if self.core.scan_assets_logger:
                         self.core.scan_assets_logger.info(msg)
@@ -734,7 +744,9 @@ class UEVMGui(tk.Tk):
                 try:
                     for entry in os.scandir(full_folder):
                         entry_is_valid = entry.name.lower() not in gui_g.s.ue_invalid_folder_content
+                        comment = ''
                         if entry.is_file():
+                            asset_type = UEAssetType.Asset
                             extension_lower = os.path.splitext(entry.name)[1].lower()
                             filename_lower = os.path.splitext(entry.name)[0].lower()
                             # check if full_folder contains a "data" sub folder
@@ -744,26 +756,31 @@ class UEVMGui(tk.Tk):
                                     os.path.isdir(os.path.join(full_folder, folder_inside)) for folder_inside in gui_g.s.ue_valid_manifest_content
                                 )
                                 if filename_lower == 'manifest':
+                                    manifest_is_valid = False
+                                    app_name_from_manifest = ''
                                     if has_valid_folder_inside:
-                                        folder_name = os.path.basename(parent_folder)
-                                        # the manifest file MUST be in a "two level" folder structure
-                                        name_to_check = os.path.basename(full_folder_abs)
-                                        if name_to_check == folder_name:
+                                        folder_name = os.path.basename(full_folder)
+                                        # the manifest file MUST be in a "two level" folder structure with a correct folder name
+                                        manifest_infos = self.core.open_manifest_file(entry.path)
+                                        app_name_from_manifest = manifest_infos.get('app_name', '')
+                                        if app_name_from_manifest == folder_name:
                                             # we need to move to parent folder to get the real names because manifest files are inside a specific sub folder
                                             asset_type = UEAssetType.Manifest
                                             parent_folder = os.path.dirname(parent_folder)
                                             path = os.path.dirname(full_folder_abs)
+                                            manifest_is_valid = True
                                         else:
                                             # we miss a folder between the folder with the "asset name" and the manifest file
                                             # we create a subfolder with the asset name and move the manifest file and the content inside
                                             parent_folder = full_folder_abs
-                                            _fix_folder_structure(name_to_check)
+                                            _fix_folder_structure(app_name_from_manifest)
                                             continue
-                                    else:
-                                        asset_type = UEAssetType.Asset
-                                        self.logger.warning(
-                                            f'{full_folder_abs} has a manifest file but no data folder.It will be considered as an asset'
-                                        )
+                                    if not manifest_is_valid:
+                                        msg = f'{full_folder_abs} has a manifest file but without a data or a valid subfolder folder.It will be considered as an asset'
+                                        self.logger.warning(msg)
+                                        comment = msg
+                                        if app_name_from_manifest:
+                                            comment += f'\nThe manifest file and the folder should be moved inside a folder named:\n{app_name_from_manifest}'
                                 else:
                                     asset_type = UEAssetType.Plugin if extension_lower == '.uplugin' else UEAssetType.Asset
 
@@ -776,7 +793,7 @@ class UEVMGui(tk.Tk):
                                         ) else GrabResult.TIMEOUT.name
                                     except ReadTimeout:
                                         gui_f.box_message(
-                                            f'Request timeout when acessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
+                                            f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                                             level='warning'
                                         )
                                         grab_result = GrabResult.TIMEOUT.name
@@ -784,7 +801,8 @@ class UEVMGui(tk.Tk):
                                     'path': path,
                                     'asset_type': asset_type,
                                     'marketplace_url': marketplace_url,
-                                    'grab_result': grab_result
+                                    'grab_result': grab_result,
+                                    'comment': comment
                                 }
                                 msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_content else f'-->Found {folder_name} containing a {asset_type.name}'
                                 self.logger.debug(msg)
@@ -831,6 +849,7 @@ class UEVMGui(tk.Tk):
                     'Grab result': content['grab_result'],
                     'Added manually': True,
                     'Category': content['asset_type'].category_name,
+                    'Comment': content['comment'],
                 }
             )
             row_index = -1
@@ -864,6 +883,7 @@ class UEVMGui(tk.Tk):
                 'grab_result': content['grab_result'],
                 'added_manually': True,
                 'category': content['asset_type'].category_name,
+                'comment': content['comment'],
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
@@ -872,7 +892,7 @@ class UEVMGui(tk.Tk):
                     )
                 except ReadTimeout:
                     gui_f.box_message(
-                        f'Request timeout when acessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
+                        f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                         level='warning'
                     )
                     forced_data['grab_result'] = GrabResult.TIMEOUT.name
