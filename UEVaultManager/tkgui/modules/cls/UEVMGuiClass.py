@@ -523,7 +523,7 @@ class UEVMGui(tk.Tk):
                 self.update_controls_and_redraw()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
-                gui_f.close_progress(self)
+                # gui_f.close_progress(self)  # done in data_table.update(update_format=True)
                 return filename
             else:
                 gui_f.box_message('Operation cancelled')
@@ -1240,8 +1240,8 @@ class UEVMGui(tk.Tk):
         # Update btn_first_item and btn_last_item text
         self._toolbar_frame.btn_first_item.config(text=first_item_text)
         self._toolbar_frame.btn_last_item.config(text=last_item_text)
-        self._toolbar_frame.entry_current_item_var.set(current_index)
-        self._toolbar_frame.lbl_page_count.config(text=f' / {max_displayed}')
+        self._toolbar_frame.entry_current_item_var.set('{:04d}'.format(current_index))
+        self._toolbar_frame.lbl_page_count.config(text=f'/{max_displayed:04d}')
 
     def update_data_source(self) -> None:
         """

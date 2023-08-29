@@ -28,6 +28,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         self.data_table: EditableTable = data_table
 
         pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
+        pack_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0, 'fill': tk.BOTH, 'expand': False}
         lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
 
         lblf_navigation = ttk.LabelFrame(self, text='Navigation')
@@ -43,11 +44,11 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.prev_page)
         btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
         btn_prev_page.config(state=tk.DISABLED)
-        entry_current_item_var = tk.StringVar(value=str(data_table.current_page))
+        entry_current_item_var = tk.StringVar(value='{:04d}'.format(data_table.current_page))
         entry_current_item = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_current_item_var)
-        entry_current_item.pack(**pack_def_options, side=tk.LEFT)
-        lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages}')
-        lbl_page_count.pack(**pack_def_options, side=tk.LEFT)
+        entry_current_item.pack(**pack_def_options_np, side=tk.LEFT)
+        lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages:04d}')
+        lbl_page_count.pack(**pack_def_options_np, side=tk.LEFT)
         btn_next_page = ttk.Button(lblf_navigation, text='Next Page', command=container.next_page)
         btn_next_page.pack(**pack_def_options, side=tk.LEFT)
         btn_last_item = ttk.Button(lblf_navigation, text='Last Page', command=container.last_item)
