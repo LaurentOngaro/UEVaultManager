@@ -36,7 +36,7 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToo
 from UEVaultManager.tkgui.modules.functions_no_deps import is_an_int, set_custom_style
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
 
-test_only_mode = True  # add some limitations to speed up the dev process - Set to True for Debug Only
+test_only_mode = (gui_g.s.testing_switch == 1)
 
 
 def clean_ue_asset_name(name_to_clean: str) -> str:
@@ -695,9 +695,10 @@ class UEVMGui(tk.Tk):
         data_table = self.editable_table  # shortcut
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
-            full_folder_abs = os.path.abspath(full_folder)
-            folder_name = os.path.basename(full_folder_abs)
-            parent_folder = os.path.dirname(full_folder_abs)
+            full_folder = os.path.abspath(full_folder)
+            # full_folder_abs = os.path.abspath(full_folder)
+            folder_name = os.path.basename(full_folder)
+            parent_folder = os.path.dirname(full_folder)
             folder_name_lower = folder_name.lower()
 
             msg = f'Scanning folder {full_folder}'
@@ -716,7 +717,7 @@ class UEVMGui(tk.Tk):
                 if folder_is_valid:
                     folder_name = os.path.basename(parent_folder)
                     parent_folder = os.path.dirname(parent_folder)
-                    path = os.path.dirname(full_folder_abs)
+                    path = os.path.dirname(full_folder)
                     pw.set_text(f'{folder_name} as a valid folder.\nChecking asset url...')
                     pw.update()
                     msg = f'-->Found {folder_name} as a valid project'
@@ -759,7 +760,7 @@ class UEVMGui(tk.Tk):
                             filename_lower = os.path.splitext(entry.name)[0].lower()
                             # check if full_folder contains a "data" sub folder
                             if filename_lower == 'manifest' or extension_lower in gui_g.s.ue_valid_file_content:
-                                path = full_folder_abs
+                                path = full_folder
                                 has_valid_folder_inside = any(
                                     os.path.isdir(os.path.join(full_folder, folder_inside)) for folder_inside in gui_g.s.ue_valid_manifest_content
                                 )
@@ -776,7 +777,7 @@ class UEVMGui(tk.Tk):
                                             asset_type = UEAssetType.Manifest
                                             folder_name = os.path.basename(parent_folder)
                                             parent_folder = os.path.dirname(parent_folder)
-                                            path = os.path.dirname(full_folder_abs)
+                                            path = os.path.dirname(full_folder)
                                             manifest_is_valid = True
                                         else:
                                             # we miss a folder between the folder with the "asset name" and the manifest file
@@ -785,7 +786,7 @@ class UEVMGui(tk.Tk):
                                             _fix_folder_structure(app_name_from_manifest)
                                             continue
                                     if not manifest_is_valid:
-                                        msg = f'{full_folder_abs} has a manifest file but without a data or a valid subfolder folder.It will be considered as an asset'
+                                        msg = f'{full_folder} has a manifest file but without a data or a valid subfolder folder.It will be considered as an asset'
                                         self.logger.warning(msg)
                                         comment = msg
                                         if app_name_from_manifest:
@@ -820,14 +821,14 @@ class UEVMGui(tk.Tk):
                                 if grab_result != GrabResult.NO_ERROR.name or not marketplace_url:
                                     invalid_folders.append(full_folder)
                                 # remove all the subfolders from the list of folders to scan
-                                folder_to_scan = [folder for folder in folder_to_scan if not folder.startswith(full_folder_abs)]
+                                folder_to_scan = [folder for folder in folder_to_scan if not folder.startswith(full_folder)]
                                 continue
 
                         # add subfolders to the list of folders to scan
                         elif entry.is_dir() and entry_is_valid:
                             folder_to_scan.append(entry.path)
                 except FileNotFoundError:
-                    self.logger.debug(f'{full_folder_abs} has been removed during the scan')
+                    self.logger.debug(f'{full_folder} has been removed during the scan')
 
             # sort the list to have the parent folder POPED (by the end) before the subfolders
             folder_to_scan = sorted(folder_to_scan, key=lambda x: len(x), reverse=True)
