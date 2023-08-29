@@ -1334,10 +1334,15 @@ class UEVMGui(tk.Tk):
         gui_g.UEVM_cli_args['tcsv'] = False  # mandatory for displaying the result in the DisplayContentWindow
         gui_g.UEVM_cli_args['json'] = False  # mandatory for displaying the result in the DisplayContentWindow
 
+        # arguments for auth
+        # now set in command options
+        # gui_g.UEVM_cli_args['auth_delete'] = True
+
         # arguments for cleanup command
         # now set in command options
         # gui_g.UEVM_cli_args['delete_extra_data'] = True
         # gui_g.UEVM_cli_args['delete_metadata'] = True
+        # gui_g.UEVM_cli_args['delete_scraping_data'] = True
 
         # arguments for help command
         gui_g.UEVM_cli_args['full_help'] = True

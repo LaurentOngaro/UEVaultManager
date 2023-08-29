@@ -48,6 +48,14 @@ def set_args_force_refresh(value: bool) -> None:
     UEVM_cli_args['force_refresh'] = value
 
 
+def set_args_offline(value: bool) -> None:
+    """
+    Set the value of the argument offline. Mandadory fot the associated ttk.ckbutton to work.
+    :param value:  True or False.
+    """
+    UEVM_cli_args['offline'] = value
+
+
 def set_args_debug(value: bool) -> None:
     """
     Set the value of the argument debug. Mandadory fot the associated ttk.ckbutton to work.
@@ -56,12 +64,12 @@ def set_args_debug(value: bool) -> None:
     UEVM_cli_args['debug'] = value
 
 
-def set_args_offline(value: bool) -> None:
+def set_args_auth_delete(value: bool) -> None:
     """
-    Set the value of the argument offline. Mandadory fot the associated ttk.ckbutton to work.
-    :param value:  True or False.
+    Set the value of the argument auth_delete. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
     """
-    UEVM_cli_args['offline'] = value
+    UEVM_cli_args['auth_delete'] = value
 
 
 def set_args_delete_metadata(value: bool) -> None:
@@ -94,3 +102,10 @@ def set_use_threads(value: bool) -> None:
     :param value: True or False.
     """
     s.use_threads = value
+
+
+# def set_testing_switch_var(value: bool) -> None:
+#   Use method UEVMGuiOptionsFrame.update_gui_options() instead because it also updates the gui
+
+# def set_debug_gui_var(value: bool) -> None:
+#   Use method UEVMGuiOptionsFrame.update_gui_options() instead because it also updates the gui
