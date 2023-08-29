@@ -91,7 +91,8 @@ class GUISettings:
         self.preview_max_height: int = 150
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
-        self.empty_cell: str = 'None'
+        # self.empty_cell: str = 'None'
+        self.empty_cell: str = ''
         self.empty_row_prefix: str = 'dummy_row_'
         self.tag_prefix = 't_'
         self.expand_columns_factor: int = 20

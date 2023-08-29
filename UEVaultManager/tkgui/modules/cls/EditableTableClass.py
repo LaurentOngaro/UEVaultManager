@@ -555,8 +555,6 @@ class EditableTable(Table):
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
-                df.fillna(gui_g.s.empty_cell, inplace=True)
-                self.df_unfiltered = df
             elif self.data_source_type == DataSourceType.SQLITE:
                 column_names: list = self._db_handler.get_columns_name_for_csv()
                 col_index = column_names.index('Uid')
@@ -568,7 +566,6 @@ class EditableTable(Table):
                     df, _ = self.create_row(add_to_existing=False)
                 else:
                     df = pd.DataFrame(data, columns=column_names)
-                self.df_unfiltered = df
             else:
                 self.logger.error(f'Unknown data source type: {self.data_source_type}')
                 # previous line will quit the app
@@ -584,6 +581,8 @@ class EditableTable(Table):
             # noinspection PyTypeChecker
             return None
         else:
+            df.fillna(gui_g.s.empty_cell, inplace=True)
+            self.df_unfiltered = df
             self.total_pages = (data_count - 1) // self.rows_per_page + 1
             return df
 
@@ -633,11 +632,13 @@ class EditableTable(Table):
         else:
             self.logger.error(f'Unknown data source type: {self.data_source_type}')
             # previous line will quit the app
-        if row_data is not None and table_row is not None:
+        if table_row is None:
+            self.logger.warning(f'Could not create an empty row for data source: {self.data_source}')
+            return None, -1
+        if row_data is not None:
             # add the data to the row
             for col in row_data:
                 table_row[col] = row_data[col]
-            table_row.fillna(gui_g.s.empty_cell, inplace=True)
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
             if new_index == 0:
@@ -650,6 +651,7 @@ class EditableTable(Table):
             self.add_to_rows_to_save(new_index)  # done inside self.must_save = True
         elif table_row is not None:
             self.must_rebuild = True
+        table_row.fillna(gui_g.s.empty_cell, inplace=True)
         return table_row, new_index
 
     def del_row(self, row_numbers=None) -> bool:
@@ -694,6 +696,7 @@ class EditableTable(Table):
                             self.logger.warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
 
             self.must_save = True
+            self.selectNone()
             self.update_index_copy_column()
             cur_row = self.getSelectedRow()
             if cur_row < number_deleted:
@@ -770,7 +773,7 @@ class EditableTable(Table):
             return False
         self.set_data(df_loaded)
         self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
-        close_progress(self)
+        # close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
     def rebuild_data(self) -> bool:
@@ -840,7 +843,7 @@ class EditableTable(Table):
                 return False
             self.set_data(df_loaded)
             self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
-            close_progress(self)
+            # close_progress(self)  # done in data_table.update(update_format=True)
             return True
         else:
             return False
@@ -1044,6 +1047,7 @@ class EditableTable(Table):
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             self.update_index_copy_column()
+            close_progress(self)
         if reset_page:
             self.current_page = 1
             self.update_rows_text_func()
@@ -1333,6 +1337,7 @@ class EditableTable(Table):
         """
         if row_number < 0 or col_index < 0 or value is None:
             return False
+        value = gui_g.s.empty_cell if value in ('None', 'nan') else value  # convert 'None' values to ''
         try:
             idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
             df = self.get_data()  # always used the unfiltered because the real index is set from unfiltered dataframe
