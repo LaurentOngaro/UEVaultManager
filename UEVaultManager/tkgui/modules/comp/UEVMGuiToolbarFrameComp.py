@@ -73,6 +73,8 @@ class UEVMGuiToolbarFrame(ttk.Frame):
 
         lblf_commands = ttk.LabelFrame(self, text='Other commands')
         lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
+        btn_login = ttk.Button(lblf_commands, text='Login', command=lambda: container.run_uevm_command('auth'))
+        btn_login.pack(**pack_def_options, side=tk.LEFT)
         btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
         btn_help.pack(**pack_def_options, side=tk.LEFT)
         btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_uevm_command('status'))
@@ -114,6 +116,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         self.btn_prev_page = btn_prev_page
         self.btn_next_page = btn_next_page
         self.btn_last_item = btn_last_item
+        self.btn_login = btn_login
         self.btn_toggle_options = btn_toggle_options
         self.btn_toggle_controls = btn_toggle_controls
         self.lbl_page_count = lbl_page_count

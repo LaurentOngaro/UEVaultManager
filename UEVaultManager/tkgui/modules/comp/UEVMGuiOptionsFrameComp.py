@@ -58,7 +58,13 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode (CLI)', variable=debug_var)
         ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_command_options row
-        # delete_extra_data'] = True
+        cur_row += 1
+        cur_col = 0
+        auth_delete_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('auth_delete', False))
+        auth_delete_var.trace_add('write', lambda name, index, mode: gui_g.set_args_auth_delete(auth_delete_var.get()))
+        ck_auth_delete = ttk.Checkbutton(lblf_command_options, text='Delete auth (login)', variable=auth_delete_var)
+        ck_auth_delete.grid(row=cur_row, column=cur_col, **grid_fw_options)
+        # lblf_command_options row
         cur_row += 1
         cur_col = 0
         delete_metadata_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_metadata', False))
