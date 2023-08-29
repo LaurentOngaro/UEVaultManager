@@ -72,7 +72,13 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         delete_extra_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extra_data(delete_extra_data_var.get()))
         ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete extra data (cleanup)', variable=delete_extra_data_var)
         ck_delete_extra_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
-
+        # lblf_command_options row
+        cur_row += 1
+        cur_col = 0
+        delete_scraping_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_scraping_data', False))
+        delete_scraping_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_scraping_data(delete_scraping_data_var.get()))
+        ck_delete_scraping_data = ttk.Checkbutton(lblf_command_options, text='Delete scraping data (cleanup)', variable=delete_scraping_data_var)
+        ck_delete_scraping_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # Settings for GUI frame
         lblf_gui_settings = ttk.LabelFrame(lblf_options, text='Settings for GUI')
         lblf_gui_settings.pack(side=tk.TOP, **lblf_def_options)
@@ -125,18 +131,20 @@ class UEVMGuiOptionsFrame(ttk.Frame):
         """
         Update the GUI options.
         """
-        value = 0
         try:
-            value = int(self.testing_switch_var.get())  # tkinter will raise an error is the value can be converted to an int
+            value = self.testing_switch_var.get()
+            value = int(value)  # tkinter will raise an error is the value can be converted to an int
         except (ValueError, tk.TclError):
             pass
-        self.testing_switch_var.set(value)
-        value = False
+        else:
+            gui_g.s.testing_switch = value
         try:
-            value = bool(self.debug_gui_var.get())
+            value = self.debug_gui_var.get()
+            value = bool(value)
         except (ValueError, tk.TclError):
             pass
-        gui_g.s.set_debug_mode(value)
+        else:
+            gui_g.s.set_debug_mode(value)
 
         try:
             self._container.update_controls_and_redraw()  # will update the title of the window

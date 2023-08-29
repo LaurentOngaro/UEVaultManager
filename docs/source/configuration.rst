@@ -39,7 +39,7 @@ This is an example of this file content and the settings you can change:
     verbose_mode = False
     ; Delay in seconds when UE assets metadata cache will be invalidated. Default value represent 15 days
     ue_assets_max_cache_duration = 1296000
-    ; File name (and path) for logging issues with assets when running the --list command
+    ; File name (and path) to log issues with assets when running the --list command
     ; use "~/" at the start of the filename to store it relatively to the user directory
     ignored_assets_filename_log = ~/.config/ignored_assets.log
     notfound_assets_filename_log = ~/.config/notfound_assets.log

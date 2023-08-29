@@ -23,8 +23,6 @@ from UEVaultManager.tkgui.modules.functions import box_yesno, update_loggers_lev
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, convert_to_datetime, convert_to_str_datetime, create_uid, \
     extract_variables_from_url
 
-test_only_mode = (gui_g.s.testing_switch == 1)
-
 
 class UEAssetScraper:
     """
@@ -130,8 +128,8 @@ class UEAssetScraper:
         if gui_g.UEVM_cli_ref is None:
             print(message)
         else:
-            if test_only_mode:
-                # force printing debug messages in test_only_mode
+            if gui_g.s.testing_switch >= 1:
+                # force printing debug messages when testing
                 self.logger.info(message)
             else:
                 self.logger.debug(message)
@@ -584,7 +582,7 @@ class UEAssetScraper:
                 self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
                     return self._files_count
-                if test_only_mode and self._files_count >= 100:
+                if gui_g.s.testing_switch == 1 and self._files_count >= 100:
                     break
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self._files_count} files'
         self._log_info(message)
@@ -673,7 +671,7 @@ if __name__ == '__main__':
     # it speeds up the process of requesting the asset list
     ue_asset_per_page = 100
 
-    if test_only_mode:
+    if gui_g.s.testing_switch == 1:
         # shorter and faster list for testing only
         # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
         threads = 0  # set to 0 to disable threading

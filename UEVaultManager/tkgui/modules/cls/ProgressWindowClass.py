@@ -86,7 +86,7 @@ class ProgressWindow(tk.Toplevel):
     def mainloop(self, n=0):
         """
         Mainloop method
-        Overrided to add loggin function for debugging
+        Overrided to add logging function for debugging
         """
         gui_f.log_info(f'starting mainloop in {__name__}')
         self.focus_force()
@@ -228,7 +228,7 @@ class ProgressWindow(tk.Toplevel):
         try:
             self.control_frame.button_start.pack_forget()
         except tk.TclError:
-            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
+            gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
 
     def show_start_button(self) -> None:
         """
@@ -238,7 +238,7 @@ class ProgressWindow(tk.Toplevel):
             self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
             self.control_frame.button_start.pack(**self.control_frame.pack_def_options, side=tk.LEFT)
         except tk.TclError:
-            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
+            gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
 
     def hide_stop_button(self) -> None:
         """
@@ -247,7 +247,7 @@ class ProgressWindow(tk.Toplevel):
         try:
             self.control_frame.button_stop.pack_forget()
         except tk.TclError:
-            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
+            gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
 
     def show_stop_button(self) -> None:
         """
@@ -257,7 +257,7 @@ class ProgressWindow(tk.Toplevel):
             self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
             self.control_frame.button_stop.pack(**self.control_frame.pack_def_options, side=tk.RIGHT)
         except tk.TclError:
-            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
+            gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
 
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None) -> None:
         """
@@ -285,7 +285,7 @@ class ProgressWindow(tk.Toplevel):
                 self.hide_progress_bar()
                 self.hide_stop_button()
         except tk.TclError:
-            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
+            gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
         self.continue_execution = True
         self.update()
 
@@ -347,7 +347,7 @@ class ProgressWindow(tk.Toplevel):
             if text:
                 self.set_text(text)
         except tk.TclError:
-            gui_f.log_warning('Some tkinter elements are not set. The window is probably already destroyed')
+            gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
         self.update()
         return self.continue_execution
 

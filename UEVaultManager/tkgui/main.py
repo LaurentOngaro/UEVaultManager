@@ -12,8 +12,6 @@ from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.functions import log_error
 from UEVaultManager.tkgui.modules.types import DataSourceType
 
-test_only_mode = (gui_g.s.testing_switch == 1)
-
 
 def init_gui(open_mainwindow=True, use_db=False) -> str:
     """
@@ -52,4 +50,4 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
 
 
 if __name__ == '__main__':
-    init_gui(open_mainwindow=True, use_db=not test_only_mode)
+    init_gui(open_mainwindow=True, use_db=gui_g.s.testing_switch <= 0)

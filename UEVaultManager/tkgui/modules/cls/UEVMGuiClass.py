@@ -36,8 +36,6 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToo
 from UEVaultManager.tkgui.modules.functions_no_deps import is_an_int, set_custom_style
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
 
-test_only_mode = (gui_g.s.testing_switch == 1)
-
 
 def clean_ue_asset_name(name_to_clean: str) -> str:
     """
@@ -221,7 +219,7 @@ class UEVMGui(tk.Tk):
     def mainloop(self, n=0):
         """
         Mainloop method
-        Overrided to add loggin function for debugging
+        Overrided to add logging function for debugging
         """
         self.logger.info(f'starting mainloop in {__name__}')
         self.tk.mainloop(n)
@@ -672,7 +670,7 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = gui_g.s.folders_to_scan
-        if test_only_mode:
+        if gui_g.s.testing_switch == 1:
             folder_to_scan = [
                 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
                 'G:/Assets/pour UE/00 A trier/Warez/Battle Royale Island Pack',  #
@@ -1346,10 +1344,21 @@ class UEVMGui(tk.Tk):
         if app_name != '':
             gui_g.UEVM_cli_args['app_name'] = app_name
 
-        if gui_g.display_content_window_ref is None or not gui_g.display_content_window_ref.winfo_viewable():
-            # we display the window only if it is not already displayed
-            function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
-            function_to_call(gui_g.UEVM_cli_args)
+        # already_displayed = gui_g.display_content_window_ref is not None
+        # if already_displayed:
+        #     # Note: next line will raise an exption if gui_g.display_content_window_ref is None
+        #     already_displayed = not gui_g.display_content_window_ref.winfo_viewable()
+        #
+        # if not already_displayed:
+        #     # we display the window only if it is not already displayed
+        #     function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
+        #     function_to_call(gui_g.UEVM_cli_args)
+
+        display_window = DisplayContentWindow(title='UEVM: status command output')
+        gui_g.display_content_window_ref = display_window
+        function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
+        function_to_call(gui_g.UEVM_cli_args)
+        self._wait_for_window(display_window)
 
     # noinspection PyUnusedLocal
     def open_asset_url(self, event=None) -> None:

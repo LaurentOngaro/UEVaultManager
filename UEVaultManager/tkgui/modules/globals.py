@@ -80,6 +80,14 @@ def set_args_delete_extra_data(value: bool) -> None:
     UEVM_cli_args['delete_extra_data'] = value
 
 
+def set_args_delete_scraping_data(value: bool) -> None:
+    """
+    Set the value of the argument delete_scraping_data. Mandadory fot the associated ttk.ckbutton to work.
+    :param value:  True or False.
+    """
+    UEVM_cli_args['delete_scraping_data'] = value
+
+
 def set_use_threads(value: bool) -> None:
     """
     Set the value of the settings use_threads. Mandadory fot the associated ttk.ckbutton to work.

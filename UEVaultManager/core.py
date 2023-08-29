@@ -95,13 +95,13 @@ class AppCore:
         self.verbose_mode = False
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
-        # Set the file name (and path) for logging when an asset is ignored or filtered when running the --list command
+        # Set the file name (and path) to log issues when an asset is ignored or filtered when running the --list command
         self.ignored_assets_filename_log = ''
-        # Set the file name (and path) for logging when an asset is not found on the marketplace when running the --list command
+        # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the --list command
         self.notfound_assets_filename_log = ''
-        # Set the file name (and path) for logging when an asset has metadata and extra data are incoherent when running the --list command
+        # Set the file name (and path) to log issues when an asset has metadata and extra data are incoherent when running the --list command
         self.bad_data_assets_filename_log = ''
-        # Set the file name (and path) for logging when scanning folder to find assets
+        # Set the file name (and path) to log issues when scanning folder to find assets
         self.scan_assets_filename_log = ''
         # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
         self.create_log_backup = True
@@ -217,7 +217,7 @@ class AppCore:
 
     def auth_import(self) -> bool:
         """
-        Import refresh token from EGL installation and use it for logging in.
+        Import refresh token from EGL installation and use it for loging in.
         :return: True if successful, False otherwise.
         """
         self.egl.read_config()
@@ -247,14 +247,19 @@ class AppCore:
             self.log.error(f'Logging in failed with {error!r}, please try again.')
             return False
 
-    def login(self, force_refresh=False) -> bool:
+    def login(self, force_refresh: bool = False, raise_error: bool = True) -> bool:
         """
-        Attempts logging in with existing credentials.
+        Attempts loging in with existing credentials.
         :param force_refresh: Whether to force a refresh of the session.
+        :param raise_error: Whether to raise an exception if login fails.
         :return: True if successful, False otherwise.
         """
         if not self.uevmlfs.userdata:
-            raise ValueError('No saved credentials')
+            if raise_error:
+                raise ValueError('No saved credentials')
+            else:
+                self.logged_in = False
+                return False
         elif self.logged_in and self.uevmlfs.userdata['expires_at']:
             dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
             dt_now = datetime.utcnow()

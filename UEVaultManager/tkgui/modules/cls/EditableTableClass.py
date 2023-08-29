@@ -24,8 +24,6 @@ from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_e
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
-test_only_mode = (gui_g.s.testing_switch == 1)
-
 
 class EditableTable(Table):
     """
@@ -806,7 +804,7 @@ class EditableTable(Table):
             max_threads = get_max_threads()
             owned_assets_only = False
             db_asset_per_page = 100  # a bigger value will be refused by UE API
-            if test_only_mode:
+            if gui_g.s.testing_switch == 1:
                 start_row = 15000
                 stop_row = 15000 + db_asset_per_page
             else:
@@ -825,7 +823,6 @@ class EditableTable(Table):
                 store_in_files=True,
                 store_ids=False,  # useless for now
                 load_from_files=load_from_files,
-                # clean_database=not test_only_mode, # BE CAREFUL: Whether to this will delete all the data in the database included user fields values !!!
                 clean_database=False,
                 engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
                 egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs,

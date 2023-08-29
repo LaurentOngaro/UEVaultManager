@@ -7,14 +7,14 @@ import filecmp
 import json
 import logging
 import os
-from pathlib import Path
 from time import time
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.models.app import *
 from UEVaultManager.models.config import AppConf
+from UEVaultManager.tkgui.modules.functions import create_file_backup
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
-from .utils import clean_filename
-from ..tkgui.modules.functions import create_file_backup
 
 
 class UEVMLFS:
@@ -148,7 +148,7 @@ class UEVMLFS:
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'ignored_assets_filename_log'):
             self.config.set(
-                'UEVaultManager', '; File name (and path) for logging issues with assets when running the --list command' + "\n" +
+                'UEVaultManager', '; File name (and path) to log issues with assets when running the --list command' + "\n" +
                 '; use "~/" at the start of the filename to store it relatively to the user directory'
             )
             self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
@@ -272,23 +272,47 @@ class UEVMLFS:
             sort_keys=True
         )
 
-    def delete_folder(self, folder: str, list_of_items_to_keep=None) -> bool:
+    def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:
         """
         Delete all the files in a folder that are not in the list_of_items_to_keep list.
-        :param folder: The folder to clean.
-        :param list_of_items_to_keep: The list of items to keep.
+        :param folders: The list of folder to clean. Could be a list or a string for a single folder.If None, the function will return 0.
+        :param extensions_to_delete: The list of extensions to delete. Leave to Empty to delete all extentions.
+        :param file_name_to_keep: The list of items to keep. Leave to Empty to delete all files.
+        :return: The total size of deleted files.
         """
-        if list_of_items_to_keep is None:
-            list_of_items_to_keep = []
-        for f in os.listdir(os.path.join(self.path, folder)):
-            app_name = f.rpartition('.')[0]
-            if list_of_items_to_keep is None or app_name not in list_of_items_to_keep:
-                try:
-                    os.remove(os.path.join(self.path, folder, f))
-                except Exception as error:
-                    self.log.warning(f'Failed to delete file "{f}": {error!r}')
-                    return False
-        return True
+        if folders is None or not folders:
+            return 0
+        if isinstance(folders, str):
+            folders_to_clean = [folders]
+        else:
+            folders_to_clean = folders
+
+        if len(folders_to_clean) < 1:
+            return 0
+        if file_name_to_keep is None:
+            file_name_to_keep = []
+        size_deleted = 0
+        while folders_to_clean:
+            folder = folders_to_clean.pop()
+            if not os.path.isdir(folder):
+                continue
+            for f in os.listdir(folder):
+                file_name = os.path.join(folder, f)
+                file_name = os.path.abspath(file_name)
+                app_name, file_ext = os.path.splitext(f)
+                file_ext = file_ext.lower()
+                file_is_ok = (file_name_to_keep is None or app_name not in file_name_to_keep)
+                ext_is_ok = (extensions_to_delete is None or file_ext in extensions_to_delete)
+                if file_is_ok and ext_is_ok:
+                    try:
+                        size = os.path.getsize(file_name)
+                        os.remove(file_name)
+                        size_deleted += size
+                    except Exception as error:
+                        self.log.warning(f'Failed to delete file "{file_name}": {error!r}')
+                elif os.path.isdir(file_name):
+                    folders_to_clean.append(file_name)
+        return size_deleted
 
     def get_item_meta(self, app_name: str):
         """
@@ -380,43 +404,53 @@ class UEVMLFS:
         """
         return sorted(self.assets_metadata.keys())
 
-    def clean_tmp_data(self) -> None:
+    def clean_tmp_data(self) -> int:
         """
         Delete all the files in the tmp folder.
+        :return: The size of the deleted files.
         """
-        self.delete_folder(self.tmp_folder)
+        folder = os.path.join(self.path, self.tmp_folder)
+        return self.delete_folder_content(folder)
 
-    def clean_metadata(self, app_names_to_keep: list) -> None:
+    def clean_cache_data(self) -> int:
+        """
+        Delete all the files in the cache folders.
+        :return: The size of the deleted files.
+        """
+        return self.delete_folder_content(gui_g.s.cache_folder)
+
+    def clean_metadata(self, app_names_to_keep: list) -> int:
         """
         Delete all the metadata files that are not in the app_names_to_keep list.
         :param app_names_to_keep: The list of app names to keep.
+        :return: The size of the deleted files.
         """
-        self.delete_folder(self.metadata_folder, app_names_to_keep)
+        folder = os.path.join(self.path, self.metadata_folder)
+        return self.delete_folder_content(folder, file_name_to_keep=app_names_to_keep)
 
-    def clean_extra(self, app_names_to_keep: list) -> None:
+    def clean_extra(self, app_names_to_keep: list) -> int:
         """
         Delete all the metadata files that are not in the app_names_to_keep list.
         :param app_names_to_keep: The list of app names to keep.
+        :return: The size of the deleted files.
         """
-        self.delete_folder(self.extra_folder, app_names_to_keep)
+        folder = os.path.join(self.path, self.extra_folder)
+        return self.delete_folder_content(folder, file_name_to_keep=app_names_to_keep)
 
-    def clean_manifests(self) -> None:
+    def clean_manifests(self) -> int:
         """
         Delete all the metadata files that are not in the app_names_to_keep list.
         """
-        self.delete_folder(self.manifests_folder)
+        folder = os.path.join(self.path, self.manifests_folder)
+        return self.delete_folder_content(folder)
 
-    def clean_logs_and_backups(self) -> None:
+    def clean_logs_and_backups(self) -> int:
         """
-        Delete all the log and backup files in the app folder.
+        Delete all the log and backup files in the app folders.
+        :return: The size of the deleted files.
         """
-        for f in os.listdir(self.path):
-            file_name_no_ext, file_ext = os.path.splitext(f)
-            if '.log' in file_ext or '.bak' in file_ext:
-                try:
-                    os.remove(os.path.join(self.path, f))
-                except Exception as error:
-                    self.log.warning(f'Failed to delete file "{f}": {error!r}')
+        folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
+        return self.delete_folder_content(folders, ['.log', '.bak'])
 
     def save_config(self) -> None:
         """
@@ -430,15 +464,18 @@ class UEVMLFS:
         with open(self.config_file, 'w') as cf:
             self.config.write(cf)
         # delete the backup if the files and the backup are identical
-        if filecmp.cmp(self.config_file, file_backup):
+        if os.path.isfile(file_backup) and filecmp.cmp(self.config_file, file_backup):
             os.remove(file_backup)
 
-    def get_dir_size(self) -> int:
+    def clean_scrapping(self) -> int:
         """
-        Get the size of the directory.
-        :return: The size of the directory.
+        Delete all the metadata files that are not in the app_names_to_keep list.
+        :return: The size of the deleted files.
         """
-        return sum(f.stat().st_size for f in Path(self.path).glob('**/*') if f.is_file())
+        folders = [
+            gui_g.s.assets_data_folder, gui_g.s.owned_assets_data_folder, gui_g.s.assets_global_folder, gui_g.s.assets_csv_files_folder
+        ]
+        return self.delete_folder_content(folders)
 
     def get_cached_version(self) -> dict:
         """

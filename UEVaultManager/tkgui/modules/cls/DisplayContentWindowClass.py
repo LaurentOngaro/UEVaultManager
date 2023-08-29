@@ -26,10 +26,13 @@ class DisplayContentWindow(tk.Toplevel):
     :param icon: the icon of the window.
     :param screen_index: the index of the screen on which the window will be displayed.
     :param quit_on_close: whether to quit the application when the window is closed.
+    :param is_modal: whether the window is modal.
     """
     keep_existing: bool = False  # whether to keep the existing content when adding a new one
 
-    def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index: int = 0, quit_on_close: bool = False):
+    def __init__(
+        self, title: str, width: int = 600, height: int = 430, icon=None, screen_index: int = 0, quit_on_close: bool = False, is_modal: bool = False
+    ):
         super().__init__()
         self.title(title)
         try:
@@ -54,7 +57,8 @@ class DisplayContentWindow(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         gui_g.display_content_window_ref = self
-        gui_f.make_modal(self)
+        if is_modal:
+            gui_f.make_modal(self)
 
     @staticmethod
     def _focus_next_widget(event):
@@ -148,12 +152,14 @@ class DisplayContentWindow(tk.Toplevel):
             self.content_frame.text_content.insert(tk.END, content)
         # set the mode at the end to allow using display() to be used to change the mode for the next call
         self.keep_existing = keep_mode
+        self.update()
 
     def clean(self) -> None:
         """
         Clean the content of the window.
         """
         self.content_frame.text_content.delete('1.0', tk.END)
+        self.update()
 
     def save_changes(self) -> str:
         """

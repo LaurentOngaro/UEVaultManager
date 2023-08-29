@@ -24,8 +24,6 @@ from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_dateti
 from UEVaultManager.tkgui.modules.types import UEAssetType
 from UEVaultManager.utils.cli import check_and_create_path
 
-test_only_mode = (gui_g.s.testing_switch == 1)
-
 
 class UEAssetDbHandler:
     """
@@ -544,7 +542,7 @@ class UEAssetDbHandler:
             query = f"SELECT {fields} FROM assets"
             if where_clause:
                 query += f" WHERE {where_clause}"
-            if test_only_mode:
+            if gui_g.s.testing_switch == 1:
                 query += ' ORDER BY date_added_in_db DESC LIMIT 3000'
             try:
                 cursor.execute(query)
@@ -1096,7 +1094,7 @@ if __name__ == "__main__":
         # Read existing assets
         asset_list = asset_handler.get_assets_data()
         print("Assets:", asset_list)
-    elif test_only_mode:
+    elif gui_g.s.testing_switch == 1:
         # Create fake assets
         rows_to_create = 300
         if not clean_data:
