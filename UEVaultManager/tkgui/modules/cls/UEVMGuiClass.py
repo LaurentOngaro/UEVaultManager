@@ -397,9 +397,8 @@ class UEVMGui(tk.Tk):
         When the item (i.e. row or page) number changes, show the corresponding item.
         :param _event:
         """
-        item_num = 'None'
+        item_num = self._toolbar_frame.entry_current_item.get()
         try:
-            item_num = self._toolbar_frame.entry_current_item.get()
             item_num = int(item_num)
         except (ValueError, UnboundLocalError) as error:
             self.logger.error(f'could not convert item number {item_num} to int. {error!r}')
@@ -434,7 +433,7 @@ class UEVMGui(tk.Tk):
         """
         value, widget = self._check_and_get_widget_value(tag=tag)
         # empty the widget if the value is the default value or none
-        if widget and (value == 'None' or value == widget.default_content or value == gui_g.s.empty_cell):
+        if widget and (value in ('None', 'nan', gui_g.s.empty_cell, widget.default_content)):
             value = ''
             widget.set_content(value)
 
@@ -1464,7 +1463,7 @@ class UEVMGui(tk.Tk):
         :return: a mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Comment'].notnull() & df['Comment'].ne('') & df['Comment'].ne('None')  # not None and not empty string
+        mask = df['Comment'].notnull() & df['Comment'].ne('') & df['Comment'].ne('None') & df['Comment'].ne('nan')  # not None and not empty string
         return mask
 
     def filter_free_and_not_owned(self) -> pd.Series:

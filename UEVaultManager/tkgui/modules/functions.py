@@ -184,7 +184,7 @@ def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
     :param canvas_image: the canvas to display the image in.
     :param timeout: the timeout in seconds to wait for the image to be downloaded.
     """
-    if canvas_image is None or image_url is None or not image_url or str(image_url) in ['nan', gui_g.s.empty_cell]:
+    if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
         return
     try:
         # print(image_url)

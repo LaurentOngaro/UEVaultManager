@@ -211,7 +211,7 @@ class UEAssetDbHandler:
             return False
         uid = row_data.get('id', None)  # check if the row as an id to check
         # remove all fields whith a None Value
-        filtered_fields = {k: v for k, v in row_data.items() if (v is not None and v != 'None')}
+        filtered_fields = {k: v for k, v in row_data.items() if (v is not None and v not in ('nan', 'None'))}
         if len(filtered_fields) == 0:
             return False
         column_list = filtered_fields.keys()

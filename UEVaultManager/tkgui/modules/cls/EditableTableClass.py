@@ -555,8 +555,7 @@ class EditableTable(Table):
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
-                # fill all 'NaN' like values with 'None', to be similar to the database
-                df.fillna('None', inplace=True)
+                df.fillna(gui_g.s.empty_cell, inplace=True)
                 self.df_unfiltered = df
             elif self.data_source_type == DataSourceType.SQLITE:
                 column_names: list = self._db_handler.get_columns_name_for_csv()
@@ -638,7 +637,7 @@ class EditableTable(Table):
             # add the data to the row
             for col in row_data:
                 table_row[col] = row_data[col]
-            table_row.fillna('None', inplace=True)  # put 'None' in empty cells
+            table_row.fillna(gui_g.s.empty_cell, inplace=True)
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
             if new_index == 0:
@@ -667,7 +666,7 @@ class EditableTable(Table):
             row_numbers.sort(reverse=True)  # delete from the end to the start to avoid index change
             for row_number in row_numbers:
                 df = self.get_data()
-                asset_id = 'None'
+                asset_id = 'NA'
                 idx = self.get_real_index(row_number, add_page_offset=True)
                 if 0 <= idx <= len(df):
                     try:
@@ -1262,7 +1261,7 @@ class EditableTable(Table):
             ue_asset_data = ue_asset_data[0]
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
         if asset_id in ('', 'None', 'nan'):
-            asset_id = ue_asset_data.get('asset_id', 'None')
+            asset_id = ue_asset_data.get('asset_id', 'NA')
         text = f'row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
@@ -1515,7 +1514,7 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.get_col_name(col_index)
         ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
-        cell_value_str = str(cell_value) if cell_value != 'None' else ''
+        cell_value_str = str(cell_value) if (cell_value not in ('None', 'nan', gui_g.s.empty_cell)) else ''
         if is_from_type(col_name, [CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
             widget.set_content(cell_value_str)
