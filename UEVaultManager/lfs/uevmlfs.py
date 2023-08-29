@@ -294,6 +294,9 @@ class UEVMLFS:
         size_deleted = 0
         while folders_to_clean:
             folder = folders_to_clean.pop()
+            if folder == self.path and extensions_to_delete is None:
+                self.log.warning("We can't delete the config folder without extensions to filter files!")
+                continue
             if not os.path.isdir(folder):
                 continue
             for f in os.listdir(folder):
@@ -472,9 +475,7 @@ class UEVMLFS:
         Delete all the metadata files that are not in the app_names_to_keep list.
         :return: The size of the deleted files.
         """
-        folders = [
-            gui_g.s.assets_data_folder, gui_g.s.owned_assets_data_folder, gui_g.s.assets_global_folder, gui_g.s.assets_csv_files_folder
-        ]
+        folders = [gui_g.s.assets_data_folder, gui_g.s.owned_assets_data_folder, gui_g.s.assets_global_folder, gui_g.s.assets_csv_files_folder]
         return self.delete_folder_content(folders)
 
     def get_cached_version(self) -> dict:
