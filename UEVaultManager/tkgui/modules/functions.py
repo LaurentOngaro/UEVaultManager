@@ -395,3 +395,16 @@ def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> Non
     for logger_name in gui_g.UEVM_logger_names:
         logger = logging.getLogger(logger_name)
         logger.setLevel(level=logging.DEBUG if debug_value else logging.INFO)
+
+
+def make_modal(window: tk.Toplevel = None, wait_for_close=True) -> None:
+    """
+    Make the given window modal.
+    :param window: the window to make modal
+    :param wait_for_close: whether to wait for the window to be closed before continuing
+    """
+    window.grab_set()
+    window.focus_set()
+    if wait_for_close:
+        # Note: this will block the main window
+        window.wait_window()

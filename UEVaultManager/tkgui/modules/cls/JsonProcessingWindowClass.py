@@ -11,6 +11,7 @@ from tkinter import messagebox
 from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.functions import make_modal
 
 
 class JSPW_Settings:
@@ -60,6 +61,7 @@ class JsonProcessingWindow(tk.Toplevel):
 
         self.control_frame = self.ControlFrame(self)
         self.control_frame.pack(ipadx=0, ipady=0, padx=0, pady=0)
+        make_modal(self)
 
     class ControlFrame(ttk.Frame):
         """

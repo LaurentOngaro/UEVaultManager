@@ -57,9 +57,9 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        gui_g.edit_row_window_ref = self
-
         self.btn_open_folder = self.control_frame.btn_open_folder
+        gui_g.edit_row_window_ref = self
+        gui_f.make_modal(self)
 
     @staticmethod
     def _focus_next_widget(event):

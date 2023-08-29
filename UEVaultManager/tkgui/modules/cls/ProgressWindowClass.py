@@ -68,18 +68,15 @@ class ProgressWindow(tk.Toplevel):
         self.control_frame = self.ControlFrame(self)
         if show_start_button or show_stop_button:
             self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-
-        gui_g.progress_window_ref = self
-
-        self.focus_set()
-        self.attributes('-topmost', True)  # keep the window on top. Windows only
-
         if not show_progress:
             self.hide_progress_bar()
         if not show_start_button:
             self.hide_start_button()
         if not show_stop_button:
             self.hide_stop_button()
+
+        gui_g.progress_window_ref = self
+        gui_f.make_modal(self, wait_for_close=False)
 
         # Start the execution if not control frame is present
         # important because the control frame is not present when the function is set after the window is created
@@ -92,6 +89,8 @@ class ProgressWindow(tk.Toplevel):
         Overrided to add loggin function for debugging
         """
         gui_f.log_info(f'starting mainloop in {__name__}')
+        self.focus_force()
+        self.grab_set()
         self.tk.mainloop(n)
         gui_f.log_info(f'ending mainloop in {__name__}')
 
