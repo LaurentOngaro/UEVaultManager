@@ -1202,7 +1202,6 @@ class UEVMGui(tk.Tk):
         # Disable some buttons if needed
         current_index = data_table.getSelectedRow()
         max_index = len(data_table.get_data())
-
         if len(data_table.multiplerowlist) < 1:
             self.disable_control('scrap')
             self.disable_control('del')
@@ -1218,6 +1217,7 @@ class UEVMGui(tk.Tk):
             self.disable_control('next_asset')
 
         if not data_table.pagination_enabled:
+            max_displayed = len(data_table.get_data(df_type=DataFrameUsed.AUTO))
             first_item_text = 'First Asset'
             last_item_text = 'Last Asset'
             self.disable_control('prev_page')
@@ -1227,8 +1227,8 @@ class UEVMGui(tk.Tk):
             if current_index >= max_index - 1:
                 self.disable_control('last_item')
         else:
+            max_displayed = data_table.total_pages
             current_index = data_table.current_page
-            max_index = data_table.total_pages
             first_item_text = 'First Page'
             last_item_text = 'Last Page'
             if current_index <= 1:
@@ -1238,13 +1238,11 @@ class UEVMGui(tk.Tk):
                 self.disable_control('last_item')
                 self.disable_control('next_page')
 
-        # Update entry_current_item_var and lbl_page_count
-        self._toolbar_frame.entry_current_item_var.set(current_index)
-        self._toolbar_frame.lbl_page_count.config(text=f' / {max_index}')
-
         # Update btn_first_item and btn_last_item text
         self._toolbar_frame.btn_first_item.config(text=first_item_text)
         self._toolbar_frame.btn_last_item.config(text=last_item_text)
+        self._toolbar_frame.entry_current_item_var.set(current_index)
+        self._toolbar_frame.lbl_page_count.config(text=f' / {max_displayed}')
 
     def update_data_source(self) -> None:
         """
