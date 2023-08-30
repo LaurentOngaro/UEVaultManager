@@ -113,8 +113,10 @@ def init_display_window(logger=None, message: str = 'Starting command...') -> (b
     if gui_g.display_content_window_ref is not None:
         gui_g.display_content_window_ref.close_window()
 
-    gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM: status command output', quit_on_close=not uewm_gui_exists)
+    gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM command output', quit_on_close=not uewm_gui_exists)
     gui_g.display_content_window_ref.display(message, False)
+    # make_modal(gui_g.display_content_window_ref) # no modal here, will prevent display update by the function
+
     return uewm_gui_exists, gui_g.display_content_window_ref
 
 

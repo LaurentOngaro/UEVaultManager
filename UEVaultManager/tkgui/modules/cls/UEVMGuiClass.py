@@ -82,13 +82,14 @@ class UEVMGui(tk.Tk):
     :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
     :param show_open_file_dialog: Whether the open file dialog will be shown at startup.
     """
-    editable_table: EditableTable = None
-    progress_window: FakeProgressWindow = None
     _frm_toolbar: UEVMGuiToolbarFrame = None
     _frm_control: UEVMGuiControlFrame = None
     _frm_option: UEVMGuiOptionFrame = None
     _frm_content: UEVMGuiContentFrame = None
     _frm_filter: FilterFrame = None
+    _errors: [Exception] = []
+    editable_table: EditableTable = None
+    progress_window: FakeProgressWindow = None
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
     egs = None
@@ -258,7 +259,8 @@ class UEVMGui(tk.Tk):
         try:
             # if the file is empty or absent or invalid when creating the class, the frm_filter is not defined
             category = self._frm_filter.category
-        except AttributeError:
+        except AttributeError as error:
+            self.add_error(error)
             category = None
         if category and category != gui_g.s.default_value_for_all:
             default_filename = default_filename + '_' + category + default_ext
@@ -299,16 +301,22 @@ class UEVMGui(tk.Tk):
         Wait for a window to be closed.
         :param window: the window to wait for.
         """
+        if window is None:
+            # the window could have been closed before this call
+            return
         try:
             while window.winfo_viewable():
                 window.focus_set()
                 window.attributes('-topmost', True)  # keep the window on top. Windows only
+                # if gui_g.s.testing_switch == 2:
+                #     window.grab_set()  # make the window modal
+                window.grab_set()  # make the window modal
                 sleep(0.5)
                 self.update()
                 self.update_idletasks()
-        except tk.TclError:
+        except tk.TclError as error:
             # the window has been closed so an error is raised
-            pass
+            self.add_error(error)
 
     def on_key_press(self, event):
         """
@@ -400,6 +408,7 @@ class UEVMGui(tk.Tk):
         try:
             item_num = int(item_num)
         except (ValueError, UnboundLocalError) as error:
+            self.add_error(error)
             self.logger.error(f'could not convert item number {item_num} to int. {error!r}')
             return
 
@@ -481,6 +490,13 @@ class UEVMGui(tk.Tk):
         self.quit()
         if force_quit:
             sys.exit(0)
+
+    def add_error(self, error: Exception) -> None:
+        """
+        Add an error to the list of errors.
+        :param error: the error to add.
+        """
+        self._errors.append(error)
 
     def save_settings(self) -> None:
         """
@@ -726,7 +742,8 @@ class UEVMGui(tk.Tk):
                     if marketplace_url:
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
-                        except ReadTimeout:
+                        except ReadTimeout as error:
+                            self.add_error(error)
                             gui_f.box_message(
                                 f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                                 level='warning'
@@ -799,7 +816,8 @@ class UEVMGui(tk.Tk):
                                         grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(
                                             marketplace_url
                                         ) else GrabResult.TIMEOUT.name
-                                    except ReadTimeout:
+                                    except ReadTimeout as error:
+                                        self.add_error(error)
                                         gui_f.box_message(
                                             f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                                             level='warning'
@@ -825,7 +843,8 @@ class UEVMGui(tk.Tk):
                         # add subfolders to the list of folders to scan
                         elif entry.is_dir() and entry_is_valid:
                             folder_to_scan.append(entry.path)
-                except FileNotFoundError:
+                except FileNotFoundError as error:
+                    self.add_error(error)
                     self.logger.debug(f'{full_folder} has been removed during the scan')
 
             # sort the list to have the parent folder POPED (by the end) before the subfolders
@@ -871,6 +890,7 @@ class UEVMGui(tk.Tk):
                     text = f'Updating {name} at row {row_index}. Old name is {data.loc[row_index, "App name"]}'
                     self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
+                self.add_error(error)
                 self.logger.warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
                 invalid_folders.append(content["path"])
                 text = f'An Error occured when cheking {name}'
@@ -898,7 +918,8 @@ class UEVMGui(tk.Tk):
                     self.scrap_row(
                         marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
                     )
-                except ReadTimeout:
+                except ReadTimeout as error:
+                    self.add_error(error)
                     gui_f.box_message(
                         f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                         level='warning'
@@ -921,6 +942,7 @@ class UEVMGui(tk.Tk):
             if gui_g.display_content_window_ref is None:
                 gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM: status command output', quit_on_close=False)
                 gui_g.display_content_window_ref.display(result)
+                gui_f.make_modal(gui_g.display_content_window_ref)
             self.logger.warning(result)
 
     def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False):
@@ -1043,7 +1065,8 @@ class UEVMGui(tk.Tk):
         try:
             self._frm_filter.load_filters(filters)
             # self.update_navigation() # done in load_filters and inner calls
-        except Exception as error:
+        except (Exception, ) as error:
+            self.add_error(error)
             self.logger.error(f'Error loading filters: {error!r}')
 
     def toggle_pagination(self, forced_value: bool = None) -> None:
@@ -1258,13 +1281,15 @@ class UEVMGui(tk.Tk):
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
             categories = list(df['Category'].cat.categories)
-        except (AttributeError, TypeError, KeyError):
+        except (AttributeError, TypeError, KeyError) as error:
+            self.add_error(error)
             categories = []
         categories.insert(0, gui_g.s.default_value_for_all)
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
             grab_results = list(df['Grab result'].cat.categories)
-        except (AttributeError, TypeError, KeyError):
+        except (AttributeError, TypeError, KeyError) as error:
+            self.add_error(error)
             grab_results = []
         grab_results.insert(0, gui_g.s.default_value_for_all)
         return {'categories': categories, 'grab_results': grab_results}
@@ -1319,6 +1344,10 @@ class UEVMGui(tk.Tk):
         Execute a cli command and display the result in DisplayContentWindow.
         :param command_name: the name of the command to execute.
         """
+        if gui_g.display_content_window_ref is not None:
+            self.logger.info('A UEVM command is already running, please wait for it to finish.')
+            gui_g.display_content_window_ref.set_focus()
+            return
         if command_name == '':
             return
         if gui_g.UEVM_cli_ref is None:
@@ -1364,7 +1393,8 @@ class UEVMGui(tk.Tk):
         gui_g.display_content_window_ref = display_window
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         function_to_call(gui_g.UEVM_cli_args)
-        self._wait_for_window(display_window)
+        self._wait_for_window(gui_g.display_content_window_ref)  # a local variable won't work here
+        # gui_f.make_modal(display_window)
 
     # noinspection PyUnusedLocal
     def open_asset_url(self, event=None) -> None:
@@ -1415,7 +1445,9 @@ class UEVMGui(tk.Tk):
             folder_for_tags_path=gui_g.s.assets_data_folder,
             folder_for_rating_path=gui_g.s.assets_csv_files_folder
         )
-        self._wait_for_window(tool_window)
+        gui_g.tool_window_ref = tool_window
+        # self._wait_for_window(tool_window)
+        gui_f.make_modal(tool_window)
 
     def database_processing(self) -> None:
         """
@@ -1430,7 +1462,9 @@ class UEVMGui(tk.Tk):
             db_path=self.editable_table.data_source,
             folder_for_csv_files=gui_g.s.assets_csv_files_folder
         )
-        self._wait_for_window(tool_window)
+        gui_g.tool_window_ref = tool_window
+        # self._wait_for_window(tool_window)
+        gui_f.make_modal(tool_window)
         if tool_window.must_reload and gui_f.box_yesno('Some data has been imported into the database. Do you want to reload the data ?'):
             self.reload_data()
 

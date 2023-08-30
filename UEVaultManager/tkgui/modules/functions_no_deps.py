@@ -12,6 +12,7 @@ import uuid
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
+from ttkbootstrap.publisher import Publisher
 
 from UEVaultManager.lfs.utils import path_join
 
@@ -89,7 +90,13 @@ def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
     Set the custom style for the application.
     :return: the style object.
     """
-    style = ttk.Style(theme_name)
+    try:
+        style = ttk.Style(theme_name)
+    except (Exception, ):
+        # free the subscriber widgets to the Style. As it, it could be used by other window without issue
+        Publisher.clear_subscribers()
+        style = ttk.Style(theme_name)
+
     # option possible for ttk widgets:
     # TButton, TCheckbutton, TCombobox, TEntry, TFrame, TLabel, TLabelFrame, TMenubutton, TNotebook, TProgressbar, TRadiobutton,
     # TScale, TScrollbar, TSeparator, TSizegrip, Treeview, TPanedwindow,

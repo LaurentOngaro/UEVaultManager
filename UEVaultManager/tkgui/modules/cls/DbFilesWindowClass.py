@@ -9,7 +9,6 @@ from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
-from UEVaultManager.tkgui.modules.functions import make_modal
 
 
 class DBFW_Settings:
@@ -58,7 +57,7 @@ class DbFilesWindowClass(tk.Toplevel):
         self.db_handler = UEAssetDbHandler(database_name=self.db_path)
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
-        make_modal(self)
+        # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
 
     class ControlFrame(ttk.Frame):
         """

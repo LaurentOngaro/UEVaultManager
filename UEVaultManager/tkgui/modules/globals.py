@@ -18,6 +18,7 @@ edit_row_window_ref: EditRowWindow = None
 display_content_window_ref = None
 # noinspection PyTypeChecker
 progress_window_ref: ProgressWindow = None
+tool_window_ref = None
 # reference to the cli object of the UEVM main app (the main one, it gives all access to all the features)
 # if empty, direct access to its features from this script won't be available and a message will be displayed instead
 # noinspection PyTypeChecker
