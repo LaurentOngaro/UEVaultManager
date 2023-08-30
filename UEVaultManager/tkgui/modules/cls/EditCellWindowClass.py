@@ -54,7 +54,7 @@ class EditCellWindow(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         gui_g.edit_cell_window_ref = self
-        gui_f.make_modal(self)
+        # gui_f.make_modal(self)  # not working if done in the init of the class.must be done by the caller
 
     @staticmethod
     def _focus_next_widget(event):

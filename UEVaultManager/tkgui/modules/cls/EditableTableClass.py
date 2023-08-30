@@ -1392,12 +1392,10 @@ class EditableTable(Table):
         edit_row_window = EditRowWindow(
             parent=self.master, title=title, width=width, height=height, icon=gui_g.s.app_icon_filename, editable_table=self
         )
-        edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
         # configure the grid
         edit_row_window.frm_content.columnconfigure(0, weight=0)
         edit_row_window.frm_content.columnconfigure(1, weight=1)
-        edit_row_window.focus_set()
         self.edit_row(row_number)
 
     def edit_row(self, row_number: int = None) -> None:
@@ -1449,6 +1447,7 @@ class EditableTable(Table):
         self._edit_row_number = row_number
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
+        make_modal(edit_row_window)
 
     def save_edit_row(self) -> None:
         """
@@ -1499,7 +1498,6 @@ class EditableTable(Table):
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
         edit_cell_window = EditCellWindow(parent=self.master, title=title, width=width, height=height, editable_table=self)
-        edit_cell_window.grab_set()
         edit_cell_window.minsize(width, height)
 
         # get and display the cell data
@@ -1529,6 +1527,7 @@ class EditableTable(Table):
         self._edit_cell_col_index = col_index
         self._edit_cell_window = edit_cell_window
         edit_cell_window.initial_values = self.get_edit_cell_values()
+        make_modal(edit_cell_window)
 
     def get_edit_cell_values(self) -> str:
         """
