@@ -1239,7 +1239,7 @@ class UEVMGui(tk.Tk):
         # Update btn_first_item and btn_last_item text
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)
-        self._frm_toolbar.entry_current_item_var.set('{:04d}'.format(current_index))
+        self._frm_toolbar.var_entry_current_item.set('{:04d}'.format(current_index))
         self._frm_toolbar.lbl_page_count.config(text=f'/{max_displayed:04d}')
 
     def update_data_source(self) -> None:
@@ -1283,9 +1283,9 @@ class UEVMGui(tk.Tk):
         row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered | {row_count} total'
         if row_number >= 0:
             idx = data_table.get_real_index(row_number)
-            self._frm_control.lbt_image_preview.config(text=f'Image Preview - Row Index {idx} {row_text}')
+            self._frm_control.lbf_image_preview.config(text=f'Image Preview - Row Index {idx} {row_text}')
         else:
-            self._frm_control.lbt_image_preview.config(text=f'No Image Preview {row_text}')
+            self._frm_control.lbf_image_preview.config(text=f'No Image Preview {row_text}')
 
     def reload_data(self) -> None:
         """

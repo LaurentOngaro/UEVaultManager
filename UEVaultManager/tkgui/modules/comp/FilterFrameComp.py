@@ -33,7 +33,7 @@ class FilterFrame(ttk.LabelFrame):
     btn_clear_filters = None
     btn_view_filters = None
     lbl_filters_count = None
-    filters_count_var = None
+    var_filters_count = None
     category = None
     pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}
     grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.W}
@@ -130,8 +130,8 @@ class FilterFrame(ttk.LabelFrame):
 
         cur_row += 1
         cur_col = 0
-        self.filters_count_var = tk.StringVar(value='Filters (0)')
-        self.lbl_filters_count = ttk.Label(self, textvariable=self.filters_count_var)
+        self.var_filters_count = tk.StringVar(value='Filters (0)')
+        self.lbl_filters_count = ttk.Label(self, textvariable=self.var_filters_count)
         self.lbl_filters_count.grid(row=cur_row, column=cur_col, **{'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.E})
         cur_col += 1
         self.btn_add_filters = ttk.Button(self, text="Add to", command=self._add_to_filters)
@@ -314,7 +314,7 @@ class FilterFrame(ttk.LabelFrame):
         state = tk.NORMAL if cond_2 or cond_3 else tk.DISABLED
         self.btn_apply_filters['state'] = state
 
-        self.filters_count_var.set(f'Filters ({filter_count})')
+        self.var_filters_count.set(f'Filters ({filter_count})')
 
     def apply_filters(self) -> None:
         """

@@ -39,51 +39,51 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # lblf_command_options row
         cur_col = 0
         cur_row = 0
-        force_refresh_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('force', False))
-        force_refresh_var.trace_add('write', lambda name, index, mode: gui_g.set_args_force_refresh(force_refresh_var.get()))
-        ck_force_refresh = ttk.Checkbutton(lblf_command_options, text='Force refresh', variable=force_refresh_var)
+        var_force_refresh = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('force', False))
+        var_force_refresh.trace_add('write', lambda name, index, mode: gui_g.set_args_force_refresh(var_force_refresh.get()))
+        ck_force_refresh = ttk.Checkbutton(lblf_command_options, text='Force refresh', variable=var_force_refresh)
         ck_force_refresh.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_command_options row
         cur_row += 1
         cur_col = 0
-        offline_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('offline', False))
-        offline_var.trace_add('write', lambda name, index, mode: gui_g.set_args_offline(offline_var.get()))
-        ck_offline = ttk.Checkbutton(lblf_command_options, text='Offline Mode', variable=offline_var)
+        var_offline = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('offline', False))
+        var_offline.trace_add('write', lambda name, index, mode: gui_g.set_args_offline(var_offline.get()))
+        ck_offline = ttk.Checkbutton(lblf_command_options, text='Offline Mode', variable=var_offline)
         ck_offline.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_command_options row
         cur_row += 1
         cur_col = 0
-        debug_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('debug', False))
-        debug_var.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(debug_var.get()))
-        ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode (CLI)', variable=debug_var)
+        var_debug = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('debug', False))
+        var_debug.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(var_debug.get()))
+        ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode (CLI)', variable=var_debug)
         ck_debug.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_command_options row
         cur_row += 1
         cur_col = 0
-        auth_delete_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('auth_delete', False))
-        auth_delete_var.trace_add('write', lambda name, index, mode: gui_g.set_args_auth_delete(auth_delete_var.get()))
-        ck_auth_delete = ttk.Checkbutton(lblf_command_options, text='Delete auth (login)', variable=auth_delete_var)
+        var_auth_delete = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('auth_delete', False))
+        var_auth_delete.trace_add('write', lambda name, index, mode: gui_g.set_args_auth_delete(var_auth_delete.get()))
+        ck_auth_delete = ttk.Checkbutton(lblf_command_options, text='Delete auth (login)', variable=var_auth_delete)
         ck_auth_delete.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_command_options row
         cur_row += 1
         cur_col = 0
-        delete_metadata_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_metadata', False))
-        delete_metadata_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_metadata(delete_metadata_var.get()))
-        ck_delete_metadata = ttk.Checkbutton(lblf_command_options, text='Delete metadata (cleanup)', variable=delete_metadata_var)
+        var_delete_metadata = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_metadata', False))
+        var_delete_metadata.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_metadata(var_delete_metadata.get()))
+        ck_delete_metadata = ttk.Checkbutton(lblf_command_options, text='Delete metadata (cleanup)', variable=var_delete_metadata)
         ck_delete_metadata.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_command_options row
         cur_row += 1
         cur_col = 0
-        delete_extra_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extra_data', False))
-        delete_extra_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extra_data(delete_extra_data_var.get()))
-        ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete extra data (cleanup)', variable=delete_extra_data_var)
+        var_delete_extra_data = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extra_data', False))
+        var_delete_extra_data.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extra_data(var_delete_extra_data.get()))
+        ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete extra data (cleanup)', variable=var_delete_extra_data)
         ck_delete_extra_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_command_options row
         cur_row += 1
         cur_col = 0
-        delete_scraping_data_var = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_scraping_data', False))
-        delete_scraping_data_var.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_scraping_data(delete_scraping_data_var.get()))
-        ck_delete_scraping_data = ttk.Checkbutton(lblf_command_options, text='Delete scraping data (cleanup)', variable=delete_scraping_data_var)
+        var_delete_scraping_data = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_scraping_data', False))
+        var_delete_scraping_data.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_scraping_data(var_delete_scraping_data.get()))
+        ck_delete_scraping_data = ttk.Checkbutton(lblf_command_options, text='Delete scraping data (cleanup)', variable=var_delete_scraping_data)
         ck_delete_scraping_data.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # Settings for GUI frame
         lblf_gui_settings = ttk.LabelFrame(lblf_options, text='Settings for GUI')
@@ -91,16 +91,16 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # lblf_gui_settings row
         cur_row = 0
         cur_col = 0
-        use_threads_var = tk.BooleanVar(value=gui_g.s.use_threads)
-        use_threads_var.trace_add('write', lambda name, index, mode: gui_g.set_use_threads(use_threads_var.get()))
-        ck_use_threads = ttk.Checkbutton(lblf_gui_settings, text='Use threads', variable=use_threads_var)
+        var_use_threads = tk.BooleanVar(value=gui_g.s.use_threads)
+        var_use_threads.trace_add('write', lambda name, index, mode: gui_g.set_use_threads(var_use_threads.get()))
+        ck_use_threads = ttk.Checkbutton(lblf_gui_settings, text='Use threads', variable=var_use_threads)
         ck_use_threads.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_gui_settings row
         cur_row += 1
         cur_col = 0
-        self.debug_gui_var = tk.BooleanVar(value=gui_g.s.debug_mode)
-        self.debug_gui_var.trace_add('write', lambda name, index, mode: self.update_gui_options())
-        ck_debug_gui = ttk.Checkbutton(lblf_gui_settings, text='Debug mode (GUI)', variable=self.debug_gui_var)
+        self.var_debug_gui = tk.BooleanVar(value=gui_g.s.debug_mode)
+        self.var_debug_gui.trace_add('write', lambda name, index, mode: self.update_gui_options())
+        ck_debug_gui = ttk.Checkbutton(lblf_gui_settings, text='Debug mode (GUI)', variable=self.var_debug_gui)
         ck_debug_gui.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # lblf_gui_settings row
         cur_row += 1
@@ -108,9 +108,9 @@ class UEVMGuiOptionFrame(ttk.Frame):
         lbl_testing_switch = ttk.Label(lblf_gui_settings, text='Testing switch:')
         lbl_testing_switch.grid(row=cur_row, column=cur_col, **grid_fw_options)
         cur_col += 1
-        self.testing_switch_var = tk.IntVar(value=gui_g.s.testing_switch)
-        self.testing_switch_var.trace_add('write', lambda name, index, mode: self.update_gui_options())
-        entry_testing_switch = ttk.Entry(lblf_gui_settings, textvariable=self.testing_switch_var, width=2)
+        self.var_testing_switch = tk.IntVar(value=gui_g.s.testing_switch)
+        self.var_testing_switch.trace_add('write', lambda name, index, mode: self.update_gui_options())
+        entry_testing_switch = ttk.Entry(lblf_gui_settings, textvariable=self.var_testing_switch, width=2)
         entry_testing_switch.grid(row=cur_row, column=cur_col, **grid_fw_options)
         # Folders To scan frame
         lblf_folders_to_scan = ttk.LabelFrame(lblf_options, text='Folders To scan (add/remove)')
@@ -138,14 +138,14 @@ class UEVMGuiOptionFrame(ttk.Frame):
         Update the GUI options.
         """
         try:
-            value = self.testing_switch_var.get()
+            value = self.var_testing_switch.get()
             value = int(value)  # tkinter will raise an error is the value can be converted to an int
         except (ValueError, tk.TclError):
             pass
         else:
             gui_g.s.testing_switch = value
         try:
-            value = self.debug_gui_var.get()
+            value = self.var_debug_gui.get()
             value = bool(value)
         except (ValueError, tk.TclError):
             pass

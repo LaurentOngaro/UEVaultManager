@@ -75,13 +75,13 @@ class JsonProcessingWindow(tk.Toplevel):
             self.container: JsonProcessingWindow = container
             self.processing: bool = False
 
-            self.label = tk.Label(self, text='File Data Processing Window', font=('Helvetica', 16, 'bold'))
-            self.label.pack(pady=10)
+            self.lbl_title = tk.Label(self, text='File Data Processing Window', font=('Helvetica', 16, 'bold'))
+            self.lbl_title.pack(pady=10)
 
-            self.goal_label = tk.Label(
+            self.lbl_goal = tk.Label(
                 self, text='This window processes JSON files and stores some data in a database.', wraplength=350, justify='center'
             )
-            self.goal_label.pack(pady=5)
+            self.lbl_goal.pack(pady=5)
 
             self.frm_inner = tk.Frame(self)
             self.frm_inner.pack(pady=5)
@@ -95,14 +95,14 @@ class JsonProcessingWindow(tk.Toplevel):
             self.progress_bar = ttk.Progressbar(self, mode='determinate')
             self.progress_bar.pack(fill=tk.X, padx=10, pady=15)
 
-            self.result_label = tk.Label(self, text='Result Window: Clic into to copy content to clipboard', fg='green')
-            self.result_label.pack(padx=1, pady=1, anchor=tk.CENTER)
+            self.lbl_result = tk.Label(self, text='Result Window: Clic into to copy content to clipboard', fg='green')
+            self.lbl_result.pack(padx=1, pady=1, anchor=tk.CENTER)
             self.text_result = tk.Text(self, fg='blue', height=8, width=53, font=('Helvetica', 10))
             self.text_result.pack(padx=5, pady=5)
             self.text_result.bind('<Button-1>', self.copy_to_clipboard)
 
-            self.status_label = tk.Label(self, text='', fg='green')
-            self.status_label.pack(padx=5, pady=5)
+            self.lbl_status = tk.Label(self, text='', fg='green')
+            self.lbl_status.pack(padx=5, pady=5)
 
         def copy_to_clipboard(self, _event):
             """
@@ -130,7 +130,7 @@ class JsonProcessingWindow(tk.Toplevel):
             Set the status label.
             :param text: text to set
             """
-            self.status_label.config(text=text)
+            self.lbl_status.config(text=text)
             self.update()
 
         def close_window(self) -> None:

@@ -145,8 +145,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         frm_inner = ttk.Frame(lbtf_quick_edit)
         lbl_desc = ttk.Label(frm_inner, text='Changing the values bellow will update \nthe selected row when losing focus')
         lbl_desc.grid(row=0, column=0, **grid_def_options)
-        bt_open_url = ttk.Button(frm_inner, text='Open Url', command=container.open_asset_url)
-        bt_open_url.grid(row=0, column=1, **grid_def_options)
+        btn_open_url = ttk.Button(frm_inner, text='Open Url', command=container.open_asset_url)
+        btn_open_url.grid(row=0, column=1, **grid_def_options)
         btn_open_folder = ttk.Button(frm_inner, text='Open Folder', command=container.open_asset_folder)
         btn_open_folder.grid(row=0, column=2, **grid_def_options)
         frm_inner.pack()
@@ -231,9 +231,9 @@ class UEVMGuiControlFrame(ttk.Frame):
             click_on_callback=container.on_switch_edit_flag,
             default_content=False
         )
-        lbt_image_preview = ttk.LabelFrame(self, text='Image Preview')
-        lbt_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
-        canvas_image = tk.Canvas(lbt_image_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
+        lbf_image_preview = ttk.LabelFrame(self, text='Image Preview')
+        lbf_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
+        canvas_image = tk.Canvas(lbf_image_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
         canvas_image.pack(side=tk.BOTTOM, expand=True, anchor=tk.CENTER)
         canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
 
@@ -246,7 +246,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.var_entry_data_source_type = var_entry_data_source_type
 
         self.lbtf_quick_edit = lbtf_quick_edit
-        self.lbt_image_preview = lbt_image_preview
+        self.lbf_image_preview = lbf_image_preview
         self.canvas_image = canvas_image
         self.btn_open_folder = btn_open_folder
         self.var_asset_id = var_asset_id

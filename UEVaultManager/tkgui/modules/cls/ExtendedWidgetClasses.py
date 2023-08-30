@@ -281,12 +281,12 @@ class ExtendedCheckButton(ExtendedWidget):
         self._var = tk.BooleanVar(value=bool(self.default_content))
         frm_inner = ttk.Frame(master=master)
         lbl_text = ttk.Label(frm_inner, text='')  # no text bydefault
-        check_label = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
+        lbl_check = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
         lbl_text.pack(side=tk.LEFT)
-        check_label.pack(side=tk.LEFT)
+        lbl_check.pack(side=tk.LEFT)
         self._frm_inner = frm_inner
         self._lbl_text = lbl_text
-        self._lbl_check = check_label
+        self._lbl_check = lbl_check
 
         if label is not None:
             self.set_label(label)
