@@ -298,7 +298,7 @@ def show_progress(
     height=120,
     max_value_l=0,
     show_progress_l=False,
-    show_stop_button_l=False,
+    show_btn_stop_l=False,
     quit_on_close: bool = False,
     function: callable = None,
     function_parameters: dict = None
@@ -311,7 +311,7 @@ def show_progress(
     :param height: The height of the progress window.
     :param max_value_l: The maximum value of the progress bar.
     :param show_progress_l: Whether to show the progress bar.
-    :param show_stop_button_l: Whether to show the stop button.
+    :param show_btn_stop_l: Whether to show the stop button.
     :param function: the function to execute.
     :param function_parameters: the parameters of the function.
     :param quit_on_close: whether to quit the application when the window is closed.
@@ -326,7 +326,7 @@ def show_progress(
             icon=gui_g.s.app_icon_filename,
             width=width,
             height=height,
-            show_stop_button=show_stop_button_l,
+            show_btn_stop=show_btn_stop_l,
             show_progress=show_progress_l,
             max_value=max_value_l,
             quit_on_close=quit_on_close,

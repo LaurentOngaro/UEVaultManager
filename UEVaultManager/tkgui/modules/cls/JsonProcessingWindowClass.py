@@ -83,14 +83,14 @@ class JsonProcessingWindow(tk.Toplevel):
             )
             self.goal_label.pack(pady=5)
 
-            self.button_frame = tk.Frame(self)
-            self.button_frame.pack(pady=5)
-            self.close_button = ttk.Button(self.button_frame, text='Close Window', command=self.close_window)
-            self.close_button.pack(side=tk.RIGHT, padx=5)
-            self.start_button = ttk.Button(self.button_frame, text='Start Processing', command=self.start_processing)
-            self.start_button.pack(side=tk.LEFT, padx=5)
-            self.stop_button = ttk.Button(self.button_frame, text='Stop Processing', command=self.stop_processing, state='disabled')
-            self.stop_button.pack(side=tk.LEFT, padx=5)
+            self.frm_buttons = tk.Frame(self)
+            self.frm_buttons.pack(pady=5)
+            self.btn_close = ttk.Button(self.frm_buttons, text='Close Window', command=self.close_window)
+            self.btn_close.pack(side=tk.RIGHT, padx=5)
+            self.btn_start = ttk.Button(self.frm_buttons, text='Start Processing', command=self.start_processing)
+            self.btn_start.pack(side=tk.LEFT, padx=5)
+            self.btn_stop = ttk.Button(self.frm_buttons, text='Stop Processing', command=self.stop_processing, state='disabled')
+            self.btn_stop.pack(side=tk.LEFT, padx=5)
 
             self.progress_bar = ttk.Progressbar(self, mode='determinate')
             self.progress_bar.pack(fill=tk.X, padx=10, pady=15)
@@ -147,13 +147,13 @@ class JsonProcessingWindow(tk.Toplevel):
 
             if for_start:
                 self.add_result('Processing started...')
-                self.start_button.config(state='disabled')
-                self.stop_button.config(state='normal')
+                self.btn_start.config(state='disabled')
+                self.btn_stop.config(state='normal')
                 self.progress_bar['value'] = 0
             else:
                 self.add_result('Processing stopped.')
-                self.start_button.config(state='normal')
-                self.stop_button.config(state='disabled')
+                self.btn_start.config(state='normal')
+                self.btn_stop.config(state='disabled')
                 self.progress_bar['value'] = 0
             self.update()
 

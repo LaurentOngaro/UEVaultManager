@@ -477,7 +477,7 @@ class UEAssetScraper:
             if self.max_threads > 0:
                 self._threads_count = min(self.max_threads, len(self._urls))
                 # threading processing COULD be stopped by the progress window
-                self.progress_window.show_stop_button()
+                self.progress_window.show_btn_stop()
                 self._thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self._threads_count, thread_name_prefix="Asset_Scaper")
                 futures = {}
                 # for url in self.urls:

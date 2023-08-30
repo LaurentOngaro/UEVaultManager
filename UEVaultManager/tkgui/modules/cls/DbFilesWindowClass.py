@@ -93,14 +93,14 @@ class DbFilesWindowClass(tk.Toplevel):
             self.ck_user_fields = tk.Checkbutton(self, text='Export/Import user fields data assets', variable=self.var_user_fields)
             self.ck_user_fields.pack(fill=tk.X, padx=2, pady=1, anchor=tk.W)
 
-            self.button_frame = tk.Frame(self)
-            self.button_frame.pack(pady=5)
-            self.close_button = ttk.Button(self.button_frame, text='Close Window', command=self.close_window)
-            self.close_button.pack(side=tk.RIGHT, padx=5)
-            self.import_button = ttk.Button(self.button_frame, text='Import from files', command=self.import_data)
-            self.import_button.pack(side=tk.LEFT, padx=5)
-            self.export_button = ttk.Button(self.button_frame, text='Export to files', command=self.export_data)
-            self.export_button.pack(side=tk.LEFT, padx=5)
+            self.frm_buttons = tk.Frame(self)
+            self.frm_buttons.pack(pady=5)
+            self.btn_close = ttk.Button(self.frm_buttons, text='Close Window', command=self.close_window)
+            self.btn_close.pack(side=tk.RIGHT, padx=5)
+            self.btn_import = ttk.Button(self.frm_buttons, text='Import from files', command=self.import_data)
+            self.btn_import.pack(side=tk.LEFT, padx=5)
+            self.btn_export = ttk.Button(self.frm_buttons, text='Export to files', command=self.export_data)
+            self.btn_export.pack(side=tk.LEFT, padx=5)
 
             self.result_label = tk.Label(self, text='Result Window: Clic into to copy content to clipboard', fg='green')
             self.result_label.pack(padx=1, pady=1, anchor=tk.CENTER)
@@ -208,7 +208,11 @@ class DbFilesWindowClass(tk.Toplevel):
             if self.var_user_fields.get():
                 fields = ','.join(self.container.db_handler.user_fields)
                 files += self.container.db_handler.export_to_csv(
-                    self.container.folder_for_csv_files, 'assets', fields=fields, backup_existing=backup_on_export, suffix=self.container._user_fields_suffix
+                    self.container.folder_for_csv_files,
+                    'assets',
+                    fields=fields,
+                    backup_existing=backup_on_export,
+                    suffix=self.container._user_fields_suffix
                 )
 
             self.add_result('Data exported to files:')

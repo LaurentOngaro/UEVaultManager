@@ -689,7 +689,7 @@ class UEVMGui(tk.Tk):
         ):
             return
 
-        pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False, show_stop_button_l=True)
+        pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False, show_btn_stop_l=True)
         data_table = self.editable_table  # shortcut
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
@@ -908,7 +908,7 @@ class UEVMGui(tk.Tk):
                 data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
                 data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         pw.hide_progress_bar()
-        pw.hide_stop_button()
+        pw.hide_btn_stop()
         pw.set_text('Updating the table. Could take a while...')
         pw.update()
         data_table.is_scanning = False
@@ -996,7 +996,7 @@ class UEVMGui(tk.Tk):
             base_text = 'Scraping assets data. Could take a while...'
             if row_count > 1:
                 pw = gui_f.show_progress(
-                    self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_stop_button_l=True
+                    self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True
                 )
             for row_index in row_indexes:
                 row_data = data_table.get_row(row_index, return_as_dict=True)

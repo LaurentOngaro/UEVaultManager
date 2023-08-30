@@ -665,7 +665,7 @@ class AppCore:
                     new_value=0, new_text="Fetching missing metadata...\nIt could take some time. Be patient.", new_max_value=len(fetch_list)
                 )
                 # gui_g.progress_window_ref.hide_progress_bar()
-                # gui_g.progress_window_ref.hide_stop_button()
+                # gui_g.progress_window_ref.hide_btn_stop()
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
@@ -707,7 +707,7 @@ class AppCore:
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         if gui_g.progress_window_ref is not None:
             # gui_g.progress_window_ref.show_progress_bar()  # show progress bar, must be before reset
-            gui_g.progress_window_ref.show_stop_button()
+            gui_g.progress_window_ref.show_btn_stop()
             gui_g.progress_window_ref.reset(new_value=0, new_text="Checking and Fetching assets data...", new_max_value=len(filtered_items))
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
