@@ -601,7 +601,7 @@ class UEVMGui(tk.Tk):
         """
         Remove the selected row from the DataFrame.
         """
-        self.editable_table.del_row()
+        self.editable_table.del_rows()
 
     def search_for_url(self, folder: str, parent: str, check_if_valid: bool = False) -> str:
         """
@@ -694,6 +694,8 @@ class UEVMGui(tk.Tk):
                 'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature',  #
                 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
             ]
+        if gui_g.s.check_asset_folders:
+            self.clean_asset_folders()
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
@@ -1334,6 +1336,8 @@ class UEVMGui(tk.Tk):
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
             self.save_settings()  # save columns order and size
+            if gui_g.s.check_asset_folders:
+                self.clean_asset_folders()
             if self.editable_table.rebuild_data():
                 self.update_controls_and_redraw()
                 self.update_category_var()
@@ -1430,6 +1434,30 @@ class UEVMGui(tk.Tk):
         :param value: the value to set.
         """
         self._frm_control.var_asset_id.set(value)
+
+    def clean_asset_folders(self) -> int:
+        """
+        Delete the assets which folder in 'Origin' does not exist.
+        :return: the number of deleted assets.
+        """
+        data_table = self.editable_table  # shortcut
+        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        mask = df['Origin'].notnull() & df['Origin'].ne('Marketplace') & df['Origin'].ne('nan')
+        df_to_check = df[mask]['Origin']
+        indexes_to_delete = []
+        for row_index, origin in df_to_check.items():
+            if not os.path.exists(origin):
+                indexes_to_delete.append(row_index)
+        count = len(indexes_to_delete)
+        deleted = 0
+        if count:
+            if gui_f.box_yesno(
+                f'{count} assets with a non existing folder have been found.\nDo you want to delete them from the table and the database ?'
+            ):
+                deleted = data_table.del_rows(row_numbers=indexes_to_delete, convert_to_index=False, confirm_dialog=False)
+            if deleted:
+                data_table.save_data()
+        return deleted
 
     def json_processing(self) -> None:
         """

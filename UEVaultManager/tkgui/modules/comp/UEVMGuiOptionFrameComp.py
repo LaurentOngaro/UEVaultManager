@@ -132,6 +132,13 @@ class UEVMGuiOptionFrame(ttk.Frame):
         cur_col += 1
         btn_remove_folder = ttk.Button(lblf_folders_to_scan, text='Remove Folder', command=self.remove_folder_to_scan)
         btn_remove_folder.grid(row=cur_row, column=cur_col, **grid_fw_options)
+        # lblf_folders_to_scan row
+        cur_row += 1
+        cur_col = 0
+        var_check_asset_folders = tk.BooleanVar(value=gui_g.s.check_asset_folders)
+        var_check_asset_folders.trace_add('write', lambda name, index, mode: gui_g.set_check_asset_folders(var_check_asset_folders.get()))
+        ck_check_asset_folders = ttk.Checkbutton(lblf_folders_to_scan, text='Check Asset Folders', variable=var_check_asset_folders)
+        ck_check_asset_folders.grid(row=cur_row, column=cur_col, **grid_fw_options)
 
     def update_gui_options(self):
         """

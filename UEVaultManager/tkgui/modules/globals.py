@@ -105,6 +105,14 @@ def set_use_threads(value: bool) -> None:
     s.use_threads = value
 
 
+def set_check_asset_folders(value: bool) -> None:
+    """
+    Set the value of the settings check_asset_folders. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
+    """
+    s.check_asset_folders = value
+
+
 # def set_testing_switch_var(value: bool) -> None:
 #   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
 

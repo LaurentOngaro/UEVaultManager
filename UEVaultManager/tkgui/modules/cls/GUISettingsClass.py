@@ -423,6 +423,17 @@ class GUISettings:
     # used as property for keeping transparent access
     assets_order_col = property(get_assets_order_col, set_assets_order_col)
 
+    def get_check_asset_folders(self) -> bool:
+        """ Getter for check_asset_folders """
+        return gui_fn.convert_to_bool(self.config_vars['check_asset_folders'])
+
+    def set_check_asset_folders(self, value):
+        """ Setter for check_asset_folders """
+        self.config_vars['check_asset_folders'] = value
+
+    # used as property for keeping transparent access
+    check_asset_folders = property(get_check_asset_folders, set_check_asset_folders)
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -551,6 +562,11 @@ class GUISettings:
                 'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column used to order the assets list from the database.',
                 'value': 'date_added_in_db'
             },
+            'check_asset_folders': {
+                'comment': 'Set to True to check and clean invalid asset folders when scraping or rebuilding data for UE assets',
+                'value': 'True'
+            },
+
         }
 
         has_changed = False
@@ -598,6 +614,7 @@ class GUISettings:
             'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
             'testing_switch': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'testing_switch')),
             'assets_order_col': self.config.get('UEVaultManager', 'assets_order_col'),
+            'check_asset_folders': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'check_asset_folders')),
         }
         return config_vars
 

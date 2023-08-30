@@ -641,22 +641,27 @@ class EditableTable(Table):
         table_row.fillna(gui_g.s.empty_cell, inplace=True)
         return table_row, new_index
 
-    def del_row(self, row_numbers=None) -> bool:
+    def del_rows(self, row_numbers=None, convert_to_index=True, confirm_dialog=True) -> bool:
         """
-        Delete the selected row in the table.
+        Delete rows from the table.
         :param row_numbers: The row to delete. If None, the selected row is deleted.
+        :param convert_to_index: True to convert the row number to the real index, False otherwise.
+        :param confirm_dialog: True to display a confirmation dialog, False otherwise.
         """
         if row_numbers is None:
             row_numbers = self.multiplerowlist
-        index_to_delete = []
-        number_deleted = len(row_numbers)
-        asset_str = f'{number_deleted} rows' if number_deleted > 1 else f' row #{row_numbers[0] + 1}'
-        if number_deleted and box_yesno(f'Are you sure you want to delete {asset_str}? '):
+        if isinstance(row_numbers, list):
+            asset_str = f'{len(row_numbers)} rows'
             row_numbers.sort(reverse=True)  # delete from the end to the start to avoid index change
+        else:
+            asset_str = f' row #{row_numbers + 1}'
+            row_numbers = [row_numbers]
+        if not confirm_dialog or box_yesno(f'Are you sure you want to delete {asset_str}? '):
+            index_to_delete = []
             for row_number in row_numbers:
                 df = self.get_data()
                 asset_id = 'NA'
-                idx = self.get_real_index(row_number, add_page_offset=True)
+                idx = self.get_real_index(int(row_number), add_page_offset=True) if convert_to_index else row_number
                 if 0 <= idx <= len(df):
                     try:
                         asset_id = df.at[idx, 'Asset_id']  # at checked
@@ -685,6 +690,7 @@ class EditableTable(Table):
             self.must_save = True
             self.selectNone()
             self.update_index_copy_column()
+            number_deleted = len(index_to_delete)
             cur_row = self.getSelectedRow()
             if cur_row < number_deleted:
                 # move to the next row
