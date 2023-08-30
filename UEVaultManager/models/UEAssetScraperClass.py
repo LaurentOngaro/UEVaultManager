@@ -16,6 +16,7 @@ from threading import current_thread
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult, is_asset_obsolete
 from UEVaultManager.core import default_datetime_format
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
@@ -51,7 +52,7 @@ class UEAssetScraper:
     _files_count: int = 0
     _thread_executor = None
     _scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
-    _db_name: str = os.path.join(gui_g.s.scraping_folder, 'assets.db')
+    _db_name: str = path_join(gui_g.s.scraping_folder, 'assets.db')
     _scraped_ids = []  # store IDs of all items
     _owned_asset_ids = []  # store IDs of all owned items
     _urls = []  # list of all urls to scrap
@@ -536,7 +537,7 @@ class UEAssetScraper:
                 filename += '_' + str(self.start)
                 filename += '_' + str(self.start + self.assets_per_page)
             filename += '.json'
-        filename = os.path.join(folder, filename)
+        filename = path_join(folder, filename)
         try:
             with open(filename, 'w') as fh:
                 if is_json:
@@ -570,7 +571,7 @@ class UEAssetScraper:
         for filename in files:
             if filename.endswith('.json') and filename != self._last_run_filename:
                 # self._log_debug(f'Loading {filename}')
-                with open(os.path.join(folder, filename), 'r') as fh:
+                with open(path_join(folder, filename), 'r') as fh:
                     try:
                         json_data = json.load(fh)
                     except json.decoder.JSONDecodeError as error:
@@ -595,7 +596,7 @@ class UEAssetScraper:
             'items_count': len(self._scraped_data),
             'scraped_ids': self._scraped_ids if self.store_ids else ''
         }
-        filename = os.path.join(folder, self._last_run_filename)
+        filename = path_join(folder, self._last_run_filename)
         with open(filename, 'w') as fh:
             json.dump(content, fh)
 
@@ -644,7 +645,7 @@ class UEAssetScraper:
         content['scraped_ids'] = self._scraped_ids if self.store_ids else ''
         if save_last_run_file:
             folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
-            filename = os.path.join(folder, self._last_run_filename)
+            filename = path_join(folder, self._last_run_filename)
             with open(filename, 'w') as fh:
                 json.dump(content, fh)
 

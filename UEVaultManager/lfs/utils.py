@@ -22,3 +22,12 @@ def get_dir_size(path: str) -> int:
     :return:
     """
     return sum(f.stat().st_size for f in Path(path).glob('**/*') if f.is_file())
+
+
+def path_join(*paths):
+    """
+    Join multiple paths together. Make the return value unified
+    :param paths: The paths to join.
+    :return: The joined paths.
+    """
+    return Path(*paths).resolve().as_posix()

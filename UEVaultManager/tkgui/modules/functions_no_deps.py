@@ -13,6 +13,8 @@ import uuid
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
 
+from UEVaultManager.lfs.utils import path_join
+
 
 def log(message: str) -> None:
     """
@@ -44,9 +46,7 @@ def path_from_relative_to_absolute(path: str) -> str:
         current_script_path = os.path.abspath(__file__)
         current_script_directory = os.path.dirname(current_script_path)
 
-    absolute_path = os.path.join(current_script_directory, path)
-    absolute_path = os.path.abspath(absolute_path)
-    # messagebox.showinfo('info', 'absolute_path: ' + absolute_path)
+    absolute_path = path_join(current_script_directory, path)
     return absolute_path
 
 
@@ -166,7 +166,7 @@ def create_empty_file(file_path: str) -> (bool, str):
     """
     path, file = os.path.split(file_path)
     is_valid, path = check_and_get_folder(path)
-    file_path = os.path.join(path, file)
+    file_path = path_join(path, file)
     open(file_path, 'w').close()
     return is_valid, file_path
 
@@ -186,7 +186,7 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
             is_valid = False
             log(f'Error while creating the directory {path}: {e}')
             if home_dir := os.environ.get('XDG_CONFIG_HOME'):
-                path = os.path.join(home_dir, 'UEVaultManager')
+                path = path_join(home_dir, 'UEVaultManager')
             else:
                 path = os.path.expanduser('~/.config/UEVaultManager')
             if not os.path.exists(path):

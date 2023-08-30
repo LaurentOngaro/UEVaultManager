@@ -6,6 +6,8 @@ implementation for:
 import configparser
 import os
 
+from UEVaultManager.lfs.utils import path_join
+
 
 class EPCLFS:
     """
@@ -37,4 +39,4 @@ class EPCLFS:
         if not os.path.isdir(self.appdata_path):
             raise ValueError('EGS AppData path does not exist')
 
-        self.config.read(os.path.join(self.appdata_path, 'GameUserSettings.ini'), encoding='utf-8')
+        self.config.read(path_join(self.appdata_path, 'GameUserSettings.ini'), encoding='utf-8')

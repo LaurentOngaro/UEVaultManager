@@ -17,6 +17,7 @@ import requests
 from PIL import Image, ImageTk
 from termcolor import colored
 
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.tkgui.modules import globals as gui_g
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 
@@ -191,7 +192,7 @@ def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
         # noinspection DuplicatedCode
         if not os.path.isdir(gui_g.s.cache_folder):
             os.mkdir(gui_g.s.cache_folder)
-        image_filename = os.path.join(gui_g.s.cache_folder, os.path.basename(image_url))
+        image_filename = path_join(gui_g.s.cache_folder, os.path.basename(image_url))
         # Check if the image is already cached
         if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < gui_g.s.image_cache_max_time:
             # Load the image from the cache folder

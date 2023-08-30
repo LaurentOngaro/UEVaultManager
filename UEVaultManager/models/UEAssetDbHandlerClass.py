@@ -16,6 +16,7 @@ from faker import Faker
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.core import default_datetime_format
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
@@ -1089,7 +1090,7 @@ if __name__ == "__main__":
     read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
 
     db_folder = path_from_relative_to_absolute('../../../scraping/')
-    db_name = os.path.join(db_folder, 'assets.db')
+    db_name = path_join(db_folder, 'assets.db')
     check_and_create_path(db_name)
     asset_handler = UEAssetDbHandler(database_name=db_name, reset_database=(clean_data and not read_data_only))
 

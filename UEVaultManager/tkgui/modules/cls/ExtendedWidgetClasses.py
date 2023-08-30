@@ -9,11 +9,11 @@ Implementation for:
 - ExtendedButton: extended button widget.
 """
 import inspect
-import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter.font import nametofont
 
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.tkgui.modules.functions import log_warning
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
 from UEVaultManager.tkgui.modules.types import WidgetType
@@ -275,8 +275,8 @@ class ExtendedCheckButton(ExtendedWidget):
         # by default , images are searched in a folder named 'statics' in the directory of this file
         if not images_folder:
             images_folder = path_from_relative_to_absolute('./assets/')
-        self._img_checked = tk.PhotoImage(file=os.path.join(images_folder, 'checked_16.png'))  # Path to the checked image
-        self._img_uncheckked = tk.PhotoImage(file=os.path.join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
+        self._img_checked = tk.PhotoImage(file=path_join(images_folder, 'checked_16.png'))  # Path to the checked image
+        self._img_uncheckked = tk.PhotoImage(file=path_join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
         self.widget_type = WidgetType.CHECKBUTTON
         self._var = tk.BooleanVar(value=bool(self.default_content))
         frm_inner = ttk.Frame(master=master)

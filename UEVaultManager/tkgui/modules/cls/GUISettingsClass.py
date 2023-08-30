@@ -13,6 +13,7 @@ from termcolor import colored
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __codename__, __name__, __version__
 from UEVaultManager.lfs.utils import clean_filename
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.config import AppConf
 from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
@@ -53,15 +54,15 @@ class GUISettings:
         # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
         self.assets_folder: str = gui_fn.path_from_relative_to_absolute('../../assets')
 
-        self.app_icon_filename: str = os.path.join(self.assets_folder, 'main.ico')
-        self.default_image_filename: str = os.path.join(self.assets_folder, 'UEVM_200x200.png')
+        self.app_icon_filename: str = path_join(self.assets_folder, 'main.ico')
+        self.default_image_filename: str = path_join(self.assets_folder, 'UEVM_200x200.png')
 
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename: str = self.config_vars['last_opened_file']
         else:
-            self.csv_filename: str = os.path.join(self.results_folder, 'list.csv')
+            self.csv_filename: str = path_join(self.results_folder, 'list.csv')
 
-        self.sqlite_filename: str = os.path.join(self.scraping_folder, 'assets.db')
+        self.sqlite_filename: str = path_join(self.scraping_folder, 'assets.db')
 
         self.app_monitor: int = 1
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
@@ -76,10 +77,10 @@ class GUISettings:
         # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure. MUST BE LOWERCASE
         self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')
 
-        self.assets_data_folder: str = os.path.join(self.scraping_folder, 'assets', 'marketplace')
-        self.owned_assets_data_folder: str = os.path.join(self.scraping_folder, 'assets', 'owned')
-        self.assets_global_folder: str = os.path.join(self.scraping_folder, 'global')
-        self.assets_csv_files_folder: str = os.path.join(self.scraping_folder, 'csv')
+        self.assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'marketplace')
+        self.owned_assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'owned')
+        self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
+        self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
 
         self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
@@ -411,16 +412,16 @@ class GUISettings:
     # used as property for keeping transparent access
     testing_switch = property(get_testing_switch, set_testing_switch)
 
-    def get_assets_db_order(self) -> int:
-        """ Getter for assets_db_order """
-        return self.config_vars['assets_db_order']
+    def get_assets_order_col(self) -> int:
+        """ Getter for assets_order_col """
+        return self.config_vars['assets_order_col']
 
-    def set_assets_db_order(self, value):
-        """ Setter for assets_db_order """
-        self.config_vars['assets_db_order'] = value
+    def set_assets_order_col(self, value):
+        """ Setter for assets_order_col """
+        self.config_vars['assets_order_col'] = value
 
     # used as property for keeping transparent access
-    assets_db_order = property(get_assets_db_order, set_assets_db_order)
+    assets_order_col = property(get_assets_order_col, set_assets_order_col)
 
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
@@ -429,7 +430,7 @@ class GUISettings:
         :param config_file: the path to the config file to use.
         """
         if config_path := os.environ.get('XDG_CONFIG_HOME'):
-            self.path = os.path.join(config_path, 'UEVaultManager')
+            self.path = path_join(config_path, 'UEVaultManager')
         else:
             self.path = os.path.expanduser('~/.config/UEVaultManager')
         if not os.path.isdir(self.path):
@@ -438,10 +439,10 @@ class GUISettings:
             if os.path.exists(config_file):
                 self.config_file_gui = os.path.abspath(config_file)
             else:
-                self.config_file_gui = os.path.join(self.path, clean_filename(config_file))
+                self.config_file_gui = path_join(self.path, clean_filename(config_file))
             log_info(f'UEVMGui is using non-default config file "{self.config_file_gui}"')
         else:
-            self.config_file_gui = os.path.join(self.path, 'config_gui.ini')
+            self.config_file_gui = path_join(self.path, 'config_gui.ini')
 
         # try loading config
         try:
@@ -543,15 +544,13 @@ class GUISettings:
             },
             'testing_switch': {
                 'comment':
-                'DEV ONLY! NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING: value that can be changed in live to switch some behaviours whithout quitting.',
+                'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviours whithout quitting.',
                 'value': 0
             },
-            'assets_db_order': {
-                'comment':
-                    'DEV ONLY! NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING: where clause used when gettings the assets list from the database.',
-                'value': '" ORDER BY date_added_in_db DESC"'
+            'assets_order_col': {
+                'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column used to order the assets list from the database.',
+                'value': 'date_added_in_db'
             },
-
         }
 
         has_changed = False
@@ -598,7 +597,7 @@ class GUISettings:
             'use_threads': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_threads')),
             'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
             'testing_switch': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'testing_switch')),
-            'assets_db_order': self.config.get('UEVaultManager', 'assets_db_order'),
+            'assets_order_col': self.config.get('UEVaultManager', 'assets_order_col'),
         }
         return config_vars
 
@@ -628,7 +627,7 @@ class GUISettings:
                 log_info(
                     f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
                 )
-                os.rename(self.config_file_gui, os.path.join(os.path.dirname(self.config_file_gui), new_filename))
+                os.rename(self.config_file_gui, path_join(os.path.dirname(self.config_file_gui), new_filename))
 
         with open(self.config_file_gui, 'w') as cf:
             self.config.write(cf)

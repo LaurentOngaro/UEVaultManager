@@ -11,6 +11,7 @@ from time import time
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import clean_filename
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.app import *
 from UEVaultManager.models.config import AppConf
 from UEVaultManager.tkgui.modules.functions import create_file_backup
@@ -27,7 +28,7 @@ class UEVMLFS:
         self.log = logging.getLogger('UEVMLFS')
 
         if config_path := os.environ.get('XDG_CONFIG_HOME'):
-            self.path = os.path.join(config_path, 'UEVaultManager')
+            self.path = path_join(config_path, 'UEVaultManager')
         else:
             self.path = os.path.expanduser('~/.config/UEVaultManager')
 
@@ -61,41 +62,41 @@ class UEVMLFS:
             if os.path.exists(config_file):
                 self.config_file = os.path.abspath(config_file)
             else:
-                self.config_file = os.path.join(self.path, clean_filename(config_file))
+                self.config_file = path_join(self.path, clean_filename(config_file))
             self.log.info(f'UEVMLFS is using non-default config file "{self.config_file}"')
         else:
-            self.config_file = os.path.join(self.path, 'config.ini')
+            self.config_file = path_join(self.path, 'config.ini')
 
         # ensure folders exist.
 
         for f in ['', self.manifests_folder, self.metadata_folder, self.tmp_folder, self.extra_folder]:
-            if not os.path.exists(os.path.join(self.path, f)):
-                os.makedirs(os.path.join(self.path, f))
+            if not os.path.exists(path_join(self.path, f)):
+                os.makedirs(path_join(self.path, f))
 
         # if "old" folder exists migrate files and remove it
-        if os.path.exists(os.path.join(self.path, self.manifests_folder, 'old')):
+        if os.path.exists(path_join(self.path, self.manifests_folder, 'old')):
             self.log.info('Migrating manifest files from old folders to new, please wait...')
             # remove not versioned manifest files
-            for _f in os.listdir(os.path.join(self.path, self.manifests_folder)):
+            for _f in os.listdir(path_join(self.path, self.manifests_folder)):
                 if '.manifest' not in _f:
                     continue
                 if '_' not in _f or (_f.startswith('UE_') and _f.count('_') < 2):
                     self.log.debug(f'Deleting "{_f}" ...')
-                    os.remove(os.path.join(self.path, self.manifests_folder, _f))
+                    os.remove(path_join(self.path, self.manifests_folder, _f))
 
             # move files from "old" to the base folder
-            for _f in os.listdir(os.path.join(self.path, self.manifests_folder, 'old')):
+            for _f in os.listdir(path_join(self.path, self.manifests_folder, 'old')):
                 try:
                     self.log.debug(f'Renaming "{_f}"')
-                    os.rename(os.path.join(self.path, self.manifests_folder, 'old', _f), os.path.join(self.path, self.manifests_folder, _f))
+                    os.rename(path_join(self.path, self.manifests_folder, 'old', _f), path_join(self.path, self.manifests_folder, _f))
                 except Exception as error:
                     self.log.warning(f'Renaming manifest file "{_f}" failed: {error!r}')
 
             # remove "old" folder
             try:
-                os.removedirs(os.path.join(self.path, self.manifests_folder, 'old'))
+                os.removedirs(path_join(self.path, self.manifests_folder, 'old'))
             except Exception as error:
-                self.log.warning(f'Removing "{os.path.join(self.path, "manifests", "old")}" folder failed: '
+                self.log.warning(f'Removing "{path_join(self.path, "manifests", "old")}" folder failed: '
                                  f'{error!r}, please remove manually')
 
         # try loading config
@@ -174,18 +175,18 @@ class UEVMLFS:
 
         # load existing app metadata
         _meta = None
-        for gm_file in os.listdir(os.path.join(self.path, 'metadata')):
+        for gm_file in os.listdir(path_join(self.path, 'metadata')):
             try:
-                _meta = json.load(open(os.path.join(self.path, 'metadata', gm_file)))
+                _meta = json.load(open(path_join(self.path, 'metadata', gm_file)))
                 self.assets_metadata[_meta['app_name']] = _meta
             except Exception as error:
                 self.log.debug(f'Loading asset meta file "{gm_file}" failed: {error!r}')
 
         # done when asset metadata is parsed to allow filtering
         # load existing app extra data
-        # for gm_file in os.listdir(os.path.join(self.path, self.extra_folder)):
+        # for gm_file in os.listdir(path_join(self.path, self.extra_folder)):
         #    try:
-        #        _extra = json.load(open(os.path.join(self.path, self.extra_folder, gm_file)))
+        #        _extra = json.load(open(path_join(self.path, self.extra_folder, gm_file)))
         #        self._assets_extra_data[_extra['asset_name']] = _extra
         #    except Exception as error:
         #        self.log.debug(f'Loading asset extra file "{gm_file}" failed: {error!r}')
@@ -194,7 +195,7 @@ class UEVMLFS:
         self.aliases = dict()
         if not self.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False):
             try:
-                _j = json.load(open(os.path.join(self.path, 'aliases.json')))
+                _j = json.load(open(path_join(self.path, 'aliases.json')))
                 for app_name, aliases in _j.items():
                     for alias in aliases:
                         self.aliases[alias] = app_name
@@ -211,7 +212,7 @@ class UEVMLFS:
             return self._user_data
 
         try:
-            self._user_data = json.load(open(os.path.join(self.path, 'user.json')))
+            self._user_data = json.load(open(path_join(self.path, 'user.json')))
             return self._user_data
         except Exception as error:
             self.log.debug(f'Failed to load user data: {error!r}')
@@ -227,15 +228,15 @@ class UEVMLFS:
             raise ValueError('Userdata is none!')
 
         self._user_data = userdata
-        json.dump(userdata, open(os.path.join(self.path, 'user.json'), 'w'), indent=2, sort_keys=True)
+        json.dump(userdata, open(path_join(self.path, 'user.json'), 'w'), indent=2, sort_keys=True)
 
     def invalidate_userdata(self) -> None:
         """
         Invalidate the user data.
         """
         self._user_data = None
-        if os.path.exists(os.path.join(self.path, 'user.json')):
-            os.remove(os.path.join(self.path, 'user.json'))
+        if os.path.exists(path_join(self.path, 'user.json')):
+            os.remove(path_join(self.path, 'user.json'))
 
     @property
     def assets(self):
@@ -245,7 +246,7 @@ class UEVMLFS:
         """
         if self._assets is None:
             try:
-                tmp = json.load(open(os.path.join(self.path, 'assets.json')))
+                tmp = json.load(open(path_join(self.path, 'assets.json')))
                 self._assets = {k: [AppAsset.from_json(j) for j in v] for k, v in tmp.items()}
             except Exception as error:
                 self.log.debug(f'Failed to load assets data: {error!r}')
@@ -267,7 +268,7 @@ class UEVMLFS:
             {
                 platform: [a.__dict__ for a in assets] for platform, assets in self._assets.items()
             },
-            open(os.path.join(self.path, 'assets.json'), 'w'),
+            open(path_join(self.path, 'assets.json'), 'w'),
             indent=2,
             sort_keys=True
         )
@@ -300,8 +301,8 @@ class UEVMLFS:
             if not os.path.isdir(folder):
                 continue
             for f in os.listdir(folder):
-                file_name = os.path.join(folder, f)
-                file_name = os.path.abspath(file_name)
+                file_name = path_join(folder, f)
+                # file_name = os.path.abspath(file_name)
                 app_name, file_ext = os.path.splitext(f)
                 file_ext = file_ext.lower()
                 file_is_ok = (file_name_to_keep is None or app_name not in file_name_to_keep)
@@ -336,7 +337,7 @@ class UEVMLFS:
         """
         json_meta = meta.__dict__
         self.assets_metadata[app_name] = json_meta
-        meta_file = os.path.join(self.path, 'metadata', f'{app_name}.json')
+        meta_file = path_join(self.path, 'metadata', f'{app_name}.json')
         json.dump(json_meta, open(meta_file, 'w'), indent=2, sort_keys=True)
 
     def delete_item_meta(self, app_name: str) -> None:
@@ -348,7 +349,7 @@ class UEVMLFS:
             raise ValueError(f'Item {app_name} does not exist in metadata DB!')
 
         del self.assets_metadata[app_name]
-        meta_file = os.path.join(self.path, 'metadata', f'{app_name}.json')
+        meta_file = path_join(self.path, 'metadata', f'{app_name}.json')
         if os.path.exists(meta_file):
             os.remove(meta_file)
 
@@ -360,10 +361,10 @@ class UEVMLFS:
         """
         gm_file = app_name + '.json'
         extra = self.assets_extra_data.get(app_name, None)
-        extra_file = os.path.join(self.path, self.extra_folder, f'{app_name}.json')
+        extra_file = path_join(self.path, self.extra_folder, f'{app_name}.json')
         if os.path.exists(extra_file):
             try:
-                extra = json.load(open(os.path.join(self.path, self.extra_folder, gm_file)))
+                extra = json.load(open(path_join(self.path, self.extra_folder, gm_file)))
                 self.assets_extra_data[extra['asset_name']] = extra
             except json.decoder.JSONDecodeError:
                 self.log.warning(f'Failed to load extra data for {app_name}!. Deleting file...')
@@ -382,7 +383,7 @@ class UEVMLFS:
         :param extra: The extra data.
         :param update_global_dict: Update the global dict with the new data.
         """
-        extra_file = os.path.join(self.path, self.extra_folder, f'{app_name}.json')
+        extra_file = path_join(self.path, self.extra_folder, f'{app_name}.json')
         self.log.debug(f'--- SAVING {len(extra)} extra data for {app_name} in {extra_file}')
         json.dump(extra, open(extra_file, 'w'), indent=2, sort_keys=True)
         if update_global_dict:
@@ -396,7 +397,7 @@ class UEVMLFS:
         """
         if update_global_dict and self.assets_extra_data.get(app_name):
             del self.assets_extra_data[app_name]
-        extra_file = os.path.join(self.path, self.extra_folder, f'{app_name}.json')
+        extra_file = path_join(self.path, self.extra_folder, f'{app_name}.json')
         if os.path.exists(extra_file):
             os.remove(extra_file)
 
@@ -412,7 +413,7 @@ class UEVMLFS:
         Delete all the files in the tmp folder.
         :return: The size of the deleted files.
         """
-        folder = os.path.join(self.path, self.tmp_folder)
+        folder = path_join(self.path, self.tmp_folder)
         return self.delete_folder_content(folder)
 
     def clean_cache_data(self) -> int:
@@ -428,7 +429,7 @@ class UEVMLFS:
         :param app_names_to_keep: The list of app names to keep.
         :return: The size of the deleted files.
         """
-        folder = os.path.join(self.path, self.metadata_folder)
+        folder = path_join(self.path, self.metadata_folder)
         return self.delete_folder_content(folder, file_name_to_keep=app_names_to_keep)
 
     def clean_extra(self, app_names_to_keep: list) -> int:
@@ -437,14 +438,14 @@ class UEVMLFS:
         :param app_names_to_keep: The list of app names to keep.
         :return: The size of the deleted files.
         """
-        folder = os.path.join(self.path, self.extra_folder)
+        folder = path_join(self.path, self.extra_folder)
         return self.delete_folder_content(folder, file_name_to_keep=app_names_to_keep)
 
     def clean_manifests(self) -> int:
         """
         Delete all the metadata files that are not in the app_names_to_keep list.
         """
-        folder = os.path.join(self.path, self.manifests_folder)
+        folder = path_join(self.path, self.manifests_folder)
         return self.delete_folder_content(folder)
 
     def clean_logs_and_backups(self) -> int:
@@ -486,7 +487,7 @@ class UEVMLFS:
         if self._update_info:
             return self._update_info
         try:
-            self._update_info = json.load(open(os.path.join(self.path, 'version.json')))
+            self._update_info = json.load(open(path_join(self.path, 'version.json')))
         except Exception as error:
             self.log.debug(f'Failed to load cached update data: {error!r}')
             self._update_info = dict(last_update=0, data=None)
@@ -501,7 +502,7 @@ class UEVMLFS:
         if not version_data:
             return
         self._update_info = dict(last_update=time(), data=version_data)
-        json.dump(self._update_info, open(os.path.join(self.path, 'version.json'), 'w'), indent=2, sort_keys=True)
+        json.dump(self._update_info, open(path_join(self.path, 'version.json'), 'w'), indent=2, sort_keys=True)
 
     def get_assets_cache_info(self) -> dict:
         """
@@ -512,7 +513,7 @@ class UEVMLFS:
             return self._assets_cache_info
 
         try:
-            self._assets_cache_info = json.load(open(os.path.join(self.path, 'assets_cache_info.json')))
+            self._assets_cache_info = json.load(open(path_join(self.path, 'assets_cache_info.json')))
         except Exception as error:
             self.log.debug(f'Failed to UE assets last update data: {error!r}')
             self._assets_cache_info = dict(last_update=0, ue_assets_count=0)
@@ -528,4 +529,4 @@ class UEVMLFS:
         :return:
         """
         self._assets_cache_info = dict(last_update=last_update, ue_assets_count=ue_assets_count)
-        json.dump(self._assets_cache_info, open(os.path.join(self.path, 'assets_cache_info.json'), 'w'), indent=2, sort_keys=True)
+        json.dump(self._assets_cache_info, open(path_join(self.path, 'assets_cache_info.json'), 'w'), indent=2, sort_keys=True)

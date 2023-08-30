@@ -22,6 +22,7 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import GrabResult
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.DbFilesWindowClass import DbFilesWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
@@ -651,7 +652,7 @@ class UEVMGui(tk.Tk):
             if gui_f.box_yesno(
                 f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
             ):
-                content_folder = os.path.join(parent_folder, content_folder_name)
+                content_folder = path_join(parent_folder, content_folder_name)
                 if not os.path.isdir(content_folder):
                     os.makedirs(content_folder, exist_ok=True)
                     for entry_p in os.scandir(parent_folder):
@@ -759,7 +760,7 @@ class UEVMGui(tk.Tk):
                             if filename_lower == 'manifest' or extension_lower in gui_g.s.ue_valid_file_content:
                                 path = full_folder
                                 has_valid_folder_inside = any(
-                                    os.path.isdir(os.path.join(full_folder, folder_inside)) for folder_inside in gui_g.s.ue_valid_manifest_content
+                                    os.path.isdir(path_join(full_folder, folder_inside)) for folder_inside in gui_g.s.ue_valid_manifest_content
                                 )
                                 if filename_lower == 'manifest':
                                     manifest_is_valid = False

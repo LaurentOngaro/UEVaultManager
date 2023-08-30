@@ -11,6 +11,7 @@ from tkinter import messagebox
 from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.tkgui.modules.functions import make_modal
 
 
@@ -201,7 +202,7 @@ class JsonProcessingWindow(tk.Toplevel):
             self.control_frame.activate_processing(False)
             return
 
-        file_paths = [os.path.join(folder, filename) for filename in os.listdir(folder) if filename.endswith('.json')]
+        file_paths = [path_join(folder, filename) for filename in os.listdir(folder) if filename.endswith('.json')]
         if not file_paths:
             self.control_frame.activate_processing(False)
             return

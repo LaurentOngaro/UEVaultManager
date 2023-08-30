@@ -14,6 +14,7 @@ from queue import Empty
 from threading import Condition, Thread
 
 from UEVaultManager.downloader.mp.workers import DLWorker, FileWorker
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.downloading import *
 from UEVaultManager.models.manifest import Manifest, ManifestComparison
 
@@ -38,7 +39,7 @@ class DLManager(Process):
 
         self.base_url = base_url
         self.dl_dir = download_dir
-        self.cache_dir = cache_dir or os.path.join(download_dir, '.cache')
+        self.cache_dir = cache_dir or path_join(download_dir, '.cache')
 
         # All the queues!
         self.logging_queue = None
@@ -129,7 +130,7 @@ class DLManager(Process):
 
                 for line in open(self.resume_file, encoding='utf-8').readlines():
                     file_hash, _, filename = line.strip().partition(':')
-                    _p = os.path.join(self.dl_dir, filename)
+                    _p = path_join(self.dl_dir, filename)
                     if not os.path.exists(_p):
                         self.log.debug(f'File does not exist but is in resume file: "{_p}"')
                         missing += 1
