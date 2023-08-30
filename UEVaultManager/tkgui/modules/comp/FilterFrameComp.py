@@ -96,7 +96,7 @@ class FilterFrame(ttk.LabelFrame):
         """
         columns_to_list = self.data_func().columns.to_list()
         columns_to_list.insert(0, self.value_for_all)
-
+        # new row
         cur_row = 0
         cur_col = 0
         lbl_value = ttk.Label(self, text='Select filter')
@@ -107,27 +107,25 @@ class FilterFrame(ttk.LabelFrame):
         cur_col += 3
         lbl_value = ttk.Label(self, text='that contains ou equals')
         lbl_value.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
-
+        # new row
         cur_row += 1
         cur_col = 0
         self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly', width=14)
         self.cb_quick_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.quick_filter())
         self.cb_quick_filter.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_quick_filter))
-
         cur_col += 1
         self.cb_col_name = ttk.Combobox(self, values=columns_to_list, state='readonly', width=18)
         self.cb_col_name.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         self.cb_col_name.bind('<<ComboboxSelected>>', lambda event: self._update_filter_widgets())
         self.cb_col_name.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_col_name))
-
         cur_col += 3
         self.frm_widgets = ttk.Frame(self)
         # widget dynamically created based on the dtype of the selected column in _update_filter_widgets()
         self.filter_widget = ttk.Entry(self.frm_widgets, state='disabled')
         self.filter_widget.pack(ipadx=1, ipady=1)
         self.frm_widgets.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
-
+        # new row
         cur_row += 1
         cur_col = 0
         self.var_filters_count = tk.StringVar(value='Filters (0)')

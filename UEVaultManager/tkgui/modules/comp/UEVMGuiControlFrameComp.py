@@ -34,18 +34,19 @@ class UEVMGuiControlFrame(ttk.Frame):
         grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.SE}
         grid_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0}  # no padding
         # pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
-        grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
+        grid_ew_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
         lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
         lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
-
+        # content frame
         lblf_content = ttk.LabelFrame(self, text='Content')
         lblf_content.pack(**lblf_def_options)
-        cur_col = 0
-        cur_row = 0
         max_col = 5
-        # lblf_files row
+        cur_row = -1
+        # new row
+        cur_row += 1
+        cur_col = 0
         lbl_data_source = ttk.Label(lblf_content, text='Data Source: ')
-        lbl_data_source.grid(row=cur_row, column=0, columnspan=3, **grid_fw_options)
+        lbl_data_source.grid(row=cur_row, column=0, columnspan=3, **grid_ew_options)
         cur_col += 3
         lbl_data_type = ttk.Label(lblf_content, text='Type: ')
         lbl_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.E)
@@ -54,11 +55,13 @@ class UEVMGuiControlFrame(ttk.Frame):
         # noinspection PyArgumentList
         entry_data_type = ttk.Entry(lblf_content, textvariable=var_entry_data_source_type, state='readonly', width=6, bootstyle=WARNING)
         entry_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.W)
-        # lblf_content row
+        # new row
         cur_row += 1
+        cur_col = 0
         var_entry_data_source_name = tk.StringVar(value=data_table.data_source)
         entry_data_source = ttk.Entry(lblf_content, textvariable=var_entry_data_source_name, state='readonly')
-        entry_data_source.grid(row=cur_row, column=0, columnspan=max_col, **grid_fw_options)
+        entry_data_source.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
+        # new row
         cur_row += 1
         cur_col = 0
         self.buttons = {
@@ -116,7 +119,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         for key, values in self.buttons.items():
             text = values['text'] if values['text'] else key
             btn = ttk.Button(lblf_content, text=text, command=values['command'])
-            btn.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            btn.grid(row=cur_row, column=cur_col, **grid_ew_options)
             cur_col += 1
             if cur_col % max_col == 0:
                 cur_row += 1
