@@ -46,7 +46,7 @@ class EditableTable(Table):
     _deleted_asset_ids = []
     _db_handler = None
     _frm_quick_edit = None
-    _filter_frame = None
+    _frm_filter = None
     _edit_row_window = None
     _edit_row_entries = None
     _edit_row_number: int = -1
@@ -289,23 +289,23 @@ class EditableTable(Table):
             self._last_selected_col = selected_col
             self.event_generate('<<CellSelectionChanged>>')
 
-    def set_filter_frame(self, filter_frame=None) -> None:
+    def set_frm_filter(self, frm_filter=None) -> None:
         """
         Set the filter frame.
-        :param filter_frame: The filter frame.
+        :param frm_filter: The filter frame.
         """
-        if filter_frame is None:
-            raise ValueError('filters_frame cannot be None')
-        self._filter_frame = filter_frame
+        if frm_filter is None:
+            raise ValueError('frm_filter cannot be None')
+        self._frm_filter = frm_filter
 
-    def set_quick_edit_frame(self, quick_edit_frame=None) -> None:
+    def set_frm_quick_edit(self, frm_quick_edit=None) -> None:
         """
         Set the quick edit frame.
-        :param quick_edit_frame: The quick edit frame.
+        :param frm_quick_edit: The quick edit frame.
         """
-        if quick_edit_frame is None:
-            raise ValueError('quick_edit_frame cannot be None')
-        self._frm_quick_edit = quick_edit_frame
+        if frm_quick_edit is None:
+            raise ValueError('frm_quick_edit cannot be None')
+        self._frm_quick_edit = frm_quick_edit
 
     def set_columns_type(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -596,7 +596,7 @@ class EditableTable(Table):
         """
         table_row = None
         new_index = 0
-        data_frame = self.get_data()
+        df = self.get_data()
         if self.data_source_type == DataSourceType.FILE:
             # create an empty row with the correct columns
             str_data = get_csv_field_name_list(return_as_string=True)  # column names
@@ -611,17 +611,6 @@ class EditableTable(Table):
                 return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
             )  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
-            # getting the last index for the new row
-            # THIS CAN CAUSES ISSUE: using the first index (0) is much simple
-            # if data_frame is not None:
-            #     try:
-            #         new_index = data_frame.index.max() + 1
-            #     except (AttributeError, ValueError):
-            #         pass
-            #     else:
-            #         new_index = len(data_frame) + 1
-            # else:
-            #     new_index = 1
             table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
             try:
                 table_row[gui_g.s.index_copy_col_name] = new_index
@@ -641,10 +630,10 @@ class EditableTable(Table):
             self.must_rebuild = False
             if new_index == 0:
                 # the row is added at the start of the table. As it, the index is always known
-                new_df = pd.concat([table_row, data_frame], copy=False, ignore_index=True)
+                new_df = pd.concat([table_row, df], copy=False, ignore_index=True)
             else:
                 # the row is added at the end
-                new_df = pd.concat([data_frame, table_row], copy=False, ignore_index=True)
+                new_df = pd.concat([df, table_row], copy=False, ignore_index=True)
             self.set_data(new_df)
             self.add_to_rows_to_save(new_index)  # done inside self.must_save = True
         elif table_row is not None:
@@ -1021,8 +1010,8 @@ class EditableTable(Table):
             show_progress(self, text='Formating and converting DataTable...')
             self.set_data(self.set_columns_type(df))
         if update_filters:
-            self._filter_frame.create_mask()
-        mask = self._filter_frame.get_filter_mask() if self._filter_frame is not None else None
+            self._frm_filter.create_mask()
+        mask = self._frm_filter.get_filter_mask() if self._frm_filter is not None else None
         if mask is not None:
             self.filtered = True
             # self.current_page = 1
@@ -1030,12 +1019,12 @@ class EditableTable(Table):
                 self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
             except IndexingError:
                 self.logger.warning(f'IndexingError with defined filters. Updating filter...')
-                self._filter_frame.create_mask()
+                self._frm_filter.create_mask()
                 try:
                     self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
                 except IndexingError:
                     self.logger.warning(f'Still an IndexingError with defined filters. Deleting mask...')
-                    self._filter_frame.reset_filters()
+                    self._frm_filter.reset_filters()
                     self.set_data(df, df_type=DataFrameUsed.FILTERED)
                     self.filtered = False
         else:
@@ -1406,8 +1395,8 @@ class EditableTable(Table):
         edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
         # configure the grid
-        edit_row_window.content_frame.columnconfigure(0, weight=0)
-        edit_row_window.content_frame.columnconfigure(1, weight=1)
+        edit_row_window.frm_content.columnconfigure(0, weight=0)
+        edit_row_window.frm_content.columnconfigure(1, weight=1)
         edit_row_window.focus_set()
         self.edit_row(row_number)
 
@@ -1432,29 +1421,29 @@ class EditableTable(Table):
             if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             label = key.replace('_', ' ').title()
-            ttk.Label(edit_row_window.content_frame, text=label).grid(row=i, column=0, sticky=tk.W)
+            ttk.Label(edit_row_window.frm_content, text=label).grid(row=i, column=0, sticky=tk.W)
             key_lower = key.lower()
             if key_lower == 'image':
                 image_url = value
             if is_from_type(key, [CSVFieldType.TEXT]):
-                entry = ExtendedText(edit_row_window.content_frame, height=3)
+                entry = ExtendedText(edit_row_window.frm_content, height=3)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
             elif is_from_type(key, [CSVFieldType.BOOL]):
-                entry = ExtendedCheckButton(edit_row_window.content_frame, label='', images_folder=gui_g.s.assets_folder)
+                entry = ExtendedCheckButton(edit_row_window.frm_content, label='', images_folder=gui_g.s.assets_folder)
                 entry.set_content(value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
                 # TODO : add other extended widget for specific type (CSVFieldType.DATETIME , CSVFieldType.LIST)
             else:
                 # other field is just a usual entry
-                entry = ttk.Entry(edit_row_window.content_frame)
+                entry = ttk.Entry(edit_row_window.frm_content)
                 entry.insert(0, value)
                 entry.grid(row=i, column=1, sticky=tk.EW)
 
             entries[key] = entry
 
         # image preview
-        show_asset_image(image_url=image_url, canvas_image=edit_row_window.control_frame.canvas_image)
+        show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image)
 
         self._edit_row_entries = entries
         self._edit_row_number = row_number
@@ -1515,21 +1504,21 @@ class EditableTable(Table):
 
         # get and display the cell data
         col_name = self.get_col_name(col_index)
-        ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
+        ttk.Label(edit_cell_window.frm_content, text=col_name).pack(side=tk.LEFT)
         cell_value_str = str(cell_value) if (cell_value not in ('None', 'nan', gui_g.s.empty_cell)) else ''
         if is_from_type(col_name, [CSVFieldType.TEXT]):
-            widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
+            widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)
             widget.focus_set()
             widget.tag_add('sel', '1.0', tk.END)  # select the content
 
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
         elif is_from_type(col_name, [CSVFieldType.BOOL]):
-            widget = ExtendedCheckButton(edit_cell_window.content_frame, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
+            widget = ExtendedCheckButton(edit_cell_window.frm_content, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
             widget.set_content(bool(cell_value))
         else:
             # other field is just a ExtendedEntry
-            widget = ExtendedEntry(edit_cell_window.content_frame, tag=col_name)
+            widget = ExtendedEntry(edit_cell_window.frm_content, tag=col_name)
             widget.insert(0, cell_value_str)
             widget.focus_set()
             widget.selection_range(0, tk.END)  # select the content
@@ -1591,13 +1580,13 @@ class EditableTable(Table):
         Quick edit the content some cells of the selected row.
         :param row_number: row number from a datatable. Will be converted into real row index.
         """
-        quick_edit_frame = self._frm_quick_edit
-        if quick_edit_frame is None:
-            quick_edit_frame = self._frm_quick_edit
+        frm_quick_edit = self._frm_quick_edit
+        if frm_quick_edit is None:
+            frm_quick_edit = self._frm_quick_edit
         else:
-            self._frm_quick_edit = quick_edit_frame
+            self._frm_quick_edit = frm_quick_edit
 
-        if row_number is None or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or quick_edit_frame is None:
+        if row_number is None or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or frm_quick_edit is None:
             return
 
         column_names = ['Asset_id', 'Url']
@@ -1606,15 +1595,15 @@ class EditableTable(Table):
             col_index = self.get_col_index(col_name)
             value = self.get_cell(row_number, col_index)
             if col_name == 'Asset_id':
-                # quick_edit_frame.config(text=f'Quick Editing Asset: {value}')
+                # frm_quick_edit.config(text=f'Quick Editing Asset: {value}')
                 # TODO: check if a nicer method could be used here whithout a big refactoring
-                content_frame = self._container
-                uevm_gui = content_frame.container
+                frm_content = self._container
+                uevm_gui = frm_content.container
                 uevm_gui.set_asset_id(value)
                 continue
             typed_value = get_typed_value(csv_field=col_name, value=value)
             if col_index >= 0:
-                quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row_number, col=col_index)
+                frm_quick_edit.set_child_values(tag=col_name, content=typed_value, row=row_number, col=col_index)
 
     def quick_edit(self) -> None:
         """

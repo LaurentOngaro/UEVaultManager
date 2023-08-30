@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiOptionsFrame: an options/settings frame for the UEVMGui Class.
+- UEVMGuiOptionFrame: an options/settings frame for the UEVMGui Class.
 """
 import tkinter as tk
 from tkinter import filedialog
@@ -11,7 +11,7 @@ import ttkbootstrap as ttk
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
-class UEVMGuiOptionsFrame(ttk.Frame):
+class UEVMGuiOptionFrame(ttk.Frame):
     """
     an options/settings frame for the UEVMGui Class.
     :param _container: The parent container.

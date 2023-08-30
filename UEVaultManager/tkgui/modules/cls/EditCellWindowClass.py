@@ -41,11 +41,11 @@ class EditCellWindow(tk.Toplevel):
 
         self.editable_table = editable_table
 
-        self.content_frame = self.ContentFrame(self)
-        self.control_frame = self.ControlFrame(self)
+        self.frm_content = self.ContentFrame(self)
+        self.frm_control = self.ControlFrame(self)
 
-        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         self.bind('<Tab>', self._focus_next_widget)
         self.bind('<Control-Tab>', self._focus_next_widget)

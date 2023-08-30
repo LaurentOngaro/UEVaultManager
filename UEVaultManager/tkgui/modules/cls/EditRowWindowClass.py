@@ -45,11 +45,11 @@ class EditRowWindow(tk.Toplevel):
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.canvas_image = None
 
-        self.control_frame = self.ControlFrame(self)
-        self.content_frame = self.ContentFrame(self)
+        self.frm_control = self.ControlFrame(self)
+        self.frm_content = self.ContentFrame(self)
 
-        self.control_frame.pack(ipadx=5, ipady=5, fill=tk.X)
-        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_control.pack(ipadx=5, ipady=5, fill=tk.X)
+        self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         self.bind('<Tab>', self._focus_next_widget)
         self.bind('<Control-Tab>', self._focus_next_widget)
@@ -57,7 +57,7 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        self.btn_open_folder = self.control_frame.btn_open_folder
+        self.btn_open_folder = self.frm_control.btn_open_folder
         gui_g.edit_row_window_ref = self
         gui_f.make_modal(self)
 

@@ -105,7 +105,7 @@ def set_use_threads(value: bool) -> None:
 
 
 # def set_testing_switch_var(value: bool) -> None:
-#   Use method UEVMGuiOptionsFrame.update_gui_options() instead because it also updates the gui
+#   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
 
 # def set_debug_gui_var(value: bool) -> None:
-#   Use method UEVMGuiOptionsFrame.update_gui_options() instead because it also updates the gui
+#   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui

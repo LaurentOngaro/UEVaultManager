@@ -124,7 +124,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             self.buttons[key]['widget'] = btn
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
-        filter_frame = FilterFrame(
+        frm_filter = FilterFrame(
             self,
             data_func=data_table.get_data,
             update_func=data_table.update,
@@ -132,24 +132,24 @@ class UEVMGuiControlFrame(ttk.Frame):
             value_for_all=gui_g.s.default_value_for_all,
             dynamic_filters_func=container.create_dynamic_filters,
         )
-        filter_frame.pack(**lblf_def_options)
-        container._filter_frame = filter_frame
-        data_table.set_filter_frame(filter_frame)
+        frm_filter.pack(**lblf_def_options)
+        container._frm_filter = frm_filter
+        data_table.set_frm_filter(frm_filter)
 
         # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
         # to get the widgets it needs. So they can't be changed freely
         lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing')
         lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
-        data_table.set_quick_edit_frame(lbtf_quick_edit)
+        data_table.set_frm_quick_edit(lbtf_quick_edit)
 
-        frm_inner_frame = ttk.Frame(lbtf_quick_edit)
-        lbl_desc = ttk.Label(frm_inner_frame, text='Changing the values bellow will update \nthe selected row when losing focus')
+        frm_inner = ttk.Frame(lbtf_quick_edit)
+        lbl_desc = ttk.Label(frm_inner, text='Changing the values bellow will update \nthe selected row when losing focus')
         lbl_desc.grid(row=0, column=0, **grid_def_options)
-        bt_open_url = ttk.Button(frm_inner_frame, text='Open Url', command=container.open_asset_url)
+        bt_open_url = ttk.Button(frm_inner, text='Open Url', command=container.open_asset_url)
         bt_open_url.grid(row=0, column=1, **grid_def_options)
-        btn_open_folder = ttk.Button(frm_inner_frame, text='Open Folder', command=container.open_asset_folder)
+        btn_open_folder = ttk.Button(frm_inner, text='Open Folder', command=container.open_asset_folder)
         btn_open_folder.grid(row=0, column=2, **grid_def_options)
-        frm_inner_frame.pack()
+        frm_inner.pack()
 
         var_asset_id = tk.StringVar(value='')
         lbtf_quick_edit.add_child(
@@ -208,12 +208,12 @@ class UEVMGuiControlFrame(ttk.Frame):
             focus_in_callback=container.on_quick_edit_focus_in
         )
 
-        frm_inner_frame = ttk.Frame(lbtf_quick_edit, relief=tk.RIDGE, borderwidth=1)
+        frm_inner = ttk.Frame(lbtf_quick_edit, relief=tk.RIDGE, borderwidth=1)
         inner_pack_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False, 'anchor': tk.W}
-        frm_inner_frame.pack(**inner_pack_options)
+        frm_inner.pack(**inner_pack_options)
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.CHECKBUTTON,
-            alternate_container=frm_inner_frame,
+            alternate_container=frm_inner,
             layout_option=inner_pack_options,
             tag='Must buy',
             label='',
@@ -223,7 +223,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         )
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.CHECKBUTTON,
-            alternate_container=frm_inner_frame,
+            alternate_container=frm_inner,
             layout_option=inner_pack_options,
             tag='Added manually',
             label='',

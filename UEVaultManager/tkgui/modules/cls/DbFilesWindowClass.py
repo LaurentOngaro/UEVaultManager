@@ -56,8 +56,8 @@ class DbFilesWindowClass(tk.Toplevel):
         self.folder_for_csv_files = os.path.normpath(folder_for_csv_files)
         self.db_path = os.path.normpath(db_path)
         self.db_handler = UEAssetDbHandler(database_name=self.db_path)
-        self.control_frame = self.ControlFrame(self)
-        self.control_frame.pack(ipadx=0, ipady=0, padx=0, pady=0)
+        self.frm_control = self.ControlFrame(self)
+        self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
         make_modal(self)
 
     class ControlFrame(ttk.Frame):
@@ -93,13 +93,13 @@ class DbFilesWindowClass(tk.Toplevel):
             self.ck_user_fields = tk.Checkbutton(self, text='Export/Import user fields data assets', variable=self.var_user_fields)
             self.ck_user_fields.pack(fill=tk.X, padx=2, pady=1, anchor=tk.W)
 
-            self.frm_buttons = tk.Frame(self)
-            self.frm_buttons.pack(pady=5)
-            self.btn_close = ttk.Button(self.frm_buttons, text='Close Window', command=self.close_window)
+            self.frm_inner = tk.Frame(self)
+            self.frm_inner.pack(pady=5)
+            self.btn_close = ttk.Button(self.frm_inner, text='Close Window', command=self.close_window)
             self.btn_close.pack(side=tk.RIGHT, padx=5)
-            self.btn_import = ttk.Button(self.frm_buttons, text='Import from files', command=self.import_data)
+            self.btn_import = ttk.Button(self.frm_inner, text='Import from files', command=self.import_data)
             self.btn_import.pack(side=tk.LEFT, padx=5)
-            self.btn_export = ttk.Button(self.frm_buttons, text='Export to files', command=self.export_data)
+            self.btn_export = ttk.Button(self.frm_inner, text='Export to files', command=self.export_data)
             self.btn_export.pack(side=tk.LEFT, padx=5)
 
             self.result_label = tk.Label(self, text='Result Window: Clic into to copy content to clipboard', fg='green')

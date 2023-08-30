@@ -32,7 +32,7 @@ from UEVaultManager.tkgui.modules.cls.JsonProcessingWindowClass import JsonProce
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
-from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionsFrameComp import UEVMGuiOptionsFrame
+from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionFrameComp import UEVMGuiOptionFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
 from UEVaultManager.tkgui.modules.functions_no_deps import is_an_int, set_custom_style
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
@@ -84,11 +84,11 @@ class UEVMGui(tk.Tk):
     """
     editable_table: EditableTable = None
     progress_window: FakeProgressWindow = None
-    _toolbar_frame: UEVMGuiToolbarFrame = None
-    _control_frame: UEVMGuiControlFrame = None
-    _options_frame: UEVMGuiOptionsFrame = None
-    _content_frame: UEVMGuiContentFrame = None
-    _filter_frame: FilterFrame = None
+    _frm_toolbar: UEVMGuiToolbarFrame = None
+    _frm_control: UEVMGuiControlFrame = None
+    _frm_option: UEVMGuiOptionFrame = None
+    _frm_content: UEVMGuiContentFrame = None
+    _frm_filter: FilterFrame = None
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
     egs = None
@@ -120,12 +120,12 @@ class UEVMGui(tk.Tk):
         self.resizable(True, True)
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
-        content_frame = UEVMGuiContentFrame(self)
-        self._content_frame = content_frame
+        frm_content = UEVMGuiContentFrame(self)
+        self._frm_content = frm_content
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
 
         data_table = EditableTable(
-            container=content_frame,
+            container=frm_content,
             data_source_type=data_source_type,
             data_source=data_source,
             rows_per_page=37,
@@ -138,18 +138,18 @@ class UEVMGui(tk.Tk):
         data_table.set_preferences(gui_g.s.datatable_default_pref)
         data_table.show()
 
-        toolbar_frame = UEVMGuiToolbarFrame(self, data_table)
-        self._toolbar_frame = toolbar_frame
-        control_frame = UEVMGuiControlFrame(self, data_table)
-        self._control_frame = control_frame
-        options_frame = UEVMGuiOptionsFrame(self)
-        self._options_frame = options_frame
+        frm_toolbar = UEVMGuiToolbarFrame(self, data_table)
+        self._frm_toolbar = frm_toolbar
+        frm_control = UEVMGuiControlFrame(self, data_table)
+        self._frm_control = frm_control
+        frm_option = UEVMGuiOptionFrame(self)
+        self._frm_option = frm_option
 
-        toolbar_frame.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
-        content_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
-        control_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
+        frm_toolbar.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
+        frm_content.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
+        frm_control.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
         # not displayed at start
-        # _options_frame.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
+        # _frm_option.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
 
         self.bind('<Tab>', self._focus_next_widget)
         self.bind('<Control-Tab>', self._focus_next_widget)
@@ -170,17 +170,17 @@ class UEVMGui(tk.Tk):
 
         # List of controls for activating/deactivating them when needed
         self.controls = {
-            'first_item': self._toolbar_frame.btn_first_item,  #
-            'last_item': self._toolbar_frame.btn_last_item,  #
-            'prev_page': self._toolbar_frame.btn_prev_page,  #
-            'next_page': self._toolbar_frame.btn_next_page,  #
-            'prev_asset': self._toolbar_frame.btn_prev_asset,  #
-            'next_asset': self._toolbar_frame.btn_next_asset,  #
-            'current_item': self._toolbar_frame.entry_current_item,  #
-            'scrap': self._control_frame.buttons['Scrap']['widget'],  #
-            'del': self._control_frame.buttons['Del']['widget'],  #
-            'edit': self._control_frame.buttons['Edit']['widget'],  #
-            'save': self._control_frame.buttons['Save']['widget'],  #
+            'first_item': self._frm_toolbar.btn_first_item,  #
+            'last_item': self._frm_toolbar.btn_last_item,  #
+            'prev_page': self._frm_toolbar.btn_prev_page,  #
+            'next_page': self._frm_toolbar.btn_next_page,  #
+            'prev_asset': self._frm_toolbar.btn_prev_asset,  #
+            'next_asset': self._frm_toolbar.btn_next_asset,  #
+            'current_item': self._frm_toolbar.entry_current_item,  #
+            'scrap': self._frm_control.buttons['Scrap']['widget'],  #
+            'del': self._frm_control.buttons['Del']['widget'],  #
+            'edit': self._frm_control.buttons['Edit']['widget'],  #
+            'save': self._frm_control.buttons['Save']['widget'],  #
         }
 
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
@@ -256,8 +256,8 @@ class UEVMGui(tk.Tk):
         default_ext = os.path.splitext(default_filename)[1]  # get extension
         default_filename = os.path.splitext(default_filename)[0]  # get filename without extension
         try:
-            # if the file is empty or absent or invalid when creating the class, the filter_frame is not defined
-            category = self._filter_frame.category
+            # if the file is empty or absent or invalid when creating the class, the frm_filter is not defined
+            category = self._frm_filter.category
         except AttributeError:
             category = None
         if category and category != gui_g.s.default_value_for_all:
@@ -282,7 +282,7 @@ class UEVMGui(tk.Tk):
         """
         if tag == '':
             return None, None
-        widget = self._control_frame.lbtf_quick_edit.get_child_by_tag(tag)
+        widget = self._frm_control.lbtf_quick_edit.get_child_by_tag(tag)
         if widget is None:
             self.logger.warning(f'Could not find a widget with tag {tag}')
             return None, None
@@ -349,7 +349,7 @@ class UEVMGui(tk.Tk):
         """
         if event is None:
             return
-        canvas_image = self._control_frame.canvas_image
+        canvas_image = self._frm_control.canvas_image
         try:
             row_number: int = self.editable_table.get_row_clicked(event)
             if row_number < 0 or row_number == '':
@@ -366,7 +366,7 @@ class UEVMGui(tk.Tk):
         :param _event:
         """
         self.update_rows_text()
-        canvas_image = self._control_frame.canvas_image
+        canvas_image = self._frm_control.canvas_image
         gui_f.show_default_image(canvas_image=canvas_image)
 
     def on_selection_change(self, event=None) -> None:
@@ -396,7 +396,7 @@ class UEVMGui(tk.Tk):
         When the item (i.e. row or page) number changes, show the corresponding item.
         :param _event:
         """
-        item_num = self._toolbar_frame.entry_current_item.get()
+        item_num = self._frm_toolbar.entry_current_item.get()
         try:
             item_num = int(item_num)
         except (ValueError, UnboundLocalError) as error:
@@ -1041,7 +1041,7 @@ class UEVMGui(tk.Tk):
         if filters is None:
             return
         try:
-            self._filter_frame.load_filters(filters)
+            self._frm_filter.load_filters(filters)
             # self.update_navigation() # done in load_filters and inner calls
         except Exception as error:
             self.logger.error(f'Error loading filters: {error!r}')
@@ -1058,9 +1058,9 @@ class UEVMGui(tk.Tk):
             data_table.pagination_enabled = not data_table.pagination_enabled
         data_table.update_page()
         if not data_table.pagination_enabled:
-            self._toolbar_frame.btn_toggle_pagination.config(text='Enable  Pagination')
+            self._frm_toolbar.btn_toggle_pagination.config(text='Enable  Pagination')
         else:
-            self._toolbar_frame.btn_toggle_pagination.config(text='Disable Pagination')
+            self._frm_toolbar.btn_toggle_pagination.config(text='Disable Pagination')
         self.update_controls_and_redraw()  # will also update buttons status
 
     def first_item(self) -> None:
@@ -1124,15 +1124,15 @@ class UEVMGui(tk.Tk):
         :param force_showing: Whether to will force showing the actions panel, if False, will force hiding it.If None, will toggle the visibility.
         """
         if force_showing is None:
-            force_showing = not self._control_frame.winfo_ismapped()
+            force_showing = not self._frm_control.winfo_ismapped()
         if force_showing:
-            self._control_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self._toolbar_frame.btn_toggle_controls.config(text='Hide Actions')
-            self._toolbar_frame.btn_toggle_options.config(state=tk.DISABLED)
+            self._frm_control.pack(side=tk.RIGHT, fill=tk.BOTH)
+            self._frm_toolbar.btn_toggle_controls.config(text='Hide Actions')
+            self._frm_toolbar.btn_toggle_options.config(state=tk.DISABLED)
         else:
-            self._control_frame.pack_forget()
-            self._toolbar_frame.btn_toggle_controls.config(text='Show Actions')
-            self._toolbar_frame.btn_toggle_options.config(state=tk.NORMAL)
+            self._frm_control.pack_forget()
+            self._frm_toolbar.btn_toggle_controls.config(text='Show Actions')
+            self._frm_toolbar.btn_toggle_options.config(state=tk.NORMAL)
 
     # noinspection DuplicatedCode
     def toggle_options_panel(self, force_showing: bool = None) -> None:
@@ -1142,15 +1142,15 @@ class UEVMGui(tk.Tk):
         """
         # noinspection DuplicatedCode
         if force_showing is None:
-            force_showing = not self._options_frame.winfo_ismapped()
+            force_showing = not self._frm_option.winfo_ismapped()
         if force_showing:
-            self._options_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self._toolbar_frame.btn_toggle_options.config(text='Hide Options')
-            self._toolbar_frame.btn_toggle_controls.config(state=tk.DISABLED)
+            self._frm_option.pack(side=tk.RIGHT, fill=tk.BOTH)
+            self._frm_toolbar.btn_toggle_options.config(text='Hide Options')
+            self._frm_toolbar.btn_toggle_controls.config(state=tk.DISABLED)
         else:
-            self._options_frame.pack_forget()
-            self._toolbar_frame.btn_toggle_options.config(text='Show Options')
-            self._toolbar_frame.btn_toggle_controls.config(state=tk.NORMAL)
+            self._frm_option.pack_forget()
+            self._frm_toolbar.btn_toggle_options.config(text='Show Options')
+            self._frm_toolbar.btn_toggle_controls.config(state=tk.NORMAL)
 
     def set_control_state(self, name: str, is_enabled: bool) -> None:
         """
@@ -1188,7 +1188,7 @@ class UEVMGui(tk.Tk):
         """
         self.title(gui_g.s.app_title_long)  # the title can change with live settings
 
-        if self._toolbar_frame is None:
+        if self._frm_toolbar is None:
             # toolbar not created yet
             return
 
@@ -1237,17 +1237,17 @@ class UEVMGui(tk.Tk):
                 self.disable_control('next_page')
 
         # Update btn_first_item and btn_last_item text
-        self._toolbar_frame.btn_first_item.config(text=first_item_text)
-        self._toolbar_frame.btn_last_item.config(text=last_item_text)
-        self._toolbar_frame.entry_current_item_var.set('{:04d}'.format(current_index))
-        self._toolbar_frame.lbl_page_count.config(text=f'/{max_displayed:04d}')
+        self._frm_toolbar.btn_first_item.config(text=first_item_text)
+        self._frm_toolbar.btn_last_item.config(text=last_item_text)
+        self._frm_toolbar.entry_current_item_var.set('{:04d}'.format(current_index))
+        self._frm_toolbar.lbl_page_count.config(text=f'/{max_displayed:04d}')
 
     def update_data_source(self) -> None:
         """
         Update the data source name in the control frame.
         """
-        self._control_frame.var_entry_data_source_name.set(self.editable_table.data_source)
-        self._control_frame.var_entry_data_source_type.set(self.editable_table.data_source_type.name)
+        self._frm_control.var_entry_data_source_name.set(self.editable_table.data_source)
+        self._frm_control.var_entry_data_source_type.set(self.editable_table.data_source_type.name)
 
     def update_category_var(self) -> dict:
         """
@@ -1274,7 +1274,7 @@ class UEVMGui(tk.Tk):
         Set the text to display in the preview frame about the number of rows.
         :param row_number: row number from a datatable. Will be converted into real row index.
         """
-        if self._control_frame is None:
+        if self._frm_control is None:
             return
         data_table = self.editable_table  # shortcut
         df_filtered = data_table.get_data(df_type=DataFrameUsed.FILTERED)
@@ -1283,9 +1283,9 @@ class UEVMGui(tk.Tk):
         row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered | {row_count} total'
         if row_number >= 0:
             idx = data_table.get_real_index(row_number)
-            self._control_frame.lbt_image_preview.config(text=f'Image Preview - Row Index {idx} {row_text}')
+            self._frm_control.lbt_image_preview.config(text=f'Image Preview - Row Index {idx} {row_text}')
         else:
-            self._control_frame.lbt_image_preview.config(text=f'No Image Preview {row_text}')
+            self._frm_control.lbt_image_preview.config(text=f'No Image Preview {row_text}')
 
     def reload_data(self) -> None:
         """
@@ -1386,8 +1386,8 @@ class UEVMGui(tk.Tk):
         """
         Copy the asset id into the clipboard.
         """
-        control_frame: UEVMGuiControlFrame = self._control_frame
-        value = control_frame.var_asset_id.get()
+        frm_control: UEVMGuiControlFrame = self._frm_control
+        value = frm_control.var_asset_id.get()
         if not value:
             return
         self.clipboard_clear()
@@ -1399,7 +1399,7 @@ class UEVMGui(tk.Tk):
         Set the asset id in the control frame.
         :param value: the value to set.
         """
-        self._control_frame.var_asset_id.set(value)
+        self._frm_control.var_asset_id.set(value)
 
     def json_processing(self) -> None:
         """

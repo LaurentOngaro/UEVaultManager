@@ -62,12 +62,12 @@ class ProgressWindow(tk.Toplevel):
         self.function_return_value = None
         self.result_queue = queue.Queue()
 
-        self.content_frame = self.ContentFrame(self)
-        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_content = self.ContentFrame(self)
+        self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
-        self.control_frame = self.ControlFrame(self)
+        self.frm_control = self.ControlFrame(self)
         if show_btn_start or show_btn_stop:
-            self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+            self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         if not show_progress:
             self.hide_progress_bar()
         if not show_btn_start:
@@ -172,7 +172,7 @@ class ProgressWindow(tk.Toplevel):
         Set the text of the label.
         :param new_text: the new text.
         """
-        self.content_frame.lbl_function.config(text=new_text)
+        self.frm_content.lbl_function.config(text=new_text)
 
     def set_value(self, new_value: int) -> None:
         """
@@ -180,7 +180,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_value: the new value.
         """
         new_value = max(0, new_value)
-        self.content_frame.progress_bar["value"] = new_value
+        self.frm_content.progress_bar["value"] = new_value
 
     def set_max_value(self, new_max_value: int) -> None:
         """
@@ -188,7 +188,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_max_value: the new maximum value.
         """
         self.max_value = new_max_value
-        self.content_frame.progress_bar["maximum"] = new_max_value
+        self.frm_content.progress_bar["maximum"] = new_max_value
 
     def set_function(self, new_function) -> None:
         """
@@ -212,21 +212,21 @@ class ProgressWindow(tk.Toplevel):
         """
         Hide the progress bar.
         """
-        self.content_frame.progress_bar.pack_forget()
+        self.frm_content.progress_bar.pack_forget()
 
     def show_progress_bar(self) -> None:
         """
         Show the progress bar.
         """
-        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-        self.content_frame.progress_bar.pack(**self.content_frame.pack_def_options)
+        self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_content.progress_bar.pack(**self.frm_content.pack_def_options)
 
     def hide_btn_start(self) -> None:
         """
         Hide the start button.
         """
         try:
-            self.control_frame.btn_start.pack_forget()
+            self.frm_control.btn_start.pack_forget()
         except tk.TclError:
             gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
 
@@ -235,8 +235,8 @@ class ProgressWindow(tk.Toplevel):
         Show the start button.
         """
         try:
-            self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-            self.control_frame.btn_start.pack(**self.control_frame.pack_def_options, side=tk.LEFT)
+            self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+            self.frm_control.btn_start.pack(**self.frm_control.pack_def_options, side=tk.LEFT)
         except tk.TclError:
             gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
 
@@ -245,7 +245,7 @@ class ProgressWindow(tk.Toplevel):
         Hide the stop button.
         """
         try:
-            self.control_frame.btn_stop.pack_forget()
+            self.frm_control.btn_stop.pack_forget()
         except tk.TclError:
             gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
 
@@ -254,8 +254,8 @@ class ProgressWindow(tk.Toplevel):
         Show the stop button.
         """
         try:
-            self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-            self.control_frame.btn_stop.pack(**self.control_frame.pack_def_options, side=tk.RIGHT)
+            self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+            self.frm_control.btn_stop.pack(**self.frm_control.pack_def_options, side=tk.RIGHT)
         except tk.TclError:
             gui_f.log_debug('Some tkinter elements are not set. The window is probably already destroyed')
 
@@ -323,10 +323,10 @@ class ProgressWindow(tk.Toplevel):
         """
         start_state = tk.NORMAL if activate else tk.DISABLED
         stop_state = tk.DISABLED if activate else tk.NORMAL
-        if self.control_frame.btn_start is not None:
-            self.control_frame.btn_start.config(state=start_state)
-        if self.control_frame.btn_stop is not None:
-            self.control_frame.btn_stop.config(state=stop_state)
+        if self.frm_control.btn_start is not None:
+            self.frm_control.btn_start.config(state=start_state)
+        if self.frm_control.btn_stop is not None:
+            self.frm_control.btn_stop.config(state=stop_state)
         self.update()
 
     def update_and_continue(self, value=0, increment=0, text=None) -> bool:
@@ -338,7 +338,7 @@ class ProgressWindow(tk.Toplevel):
         """
         try:
             # sometimes the window is already destroyed
-            progress_bar = self.content_frame.progress_bar
+            progress_bar = self.frm_content.progress_bar
             if increment:
                 value = progress_bar["value"] + increment
             if value > self.max_value:
