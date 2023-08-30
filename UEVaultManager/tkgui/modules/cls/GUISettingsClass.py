@@ -411,6 +411,17 @@ class GUISettings:
     # used as property for keeping transparent access
     testing_switch = property(get_testing_switch, set_testing_switch)
 
+    def get_assets_db_order(self) -> int:
+        """ Getter for assets_db_order """
+        return self.config_vars['assets_db_order']
+
+    def set_assets_db_order(self, value):
+        """ Setter for assets_db_order """
+        self.config_vars['assets_db_order'] = value
+
+    # used as property for keeping transparent access
+    assets_db_order = property(get_assets_db_order, set_assets_db_order)
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -532,9 +543,15 @@ class GUISettings:
             },
             'testing_switch': {
                 'comment':
-                'A value that can be changed in live to switch some behaviours whithout quitting. DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING',
+                'DEV ONLY! NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING: value that can be changed in live to switch some behaviours whithout quitting.',
                 'value': 0
             },
+            'assets_db_order': {
+                'comment':
+                    'DEV ONLY! NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING: where clause used when gettings the assets list from the database.',
+                'value': '" ORDER BY date_added_in_db DESC"'
+            },
+
         }
 
         has_changed = False
@@ -581,6 +598,7 @@ class GUISettings:
             'use_threads': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_threads')),
             'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
             'testing_switch': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'testing_switch')),
+            'assets_db_order': self.config.get('UEVaultManager', 'assets_db_order'),
         }
         return config_vars
 

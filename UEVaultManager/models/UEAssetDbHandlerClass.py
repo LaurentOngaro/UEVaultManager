@@ -542,8 +542,11 @@ class UEAssetDbHandler:
             query = f"SELECT {fields} FROM assets"
             if where_clause:
                 query += f" WHERE {where_clause}"
+            if not gui_g.s.assets_order_col:
+                gui_g.s.assets_order_col = 'date_added_in_db'
+            query += f' ORDER by {gui_g.s.assets_order_col} DESC'
             if gui_g.s.testing_switch == 1:
-                query += ' ORDER BY date_added_in_db DESC LIMIT 3000'
+                query += ' LIMIT 3000'
             try:
                 cursor.execute(query)
                 rows = cursor.fetchall()
