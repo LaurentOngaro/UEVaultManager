@@ -589,13 +589,29 @@ class UEVMGui(tk.Tk):
         Add a new row at the current position.
         :param row_data: data to add to the row.
         """
+        add_new_row = True
         data_table = self.editable_table  # shortcut
-        row, new_index = data_table.create_row(row_data=row_data)
-        data_table.update(update_format=True)
-        data_table.move_to_row(new_index)
-        data_table.must_save = True
-        text = f' with asset_id={row["Asset_id"][0]}' if row is not None else ''
-        gui_f.box_message(f'A new row{text} has been added at index {new_index} of the datatable')
+        if gui_g.s.browse_when_add_row:
+            folder = fd.askdirectory(
+                title=
+                'Choose a folder for the assets to add to the datatable.\nThis folder will be used to scan for assets, Url slugs and marketplace urls.\nIf no folder is selected, an empty row will be added.',
+                initialdir=gui_g.s.folders_to_scan[0] if gui_g.s.folders_to_scan else None,
+            )
+            if folder:
+                add_new_row = False
+                self.scan_folders([folder])
+                # if row_data is None:
+                #     row_data = {}
+                # row_data['Origin'] = os.path.abspath(folder)
+            else:
+                add_new_row = True
+        if add_new_row:
+            row, new_index = data_table.create_row(row_data=row_data)
+            data_table.update(update_format=True)
+            data_table.move_to_row(new_index)
+            data_table.must_save = True
+            text = f' with asset_id={row["Asset_id"][0]}' if row is not None else ''
+            gui_f.box_message(f'A new row{text} has been added at index {new_index} of the datatable')
 
     def del_row(self) -> None:
         """
@@ -655,9 +671,10 @@ class UEVMGui(tk.Tk):
 
         return found_url
 
-    def scan_folders(self) -> None:
+    def scan_folders(self, folder_list: []) -> None:
         """
         Scan the folders to find files that can be loaded.
+        :param folder_list: the list of folders to scan. If empty, use the folders in the config file.
         """
 
         def _fix_folder_structure(content_folder_name='Content'):
@@ -686,7 +703,7 @@ class UEVMGui(tk.Tk):
 
         valid_folders = {}
         invalid_folders = []
-        folder_to_scan = gui_g.s.folders_to_scan
+        folder_to_scan = folder_list if len(folder_list) > 0 else gui_g.s.folders_to_scan
         if gui_g.s.testing_switch == 1:
             folder_to_scan = [
                 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
@@ -702,7 +719,7 @@ class UEVMGui(tk.Tk):
         if not folder_to_scan:
             gui_f.box_message('No folder to scan. Please add some in the config file', level='warning')
             return
-        if not gui_f.box_yesno(
+        if len(folder_to_scan) > 1 and not gui_f.box_yesno(
             'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
         ):
             return
@@ -1028,7 +1045,7 @@ class UEVMGui(tk.Tk):
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 asset_slug_from_row = row_data['Asset slug']
                 if asset_slug_from_url != asset_slug_from_row:
-                    msg = f'The Asset slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
+                    msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
                     if gui_f.box_yesno(

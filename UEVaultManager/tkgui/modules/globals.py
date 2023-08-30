@@ -105,6 +105,13 @@ def set_use_threads(value: bool) -> None:
     s.use_threads = value
 
 
+# def set_testing_switch_var(value: bool) -> None:
+#   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
+
+# def set_debug_gui_var(value: bool) -> None:
+#   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
+
+
 def set_check_asset_folders(value: bool) -> None:
     """
     Set the value of the settings check_asset_folders. Mandadory fot the associated ttk.ckbutton to work.
@@ -113,8 +120,9 @@ def set_check_asset_folders(value: bool) -> None:
     s.check_asset_folders = value
 
 
-# def set_testing_switch_var(value: bool) -> None:
-#   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
-
-# def set_debug_gui_var(value: bool) -> None:
-#   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
+def set_browse_when_add_row(value: bool) -> None:
+    """
+    Set the value of the settings browse_when_add_row. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
+    """
+    s.browse_when_add_row = value

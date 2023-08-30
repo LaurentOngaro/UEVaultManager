@@ -434,6 +434,17 @@ class GUISettings:
     # used as property for keeping transparent access
     check_asset_folders = property(get_check_asset_folders, set_check_asset_folders)
 
+    def get_browse_when_add_row(self) -> bool:
+        """ Getter for browse_when_add_row """
+        return gui_fn.convert_to_bool(self.config_vars['browse_when_add_row'])
+
+    def set_browse_when_add_row(self, value):
+        """ Setter for browse_when_add_row """
+        self.config_vars['browse_when_add_row'] = value
+
+    # used as property for keeping transparent access
+    browse_when_add_row = property(get_browse_when_add_row, set_browse_when_add_row)
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -566,7 +577,10 @@ class GUISettings:
                 'comment': 'Set to True to check and clean invalid asset folders when scraping or rebuilding data for UE assets',
                 'value': 'True'
             },
-
+            'browse_when_add_row': {
+                'comment': 'Set to True to browse for a folder when adding a new row. If false, an empty row will be added',
+                'value': 'True'
+            },
         }
 
         has_changed = False
@@ -615,6 +629,7 @@ class GUISettings:
             'testing_switch': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'testing_switch')),
             'assets_order_col': self.config.get('UEVaultManager', 'assets_order_col'),
             'check_asset_folders': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'check_asset_folders')),
+            'browse_when_add_row': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'browse_when_add_row')),
         }
         return config_vars
 
