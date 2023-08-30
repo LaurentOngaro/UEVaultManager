@@ -80,7 +80,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_uevm_command('status'))
         btn_status.pack(**pack_def_options, side=tk.LEFT)
         """
-        # following commands are messy and not really useful
+        # removed following commands because messy and not really useful
         btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_uevm_command('info'))
         btn_info.pack(**pack_def_options, side=tk.LEFT)
         btn_list_files = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_uevm_command('list_files'))
