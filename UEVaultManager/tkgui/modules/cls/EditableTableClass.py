@@ -58,6 +58,7 @@ class EditableTable(Table):
     _dftype_for_coloring = DataFrameUsed.UNFILTERED  # type of dataframe used for coloring
     _is_scanning = False  # True when a folders scan is in progress
     _column_infos_stored = False  # used to see if column_infos has changed
+    _errors: [Exception] = []
     is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     update_loggers_level(logger)
@@ -327,8 +328,6 @@ class EditableTable(Table):
         Check if the cell value has changed. If so, the row is added to the list of changed rows.
         :param old_value: The old value of the cell.
         :return: True if the cell value has changed, False otherwise.
-
-        Note: a tableChanged event is generated if the cell value has changed.
         """
         row = self._last_selected_row
         col = self._last_selected_col
@@ -336,7 +335,7 @@ class EditableTable(Table):
         if new_value is not None and old_value != new_value:
             row_index = self.get_real_index(row)
             self.add_to_rows_to_save(row_index)
-            # self.event_generate('<<tableChanged>>') # done in add_to_rows_to_save
+            # self.tableChanged() # done in add_to_rows_to_save
             return True
         return False
 
@@ -440,7 +439,8 @@ class EditableTable(Table):
             return int(self.get_real_index(row_number))
         else:
             return int(self.get_real_index(row_number))
-        copy_col_index = self.get_col_index(gui_g.s.index_copy_col_name)
+        # copy_col_index = self.get_col_index(gui_g.s.index_copy_col_name)  # issue if df and unfiltred data does not have the same columns
+        copy_col_index = df.columns.get_loc(gui_g.s.index_copy_col_name)
         result = -1
         idx_max = len(df)
         if row_number >= idx_max:
@@ -699,6 +699,8 @@ class EditableTable(Table):
         :param row_numbers: The row to delete. If None, the selected row is deleted.
         :param convert_to_index: True to convert the row number to the real index, False otherwise.
         :param confirm_dialog: True to display a confirmation dialog, False otherwise.
+
+        Note: self.tableChanged() is called if some rows have been deleted
         """
         if row_numbers is None:
             row_numbers = self.multiplerowlist
@@ -742,16 +744,18 @@ class EditableTable(Table):
             self.selectNone()
             self.update_index_copy_column()
             number_deleted = len(index_to_delete)
-            cur_row = self.getSelectedRow()
-            if cur_row < number_deleted:
-                # move to the next row
-                self.move_to_row(cur_row)
-            else:
-                # or move to the prev row of the first deleted row
-                self.move_to_row(cur_row - number_deleted)
-            # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
-            self.update(update_filters=True)
-            self.event_generate('<<tableChanged>>')
+            if number_deleted:
+                cur_row = self.getSelectedRow()
+                if cur_row < number_deleted:
+                    # move to the next row
+                    self.move_to_row(cur_row)
+                else:
+                    # or move to the prev row of the first deleted row
+                    self.move_to_row(cur_row - number_deleted)
+                # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
+                self.update(update_filters=True)
+                self.tableChanged()
+                self.set_control_state_func('save', True)
             return number_deleted > 0
         else:
             return False
@@ -1250,11 +1254,13 @@ class EditableTable(Table):
         """
         Adds the specified row to the list of rows to save.
         :param row_index: The (real) index of the row to save.
+
+        Note: self.tableChanged() is called if some rows must be saved
         """
         if row_index < 0 or row_index > len(self.get_data()) or row_index in self._changed_rows:
             return
         self._changed_rows.append(row_index)
-        self.event_generate('<<tableChanged>>')
+        self.tableChanged()
         self.set_control_state_func('save', True)
 
     def clear_rows_to_save(self) -> None:
@@ -1789,3 +1795,10 @@ class EditableTable(Table):
         if df is not None:
             df.style.clear()
         self.redraw()
+
+    def add_error(self, error: Exception) -> None:
+        """
+        Add an error to the list of errors.
+        :param error: the error to add.
+        """
+        self._errors.append(error)
