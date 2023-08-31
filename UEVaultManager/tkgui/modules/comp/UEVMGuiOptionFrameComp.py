@@ -182,8 +182,11 @@ class UEVMGuiOptionFrame(ttk.Frame):
         Add a folder to scan.
         """
         cb_selection = self._cb_folders_to_scan.get()
+        initial_dir = cb_selection if cb_selection else gui_g.s.last_opened_folder
         # open a file dialog to select a folder
-        folder_selected = filedialog.askdirectory(title='Select a folder to scan for UE assets', initialdir=cb_selection)
+        folder_selected = filedialog.askdirectory(title='Select a folder to scan for UE assets', initialdir=initial_dir)
+        gui_g.s.last_opened_folder = folder_selected
+
         # add the folder to the list
         if folder_selected and folder_selected not in self._folders_to_scan:
             values = list(self._cb_folders_to_scan['values'])

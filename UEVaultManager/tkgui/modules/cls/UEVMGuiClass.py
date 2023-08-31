@@ -252,7 +252,9 @@ class UEVMGui(tk.Tk):
         # adding category to the default filename
         if not filename:
             filename = gui_g.s.default_filename
-        initial_dir = os.path.dirname(filename)
+            initial_dir = gui_g.s.last_opened_folder
+        else:
+            initial_dir = os.path.dirname(filename)
         default_filename = os.path.basename(filename)  # remove dir
         default_ext = os.path.splitext(default_filename)[1]  # get extension
         default_filename = os.path.splitext(default_filename)[0]  # get filename without extension
@@ -595,9 +597,11 @@ class UEVMGui(tk.Tk):
             folder = fd.askdirectory(
                 title=
                 'Choose a folder for the assets to add to the datatable.\nThis folder will be used to scan for assets, Url slugs and marketplace urls.\nIf no folder is selected, an empty row will be added.',
-                initialdir=gui_g.s.folders_to_scan[0] if gui_g.s.folders_to_scan else None,
+                initialdir=gui_g.s.last_opened_folder
+                if gui_g.s.last_opened_folder else gui_g.s.folders_to_scan[0] if gui_g.s.folders_to_scan else None,
             )
             if folder:
+                gui_g.s.last_opened_folder = folder
                 add_new_row = False
                 self.scan_folders([folder])
                 # if row_data is None:

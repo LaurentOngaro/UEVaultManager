@@ -445,6 +445,17 @@ class GUISettings:
     # used as property for keeping transparent access
     browse_when_add_row = property(get_browse_when_add_row, set_browse_when_add_row)
 
+    def get_last_opened_folder(self) -> str:
+        """ Getter for last_opened_folder """
+        return self.config_vars['last_opened_folder']
+
+    def set_last_opened_folder(self, value):
+        """ Setter for last_opened_folder """
+        self.config_vars['last_opened_folder'] = value
+
+    # used as property for keeping transparent access
+    last_opened_folder = property(get_last_opened_folder, set_last_opened_folder)
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -581,6 +592,10 @@ class GUISettings:
                 'comment': 'Set to True to browse for a folder when adding a new row. If false, an empty row will be added',
                 'value': 'True'
             },
+            'last_opened_folder': {
+                'comment': 'The last opened Folder name. Automatically saved when browsing a folder',
+                'value': ''
+            },
         }
 
         has_changed = False
@@ -630,6 +645,7 @@ class GUISettings:
             'assets_order_col': self.config.get('UEVaultManager', 'assets_order_col'),
             'check_asset_folders': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'check_asset_folders')),
             'browse_when_add_row': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'browse_when_add_row')),
+            'last_opened_folder': self.config.get('UEVaultManager', 'last_opened_folder'),
         }
         return config_vars
 
