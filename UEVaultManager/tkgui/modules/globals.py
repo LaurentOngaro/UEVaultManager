@@ -105,6 +105,14 @@ def set_use_threads(value: bool) -> None:
     s.use_threads = value
 
 
+def set_use_colors_for_data(value: bool) -> None:
+    """
+    Set the value of the settings use_colors_for_data. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
+    """
+    s.use_colors_for_data = value
+
+
 # def set_testing_switch_var(value: bool) -> None:
 #   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
 

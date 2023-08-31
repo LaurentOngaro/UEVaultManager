@@ -120,6 +120,13 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
+        var_use_colors_for_data = tk.BooleanVar(value=gui_g.s.use_colors_for_data)
+        var_use_colors_for_data.trace_add('write', lambda name, index, mode: gui_g.set_use_colors_for_data(var_use_colors_for_data.get()))
+        ck_use_colors_for_data = ttk.Checkbutton(lblf_gui_settings, text='Use threads', variable=var_use_colors_for_data)
+        ck_use_colors_for_data.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
+        # new row
+        cur_row += 1
+        cur_col = 0
         var_check_asset_folders = tk.BooleanVar(value=gui_g.s.check_asset_folders)
         var_check_asset_folders.trace_add('write', lambda name, index, mode: gui_g.set_check_asset_folders(var_check_asset_folders.get()))
         ck_check_asset_folders = ttk.Checkbutton(lblf_gui_settings, text='Check Asset Folders when needed', variable=var_check_asset_folders)
