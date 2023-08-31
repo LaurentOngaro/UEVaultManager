@@ -24,7 +24,7 @@ class EditRowWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param editable_table: the table to edit.
     """
-    preview_scale = 0.75
+    preview_scale = 0.5
     must_save: bool = False
 
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):

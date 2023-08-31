@@ -1499,16 +1499,16 @@ class EditableTable(Table):
         previous_was_a_bool = False
         row = 0
         for key, value in row_data.items():
-            # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool}')  # debug only
+            # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool})  # debug only
             col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
             if key in col_list:
                 continue
             if self.data_source_type == DataSourceType.FILE and is_on_state(
-                key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY, CSVFieldState.CHANGED]
+                key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]
             ):
                 continue
             if self.data_source_type == DataSourceType.SQLITE and is_on_state(
-                key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY, CSVFieldState.CHANGED]
+                key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]
             ):
                 continue
             label = key.replace('_', ' ').title()

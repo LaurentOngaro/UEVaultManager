@@ -32,7 +32,7 @@ csv_sql_fields = {
     },
     'Category': {
         'sql_name': 'category',
-        'state': CSVFieldState.NOT_PRESERVED,
+        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.LIST
     },
     'Review': {
@@ -157,7 +157,7 @@ csv_sql_fields = {
     },
     'Origin': {
         'sql_name': 'origin',
-        'state': CSVFieldState.USER,
+        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR
     },
     'Added manually': {
