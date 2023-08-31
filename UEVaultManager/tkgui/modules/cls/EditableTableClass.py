@@ -496,7 +496,7 @@ class EditableTable(Table):
                 self.df_unfiltered = df
         elif df_type == DataFrameUsed.UNFILTERED:
             self.df_unfiltered = df
-            self.set_colors()
+            # self.set_colors()
         elif df_type == DataFrameUsed.FILTERED:
             self.df_filtered = df
         elif df_type == DataFrameUsed.BOTH:

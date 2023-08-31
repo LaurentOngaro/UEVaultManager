@@ -375,4 +375,4 @@ class FilterFrame(ttk.LabelFrame):
             return
         self._filters = filters.copy()
         self._update_filter_widgets()
-        self.update_func(reset_page=True, update_filters=True)
+        self.update_func(reset_page=True, update_filters=True, update_format=True)
