@@ -1475,35 +1475,65 @@ class EditableTable(Table):
             return
         entries = {}
         image_url = ''
-        for i, (key, value) in enumerate(row_data.items()):
-            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
+        previous_was_a_bool = False
+        row = 0
+        for key, value in row_data.items():
+            # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool}')  # debug only
+            col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
+            if key in col_list:
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.FILE and is_on_state(
+                key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY, CSVFieldState.CHANGED]
+            ):
+                continue
+            if self.data_source_type == DataSourceType.SQLITE and is_on_state(
+                key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY, CSVFieldState.CHANGED]
+            ):
                 continue
             label = key.replace('_', ' ').title()
-            ttk.Label(edit_row_window.frm_content, text=label).grid(row=i, column=0, sticky=tk.W)
             key_lower = key.lower()
+
             if key_lower == 'image':
                 image_url = value
             if is_from_type(key, [CSVFieldType.TEXT]):
+                if previous_was_a_bool:
+                    row += 1  # the previous row was a bool, we have to move to the next row
+                previous_was_a_bool = False
+                ttk.Label(edit_row_window.frm_content, text=label).grid(row=row, column=0, sticky=tk.W)
                 entry = ExtendedText(edit_row_window.frm_content, height=3)
                 entry.set_content(value)
-                entry.grid(row=i, column=1, sticky=tk.EW)
+                entry.grid(row=row, column=1, columnspan=3, sticky=tk.EW)
             elif is_from_type(key, [CSVFieldType.BOOL]):
+                # values by default. keep here !
+                col_span = 1
+                if previous_was_a_bool:
+                    col_label = 2
+                    col_value = 3
+                else:
+                    col_label = 0
+                    col_value = 1
+                ttk.Label(edit_row_window.frm_content, text=label).grid(row=row, column=col_label, sticky=tk.W)
                 entry = ExtendedCheckButton(edit_row_window.frm_content, label='', images_folder=gui_g.s.assets_folder)
                 entry.set_content(value)
-                entry.grid(row=i, column=1, sticky=tk.EW)
+                entry.grid(row=row, column=col_value, columnspan=col_span, sticky=tk.EW)
+                previous_was_a_bool = not previous_was_a_bool
+                if previous_was_a_bool:
+                    row -= 1  # we stay on the same row for the next loop
                 # TODO : add other extended widget for specific type (CSVFieldType.DATETIME , CSVFieldType.LIST)
             else:
                 # other field is just a usual entry
+                if previous_was_a_bool:
+                    row += 1  # the previous row was a bool, we have to move to the next row
+                previous_was_a_bool = False
+                ttk.Label(edit_row_window.frm_content, text=label).grid(row=row, column=0, sticky=tk.W)
                 entry = ttk.Entry(edit_row_window.frm_content)
                 entry.insert(0, value)
-                entry.grid(row=i, column=1, sticky=tk.EW)
-
+                entry.grid(row=row, column=1, columnspan=3, sticky=tk.EW)
+            row += 1
             entries[key] = entry
 
         # image preview
-        show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image)
+        show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale)
 
         self._edit_row_entries = entries
         self._edit_row_number = row_number
