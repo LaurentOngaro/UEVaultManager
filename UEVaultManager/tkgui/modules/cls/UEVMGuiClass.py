@@ -61,7 +61,7 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
     # TWO: remove converted string with relicats
     patterns = [
         r'[@]+\d+',  # a @ followed by at least one digit ex: '@1' or '@11'
-        r'\d+[@]+',  # at least one digit followed by @ ex: '1@' or '1@@'
+        # r'\d+[@]+',  # at least one digit followed by @ ex: '1@' or '1@@'
         r'[@]+',  # any @  ex: '@' or '@@'
     ]
     patterns = [re.compile(p) for p in patterns]
@@ -659,6 +659,7 @@ class UEVMGui(tk.Tk):
                             if line.startswith('URL='):
                                 returned_urls[0] = line.replace('URL=', '').strip()
                                 return True
+                self.logger.debug(f'Fuzzy compare minimal score was: {minimal_score}')
             return False
 
         if self.core is None:
