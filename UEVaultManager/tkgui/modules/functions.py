@@ -159,15 +159,16 @@ def log_error(msg: str) -> None:
     sys.exit(1)
 
 
-def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
+def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -> None:
     """
     Resize the given image and display it in the given canvas.
     :param image: the image to display.
     :param canvas: the canvas to display the image in.
+    :param scale: the scale to apply to the image.
     """
     # Resize the image while keeping the aspect ratio
-    target_height = gui_g.s.preview_max_height
-    aspect_ratio = float(image.width) / float(image.height)
+    target_height = int(gui_g.s.preview_max_height * scale)
+    aspect_ratio = float(image.width * scale) / float(image.height * scale)
     target_width = int(target_height * aspect_ratio)
     resized_image = image.resize((target_width, target_height), Image.BILINEAR)
     tk_image = ImageTk.PhotoImage(resized_image)
@@ -178,11 +179,12 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
     canvas.image = tk_image
 
 
-def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
+def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> None:
     """
     Show the image of the given asset in the given canvas.
     :param image_url: the url of the image to display.
     :param canvas_image: the canvas to display the image in.
+    :param scale: the scale to apply to the image.
     :param timeout: the timeout in seconds to wait for the image to be downloaded.
     """
     if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
@@ -203,7 +205,7 @@ def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
 
             with open(image_filename, "wb") as f:
                 f.write(response.content)
-        resize_and_show_image(image, canvas_image)
+        resize_and_show_image(image, canvas_image, scale)
     except Exception as error:
         log_warning(f"Error showing image: {error!r}")
 

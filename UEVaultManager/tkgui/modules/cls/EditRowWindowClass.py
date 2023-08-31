@@ -24,6 +24,7 @@ class EditRowWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param editable_table: the table to edit.
     """
+    preview_scale = 0.5
     must_save: bool = False
 
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
@@ -100,9 +101,12 @@ class EditRowWindow(tk.Toplevel):
 
             lbf_preview = ttk.LabelFrame(self, text='Image Preview')
             lbf_preview.grid(row=0, column=1, **grid_def_options)
-            canvas_image = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
+            width = int(gui_g.s.preview_max_width * container.preview_scale)
+            height = int(gui_g.s.preview_max_height * container.preview_scale)
+
+            canvas_image = tk.Canvas(lbf_preview, width=width, height=height, highlightthickness=0)
             canvas_image.pack()
-            canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
+            canvas_image.create_rectangle((0, 0), (width, height), fill='black')
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=2, **grid_def_options)

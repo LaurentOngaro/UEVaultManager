@@ -238,7 +238,7 @@ csv_sql_fields = {
     'urlSlug': {
         # intentionnaly duplicated
         'sql_name': 'asset_slug',
-        'state': CSVFieldState.ASSET_ONLY,
+        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR
     },
     'Currency code': {
