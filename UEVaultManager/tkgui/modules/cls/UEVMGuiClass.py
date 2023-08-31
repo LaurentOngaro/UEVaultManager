@@ -609,7 +609,7 @@ class UEVMGui(tk.Tk):
             row, new_index = data_table.create_row(row_data=row_data)
             data_table.update(update_format=True)
             data_table.move_to_row(new_index)
-            data_table.must_save = True
+            self.event_generate('<<tableChanged>>')
             text = f' with asset_id={row["Asset_id"][0]}' if row is not None else ''
             gui_f.box_message(f'A new row{text} has been added at index {new_index} of the datatable')
 

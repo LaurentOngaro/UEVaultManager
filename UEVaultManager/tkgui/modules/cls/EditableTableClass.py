@@ -42,6 +42,7 @@ class EditableTable(Table):
     _data: pd.DataFrame = None
     _last_selected_row: int = -1
     _last_selected_col: int = -1
+    _last_cell_value: str = ''
     _changed_rows = []
     _deleted_asset_ids = []
     _db_handler = None
@@ -257,6 +258,7 @@ class EditableTable(Table):
         Overrided for debugging
         """
         super().tableChanged()
+        self.must_save = True
 
     def handle_left_release(self, event):
         """
@@ -268,7 +270,32 @@ class EditableTable(Table):
             super().handle_left_release(event)
         except IndexError:
             pass
-        # self._generate_cell_selection_changed_event()
+
+    def handleCellEntry(self, row, col):
+        """
+        Callback for cell entry
+        Overrided for debugging
+        """
+        # get the value from the MODEL because the value in the datatable could not have been updated yet
+        try:
+            old_value = self.get_data(df_type=DataFrameUsed.MODEL).iat[row, col]  # iat checked
+        except IndexError:
+            old_value = None
+        super().handleCellEntry(row, col)
+        self._check_cell_has_changed(old_value)
+
+    def handleEntryMenu(self, *args):
+        """
+        Callback for option menu in categorical columns entry
+        Overrided for debugging
+        """
+        # get the value from the MODEL because the value in the datatable could not have been updated yet
+        try:
+            old_value = self.get_data(df_type=DataFrameUsed.MODEL).iat[self._last_selected_row, self._last_selected_col]  # iat checked
+        except IndexError:
+            old_value = None
+        super().handleEntryMenu(*args)
+        self._check_cell_has_changed(old_value)
 
     def _set_with_for_hidden_columns(self) -> None:
         """
@@ -281,13 +308,34 @@ class EditableTable(Table):
     def _generate_cell_selection_changed_event(self) -> None:
         """
         Create the event bindings for the table.
+
+        Note: a CellSelectionChanged event is generated if the selected cell has changed.
         """
         selected_row = self.currentrow
         selected_col = self.currentcol
         if (selected_row != self._last_selected_row) or (selected_col != self._last_selected_col):
             self._last_selected_row = selected_row
             self._last_selected_col = selected_col
+            self._last_cell_value = self.get_cell(selected_row, selected_col)
             self.event_generate('<<CellSelectionChanged>>')
+
+    def _check_cell_has_changed(self, old_value) -> bool:
+        """
+        Check if the cell value has changed. If so, the row is added to the list of changed rows.
+        :param old_value: The old value of the cell.
+        :return: True if the cell value has changed, False otherwise.
+
+        Note: a tableChanged event is generated if the cell value has changed.
+        """
+        row = self._last_selected_row
+        col = self._last_selected_col
+        new_value = self.get_cell(row, col)
+        if new_value is not None and old_value != new_value:
+            row_index = self.get_real_index(row)
+            self.add_to_rows_to_save(row_index)
+            # self.event_generate('<<tableChanged>>') # done in add_to_rows_to_save
+            return True
+        return False
 
     def set_frm_filter(self, frm_filter=None) -> None:
         """
@@ -411,6 +459,7 @@ class EditableTable(Table):
         Get a dataframe content depending on the df_type parameter. By default, the unfiltered dataframe is returned.
         :param df_type: The dataframe type to get. See DataFrameUsed type description for more details
         :return: The dataframe.
+
         Note: the unfiltered dataframe must be returned by default because it's used in by the FilterFrame class.
         """
         if df_type == DataFrameUsed.AUTO:
@@ -687,7 +736,6 @@ class EditableTable(Table):
                         except (IndexError, KeyError) as error:
                             self.logger.warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
 
-            self.must_save = True
             self.selectNone()
             self.update_index_copy_column()
             number_deleted = len(index_to_delete)
@@ -700,6 +748,7 @@ class EditableTable(Table):
                 self.move_to_row(cur_row - number_deleted)
             # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
             self.update(update_filters=True)
+            self.event_generate('<<tableChanged>>')
             return number_deleted > 0
         else:
             return False
@@ -1202,7 +1251,7 @@ class EditableTable(Table):
         if row_index < 0 or row_index > len(self.get_data()) or row_index in self._changed_rows:
             return
         self._changed_rows.append(row_index)
-        self.must_save = True
+        self.event_generate('<<tableChanged>>')
         self.set_control_state_func('save', True)
 
     def clear_rows_to_save(self) -> None:
@@ -1306,7 +1355,14 @@ class EditableTable(Table):
         :param col_index: column index.
         :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value.
         :return: the value of the cell or None if the row or column index is out of range.
+
+        Note: if row_number or col_index are not passed, the last selected row or column will be used.
         """
+        if row_number < 0:
+            row_number = self._last_selected_row
+        if col_index < 0:
+            col_index = self._last_selected_col
+
         if row_number < 0 or col_index < 0:
             return None
         try:
