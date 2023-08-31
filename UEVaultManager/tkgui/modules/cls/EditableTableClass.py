@@ -202,7 +202,10 @@ class EditableTable(Table):
         Determine current column grid positions
         Overrided for debugging
         """
-        super().setColPositions()
+        try:
+            super().setColPositions()
+        except IndexError:
+            pass
 
     def resizeColumn(self, col: int, width: int):
         """
