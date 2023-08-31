@@ -251,6 +251,7 @@ class EditableTable(Table):
                 # noinspection PyTypeChecker
                 df.sort_values(by=colnames, inplace=True, ascending=ascending)
             except Exception as error:
+                self.add_error(error)
                 self.logger.warning(f'Could not sort the columns. Error: {error!r}')
         self.update_index_copy_column()
         self.update(update_filters=True)
@@ -375,6 +376,7 @@ class EditableTable(Table):
                     else:
                         df[col] = df[col].astype(converter)
                 except (KeyError, ValueError) as error:
+                    self.add_error(error)
                     self.logger.warning(f'Could not convert column "{col}" using {converter}. Error: {error!r}')
         # self.logger.debug("\nCOL TYPES AFTER CONVERSION\n")
         # df.info()  # direct print info
@@ -454,6 +456,7 @@ class EditableTable(Table):
             else:
                 self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
         except (ValueError, IndexError) as error:
+            self.add_error(error)
             self.logger.warning(f'Could not get the real index for row number #{row_number + 1}. Error: {error!r}')
         return result
 
@@ -723,6 +726,7 @@ class EditableTable(Table):
                         self.add_to_asset_ids_to_delete(asset_id)
                         self.logger.info(f'Adding row {idx} with asset_id={asset_id} to the list of index to delete')
                     except (IndexError, KeyError) as error:
+                        self.add_error(error)
                         self.logger.warning(f'Could add row {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
 
                     # update the index copy column because index is changed after each deletion
@@ -739,6 +743,7 @@ class EditableTable(Table):
                             # if self.df_filtered is not None:
                             #    self.df_filtered.drop(idx, inplace=True)
                         except (IndexError, KeyError) as error:
+                            self.add_error(error)
                             self.logger.warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
 
             self.selectNone()
@@ -795,6 +800,7 @@ class EditableTable(Table):
                     asset_id = ue_asset.data.get('asset_id', '')
                     self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
+                    self.add_error(error)
                     self.logger.warning(f'Failed to save UE_asset for row #{row_number + 1} to the database. Error: {error!r}')
             for asset_id in self._deleted_asset_ids:
                 try:
@@ -804,6 +810,7 @@ class EditableTable(Table):
                     self._db_handler.delete_asset(asset_id=asset_id)
                     self.logger.info(f'Row with asset_id={asset_id} has been deleted from the database')
                 except (KeyError, ValueError, AttributeError) as error:
+                    self.add_error(error)
                     self.logger.warning(f'Failed to delete asset_id={asset_id} to the database. Error: {error!r}')
 
         self.clear_rows_to_save()
@@ -926,6 +933,7 @@ class EditableTable(Table):
                 rc = self.rowcolors
                 rc[col_name] = clrs
             except (KeyError, ValueError) as error:
+                self.add_error(error)
                 self.logger.debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
                 continue
 
@@ -946,6 +954,7 @@ class EditableTable(Table):
                 mask = df[col_name] == value_to_check
                 self.setColorByMask(col=col_name, mask=mask, clr=color)
             except (KeyError, ValueError) as error:
+                self.add_error(error)
                 self.logger.debug(f'color_cells_if: An error as occured with {col_name} : {error!r}')
                 continue
 
@@ -966,6 +975,7 @@ class EditableTable(Table):
                 mask = df[col_name] != value_to_check
                 self.setColorByMask(col=col_name, mask=mask, clr=color)
             except (KeyError, ValueError) as error:
+                self.add_error(error)
                 self.logger.debug(f'color_cells_if_not: An error as occured with {col_name} : {error!r}')
                 continue
 
@@ -1000,6 +1010,7 @@ class EditableTable(Table):
                 try:
                     self.setRowColors(rows=row_indices, clr=color, cols='all')
                 except (KeyError, IndexError) as error:
+                    self.add_error(error)
                     self.logger.debug(f'Error in color_rows_if: {error!r}')
             return
 
@@ -1403,6 +1414,7 @@ class EditableTable(Table):
             df.iat[idx, col_index] = value  # iat checked
             return True
         except TypeError as error:
+            self.add_error(error)
             if not self._is_scanning and 'Cannot setitem on a Categorical with a new category' in str(error):
                 # this will occur when scanning folder with category that are not in the table yet
                 col_name = self.get_col_name(col_index)
