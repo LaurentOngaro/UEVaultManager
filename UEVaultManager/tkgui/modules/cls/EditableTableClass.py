@@ -55,7 +55,7 @@ class EditableTable(Table):
     _edit_cell_row_number: int = -1
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
-    _dftype_for_coloring = DataFrameUsed.AUTO  # type of dataframe used for coloring
+    _dftype_for_coloring = DataFrameUsed.MODEL  # type of dataframe used for coloring
     _is_scanning = False  # True when a folders scan is in progress
     _column_infos_stored = False  # used to see if column_infos has changed
     _errors: [Exception] = []
