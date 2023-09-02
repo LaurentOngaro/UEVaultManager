@@ -178,283 +178,226 @@ class GUISettings:
         self._app_title_long += f' - SWITCH VALUE {self.testing_switch} ' if self.testing_switch > 0 else ''
         return self._app_title_long
 
-    def get_rows_per_page(self) -> int:
+    @property
+    def rows_per_page(self) -> int:
         """ Getter for rows_per_page """
         return gui_fn.convert_to_int(self.config_vars['rows_per_page'])
 
-    def set_rows_per_page(self, value):
+    @rows_per_page.setter
+    def rows_per_page(self, value):
         """ Setter for rows_per_page """
         self.config_vars['rows_per_page'] = value
 
-    # used as property for keeping transparent access
-    rows_per_page = property(get_rows_per_page, set_rows_per_page)
-
-    def get_data_filters(self) -> dict:
+    @property
+    def data_filters(self) -> dict:
         """ Getter for data_filters """
         return self._get_serialized('data_filters', is_dict=True)
 
-    def set_data_filters(self, values: dict):
+    @data_filters.setter
+    def data_filters(self, values: dict):
         """ Setter for data_filters """
         self._set_serialized('data_filters', values)
 
-    # used as property for keeping transparent access
-    data_filters = property(get_data_filters, set_data_filters)
-
-    def get_x_pos(self) -> int:
+    @property
+    def x_pos(self) -> int:
         """ Getter for x_pos """
         return gui_fn.convert_to_int(self.config_vars['x_pos'])
 
-    def set_x_pos(self, value):
+    @x_pos.setter
+    def x_pos(self, value):
         """ Setter for x_pos """
         self.config_vars['x_pos'] = value
 
-    # used as property for keeping transparent access
-    x_pos = property(get_x_pos, set_x_pos)
-
-    def get_y_pos(self) -> int:
+    @property
+    def y_pos(self) -> int:
         """ Getter for y_pos """
         return gui_fn.convert_to_int(self.config_vars['y_pos'])
 
-    def set_y_pos(self, value):
+    @y_pos.setter
+    def y_pos(self, value):
         """ Setter for y_pos """
         self.config_vars['y_pos'] = value
 
-    # used as property for keeping transparent access
-    y_pos = property(get_y_pos, set_y_pos)
-
-    def get_width(self) -> int:
+    @property
+    def width(self) -> int:
         """ Getter for width """
         return gui_fn.convert_to_int(self.config_vars['width'])
 
-    def set_width(self, value):
+    @width.setter
+    def width(self, value):
         """ Setter for width """
         self.config_vars['width'] = value
 
-    # used as property for keeping transparent access
-    width = property(get_width, set_width)
-
-    def get_height(self) -> int:
+    @property
+    def height(self) -> int:
         """ Getter for height """
         return gui_fn.convert_to_int(self.config_vars['height'])
 
-    def set_height(self, value):
+    @height.setter
+    def height(self, value):
         """ Setter for height """
         self.config_vars['height'] = value
 
-    # used as property for keeping transparent access
-    height = property(get_height, set_height)
-
-    def get_debug_mode(self) -> bool:
+    @property
+    def debug_mode(self) -> bool:
         """ Getter for debug_mode """
         return gui_fn.convert_to_bool(self.config_vars['debug_mode'])
 
-    def set_debug_mode(self, value):
+    @debug_mode.setter
+    def debug_mode(self, value):
         """ Setter for debug_mode """
         self.config_vars['debug_mode'] = value
         update_loggers_level(debug_value=value)
 
-    # used as property for keeping transparent access
-    debug_mode = property(get_debug_mode, set_debug_mode)
-
-    def get_never_update_data_files(self) -> bool:
+    @property
+    def never_update_data_files(self) -> bool:
         """ Getter for never_update_data_files """
         return gui_fn.convert_to_bool(self.config_vars['never_update_data_files'])
 
-    def set_never_update_data_files(self, value):
+    @never_update_data_files.setter
+    def never_update_data_files(self, value):
         """ Setter for never_update_data_files """
         self.config_vars['never_update_data_files'] = value
 
-    # used as property for keeping transparent access
-    never_update_data_files = property(get_never_update_data_files, set_never_update_data_files)
-
-    def get_reopen_last_file(self) -> bool:
+    @property
+    def reopen_last_file(self) -> bool:
         """ Getter for reopen_last_file """
         return gui_fn.convert_to_bool(self.config_vars['reopen_last_file'])
 
-    def set_reopen_last_file(self, value):
+    @reopen_last_file.setter
+    def reopen_last_file(self, value):
         """ Setter for reopen_last_file """
         self.config_vars['reopen_last_file'] = value
 
-    # used as property for keeping transparent access
-    reopen_last_file = property(get_reopen_last_file, set_reopen_last_file)
-
-    def get_use_colors_for_data(self) -> bool:
+    @property
+    def use_colors_for_data(self) -> bool:
         """ Getter for use_colors_for_data """
         return gui_fn.convert_to_bool(self.config_vars['use_colors_for_data'])
 
-    def set_use_colors_for_data(self, value):
+    @use_colors_for_data.setter
+    def use_colors_for_data(self, value):
         """ Setter for use_colors_for_data """
         self.config_vars['use_colors_for_data'] = value
 
-    # used as property for keeping transparent access
-    use_colors_for_data = property(get_use_colors_for_data, set_use_colors_for_data)
-
-    def get_image_cache_max_time(self) -> int:
+    @property
+    def image_cache_max_time(self) -> int:
         """ Getter for image_cache_max_time """
         return gui_fn.convert_to_int(self.config_vars['image_cache_max_time'])
 
-    def set_image_cache_max_time(self, value):
+    @image_cache_max_time.setter
+    def image_cache_max_time(self, value):
         """ Setter for image_cache_max_time """
         self.config_vars['image_cache_max_time'] = value
 
-    # used as property for keeping transparent access
-    image_cache_max_time = property(get_image_cache_max_time, set_image_cache_max_time)
-
-    def get_last_opened_file(self) -> str:
+    @property
+    def last_opened_file(self) -> str:
         """ Getter for last_opened_file """
         return self.config_vars['last_opened_file']
 
-    def set_last_opened_file(self, value):
+    @last_opened_file.setter
+    def last_opened_file(self, value):
         """ Setter for last_opened_file """
         self.config_vars['last_opened_file'] = value
 
-    # used as property for keeping transparent access
-    last_opened_file = property(get_last_opened_file, set_last_opened_file)
-
-    def get_cache_folder(self) -> str:
-        """ Getter for cache_folder """
-        return self.config_vars['cache_folder']
-
-    def set_cache_folder(self, value):
-        """ Setter for cache_folder """
-        self.config_vars['cache_folder'] = value
-
-    # not used as property to avoid storing absolute paths in the config file. Getter and setter could be used to store relative paths
-    # cache_folder = property(get_cache_folder, set_cache_folder)
-
-    def get_results_folder(self) -> str:
-        """ Getter for results_folder """
-        return self.config_vars['results_folder']
-
-    def set_results_folder(self, value):
-        """ Setter for results_folder """
-        self.config_vars['results_folder'] = value
-
-    def get_scraping_folder(self) -> str:
-        """ Getter for scraping_folder """
-        return self.config_vars['scraping_folder']
-
-    def set_scraping_folder(self, value):
-        """ Setter for scraping_folder """
-        self.config_vars['scraping_folder'] = value
-
-    # not used as property to avoid storing absolute paths in the config file. Getter and setter could be used to store relative paths
-    # scraping_folder = property(get_scraping_folder, set_scraping_folder)
-
-    def get_folders_to_scan(self) -> list:
+    @property
+    def folders_to_scan(self) -> list:
         """ Getter for folders_to_scan """
         return self._get_serialized('folders_to_scan')
 
-    def set_folders_to_scan(self, values):
+    @folders_to_scan.setter
+    def folders_to_scan(self, values):
         """ Setter for folders_to_scan """
         self._set_serialized('folders_to_scan', values)
 
-    folders_to_scan = property(get_folders_to_scan, set_folders_to_scan)
-
-    def get_data_filters(self) -> dict:
-        """ Getter for data_filters """
-        return self._get_serialized('data_filters')
-
-    def set_data_filters(self, values: dict):
-        """ Setter for data_filters """
-        self._set_serialized('data_filters', values)
-
-    def get_minimal_fuzzy_score_by_name(self) -> dict:
+    @property
+    def minimal_fuzzy_score_by_name(self) -> dict:
         """ Getter for minimal_fuzzy_score_by_name """
         return self._get_serialized('minimal_fuzzy_score_by_name')
 
-    def set_minimal_fuzzy_score_by_name(self, values: dict):
+    @minimal_fuzzy_score_by_name.setter
+    def minimal_fuzzy_score_by_name(self, values: dict):
         """ Setter for minimal_fuzzy_score_by_name """
         self._set_serialized('minimal_fuzzy_score_by_name', values)
 
-    minimal_fuzzy_score_by_name = property(get_minimal_fuzzy_score_by_name, set_minimal_fuzzy_score_by_name)
-
-    def get_column_infos(self) -> dict:
+    @property
+    def column_infos(self) -> dict:
         """ Getter for columns infos """
         return self._get_serialized('column_infos')
 
-    def set_column_infos(self, values: dict):
+    @column_infos.setter
+    def column_infos(self, values: dict):
         """ Setter for columns infos """
         self._set_serialized('column_infos', values)
 
-    # used as property for keeping transparent access
-    column_infos = property(get_column_infos, set_column_infos)
-
-    def get_use_threads(self) -> bool:
+    @property
+    def use_threads(self) -> bool:
         """ Getter for use_threads """
         return gui_fn.convert_to_bool(self.config_vars['use_threads'])
 
-    def set_use_threads(self, value):
+    @use_threads.setter
+    def use_threads(self, value):
         """ Setter for use_threads """
         self.config_vars['use_threads'] = value
 
-    # used as property for keeping transparent access
-    use_threads = property(get_use_threads, set_use_threads)
-
-    def get_hidden_column_names(self) -> list:
+    @property
+    def hidden_column_names(self) -> list:
         """ Getter for hidden_column_names """
         return self._get_serialized('hidden_column_names')
 
-    def set_hidden_column_names(self, values):
+    @hidden_column_names.setter
+    def hidden_column_names(self, values):
         """ Setter for hidden_column_names """
         self._set_serialized('hidden_column_names', values)
 
-    hidden_column_names = property(get_hidden_column_names, set_hidden_column_names)
-
-    def get_testing_switch(self) -> int:
+    @property
+    def testing_switch(self) -> int:
         """ Getter for testing_switch """
         return gui_fn.convert_to_int(self.config_vars['testing_switch'])
 
-    def set_testing_switch(self, value):
+    @testing_switch.setter
+    def testing_switch(self, value):
         """ Setter for testing_switch """
         self.config_vars['testing_switch'] = value
 
-    # used as property for keeping transparent access
-    testing_switch = property(get_testing_switch, set_testing_switch)
-
-    def get_assets_order_col(self) -> int:
+    @property
+    def assets_order_col(self) -> int:
         """ Getter for assets_order_col """
         return self.config_vars['assets_order_col']
 
-    def set_assets_order_col(self, value):
+    @assets_order_col.setter
+    def assets_order_col(self, value):
         """ Setter for assets_order_col """
         self.config_vars['assets_order_col'] = value
 
-    # used as property for keeping transparent access
-    assets_order_col = property(get_assets_order_col, set_assets_order_col)
-
-    def get_check_asset_folders(self) -> bool:
+    @property
+    def check_asset_folders(self) -> bool:
         """ Getter for check_asset_folders """
         return gui_fn.convert_to_bool(self.config_vars['check_asset_folders'])
 
-    def set_check_asset_folders(self, value):
+    @check_asset_folders.setter
+    def check_asset_folders(self, value):
         """ Setter for check_asset_folders """
         self.config_vars['check_asset_folders'] = value
 
-    # used as property for keeping transparent access
-    check_asset_folders = property(get_check_asset_folders, set_check_asset_folders)
-
-    def get_browse_when_add_row(self) -> bool:
+    @property
+    def browse_when_add_row(self) -> bool:
         """ Getter for browse_when_add_row """
         return gui_fn.convert_to_bool(self.config_vars['browse_when_add_row'])
 
-    def set_browse_when_add_row(self, value):
+    @browse_when_add_row.setter
+    def browse_when_add_row(self, value):
         """ Setter for browse_when_add_row """
         self.config_vars['browse_when_add_row'] = value
 
-    # used as property for keeping transparent access
-    browse_when_add_row = property(get_browse_when_add_row, set_browse_when_add_row)
-
-    def get_last_opened_folder(self) -> str:
+    @property
+    def last_opened_folder(self) -> str:
         """ Getter for last_opened_folder """
         return self.config_vars['last_opened_folder']
 
-    def set_last_opened_folder(self, value):
+    @last_opened_folder.setter
+    def last_opened_folder(self, value):
         """ Setter for last_opened_folder """
         self.config_vars['last_opened_folder'] = value
-
-    # used as property for keeping transparent access
-    last_opened_folder = property(get_last_opened_folder, set_last_opened_folder)
 
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:

@@ -176,7 +176,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         except (ValueError, tk.TclError):
             pass
         else:
-            gui_g.s.set_debug_mode(value)
+            gui_g.s.debug_mode = value
 
         try:
             self._container.update_controls_and_redraw()  # will update the title of the window
