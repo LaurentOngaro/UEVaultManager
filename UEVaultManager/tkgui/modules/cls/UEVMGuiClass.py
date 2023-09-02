@@ -513,7 +513,6 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
-        data_table.update_col_infos(apply_resize_cols=False)
         file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui)
         gui_g.s.save_config_file()
         # delete the backup if the files and the backup are identical
@@ -551,8 +550,9 @@ class UEVMGui(tk.Tk):
         :param show_dialog: Whether to show a dialog to select the file to save to, if False, use the current file.
         :return: the name of the file that was saved.
         """
-        self.save_settings()
         data_table = self.editable_table  # shortcut
+        self.save_settings()
+        data_table.update_col_infos(apply_resize_cols=False)
         if data_table.data_source_type == DataSourceType.FILE:
             if show_dialog:
                 filename = self._open_file_dialog(filename=data_table.data_source, save_mode=True)
@@ -1344,7 +1344,7 @@ class UEVMGui(tk.Tk):
         if not data_table.must_save or (
             data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
-            self.save_settings()  # save columns order and size
+            data_table.update_col_infos(apply_resize_cols=False)
             if data_table.reload_data():
                 # self.update_page_numbers() done in reload_data
                 self.update_category_var()
@@ -1357,13 +1357,14 @@ class UEVMGui(tk.Tk):
         Rebuild the data from the data source. Will ask for confirmation before rebuilding.
         """
         if gui_f.box_yesno(f'The process will change the content of the windows.\nAre you sure you want to continue ?'):
-            self.save_settings()  # save columns order and size
+            data_table = self.editable_table  # shortcut
+            data_table.update_col_infos(apply_resize_cols=False)
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
-            if self.editable_table.rebuild_data():
+            if data_table.rebuild_data():
                 self.update_controls_and_redraw()
                 self.update_category_var()
-                gui_f.box_message(f'Data rebuilt from {self.editable_table.data_source}')
+                gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
 
     def run_uevm_command(self, command_name='') -> None:
         """
