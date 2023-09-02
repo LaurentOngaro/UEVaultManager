@@ -1104,7 +1104,7 @@ class EditableTable(Table):
         if not gui_g.s.use_colors_for_data:
             self.redraw()
             return
-        self.logger.debug('set_colors')
+        # self.logger.debug('set_colors')
         self.gradient_color_cells(col_names=['Review'], cmap='cool_r', alpha=1, min_val=0, max_val=5)
         self.color_cells_if(col_names=['Owned', 'Discounted'], color='palegreen', value_to_check=True)
         self.color_cells_if(col_names=['Grab result'], color='skyblue', value_to_check='NO_ERROR')
