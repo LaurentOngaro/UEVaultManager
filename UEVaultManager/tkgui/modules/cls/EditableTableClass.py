@@ -55,19 +55,23 @@ class EditableTable(Table):
     _edit_cell_row_number: int = -1
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
-    _dftype_for_coloring = DataFrameUsed.UNFILTERED  # type of dataframe used for coloring
+    _dftype_for_coloring = DataFrameUsed.AUTO  # type of dataframe used for coloring
     _is_scanning = False  # True when a folders scan is in progress
     _column_infos_stored = False  # used to see if column_infos has changed
     _errors: [Exception] = []
+    _current_page: int = 1
+    _old_page: int = 1
+    _is_filtered: bool = False
+    _old_is_filtered: bool = False
     is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     update_loggers_level(logger)
     model: TableModel = None  # setup in table.__init__
+    rowcolors: pd.DataFrame = None  # setup in table.__init__
     df_unfiltered: pd.DataFrame = None  # unfiltered dataframe (default)
     df_filtered: pd.DataFrame = None  # filtered dataframe
     progress_window: FakeProgressWindow = None
     pagination_enabled: bool = True
-    current_page: int = 1
     total_pages: int = 1
     must_save: bool = False
     must_rebuild: bool = False
@@ -111,6 +115,42 @@ class EditableTable(Table):
             self.resize_columns()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
         close_progress(self)
+
+    @property
+    def current_page(self) -> int:
+        """
+        Get the current page.
+        :return: The current page number.
+        """
+        return self._current_page
+
+    @current_page.setter
+    def current_page(self, value: int) -> None:
+        """
+        Set the current page.
+        :param value: The page number to set.
+        """
+        self._old_page = self._current_page
+        self._current_page = value
+        # self.update_page_numbers_func()
+        # self.update_rows_text_func()
+
+    @property
+    def is_filtered(self) -> int:
+        """
+        Get the current page.
+        :return: The current page number.
+        """
+        return self._is_filtered
+
+    @is_filtered.setter
+    def is_filtered(self, value: bool) -> None:
+        """
+        Set the filtered state.
+        :param value: The filtered state to set.
+        """
+        self._old_is_filtered = self._is_filtered
+        self._is_filtered = value
 
     def handle_arrow_keys(self, event):
         """
@@ -302,6 +342,16 @@ class EditableTable(Table):
         super().handleEntryMenu(*args)
         self._check_cell_has_changed(old_value)
 
+    def resetColors(self):
+        """
+        Reset the colors of the cells. Initialize the rowcolors dataframe.
+
+        Note: Overridden for selecting the right datatable to use.
+        """
+        df = self.get_data(df_type=self._dftype_for_coloring)
+        self.rowcolors = pd.DataFrame(index=df[gui_g.s.index_copy_col_name])
+        return
+
     def _set_with_for_hidden_columns(self) -> None:
         """
         Set the with for the hidden columns.
@@ -426,7 +476,7 @@ class EditableTable(Table):
             row_number = self.add_page_offset(row_number)
         # get the REAL index of the row from its backup
         if df_type == DataFrameUsed.AUTO:
-            if self.filtered:
+            if self.is_filtered:
                 df = self.df_filtered
             else:
                 df = self.df_unfiltered
@@ -469,7 +519,7 @@ class EditableTable(Table):
         Note: the unfiltered dataframe must be returned by default because it's used in by the FilterFrame class.
         """
         if df_type == DataFrameUsed.AUTO:
-            if self.filtered:
+            if self.is_filtered:
                 return self.df_filtered
             else:
                 return self.df_unfiltered
@@ -490,13 +540,12 @@ class EditableTable(Table):
         :param df_type: The dataframe type to set. See DataFrameUsed type description for more details
         """
         if df_type == DataFrameUsed.AUTO:
-            if self.filtered:
+            if self.is_filtered:
                 self.df_filtered = df
             else:
                 self.df_unfiltered = df
         elif df_type == DataFrameUsed.UNFILTERED:
             self.df_unfiltered = df
-            # self.set_colors()
         elif df_type == DataFrameUsed.FILTERED:
             self.df_filtered = df
         elif df_type == DataFrameUsed.BOTH:
@@ -903,31 +952,33 @@ class EditableTable(Table):
         else:
             return False
 
-    def gradient_color_cells(self, col_names: [] = None, cmap: str = 'sunset', alpha: float = 1) -> None:
+    def gradient_color_cells(
+        self, col_names: [] = None, cmap: str = 'blues', alpha: float = 1, min_val=None, max_val=None, is_reversed: bool = False
+    ) -> None:
         """
         Create a gradient color for the cells os specified columns. The gradient depends on the cell value between min and max values for that column.
         :param col_names: The names of the columns to create a gradient color for.
         :param cmap: name of the colormap to use.
         :param alpha: alpha value for the color.
+        :param min_val: The minimum value to use for the gradient. If None, the minimum value of each column is used.
+        :param max_val: The maximum value to use for the gradient. If None, the maximum value of each column is used.
+        :param is_reversed: True to reverse the gradient, False otherwise.
 
         Note: called by set_colors() on each update
         """
-        # import pylab as plt
-        # cmaps = sorted(m for m in plt.cm.datad if not m.endswith("_r"))
-        # print(cmaps)
-        # possible cmaps:
-        # 'Accent', 'Blues', 'BrBG', 'BuGn', 'BuPu', 'CMRmap', 'Dark2', 'GnBu', 'Greens', 'Greys', 'OrRd', 'Oranges', 'PRGn', 'Paired', 'Pastel1',
-        #  'Pastel2', 'PiYG', 'PuBu', 'PuBuGn', 'PuOr', 'PuRd', 'Purples', 'RdBu', 'RdGy', 'RdPu', 'RdYlBu', 'RdYlGn', 'Reds', 'Set1', 'Set2', 'Set3',
-        #  'Spectral', 'Wistia', 'YlGn', 'YlGnBu', 'YlOrBr', 'YlOrRd', 'afmhot', 'autumn', 'binary', 'bone', 'brg', 'bwr', 'cool', 'coolwarm', 'copper',
-        #  'cubehelix', 'flag', 'gist_earth', 'gist_gray', 'gist_heat', 'gist_ncar', 'gist_rainbow', 'gist_stern', 'gist_yarg', 'gnuplot', 'gnuplot2',
-        #  'gray', 'hot', 'hsv', 'jet', 'nipy_spectral', 'ocean', 'pink', 'prism', 'rainbow', 'seismic', 'spring', 'summer', 'tab10', 'tab20', 'tab20b',
-        #  'tab20c', 'terrain', 'winter'
         if col_names is None:
             return
         df = self.get_data(df_type=self._dftype_for_coloring)
         for col_name in col_names:
             try:
                 x = df[col_name]
+                if min_val is None:
+                    min_val = x.min()
+                if max_val is None:
+                    max_val = x.max()
+                x = (x - min_val) / (max_val - min_val)
+                if is_reversed:
+                    x = max_val - x
                 clrs = self.values_to_colors(x, cmap, alpha)
                 clrs = pd.Series(clrs, index=df.index)
                 rc = self.rowcolors
@@ -937,10 +988,20 @@ class EditableTable(Table):
                 self.logger.debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
                 continue
 
-    def color_cells_if(self, col_names: [] = None, color: str = 'green', value_to_check: str = 'True') -> None:
+    def setColorByMask(self, col, mask, clr):
+        """Color individual cells in a column using a mask."""
+        if len(self.rowcolors) == 0:
+            self.resetColors()
+        rc = self.rowcolors
+        if col not in rc.columns:
+            rc[col] = pd.Series()
+        rc[col] = rc[col].where(-mask, clr)
+        return
+
+    def color_cells_if(self, col_names: [] = None, color: str = 'green', value_to_check: any = True) -> None:
         """
         Set the cell color for the specified columns and the cell with a given value.
-        :param col_names: The names of the columns to create a gradient color for.
+        :param col_names: The name of the columns to color if the value is found.
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
 
@@ -950,18 +1011,17 @@ class EditableTable(Table):
             return
         df = self.get_data(df_type=self._dftype_for_coloring)
         for col_name in col_names:
+            mask = df[col_name] == value_to_check
             try:
-                mask = df[col_name] == value_to_check
                 self.setColorByMask(col=col_name, mask=mask, clr=color)
             except (KeyError, ValueError) as error:
                 self.add_error(error)
                 self.logger.debug(f'color_cells_if: An error as occured with {col_name} : {error!r}')
-                continue
 
-    def color_cells_if_not(self, col_names: [] = None, color: str = 'grey', value_to_check: str = 'False') -> None:
+    def color_cells_if_not(self, col_names: [] = None, color: str = 'grey', value_to_check: any = False) -> None:
         """
         Set the cell color for the specified columns and the cell with NOT a given value.
-        :param col_names: The names of the columns to create a gradient color for.
+        :param col_names: The name of the columns to color if the value is not found.
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
 
@@ -979,40 +1039,24 @@ class EditableTable(Table):
                 self.logger.debug(f'color_cells_if_not: An error as occured with {col_name} : {error!r}')
                 continue
 
-    def color_rows_if(self, col_names: [] = None, color: str = '#555555', value_to_check: str = 'True') -> None:
+    def color_rows_if(self, col_name_to_check: str, color: str = '#555555', value_to_check: any = True) -> None:
         """
         Set the row color for the specified columns and the rows with a given value.
-        :param col_names: The names of the columns to check for the value.
+        :param col_name_to_check: The name of the column to check for the value.
         :param color: The color to set the row to.
         :param value_to_check: The value to check for.
 
         Note: called by set_colors() on each update
         """
-        if col_names is None:
-            return
+
         df = self.get_data(df_type=self._dftype_for_coloring)
-        for col_name in col_names:
-            row_indices = []
-            if col_name not in df.columns:
-                continue
+        mask = df[col_name_to_check] == value_to_check
+        for col_name in df.columns:
             try:
-                mask = df[col_name]
-            except KeyError:
-                self.logger.debug(f'color_rows_if: Column {col_name} not found in the table data.')
-                continue
-            for i in range(min(self.rows_per_page, len(mask))):
-                try:
-                    if str(mask[i]) == value_to_check:
-                        row_indices.append(i)
-                except KeyError:
-                    self.logger.debug(f'KeyError for row {i} in color_rows_if')
-            if len(row_indices) > 0:  # Check if there are any row indices
-                try:
-                    self.setRowColors(rows=row_indices, clr=color, cols='all')
-                except (KeyError, IndexError) as error:
-                    self.add_error(error)
-                    self.logger.debug(f'Error in color_rows_if: {error!r}')
-            return
+                self.setColorByMask(col=col_name, mask=mask, clr=color)
+            except (KeyError, ValueError) as error:
+                self.add_error(error)
+                self.logger.debug(f'color_rows_if: An error as occured with {col_name} : {error!r}')
 
     def set_preferences(self, default_pref=None) -> None:
         """
@@ -1030,16 +1074,43 @@ class EditableTable(Table):
         """
         Initialize the colors of some cells depending on their values.
         """
+        """
+        import pylab as plt
+        cmaps = sorted(m for m in plt.cm.datad)
+        print(cmaps)
+        
+        possible cmaps (exemples: https://matplotlib.org/stable/tutorials/colors/colormaps.html):
+        'Accent', 'Accent_r', 'Blues', 'Blues_r', 'BrBG', 'BrBG_r', 'BuGn', 'BuGn_r', 'BuPu', 'BuPu_r', 'CMRmap', 
+        'CMRmap_r', 'Dark2', 'Dark2_r', 'GnBu', 'GnBu_r', 'Greens', 'Greens_r', 'Greys', 'Greys_r', 'OrRd', 'OrRd_r',
+        'Oranges', 'Oranges_r', 'PRGn', 'PRGn_r', 'Paired', 'Paired_r', 'Pastel1', 'Pastel1_r', 'Pastel2', 
+        'Pastel2_r', 'PiYG', 'PiYG_r', 'PuBu', 'PuBuGn', 'PuBuGn_r', 'PuBu_r', 'PuOr', 'PuOr_r', 'PuRd', 'PuRd_r', 
+        'Purples', 'Purples_r', 'RdBu', 'RdBu_r', 'RdGy', 'RdGy_r', 'RdPu', 'RdPu_r', 'RdYlBu', 'RdYlBu_r', 
+        'RdYlGn', 'RdYlGn_r', 'Reds', 'Reds_r', 'Set1', 'Set1_r', 'Set2', 'Set2_r', 'Set3', 'Set3_r', 'Spectral', 
+        'Spectral_r', 'Wistia', 'Wistia_r', 'YlGn', 'YlGnBu', 'YlGnBu_r', 'YlGn_r', 'YlOrBr', 'YlOrBr_r', 'YlOrRd',
+        'YlOrRd_r', 'afmhot', 'afmhot_r', 'autumn', 'autumn_r', 'binary', 'binary_r', 'bone', 'bone_r', 'brg', 
+        'brg_r', 'bwr', 'bwr_r', 'cividis', 'cividis_r', 'cool', 'cool_r', 'coolwarm', 'coolwarm_r', 'copper', 
+        'copper_r', 'cubehelix', 'cubehelix_r', 'flag', 'flag_r', 'gist_earth', 'gist_earth_r', 'gist_gray', 
+        'gist_gray_r', 'gist_heat', 'gist_heat_r', 'gist_ncar', 'gist_ncar_r', 'gist_rainbow', 'gist_rainbow_r', 
+        'gist_stern', 'gist_stern_r', 'gist_yarg', 'gist_yarg_r', 'gnuplot', 'gnuplot2', 'gnuplot2_r', 'gnuplot_r',
+        'gray', 'gray_r', 'hot', 'hot_r', 'hsv', 'hsv_r', 'inferno', 'inferno_r', 'jet', 'jet_r', 'magma', 
+        'magma_r', 'nipy_spectral', 'nipy_spectral_r', 'ocean', 'ocean_r', 'pink', 'pink_r', 'plasma', 'plasma_r',
+        'prism', 'prism_r', 'rainbow', 'rainbow_r', 'seismic', 'seismic_r', 'spring', 'spring_r', 'summer', 
+        'summer_r', 'tab10', 'tab10_r', 'tab20', 'tab20_r', 'tab20b', 'tab20b_r', 'tab20c', 'tab20c_r', 'terrain', 
+        'terrain_r', 'turbo', 'turbo_r', 'twilight', 'twilight_r', 'twilight_shifted', 'twilight_shifted_r', 
+        'viridis', 'viridis_r', 'winter', 'winter_r'
+        
+        list of color names: https://matplotlib.org/stable/gallery/color/named_colors.html
+        """
         if not gui_g.s.use_colors_for_data:
             self.redraw()
             return
         self.logger.debug('set_colors')
-        self.gradient_color_cells(col_names=['Review'], cmap='Set3', alpha=1)
-        self.color_cells_if(col_names=['Owned', 'Discounted'], color='lightgreen', value_to_check='True')
-        self.color_cells_if(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
-        self.color_cells_if_not(col_names=['Status'], color='#555555', value_to_check='ACTIVE')
-        self.color_rows_if(col_names=['Status'], color='#555555', value_to_check='SUNSET')
-        self.color_rows_if(col_names=['Obsolete'], color='#777777', value_to_check='True')
+        self.gradient_color_cells(col_names=['Review'], cmap='cool_r', alpha=1, min_val=0, max_val=5)
+        self.color_cells_if(col_names=['Owned', 'Discounted'], color='palegreen', value_to_check=True)
+        self.color_cells_if(col_names=['Grab result'], color='skyblue', value_to_check='NO_ERROR')
+        self.color_cells_if_not(col_names=['Status'], color='darkgrey', value_to_check='ACTIVE')
+        self.color_rows_if(col_name_to_check='Status', color='darkgrey', value_to_check='SUNSET')
+        self.color_rows_if(col_name_to_check='Obsolete', color='dimgrey', value_to_check=True)
         self.redraw()
 
     def handle_left_click(self, event) -> None:
@@ -1086,8 +1157,7 @@ class EditableTable(Table):
             self._frm_filter.create_mask()
         mask = self._frm_filter.get_filter_mask() if self._frm_filter is not None else None
         if mask is not None:
-            self.filtered = True
-            # self.current_page = 1
+            self.is_filtered = True
             try:
                 self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
             except IndexingError:
@@ -1099,10 +1169,10 @@ class EditableTable(Table):
                     self.logger.warning(f'Still an IndexingError with defined filters. Deleting mask...')
                     self._frm_filter.reset_filters()
                     self.set_data(df, df_type=DataFrameUsed.FILTERED)
-                    self.filtered = False
+                    self.is_filtered = False
         else:
             self.set_data(df, df_type=DataFrameUsed.FILTERED)
-            self.filtered = False
+            self.is_filtered = False
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             self.update_index_copy_column()
@@ -1110,6 +1180,8 @@ class EditableTable(Table):
         if reset_page:
             self.current_page = 1
             self.update_rows_text_func()
+        if update_filters or self._old_is_filtered != self.is_filtered:
+            self.resetColors()
         self.update_page(keep_col_infos=True)
 
     def update_page(self, keep_col_infos=False) -> None:
@@ -1144,7 +1216,8 @@ class EditableTable(Table):
             self.update_col_infos(
                 updated_info=self._column_infos_stored, apply_resize_cols=True
             )  # resize the columns using the data stored before the update
-
+        if self._old_page != self.current_page:
+            self.resetColors()
         self.set_colors()
         if self.update_page_numbers_func is not None:
             self.update_page_numbers_func()
@@ -1503,13 +1576,9 @@ class EditableTable(Table):
             col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
             if key in col_list:
                 continue
-            if self.data_source_type == DataSourceType.FILE and is_on_state(
-                key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]
-            ):
+            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and is_on_state(
-                key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]
-            ):
+            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             label = key.replace('_', ' ').title()
             key_lower = key.lower()
