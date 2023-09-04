@@ -676,7 +676,7 @@ class UEVMGui(tk.Tk):
 
         return found_url
 
-    def scan_folders(self, folder_list: []) -> None:
+    def scan_folders(self, folder_list: list = None) -> None:
         """
         Scan the folders to find files that can be loaded.
         :param folder_list: the list of folders to scan. If empty, use the folders in the config file.
@@ -708,7 +708,7 @@ class UEVMGui(tk.Tk):
 
         valid_folders = {}
         invalid_folders = []
-        folder_to_scan = folder_list if len(folder_list) > 0 else gui_g.s.folders_to_scan
+        folder_to_scan = folder_list if (folder_list is not None and len(folder_list) > 0) else gui_g.s.folders_to_scan
         if gui_g.s.testing_switch == 1:
             folder_to_scan = [
                 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
