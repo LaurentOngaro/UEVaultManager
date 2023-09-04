@@ -21,7 +21,7 @@ from platform import platform
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
-from UEVaultManager import __version__ as UEVM_version, __codename__ as UEVM_codename
+from UEVaultManager import __codename__ as UEVM_codename, __version__ as UEVM_version
 from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
@@ -34,15 +34,14 @@ from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.tkgui.modules.functions import custom_print, box_message, create_file_backup, \
+from UEVaultManager.tkgui.modules.functions import box_message, create_file_backup, custom_print, \
     show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
-from UEVaultManager.utils.cli import str_to_bool, check_and_create_path, str_is_bool, get_max_threads, remove_command_argument
+from UEVaultManager.utils.cli import check_and_create_path, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
 
 
 def init_gui_args(args, additional_args=None) -> None:
@@ -95,10 +94,11 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
     return uewm_gui_exists, pw
 
 
-def init_display_window(logger=None) -> (bool, DisplayContentWindow):
+def init_display_window(logger=None, message: str = 'Starting command...') -> (bool, DisplayContentWindow):
     """
     Initialize the display window.
     :param logger: logger to use.
+    :param message: message to display at start.
     :return: (True if the UEVMGui window already existed | False, DisplayContentWindow).
     """
     gui_g.UEVM_log_ref = logger
@@ -110,8 +110,13 @@ def init_display_window(logger=None) -> (bool, DisplayContentWindow):
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
-    if gui_g.display_content_window_ref is None:
-        gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM: status command output', quit_on_close=not uewm_gui_exists)
+    if gui_g.display_content_window_ref is not None:
+        gui_g.display_content_window_ref.close_window()
+
+    gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM command output', quit_on_close=not uewm_gui_exists)
+    gui_g.display_content_window_ref.display(message, False)
+    # make_modal(gui_g.display_content_window_ref) # no modal here, will prevent display update by the function
+
     return uewm_gui_exists, gui_g.display_content_window_ref
 
 
@@ -123,7 +128,7 @@ class UEVaultManagerCLI:
     """
     is_gui = False
 
-    def __init__(self, override_config=None, api_timeout=None):
+    def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
         self.logger = logging.getLogger('Cli')
         self.logging_queue = None
@@ -136,18 +141,28 @@ class UEVaultManagerCLI:
             print(json.dumps(data))
 
     @staticmethod
-    def _log_gui_wrapper(log_function, message: str, dont_quit=False) -> None:
+    def _log_and_gui_message(log_function: callable, message: str, quit_on_error=True) -> None:
         """
-        Wrapper for the log function to display a messagebox if the gui is active.
+        Wrapper to log a message using a log function AND use a messagebox to display the message if the gui is active.
         :param log_function: function to use to log.
         :param message: message to log.
-        :param dont_quit: Whether the app will not quit if the log level is 'error'.
+        :param quit_on_error: Whether the app will quit the application.
         """
         if not UEVaultManagerCLI.is_gui:
             log_function(message)
             return
+        box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the app to quit
 
-        box_message(message, level='warning' if dont_quit else 'error')  # level='error' will force the app to quit
+    @staticmethod
+    def _log_and_gui_display(log_function: callable, message: str) -> None:
+        """
+        Wrapper to log a message using a log function AND use a DisplayWindows to display the message if the gui is active.
+        :param log_function: function to use to log.
+        :param message: message to log.
+        """
+        log_function(message)
+        if UEVaultManagerCLI.is_gui and gui_g.display_content_window_ref is not None:
+            gui_g.display_content_window_ref.display(message + '\n')
 
     def setup_threaded_logging(self) -> QueueListener:
         """
@@ -273,43 +288,50 @@ class UEVaultManagerCLI:
         Handle authentication.
         :param args: options passed to the command.
         """
-        if args.auth_delete:
-            self.core.uevmlfs.invalidate_userdata()
-            self.logger.info('User data deleted.')
-            return
+        uewm_gui_exists = False
+        dw = None
+        if UEVaultManagerCLI.is_gui:
+            uewm_gui_exists, dw = init_display_window(self.logger)
 
+        if args.auth_delete:
+            if not self.core.uevmlfs.userdata:
+                self._log_and_gui_display(self.logger.info, "You are not logged in. You have to run the auth command to login.")
+                return
+            else:
+                self.core.uevmlfs.invalidate_userdata()
+                self._log_and_gui_display(self.logger.info, "User data deleted. You'll have to run the auth command again to login.")
+                return
         try:
-            self.logger.info('Testing existing login data if present...')
+            self._log_and_gui_display(self.logger.info, 'Testing existing login data if present...')
             if self.core.login():
-                self.logger.info(
-                    'Stored credentials are still valid, if you wish to switch to a different '
-                    'account, run "UEVaultManager auth --delete" and try again.'
-                )
+                msg = 'Stored credentials are still valid, if you wish to switch to a different account.\nRun "UEVaultManager auth --delete" and try again.'
+                msg += '\nOr check the "Delete auth (login)" options in the Options panel.' if uewm_gui_exists else ''
+                self._log_and_gui_display(self.logger.info, msg)
                 return
         except ValueError:
             pass
         except InvalidCredentialsError:
-            message = 'Stored credentials were found but were no longer valid. Continuing with login...'
-            self._log_gui_wrapper(self.logger.error, message)
             self.core.uevmlfs.invalidate_userdata()
+            message = 'Stored credentials were found but were no longer valid. Continuing with login...'
+            self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
 
         # Force an update check and notice in case there are API changes
         self.core.check_for_updates(force=True)
         self.core.force_show_update = True
 
         if args.import_egs_auth:
-            self.logger.info('Importing login session from the Epic Launcher...')
+            self._log_and_gui_display(self.logger.info, 'Importing login session from the Epic Launcher...')
             try:
                 if self.core.auth_import():
-                    self.logger.info('Successfully imported login session from EGS!')
-                    self.logger.info(f'Now logged in as user "{self.core.uevmlfs.userdata["displayName"]}"')
+                    self._log_and_gui_display(self.logger.info, 'Successfully imported login session from EGS!')
+                    self._log_and_gui_display(self.logger.info, f'Now logged in as user "{self.core.uevmlfs.userdata["displayName"]}"')
                     return
                 else:
                     self.logger.warning('Login session from EGS seems to no longer be valid.')
                     self.core.clean_exit(1)
             except Exception as error:
                 message = f'No EGS login session found, please login manually. (Exception: {error!r})'
-                self._log_gui_wrapper(self.logger.critical, message)
+                self._log_and_gui_message(self.logger.critical, message)
 
         exchange_token = ''
         auth_code = ''
@@ -319,10 +341,10 @@ class UEVaultManagerCLI:
 
             if not webview_available or args.no_webview or self.core.webview_killswitch:
                 # unfortunately the captcha stuff makes a complete CLI login flow kinda impossible right now...
-                print('Please login via the epic web login!')
+                custom_print('Please login via the epic web login!')
                 url = 'https://legendary.gl/epiclogin'
                 webbrowser.open(url)
-                print(f'If the web page did not open automatically, please manually open the following URL: {url}')
+                custom_print(f'If the web page did not open automatically, please manually open the following URL: {url}')
                 auth_code = input('Please enter the "authorizationCode" value from the JSON response: ')
                 auth_code = auth_code.strip()
                 if auth_code[0] == '{':
@@ -332,10 +354,14 @@ class UEVaultManagerCLI:
                     auth_code = auth_code.strip('"')
             else:
                 if do_webview_login(callback_code=self.core.auth_ex_token):
-                    self.logger.info(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}" via WebView')
+                    self._log_and_gui_display(
+                        self.logger.info, f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}" via WebView'
+                    )
                 else:
                     message = 'WebView login attempt failed, please see log for details.'
-                    self._log_gui_wrapper(self.logger.error, message)
+                    self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
+                if uewm_gui_exists:
+                    dw.close_window()
                 return
         elif args.session_id:
             exchange_token = self.core.auth_sid(args.session_id)
@@ -354,7 +380,10 @@ class UEVaultManagerCLI:
             self.logger.info(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}"')
         else:
             message = 'Login attempt failed, please see log for details.'
-            self._log_gui_wrapper(self.logger.error, message)
+            self._log_and_gui_message(self.logger.error, message)
+
+        if not uewm_gui_exists:
+            gui_g.UEVM_gui_ref.mainloop()
 
     def list_assets(self, args) -> None:
         """
@@ -407,7 +436,7 @@ class UEVaultManagerCLI:
                             _price = gui_fn.convert_to_float(_csv_record[price_index])
                             old_price = gui_fn.convert_to_float(
                                 item_in_file[csv_field]
-                            )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                            )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                         elif csv_field == 'Origin':
                             # all the folders when the asset came from are stored in a comma separated list
                             folder_list = value.split(',')
@@ -457,7 +486,7 @@ class UEVaultManagerCLI:
                     _price = float(_json_record['Price'])
                     old_price = float(
                         _items_in_file[_asset_id]['Price']
-                    )  # NOTE: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                    )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                 except Exception as _error:
                     self.logger.warning(f'Old price values can not be converted for asset {_asset_id}\nError:{_error!r}')
                 _json_record['Old price'] = old_price
@@ -479,17 +508,17 @@ class UEVaultManagerCLI:
             file_src = args.output
             # test if the folder is writable
             if not check_and_create_path(file_src):
-                message = f'Could not create folder for {file_src}. Exiting...'
-                self._log_gui_wrapper(self.logger.critical, message)
+                message = f'Could not create folder for {file_src}. Quiting Application...'
+                self._log_and_gui_message(self.logger.critical, message)
             # we try to open it for writing
             if not os.access(file_src, os.W_OK):
-                message = f'Could not create result file {file_src}. Exiting...'
-                self._log_gui_wrapper(self.logger.critical, message)
+                message = f'Could not create result file {file_src}. Quiting Application...'
+                self._log_and_gui_message(self.logger.critical, message)
 
         self.logger.info('Logging in...')
-        if not self.core.login():
-            message = 'Login failed, cannot continue!'
-            self._log_gui_wrapper(self.logger.critical, message)
+        if not self.core.login(raise_error=False):
+            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n. Quiting Application...'
+            self._log_and_gui_message(self.logger.critical, message)
 
         if args.force_refresh:
             self.logger.info(
@@ -601,8 +630,6 @@ class UEVaultManagerCLI:
                 asset_id = asset[0]
                 if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                     return
-                if test_only_mode:
-                    print(f'merging _asset_id {asset_id}')
                 asset_data = asset[1]
                 for key in asset_data.keys():
                     # clean the asset data by removing the columns that are not in the csv field name list
@@ -661,7 +688,7 @@ class UEVaultManagerCLI:
                 json.dump(json_content, output, indent=2)
             except OSError:
                 message = f'Could not write list result to {args.output}'
-                self._log_gui_wrapper(self.logger.error, message)
+                self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
 
             # end if args.json:
 
@@ -711,14 +738,15 @@ class UEVaultManagerCLI:
             manifest_data, _ = self.core.get_uri_manifest(args.override_manifest)
         else:
             self.logger.info(f'Logging in and downloading manifest for {args.app_name}')
-            if not self.core.login():
-                message = 'Login failed! Cannot continue with download process.'
-                self._log_gui_wrapper(self.logger.error, message)
+            if not self.core.login(raise_error=False):
+                message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\nCannot continue with download process.'
+                self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
+                return
             update_meta = args.force_refresh
             item = self.core.get_item(args.app_name, update_meta=update_meta)
             if not item:
                 message = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)'
-                self._log_gui_wrapper(self.logger.error, message, True)  # App will quit here if self.logger.error
+                self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                 return
 
             manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
@@ -764,11 +792,16 @@ class UEVaultManagerCLI:
         Print the information about the vault and the available assets.
         :param args: options passed to the command.
         """
+        uewm_gui_exists = False
+        if UEVaultManagerCLI.is_gui:
+            uewm_gui_exists, _ = init_display_window(self.logger)
+
         if not args.offline:
             try:
-                if not self.core.login():
-                    message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message, True)
+                if not self.core.login(raise_error=False):
+                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
+                    self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
+                    return
             except ValueError:
                 pass
             # if automatic checks are off force an update here
@@ -814,7 +847,6 @@ class UEVaultManagerCLI:
             return self._print_json(json_content, args.pretty_json)
 
         if UEVaultManagerCLI.is_gui:
-            uewm_gui_exists, _ = init_display_window(self.logger)
             json_print_key_val(json_content, output_on_gui=True)
             if not uewm_gui_exists:
                 gui_g.UEVM_gui_ref.mainloop()
@@ -837,9 +869,10 @@ class UEVaultManagerCLI:
             app_name = name_or_path
         if not args.offline and not manifest_uri:
             try:
-                if not self.core.login():
-                    message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message, True)
+                if not self.core.login(raise_error=False):
+                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
+                    self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
+                    return
             except ValueError:
                 pass
 
@@ -1039,38 +1072,47 @@ class UEVaultManagerCLI:
         Cleans up the local assets data folders and logs.
         :param args: options passed to the command.
         """
-        before = self.core.uevmlfs.get_dir_size()
         uewm_gui_exists = False
         if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, _ = init_display_window(self.logger)
+        deleted_size = 0
+        custom_print('Cleaning files and folders\n===============\n')
+
+        # delete log and backup
+        message = 'Removing logs and backups...'
+        custom_print(message)
+        deleted_size += self.core.uevmlfs.clean_logs_and_backups()
+
+        message = 'Removing manifests...'
+        custom_print(message)
+        deleted_size += self.core.uevmlfs.clean_manifests()
+
+        message = 'Removing tmp data...'
+        custom_print(message)
+        deleted_size += self.core.uevmlfs.clean_tmp_data()
+
+        message = 'Removing cache data...'
+        custom_print(message)
+        deleted_size += self.core.uevmlfs.clean_cache_data()
 
         # delete metadata
+        if args.delete_scraping_data:
+            message = 'Removing scraping data...'
+            custom_print(message)
+            deleted_size += self.core.uevmlfs.clean_scrapping()
+
         if args.delete_metadata:
             message = 'Removing app metadata...'
             custom_print(message)
-            self.core.uevmlfs.clean_metadata(app_names_to_keep=[])
+            deleted_size += self.core.uevmlfs.clean_metadata(app_names_to_keep=[])
 
         # delete extra data
         if args.delete_extra_data:
             message = 'Removing app extra data...'
             custom_print(message)
-            self.core.uevmlfs.clean_extra(app_names_to_keep=[])
+            deleted_size += self.core.uevmlfs.clean_extra(app_names_to_keep=[])
 
-        # delete log and backup
-        message = 'Removing logs and backups...'
-        custom_print(message)
-        self.core.uevmlfs.clean_logs_and_backups()
-
-        message = 'Removing manifests...'
-        custom_print(message)
-        self.core.uevmlfs.clean_manifests()
-
-        message = 'Removing tmp data...'
-        custom_print(message)
-        self.core.uevmlfs.clean_tmp_data()
-
-        after = self.core.uevmlfs.get_dir_size()
-        message = f'Cleanup complete! Removed {(before - after) / 1024 / 1024:.02f} MiB.'
+        message = f'Cleanup complete! Removed {deleted_size / 1024 / 1024:.02f} MiB.'
         self.logger.info(message)
         custom_print(message, keep_mode=False)
 
@@ -1082,9 +1124,9 @@ class UEVaultManagerCLI:
         Gets the access token for the current user.
         :param args: options passed to the command.
         """
-        if not self.core.login(force_refresh=args.bearer):
-            message = 'Log in failed!'
-            self._log_gui_wrapper(self.logger.critical, message)
+        if not self.core.login(force_refresh=args.bearer, raise_error=False):
+            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
+            self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
             return
 
         if args.bearer:
@@ -1134,9 +1176,9 @@ class UEVaultManagerCLI:
         # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
         init_gui_args(args, additional_args={'output': data_source})
 
-        if not self.core.login():
-            message = 'Log in failed!. Some functionalities could be disabled and data could be wrong.'
-            self._log_gui_wrapper(self.logger.warning, message)
+        if not self.core.login(raise_error=False):
+            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\nSome functionalities could be disabled and data could be wrong.'
+            self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
 
         rebuild = False
         if not os.path.isfile(data_source):
@@ -1144,7 +1186,7 @@ class UEVaultManagerCLI:
             rebuild = True
             if not is_valid:
                 message = f'Error while creating the empty result file with the given path. The following file {data_source} will be used as default'
-                self._log_gui_wrapper(self.logger.error, message)
+                self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                 # fix invalid input/output file name in arguments to avoid futher errors in file path checks
                 args.input = data_source
                 args.output = data_source
@@ -1167,14 +1209,15 @@ class UEVaultManagerCLI:
         Scrap assets from the Epic Games Store or from previously saved files.
         :param args: options passed to the command
 
-        NOTE: ! Unlike the list_asset method, this method is not intended to be called trhough the GUI. So there is no need to add a ProgressWindow setup here.
+        Note: ! Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
         """
         if not args.offline:
             load_from_files = False
             try:
-                if not self.core.login():
-                    message = 'Log in failed!'
-                    self._log_gui_wrapper(self.logger.critical, message, True)
+                if not self.core.login(raise_error=False):
+                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
+                    self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
+                    return
             except ValueError:
                 pass
             # if automatic checks are off force an update here
@@ -1186,7 +1229,7 @@ class UEVaultManagerCLI:
         # ue_asset_per_page = gui_g.s.rows_per_page
         ue_asset_per_page = 100  # a bigger value will be refused by UE API
 
-        if test_only_mode:
+        if gui_g.s.testing_switch == 1:
             start_row = 0  # test only, shorter list
             # start_row = 1700  # test only, very shorter list
             max_threads = 0  # test only, see exceptions
@@ -1261,6 +1304,16 @@ class UEVaultManagerCLI:
         if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
             gui_g.UEVM_gui_ref.mainloop()
 
+    def run_test(self, _args) -> None:
+        """
+        Prints the version of UEVaultManager and exit.
+        """
+        print('UEVaultManager RUN TEST')
+        print('"opening a manifest file from disk...')
+        # read manifest_data from file
+        file_path = "G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_III/EliteLane90e1a8f98bbV1/manifest"
+        json_print_key_val(self.core.open_manifest_file(file_path))
+
     @staticmethod
     def print_version():
         """
@@ -1283,6 +1336,7 @@ def main():
     # noinspection DuplicatedCode
     parser.add_argument('-y', '--yes', dest='yes', action='store_true', help='Default to yes for all prompts')
     parser.add_argument('-V', '--version', dest='version', action='store_true', help='Print version and exit')
+    parser.add_argument('-T', '--runtest', dest='runtest', action='store_true', help='Run a test command using a CLI prompt. Just for developpers')
     parser.add_argument(
         '-c', '--config-file', dest='config_file', action='store', metavar='<path/name>', help='Overwrite the default configuration file name to use'
     )
@@ -1293,10 +1347,10 @@ def main():
         dest='api_timeout',
         action='store',
         type=float,
-        default=10,
+        default=(7, 7),
         metavar='<seconds>',
         help='API HTTP request timeout (default: 10 seconds)'
-    )
+    )  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
     parser.add_argument(
         '-g',
         '--gui',
@@ -1420,6 +1474,13 @@ def main():
         '-e,'
         '--delete-extra-data', dest='delete_extra_data', action='store_true', help='Also delete extra data files. They are kept by default'
     )
+    clean_parser.add_argument(
+        '-s,'
+        '--delete-scraping-data',
+        dest='delete_scraping_data',
+        action='store_true',
+        help='Also delete scraping data files. They are kept by default'
+    )
     # noinspection DuplicatedCode
     info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
     info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
@@ -1472,12 +1533,15 @@ def main():
 
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
+    cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
 
     if args.version:
         UEVaultManagerCLI.print_version()
         return
 
-    cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
+    if args.runtest:
+        cli.run_test(args)
+        return
 
     start_in_edit_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'start_in_edit_mode', fallback=False))
 

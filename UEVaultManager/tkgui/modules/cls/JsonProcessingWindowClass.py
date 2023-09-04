@@ -11,6 +11,7 @@ from tkinter import messagebox
 from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
+from UEVaultManager.lfs.utils import path_join
 
 
 class JSPW_Settings:
@@ -58,8 +59,9 @@ class JsonProcessingWindow(tk.Toplevel):
         self.updated = 0
         self.added = 0
 
-        self.control_frame = self.ControlFrame(self)
-        self.control_frame.pack(ipadx=0, ipady=0, padx=0, pady=0)
+        self.frm_control = self.ControlFrame(self)
+        self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
+        # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
 
     class ControlFrame(ttk.Frame):
         """
@@ -72,34 +74,34 @@ class JsonProcessingWindow(tk.Toplevel):
             self.container: JsonProcessingWindow = container
             self.processing: bool = False
 
-            self.label = tk.Label(self, text='File Data Processing Window', font=('Helvetica', 16, 'bold'))
-            self.label.pack(pady=10)
+            self.lbl_title = tk.Label(self, text='File Data Processing Window', font=('Helvetica', 16, 'bold'))
+            self.lbl_title.pack(pady=10)
 
-            self.goal_label = tk.Label(
+            self.lbl_goal = tk.Label(
                 self, text='This window processes JSON files and stores some data in a database.', wraplength=350, justify='center'
             )
-            self.goal_label.pack(pady=5)
+            self.lbl_goal.pack(pady=5)
 
-            self.button_frame = tk.Frame(self)
-            self.button_frame.pack(pady=10)
-
-            self.start_button = ttk.Button(self.button_frame, text='Start Processing', command=self.start_processing)
-            self.start_button.pack(side=tk.LEFT, padx=5)
-
-            self.stop_button = ttk.Button(self.button_frame, text='Stop Processing', command=self.stop_processing, state='disabled')
-            self.stop_button.pack(side=tk.LEFT, padx=5)
+            self.frm_inner = tk.Frame(self)
+            self.frm_inner.pack(pady=5)
+            self.btn_close = ttk.Button(self.frm_inner, text='Close Window', command=self.close_window)
+            self.btn_close.pack(side=tk.RIGHT, padx=5)
+            self.btn_start = ttk.Button(self.frm_inner, text='Start Processing', command=self.start_processing)
+            self.btn_start.pack(side=tk.LEFT, padx=5)
+            self.btn_stop = ttk.Button(self.frm_inner, text='Stop Processing', command=self.stop_processing, state='disabled')
+            self.btn_stop.pack(side=tk.LEFT, padx=5)
 
             self.progress_bar = ttk.Progressbar(self, mode='determinate')
             self.progress_bar.pack(fill=tk.X, padx=10, pady=15)
 
-            self.result_label = tk.Label(self, text='Result Window: Clic into to copy content to clipboard', fg='green')
-            self.result_label.pack(padx=1, pady=1, anchor=tk.CENTER)
+            self.lbl_result = tk.Label(self, text='Result Window: Clic into to copy content to clipboard', fg='green')
+            self.lbl_result.pack(padx=1, pady=1, anchor=tk.CENTER)
             self.text_result = tk.Text(self, fg='blue', height=8, width=53, font=('Helvetica', 10))
             self.text_result.pack(padx=5, pady=5)
             self.text_result.bind('<Button-1>', self.copy_to_clipboard)
 
-            self.status_label = tk.Label(self, text='', fg='green')
-            self.status_label.pack(padx=5, pady=5)
+            self.lbl_status = tk.Label(self, text='', fg='green')
+            self.lbl_status.pack(padx=5, pady=5)
 
         def copy_to_clipboard(self, _event):
             """
@@ -127,8 +129,14 @@ class JsonProcessingWindow(tk.Toplevel):
             Set the status label.
             :param text: text to set
             """
-            self.status_label.config(text=text)
+            self.lbl_status.config(text=text)
             self.update()
+
+        def close_window(self) -> None:
+            """
+            Close the window.
+            """
+            self.container.destroy()
 
         def activate_processing(self, for_start=True):
             """
@@ -138,13 +146,13 @@ class JsonProcessingWindow(tk.Toplevel):
 
             if for_start:
                 self.add_result('Processing started...')
-                self.start_button.config(state='disabled')
-                self.stop_button.config(state='normal')
+                self.btn_start.config(state='disabled')
+                self.btn_stop.config(state='normal')
                 self.progress_bar['value'] = 0
             else:
                 self.add_result('Processing stopped.')
-                self.start_button.config(state='normal')
-                self.stop_button.config(state='disabled')
+                self.btn_start.config(state='normal')
+                self.btn_stop.config(state='disabled')
                 self.progress_bar['value'] = 0
             self.update()
 
@@ -190,12 +198,12 @@ class JsonProcessingWindow(tk.Toplevel):
             query = 'CREATE TABLE IF NOT EXISTS ratings (id TEXT, averageRating REAL, total INTEGER)'
 
         if not folder or not query:
-            self.control_frame.activate_processing(False)
+            self.frm_control.activate_processing(False)
             return
 
-        file_paths = [os.path.join(folder, filename) for filename in os.listdir(folder) if filename.endswith('.json')]
+        file_paths = [path_join(folder, filename) for filename in os.listdir(folder) if filename.endswith('.json')]
         if not file_paths:
-            self.control_frame.activate_processing(False)
+            self.frm_control.activate_processing(False)
             return
 
         conn = sqlite3.connect(self.db_path)
@@ -205,21 +213,21 @@ class JsonProcessingWindow(tk.Toplevel):
         total_files = len(file_paths)
         self.updated = 0
         self.added = 0
-        self.control_frame.progress_bar['value'] = 0
-        self.control_frame.progress_bar['maximum'] = total_files
-        self.control_frame.processing = True
+        self.frm_control.progress_bar['value'] = 0
+        self.frm_control.progress_bar['maximum'] = total_files
+        self.frm_control.processing = True
         try:
             conn.execute('BEGIN TRANSACTION')
             for i, file_path in enumerate(file_paths, start=1):
-                if not self.control_frame.processing:
+                if not self.frm_control.processing:
                     break
-                self.control_frame.progress_bar['value'] = i
+                self.frm_control.progress_bar['value'] = i
                 self.update()
                 with open(file_path, 'r') as json_file:
                     try:
                         json_data = json.load(json_file)
                     except json.decoder.JSONDecodeError:
-                        self.control_frame.add_result(f'{file_path} is invalid')
+                        self.frm_control.add_result(f'{file_path} is invalid')
                     else:
                         if data_type == 'tags':
                             self.extract_and_save_tags(cursor, json_data)
@@ -227,15 +235,15 @@ class JsonProcessingWindow(tk.Toplevel):
                             self.extract_and_save_ratings(cursor, json_data)
             conn.commit()
             status_text = f'{data_type.title()} has been stored in the database. Updated: {self.updated}, Added: {self.added}'
-            self.control_frame.add_result(status_text, True)
+            self.frm_control.add_result(status_text, True)
 
         except sqlite3.Error as e:
             conn.rollback()
-            self.control_frame.add_result(f'An error occurred: {e}')
+            self.frm_control.add_result(f'An error occurred: {e}')
 
         finally:
             conn.close()
-            self.control_frame.processing = False
+            self.frm_control.processing = False
 
     def extract_and_save_tags(self, cursor, json_data: dict) -> None:
         """
@@ -253,11 +261,11 @@ class JsonProcessingWindow(tk.Toplevel):
                     self.updated += 1
                     cursor.execute("UPDATE tags SET name = ? WHERE id=?", (tag_name, uid))
 
-                    self.control_frame.add_result(f'Tag with id {uid} updated')
+                    self.frm_control.add_result(f'Tag with id {uid} updated')
                 else:
                     self.added += 1
                     cursor.execute('INSERT INTO tags (id, name) VALUES (?, ?)', (uid, tag_name))
-                    self.control_frame.add_result(f'New Tag with id {uid} saved')
+                    self.frm_control.add_result(f'New Tag with id {uid} saved')
 
             # else:
             #     self.add_result(f'No data to save in the tag value {tag}')
@@ -281,11 +289,11 @@ class JsonProcessingWindow(tk.Toplevel):
                         if is_existing:
                             self.updated += 1
                             cursor.execute("UPDATE ratings SET averageRating = ?, total = ? WHERE id=?", (average_rating, total_rating, uid))
-                            self.control_frame.add_result(f'Rating with id {uid} updated')
+                            self.frm_control.add_result(f'Rating with id {uid} updated')
                         else:
                             self.added += 1
                             cursor.execute("INSERT INTO ratings (id, averageRating, total) VALUES (?, ?, ?)", (uid, average_rating, total_rating))
-                            self.control_frame.add_result(f'New Rating with id {uid} saved')
+                            self.frm_control.add_result(f'New Rating with id {uid} saved')
                             self.update()
                     except KeyError:
                         pass

@@ -4,7 +4,7 @@ Implementation for:
 - TaggedLabelFrame: a custom LabelFrame widget that allows child widgets to be identified by tags.
 """
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import *
-from UEVaultManager.tkgui.modules.functions import log_error, log_warning, log_debug
+from UEVaultManager.tkgui.modules.functions import log_debug, log_error, log_warning
 from UEVaultManager.tkgui.modules.types import WidgetType
 
 
@@ -32,12 +32,14 @@ class TaggedLabelFrame(ttk.LabelFrame):
         width=None,
         height=None,
         label=None,
+        state=tk.NORMAL,
         layout_option='',
         images_folder=None,
         add_label_before=True,
+        textvariable=None,
         focus_out_callback=None,
         focus_in_callback=None,
-        click_on_callback=None
+        click_on_callback=None,
     ):
         """
         Adds a child widget to the LabelFrame and associates it with the given tag.
@@ -47,10 +49,12 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param width: Width of the child widget. Only used for text widgets.
         :param height: Height of the child widget. Only used for text widgets.
         :param label: Text to display in the child widget.
+        :param state: State of the child widget.
         :param default_content: Default content of the child widget.
         :param layout_option: Layout options to use. Default, full width.
         :param images_folder: folder for image used by some widgets.
         :param add_label_before: Whether to add a label before the child widget.
+        :param textvariable: Variable to use for the child widget.
         :param focus_out_callback: Callback to call when the child widget loses focus.
         :param focus_in_callback: Callback to call when the child widget get focus.
         :param click_on_callback: Callback to call when the child widget is clicked or checked.
@@ -68,18 +72,23 @@ class TaggedLabelFrame(ttk.LabelFrame):
         else:
             frame = alternate_container
         if add_label_before:
-            lbl_name = ttk.Label(frame, text=ExtendedWidget.tag_to_label(tag_lower))
+            lbl_text = label if label is not None else ExtendedWidget.tag_to_label(tag_lower)
+            lbl_name = ttk.Label(frame, text=lbl_text)
             lbl_name.pack(side=tk.LEFT, **self.pack_options)
         if widget_type == WidgetType.ENTRY:
-            child = ExtendedEntry(master=frame, tag=tag_lower, default_content=default_content, height=height, width=width)
+            child = ExtendedEntry(
+                master=frame, tag=tag_lower, default_content=default_content, height=height, width=width, state=state, textvariable=textvariable
+            )
         elif widget_type == WidgetType.TEXT:
-            child = ExtendedText(master=frame, tag=tag_lower, default_content=default_content, wrap=tk.WORD, height=height, width=width)
+            child = ExtendedText(master=frame, tag=tag_lower, default_content=default_content, wrap=tk.WORD, height=height, width=width, state=state)
         elif widget_type == WidgetType.LABEL:
-            child = ExtendedLabel(master=frame, tag=tag_lower, default_content=default_content)
+            child = ExtendedLabel(master=frame, tag=tag_lower, default_content=default_content, state=state)
         elif widget_type == WidgetType.CHECKBUTTON:
-            child = ExtendedCheckButton(master=frame, tag=tag_lower, default_content=default_content, label=label, images_folder=images_folder)
+            child = ExtendedCheckButton(
+                master=frame, tag=tag_lower, default_content=default_content, label=label, images_folder=images_folder, state=state
+            )
         elif widget_type == WidgetType.BUTTON:
-            child = ExtendedButton(master=frame, tag=tag_lower, default_content=default_content)
+            child = ExtendedButton(master=frame, tag=tag_lower, default_content=default_content, state=state)
         else:
             error = f'Invalid widget type: {widget_type}'
             log_error(error)

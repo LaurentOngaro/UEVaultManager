@@ -14,9 +14,10 @@ from io import BytesIO
 from tkinter import messagebox
 
 import requests
-from PIL import ImageTk, Image
+from PIL import Image, ImageTk
 from termcolor import colored
 
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.tkgui.modules import globals as gui_g
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 
@@ -94,6 +95,7 @@ def log_info(msg: str) -> None:
     """
     Log an info message.
     :param msg: the message to log.
+
     Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
@@ -107,8 +109,10 @@ def log_debug(msg: str) -> None:
     """
     Log a debug message.
     :param msg: the message to log.
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
-    Note: this message will only be logged if the debug mode is enabled.
+
+    Note:
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+        This message will only be logged if the debug mode is enabled.
     """
     if not gui_g.s.debug_mode:
         return
@@ -128,6 +132,7 @@ def log_warning(msg: str) -> None:
     """
     Log a warning message.
     :param msg: the message to log.
+
     Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
@@ -141,6 +146,7 @@ def log_error(msg: str) -> None:
     """
     Log an error message.
     :param msg: the message to log. Note that the app will exit after logging the message.
+
     Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
@@ -153,40 +159,42 @@ def log_error(msg: str) -> None:
     sys.exit(1)
 
 
-def resize_and_show_image(image: Image, canvas: tk.Canvas) -> None:
+def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -> None:
     """
     Resize the given image and display it in the given canvas.
     :param image: the image to display.
     :param canvas: the canvas to display the image in.
+    :param scale: the scale to apply to the image.
     """
     # Resize the image while keeping the aspect ratio
-    target_height = gui_g.s.preview_max_height
-    aspect_ratio = float(image.width) / float(image.height)
+    target_height = int(gui_g.s.preview_max_height * scale)
+    aspect_ratio = float(image.width * scale) / float(image.height * scale)
     target_width = int(target_height * aspect_ratio)
     resized_image = image.resize((target_width, target_height), Image.BILINEAR)
     tk_image = ImageTk.PhotoImage(resized_image)
     # Calculate center coordinates
-    x = (canvas.winfo_width() - tk_image.width()) // 2
-    y = (canvas.winfo_height() - tk_image.height()) // 2
+    x = max(0, (canvas.winfo_width() - tk_image.width()) // 2)
+    y = max(0, (canvas.winfo_height() - tk_image.height()) // 2)
     canvas.create_image(x, y, anchor=tk.NW, image=tk_image)
     canvas.image = tk_image
 
 
-def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
+def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> None:
     """
     Show the image of the given asset in the given canvas.
     :param image_url: the url of the image to display.
     :param canvas_image: the canvas to display the image in.
+    :param scale: the scale to apply to the image.
     :param timeout: the timeout in seconds to wait for the image to be downloaded.
     """
-    if canvas_image is None or image_url is None or not image_url or str(image_url) in ['nan', gui_g.s.empty_cell]:
+    if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
         return
     try:
         # print(image_url)
         # noinspection DuplicatedCode
         if not os.path.isdir(gui_g.s.cache_folder):
             os.mkdir(gui_g.s.cache_folder)
-        image_filename = os.path.join(gui_g.s.cache_folder, os.path.basename(image_url))
+        image_filename = path_join(gui_g.s.cache_folder, os.path.basename(image_url))
         # Check if the image is already cached
         if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < gui_g.s.image_cache_max_time:
             # Load the image from the cache folder
@@ -197,7 +205,7 @@ def show_asset_image(image_url: str, canvas_image=None, timeout=4) -> None:
 
             with open(image_filename, "wb") as f:
                 f.write(response.content)
-        resize_and_show_image(image, canvas_image)
+        resize_and_show_image(image, canvas_image, scale)
     except Exception as error:
         log_warning(f"Error showing image: {error!r}")
 
@@ -292,7 +300,7 @@ def show_progress(
     height=120,
     max_value_l=0,
     show_progress_l=False,
-    show_stop_button_l=False,
+    show_btn_stop_l=False,
     quit_on_close: bool = False,
     function: callable = None,
     function_parameters: dict = None
@@ -305,7 +313,7 @@ def show_progress(
     :param height: The height of the progress window.
     :param max_value_l: The maximum value of the progress bar.
     :param show_progress_l: Whether to show the progress bar.
-    :param show_stop_button_l: Whether to show the stop button.
+    :param show_btn_stop_l: Whether to show the stop button.
     :param function: the function to execute.
     :param function_parameters: the parameters of the function.
     :param quit_on_close: whether to quit the application when the window is closed.
@@ -316,10 +324,11 @@ def show_progress(
     if root.progress_window is None:
         pw = ProgressWindow(
             title=gui_g.s.app_title,
+            parent=parent,
             icon=gui_g.s.app_icon_filename,
             width=width,
             height=height,
-            show_stop_button=show_stop_button_l,
+            show_btn_stop=show_btn_stop_l,
             show_progress=show_progress_l,
             max_value=max_value_l,
             quit_on_close=quit_on_close,
@@ -362,7 +371,7 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, path: str =
         return ''
     try:
         file_name_no_ext, file_ext = os.path.splitext(file_src)
-        file_backup = f'{file_name_no_ext}.BACKUP_{datetime.now().strftime("%y-%m-%d_%H-%M-%S")}{file_ext}'
+        file_backup = f'{file_name_no_ext}_{datetime.now().strftime("%y-%m-%d_%H-%M-%S")}{file_ext}.BAK'
         shutil.copy(file_src, file_backup)
         if logger is not None:
             logger.info(f'File {file_src} has been copied to {file_backup}')
@@ -370,3 +379,35 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, path: str =
         if logger is not None:
             logger.info(f'File {file_src} has not been found')
     return file_backup
+
+
+def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> None:
+    """
+    Change the logger level of debug depending on the debug mode.
+    :param logger: the logger
+    :param debug_value: the value to set. If None, it will use the value of gui_g.s.debug_mode
+
+    Note:
+        Will also update all the loggers level of the UEVM classes.
+        Call this function when the debug mode is changed.
+    """
+    if logger is not None:
+        if logger.name not in gui_g.UEVM_logger_names:
+            gui_g.UEVM_logger_names.append(logger.name)
+    debug_value = gui_g.s.debug_mode if debug_value is None else debug_value
+    for logger_name in gui_g.UEVM_logger_names:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(level=logging.DEBUG if debug_value else logging.INFO)
+
+
+def make_modal(window: tk.Toplevel = None, wait_for_close=True) -> None:
+    """
+    Make the given window modal.
+    :param window: the window to make modal
+    :param wait_for_close: whether to wait for the window to be closed before continuing
+    """
+    window.grab_set()
+    window.focus_set()
+    if wait_for_close:
+        # Note: this will block the main window
+        window.wait_window()

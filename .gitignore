@@ -152,6 +152,7 @@ testing/scratch_file.py
 dist_pyinstaller/
 *.BACKUP*.csv
 *.BACKUP*.json
+*.BAK
 
 # private stuff
 .private/

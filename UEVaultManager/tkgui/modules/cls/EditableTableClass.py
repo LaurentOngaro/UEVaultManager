@@ -8,8 +8,8 @@ import webbrowser
 from tkinter import ttk
 
 import pandas as pd
-from pandas.errors import EmptyDataError
-from pandastable import Table, TableModel, config
+from pandas.errors import EmptyDataError, IndexingError
+from pandastable import config, Table, TableModel
 
 from UEVaultManager.models.csv_sql_fields import *
 from UEVaultManager.models.UEAssetClass import UEAsset
@@ -17,13 +17,12 @@ from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
-from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText, ExtendedCheckButton, ExtendedEntry
+from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions import *
-from UEVaultManager.tkgui.modules.types import DataSourceType, DataFrameUsed
+from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_explorer
+from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
-
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for debug Only
 
 
 class EditableTable(Table):
@@ -43,11 +42,12 @@ class EditableTable(Table):
     _data: pd.DataFrame = None
     _last_selected_row: int = -1
     _last_selected_col: int = -1
+    _last_cell_value: str = ''
     _changed_rows = []
     _deleted_asset_ids = []
     _db_handler = None
     _frm_quick_edit = None
-    _filter_frame = None
+    _frm_filter = None
     _edit_row_window = None
     _edit_row_entries = None
     _edit_row_number: int = -1
@@ -55,18 +55,23 @@ class EditableTable(Table):
     _edit_cell_row_number: int = -1
     _edit_cell_col_index: int = -1
     _edit_cell_widget = None
-    _dftype_for_coloring = DataFrameUsed.UNFILTERED  # type of dataframe used for coloring
+    _dftype_for_coloring = DataFrameUsed.MODEL  # type of dataframe used for coloring
     _is_scanning = False  # True when a folders scan is in progress
     _column_infos_stored = False  # used to see if column_infos has changed
+    _errors: [Exception] = []
+    _current_page: int = 1
+    _old_page: int = 1
+    _is_filtered: bool = False
+    _old_is_filtered: bool = False
     is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    update_loggers_level(logger)
     model: TableModel = None  # setup in table.__init__
+    rowcolors: pd.DataFrame = None  # setup in table.__init__
     df_unfiltered: pd.DataFrame = None  # unfiltered dataframe (default)
     df_filtered: pd.DataFrame = None  # filtered dataframe
     progress_window: FakeProgressWindow = None
     pagination_enabled: bool = True
-    current_page: int = 1
     total_pages: int = 1
     must_save: bool = False
     must_rebuild: bool = False
@@ -76,7 +81,7 @@ class EditableTable(Table):
         container=None,
         data_source_type: DataSourceType = DataSourceType.FILE,
         data_source=None,
-        rows_per_page: int = 36,
+        rows_per_page: int = 37,
         show_toolbar: bool = False,
         show_statusbar: bool = False,
         update_page_numbers_func=None,
@@ -110,6 +115,42 @@ class EditableTable(Table):
             self.resize_columns()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
         close_progress(self)
+
+    @property
+    def current_page(self) -> int:
+        """
+        Get the current page.
+        :return: The current page number.
+        """
+        return self._current_page
+
+    @current_page.setter
+    def current_page(self, value: int) -> None:
+        """
+        Set the current page.
+        :param value: The page number to set.
+        """
+        self._old_page = self._current_page
+        self._current_page = value
+        # self.update_page_numbers_func()
+        # self.update_rows_text_func()
+
+    @property
+    def is_filtered(self) -> int:
+        """
+        Get the current page.
+        :return: The current page number.
+        """
+        return self._is_filtered
+
+    @is_filtered.setter
+    def is_filtered(self, value: bool) -> None:
+        """
+        Set the filtered state.
+        :param value: The filtered state to set.
+        """
+        self._old_is_filtered = self._is_filtered
+        self._is_filtered = value
 
     def handle_arrow_keys(self, event):
         """
@@ -202,7 +243,10 @@ class EditableTable(Table):
         Determine current column grid positions
         Overrided for debugging
         """
-        super().setColPositions()
+        try:
+            super().setColPositions()
+        except IndexError:
+            pass
 
     def resizeColumn(self, col: int, width: int):
         """
@@ -247,9 +291,10 @@ class EditableTable(Table):
                 # noinspection PyTypeChecker
                 df.sort_values(by=colnames, inplace=True, ascending=ascending)
             except Exception as error:
+                self.add_error(error)
                 self.logger.warning(f'Could not sort the columns. Error: {error!r}')
         self.update_index_copy_column()
-        self.update()
+        self.update(update_filters=True)
         return
 
     def tableChanged(self) -> None:
@@ -258,6 +303,54 @@ class EditableTable(Table):
         Overrided for debugging
         """
         super().tableChanged()
+        self.must_save = True
+
+    def handle_left_release(self, event):
+        """
+        Handle left mouse button release events.
+        :param event: The event that triggered the function call.
+        Overrided to trap raised error when clicking on an empty row
+        """
+        try:
+            super().handle_left_release(event)
+        except IndexError:
+            pass
+
+    def handleCellEntry(self, row, col):
+        """
+        Callback for cell entry
+        Overrided for debugging
+        """
+        # get the value from the MODEL because the value in the datatable could not have been updated yet
+        try:
+            old_value = self.get_data(df_type=DataFrameUsed.MODEL).iat[row, col]  # iat checked
+        except IndexError:
+            old_value = None
+        super().handleCellEntry(row, col)
+        self._check_cell_has_changed(old_value)
+
+    def handleEntryMenu(self, *args):
+        """
+        Callback for option menu in categorical columns entry
+        Overrided for debugging
+        """
+        # get the value from the MODEL because the value in the datatable could not have been updated yet
+        try:
+            old_value = self.get_data(df_type=DataFrameUsed.MODEL).iat[self._last_selected_row, self._last_selected_col]  # iat checked
+        except IndexError:
+            old_value = None
+        super().handleEntryMenu(*args)
+        self._check_cell_has_changed(old_value)
+
+    def resetColors(self):
+        """
+        Reset the colors of the cells. Initialize the rowcolors dataframe.
+
+        Note: Overridden for selecting the right datatable to use.
+        """
+        df = self.get_data(df_type=self._dftype_for_coloring)
+        self.rowcolors = pd.DataFrame(index=df[gui_g.s.index_copy_col_name])
+        return
 
     def _set_with_for_hidden_columns(self) -> None:
         """
@@ -270,38 +363,56 @@ class EditableTable(Table):
     def _generate_cell_selection_changed_event(self) -> None:
         """
         Create the event bindings for the table.
+
+        Note: a CellSelectionChanged event is generated if the selected cell has changed.
         """
         selected_row = self.currentrow
         selected_col = self.currentcol
         if (selected_row != self._last_selected_row) or (selected_col != self._last_selected_col):
             self._last_selected_row = selected_row
             self._last_selected_col = selected_col
+            self._last_cell_value = self.get_cell(selected_row, selected_col)
             self.event_generate('<<CellSelectionChanged>>')
 
-    def set_filter_frame(self, filter_frame=None) -> None:
+    def _check_cell_has_changed(self, old_value) -> bool:
+        """
+        Check if the cell value has changed. If so, the row is added to the list of changed rows.
+        :param old_value: The old value of the cell.
+        :return: True if the cell value has changed, False otherwise.
+        """
+        row = self._last_selected_row
+        col = self._last_selected_col
+        new_value = self.get_cell(row, col)
+        if new_value is not None and old_value != new_value:
+            row_index = self.get_real_index(row)
+            self.add_to_rows_to_save(row_index)
+            # self.tableChanged() # done in add_to_rows_to_save
+            return True
+        return False
+
+    def set_frm_filter(self, frm_filter=None) -> None:
         """
         Set the filter frame.
-        :param filter_frame: The filter frame.
+        :param frm_filter: The filter frame.
         """
-        if filter_frame is None:
-            raise ValueError('filters_frame cannot be None')
-        self._filter_frame = filter_frame
+        if frm_filter is None:
+            raise ValueError('frm_filter cannot be None')
+        self._frm_filter = frm_filter
 
-    def set_quick_edit_frame(self, quick_edit_frame=None) -> None:
+    def set_frm_quick_edit(self, frm_quick_edit=None) -> None:
         """
         Set the quick edit frame.
-        :param quick_edit_frame:  The quick edit frame.
+        :param frm_quick_edit: The quick edit frame.
         """
-        if quick_edit_frame is None:
-            raise ValueError('quick_edit_frame cannot be None')
-        self._frm_quick_edit = quick_edit_frame
+        if frm_quick_edit is None:
+            raise ValueError('frm_quick_edit cannot be None')
+        self._frm_quick_edit = frm_quick_edit
 
     def set_columns_type(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Set the columns format for the table.
         :param df: The dataframe to format.
         :return: The formatted dataframe.
-
         """
         # self.logger.info("\nCOL TYPES BEFORE CONVERSION\n")
         # df.info()  # direct print info
@@ -315,6 +426,7 @@ class EditableTable(Table):
                     else:
                         df[col] = df[col].astype(converter)
                 except (KeyError, ValueError) as error:
+                    self.add_error(error)
                     self.logger.warning(f'Could not convert column "{col}" using {converter}. Error: {error!r}')
         # self.logger.debug("\nCOL TYPES AFTER CONVERSION\n")
         # df.info()  # direct print info
@@ -364,7 +476,7 @@ class EditableTable(Table):
             row_number = self.add_page_offset(row_number)
         # get the REAL index of the row from its backup
         if df_type == DataFrameUsed.AUTO:
-            if self.filtered:
+            if self.is_filtered:
                 df = self.df_filtered
             else:
                 df = self.df_unfiltered
@@ -379,7 +491,8 @@ class EditableTable(Table):
             return int(self.get_real_index(row_number))
         else:
             return int(self.get_real_index(row_number))
-        copy_col_index = self.get_col_index(gui_g.s.index_copy_col_name)
+        # copy_col_index = self.get_col_index(gui_g.s.index_copy_col_name)  # issue if df and unfiltred data does not have the same columns
+        copy_col_index = df.columns.get_loc(gui_g.s.index_copy_col_name)
         result = -1
         idx_max = len(df)
         if row_number >= idx_max:
@@ -393,6 +506,7 @@ class EditableTable(Table):
             else:
                 self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
         except (ValueError, IndexError) as error:
+            self.add_error(error)
             self.logger.warning(f'Could not get the real index for row number #{row_number + 1}. Error: {error!r}')
         return result
 
@@ -401,10 +515,11 @@ class EditableTable(Table):
         Get a dataframe content depending on the df_type parameter. By default, the unfiltered dataframe is returned.
         :param df_type: The dataframe type to get. See DataFrameUsed type description for more details
         :return: The dataframe.
-        NOTE: the unfiltered dataframe must be returned by default because it's used in by the FilterFrame class.
+
+        Note: the unfiltered dataframe must be returned by default because it's used in by the FilterFrame class.
         """
         if df_type == DataFrameUsed.AUTO:
-            if self.filtered:
+            if self.is_filtered:
                 return self.df_filtered
             else:
                 return self.df_unfiltered
@@ -425,13 +540,12 @@ class EditableTable(Table):
         :param df_type: The dataframe type to set. See DataFrameUsed type description for more details
         """
         if df_type == DataFrameUsed.AUTO:
-            if self.filtered:
+            if self.is_filtered:
                 self.df_filtered = df
             else:
                 self.df_unfiltered = df
         elif df_type == DataFrameUsed.UNFILTERED:
             self.df_unfiltered = df
-            self.set_colors()
         elif df_type == DataFrameUsed.FILTERED:
             self.df_filtered = df
         elif df_type == DataFrameUsed.BOTH:
@@ -543,19 +657,17 @@ class EditableTable(Table):
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
-                # fill all 'NaN' like values with 'None', to be similar to the database
-                df.fillna('None', inplace=True)
-                self.df_unfiltered = df
             elif self.data_source_type == DataSourceType.SQLITE:
+                column_names: list = self._db_handler.get_columns_name_for_csv()
+                col_index = column_names.index('Uid')
                 data = self._db_handler.get_assets_data_for_csv()
                 data_count = len(data)
-                if data_count <= 0 or data[0][0] is None:
+                # check to see if the first row has a value in the Uid column
+                if data_count <= 0 or data[0][col_index] is None:
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
                 else:
-                    column_names = self._db_handler.get_columns_name_for_csv()
                     df = pd.DataFrame(data, columns=column_names)
-                self.df_unfiltered = df
             else:
                 self.logger.error(f'Unknown data source type: {self.data_source_type}')
                 # previous line will quit the app
@@ -565,13 +677,15 @@ class EditableTable(Table):
             self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
             df, _ = self.create_row(add_to_existing=False)
             data_count = len(df)
-        if df is None or len(df) == 0:
+        if df is None or df.empty:
             self.logger.error(f'No data found in data source: {self.data_source}')
             # previous line will quit the app
             # noinspection PyTypeChecker
             return None
         else:
-            self.total_pages = (data_count-1) // self.rows_per_page + 1
+            df.fillna(gui_g.s.empty_cell, inplace=True)
+            self.df_unfiltered = df
+            self.total_pages = (data_count - 1) // self.rows_per_page + 1
             return df
 
     def create_row(self, row_data=None, add_to_existing: bool = True, do_not_save: bool = False) -> (pd.DataFrame, int):
@@ -581,11 +695,12 @@ class EditableTable(Table):
         :param add_to_existing: True to add the row to the existing data, False to replace the existing data.
         :param do_not_save: True to not save the row in the database.
         :return: (The created row, the index of the created row)
+
         Note: be sure to call self.update() after calling this function to copy the changes in all the dataframes.
         """
         table_row = None
         new_index = 0
-        data_frame = self.get_data()
+        df = self.get_data()
         if self.data_source_type == DataSourceType.FILE:
             # create an empty row with the correct columns
             str_data = get_csv_field_name_list(return_as_string=True)  # column names
@@ -600,17 +715,6 @@ class EditableTable(Table):
                 return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
             )  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
-            # getting the last index for the new row
-            # THIS CAN CAUSES ISSUE: using the first index (0) is much simple
-            # if data_frame is not None:
-            #     try:
-            #         new_index = data_frame.index.max() + 1
-            #     except (AttributeError, ValueError):
-            #         pass
-            #     else:
-            #         new_index = len(data_frame) + 1
-            # else:
-            #     new_index = 1
             table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
             try:
                 table_row[gui_g.s.index_copy_col_name] = new_index
@@ -619,41 +723,51 @@ class EditableTable(Table):
         else:
             self.logger.error(f'Unknown data source type: {self.data_source_type}')
             # previous line will quit the app
-        if row_data is not None and table_row is not None:
+        if table_row is None:
+            self.logger.warning(f'Could not create an empty row for data source: {self.data_source}')
+            return None, -1
+        if row_data is not None:
             # add the data to the row
             for col in row_data:
                 table_row[col] = row_data[col]
-            table_row.fillna('None', inplace=True)
         if add_to_existing and table_row is not None:
             self.must_rebuild = False
             if new_index == 0:
                 # the row is added at the start of the table. As it, the index is always known
-                new_df = pd.concat([table_row, data_frame], copy=False, ignore_index=True)
+                new_df = pd.concat([table_row, df], copy=False, ignore_index=True)
             else:
                 # the row is added at the end
-                new_df = pd.concat([data_frame, table_row], copy=False, ignore_index=True)
+                new_df = pd.concat([df, table_row], copy=False, ignore_index=True)
             self.set_data(new_df)
             self.add_to_rows_to_save(new_index)  # done inside self.must_save = True
         elif table_row is not None:
             self.must_rebuild = True
+        table_row.fillna(gui_g.s.empty_cell, inplace=True)
         return table_row, new_index
 
-    def del_row(self, row_numbers=None) -> bool:
+    def del_rows(self, row_numbers=None, convert_to_index=True, confirm_dialog=True) -> bool:
         """
-        Delete the selected row in the table.
+        Delete rows from the table.
         :param row_numbers: The row to delete. If None, the selected row is deleted.
+        :param convert_to_index: True to convert the row number to the real index, False otherwise.
+        :param confirm_dialog: True to display a confirmation dialog, False otherwise.
+
+        Note: self.tableChanged() is called if some rows have been deleted
         """
         if row_numbers is None:
             row_numbers = self.multiplerowlist
-        index_to_delete = []
-        number_deleted = len(row_numbers)
-        asset_str = f'{number_deleted} rows' if number_deleted > 1 else f' row #{row_numbers[0] + 1}'
-        if number_deleted and box_yesno(f'Are you sure you want to delete {asset_str}? '):
+        if isinstance(row_numbers, list):
+            asset_str = f'{len(row_numbers)} rows'
             row_numbers.sort(reverse=True)  # delete from the end to the start to avoid index change
+        else:
+            asset_str = f' row #{row_numbers + 1}'
+            row_numbers = [row_numbers]
+        if not confirm_dialog or box_yesno(f'Are you sure you want to delete {asset_str}? '):
+            index_to_delete = []
             for row_number in row_numbers:
                 df = self.get_data()
-                asset_id = 'None'
-                idx = self.get_real_index(row_number, add_page_offset=True)
+                asset_id = 'NA'
+                idx = self.get_real_index(int(row_number), add_page_offset=True) if convert_to_index else row_number
                 if 0 <= idx <= len(df):
                     try:
                         asset_id = df.at[idx, 'Asset_id']  # at checked
@@ -661,6 +775,7 @@ class EditableTable(Table):
                         self.add_to_asset_ids_to_delete(asset_id)
                         self.logger.info(f'Adding row {idx} with asset_id={asset_id} to the list of index to delete')
                     except (IndexError, KeyError) as error:
+                        self.add_error(error)
                         self.logger.warning(f'Could add row {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
 
                     # update the index copy column because index is changed after each deletion
@@ -677,19 +792,24 @@ class EditableTable(Table):
                             # if self.df_filtered is not None:
                             #    self.df_filtered.drop(idx, inplace=True)
                         except (IndexError, KeyError) as error:
+                            self.add_error(error)
                             self.logger.warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
 
-            self.must_save = True
+            self.selectNone()
             self.update_index_copy_column()
-            cur_row = self.getSelectedRow()
-            if cur_row < number_deleted:
-                # move to the next row
-                self.move_to_row(cur_row)
-            else:
-                # or move to the prev row of the first deleted row
-                self.move_to_row(cur_row - number_deleted)
-            # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
-            self.update(update_filters=True)
+            number_deleted = len(index_to_delete)
+            if number_deleted:
+                cur_row = self.getSelectedRow()
+                if cur_row < number_deleted:
+                    # move to the next row
+                    self.move_to_row(cur_row)
+                else:
+                    # or move to the prev row of the first deleted row
+                    self.move_to_row(cur_row - number_deleted)
+                # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
+                self.update(update_filters=True)
+                self.tableChanged()
+                self.set_control_state_func('save', True)
             return number_deleted > 0
         else:
             return False
@@ -729,6 +849,7 @@ class EditableTable(Table):
                     asset_id = ue_asset.data.get('asset_id', '')
                     self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
+                    self.add_error(error)
                     self.logger.warning(f'Failed to save UE_asset for row #{row_number + 1} to the database. Error: {error!r}')
             for asset_id in self._deleted_asset_ids:
                 try:
@@ -738,6 +859,7 @@ class EditableTable(Table):
                     self._db_handler.delete_asset(asset_id=asset_id)
                     self.logger.info(f'Row with asset_id={asset_id} has been deleted from the database')
                 except (KeyError, ValueError, AttributeError) as error:
+                    self.add_error(error)
                     self.logger.warning(f'Failed to delete asset_id={asset_id} to the database. Error: {error!r}')
 
         self.clear_rows_to_save()
@@ -755,8 +877,8 @@ class EditableTable(Table):
         if df_loaded is None:
             return False
         self.set_data(df_loaded)
-        self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
-        close_progress(self)
+        self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
+        # close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
     def rebuild_data(self) -> bool:
@@ -789,7 +911,7 @@ class EditableTable(Table):
             max_threads = get_max_threads()
             owned_assets_only = False
             db_asset_per_page = 100  # a bigger value will be refused by UE API
-            if test_only_mode:
+            if gui_g.s.testing_switch == 1:
                 start_row = 15000
                 stop_row = 15000 + db_asset_per_page
             else:
@@ -808,7 +930,6 @@ class EditableTable(Table):
                 store_in_files=True,
                 store_ids=False,  # useless for now
                 load_from_files=load_from_files,
-                # clean_database=not test_only_mode, # BE CAREFUL: Whether to this will delete all the data in the database included user fields values !!!
                 clean_database=False,
                 engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
                 egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs,
@@ -826,69 +947,85 @@ class EditableTable(Table):
                 return False
             self.set_data(df_loaded)
             self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
-            close_progress(self)
+            # close_progress(self)  # done in data_table.update(update_format=True)
             return True
         else:
             return False
 
-    def gradient_color_cells(self, col_names: [] = None, cmap: str = 'sunset', alpha: float = 1) -> None:
+    def gradient_color_cells(
+        self, col_names: [] = None, cmap: str = 'blues', alpha: float = 1, min_val=None, max_val=None, is_reversed: bool = False
+    ) -> None:
         """
         Create a gradient color for the cells os specified columns. The gradient depends on the cell value between min and max values for that column.
         :param col_names: The names of the columns to create a gradient color for.
         :param cmap: name of the colormap to use.
         :param alpha: alpha value for the color.
-        NOTE: called by set_colors() on each update
+        :param min_val: The minimum value to use for the gradient. If None, the minimum value of each column is used.
+        :param max_val: The maximum value to use for the gradient. If None, the maximum value of each column is used.
+        :param is_reversed: True to reverse the gradient, False otherwise.
+
+        Note: called by set_colors() on each update
         """
-        # import pylab as plt
-        # cmaps = sorted(m for m in plt.cm.datad if not m.endswith("_r"))
-        # print(cmaps)
-        # possible cmaps:
-        # 'Accent', 'Blues', 'BrBG', 'BuGn', 'BuPu', 'CMRmap', 'Dark2', 'GnBu', 'Greens', 'Greys', 'OrRd', 'Oranges', 'PRGn', 'Paired', 'Pastel1',
-        #  'Pastel2', 'PiYG', 'PuBu', 'PuBuGn', 'PuOr', 'PuRd', 'Purples', 'RdBu', 'RdGy', 'RdPu', 'RdYlBu', 'RdYlGn', 'Reds', 'Set1', 'Set2', 'Set3',
-        #  'Spectral', 'Wistia', 'YlGn', 'YlGnBu', 'YlOrBr', 'YlOrRd', 'afmhot', 'autumn', 'binary', 'bone', 'brg', 'bwr', 'cool', 'coolwarm', 'copper',
-        #  'cubehelix', 'flag', 'gist_earth', 'gist_gray', 'gist_heat', 'gist_ncar', 'gist_rainbow', 'gist_stern', 'gist_yarg', 'gnuplot', 'gnuplot2',
-        #  'gray', 'hot', 'hsv', 'jet', 'nipy_spectral', 'ocean', 'pink', 'prism', 'rainbow', 'seismic', 'spring', 'summer', 'tab10', 'tab20', 'tab20b',
-        #  'tab20c', 'terrain', 'winter'
         if col_names is None:
             return
         df = self.get_data(df_type=self._dftype_for_coloring)
         for col_name in col_names:
             try:
                 x = df[col_name]
+                if min_val is None:
+                    min_val = x.min()
+                if max_val is None:
+                    max_val = x.max()
+                x = (x - min_val) / (max_val - min_val)
+                if is_reversed:
+                    x = max_val - x
                 clrs = self.values_to_colors(x, cmap, alpha)
                 clrs = pd.Series(clrs, index=df.index)
                 rc = self.rowcolors
                 rc[col_name] = clrs
             except (KeyError, ValueError) as error:
+                self.add_error(error)
                 self.logger.debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
                 continue
 
-    def color_cells_if(self, col_names: [] = None, color: str = 'green', value_to_check: str = 'True') -> None:
+    def setColorByMask(self, col, mask, clr):
+        """Color individual cells in a column using a mask."""
+        if len(self.rowcolors) == 0:
+            self.resetColors()
+        rc = self.rowcolors
+        if col not in rc.columns:
+            rc[col] = pd.Series()
+        rc[col] = rc[col].where(-mask, clr)
+        return
+
+    def color_cells_if(self, col_names: [] = None, color: str = 'green', value_to_check: any = True) -> None:
         """
         Set the cell color for the specified columns and the cell with a given value.
-        :param col_names: The names of the columns to create a gradient color for.
+        :param col_names: The name of the columns to color if the value is found.
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
-        NOTE: called by set_colors() on each update
+
+        Note: called by set_colors() on each update
         """
         if col_names is None:
             return
         df = self.get_data(df_type=self._dftype_for_coloring)
         for col_name in col_names:
+            mask = df[col_name] == value_to_check
             try:
-                mask = df[col_name] == value_to_check
                 self.setColorByMask(col=col_name, mask=mask, clr=color)
             except (KeyError, ValueError) as error:
+                self.add_error(error)
                 self.logger.debug(f'color_cells_if: An error as occured with {col_name} : {error!r}')
-                continue
 
-    def color_cells_if_not(self, col_names: [] = None, color: str = 'grey', value_to_check: str = 'False') -> None:
+    def color_cells_if_not(self, col_names: [] = None, color: str = 'grey', value_to_check: any = False) -> None:
         """
         Set the cell color for the specified columns and the cell with NOT a given value.
-        :param col_names: The names of the columns to create a gradient color for.
+        :param col_names: The name of the columns to color if the value is not found.
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
-        NOTE: called by set_colors() on each update
+
+        Note: called by set_colors() on each update
         """
         if col_names is None:
             return
@@ -898,41 +1035,28 @@ class EditableTable(Table):
                 mask = df[col_name] != value_to_check
                 self.setColorByMask(col=col_name, mask=mask, clr=color)
             except (KeyError, ValueError) as error:
+                self.add_error(error)
                 self.logger.debug(f'color_cells_if_not: An error as occured with {col_name} : {error!r}')
                 continue
 
-    def color_rows_if(self, col_names: [] = None, color: str = '#555555', value_to_check: str = 'True') -> None:
+    def color_rows_if(self, col_name_to_check: str, color: str = '#555555', value_to_check: any = True) -> None:
         """
         Set the row color for the specified columns and the rows with a given value.
-        :param col_names: The names of the columns to check for the value.
+        :param col_name_to_check: The name of the column to check for the value.
         :param color: The color to set the row to.
         :param value_to_check: The value to check for.
-        NOTE: called by set_colors() on each update
+
+        Note: called by set_colors() on each update
         """
-        if col_names is None:
-            return
+
         df = self.get_data(df_type=self._dftype_for_coloring)
-        for col_name in col_names:
-            row_indices = []
-            if col_name not in df.columns:
-                continue
+        mask = df[col_name_to_check] == value_to_check
+        for col_name in df.columns:
             try:
-                mask = df[col_name]
-            except KeyError:
-                self.logger.debug(f'color_rows_if: Column {col_name} not found in the table data.')
-                continue
-            for i in range(min(self.rows_per_page, len(mask))):
-                try:
-                    if str(mask[i]) == value_to_check:
-                        row_indices.append(i)
-                except KeyError:
-                    self.logger.debug(f'KeyError for row {i} in color_rows_if')
-            if len(row_indices) > 0:  # Check if there are any row indices
-                try:
-                    self.setRowColors(rows=row_indices, clr=color, cols='all')
-                except (KeyError, IndexError) as error:
-                    self.logger.debug(f'Error in color_rows_if: {error!r}')
-            return
+                self.setColorByMask(col=col_name, mask=mask, clr=color)
+            except (KeyError, ValueError) as error:
+                self.add_error(error)
+                self.logger.debug(f'color_rows_if: An error as occured with {col_name} : {error!r}')
 
     def set_preferences(self, default_pref=None) -> None:
         """
@@ -950,16 +1074,43 @@ class EditableTable(Table):
         """
         Initialize the colors of some cells depending on their values.
         """
+        """
+        import pylab as plt
+        cmaps = sorted(m for m in plt.cm.datad)
+        print(cmaps)
+        
+        possible cmaps (exemples: https://matplotlib.org/stable/tutorials/colors/colormaps.html):
+        'Accent', 'Accent_r', 'Blues', 'Blues_r', 'BrBG', 'BrBG_r', 'BuGn', 'BuGn_r', 'BuPu', 'BuPu_r', 'CMRmap', 
+        'CMRmap_r', 'Dark2', 'Dark2_r', 'GnBu', 'GnBu_r', 'Greens', 'Greens_r', 'Greys', 'Greys_r', 'OrRd', 'OrRd_r',
+        'Oranges', 'Oranges_r', 'PRGn', 'PRGn_r', 'Paired', 'Paired_r', 'Pastel1', 'Pastel1_r', 'Pastel2', 
+        'Pastel2_r', 'PiYG', 'PiYG_r', 'PuBu', 'PuBuGn', 'PuBuGn_r', 'PuBu_r', 'PuOr', 'PuOr_r', 'PuRd', 'PuRd_r', 
+        'Purples', 'Purples_r', 'RdBu', 'RdBu_r', 'RdGy', 'RdGy_r', 'RdPu', 'RdPu_r', 'RdYlBu', 'RdYlBu_r', 
+        'RdYlGn', 'RdYlGn_r', 'Reds', 'Reds_r', 'Set1', 'Set1_r', 'Set2', 'Set2_r', 'Set3', 'Set3_r', 'Spectral', 
+        'Spectral_r', 'Wistia', 'Wistia_r', 'YlGn', 'YlGnBu', 'YlGnBu_r', 'YlGn_r', 'YlOrBr', 'YlOrBr_r', 'YlOrRd',
+        'YlOrRd_r', 'afmhot', 'afmhot_r', 'autumn', 'autumn_r', 'binary', 'binary_r', 'bone', 'bone_r', 'brg', 
+        'brg_r', 'bwr', 'bwr_r', 'cividis', 'cividis_r', 'cool', 'cool_r', 'coolwarm', 'coolwarm_r', 'copper', 
+        'copper_r', 'cubehelix', 'cubehelix_r', 'flag', 'flag_r', 'gist_earth', 'gist_earth_r', 'gist_gray', 
+        'gist_gray_r', 'gist_heat', 'gist_heat_r', 'gist_ncar', 'gist_ncar_r', 'gist_rainbow', 'gist_rainbow_r', 
+        'gist_stern', 'gist_stern_r', 'gist_yarg', 'gist_yarg_r', 'gnuplot', 'gnuplot2', 'gnuplot2_r', 'gnuplot_r',
+        'gray', 'gray_r', 'hot', 'hot_r', 'hsv', 'hsv_r', 'inferno', 'inferno_r', 'jet', 'jet_r', 'magma', 
+        'magma_r', 'nipy_spectral', 'nipy_spectral_r', 'ocean', 'ocean_r', 'pink', 'pink_r', 'plasma', 'plasma_r',
+        'prism', 'prism_r', 'rainbow', 'rainbow_r', 'seismic', 'seismic_r', 'spring', 'spring_r', 'summer', 
+        'summer_r', 'tab10', 'tab10_r', 'tab20', 'tab20_r', 'tab20b', 'tab20b_r', 'tab20c', 'tab20c_r', 'terrain', 
+        'terrain_r', 'turbo', 'turbo_r', 'twilight', 'twilight_r', 'twilight_shifted', 'twilight_shifted_r', 
+        'viridis', 'viridis_r', 'winter', 'winter_r'
+        
+        list of color names: https://matplotlib.org/stable/gallery/color/named_colors.html
+        """
         if not gui_g.s.use_colors_for_data:
             self.redraw()
             return
-        self.logger.debug('set_colors')
-        self.gradient_color_cells(col_names=['Review'], cmap='Set3', alpha=1)
-        self.color_cells_if(col_names=['Owned', 'Discounted'], color='lightgreen', value_to_check='True')
-        self.color_cells_if(col_names=['Grab result'], color='lightblue', value_to_check='NO_ERROR')
-        self.color_cells_if_not(col_names=['Status'], color='#555555', value_to_check='ACTIVE')
-        self.color_rows_if(col_names=['Status'], color='#555555', value_to_check='SUNSET')
-        self.color_rows_if(col_names=['Obsolete'], color='#777777', value_to_check='True')
+        # self.logger.debug('set_colors')
+        self.gradient_color_cells(col_names=['Review'], cmap='cool_r', alpha=1, min_val=0, max_val=5)
+        self.color_cells_if(col_names=['Owned', 'Discounted'], color='palegreen', value_to_check=True)
+        self.color_cells_if(col_names=['Grab result'], color='skyblue', value_to_check='NO_ERROR')
+        self.color_cells_if_not(col_names=['Status'], color='darkgrey', value_to_check='ACTIVE')
+        self.color_rows_if(col_name_to_check='Status', color='darkgrey', value_to_check='SUNSET')
+        self.color_rows_if(col_name_to_check='Obsolete', color='dimgrey', value_to_check=True)
         self.redraw()
 
     def handle_left_click(self, event) -> None:
@@ -998,24 +1149,39 @@ class EditableTable(Table):
         """
         self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data()
+        if update_format:
+            # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
+            show_progress(self, text='Formating and converting DataTable...')
+            self.set_data(self.set_columns_type(df))
         if update_filters:
-            self._filter_frame.create_mask()
-        mask = self._filter_frame.get_filter_mask() if self._filter_frame is not None else None
+            self._frm_filter.create_mask()
+        mask = self._frm_filter.get_filter_mask() if self._frm_filter is not None else None
         if mask is not None:
-            self.filtered = True
-            # self.current_page = 1
-            self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
+            self.is_filtered = True
+            try:
+                self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
+            except IndexingError:
+                self.logger.warning(f'IndexingError with defined filters. Updating filter...')
+                self._frm_filter.create_mask()
+                try:
+                    self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
+                except IndexingError:
+                    self.logger.warning(f'Still an IndexingError with defined filters. Deleting mask...')
+                    self._frm_filter.reset_filters()
+                    self.set_data(df, df_type=DataFrameUsed.FILTERED)
+                    self.is_filtered = False
         else:
-            self.filtered = False
             self.set_data(df, df_type=DataFrameUsed.FILTERED)
+            self.is_filtered = False
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
-            show_progress(self, text='Formating and converting DataTable...')
             self.update_index_copy_column()
-            self.set_data(self.set_columns_type(df))
+            close_progress(self)
         if reset_page:
             self.current_page = 1
             self.update_rows_text_func()
+        if update_filters or self._old_is_filtered != self.is_filtered:
+            self.resetColors()
         self.update_page(keep_col_infos=True)
 
     def update_page(self, keep_col_infos=False) -> None:
@@ -1044,13 +1210,14 @@ class EditableTable(Table):
         self.model.df[gui_g.s.index_copy_col_name] = self.model.df.index
         if self.df_filtered is not None:
             self.df_filtered[gui_g.s.index_copy_col_name] = self.df_filtered.index
-
+        # check if the columns order has changed
         new_cols_infos = self.get_col_infos()
         if self._column_infos_stored != new_cols_infos:
             self.update_col_infos(
                 updated_info=self._column_infos_stored, apply_resize_cols=True
             )  # resize the columns using the data stored before the update
-
+        if self._old_page != self.current_page:
+            self.resetColors()
         self.set_colors()
         if self.update_page_numbers_func is not None:
             self.update_page_numbers_func()
@@ -1171,11 +1338,13 @@ class EditableTable(Table):
         """
         Adds the specified row to the list of rows to save.
         :param row_index: The (real) index of the row to save.
+
+        Note: self.tableChanged() is called if some rows must be saved
         """
         if row_index < 0 or row_index > len(self.get_data()) or row_index in self._changed_rows:
             return
         self._changed_rows.append(row_index)
-        self.must_save = True
+        self.tableChanged()
         self.set_control_state_func('save', True)
 
     def clear_rows_to_save(self) -> None:
@@ -1230,7 +1399,7 @@ class EditableTable(Table):
             ue_asset_data = ue_asset_data[0]
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
         if asset_id in ('', 'None', 'nan'):
-            asset_id = ue_asset_data.get('asset_id', 'None')
+            asset_id = ue_asset_data.get('asset_id', 'NA')
         text = f'row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
@@ -1279,7 +1448,14 @@ class EditableTable(Table):
         :param col_index: column index.
         :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value.
         :return: the value of the cell or None if the row or column index is out of range.
+
+        Note: if row_number or col_index are not passed, the last selected row or column will be used.
         """
+        if row_number < 0:
+            row_number = self._last_selected_row
+        if col_index < 0:
+            col_index = self._last_selected_col
+
         if row_number < 0 or col_index < 0:
             return None
         try:
@@ -1302,6 +1478,7 @@ class EditableTable(Table):
         """
         if row_number < 0 or col_index < 0 or value is None:
             return False
+        value = gui_g.s.empty_cell if value in ('None', 'nan') else value  # convert 'None' values to ''
         try:
             idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
             df = self.get_data()  # always used the unfiltered because the real index is set from unfiltered dataframe
@@ -1310,9 +1487,11 @@ class EditableTable(Table):
             df.iat[idx, col_index] = value  # iat checked
             return True
         except TypeError as error:
+            self.add_error(error)
             if not self._is_scanning and 'Cannot setitem on a Categorical with a new category' in str(error):
+                # this will occur when scanning folder with category that are not in the table yet
                 col_name = self.get_col_name(col_index)
-                box_message(f'You can not use a value that is not an existing category for field {col_name}.')
+                log_warning(f'Trying to set a value that is not an existing category for field {col_name}.')
             return False
         except IndexError:
             return False
@@ -1369,12 +1548,10 @@ class EditableTable(Table):
         edit_row_window = EditRowWindow(
             parent=self.master, title=title, width=width, height=height, icon=gui_g.s.app_icon_filename, editable_table=self
         )
-        edit_row_window.grab_set()
         edit_row_window.minsize(width, height)
         # configure the grid
-        edit_row_window.content_frame.columnconfigure(0, weight=0)
-        edit_row_window.content_frame.columnconfigure(1, weight=1)
-        edit_row_window.focus_set()
+        edit_row_window.frm_content.columnconfigure(0, weight=0)
+        edit_row_window.frm_content.columnconfigure(1, weight=1)
         self.edit_row(row_number)
 
     def edit_row(self, row_number: int = None) -> None:
@@ -1392,40 +1569,67 @@ class EditableTable(Table):
             return
         entries = {}
         image_url = ''
-        for i, (key, value) in enumerate(row_data.items()):
+        previous_was_a_bool = False
+        row = 0
+        for key, value in row_data.items():
+            # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool})  # debug only
+            col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
+            if key in col_list:
+                continue
             if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
                 continue
             label = key.replace('_', ' ').title()
-            ttk.Label(edit_row_window.content_frame, text=label).grid(row=i, column=0, sticky=tk.W)
             key_lower = key.lower()
+
             if key_lower == 'image':
                 image_url = value
             if is_from_type(key, [CSVFieldType.TEXT]):
-                entry = ExtendedText(edit_row_window.content_frame, height=3)
+                if previous_was_a_bool:
+                    row += 1  # the previous row was a bool, we have to move to the next row
+                previous_was_a_bool = False
+                ttk.Label(edit_row_window.frm_content, text=label).grid(row=row, column=0, sticky=tk.W)
+                entry = ExtendedText(edit_row_window.frm_content, height=3)
                 entry.set_content(value)
-                entry.grid(row=i, column=1, sticky=tk.EW)
+                entry.grid(row=row, column=1, columnspan=3, sticky=tk.EW)
             elif is_from_type(key, [CSVFieldType.BOOL]):
-                entry = ExtendedCheckButton(edit_row_window.content_frame, label='', images_folder=gui_g.s.assets_folder)
+                # values by default. keep here !
+                col_span = 1
+                if previous_was_a_bool:
+                    col_label = 2
+                    col_value = 3
+                else:
+                    col_label = 0
+                    col_value = 1
+                ttk.Label(edit_row_window.frm_content, text=label).grid(row=row, column=col_label, sticky=tk.W)
+                entry = ExtendedCheckButton(edit_row_window.frm_content, label='', images_folder=gui_g.s.assets_folder)
                 entry.set_content(value)
-                entry.grid(row=i, column=1, sticky=tk.EW)
+                entry.grid(row=row, column=col_value, columnspan=col_span, sticky=tk.EW)
+                previous_was_a_bool = not previous_was_a_bool
+                if previous_was_a_bool:
+                    row -= 1  # we stay on the same row for the next loop
                 # TODO : add other extended widget for specific type (CSVFieldType.DATETIME , CSVFieldType.LIST)
             else:
                 # other field is just a usual entry
-                entry = ttk.Entry(edit_row_window.content_frame)
+                if previous_was_a_bool:
+                    row += 1  # the previous row was a bool, we have to move to the next row
+                previous_was_a_bool = False
+                ttk.Label(edit_row_window.frm_content, text=label).grid(row=row, column=0, sticky=tk.W)
+                entry = ttk.Entry(edit_row_window.frm_content)
                 entry.insert(0, value)
-                entry.grid(row=i, column=1, sticky=tk.EW)
-
+                entry.grid(row=row, column=1, columnspan=3, sticky=tk.EW)
+            row += 1
             entries[key] = entry
 
         # image preview
-        show_asset_image(image_url=image_url, canvas_image=edit_row_window.control_frame.canvas_image)
+        show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale)
 
         self._edit_row_entries = entries
         self._edit_row_number = row_number
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
+        make_modal(edit_row_window)
 
     def save_edit_row(self) -> None:
         """
@@ -1476,26 +1680,25 @@ class EditableTable(Table):
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
         edit_cell_window = EditCellWindow(parent=self.master, title=title, width=width, height=height, editable_table=self)
-        edit_cell_window.grab_set()
         edit_cell_window.minsize(width, height)
 
         # get and display the cell data
         col_name = self.get_col_name(col_index)
-        ttk.Label(edit_cell_window.content_frame, text=col_name).pack(side=tk.LEFT)
-        cell_value_str = str(cell_value) if cell_value != 'None' else ''
+        ttk.Label(edit_cell_window.frm_content, text=col_name).pack(side=tk.LEFT)
+        cell_value_str = str(cell_value) if (cell_value not in ('None', 'nan', gui_g.s.empty_cell)) else ''
         if is_from_type(col_name, [CSVFieldType.TEXT]):
-            widget = ExtendedText(edit_cell_window.content_frame, tag=col_name, height=3)
+            widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)
             widget.focus_set()
             widget.tag_add('sel', '1.0', tk.END)  # select the content
 
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
         elif is_from_type(col_name, [CSVFieldType.BOOL]):
-            widget = ExtendedCheckButton(edit_cell_window.content_frame, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
+            widget = ExtendedCheckButton(edit_cell_window.frm_content, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
             widget.set_content(bool(cell_value))
         else:
             # other field is just a ExtendedEntry
-            widget = ExtendedEntry(edit_cell_window.content_frame, tag=col_name)
+            widget = ExtendedEntry(edit_cell_window.frm_content, tag=col_name)
             widget.insert(0, cell_value_str)
             widget.focus_set()
             widget.selection_range(0, tk.END)  # select the content
@@ -1506,6 +1709,7 @@ class EditableTable(Table):
         self._edit_cell_col_index = col_index
         self._edit_cell_window = edit_cell_window
         edit_cell_window.initial_values = self.get_edit_cell_values()
+        make_modal(edit_cell_window)
 
     def get_edit_cell_values(self) -> str:
         """
@@ -1557,13 +1761,13 @@ class EditableTable(Table):
         Quick edit the content some cells of the selected row.
         :param row_number: row number from a datatable. Will be converted into real row index.
         """
-        quick_edit_frame = self._frm_quick_edit
-        if quick_edit_frame is None:
-            quick_edit_frame = self._frm_quick_edit
+        frm_quick_edit = self._frm_quick_edit
+        if frm_quick_edit is None:
+            frm_quick_edit = self._frm_quick_edit
         else:
-            self._frm_quick_edit = quick_edit_frame
+            self._frm_quick_edit = frm_quick_edit
 
-        if row_number is None or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or quick_edit_frame is None:
+        if row_number is None or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or frm_quick_edit is None:
             return
 
         column_names = ['Asset_id', 'Url']
@@ -1572,12 +1776,15 @@ class EditableTable(Table):
             col_index = self.get_col_index(col_name)
             value = self.get_cell(row_number, col_index)
             if col_name == 'Asset_id':
-                asset_id = value
-                quick_edit_frame.config(text=f'Quick Editing Asset: {asset_id}')
+                # frm_quick_edit.config(text=f'Quick Editing Asset: {value}')
+                # TODO: check if a nicer method could be used here whithout a big refactoring
+                frm_content = self._container
+                uevm_gui = frm_content.container
+                uevm_gui.set_asset_id(value)
                 continue
             typed_value = get_typed_value(csv_field=col_name, value=value)
             if col_index >= 0:
-                quick_edit_frame.set_child_values(tag=col_name, content=typed_value, row=row_number, col=col_index)
+                frm_quick_edit.set_child_values(tag=col_name, content=typed_value, row=row_number, col=col_index)
 
     def quick_edit(self) -> None:
         """
@@ -1643,6 +1850,23 @@ class EditableTable(Table):
             return
         webbrowser.open(asset_url)
 
+    def open_origin_folder(self) -> None:
+        """
+        Open the asset origin folder.
+        """
+        row_number = self.getSelectedRow()
+        if row_number is None or row_number < 0:
+            return
+        added = self.get_cell(row_number, self.get_col_index('Added manually'))
+        # open the folder of the asset
+        if added:
+            origin = self.get_cell(row_number, self.get_col_index('Origin'))
+            # open the folder of the asset
+            if not open_folder_in_file_explorer(origin):
+                box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
+        else:
+            box_message('Only possible with asset that have been mannualy added.', 'info')
+
     def reset_style(self) -> None:
         """
         Reset the table style. Usefull when style of the main ttk window has changed.
@@ -1652,3 +1876,10 @@ class EditableTable(Table):
         if df is not None:
             df.style.clear()
         self.redraw()
+
+    def add_error(self, error: Exception) -> None:
+        """
+        Add an error to the list of errors.
+        :param error: the error to add.
+        """
+        self._errors.append(error)

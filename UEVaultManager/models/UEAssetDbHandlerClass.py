@@ -16,13 +16,14 @@ from faker import Faker
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.core import default_datetime_format
-from UEVaultManager.models.csv_sql_fields import get_sql_field_name_list, CSVFieldState
+from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
-from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute, convert_to_str_datetime, create_uid
+from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, path_from_relative_to_absolute
+from UEVaultManager.tkgui.modules.types import UEAssetType
 from UEVaultManager.utils.cli import check_and_create_path
-
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
 
 
 class UEAssetDbHandler:
@@ -34,7 +35,7 @@ class UEAssetDbHandler:
     Note: The database will be created if it doesn't exist.
     """
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    update_loggers_level(logger)
     db_version: DbVersionNum = DbVersionNum.V0  # updated in check_and_upgrade_database()
     connection = None
 
@@ -166,7 +167,7 @@ class UEAssetDbHandler:
         :param table_name: Name of the table.
         :param required_columns: Dictionary of columns to add. Key is the column name, value is the data type.
 
-        NOTE: the AFTER parameter in SQL is not supported in the SQLite version used.
+        Note: the AFTER parameter in SQL is not supported in the SQLite version used.
         """
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -178,6 +179,66 @@ class UEAssetDbHandler:
                     cursor.execute(query)
             self.connection.commit()
             cursor.close()
+
+    def _run_query(self, query: str, data: dict = None) -> list:
+        """
+        Run a query.
+        :param query: The query to run.
+        :param data: A dictionary containing the data to use in the query.
+        :return: The result of the query.
+        """
+        result = None
+        if self.connection is not None:
+            cursor = self.connection.cursor()
+            if data is None:
+                cursor.execute(query)
+            else:
+                cursor.execute(query, data)
+            self.connection.commit()
+            result = cursor.fetchall()
+            cursor.close()
+        return result
+
+    def _insert_or_update_row(self, table_name: str, row_data: dict) -> bool:
+        """
+        Insert or update a row in the given table.
+        :param table_name: The name of the table.
+        :param row_data: A dictionary representing the row to insert or update.
+        :return: True if the row was inserted or updated, otherwise False.
+        """
+        if not table_name or not row_data:
+            return False
+        uid = row_data.get('id', None)  # check if the row as an id to check
+        # remove all fields whith a None Value
+        filtered_fields = {k: v for k, v in row_data.items() if (v is not None and v not in ('nan', 'None'))}
+        if len(filtered_fields) == 0:
+            return False
+        column_list = filtered_fields.keys()
+        cursor = self.connection.cursor()
+        if uid is not None:
+            # check if the asset already exists in the database
+            query = "SELECT id FROM " + table_name + " WHERE id = ?"  # we don't use a {table_name} here to avoid inspection warning
+            cursor.execute(query, (uid, ))
+            result = cursor.fetchone()
+        else:
+            result = None
+        if result is None:
+            # uid is not in row fields, or the row with uid does not exist in the database, add it
+            fields = ", ".join(f"{column}" for column in column_list)
+            values = ", ".join(f":{column}" for column in column_list)
+            # this query will insert or update the asset if it already exists.
+            # noinspection SqlInsertValues
+            query = f"REPLACE INTO {table_name} ({fields}) VALUES ({values})"
+        else:
+            # the row with uid already exists in the database, update it
+            fields = ", ".join(f"{column} = :{column}" for column in column_list)
+            query = "UPDATE " + table_name + f" SET {fields} WHERE id = '{uid}'"  # we don't use a {table_name} here to avoid inspection warning
+        try:
+            cursor.execute(query, row_data)
+            return True
+        except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
+            self.logger.warning(f"Error while inserting/updating row with id '{uid}': {error!r}")
+            return False
 
     def db_exists(self) -> bool:
         """
@@ -294,17 +355,12 @@ class UEAssetDbHandler:
 
         # all the following steps must be run sequentially
         if upgrade_from_version.value <= DbVersionNum.V1.value:
-            # necessary steps to upgrade to version 1, aka create tables
             self.db_version = upgrade_from_version = DbVersionNum.V2
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V2:
-            # necessary steps to upgrade from version 2
-            # add the last_run table to get data about the last run of the ap
             self.db_version = upgrade_from_version = DbVersionNum.V3
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V3:
-            # necessary steps to upgrade from version 3
-            # add user fields
             self._add_missing_columns(
                 'assets',
                 required_columns={
@@ -322,8 +378,6 @@ class UEAssetDbHandler:
             )
             self.db_version = upgrade_from_version = DbVersionNum.V4
         if upgrade_from_version == DbVersionNum.V4:
-            # necessary steps to upgrade from version 4
-            # add changed fields
             self._add_missing_columns(
                 'assets',
                 required_columns={
@@ -340,8 +394,6 @@ class UEAssetDbHandler:
             )
             self.db_version = upgrade_from_version = DbVersionNum.V5
         if upgrade_from_version == DbVersionNum.V5:
-            # necessary steps to upgrade from version 5
-            # add changed fields
             self._add_missing_columns('assets', required_columns={'tags': 'TEXT', })
             self.db_version = upgrade_from_version = DbVersionNum.V6
         if upgrade_from_version == DbVersionNum.V6:
@@ -354,13 +406,28 @@ class UEAssetDbHandler:
             self.db_version = upgrade_from_version = DbVersionNum.V9
             self.create_tables(upgrade_to_version=self.db_version)
         if upgrade_from_version == DbVersionNum.V9:
+            # next line produce error: sqlite3.OperationalError: Cannot add a PRIMARY KEY column
+            # self._add_missing_columns('last_run', required_columns={'id': 'INTEGER PRIMARY KEY AUTOINCREMENT'})
+            query = "DROP TABLE last_run"
+            self._run_query(query)
+            query = """
+            CREATE TABLE last_run (
+                date        DATETIME,
+                mode        TEXT,
+                files_count INTEGER,
+                items_count INTEGER,
+                scraped_ids TEXT,
+                id          INTEGER PRIMARY KEY AUTOINCREMENT
+            );"""
+            self._run_query(query)
+            self.db_version = upgrade_from_version = DbVersionNum.V10
+        if upgrade_from_version == DbVersionNum.V10:
             """
-            necessary steps to upgrade from version 9
             does not exist yet
             """
             """
             # do some stuff here
-            self.db_version = upgrade_from_version = DbVersionNum.V10
+            self.db_version = upgrade_from_version = DbVersionNum.V11
             """
             pass
         if previous_version != self.db_version:
@@ -416,13 +483,12 @@ class UEAssetDbHandler:
         Insert or update assets into the 'assets' table.
         :param assets: A dictionary or a list of dictionaries representing assets.
 
-        NOTE: the (existing) user fields data should have already been added or merged the asset dictionary.
+        Note: the (existing) user fields data should have already been added or merged the asset dictionary.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
             return
         if self.connection is not None:
-            cursor = self.connection.cursor()
             if not isinstance(assets, list):
                 assets = [assets]
             str_today = datetime.datetime.now().strftime(default_datetime_format)
@@ -436,28 +502,7 @@ class UEAssetDbHandler:
                 tags = asset.get('tags', [])
                 tags_str = self.convert_tag_list_to_string(tags)
                 asset['tags'] = tags_str
-                # remove all fields whith a None Value
-                filtered_fields = {k: v for k, v in asset.items() if (v is not None and v != 'None')}
-                if len(filtered_fields) == 0:
-                    return
-                # ckeck if the asset already exists in the database
-                cursor.execute(f"SELECT id FROM assets WHERE id='{asset['id']}'")
-                result = cursor.fetchone()
-                if result is None:
-                    # asset does not exist in the database, add it
-                    fields = ", ".join(f"{column}" for column in filtered_fields.keys())
-                    values = ", ".join(f":{column}" for column in filtered_fields.keys())
-                    # this query will insert or update the asset if it already exists.
-                    # noinspection SqlInsertValues
-                    query = f"REPLACE INTO assets ({fields}) VALUES ({values})"
-                else:
-                    # asset already exists in the database, update it
-                    fields = ", ".join(f"{column} = :{column}" for column in filtered_fields.keys())
-                    query = f"UPDATE assets SET {fields} WHERE id='{asset['id']}'"
-                try:
-                    cursor.execute(query, asset)
-                except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
-                    self.logger.warning(f"Error while inserting/updating asset '{asset['id']}' (tags='{asset['tags']}': {error!r}")
+                self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
         except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
@@ -498,8 +543,11 @@ class UEAssetDbHandler:
             query = f"SELECT {fields} FROM assets"
             if where_clause:
                 query += f" WHERE {where_clause}"
-            if test_only_mode:
-                query += ' ORDER BY date_added_in_db DESC LIMIT 3000'
+            if not gui_g.s.assets_order_col:
+                gui_g.s.assets_order_col = 'date_added_in_db'
+            query += f' ORDER by {gui_g.s.assets_order_col} DESC'
+            if gui_g.s.testing_switch == 1:
+                query += ' LIMIT 3000'
             try:
                 cursor.execute(query)
                 rows = cursor.fetchall()
@@ -555,6 +603,7 @@ class UEAssetDbHandler:
             ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
             ue_asset.data['added_manually'] = True
             ue_asset.data['id'] = uid
+            ue_asset.data['category'] = UEAssetType.Unknown.category_name
             if not do_not_save:
                 self.save_ue_asset(ue_asset)
             if return_as_string:
@@ -705,6 +754,7 @@ class UEAssetDbHandler:
         Get all rows from the 'assets_tags' table that could be scrapped to fix their tags.
         :param tag_value: If not None, only get the rows that have a tag == tag_value.
         :return: A list of asset_id.
+
         Note: if tag_value is None, the returned list contains the asset_id that have at least a tag in the tags field that is an id in the tag table
         """
         rows = []
@@ -725,6 +775,7 @@ class UEAssetDbHandler:
         Convert a tags id list to a comma separated string of tag names.
         """
         tags_str = ''
+        prefix = gui_g.s.tag_prefix  # prefix to add to the tag that has been checked
         if tags is not None and tags != [] and tags != {} and tags != '':
             if isinstance(tags, str):
                 # noinspection PyBroadException
@@ -735,12 +786,21 @@ class UEAssetDbHandler:
             if isinstance(tags, list):
                 names = []
                 for item in tags:
+                    # remove the prefix if it exists to check if these id has a name in the tag table since the last check
+                    if isinstance(item, str) and item.startswith(prefix):
+                        # the tag (number) as already be checked but its name was not in the database yet
+                        item = item[len(prefix):]
+                        try:
+                            item = int(item)
+                        except ValueError:
+                            pass
                     if isinstance(item, int):
-                        # temp: use the tag id as a name
+                        # the tag is a number (old version), whe check if it's in the database and get its name
                         name = self.get_tag_by_id(uid=item)
                         if name is None:
-                            name = str(item)
+                            name = prefix + str(item)  # we add a suffix to the tag that has been checked
                     elif isinstance(item, dict):
+                        # the tag is a dict (new version), we get its name and add it to the database if it's not already there
                         uid = item.get('id', None)  # not used for now
                         name = item.get('name', '').title()
                         self.save_tag({'id': uid, 'name': name})
@@ -777,42 +837,62 @@ class UEAssetDbHandler:
             cursor.close()
         return result
 
-    def export_to_csv(self, folder_for_csv_files: str, table_name: str = '', suffix_separator: str = '_##', suffix: str = '') -> [str]:
+    def export_to_csv(
+        self,
+        folder_for_csv_files: str,
+        table_name: str = '',
+        fields: str = '',
+        backup_existing=False,
+        suffix_separator: str = '_##',
+        suffix: str = ''
+    ) -> [str]:
         """
         Export the database to a CSV file.
         :param folder_for_csv_files: The folder where the CSV files will be saved.
         :param table_name: The name of the table to export. If None, all the tables will be exported.
+        :param fields: The fields to export. If None, all the fields will be exported.
+        :param backup_existing: True to back up the existing CSV file before overwriting it.
         :param suffix_separator: The separator used to separate the table name from the suffix in the CSV file name.
         :param suffix: A suffix to add to the CSV file name.
         :return: list of CSV files that have been writen, [] if none.
+
         Note: each table will be exported to a separate CSV file using the table name as the file name.
         """
         result = []
         if self.connection is not None:
-            folder_for_csv_files = Path(folder_for_csv_files)
-            if not folder_for_csv_files.exists():
-                folder_for_csv_files.mkdir(parents=True)
-                self.logger.info(f'Folder "{folder_for_csv_files}" has been created.')
+            folder_for_csv_files_p = Path(folder_for_csv_files)
+            if not folder_for_csv_files_p.exists():
+                folder_for_csv_files_p.mkdir(parents=True)
+                self.logger.info(f'Folder "{folder_for_csv_files_p}" has been created.')
             cursor = self.connection.cursor()
+            if not fields:
+                fields = '*'
             if table_name:
                 table_names = [table_name]
             else:
                 table_names = self.get_table_names()
             for table_name in table_names:
                 suffix_all = suffix_separator + suffix if suffix and suffix_separator else ''
-                file_name = folder_for_csv_files / f'{table_name}{suffix_all}.csv'
+                file_name_p = folder_for_csv_files_p / f'{table_name}{suffix_all}.csv'
+                file_name = str(file_name_p)
+                if backup_existing:
+                    create_file_backup(file_src=file_name, path=folder_for_csv_files)
                 # Get column names
-                cursor.execute(f"PRAGMA table_info({table_name});")
-                column_names = [column[1] for column in cursor.fetchall()]
-                rows = cursor.execute(f"SELECT * FROM {table_name};").fetchall()
+                if fields == '*':
+                    cursor.execute(f"PRAGMA table_info({table_name});")
+                    column_names = [column[1] for column in cursor.fetchall()]
+                else:
+                    column_names = fields.split(',')
+                query = f"SELECT {fields} FROM {table_name}"
+                rows = cursor.execute(query).fetchall()
                 try:
-                    with open(file_name, 'w', newline='', encoding='utf-8') as f:
+                    with open(file_name_p, 'w', newline='', encoding='utf-8') as f:
                         writer = csv.writer(f, dialect='unix')
                         # Write column names
                         writer.writerow(column_names)
                         # Write rows
                         writer.writerows(rows)
-                        result.append(f'Write: {str(file_name)}')
+                        result.append(f'Export: {file_name}')
                 except Exception as error:
                     msg = f'Error while exporting table "{table_name}" to CSV file "{file_name}"'
                     result.append(msg)
@@ -820,19 +900,27 @@ class UEAssetDbHandler:
             cursor.close()
         return result
 
-    def import_from_csv(self,
-                        folder_for_csv_files: str,
-                        table_name: str = '',
-                        delete_content: bool = False,
-                        suffix_separator: str = '_##') -> ([str], bool):
+    def import_from_csv(
+        self,
+        folder_for_csv_files: str,
+        table_name: str = '',
+        delete_content: bool = False,
+        is_partial: bool = False,
+        suffix_separator: str = '_##',
+        suffix_to_ignore=None
+    ) -> ([str], bool):
         """
         Import the database from a CSV file.
         :param folder_for_csv_files: The folder containing the CSV files to import.
         :param table_name: The name of the table to import. If None, all the tables will be imported.
         :param delete_content: True to delete the content of the table before importing the data, False to append the data to the table.
+        :param is_partial: True to indicate the import is partial. It True, only some fields are imported and the columns will not be checked.
         :param suffix_separator: The separator used to separate the table name from the suffix in the CSV file name.
+        :param suffix_to_ignore: A list of suffix to ignore when importing the CSV files.
         :return: (list of CSV files that have been read, True if the database must be reloaded).
         """
+        if suffix_to_ignore is None:
+            suffix_to_ignore = []
         result = []
         must_reload = False
         if self.connection is not None:
@@ -844,11 +932,15 @@ class UEAssetDbHandler:
             table_is_done = []  # used to avoid importing the same table multiple times
             csv_files = list(folder_for_csv_files.glob('*.csv'))
             # sort the list in reverse order, as it when the same table has multiple files to import from, we import the last one (with datetime suffix) first
-            csv_files = sorted(csv_files, reverse=True)
+            # csv_files = sorted(csv_files, reverse=True)
             given_table_name = table_name
-            for file_name in csv_files:
+            for file_name_p in csv_files:
+                success_count = 0
+                fails_count = 0
+                file_name = str(file_name_p)
+
                 # check if the file is not empty
-                if not file_name.exists() or file_name.stat().st_size == 0:
+                if not file_name_p.exists() or file_name_p.stat().st_size == 0:
                     msg = f'The CSV file "{file_name}" does not exist or is empty and will not be imported.'
                     result.append(msg)
                     self.logger.info(msg)
@@ -856,42 +948,54 @@ class UEAssetDbHandler:
 
                 if given_table_name:
                     # check if the given table_name is in the file name
-                    if given_table_name not in file_name.name:
+                    if given_table_name not in file_name_p.name:
                         continue
-                else:
-                    table_name = file_name.stem
-                    # remove the suffix if it exists
-                    check: list = table_name.split(suffix_separator) if suffix_separator else []
-                    if len(check) == 2:
-                        table_name = check[0]
-                if table_name in table_is_done:
+                table_name = file_name_p.stem
+                # remove the suffix if it exists
+                check: list = table_name.split(suffix_separator) if suffix_separator else []
+                if len(check) == 2:
+                    table_name = check[0]
+                    suffix = check[1].lower()
+                    if suffix in suffix_to_ignore:
+                        continue
+                elif is_partial:
+                    # if we have a partial import, we need to have a suffix !!!
+                    # because if not, it's the file with full data to import only when not partial
                     continue
+                if not is_partial and table_name in table_is_done:
+                    # if we have a partial import, same table can be imported multiple times
+                    continue
+
                 cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';")
                 if not cursor.fetchone():
-                    self.logger.info(f'Table "{table_name}" does not exist and the data will not be imported from {file_name.name}.')
+                    self.logger.info(f'Table "{table_name}" does not exist and the data will not be imported from {file_name_p.name}.')
                     continue
                 if delete_content:
                     cursor.execute(f"DELETE FROM {table_name} WHERE 1")
                     self.connection.commit()
                 try:
-                    with open(file_name, 'r', newline='', encoding='utf-8') as f:
+                    with open(file_name_p, 'r', newline='', encoding='utf-8') as f:
                         reader = csv.reader(f, dialect='unix')
                         csv_columns = next(reader)
                         # Get column names from database
                         cursor.execute(f"PRAGMA table_info({table_name});")
                         db_columns = [column[1] for column in cursor.fetchall()]
                         # Check if columns match
-                        if csv_columns != db_columns:
+                        if not is_partial and csv_columns != db_columns:
                             msg = f'Columns in CSV file "{file_name}" do not match columns in table "{table_name}".'
                             result.append(msg)
                             self.logger.info(msg)
                             continue
-                        query = f"INSERT OR REPLACE INTO {table_name} ({','.join(csv_columns)}) VALUES ({','.join('?' * len(csv_columns))})"
                         for row in reader:
                             if not row:
                                 continue
-                            cursor.execute(query, row)
-                        result.append(f'Read: {str(file_name)}')
+                            data_dict = dict(zip(csv_columns, row))
+                            if self._insert_or_update_row(table_name, data_dict):
+                                success_count += 1
+                            else:
+                                fails_count += 1
+                        result.append(f'Import: {file_name}')
+                        result.append(f'-> Success: {success_count} Fails:{fails_count}')
                         must_reload = True
                         table_is_done.append(table_name)
                         if given_table_name and given_table_name == table_name:
@@ -986,7 +1090,7 @@ if __name__ == "__main__":
     read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
 
     db_folder = path_from_relative_to_absolute('../../../scraping/')
-    db_name = os.path.join(db_folder, 'assets.db')
+    db_name = path_join(db_folder, 'assets.db')
     check_and_create_path(db_name)
     asset_handler = UEAssetDbHandler(database_name=db_name, reset_database=(clean_data and not read_data_only))
 
@@ -994,7 +1098,7 @@ if __name__ == "__main__":
         # Read existing assets
         asset_list = asset_handler.get_assets_data()
         print("Assets:", asset_list)
-    elif test_only_mode:
+    elif gui_g.s.testing_switch == 1:
         # Create fake assets
         rows_to_create = 300
         if not clean_data:

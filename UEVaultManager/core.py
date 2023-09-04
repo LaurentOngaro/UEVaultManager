@@ -19,7 +19,7 @@ from threading import current_thread, enumerate as thread_enumerate
 from urllib.parse import urlparse
 
 from requests import session
-from requests.exceptions import HTTPError, ConnectionError
+from requests.exceptions import ConnectionError, HTTPError
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
@@ -95,13 +95,13 @@ class AppCore:
         self.verbose_mode = False
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
-        # Set the file name (and path) for logging when an asset is ignored or filtered when running the --list command
+        # Set the file name (and path) to log issues when an asset is ignored or filtered when running the --list command
         self.ignored_assets_filename_log = ''
-        # Set the file name (and path) for logging when an asset is not found on the marketplace when running the --list command
+        # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the --list command
         self.notfound_assets_filename_log = ''
-        # Set the file name (and path) for logging when an asset has metadata and extra data are incoherent when running the --list command
+        # Set the file name (and path) to log issues when an asset has metadata and extra data are incoherent when running the --list command
         self.bad_data_assets_filename_log = ''
-        # Set the file name (and path) for logging when scanning folder to find assets
+        # Set the file name (and path) to log issues when scanning folder to find assets
         self.scan_assets_filename_log = ''
         # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
         self.create_log_backup = True
@@ -217,7 +217,7 @@ class AppCore:
 
     def auth_import(self) -> bool:
         """
-        Import refresh token from EGL installation and use it for logging in.
+        Import refresh token from EGL installation and use it for loging in.
         :return: True if successful, False otherwise.
         """
         self.egl.read_config()
@@ -247,14 +247,19 @@ class AppCore:
             self.log.error(f'Logging in failed with {error!r}, please try again.')
             return False
 
-    def login(self, force_refresh=False) -> bool:
+    def login(self, force_refresh: bool = False, raise_error: bool = True) -> bool:
         """
-        Attempts logging in with existing credentials.
+        Attempts loging in with existing credentials.
         :param force_refresh: Whether to force a refresh of the session.
+        :param raise_error: Whether to raise an exception if login fails.
         :return: True if successful, False otherwise.
         """
         if not self.uevmlfs.userdata:
-            raise ValueError('No saved credentials')
+            if raise_error:
+                raise ValueError('No saved credentials')
+            else:
+                self.logged_in = False
+                return False
         elif self.logged_in and self.uevmlfs.userdata['expires_at']:
             dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
             dt_now = datetime.utcnow()
@@ -660,7 +665,7 @@ class AppCore:
                     new_value=0, new_text="Fetching missing metadata...\nIt could take some time. Be patient.", new_max_value=len(fetch_list)
                 )
                 # gui_g.progress_window_ref.hide_progress_bar()
-                # gui_g.progress_window_ref.hide_stop_button()
+                # gui_g.progress_window_ref.hide_btn_stop()
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
@@ -702,7 +707,7 @@ class AppCore:
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         if gui_g.progress_window_ref is not None:
             # gui_g.progress_window_ref.show_progress_bar()  # show progress bar, must be before reset
-            gui_g.progress_window_ref.show_stop_button()
+            gui_g.progress_window_ref.show_btn_stop()
             gui_g.progress_window_ref.reset(new_value=0, new_text="Checking and Fetching assets data...", new_max_value=len(filtered_items))
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
@@ -991,3 +996,34 @@ class AppCore:
         self.uevmlfs.save_config()
         logging.shutdown()
         sys.exit(code)
+
+    def open_manifest_file(self, file_path: str) -> dict:
+        """
+        Open a manifest file and return its data.
+        :param file_path: Path to the manifest file.
+        :return: Manifest data.
+        """
+        try:
+            with open(file_path, 'rb') as file:
+                manifest_data = file.read()
+        except FileNotFoundError:
+            self.log.warning(f'The file {file_path} does not exist.')
+            return {}
+        manifest_info = {}
+        manifest = self.load_manifest(manifest_data)
+        manifest_info['app_name'] = manifest.meta.app_name
+
+        # file and chunk count
+        manifest_info['num_files'] = manifest.file_manifest_list.count
+        manifest_info['num_chunks'] = manifest.chunk_data_list.count
+        # total file size
+        total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
+        file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+        manifest_info['file_size'] = file_size
+        manifest_info['disk_size'] = total_size
+        # total chunk size
+        total_size = sum(c.file_size for c in manifest.chunk_data_list.elements)
+        chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+        manifest_info['chunk_size'] = chunk_size
+        manifest_info['download_size'] = total_size
+        return manifest_info

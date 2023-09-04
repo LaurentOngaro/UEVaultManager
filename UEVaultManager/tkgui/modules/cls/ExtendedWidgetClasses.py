@@ -9,11 +9,11 @@ Implementation for:
 - ExtendedButton: extended button widget.
 """
 import inspect
-import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter.font import nametofont
 
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.tkgui.modules.functions import log_warning
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
 from UEVaultManager.tkgui.modules.types import WidgetType
@@ -143,6 +143,7 @@ class ExtendedEntry(ExtendedWidget, ttk.Entry):
     """
     Extended widget version of a ttk.Entry class.
     :param master: container for the widget.
+    :param label: Text to display next to the checkbutton.
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedEntry instance.
     """
@@ -254,13 +255,14 @@ class ExtendedLabel(ExtendedWidget, ttk.Label):
 class ExtendedCheckButton(ExtendedWidget):
     """
     Create a new widget version of a ttk.Checkbutton.
-    Note: We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
     :param master: Parent widget.
     :param label: Text to display next to the checkbutton.
     :param images_folder: Path to the folder containing the images for the checkbutton. If empty, the './assets' folder will be used.
     :param change_state_on_click: Whether the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method.
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedCheckButton instance.
+
+    Note: We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
     """
     default_content = False
 
@@ -273,18 +275,18 @@ class ExtendedCheckButton(ExtendedWidget):
         # by default , images are searched in a folder named 'statics' in the directory of this file
         if not images_folder:
             images_folder = path_from_relative_to_absolute('./assets/')
-        self._img_checked = tk.PhotoImage(file=os.path.join(images_folder, 'checked_16.png'))  # Path to the checked image
-        self._img_uncheckked = tk.PhotoImage(file=os.path.join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
+        self._img_checked = tk.PhotoImage(file=path_join(images_folder, 'checked_16.png'))  # Path to the checked image
+        self._img_uncheckked = tk.PhotoImage(file=path_join(images_folder, 'unchecked_16.png'))  # Path to the unchecked image
         self.widget_type = WidgetType.CHECKBUTTON
         self._var = tk.BooleanVar(value=bool(self.default_content))
         frm_inner = ttk.Frame(master=master)
         lbl_text = ttk.Label(frm_inner, text='')  # no text bydefault
-        check_label = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
+        lbl_check = ttk.Label(frm_inner, image=self._img_uncheckked, cursor='hand2')
         lbl_text.pack(side=tk.LEFT)
-        check_label.pack(side=tk.LEFT)
+        lbl_check.pack(side=tk.LEFT)
         self._frm_inner = frm_inner
         self._lbl_text = lbl_text
-        self._check_label = check_label
+        self._lbl_check = lbl_check
 
         if label is not None:
             self.set_label(label)
@@ -301,9 +303,9 @@ class ExtendedCheckButton(ExtendedWidget):
         """
         current_state = self._var.get()
         if current_state:
-            self._check_label.config(image=self._img_checked)
+            self._lbl_check.config(image=self._img_checked)
         else:
-            self._check_label.config(image=self._img_uncheckked)
+            self._lbl_check.config(image=self._img_uncheckked)
 
     def pack(self, **kwargs) -> None:
         """
@@ -326,7 +328,7 @@ class ExtendedCheckButton(ExtendedWidget):
         :param command:  function to bind.
         """
         self._lbl_text.bind(sequence, command)
-        self._check_label.bind(sequence, command)
+        self._lbl_check.bind(sequence, command)
 
     # noinspection PyUnusedLocal
     def switch_state(self, event=None) -> bool:
@@ -346,7 +348,7 @@ class ExtendedCheckButton(ExtendedWidget):
         Sets the label of the widget.
         :param text: text to set.
         """
-        self._check_label.config(text=text)
+        self._lbl_check.config(text=text)
 
     def set_content(self, content='') -> None:
         """

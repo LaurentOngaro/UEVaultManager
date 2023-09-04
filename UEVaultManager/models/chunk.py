@@ -55,7 +55,7 @@ class Chunk:
             self.stored_as ^= 0x1
         # pad data to 1 MiB
         if len(value) < 1024 * 1024:
-            value += b'\x00' * (1024*1024 - len(value))
+            value += b'\x00' * (1024 * 1024 - len(value))
         # recalculate hashes
         self.hash = get_hash(value)
         self.sha_hash = sha1(value).digest()

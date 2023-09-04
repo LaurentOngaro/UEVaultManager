@@ -193,7 +193,7 @@ class AES:
             key_columns.append(word)
 
         # Group keywords in 4x4 byte matrices.
-        return [key_columns[4 * i:4 * (i+1)] for i in range(len(key_columns) // 4)]
+        return [key_columns[4 * i:4 * (i + 1)] for i in range(len(key_columns) // 4)]
 
     def decrypt_block(self, ciphertext):
         """

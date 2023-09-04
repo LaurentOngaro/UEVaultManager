@@ -16,31 +16,13 @@ from threading import current_thread
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult, is_asset_obsolete
 from UEVaultManager.core import default_datetime_format
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions import box_yesno
-from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, create_uid, convert_to_str_datetime, convert_to_datetime, \
+from UEVaultManager.tkgui.modules.functions import box_yesno, update_loggers_level
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, convert_to_datetime, convert_to_str_datetime, create_uid, \
     extract_variables_from_url
-
-test_only_mode = False  # add some limitations to speed up the dev process - Set to True for Debug Only
-
-
-def get_filename_from_asset_data(asset_data) -> str:
-    """
-    Return the filename to use to save the asset data.
-    :param asset_data: the asset data.
-    :return:  the filename to use to save the asset data.
-    """
-    try:
-        app_id = asset_data['releaseInfo'][0]['appId']
-        filename = f'{app_id}.json'
-    except KeyError:
-        uid = asset_data.get('id', None)
-        if uid is None:
-            uid = asset_data.get('catalogItemId', create_uid())
-        filename = f'_no_appId_asset_{uid}.json'
-    return filename
 
 
 class UEAssetScraper:
@@ -70,12 +52,12 @@ class UEAssetScraper:
     _files_count: int = 0
     _thread_executor = None
     _scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
-    _db_name: str = os.path.join(gui_g.s.scraping_folder, 'assets.db')
+    _db_name: str = path_join(gui_g.s.scraping_folder, 'assets.db')
     _scraped_ids = []  # store IDs of all items
     _owned_asset_ids = []  # store IDs of all owned items
     _urls = []  # list of all urls to scrap
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    logger.setLevel(level=logging.DEBUG if gui_g.s.debug_mode else logging.INFO)
+    update_loggers_level(logger)
     thread_executor_must_stop: bool = False
 
     def __init__(
@@ -147,8 +129,8 @@ class UEAssetScraper:
         if gui_g.UEVM_cli_ref is None:
             print(message)
         else:
-            if test_only_mode:
-                # force printing debug messages in test_only_mode
+            if gui_g.s.testing_switch >= 1:
+                # force printing debug messages when testing
                 self.logger.info(message)
             else:
                 self.logger.debug(message)
@@ -209,6 +191,7 @@ class UEAssetScraper:
 
             categories = asset_data.get('categories', None)
             release_info = asset_data.get('releaseInfo', {})
+            latest_release = release_info[0] if release_info else {}
             price = 0
             discount_price = 0
             discount_percentage = 0
@@ -224,8 +207,8 @@ class UEAssetScraper:
             asset_data['category'] = categories[0]['name'] if categories else ''
             asset_data['author'] = asset_data['seller']['name']
             try:
-                asset_data['asset_id'] = release_info[0]['appId']  # latest release
-            except (KeyError, AttributeError):
+                asset_data['asset_id'] = latest_release['appId']  # latest release
+            except (KeyError, AttributeError, IndexError):
                 grab_result = GrabResult.NO_APPID.name
                 asset_data['asset_id'] = uid  # that's not the REAL asset_id, we use the uid instead
 
@@ -269,7 +252,7 @@ class UEAssetScraper:
             except (KeyError, AttributeError):
                 asset_data['custom_attributes'] = ''
 
-            # set origin
+            # set various fields
             asset_data['page_title'] = asset_data['title']
             try:
                 tmp_list = [','.join(item.get('compatibleApps')) for item in release_info]
@@ -280,7 +263,7 @@ class UEAssetScraper:
             asset_data['origin'] = origin
 
             asset_data['update_date'] = date_now
-            tmp_date = release_info[0].get('dateAdded', no_text_data) if release_info else no_text_data
+            tmp_date = latest_release.get('dateAdded', no_text_data) if latest_release else no_text_data
             tmp_date = convert_to_datetime(tmp_date, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])
             tmp_date = convert_to_str_datetime(tmp_date, gui_g.s.csv_datetime_format)
             asset_data['creation_date'] = tmp_date
@@ -352,6 +335,23 @@ class UEAssetScraper:
         self.asset_db_handler.set_assets(self._scraped_data)
         self.asset_db_handler.save_last_run(last_run_content)
 
+    def _get_filename_from_asset_data(self, asset_data) -> str:
+        """
+        Return the filename to use to save the asset data.
+        :param asset_data: the asset data.
+        :return:  the filename to use to save the asset data.
+        """
+        try:
+            app_id = asset_data['releaseInfo'][0]['appId']
+            filename = f'{app_id}.json'
+        except (KeyError, IndexError) as error:
+            self.logger.warning(f'Error getting appId for asset with id {asset_data["id"]}: {error!r}')
+            slug = asset_data.get('urlSlug', None)
+            if slug is None:
+                slug = asset_data.get('catalogItemId', create_uid())
+            filename = f'_no_appId_{slug}.json'
+        return filename
+
     def gather_all_assets_urls(self, empty_list_before=False, save_result=True, owned_assets_only=False) -> None:
         """
         Gather all the URLs (with pagination) to be parsed and stores them in a list for further use.
@@ -396,48 +396,51 @@ class UEAssetScraper:
             return
 
         thread_data = ''
-        if self._threads_count > 1:
-            # add a delay when multiple threads are used
-            time.sleep(random.uniform(1.0, 3.0))
-            thread = current_thread()
-            thread_data = f' ==> By Thread name={thread.name}'
-
-        self._log_info(f'--- START scraping data from {url}{thread_data}')
-
-        json_data = self.egs.get_json_data_from_url(url)
-        if json_data.get('errorCode', '') != '':
-            self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
-            return
         try:
-            # when multiple assets are returned, the data is in the 'elements' key
-            count = len(json_data['data']['elements'])
-            self._log_info(f'==> parsed url {url}: got a list of {count} assets')
-        except KeyError:
-            # when only one asset is returned, the data is in the 'data' key
-            self._log_info(f'==> parsed url {url} for one asset')
-            json_data['data']['elements'] = [json_data['data']['data']]
+            if self._threads_count > 1:
+                # add a delay when multiple threads are used
+                time.sleep(random.uniform(1.0, 3.0))
+                thread = current_thread()
+                thread_data = f' ==> By Thread name={thread.name}'
 
-        if json_data:
-            if self.store_in_files and self.use_raw_format:
-                # store the result file in the raw format
-                # noinspection PyBroadException
-                try:
-                    url_vars = extract_variables_from_url(url)
-                    start = int(url_vars['start'])
-                    count = int(url_vars['count'])
-                    suffix = f'{start}-{start+count-1}'
-                except Exception:
-                    suffix = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
-                filename = f'assets_{suffix}.json'
-                self.save_to_file(filename=filename, data=json_data, is_global=True)
+            self._log_info(f'--- START scraping data from {url}{thread_data}')
 
-                # store the individial asset in file
-                for asset_data in json_data['data']['elements']:
-                    filename = get_filename_from_asset_data(asset_data)
-                    self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
-                    self._files_count += 1
-            content = self._parse_data(json_data)
-            self._scraped_data.append(content)
+            json_data = self.egs.get_json_data_from_url(url)
+            if json_data.get('errorCode', '') != '':
+                self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
+                return
+            try:
+                # when multiple assets are returned, the data is in the 'elements' key
+                count = len(json_data['data']['elements'])
+                self._log_info(f'==> parsed url {url}: got a list of {count} assets')
+            except KeyError:
+                # when only one asset is returned, the data is in the 'data' key
+                self._log_info(f'==> parsed url {url} for one asset')
+                json_data['data']['elements'] = [json_data['data']['data']]
+
+            if json_data:
+                if self.store_in_files and self.use_raw_format:
+                    # store the result file in the raw format
+                    # noinspection PyBroadException
+                    try:
+                        url_vars = extract_variables_from_url(url)
+                        start = int(url_vars['start'])
+                        count = int(url_vars['count'])
+                        suffix = f'{start}-{start + count - 1}'
+                    except Exception:
+                        suffix = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+                    filename = f'assets_{suffix}.json'
+                    self.save_to_file(filename=filename, data=json_data, is_global=True)
+
+                    # store the individial asset in file
+                    for asset_data in json_data['data']['elements']:
+                        filename = self._get_filename_from_asset_data(asset_data)
+                        self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
+                        self._files_count += 1
+                content = self._parse_data(json_data)
+                self._scraped_data.append(content)
+        except Exception as error:
+            self._log_warning(f'Error getting data from url {url}: {error!r}')
 
     def get_scraped_data(self, owned_assets_only=False) -> None:
         """
@@ -474,7 +477,7 @@ class UEAssetScraper:
             if self.max_threads > 0:
                 self._threads_count = min(self.max_threads, len(self._urls))
                 # threading processing COULD be stopped by the progress window
-                self.progress_window.show_stop_button()
+                self.progress_window.show_btn_stop()
                 self._thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self._threads_count, thread_name_prefix="Asset_Scaper")
                 futures = {}
                 # for url in self.urls:
@@ -534,7 +537,7 @@ class UEAssetScraper:
                 filename += '_' + str(self.start)
                 filename += '_' + str(self.start + self.assets_per_page)
             filename += '.json'
-        filename = os.path.join(folder, filename)
+        filename = path_join(folder, filename)
         try:
             with open(filename, 'w') as fh:
                 if is_json:
@@ -568,7 +571,7 @@ class UEAssetScraper:
         for filename in files:
             if filename.endswith('.json') and filename != self._last_run_filename:
                 # self._log_debug(f'Loading {filename}')
-                with open(os.path.join(folder, filename), 'r') as fh:
+                with open(path_join(folder, filename), 'r') as fh:
                     try:
                         json_data = json.load(fh)
                     except json.decoder.JSONDecodeError as error:
@@ -580,7 +583,7 @@ class UEAssetScraper:
                 self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
                     return self._files_count
-                if test_only_mode and self._files_count >= 100:
+                if gui_g.s.testing_switch == 1 and self._files_count >= 100:
                     break
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self._files_count} files'
         self._log_info(message)
@@ -593,7 +596,7 @@ class UEAssetScraper:
             'items_count': len(self._scraped_data),
             'scraped_ids': self._scraped_ids if self.store_ids else ''
         }
-        filename = os.path.join(folder, self._last_run_filename)
+        filename = path_join(folder, self._last_run_filename)
         with open(filename, 'w') as fh:
             json.dump(content, fh)
 
@@ -629,7 +632,7 @@ class UEAssetScraper:
             # store the data in a AFTER parsing it
             self._files_count = 0
             for asset_data in self._scraped_data:
-                filename = get_filename_from_asset_data(asset_data)
+                filename = self._get_filename_from_asset_data(asset_data)
                 self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                 self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
@@ -642,7 +645,7 @@ class UEAssetScraper:
         content['scraped_ids'] = self._scraped_ids if self.store_ids else ''
         if save_last_run_file:
             folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
-            filename = os.path.join(folder, self._last_run_filename)
+            filename = path_join(folder, self._last_run_filename)
             with open(filename, 'w') as fh:
                 json.dump(content, fh)
 
@@ -655,7 +658,10 @@ class UEAssetScraper:
         Pop the last scraped data from the scraped_data property.
         :return: the last scraped data.
         """
-        return self._scraped_data.pop()
+        result = []
+        if len(self._scraped_data) > 0:
+            result = self._scraped_data.pop()
+        return result
 
 
 if __name__ == '__main__':
@@ -666,7 +672,7 @@ if __name__ == '__main__':
     # it speeds up the process of requesting the asset list
     ue_asset_per_page = 100
 
-    if test_only_mode:
+    if gui_g.s.testing_switch == 1:
         # shorter and faster list for testing only
         # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
         threads = 0  # set to 0 to disable threading

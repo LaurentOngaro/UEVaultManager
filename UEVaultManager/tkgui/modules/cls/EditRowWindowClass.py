@@ -24,12 +24,17 @@ class EditRowWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param editable_table: the table to edit.
     """
+    preview_scale = 0.5
     must_save: bool = False
 
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
         super().__init__(parent)
         self.title(title)
-        self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        try:
+            # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
+            self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        except Exception as error:
+            gui_f.log_warning(f'Error in EditCellWindowClass: {error}')
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
@@ -41,11 +46,11 @@ class EditRowWindow(tk.Toplevel):
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.canvas_image = None
 
-        self.control_frame = self.ControlFrame(self)
-        self.content_frame = self.ContentFrame(self)
+        self.frm_control = self.ControlFrame(self)
+        self.frm_content = self.ContentFrame(self)
 
-        self.control_frame.pack(ipadx=5, ipady=5, fill=tk.X)
-        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_control.pack(ipadx=5, ipady=5, fill=tk.X)
+        self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         self.bind('<Tab>', self._focus_next_widget)
         self.bind('<Control-Tab>', self._focus_next_widget)
@@ -53,7 +58,9 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        self.btn_open_folder = self.frm_control.btn_open_folder
         gui_g.edit_row_window_ref = self
+        # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
 
     @staticmethod
     def _focus_next_widget(event):
@@ -82,7 +89,7 @@ class EditRowWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.X, 'anchor': tk.NW}
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'anchor': tk.NW}
             grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
 
             lblf_navigation = ttk.LabelFrame(self, text='Navigation')
@@ -94,14 +101,19 @@ class EditRowWindow(tk.Toplevel):
 
             lbf_preview = ttk.LabelFrame(self, text='Image Preview')
             lbf_preview.grid(row=0, column=1, **grid_def_options)
-            canvas_image = tk.Canvas(lbf_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
+            width = int(gui_g.s.preview_max_width * container.preview_scale)
+            height = int(gui_g.s.preview_max_height * container.preview_scale)
+
+            canvas_image = tk.Canvas(lbf_preview, width=width, height=height, highlightthickness=0)
             canvas_image.pack()
-            canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
+            canvas_image.create_rectangle((0, 0), (width, height), fill='black')
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=2, **grid_def_options)
             btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
+            btn_open_folder = ttk.Button(lblf_actions, text="Open Folder", command=container.open_asset_folder)
+            btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             btn_on_close = ttk.Button(lblf_actions, text='Close', command=container.on_close, bootstyle=WARNING)
             btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
@@ -115,6 +127,7 @@ class EditRowWindow(tk.Toplevel):
             self.columnconfigure(2, weight=1)
 
             self.canvas_image = canvas_image
+            self.btn_open_folder = btn_open_folder
 
     def on_close(self, _event=None) -> None:
         """
@@ -176,3 +189,9 @@ class EditRowWindow(tk.Toplevel):
         Open the asset URL (Wrapper).
         """
         self.editable_table.open_asset_url()
+
+    def open_asset_folder(self) -> None:
+        """
+        Open the asset URL (Wrapper).
+        """
+        self.editable_table.open_origin_folder()

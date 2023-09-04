@@ -34,18 +34,19 @@ class UEVMGuiControlFrame(ttk.Frame):
         grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.SE}
         grid_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0}  # no padding
         # pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
-        grid_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
+        grid_ew_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
         lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
         lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
-
+        # content frame
         lblf_content = ttk.LabelFrame(self, text='Content')
         lblf_content.pack(**lblf_def_options)
-        cur_col = 0
-        cur_row = 0
         max_col = 5
-        # lblf_files row
+        cur_row = -1
+        # new row
+        cur_row += 1
+        cur_col = 0
         lbl_data_source = ttk.Label(lblf_content, text='Data Source: ')
-        lbl_data_source.grid(row=cur_row, column=0, columnspan=3, **grid_fw_options)
+        lbl_data_source.grid(row=cur_row, column=0, columnspan=3, **grid_ew_options)
         cur_col += 3
         lbl_data_type = ttk.Label(lblf_content, text='Type: ')
         lbl_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.E)
@@ -54,11 +55,13 @@ class UEVMGuiControlFrame(ttk.Frame):
         # noinspection PyArgumentList
         entry_data_type = ttk.Entry(lblf_content, textvariable=var_entry_data_source_type, state='readonly', width=6, bootstyle=WARNING)
         entry_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.W)
-        # lblf_content row
+        # new row
         cur_row += 1
+        cur_col = 0
         var_entry_data_source_name = tk.StringVar(value=data_table.data_source)
         entry_data_source = ttk.Entry(lblf_content, textvariable=var_entry_data_source_name, state='readonly')
-        entry_data_source.grid(row=cur_row, column=0, columnspan=max_col, **grid_fw_options)
+        entry_data_source.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
+        # new row
         cur_row += 1
         cur_col = 0
         self.buttons = {
@@ -116,7 +119,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         for key, values in self.buttons.items():
             text = values['text'] if values['text'] else key
             btn = ttk.Button(lblf_content, text=text, command=values['command'])
-            btn.grid(row=cur_row, column=cur_col, **grid_fw_options)
+            btn.grid(row=cur_row, column=cur_col, **grid_ew_options)
             cur_col += 1
             if cur_col % max_col == 0:
                 cur_row += 1
@@ -124,7 +127,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             self.buttons[key]['widget'] = btn
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
-        filter_frame = FilterFrame(
+        frm_filter = FilterFrame(
             self,
             data_func=data_table.get_data,
             update_func=data_table.update,
@@ -132,23 +135,35 @@ class UEVMGuiControlFrame(ttk.Frame):
             value_for_all=gui_g.s.default_value_for_all,
             dynamic_filters_func=container.create_dynamic_filters,
         )
-        filter_frame.pack(**lblf_def_options)
-        container._filter_frame = filter_frame
-        data_table.set_filter_frame(filter_frame)
+        frm_filter.pack(**lblf_def_options)
+        container._frm_filter = frm_filter
+        data_table.set_frm_filter(frm_filter)
 
         # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
         # to get the widgets it needs. So they can't be changed freely
         lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing')
         lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
-        data_table.set_quick_edit_frame(lbtf_quick_edit)
+        data_table.set_frm_quick_edit(lbtf_quick_edit)
 
-        frm_inner_frame = ttk.Frame(lbtf_quick_edit)
-        lbl_desc = ttk.Label(frm_inner_frame, text='Changing this values will change the values of \nthe selected row when losing focus')
+        frm_inner = ttk.Frame(lbtf_quick_edit)
+        lbl_desc = ttk.Label(frm_inner, text='Changing the values bellow will update \nthe selected row when losing focus')
         lbl_desc.grid(row=0, column=0, **grid_def_options)
-        bt_open_url = ttk.Button(frm_inner_frame, text='Open Url', command=container.open_asset_url)
-        bt_open_url.grid(row=0, column=1, **grid_def_options)
-        frm_inner_frame.pack()
+        btn_open_url = ttk.Button(frm_inner, text='Open Url', command=container.open_asset_url)
+        btn_open_url.grid(row=0, column=1, **grid_def_options)
+        btn_open_folder = ttk.Button(frm_inner, text='Open Folder', command=container.open_asset_folder)
+        btn_open_folder.grid(row=0, column=2, **grid_def_options)
+        frm_inner.pack()
 
+        var_asset_id = tk.StringVar(value='')
+        lbtf_quick_edit.add_child(
+            widget_type=WidgetType.ENTRY,
+            tag='Asset_id',
+            state='readonly',
+            label='Asset id (click to copy)',
+            width=5,
+            click_on_callback=container.copy_asset_id,
+            textvariable=var_asset_id,
+        )
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Url',
@@ -196,12 +211,12 @@ class UEVMGuiControlFrame(ttk.Frame):
             focus_in_callback=container.on_quick_edit_focus_in
         )
 
-        frm_inner_frame = ttk.Frame(lbtf_quick_edit, relief=tk.RIDGE, borderwidth=1)
+        frm_inner = ttk.Frame(lbtf_quick_edit, relief=tk.RIDGE, borderwidth=1)
         inner_pack_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False, 'anchor': tk.W}
-        frm_inner_frame.pack(**inner_pack_options)
+        frm_inner.pack(**inner_pack_options)
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.CHECKBUTTON,
-            alternate_container=frm_inner_frame,
+            alternate_container=frm_inner,
             layout_option=inner_pack_options,
             tag='Must buy',
             label='',
@@ -211,7 +226,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         )
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.CHECKBUTTON,
-            alternate_container=frm_inner_frame,
+            alternate_container=frm_inner,
             layout_option=inner_pack_options,
             tag='Added manually',
             label='',
@@ -219,9 +234,9 @@ class UEVMGuiControlFrame(ttk.Frame):
             click_on_callback=container.on_switch_edit_flag,
             default_content=False
         )
-        lbt_image_preview = ttk.LabelFrame(self, text='Image Preview')
-        lbt_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
-        canvas_image = tk.Canvas(lbt_image_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
+        lbf_image_preview = ttk.LabelFrame(self, text='Image Preview')
+        lbf_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
+        canvas_image = tk.Canvas(lbf_image_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
         canvas_image.pack(side=tk.BOTTOM, expand=True, anchor=tk.CENTER)
         canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
 
@@ -234,8 +249,10 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.var_entry_data_source_type = var_entry_data_source_type
 
         self.lbtf_quick_edit = lbtf_quick_edit
-        self.lbt_image_preview = lbt_image_preview
+        self.lbf_image_preview = lbf_image_preview
         self.canvas_image = canvas_image
+        self.btn_open_folder = btn_open_folder
+        self.var_asset_id = var_asset_id
 
     @staticmethod
     def save_filters(filters: dict):

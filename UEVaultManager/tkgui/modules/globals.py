@@ -18,6 +18,7 @@ edit_row_window_ref: EditRowWindow = None
 display_content_window_ref = None
 # noinspection PyTypeChecker
 progress_window_ref: ProgressWindow = None
+tool_window_ref = None
 # reference to the cli object of the UEVM main app (the main one, it gives all access to all the features)
 # if empty, direct access to its features from this script won't be available and a message will be displayed instead
 # noinspection PyTypeChecker
@@ -34,6 +35,7 @@ UEVM_parser_ref = None
 # noinspection PyTypeChecker
 UEVM_cli_args: SaferDict = {}
 UEVM_filter_category = ''
+UEVM_logger_names = []  # list of logger names used by UEVM classes
 
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 
@@ -47,6 +49,14 @@ def set_args_force_refresh(value: bool) -> None:
     UEVM_cli_args['force_refresh'] = value
 
 
+def set_args_offline(value: bool) -> None:
+    """
+    Set the value of the argument offline. Mandadory fot the associated ttk.ckbutton to work.
+    :param value:  True or False.
+    """
+    UEVM_cli_args['offline'] = value
+
+
 def set_args_debug(value: bool) -> None:
     """
     Set the value of the argument debug. Mandadory fot the associated ttk.ckbutton to work.
@@ -55,12 +65,12 @@ def set_args_debug(value: bool) -> None:
     UEVM_cli_args['debug'] = value
 
 
-def set_args_offline(value: bool) -> None:
+def set_args_auth_delete(value: bool) -> None:
     """
-    Set the value of the argument offline. Mandadory fot the associated ttk.ckbutton to work.
-    :param value:  True or False.
+    Set the value of the argument auth_delete. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
     """
-    UEVM_cli_args['offline'] = value
+    UEVM_cli_args['auth_delete'] = value
 
 
 def set_args_delete_metadata(value: bool) -> None:
@@ -79,9 +89,48 @@ def set_args_delete_extra_data(value: bool) -> None:
     UEVM_cli_args['delete_extra_data'] = value
 
 
+def set_args_delete_scraping_data(value: bool) -> None:
+    """
+    Set the value of the argument delete_scraping_data. Mandadory fot the associated ttk.ckbutton to work.
+    :param value:  True or False.
+    """
+    UEVM_cli_args['delete_scraping_data'] = value
+
+
 def set_use_threads(value: bool) -> None:
     """
     Set the value of the settings use_threads. Mandadory fot the associated ttk.ckbutton to work.
     :param value: True or False.
     """
     s.use_threads = value
+
+
+def set_use_colors_for_data(value: bool) -> None:
+    """
+    Set the value of the settings use_colors_for_data. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
+    """
+    s.use_colors_for_data = value
+
+
+# def set_testing_switch_var(value: bool) -> None:
+#   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
+
+# def set_debug_gui_var(value: bool) -> None:
+#   Use method UEVMGuiOptionFrame.update_gui_options() instead because it also updates the gui
+
+
+def set_check_asset_folders(value: bool) -> None:
+    """
+    Set the value of the settings check_asset_folders. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
+    """
+    s.check_asset_folders = value
+
+
+def set_browse_when_add_row(value: bool) -> None:
+    """
+    Set the value of the settings browse_when_add_row. Mandadory fot the associated ttk.ckbutton to work.
+    :param value: True or False.
+    """
+    s.browse_when_add_row = value

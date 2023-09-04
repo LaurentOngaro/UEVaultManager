@@ -135,7 +135,7 @@ class EPCAPI:
     # liste json des tags courants
     # https://www.unrealengine.com/marketplace/api/tags
 
-    def __init__(self, lc='en', cc='US', timeout=10.0):
+    def __init__(self, lc='en', cc='US', timeout=(7, 7)):
         self.log = logging.getLogger('EPCAPI')
         self.notfound_logger = None  # will be setup when created in core.py
         self.session = requests.session()
@@ -154,7 +154,7 @@ class EPCAPI:
         self.language_code = lc
         self.country_code = cc
 
-        self.request_timeout = timeout if timeout > 0 else None
+        self.request_timeout = timeout
 
     def _extract_price_from_elt(self, dom_elt=None, asset_name='NO NAME') -> float:
         """
@@ -253,7 +253,11 @@ class EPCAPI:
         result = False
         if not url:
             return result
-        r = self.session.get(url, timeout=self.request_timeout)
+        try:
+            r = self.session.get(url, timeout=self.request_timeout)
+        except (requests.exceptions.Timeout, ConnectionError):
+            self.log.warning(f'Timeout for {url}')
+            return result
         if r.status_code == 200:
             result = True
         return result
@@ -613,7 +617,7 @@ class EPCAPI:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
             review = not_found_review
         discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int(
-            (price-discount_price) / price * 100.0
+            (price - discount_price) / price * 100.0
         )
         discounted = (discount_price < price) or discount_percentage > 0.0
 

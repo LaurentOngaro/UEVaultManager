@@ -6,7 +6,7 @@ Implementation for:
 from io import BytesIO
 
 import requests
-from PIL import ImageTk, Image
+from PIL import Image, ImageTk
 
 from UEVaultManager.tkgui.modules.functions import log_warning
 
@@ -16,7 +16,7 @@ class WebImage:
     Class to download an image from an url and get it as a PhotoImage.
     :param url: the url of the image to download.
     """
-    request_timeout = 4
+    request_timeout = (5, 5)  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
 
     def __init__(self, url: str = None):
         # if no URL is given, return

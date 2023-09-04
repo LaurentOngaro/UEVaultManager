@@ -32,16 +32,20 @@ class DisplayContentWindow(tk.Toplevel):
     def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index: int = 0, quit_on_close: bool = False):
         super().__init__()
         self.title(title)
-        self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        try:
+            # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
+            self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        except Exception as error:
+            gui_f.log_warning(f'Error in EditCellWindowClass: {error}')
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
         self.quit_on_close = quit_on_close
-        self.content_frame = self.ContentFrame(self)
-        self.control_frame = self.ControlFrame(self)
+        self.frm_content = self.ContentFrame(self)
+        self.frm_control = self.ControlFrame(self)
 
-        self.content_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-        self.control_frame.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         self.bind('<Tab>', self._focus_next_widget)
         self.bind('<Control-Tab>', self._focus_next_widget)
@@ -50,6 +54,7 @@ class DisplayContentWindow(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         gui_g.display_content_window_ref = self
+        # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
 
     @staticmethod
     def _focus_next_widget(event):
@@ -137,18 +142,20 @@ class DisplayContentWindow(tk.Toplevel):
         """
         if self.keep_existing:
             content += '\n'
-            self.content_frame.text_content.insert(tk.END, content)
+            self.frm_content.text_content.insert(tk.END, content)
         else:
-            self.content_frame.text_content.delete('1.0', tk.END)
-            self.content_frame.text_content.insert(tk.END, content)
+            self.frm_content.text_content.delete('1.0', tk.END)
+            self.frm_content.text_content.insert(tk.END, content)
         # set the mode at the end to allow using display() to be used to change the mode for the next call
         self.keep_existing = keep_mode
+        self.update()
 
     def clean(self) -> None:
         """
         Clean the content of the window.
         """
-        self.content_frame.text_content.delete('1.0', tk.END)
+        self.frm_content.text_content.delete('1.0', tk.END)
+        self.update()
 
     def save_changes(self) -> str:
         """
@@ -160,6 +167,6 @@ class DisplayContentWindow(tk.Toplevel):
         )
         if filename:
             with open(filename, 'w') as f:
-                f.write(self.content_frame.text_content.get('1.0', tk.END))
+                f.write(self.frm_content.text_content.get('1.0', tk.END))
             gui_f.box_message(f'Content Saved to {filename}')
         return filename

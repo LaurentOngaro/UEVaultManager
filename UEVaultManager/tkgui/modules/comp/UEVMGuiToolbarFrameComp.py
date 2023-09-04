@@ -28,6 +28,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         self.data_table: EditableTable = data_table
 
         pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
+        pack_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0, 'fill': tk.BOTH, 'expand': False}
         lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': False}
 
         lblf_navigation = ttk.LabelFrame(self, text='Navigation')
@@ -43,11 +44,11 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_prev_page = ttk.Button(lblf_navigation, text='Prev Page', command=container.prev_page)
         btn_prev_page.pack(**pack_def_options, side=tk.LEFT)
         btn_prev_page.config(state=tk.DISABLED)
-        entry_current_item_var = tk.StringVar(value=str(data_table.current_page))
-        entry_current_item = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=entry_current_item_var)
-        entry_current_item.pack(**pack_def_options, side=tk.LEFT)
-        lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages}')
-        lbl_page_count.pack(**pack_def_options, side=tk.LEFT)
+        var_entry_current_item = tk.StringVar(value='{:04d}'.format(data_table.current_page))
+        entry_current_item = ttk.Entry(lblf_navigation, width=5, justify=tk.CENTER, textvariable=var_entry_current_item)
+        entry_current_item.pack(**pack_def_options_np, side=tk.LEFT)
+        lbl_page_count = ttk.Label(lblf_navigation, text=f' / {data_table.total_pages:04d}')
+        lbl_page_count.pack(**pack_def_options_np, side=tk.LEFT)
         btn_next_page = ttk.Button(lblf_navigation, text='Next Page', command=container.next_page)
         btn_next_page.pack(**pack_def_options, side=tk.LEFT)
         btn_last_item = ttk.Button(lblf_navigation, text='Last Page', command=container.last_item)
@@ -72,12 +73,14 @@ class UEVMGuiToolbarFrame(ttk.Frame):
 
         lblf_commands = ttk.LabelFrame(self, text='Other commands')
         lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
+        btn_login = ttk.Button(lblf_commands, text='Login', command=lambda: container.run_uevm_command('auth'))
+        btn_login.pack(**pack_def_options, side=tk.LEFT)
         btn_help = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
         btn_help.pack(**pack_def_options, side=tk.LEFT)
         btn_status = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_uevm_command('status'))
         btn_status.pack(**pack_def_options, side=tk.LEFT)
         """
-        # following commands are messy and not really useful
+        # removed following commands because messy and not really useful
         btn_info = ttk.Button(lblf_commands, text='Info', command=lambda: container.run_uevm_command('info'))
         btn_info.pack(**pack_def_options, side=tk.LEFT)
         btn_list_files = ttk.Button(lblf_commands, text='List Files', command=lambda: container.run_uevm_command('list_files'))
@@ -113,8 +116,9 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         self.btn_prev_page = btn_prev_page
         self.btn_next_page = btn_next_page
         self.btn_last_item = btn_last_item
+        self.btn_login = btn_login
         self.btn_toggle_options = btn_toggle_options
         self.btn_toggle_controls = btn_toggle_controls
         self.lbl_page_count = lbl_page_count
         self.entry_current_item = entry_current_item
-        self.entry_current_item_var = entry_current_item_var
+        self.var_entry_current_item = var_entry_current_item
