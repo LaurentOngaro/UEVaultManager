@@ -27,7 +27,6 @@ class DisplayContentWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param quit_on_close: whether to quit the application when the window is closed.
     """
-    keep_existing: bool = False  # whether to keep the existing content when adding a new one
 
     def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index: int = 0, quit_on_close: bool = False):
         super().__init__()
@@ -40,6 +39,7 @@ class DisplayContentWindow(tk.Toplevel):
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
+        self.keep_existing: bool = False  # whether to keep the existing content when adding a new one
         self.quit_on_close = quit_on_close
         self.frm_content = self.ContentFrame(self)
         self.frm_control = self.ControlFrame(self)

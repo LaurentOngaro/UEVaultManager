@@ -16,7 +16,6 @@ class WebImage:
     Class to download an image from an url and get it as a PhotoImage.
     :param url: the url of the image to download.
     """
-    request_timeout = (5, 5)  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
 
     def __init__(self, url: str = None):
         # if no URL is given, return
@@ -25,6 +24,7 @@ class WebImage:
         # initialize instance variables
         self.__image_pil = None
         self.__image_tk = None
+        self.request_timeout = (5, 5)  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.url: str = url
         try:
             # use requests to get the image content as bytes

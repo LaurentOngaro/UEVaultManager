@@ -24,8 +24,6 @@ class EditCellWindow(tk.Toplevel):
     :param screen_index: the index of the screen on which the window will be displayed.
     :param editable_table: the table to edit.
     """
-    must_save: bool = False
-    initial_values = []
 
     def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index: int = 0, editable_table=None):
         super().__init__(parent)
@@ -40,7 +38,8 @@ class EditCellWindow(tk.Toplevel):
         self.resizable(True, False)
 
         self.editable_table = editable_table
-
+        self.must_save: bool = False
+        self.initial_values = []
         self.frm_content = self.ContentFrame(self)
         self.frm_control = self.ControlFrame(self)
 
