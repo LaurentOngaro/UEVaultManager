@@ -15,7 +15,8 @@ from threading import Condition, Thread
 
 from UEVaultManager.downloader.mp.workers import DLWorker, FileWorker
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.downloading import *
+from UEVaultManager.models.downloading import AnalysisResult, ChunkTask, DownloaderTask, FileTask, SharedMemorySegment, TaskFlags, \
+    TerminateWorkerTask, UIUpdate, WriterTask
 from UEVaultManager.models.manifest import Manifest, ManifestComparison
 
 

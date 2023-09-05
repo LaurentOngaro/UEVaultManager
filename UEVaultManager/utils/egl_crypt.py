@@ -39,69 +39,71 @@ inv_s_box = (
 )
 
 
-def sub_bytes(s):
+def _sub_bytes(s):
     for i in range(4):
         for j in range(4):
             s[i][j] = s_box[s[i][j]]
 
 
-def inv_sub_bytes(s):
+def _inv_sub_bytes(s):
     for i in range(4):
         for j in range(4):
             s[i][j] = inv_s_box[s[i][j]]
 
 
 # noinspection DuplicatedCode
-def shift_rows(s):
+def _shift_rows(s):
     s[0][1], s[1][1], s[2][1], s[3][1] = s[1][1], s[2][1], s[3][1], s[0][1]
     s[0][2], s[1][2], s[2][2], s[3][2] = s[2][2], s[3][2], s[0][2], s[1][2]
     s[0][3], s[1][3], s[2][3], s[3][3] = s[3][3], s[0][3], s[1][3], s[2][3]
 
 
 # noinspection DuplicatedCode
-def inv_shift_rows(s):
+def _inv_shift_rows(s):
     s[0][1], s[1][1], s[2][1], s[3][1] = s[3][1], s[0][1], s[1][1], s[2][1]
     s[0][2], s[1][2], s[2][2], s[3][2] = s[2][2], s[3][2], s[0][2], s[1][2]
     s[0][3], s[1][3], s[2][3], s[3][3] = s[1][3], s[2][3], s[3][3], s[0][3]
 
 
-def add_round_key(s, k):
+def _add_round_key(s, k):
     for i in range(4):
         for j in range(4):
             s[i][j] ^= k[i][j]
 
 
 # learned from http://cs.ucsb.edu/~koc/cs178/projects/JT/aes.c
-# noinspection PyPep8
-xtime = lambda a: (((a << 1) ^ 0x1B) & 0xFF) if (a & 0x80) else (a << 1)
+# warning PEP E731
+# _xtime = lambda a: (((a << 1) ^ 0x1B) & 0xFF) if (a & 0x80) else (a << 1)
+def _xtime(a):
+    return (((a << 1) ^ 0x1B) & 0xFF) if (a & 0x80) else (a << 1)
 
 
-def mix_single_column(a):
+def _mix_single_column(a):
     # see Sec 4.1.2 in The Design of Rijndael
     t = a[0] ^ a[1] ^ a[2] ^ a[3]
     u = a[0]
-    a[0] ^= t ^ xtime(a[0] ^ a[1])
-    a[1] ^= t ^ xtime(a[1] ^ a[2])
-    a[2] ^= t ^ xtime(a[2] ^ a[3])
-    a[3] ^= t ^ xtime(a[3] ^ u)
+    a[0] ^= t ^ _xtime(a[0] ^ a[1])
+    a[1] ^= t ^ _xtime(a[1] ^ a[2])
+    a[2] ^= t ^ _xtime(a[2] ^ a[3])
+    a[3] ^= t ^ _xtime(a[3] ^ u)
 
 
-def mix_columns(s):
+def _mix_columns(s):
     for i in range(4):
-        mix_single_column(s[i])
+        _mix_single_column(s[i])
 
 
-def inv_mix_columns(s):
+def _inv_mix_columns(s):
     # see Sec 4.1.3 in The Design of Rijndael
     for i in range(4):
-        u = xtime(xtime(s[i][0] ^ s[i][2]))
-        v = xtime(xtime(s[i][1] ^ s[i][3]))
+        u = _xtime(_xtime(s[i][0] ^ s[i][2]))
+        v = _xtime(_xtime(s[i][1] ^ s[i][3]))
         s[i][0] ^= u
         s[i][1] ^= v
         s[i][2] ^= u
         s[i][3] ^= v
 
-    mix_columns(s)
+    _mix_columns(s)
 
 
 r_con = (
@@ -137,7 +139,7 @@ def unpad(plaintext):
     return message
 
 
-def split_blocks(message, block_size=16, require_padding=True):
+def _split_blocks(message, block_size=16, require_padding=True):
     assert len(message) % block_size == 0 or not require_padding
     return [message[i:i + 16] for i in range(0, len(message), block_size)]
 
@@ -195,7 +197,7 @@ class AES:
         # Group keywords in 4x4 byte matrices.
         return [key_columns[4 * i:4 * (i + 1)] for i in range(len(key_columns) // 4)]
 
-    def decrypt_block(self, ciphertext):
+    def _decrypt_block(self, ciphertext):
         """
         Decrypts a single block of 16 byte long ciphertext.
         """
@@ -203,17 +205,17 @@ class AES:
 
         cipher_state = bytes2matrix(ciphertext)
 
-        add_round_key(cipher_state, self._key_matrices[-1])
-        inv_shift_rows(cipher_state)
-        inv_sub_bytes(cipher_state)
+        _add_round_key(cipher_state, self._key_matrices[-1])
+        _inv_shift_rows(cipher_state)
+        _inv_sub_bytes(cipher_state)
 
         for i in range(self.n_rounds - 1, 0, -1):
-            add_round_key(cipher_state, self._key_matrices[i])
-            inv_mix_columns(cipher_state)
-            inv_shift_rows(cipher_state)
-            inv_sub_bytes(cipher_state)
+            _add_round_key(cipher_state, self._key_matrices[i])
+            _inv_mix_columns(cipher_state)
+            _inv_shift_rows(cipher_state)
+            _inv_sub_bytes(cipher_state)
 
-        add_round_key(cipher_state, self._key_matrices[0])
+        _add_round_key(cipher_state, self._key_matrices[0])
 
         return matrix2bytes(cipher_state)
 
@@ -222,21 +224,27 @@ class AES:
         Decrypt `ciphertext` using ECB mode.
         """
         blocks = []
-        for ciphertext_block in split_blocks(ciphertext, require_padding=False):
+        for ciphertext_block in _split_blocks(ciphertext, require_padding=False):
             # CTR mode decrypt : ciphertext XOR encrypt(nonce)
-            block = self.decrypt_block(ciphertext_block)
+            block = self._decrypt_block(ciphertext_block)
             blocks.append(block)
 
         return b''.join(blocks)
 
 
 def decrypt_epic_data(key, encrypted):
+    """
+    Decrypts the given data using the given key.
+    :param key: key to use for decryption
+    :param encrypted: data to decrypt
+    :return: decrypted data
+    """
     decrypted = unpad(AES(key.encode('ascii')).decrypt_ecb(encrypted)).strip(b'\x00')
     # try various encodings, just to be sure
     for encoding in (locale.getpreferredencoding(), 'cp1252', 'cp932', 'ascii', 'utf-8'):
         # noinspection PyBroadException
         try:
             return decrypted.decode(encoding)
-        except:  # ignore exception, just try the next encoding
+        except (Exception, ):  # ignore exception, just try the next encoding
             continue
     raise ValueError('Failed to decode decrypted data')

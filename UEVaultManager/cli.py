@@ -41,6 +41,13 @@ from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import check_and_create_path, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
+# add the parent folder to the sys.path list, to run the script from the command line without import module error
+# must be done before importing project module (ex: global.py)
+# this code has been replaced by using script to launch the application as a module (as it the path is added automatically)
+# path = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
+# if path not in sys.path:
+#     sys.path.insert(0, path)
+
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
 
 
@@ -1250,7 +1257,8 @@ class UEVaultManagerCLI:
             store_ids=False,  # useless for now
             load_from_files=load_from_files,
             engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
-            egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
+            egs=self.core.egs,  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
+            cli_args=args
         )
 
         scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)

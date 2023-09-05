@@ -22,21 +22,6 @@ class FilterFrame(ttk.LabelFrame):
     :param title: The title of the frame.
     :param value_for_all: The value to use for the 'All' option.
     """
-    _filters = {}
-    _quick_filters = {}
-    _filter_mask = None
-    frm_widgets = None
-    cb_col_name = None
-    cb_quick_filter = None
-    btn_apply_filters = None
-    btn_add_filters = None
-    btn_clear_filters = None
-    btn_view_filters = None
-    lbl_filters_count = None
-    var_filters_count = None
-    category = None
-    pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}
-    grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.W}
 
     def __init__(
         self,
@@ -56,6 +41,21 @@ class FilterFrame(ttk.LabelFrame):
             raise ValueError('update_func cannot be None')
 
         super().__init__(container, text=title)
+        self._filters = {}
+        self._quick_filters = {}
+        self._filter_mask = None
+        self.frm_widgets = None
+        self.cb_col_name = None
+        self.cb_quick_filter = None
+        self.btn_apply_filters = None
+        self.btn_add_filters = None
+        self.btn_clear_filters = None
+        self.btn_view_filters = None
+        self.lbl_filters_count = None
+        self.var_filters_count = None
+        self.category = None
+        self.pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}
+        self.grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.W}
         self.value_for_all: str = value_for_all
         self.container = container
         self.data_func = data_func

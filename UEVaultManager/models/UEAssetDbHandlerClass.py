@@ -37,9 +37,9 @@ class UEAssetDbHandler:
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     update_loggers_level(logger)
     db_version: DbVersionNum = DbVersionNum.V0  # updated in check_and_upgrade_database()
-    connection = None
 
     def __init__(self, database_name: str, reset_database: bool = False):
+        self.connection = None
         # the user fields that must be preserved when updating the database
         # these fields are also present in the asset table and in the UEAsset.init_data() method
         # THEY WILL BE PRESERVED when parsing the asset data

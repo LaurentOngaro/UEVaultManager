@@ -283,13 +283,17 @@ def get_tk_root(container) -> tk.Tk:
     :param container:  the container window or object
     :return: the root window
     """
+    root = None
     # get the root window to avoid creating multiple progress windows
     try:
         # a tk window chid class
         root = container.winfo_toplevel()
     except (AttributeError, tk.TclError):
         # an editableTable class
-        root = container.get_container.winfo_toplevel()
+        try:
+            root = container.get_container.winfo_toplevel()
+        except (AttributeError, tk.TclError):
+            pass
     return root
 
 
@@ -321,7 +325,7 @@ def show_progress(
     It will create a new progress window if one does not exist and update parent._progress_window
     """
     root = get_tk_root(parent)
-    if root.progress_window is None:
+    if root and root.progress_window is None:
         pw = ProgressWindow(
             title=gui_g.s.app_title,
             parent=parent,
@@ -351,7 +355,7 @@ def close_progress(parent) -> None:
     It accesses to the parent.progress_window property
     """
     root = get_tk_root(parent)
-    if root.progress_window is not None:
+    if root and root.progress_window is not None:
         root.progress_window.close_window()
         root.progress_window = None
 

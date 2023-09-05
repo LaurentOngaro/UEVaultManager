@@ -46,19 +46,9 @@ class UEAssetScraper:
     :param egs: An EPCAPI object (session handler). Defaults to None. If None, a new EPCAPI object will be created and the session used WON'T BE LOGGED.
     :param progress_window: A ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
     """
-    _last_run_filename: str = 'last_run.json'
-    _urls_list_filename: str = 'urls_list.txt'
-    _threads_count: int = 0
-    _files_count: int = 0
-    _thread_executor = None
-    _scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
-    _db_name: str = path_join(gui_g.s.scraping_folder, 'assets.db')
-    _scraped_ids = []  # store IDs of all items
-    _owned_asset_ids = []  # store IDs of all owned items
-    _urls = []  # list of all urls to scrap
+
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     update_loggers_level(logger)
-    thread_executor_must_stop: bool = False
 
     def __init__(
         self,
@@ -78,7 +68,18 @@ class UEAssetScraper:
         engine_version_for_obsolete_assets=None,
         egs: EPCAPI = None,
         progress_window=None,  # don't use a typed annotation here to avoid import
+        cli_args=None,
     ) -> None:
+        self._last_run_filename: str = 'last_run.json'
+        self._urls_list_filename: str = 'urls_list.txt'
+        self._threads_count: int = 0
+        self._files_count: int = 0
+        self._thread_executor = None
+        self._scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
+        self._db_name: str = path_join(gui_g.s.scraping_folder, 'assets.db')
+        self._scraped_ids = []  # store IDs of all items
+        self._owned_asset_ids = []  # store IDs of all owned items
+        self._urls = []  # list of all urls to scrap
         self.start: int = start
         self.stop: int = stop
         self.assets_per_page: int = assets_per_page
@@ -91,6 +92,7 @@ class UEAssetScraper:
         self.store_ids = store_ids
         self.use_raw_format: bool = use_raw_format
         self.clean_database: bool = clean_database
+        self.cli_args = cli_args
         # test several ways to get the following value depending on the context
         # noinspection PyBroadException
         try:
@@ -126,8 +128,8 @@ class UEAssetScraper:
 
     def _log_debug(self, message):
         """ a simple wrapper to use when cli is not initialized"""
-        if gui_g.UEVM_cli_ref is None:
-            print(message)
+        if gui_g.UEVM_cli_ref is None and self.cli_args.debug:
+            print(f'DEBUG {message}')
         else:
             if gui_g.s.testing_switch >= 1:
                 # force printing debug messages when testing
@@ -138,21 +140,21 @@ class UEAssetScraper:
     def _log_info(self, message):
         """ a simple wrapper to use when cli is not initialized"""
         if gui_g.UEVM_cli_ref is None:
-            print(message)
+            print(f'INFO {message}')
         else:
             self.logger.info(message)
 
     def _log_warning(self, message):
         """ a simple wrapper to use when cli is not initialized"""
         if gui_g.UEVM_cli_ref is None:
-            print(message)
+            print(f'WARNING {message}')
         else:
             self.logger.warning(message)
 
     def _log_error(self, message):
         """ a simple wrapper to use when cli is not initialized"""
         if gui_g.UEVM_cli_ref is None:
-            print(message)
+            print(f'ERROR {message}')
         else:
             self.logger.error(message)
 
@@ -474,8 +476,9 @@ class UEAssetScraper:
             if self._urls is None or len(self._urls) == 0:
                 self.gather_all_assets_urls(owned_assets_only=owned_assets_only)
             self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=len(self._urls))
-            if self.max_threads > 0:
-                self._threads_count = min(self.max_threads, len(self._urls))
+            url_count = len(self._urls)
+            if self.max_threads > 0 and url_count > 0:
+                self._threads_count = min(self.max_threads, url_count)
                 # threading processing COULD be stopped by the progress window
                 self.progress_window.show_btn_stop()
                 self._thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self._threads_count, thread_name_prefix="Asset_Scaper")

@@ -3,7 +3,10 @@
 Implementation for:
 - TaggedLabelFrame: a custom LabelFrame widget that allows child widgets to be identified by tags.
 """
-from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import *
+import tkinter as tk
+from tkinter import ttk
+
+import UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses as gui_W  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.functions import log_debug, log_error, log_warning
 from UEVaultManager.tkgui.modules.types import WidgetType
 
@@ -72,23 +75,25 @@ class TaggedLabelFrame(ttk.LabelFrame):
         else:
             frame = alternate_container
         if add_label_before:
-            lbl_text = label if label is not None else ExtendedWidget.tag_to_label(tag_lower)
+            lbl_text = label if label is not None else gui_W.ExtendedWidget.tag_to_label(tag_lower)
             lbl_name = ttk.Label(frame, text=lbl_text)
             lbl_name.pack(side=tk.LEFT, **self.pack_options)
         if widget_type == WidgetType.ENTRY:
-            child = ExtendedEntry(
+            child = gui_W.ExtendedEntry(
                 master=frame, tag=tag_lower, default_content=default_content, height=height, width=width, state=state, textvariable=textvariable
             )
         elif widget_type == WidgetType.TEXT:
-            child = ExtendedText(master=frame, tag=tag_lower, default_content=default_content, wrap=tk.WORD, height=height, width=width, state=state)
+            child = gui_W.ExtendedText(
+                master=frame, tag=tag_lower, default_content=default_content, wrap=tk.WORD, height=height, width=width, state=state
+            )
         elif widget_type == WidgetType.LABEL:
-            child = ExtendedLabel(master=frame, tag=tag_lower, default_content=default_content, state=state)
+            child = gui_W.ExtendedLabel(master=frame, tag=tag_lower, default_content=default_content, state=state)
         elif widget_type == WidgetType.CHECKBUTTON:
-            child = ExtendedCheckButton(
+            child = gui_W.ExtendedCheckButton(
                 master=frame, tag=tag_lower, default_content=default_content, label=label, images_folder=images_folder, state=state
             )
         elif widget_type == WidgetType.BUTTON:
-            child = ExtendedButton(master=frame, tag=tag_lower, default_content=default_content, state=state)
+            child = gui_W.ExtendedButton(master=frame, tag=tag_lower, default_content=default_content, state=state)
         else:
             error = f'Invalid widget type: {widget_type}'
             log_error(error)

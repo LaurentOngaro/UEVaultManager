@@ -15,13 +15,13 @@ class UEAsset:
     """
     # unused logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     # unused update_loggers_level(logger)
-    data = {}
 
     def __init__(self, engine_version_for_obsolete_assets: str = ''):
         if not engine_version_for_obsolete_assets:
             self.engine_version_for_obsolete_assets = '4.26'  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
         else:
             self.engine_version_for_obsolete_assets = engine_version_for_obsolete_assets
+        self.data = {}
         self.init_data()
 
     def __str__(self) -> str:

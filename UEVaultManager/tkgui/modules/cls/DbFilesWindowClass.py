@@ -31,11 +31,9 @@ class DbFilesWindowClass(tk.Toplevel):
     :param folder_for_csv_files: the path to the folder with files for tags.
     :param db_path: the path to the database.
     """
-
     _user_fields_suffix = '_user_fields'
     value_for_all: str = 'All'
     suffix_separator: str = '_##'
-    must_reload: bool = False
 
     def __init__(
         self,
@@ -52,6 +50,7 @@ class DbFilesWindowClass(tk.Toplevel):
         self.title(title)
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
+        self.must_reload: bool = False
         self.folder_for_csv_files = os.path.normpath(folder_for_csv_files)
         self.db_path = os.path.normpath(db_path)
         self.db_handler = UEAssetDbHandler(database_name=self.db_path)

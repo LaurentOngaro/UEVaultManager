@@ -12,7 +12,7 @@ from time import time
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.app import *
+from UEVaultManager.models.app import App, AppAsset
 from UEVaultManager.models.config import AppConf
 from UEVaultManager.tkgui.modules.functions import create_file_backup
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
