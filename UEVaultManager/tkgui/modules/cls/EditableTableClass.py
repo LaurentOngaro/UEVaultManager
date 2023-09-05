@@ -4,6 +4,8 @@ Implementation for:
 - EditableTable: a class that extends the pandastable.Table class, providing additional functionalities.
 """
 import io
+import os
+import tkinter as tk
 import webbrowser
 from tkinter import ttk
 
@@ -11,7 +13,9 @@ import pandas as pd
 from pandas.errors import EmptyDataError, IndexingError
 from pandastable import config, Table, TableModel
 
-from UEVaultManager.models.csv_sql_fields import *
+import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -19,7 +23,6 @@ from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions import *
 from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_explorer
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
@@ -64,8 +67,8 @@ class EditableTable(Table):
     _is_filtered: bool = False
     _old_is_filtered: bool = False
     is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
-    logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
-    update_loggers_level(logger)
+    logger = gui_f.logging.getLogger(__name__.split('.')[-1])  # keep only the class name
+    gui_f.update_loggers_level(logger)
     model: TableModel = None  # setup in table.__init__
     rowcolors: pd.DataFrame = None  # setup in table.__init__
     df_unfiltered: pd.DataFrame = None  # unfiltered dataframe (default)
@@ -101,7 +104,7 @@ class EditableTable(Table):
         self.update_rows_text_func = update_rows_text_func
         self.set_control_state_func = set_control_state_func
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
-        show_progress(container, text='Loading Data from data source...')
+        gui_f.show_progress(container, text='Loading Data from data source...')
         if self.data_source_type == DataSourceType.SQLITE:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source)
         df_loaded = self.read_data()
@@ -114,7 +117,7 @@ class EditableTable(Table):
             self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
             self.resize_columns()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
-        close_progress(self)
+        gui_f.close_progress(self)
 
     @property
     def current_page(self) -> int:
@@ -417,7 +420,7 @@ class EditableTable(Table):
         # self.logger.info("\nCOL TYPES BEFORE CONVERSION\n")
         # df.info()  # direct print info
         for col in df.columns:
-            converters = get_converters(col)
+            converters = gui_t.get_converters(col)
             # at least 2 converters are expected: one for the convertion function and one for column type
             for converter in converters:
                 try:
@@ -565,7 +568,7 @@ class EditableTable(Table):
         if num_cols <= 0:
             return
         if abs(num_cols - self.cols) > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
-            box_message(
+            gui_f.box_message(
                 f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({num_cols}).'
             )
         try:
@@ -631,7 +634,7 @@ class EditableTable(Table):
         self.data_source_type = DataSourceType.SQLITE if ext == '.db' else DataSourceType.FILE
         go_on = True
         if stored_type != self.data_source_type:
-            go_on = box_yesno(
+            go_on = gui_f.box_yesno(
                 f'The type of data source has changed from the previous one.\nYou should quit and restart the application to avoid any data loss.\nAre you sure you want to continue ?'
             )
         return go_on
@@ -703,9 +706,9 @@ class EditableTable(Table):
         df = self.get_data()
         if self.data_source_type == DataSourceType.FILE:
             # create an empty row with the correct columns
-            str_data = get_csv_field_name_list(return_as_string=True)  # column names
+            str_data = gui_t.get_csv_field_name_list(return_as_string=True)  # column names
             str_data += '\n'
-            str_data += create_empty_csv_row(return_as_string=True)  # dummy row
+            str_data += gui_t.create_empty_csv_row(return_as_string=True)  # dummy row
             table_row = pd.read_csv(io.StringIO(str_data), **gui_g.s.csv_options)
         elif self.data_source_type == DataSourceType.SQLITE:
             if self._db_handler is None:
@@ -762,7 +765,7 @@ class EditableTable(Table):
         else:
             asset_str = f' row #{row_numbers + 1}'
             row_numbers = [row_numbers]
-        if not confirm_dialog or box_yesno(f'Are you sure you want to delete {asset_str}? '):
+        if not confirm_dialog or gui_f.box_yesno(f'Are you sure you want to delete {asset_str}? '):
             index_to_delete = []
             for row_number in row_numbers:
                 df = self.get_data()
@@ -835,7 +838,7 @@ class EditableTable(Table):
                     # do not update an asset if that will be deleted
                     continue
                 # convert the key names to the database column names
-                asset_data = convert_csv_row_to_sql_row(row_data)
+                asset_data = gui_t.convert_csv_row_to_sql_row(row_data)
                 ue_asset = UEAsset()
                 try:
                     ue_asset.init_from_dict(asset_data)
@@ -872,13 +875,13 @@ class EditableTable(Table):
         Reload data from the CSV file and refreshes the table display.
         :return: True if the data has been loaded successfully, False otherwise.
         """
-        show_progress(self, text='Reloading Data from data source...')
+        gui_f.show_progress(self, text='Reloading Data from data source...')
         df_loaded = self.read_data()  # fill the UNFILTERED dataframe
         if df_loaded is None:
             return False
         self.set_data(df_loaded)
         self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
-        # close_progress(self)  # done in data_table.update(update_format=True)
+        # mf.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
     def rebuild_data(self) -> bool:
@@ -892,21 +895,21 @@ class EditableTable(Table):
         if self.data_source_type == DataSourceType.FILE:
             # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
             if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
-                from_cli_only_message()
+                gui_f.from_cli_only_message()
                 return False
             else:
                 gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
                 self.current_page = 1
-                show_progress(self, 'Rebuilding Data from file...')
+                gui_f.show_progress(self, 'Rebuilding Data from file...')
                 df_loaded = self.read_data()
                 if df_loaded is None:
                     return False
                 self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)
                 self.update()  # this call will copy the changes to model. df AND to self.filtered_df
-                close_progress(self)
+                gui_f.close_progress(self)
                 return True
         elif self.data_source_type == DataSourceType.SQLITE:
-            pw = show_progress(self, 'Rebuilding Data from database...')
+            pw = gui_f.show_progress(self, 'Rebuilding Data from database...')
             # we create the progress window here to avoid lots of imports in UEAssetScraper class
             max_threads = get_max_threads()
             owned_assets_only = False
@@ -937,17 +940,17 @@ class EditableTable(Table):
             )
             scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
             if not pw.continue_execution:
-                close_progress(self)
+                gui_f.close_progress(self)
                 return False
             scraper.save(owned_assets_only=owned_assets_only)
             self.current_page = 1
             df_loaded = self.read_data()
             if df_loaded is None:
-                close_progress(self)
+                gui_f.close_progress(self)
                 return False
             self.set_data(df_loaded)
             self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
-            # close_progress(self)  # done in data_table.update(update_format=True)
+            # mf.close_progress(self)  # done in data_table.update(update_format=True)
             return True
         else:
             return False
@@ -1151,7 +1154,7 @@ class EditableTable(Table):
         df = self.get_data()
         if update_format:
             # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
-            show_progress(self, text='Formating and converting DataTable...')
+            gui_f.show_progress(self, text='Formating and converting DataTable...')
             self.set_data(self.set_columns_type(df))
         if update_filters:
             self._frm_filter.create_mask()
@@ -1176,7 +1179,7 @@ class EditableTable(Table):
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             self.update_index_copy_column()
-            close_progress(self)
+            gui_f.close_progress(self)
         if reset_page:
             self.current_page = 1
             self.update_rows_text_func()
@@ -1404,12 +1407,12 @@ class EditableTable(Table):
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
         for key, value in ue_asset_data.items():
-            typed_value = get_typed_value(sql_field=key, value=value)
+            typed_value = gui_t.get_typed_value(sql_field=key, value=value)
             # get the column index of the key
-            col_name = get_csv_field_name(key)
-            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
+            col_name = gui_t.get_csv_field_name(key)
+            if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
             if col_index >= 0:
@@ -1491,7 +1494,7 @@ class EditableTable(Table):
             if not self._is_scanning and 'Cannot setitem on a Categorical with a new category' in str(error):
                 # this will occur when scanning folder with category that are not in the table yet
                 col_name = self.get_col_name(col_index)
-                log_warning(f'Trying to set a value that is not an existing category for field {col_name}.')
+                gui_f.log_warning(f'Trying to set a value that is not an existing category for field {col_name}.')
             return False
         except IndexError:
             return False
@@ -1576,16 +1579,16 @@ class EditableTable(Table):
             col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
             if key in col_list:
                 continue
-            if self.data_source_type == DataSourceType.FILE and is_on_state(key, [CSVFieldState.SQL_ONLY, CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and is_on_state(key, [CSVFieldState.CSV_ONLY, CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             label = key.replace('_', ' ').title()
             key_lower = key.lower()
 
             if key_lower == 'image':
                 image_url = value
-            if is_from_type(key, [CSVFieldType.TEXT]):
+            if gui_t.is_from_type(key, [gui_t.CSVFieldType.TEXT]):
                 if previous_was_a_bool:
                     row += 1  # the previous row was a bool, we have to move to the next row
                 previous_was_a_bool = False
@@ -1593,7 +1596,7 @@ class EditableTable(Table):
                 entry = ExtendedText(edit_row_window.frm_content, height=3)
                 entry.set_content(value)
                 entry.grid(row=row, column=1, columnspan=3, sticky=tk.EW)
-            elif is_from_type(key, [CSVFieldType.BOOL]):
+            elif gui_t.is_from_type(key, [gui_t.CSVFieldType.BOOL]):
                 # values by default. keep here !
                 col_span = 1
                 if previous_was_a_bool:
@@ -1623,13 +1626,13 @@ class EditableTable(Table):
             entries[key] = entry
 
         # image preview
-        show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale)
+        gui_f.show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale)
 
         self._edit_row_entries = entries
         self._edit_row_number = row_number
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
-        make_modal(edit_row_window)
+        gui_f.make_modal(edit_row_window)
 
     def save_edit_row(self) -> None:
         """
@@ -1637,7 +1640,7 @@ class EditableTable(Table):
         """
         row_number = self._edit_row_number
         for col_name, value in self.get_edited_row_values().items():
-            typed_value = get_typed_value(csv_field=col_name, value=value)
+            typed_value = gui_t.get_typed_value(csv_field=col_name, value=value)
             try:
                 typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
             except AttributeError:
@@ -1686,14 +1689,14 @@ class EditableTable(Table):
         col_name = self.get_col_name(col_index)
         ttk.Label(edit_cell_window.frm_content, text=col_name).pack(side=tk.LEFT)
         cell_value_str = str(cell_value) if (cell_value not in ('None', 'nan', gui_g.s.empty_cell)) else ''
-        if is_from_type(col_name, [CSVFieldType.TEXT]):
+        if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)
             widget.focus_set()
             widget.tag_add('sel', '1.0', tk.END)  # select the content
 
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
-        elif is_from_type(col_name, [CSVFieldType.BOOL]):
+        elif gui_t.is_from_type(col_name, [gui_t.CSVFieldType.BOOL]):
             widget = ExtendedCheckButton(edit_cell_window.frm_content, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
             widget.set_content(bool(cell_value))
         else:
@@ -1709,7 +1712,7 @@ class EditableTable(Table):
         self._edit_cell_col_index = col_index
         self._edit_cell_window = edit_cell_window
         edit_cell_window.initial_values = self.get_edit_cell_values()
-        make_modal(edit_cell_window)
+        gui_f.make_modal(edit_cell_window)
 
     def get_edit_cell_values(self) -> str:
         """
@@ -1720,7 +1723,7 @@ class EditableTable(Table):
             return ''
         tag = self._edit_cell_widget.tag
         value = self._edit_cell_widget.get_content()
-        typed_value = get_typed_value(csv_field=tag, value=value)
+        typed_value = gui_t.get_typed_value(csv_field=tag, value=value)
         return typed_value
 
     def save_edit_cell_value(self) -> None:
@@ -1735,7 +1738,7 @@ class EditableTable(Table):
             value = self._edit_cell_widget.get_content()
             row_number = self._edit_cell_row_number
             col_index = self._edit_cell_col_index
-            typed_value = get_typed_value(csv_field=tag, value=value)
+            typed_value = gui_t.get_typed_value(csv_field=tag, value=value)
             try:
                 typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
             except AttributeError:
@@ -1771,7 +1774,7 @@ class EditableTable(Table):
             return
 
         column_names = ['Asset_id', 'Url']
-        column_names.extend(get_csv_field_name_list(filter_on_states=[CSVFieldState.USER]))
+        column_names.extend(gui_t.get_csv_field_name_list(filter_on_states=[gui_t.CSVFieldState.USER]))
         for col_name in column_names:
             col_index = self.get_col_index(col_name)
             value = self.get_cell(row_number, col_index)
@@ -1782,7 +1785,7 @@ class EditableTable(Table):
                 uevm_gui = frm_content.container
                 uevm_gui.set_asset_id(value)
                 continue
-            typed_value = get_typed_value(csv_field=col_name, value=value)
+            typed_value = gui_t.get_typed_value(csv_field=col_name, value=value)
             if col_index >= 0:
                 frm_quick_edit.set_child_values(tag=col_name, content=typed_value, row=row_number, col=col_index)
 
@@ -1791,7 +1794,7 @@ class EditableTable(Table):
         Reset the cell content preview.
         """
         self._frm_quick_edit.config(text='Select a row for Quick Editing')
-        column_names = get_csv_field_name_list(filter_on_states=[CSVFieldState.USER])
+        column_names = gui_t.get_csv_field_name_list(filter_on_states=[gui_t.CSVFieldState.USER])
         for col_name in column_names:
             self._frm_quick_edit.set_default_content(col_name)
 
@@ -1805,8 +1808,8 @@ class EditableTable(Table):
         """
         old_value = self.get_cell(row_number, col_index)
 
-        typed_old_value = get_typed_value(sql_field=tag, value=old_value)
-        typed_value = get_typed_value(sql_field=tag, value=value)
+        typed_old_value = gui_t.get_typed_value(sql_field=tag, value=old_value)
+        typed_value = gui_t.get_typed_value(sql_field=tag, value=value)
         try:
             typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
         except AttributeError:
@@ -1863,9 +1866,9 @@ class EditableTable(Table):
             origin = self.get_cell(row_number, self.get_col_index('Origin'))
             # open the folder of the asset
             if not open_folder_in_file_explorer(origin):
-                box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
+                gui_f.box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
         else:
-            box_message('Only possible with asset that have been mannualy added.', 'info')
+            gui_f.box_message('Only possible with asset that have been mannualy added.', 'info')
 
     def reset_style(self) -> None:
         """

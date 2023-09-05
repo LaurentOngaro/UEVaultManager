@@ -16,6 +16,7 @@ from hashlib import sha1
 from locale import getlocale, LC_CTYPE
 from platform import system
 from threading import current_thread, enumerate as thread_enumerate
+from typing import Dict, List
 from urllib.parse import urlparse
 
 from requests import session
@@ -28,8 +29,8 @@ from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.api.uevm import UEVMAPI
 from UEVaultManager.lfs.egl import EPCLFS
 from UEVaultManager.lfs.uevmlfs import UEVMLFS
-from UEVaultManager.models.app import *
-from UEVaultManager.models.exceptions import *
+from UEVaultManager.models.app import App, AppAsset
+from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.tkgui.modules.functions import box_message

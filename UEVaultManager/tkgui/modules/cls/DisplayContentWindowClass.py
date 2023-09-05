@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import filedialog as fd
 from tkinter import ttk
 
-from ttkbootstrap.constants import *
+from ttkbootstrap import WARNING
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience

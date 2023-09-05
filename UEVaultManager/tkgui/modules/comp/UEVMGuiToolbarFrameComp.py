@@ -6,7 +6,7 @@ Implementation for:
 import tkinter as tk
 
 import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
+from ttkbootstrap.constants import WARNING
 
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 

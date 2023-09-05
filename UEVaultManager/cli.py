@@ -41,6 +41,13 @@ from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import check_and_create_path, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
+# add the parent folder to the sys.path list, to run the script from the command line without import module error
+# must be done before importing project module (ex: global.py)
+# this code has been replaced by using script to launch the application as a module (as it the path is added automatically)
+# path = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
+# if path not in sys.path:
+#     sys.path.insert(0, path)
+
 logging.basicConfig(format='[%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
 
 
