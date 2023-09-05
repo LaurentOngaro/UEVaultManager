@@ -110,7 +110,8 @@ class EditableTable(Table):
         df_loaded = self.read_data()
         if df_loaded is None:
             self.logger.error('Failed to load data from data source when initializing the table')
-            # previous line will quit the app
+            # previous line will NOT quit the app (why ?)
+            return
         else:
             Table.__init__(self, container, dataframe=df_loaded, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
             # self.set_data(self.set_columns_type(df_loaded), df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
@@ -661,9 +662,12 @@ class EditableTable(Table):
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
             elif self.data_source_type == DataSourceType.SQLITE:
+                if self._db_handler is None:
+                    # could occur after a call to self.valid_source_type()
+                    self._db_handler = UEAssetDbHandler(database_name=self.data_source)
+                data = self._db_handler.get_assets_data_for_csv()
                 column_names: list = self._db_handler.get_columns_name_for_csv()
                 col_index = column_names.index('Uid')
-                data = self._db_handler.get_assets_data_for_csv()
                 data_count = len(data)
                 # check to see if the first row has a value in the Uid column
                 if data_count <= 0 or data[0][col_index] is None:
@@ -711,8 +715,6 @@ class EditableTable(Table):
             str_data += gui_t.create_empty_csv_row(return_as_string=True)  # dummy row
             table_row = pd.read_csv(io.StringIO(str_data), **gui_g.s.csv_options)
         elif self.data_source_type == DataSourceType.SQLITE:
-            if self._db_handler is None:
-                self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
             # create an empty row (in the database) with the correct columns
             data = self._db_handler.create_empty_row(
                 return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
@@ -843,11 +845,9 @@ class EditableTable(Table):
                 try:
                     ue_asset.init_from_dict(asset_data)
                     # update the row in the database
-                    if self._db_handler is None:
-                        self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
-                        tags = ue_asset.data.get('tags', [])
-                        tags_str = self._db_handler.convert_tag_list_to_string(tags)
-                        ue_asset.data['tags'] = tags_str
+                    tags = ue_asset.data.get('tags', [])
+                    tags_str = self._db_handler.convert_tag_list_to_string(tags)
+                    ue_asset.data['tags'] = tags_str
                     self._db_handler.save_ue_asset(ue_asset)
                     asset_id = ue_asset.data.get('asset_id', '')
                     self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
@@ -857,8 +857,6 @@ class EditableTable(Table):
             for asset_id in self._deleted_asset_ids:
                 try:
                     # delete the row in the database
-                    if self._db_handler is None:
-                        self._db_handler = UEAssetDbHandler(database_name=self.data_source, reset_database=False)
                     self._db_handler.delete_asset(asset_id=asset_id)
                     self.logger.info(f'Row with asset_id={asset_id} has been deleted from the database')
                 except (KeyError, ValueError, AttributeError) as error:
@@ -1410,9 +1408,13 @@ class EditableTable(Table):
             typed_value = gui_t.get_typed_value(sql_field=key, value=value)
             # get the column index of the key
             col_name = gui_t.get_csv_field_name(key)
-            if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(
+                key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
+            ):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(
+                key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
+            ):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
             if col_index >= 0:
@@ -1579,9 +1581,13 @@ class EditableTable(Table):
             col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
             if key in col_list:
                 continue
-            if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(
+                key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
+            ):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
+            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(
+                key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
+            ):
                 continue
             label = key.replace('_', ' ').title()
             key_lower = key.lower()
