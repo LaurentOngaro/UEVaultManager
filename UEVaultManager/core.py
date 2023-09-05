@@ -689,7 +689,7 @@ class AppCore:
                             # print("Result: ", result)
                         except Exception as error:
                             self.log.warning(f'The following error occurs in threading: {error!r}')
-                        if not gui_g.progress_window_ref.continue_execution:
+                        if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
                             # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
                             stop_executor(futures)
                 self.thread_executor.shutdown(wait=False)

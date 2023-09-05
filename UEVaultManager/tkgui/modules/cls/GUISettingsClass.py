@@ -614,7 +614,7 @@ class GUISettings:
         # if config file has been modified externally, back-up the user-modified version before writing
         if os.path.exists(self.config_file_gui):
             if (mod_time := int(os.stat(self.config_file_gui).st_mtime)) != self.config.mod_time:
-                new_filename = f'config.{mod_time}.ini'
+                new_filename = f'config.{mod_time}.ini.BAK'
                 log_info(
                     f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
                 )

@@ -1123,7 +1123,7 @@ class UEVaultManagerCLI:
         self.logger.info(message)
         custom_print(message, keep_mode=False)
 
-        if not uewm_gui_exists:
+        if not uewm_gui_exists and gui_g.UEVM_gui_ref is not None:
             gui_g.UEVM_gui_ref.mainloop()
 
     def get_token(self, args) -> None:
@@ -1162,11 +1162,18 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
         data_source_type = DataSourceType.FILE
-        if args.database:
+        use_database = False
+        use_input = False
+        try:
+            use_database = args.database
+            use_input = args.input
+        except AttributeError:
+            pass
+        if use_database:
             data_source = args.database
             data_source_type = DataSourceType.SQLITE
             self.logger.info(f'The database {data_source} will be used to read data from')
-        elif args.input:
+        elif use_input:
             data_source = args.input
             self.logger.info(f'The file {data_source} will be used to read data from')
         else:
@@ -1489,6 +1496,9 @@ def main():
         action='store_true',
         help='Also delete scraping data files. They are kept by default'
     )
+    # noinspection DuplicatedCode
+    clean_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
+
     # noinspection DuplicatedCode
     info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
     info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')

@@ -62,6 +62,7 @@ Usage
       -m, --delete-metadata       Also delete metadata files. They are kept by default
       -e, --delete-extra-data     Also delete extra data files. They are kept by default'
       -e, --delete-scraping-data  Also delete scraping data files. They are kept by default'
+      -g,  --gui                  Display the output in a windows instead of using the console
 
 
   Command: info
