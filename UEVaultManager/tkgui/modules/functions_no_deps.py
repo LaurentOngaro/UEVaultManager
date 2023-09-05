@@ -1,25 +1,37 @@
 # coding=utf-8
 """
 Utilities functions and tools
-These functions DO NOT depend on the globals.py module and be freely imported
+These functions DO NOT depend on the globals.py module and be freely imported.
 """
 import ctypes as ct
 import datetime
 import os
+import subprocess
 import sys
 import uuid
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
+from ttkbootstrap.publisher import Publisher
+
+from UEVaultManager.lfs.utils import path_join
+
+
+def log(message: str) -> None:
+    """
+    Log a message in the console.
+    :param message: the message to log.
+    """
+    # keep this function as simple as possible to avoid circular import
+    print(message)
 
 
 def path_from_relative_to_absolute(path: str) -> str:
     """
-    Build the path of the file to reference relative to the currently running script
-    :param path: the relative path to the file. If the path is already absolute, it is returned as is
-    :return: the absolute path of the file
+    Build the path of the file to reference relative to the currently running script.
+    :param path: the relative path to the file. If the path is already absolute, it is returned as is.
+    :return: the absolute path of the file.
     """
-
     if os.path.isabs(path):
         return path
 
@@ -35,19 +47,17 @@ def path_from_relative_to_absolute(path: str) -> str:
         current_script_path = os.path.abspath(__file__)
         current_script_directory = os.path.dirname(current_script_path)
 
-    absolute_path = os.path.join(current_script_directory, path)
-    absolute_path = os.path.abspath(absolute_path)
-    # messagebox.showinfo('info', 'absolute_path: ' + absolute_path)
+    absolute_path = path_join(current_script_directory, path)
     return absolute_path
 
 
 def center_window_on_screen(screen_index: int, width: int, height: int) -> str:
     """
-    Calculate the geometry of the window to display in the center of the given screen
-    :param screen_index: the index of the screen to use
-    :param width: the width of the window
-    :param height: the height of the window
-    :return: the geometry string to use to display the window in the center of the screen
+    Calculate the geometry of the window to display in the center of the given screen.
+    :param screen_index: the index of the screen to use.
+    :param width: the width of the window.
+    :param height: the height of the window.
+    :return: the geometry string to use to display the window in the center of the screen.
     """
     x, y = get_center_screen_positions(screen_index, width, height)
     geometry: str = f'{width}x{height}+{x}+{y}'
@@ -56,31 +66,37 @@ def center_window_on_screen(screen_index: int, width: int, height: int) -> str:
 
 def get_center_screen_positions(screen_index: int, width: int, height: int) -> (int, int):
     """
-    Return the x and y positions of the window to display in the center of the given screen
-    :param screen_index: the index of the screen to use
-    :param width: the width of the window
-    :param height: the height of the window
-    :return: the geometry string to use to display the window in the center of the screen
+    Return the x and y positions of the window to display in the center of the given screen.
+    :param screen_index: the index of the screen to use.
+    :param width: the width of the window.
+    :param height: the height of the window.
+    :return: the geometry string to use to display the window in the center of the screen.
     """
     monitors = get_monitors()
     if screen_index > len(monitors):
-        print(f'The screen #{screen_index} is not available. Using 0 as screen index.')  # no use of log functions here to prevent circular import
+        log(f'The screen #{screen_index} is not available. Using 0 as screen index.')  # no use of log functions here to prevent circular import
         screen_index = 0
     # Position the window in the center of the screen
     target_screen = monitors[screen_index]
     screen_width = target_screen.width
     screen_height = target_screen.height
-    x = target_screen.x + (screen_width-width) // 2
-    y = target_screen.y + (screen_height-height) // 2
+    x = target_screen.x + (screen_width - width) // 2
+    y = target_screen.y + (screen_height - height) // 2
     return x, y
 
 
 def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
     """
-    Set the custom style for the application
-    :return: the style object
+    Set the custom style for the application.
+    :return: the style object.
     """
-    style = ttk.Style(theme_name)
+    try:
+        style = ttk.Style(theme_name)
+    except (Exception, ):
+        # free the subscriber widgets to the Style. As it, it could be used by other window without issue
+        Publisher.clear_subscribers()
+        style = ttk.Style(theme_name)
+
     # option possible for ttk widgets:
     # TButton, TCheckbutton, TCombobox, TEntry, TFrame, TLabel, TLabelFrame, TMenubutton, TNotebook, TProgressbar, TRadiobutton,
     # TScale, TScrollbar, TSeparator, TSizegrip, Treeview, TPanedwindow,
@@ -100,8 +116,8 @@ def set_toolbar_style(tk_window) -> None:
     """
     Remove the minimize and maximize buttons from a tkinter window.
     This version is compatible with Windows AND Non-windows OS
-    # see https://stackoverflow.com/questions/2969870/removing-minimize-maximize-buttons-in-tkinter
-    :param tk_window: the tkinter window
+    # see https://stackoverflow.com/questions/2969870/removing-minimize-maximize-buttons-in-tkinter.
+    :param tk_window: the tkinter window.
     """
     try:
         set_window_pos = ct.windll.user32.SetWindowPos
@@ -110,7 +126,7 @@ def set_toolbar_style(tk_window) -> None:
         get_parent = ct.windll.user32.GetParent
     except AttributeError:
         # Non-windows OS
-        print('Non-windows OS detected. No need to remove the minimize and maximize buttons from the window.')
+        log('Non-windows OS detected. No need to remove the minimize and maximize buttons from the window.')
         return
     # Identifiers
     gwl_style = -16
@@ -129,8 +145,8 @@ def set_toolbar_style(tk_window) -> None:
 
 def set_icon_and_minmax(tk_window, icon=None) -> None:
     """
-    Set the icon and remove the min/max buttons of the window if no icon is provided
-    :param tk_window:
+    Set the icon and remove the min/max buttons of the window if no icon is provided.
+    :param tk_window:.
     :param icon:
     """
     if icon is None:
@@ -146,27 +162,27 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
                 tk_window.iconbitmap(icon)
             except Exception as error:
                 # in linux, the ico can exist but not be readable
-                print(f'Error while setting the icon: {error!r}')
+                log(f'Error while setting the icon: {error!r}')
 
 
 def create_empty_file(file_path: str) -> (bool, str):
     """
-    Create an empty file
-    :param file_path: the path of the file to create
-    :return: (True if path was valid, the corrected path of the file)
+    Create an empty file.
+    :param file_path: the path of the file to create.
+    :return: (True if path was valid, the corrected path of the file).
     """
     path, file = os.path.split(file_path)
     is_valid, path = check_and_get_folder(path)
-    file_path = os.path.join(path, file)
+    file_path = path_join(path, file)
     open(file_path, 'w').close()
     return is_valid, file_path
 
 
 def check_and_get_folder(folder_path: str) -> (bool, str):
     """
-    Check if the folder exists. If not, create it or use the default one
-    :param folder_path: the path of the folder to check
-    :return: (True if path was valid, the corrected path of the folder)
+    Check if the folder exists. If not, create it or use the default one.
+    :param folder_path: the path of the folder to check.
+    :return: (True if path was valid, the corrected path of the folder).
     """
     path = folder_path
     is_valid = True
@@ -175,15 +191,15 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
             os.makedirs(path)
         except (OSError, PermissionError) as e:
             is_valid = False
-            print(f'Error while creating the directory {path}: {e}')
+            log(f'Error while creating the directory {path}: {e}')
             if home_dir := os.environ.get('XDG_CONFIG_HOME'):
-                path = os.path.join(home_dir, 'UEVaultManager')
+                path = path_join(home_dir, 'UEVaultManager')
             else:
                 path = os.path.expanduser('~/.config/UEVaultManager')
             if not os.path.exists(path):
                 os.makedirs(path)
                 path = os.path.normpath(path)
-            print(f'The following folder {path} will be used as default')
+            log(f'The following folder {path} will be used as default')
 
     path = os.path.normpath(path)
     return is_valid, path
@@ -191,7 +207,7 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
 
 def convert_to_bool(value) -> bool:
     """
-    Convert a value to a boolean. Useful for None values
+    Convert a value to a boolean. Useful for None values.
     :param value: the value to convert. If the value is not a boolean, it will be converted to a string and then to a boolean.
     :return:
     """
@@ -204,12 +220,16 @@ def convert_to_bool(value) -> bool:
         return False
 
 
-def convert_to_int(value) -> int:
+def convert_to_int(value, prefix: str = '') -> int:
     """
-    Convert a value to an integer
+    Convert a value to an integer.
     :param value: the value to convert.
-    :return: the integer value or 0 if the value is None or not an integer
+    :param prefix: a prefix to remove from the value before converting it to an integer.
+    :return: the integer value or 0 if the value is None or not an integer.
     """
+    # remove prefix if any
+    if prefix and isinstance(value, str) and value.startswith(prefix):
+        value = value[len(prefix):]
     try:
         value = int(value)
         return value
@@ -219,9 +239,9 @@ def convert_to_int(value) -> int:
 
 def convert_to_float(value) -> float:
     """
-    Convert a value to a float. Useful for None values
+    Convert a value to a float. Useful for None values.
     :param value: the value to convert.
-    :return: the float value or 0.0 if the value is None or not a float
+    :return: the float value or 0.0 if the value is None or not a float.
     """
     try:
         value = float(value)
@@ -232,11 +252,11 @@ def convert_to_float(value) -> float:
 
 def convert_to_datetime(value: str, formats_to_use='%Y-%m-%d %H:%M:%S', default=None) -> datetime.datetime:
     """
-    Convert a value to a datetime object
+    Convert a value to a datetime object.
     :param value: the value to convert. If the value is not a datetime, it will be converted to a string and then to a datetime.
-    :param formats_to_use: list of format to use to trye to convert the value. They will be tried in order
-    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
-    :return: the datetime value
+    :param formats_to_use: list of format to use to trye to convert the value. They will be tried in order.
+    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00.
+    :return: the datetime value.
     """
     if default is None:
         default = datetime.datetime(1970, 1, 1)
@@ -257,11 +277,11 @@ def convert_to_datetime(value: str, formats_to_use='%Y-%m-%d %H:%M:%S', default=
 
 def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None) -> str:
     """
-    Convert a value to a datetime string
-    :param value: the value to convert. If the value is not a datetime
-    :param date_format: the format of value
-    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00
-    :return: the string value of the datetime
+    Convert a value to a datetime string.
+    :param value: the value to convert. If the value is not a datetime.
+    :param date_format: the format of value.
+    :param default: the default value to return if the conversion fails. If None, the default value is 1970-01-01 00:00:00.
+    :return: the string value of the datetime.
     """
     # we convert only datetime object
     if isinstance(value, str):
@@ -274,13 +294,90 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
     try:
         return value.strftime(date_format)
     except (TypeError, ValueError, AttributeError):
-        # print(f'Error while converting {value} to a datetime: {error}')
         return default
+
+
+def is_an_int(value, prefix: str = '') -> bool:
+    """
+    Check if a value is an integer.
+    :param value: the value to check.
+    :param prefix: a prefix to remove from the value before checking if it is an integer.
+    :return:  True if the value is an integer, False otherwise.
+    """
+    # remove prefix if any
+    if prefix and isinstance(value, str) and value.startswith(prefix):
+        value = value[len(prefix):]
+    try:
+        float_n = float(value)
+        int_n = int(float_n)
+    except ValueError:
+        return False
+    else:
+        return float_n == int_n
 
 
 def create_uid() -> str:
     """
-    Create a unique id
-    :return: a unique id
+    Create a unique id.
+    :return: a unique id.
     """
     return str(uuid.uuid4())[:8]
+
+
+def shorten_text(url: str, limit: int = 30) -> str:
+    """
+    Shorten an url. Get its last part
+    :param url:  the url to shorten
+    :param limit: the limit of characters to keep
+    :return: the shortened url
+    """
+    if len(url) < limit:
+        return url
+    else:
+        return '...' + url[-limit:]
+
+
+def extract_variables_from_url(url: str) -> dict:
+    """
+    Extract variables from an url.
+    :param url: the url to extract variables from
+    :return: a dict containing the variables
+    """
+    result = {}
+    url_parts = url.split('?')
+    if len(url_parts) == 2:
+        url_params = url_parts[1].split('&')
+        extracted_data = {}
+        for param in url_params:
+            key, value = param.split('=')
+            extracted_data[key] = value
+        result = extracted_data
+    return result
+
+
+def open_folder_in_file_explorer(folder_path) -> bool:
+    """
+    Open a folder in the file explorer.
+    :param folder_path: the path of the folder to open.
+    """
+    if os.path.exists(folder_path):
+        try:
+            # For Windows
+            if os.name == 'nt':
+                # if we use check = True, it will raise an error even if the folder is opened, because this command always return 1 on windows
+                process = subprocess.run(['explorer', folder_path], check=False)
+                result = process.returncode == 0 or process.returncode == 1
+            # For macOS
+            elif os.name == 'posix':
+                process = subprocess.run(['open', folder_path], check=False)
+                result = process.returncode == 0
+            # For Linux
+            else:
+                process = subprocess.run(['xdg-open', folder_path], check=False)
+                result = process.returncode == 0
+            return result
+        except subprocess.CalledProcessError as error:
+            log(f'Failed to open {folder_path} in file explorer.Error code: {error!r}')
+            return False
+    else:
+        return False

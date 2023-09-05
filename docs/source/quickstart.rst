@@ -27,7 +27,7 @@ process), this should open a new window with the Epic Login.
 
 Otherwise, authentication is a little finicky since we have to go
 through the Epic website and manually copy a code. The login page should
-open in your browser and after logging in you should be presented with a
+open in your browser and after loging in you should be presented with a
 JSON response that contains a code (`authorizationCode`), just copy the
 code into the terminal and hit enter.
 

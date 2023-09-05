@@ -14,8 +14,10 @@ from queue import Empty
 from threading import Condition, Thread
 
 from UEVaultManager.downloader.mp.workers import DLWorker, FileWorker
-from UEVaultManager.models.downloading import *
-from UEVaultManager.models.manifest import ManifestComparison, Manifest
+from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.models.downloading import AnalysisResult, ChunkTask, DownloaderTask, FileTask, SharedMemorySegment, TaskFlags, \
+    TerminateWorkerTask, UIUpdate, WriterTask
+from UEVaultManager.models.manifest import Manifest, ManifestComparison
 
 
 class DLManager(Process):
@@ -38,7 +40,7 @@ class DLManager(Process):
 
         self.base_url = base_url
         self.dl_dir = download_dir
-        self.cache_dir = cache_dir or os.path.join(download_dir, '.cache')
+        self.cache_dir = cache_dir or path_join(download_dir, '.cache')
 
         # All the queues!
         self.logging_queue = None
@@ -99,18 +101,16 @@ class DLManager(Process):
         """
         Run analysis on manifest and old manifest (if not None) and return a result
         with a summary resources required in order to install the provided manifest.
-
-        :param manifest: Manifest to install
-        :param old_manifest: Old manifest to patch from (if applicable)
-        :param patch: Patch instead of redownloading the entire file
-        :param resume: Continue based on resume file if it exists
-        :param file_prefix_filter: Only download files that start with this prefix
-        :param file_exclude_filter: Exclude files with this prefix from download
-        :param file_install_tag: Only install files with the specified tag
-        :param processing_optimization: Attempt to optimize processing order and RAM usage
-        :return: AnalysisResult
+        :param manifest: Manifest to install.
+        :param old_manifest: Old manifest to patch from (if applicable).
+        :param patch: Patch instead of redownloading the entire file.
+        :param resume: Continue based on resume file if it exists.
+        :param file_prefix_filter: Only download files that start with this prefix.
+        :param file_exclude_filter: Exclude files with this prefix from download.
+        :param file_install_tag: Only install files with the specified tag.
+        :param processing_optimization: Attempt to optimize processing order and RAM usage.
+        :return: AnalysisResult.
         """
-
         analysis_res = AnalysisResult()
         analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
         analysis_res.biggest_chunk = max(c.window_size for c in manifest.chunk_data_list.elements)
@@ -131,7 +131,7 @@ class DLManager(Process):
 
                 for line in open(self.resume_file, encoding='utf-8').readlines():
                     file_hash, _, filename = line.strip().partition(':')
-                    _p = os.path.join(self.dl_dir, filename)
+                    _p = path_join(self.dl_dir, filename)
                     if not os.path.exists(_p):
                         self.log.debug(f'File does not exist but is in resume file: "{_p}"')
                         missing += 1
@@ -619,7 +619,7 @@ class DLManager(Process):
             for t in self.threads:
                 t.join(timeout=5.0)
                 if t.is_alive():
-                    self.log.warning(f'Thread did not terminate! {repr(t)}')
+                    self.log.warning(f'Thread did not terminate! {t!r}')
 
             # forcibly kill DL workers that are not actually dead yet
             for child in self.children:
@@ -696,8 +696,8 @@ class DLManager(Process):
         # start threads
         s_time = time.time()
         self.threads.append(Thread(target=self.download_job_manager, args=(task_cond, shm_cond)))
-        self.threads.append(Thread(target=self.dl_results_handler, args=(task_cond,)))
-        self.threads.append(Thread(target=self.fw_results_handler, args=(shm_cond,)))
+        self.threads.append(Thread(target=self.dl_results_handler, args=(task_cond, )))
+        self.threads.append(Thread(target=self.fw_results_handler, args=(shm_cond, )))
 
         for t in self.threads:
             t.start()
@@ -797,7 +797,7 @@ class DLManager(Process):
         for t in self.threads:
             t.join(timeout=5.0)
             if t.is_alive():
-                self.log.warning(f'Thread did not terminate! {repr(t)}')
+                self.log.warning(f'Thread did not terminate! {t!r}')
 
         # clean up resume file
         if self.resume_file:

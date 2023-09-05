@@ -39,11 +39,12 @@ This is an example of this file content and the settings you can change:
     verbose_mode = False
     ; Delay in seconds when UE assets metadata cache will be invalidated. Default value represent 15 days
     ue_assets_max_cache_duration = 1296000
-    ; File name (and path) for logging issues with assets when running the --list command
+    ; File name (and path) to log issues with assets when running the --list command
     ; use "~/" at the start of the filename to store it relatively to the user directory
     ignored_assets_filename_log = ~/.config/ignored_assets.log
     notfound_assets_filename_log = ~/.config/notfound_assets.log
     bad_data_assets_filename_log = ~/.config/bad_data_assets.log
+    scan_assets_filename_log = ~/.config/scan_assets.log
     ; Minimal unreal engine version to check for obsolete assets (default is 4.26)
     engine_version_for_obsolete_assets = 4.26
 
@@ -85,7 +86,7 @@ This is an example of this file content and the settings you can change:
   ;Filters to apply to the datatable. Stored in json format
   data_filters = {"Grab result": "NO_ERROR"}
   ;Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value
-  rows_per_page = 36
+  rows_per_page = 37
   ;Folder (relative or absolute) to store the scraped files for the assets in markeplace
   scraping_folder = ../../../scraping
 

@@ -55,12 +55,14 @@ Usage
 
 
   Command: cleanup
-    usage: legendary cleanup [-h] [--delete-metadata] [--delete-extras-data]
+    usage: legendary cleanup [-h] [--delete-metadata] [--delete-extra-data] [--delete-scraping-data]
 
     optional arguments:
-      -h, --help                Show this help message and exit
-      -m, --delete-metadata     Also delete metadata files. They are kept by default
-      -e, --delete-extras-data  Also delete extras data files. They are kept by default'
+      -h, --help                  Show this help message and exit
+      -m, --delete-metadata       Also delete metadata files. They are kept by default
+      -e, --delete-extra-data     Also delete extra data files. They are kept by default'
+      -e, --delete-scraping-data  Also delete scraping data files. They are kept by default'
+      -g,  --gui                  Display the output in a windows instead of using the console
 
 
   Command: info

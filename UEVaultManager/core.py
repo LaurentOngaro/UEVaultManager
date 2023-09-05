@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- AppCore: handles most of the lower level interaction with the downloader, lfs, and api components to make writing CLI/GUI code easier and cleaner and avoid duplication.
+- AppCore: handle most of the lower level interaction with the downloader, lfs, and api components to make writing CLI/GUI code easier and cleaner and avoid duplication.
 """
 import concurrent
 import json
@@ -16,10 +16,11 @@ from hashlib import sha1
 from locale import getlocale, LC_CTYPE
 from platform import system
 from threading import current_thread, enumerate as thread_enumerate
+from typing import Dict, List
 from urllib.parse import urlparse
 
 from requests import session
-from requests.exceptions import HTTPError, ConnectionError
+from requests.exceptions import ConnectionError, HTTPError
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
@@ -28,8 +29,8 @@ from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.api.uevm import UEVMAPI
 from UEVaultManager.lfs.egl import EPCLFS
 from UEVaultManager.lfs.uevmlfs import UEVMLFS
-from UEVaultManager.models.app import *
-from UEVaultManager.models.exceptions import *
+from UEVaultManager.models.app import App, AppAsset
+from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.tkgui.modules.functions import box_message
@@ -46,8 +47,8 @@ class AppCore:
     AppCore handles most of the lower level interaction with
     the downloader, lfs, and api components to make writing CLI/GUI
     code easier and cleaner and avoid duplication.
-    :param override_config: path to a config file to use instead of the default
-    :param timeout: timeout in seconds for requests
+    :param override_config: path to a config file to use instead of the default.
+    :param timeout: timeout in seconds for requests.
     """
     _egl_version = '11.0.1-14907503+++Portal+Release-Live'
 
@@ -95,19 +96,22 @@ class AppCore:
         self.verbose_mode = False
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
-        # Set the file name (and path) for logging when an asset is ignored or filtered when running the --list command
+        # Set the file name (and path) to log issues when an asset is ignored or filtered when running the --list command
         self.ignored_assets_filename_log = ''
-        # Set the file name (and path) for logging when an asset is not found on the marketplace when running the --list command
+        # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the --list command
         self.notfound_assets_filename_log = ''
-        # Set the file name (and path) for logging when an asset has metadata and extras data are incoherent when running the --list command
+        # Set the file name (and path) to log issues when an asset has metadata and extra data are incoherent when running the --list command
         self.bad_data_assets_filename_log = ''
+        # Set the file name (and path) to log issues when scanning folder to find assets
+        self.scan_assets_filename_log = ''
         # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
         self.create_log_backup = True
         # new file loggers
         self.ignored_logger = None
         self.notfound_logger = None
         self.bad_data_logger = None
-        # store time to process metadata and extras update
+        self.scan_assets_logger = None
+        # store time to process metadata and extra update
         self.process_time_average = {'time': 0.0, 'count': 0}
         self.use_threads = False
         self.thread_executor = None
@@ -116,15 +120,15 @@ class AppCore:
 
     def setup_assets_loggers(self) -> None:
         """
-        Setup logging for ignored, not found and bad data assets
+        Setup logging for ignored, not found and bad data assets.
         """
 
         def create_logger(logger_name: str, filename_log: str):
             """
-            Create a logger for ignored, not found and bad data assets
-            :param logger_name:   
-            :param filename_log: 
-            :return: 
+            Create a logger for ignored, not found and bad data assets.
+            :param logger_name: logger name.
+            :param filename_log: log file name.
+            :return: logger.
             """
             filename_log = filename_log.replace('~/.config', self.uevmlfs.path)
             if check_and_create_path(filename_log):
@@ -135,7 +139,7 @@ class AppCore:
                 logger.info(message)
                 return logger
             else:
-                self.log.warning(f'Unable to create logger for file: {filename_log}')
+                self.log.warning(f'Failed to create logger for file: {filename_log}')
                 return None
 
         formatter = logging.Formatter('%(message)s')
@@ -147,12 +151,14 @@ class AppCore:
             self.notfound_logger = create_logger('NotFoundAssets', self.notfound_assets_filename_log)
         if self.bad_data_assets_filename_log:
             self.bad_data_logger = create_logger('BadDataAssets', self.bad_data_assets_filename_log)
+        if self.scan_assets_filename_log:
+            self.scan_assets_logger = create_logger('ScanAssets', self.scan_assets_filename_log)
 
     def auth_sid(self, sid) -> str:
         """
-        Handles getting an exchange code from an id
-        :param sid: session id
-        :return: exchange code
+        Handles getting an exchange code from an id.
+        :param sid: session id.
+        :return: exchange code.
         """
         s = session()
         s.headers.update(
@@ -190,7 +196,7 @@ class AppCore:
 
     def auth_code(self, code) -> bool:
         """
-        Handles authentication via authorization code (either retrieved manually or automatically)
+        Handles authentication via authorization code (either retrieved manually or automatically).
         """
         try:
             self.uevmlfs.userdata = self.egs.start_session(authorization_code=code)
@@ -201,7 +207,7 @@ class AppCore:
 
     def auth_ex_token(self, code) -> bool:
         """
-        Handles authentication via exchange token (either retrieved manually or automatically)
+        Handles authentication via exchange token (either retrieved manually or automatically).
         """
         try:
             self.uevmlfs.userdata = self.egs.start_session(exchange_token=code)
@@ -212,9 +218,8 @@ class AppCore:
 
     def auth_import(self) -> bool:
         """
-        Import refresh token from EGL installation and use it for logging in
-        :return: True if successful, False otherwise
-        :raises ValueError
+        Import refresh token from EGL installation and use it for loging in.
+        :return: True if successful, False otherwise.
         """
         self.egl.read_config()
         remember_me_data = self.egl.config.get('RememberMe', 'Data')
@@ -243,15 +248,19 @@ class AppCore:
             self.log.error(f'Logging in failed with {error!r}, please try again.')
             return False
 
-    def login(self, force_refresh=False) -> bool:
+    def login(self, force_refresh: bool = False, raise_error: bool = True) -> bool:
         """
-        Attempts logging in with existing credentials.
-        :param force_refresh: if True, force a refresh of the session
-        :return: True if successful, False otherwise
-        :raises ValueError if no existing credentials or InvalidCredentialsError if the API return an error
+        Attempts loging in with existing credentials.
+        :param force_refresh: Whether to force a refresh of the session.
+        :param raise_error: Whether to raise an exception if login fails.
+        :return: True if successful, False otherwise.
         """
         if not self.uevmlfs.userdata:
-            raise ValueError('No saved credentials')
+            if raise_error:
+                raise ValueError('No saved credentials')
+            else:
+                self.logged_in = False
+                return False
         elif self.logged_in and self.uevmlfs.userdata['expires_at']:
             dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
             dt_now = datetime.utcnow()
@@ -306,15 +315,15 @@ class AppCore:
 
     def update_check_enabled(self) -> bool:
         """
-        Returns whether update checks are enabled or not
-        :return: True if update checks are enabled, False otherwise
+        Returns whether update checks are enabled or not.
+        :return: True if update checks are enabled, False otherwise.
         """
         return not self.uevmlfs.config.getboolean('UEVaultManager', 'disable_update_check', fallback=False)
 
     def update_notice_enabled(self) -> bool:
         """
-        Returns whether update notices are enabled or not
-        :return: True if update notices are enabled, False otherwise
+        Returns whether update notices are enabled or not.
+        :return: True if update notices are enabled, False otherwise.
         """
         if self.force_show_update:
             return True
@@ -322,15 +331,15 @@ class AppCore:
 
     def check_for_updates(self, force=False) -> None:
         """
-        Checks for updates and sets the update_available flag accordingly
-        :param force: force update check
+        Checks for updates and sets the update_available flag accordingly.
+        :param force: force update check.
         """
 
         def version_tuple(v):
             """
-            Converts a version string to a tuple of ints
-            :param v: version string
-            :return:  tuple of ints
+            Converts a version string to a tuple of ints.
+            :param v: version string.
+            :return:  tuple of ints.
             """
             return tuple(map(int, (v.split('.'))))
 
@@ -345,17 +354,17 @@ class AppCore:
 
     def get_update_info(self) -> dict:
         """
-        Returns update info dict
-        :return: update info dict
+        Returns update info dict.
+        :return: update info dict.
         """
         return self.uevmlfs.get_cached_version()['data']
 
     def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
         """
         Returns a list of assets for the given platform.
-        :param update_assets: if True, always fetches a new list of assets from the server
-        :param platform: platform to fetch assets for
-        :return: list of AppAsset objects
+        :param update_assets: Whether to always fetches a new list of assets from the server.
+        :param platform: platform to fetch assets for.
+        :return: list of AppAsset objects.
         """
         # do not save and always fetch list when platform is overridden
         if not self.uevmlfs.assets or update_assets or platform not in self.uevmlfs.assets:
@@ -375,12 +384,11 @@ class AppCore:
 
     def get_asset(self, app_name: str, platform='Windows', update=False) -> AppAsset:
         """
-        Returns an AppAsset object for the given app name and platform
-        :param app_name: app name to get
-        :param platform: platform to get asset for
-        :param update: force update of asset list
-        :return: AppAsset object
-        :raises ValueError: if no asset is found for the given app name and platform
+        Returns an AppAsset object for the given app name and platform.
+        :param app_name: app name to get.
+        :param platform: platform to get asset for.
+        :param update: force update of asset list.
+        :return: AppAsset object.
         """
         if update or platform not in self.uevmlfs.assets:
             self.get_assets(update_assets=True, platform=platform)
@@ -392,10 +400,10 @@ class AppCore:
 
     def asset_available(self, item: App, platform='Windows') -> bool:
         """
-        Returns whether an asset is available for the given item and platform
-        :param item: item to check
-        :param platform:
-        :return: True if asset is available, False otherwise
+        Returns whether an asset is available for the given item and platform.
+        :param item: item to check.
+        :param platform:.
+        :return: True if asset is available, False otherwise.
         """
         # Just say yes for Origin titles
         if item.third_party_store:
@@ -409,11 +417,11 @@ class AppCore:
 
     def get_item(self, app_name, update_meta=False, platform='Windows') -> App:
         """
-        Returns an App object
-        :param app_name: name to get
-        :param update_meta: force update of metadata
-        :param platform: platform to get app for
-        :return: App object
+        Returns an App object.
+        :param app_name: name to get.
+        :param update_meta: force update of metadata.
+        :param platform: platform to get app for.
+        :return: App object.
         """
         if update_meta:
             self.get_asset_list(True, platform=platform)
@@ -421,19 +429,19 @@ class AppCore:
 
     def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[App], Dict[str, List[App]]):
         """
-        Returns a list of all available assets for the given platform
-        :param update_assets: force update of asset list
-        :param platform: platform to get assets for
-        :param filter_category: filter by category
-        :param force_refresh: force refresh of asset list
-        :return: Assets list
+        Returns a list of all available assets for the given platform.
+        :param update_assets: force update of asset list.
+        :param platform: platform to get assets for.
+        :param filter_category: filter by category.
+        :param force_refresh: force refresh of asset list.
+        :return: Assets list.
         """
 
         # Cancel all outstanding tasks and shut down the executor
         def stop_executor(tasks) -> None:
             """
-            Cancel all outstanding tasks and shut down the executor
-            :param tasks: tasks to cancel
+            Cancel all outstanding tasks and shut down the executor.
+            :param tasks: tasks to cancel.
             """
             for _, task in tasks.items():
                 task.cancel()
@@ -441,9 +449,9 @@ class AppCore:
 
         def fetch_asset_meta(name: str) -> bool:
             """
-            Fetches asset metadata for the given app name and adds it to the list of assets
-            :param name: app name
-            :return: True if successful, False otherwise
+            Fetches asset metadata for the given app name and adds it to the list of assets.
+            :param name: app name.
+            :return: True if successful, False otherwise.
             """
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
@@ -460,7 +468,7 @@ class AppCore:
 
             currently_fetching[name] = True
             start_time = datetime.now()
-            name, namespace, catalog_item_id, _process_meta, _process_extras = fetch_list[name]
+            name, namespace, catalog_item_id, _process_meta, _process_extra = fetch_list[name]
 
             if _process_meta:
                 eg_meta, status_code = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
@@ -472,32 +480,32 @@ class AppCore:
                 self.uevmlfs.set_item_meta(app.app_name, app)
                 apps[name] = app
 
-            if _process_extras:
+            if _process_extra:
                 # we use title because it's less ambiguous than a name when searching an asset
-                eg_extras = self.egs.grab_assets_extras(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
+                eg_extra = self.egs.grab_assets_extra(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
 
                 # check for data consistency
                 if 'stomt' in app_name.lower() or 'terrainmagic' in app_name.lower():
-                    if eg_extras.get('grab_result', '') != GrabResult.NO_ERROR.name or not eg_extras.get('owned', False):
+                    if eg_extra.get('grab_result', '') != GrabResult.NO_ERROR.name or not eg_extra.get('owned', False):
                         box_message(
-                            msg=f'Some results in extras data are inconsistants for {app_name}. Please check the data and try again. Exiting...',
+                            msg=f'Some results in extra data are inconsistants for {app_name}. Please check the data and try again. Exiting...',
                             level='error'
                         )
 
-                self.uevmlfs.set_item_extras(app_name=name, extras=eg_extras, update_global_dict=True)
+                self.uevmlfs.set_item_extra(app_name=name, extra=eg_extra, update_global_dict=True)
 
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
-                if eg_extras['page_title'] != '' and eg_extras['page_title'] != apps[name].app_title:
+                if eg_extra['page_title'] != '' and eg_extra['page_title'] != apps[name].app_title:
                     self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
-                    eg_extras['grab_result'] = GrabResult.INCONSISTANT_DATA.name
+                    eg_extra['grab_result'] = GrabResult.INCONSISTANT_DATA.name
                     if self.bad_data_logger:
                         self.bad_data_logger.info(name)
             else:
-                # if we don't process extras, we still need to add the asset to the log corresponding to their grab_result
-                eg_extras = self.uevmlfs.assets_extras_data[app_name]
-                if eg_extras['grab_result'] == GrabResult.INCONSISTANT_DATA.name and self.bad_data_logger:
+                # if we don't process extra, we still need to add the asset to the log corresponding to their grab_result
+                eg_extra = self.uevmlfs.assets_extra_data[app_name]
+                if eg_extra['grab_result'] == GrabResult.INCONSISTANT_DATA.name and self.bad_data_logger:
                     self.bad_data_logger.info(name)
-                if eg_extras['grab_result'] == GrabResult.CONTENT_NOT_FOUND.name and self.notfound_logger:
+                if eg_extra['grab_result'] == GrabResult.CONTENT_NOT_FOUND.name and self.notfound_logger:
                     self.notfound_logger.info(name)
             # compute process time and average in s
             end_time = datetime.now()
@@ -615,10 +623,10 @@ class AppCore:
             if not item_metadata:
                 self.log.info(f'Metadata for {app_name} are missing. It Will be ADDED to the FETCH list')
             else:
-                category = str(item_metadata.metadata['categories'][0]['path']).lower()
-                if filter_category and filter_category.lower() not in category:
+                category_lower = str(item_metadata.metadata['categories'][0]['path']).lower()
+                if filter_category and filter_category.lower() not in category_lower:
                     self.log.info(
-                        f'{app_name} has been FILTERED by category ("{filter_category}" text not found in "{category}").It has been added to the ignored_logger file'
+                        f'{app_name} has been FILTERED by category ("{filter_category}" text not found in "{category_lower}").It has been added to the ignored_logger file'
                     )
                     if self.ignored_logger:
                         self.ignored_logger.info(app_name)
@@ -630,20 +638,20 @@ class AppCore:
                 apps[app_name] = item_metadata
                 self.log.debug(f'{app_name} has been ADDED to the apps list with asset_updated={asset_updated}')
 
-            # get extras data only in not filtered
+            # get extra data only in not filtered
             if force_refresh or asset_updated:
-                process_extras = True
+                process_extra = True
             else:
-                # will read the extras data from file if necessary and put in the global dict
-                process_extras = self.uevmlfs.get_item_extras(app_name) is None
+                # will read the extra data from file if necessary and put in the global dict
+                process_extra = self.uevmlfs.get_item_extra(app_name) is None
 
             process_meta = not item_metadata or force_refresh or asset_updated
 
-            if update_assets and (process_extras or process_meta):
-                self.log.debug(f'Scheduling metadata and extras update for {app_name}')
+            if update_assets and (process_extra or process_meta):
+                self.log.debug(f'Scheduling metadata and extra update for {app_name}')
                 # namespace/catalog item are the same for all platforms, so we can just use the first one
                 _ga = next(iter(app_assets.values()))
-                fetch_list[app_name] = (app_name, _ga.namespace, _ga.catalog_item_id, process_meta, process_extras)
+                fetch_list[app_name] = (app_name, _ga.namespace, _ga.catalog_item_id, process_meta, process_extra)
                 meta_updated = True
             i += 1
             filtered_items.append(item)
@@ -651,14 +659,14 @@ class AppCore:
 
         # setup and teardown of thread pool takes some time, so only do it when it makes sense.
         self.use_threads = len(fetch_list) > 5
-        # self.use_threads = False  # test only
+        # self.use_threads = False  # Debug only
         if fetch_list:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(
                     new_value=0, new_text="Fetching missing metadata...\nIt could take some time. Be patient.", new_max_value=len(fetch_list)
                 )
                 # gui_g.progress_window_ref.hide_progress_bar()
-                # gui_g.progress_window_ref.hide_stop_button()
+                # gui_g.progress_window_ref.hide_btn_stop()
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
             if self.use_threads:
@@ -681,25 +689,26 @@ class AppCore:
                             # print("Result: ", result)
                         except Exception as error:
                             self.log.warning(f'The following error occurs in threading: {error!r}')
-                        if not gui_g.progress_window_ref.continue_execution:
+                        if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
                             # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
                             stop_executor(futures)
                 self.thread_executor.shutdown(wait=False)
-
+                """
                 # Wait for all the tasks to finish
-                # concurrent.futures.wait(futures.values())
-                # for key, future in futures.items():
-                #     try:
-                #         future.result()
-                #     except Exception as error:
-                #         self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
-                # self.thread_executor.shutdown(wait=False)
+                concurrent.futures.wait(futures.values())
+                for key, future in futures.items():
+                    try:
+                        future.result()
+                    except Exception as error:
+                        self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
+                self.thread_executor.shutdown(wait=False)
+                """
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
         if gui_g.progress_window_ref is not None:
             # gui_g.progress_window_ref.show_progress_bar()  # show progress bar, must be before reset
-            gui_g.progress_window_ref.show_stop_button()
+            gui_g.progress_window_ref.show_btn_stop()
             gui_g.progress_window_ref.reset(new_value=0, new_text="Checking and Fetching assets data...", new_max_value=len(filtered_items))
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
@@ -716,7 +725,7 @@ class AppCore:
             else:
                 fetch_try_count[app_name] = 1
             if self.verbose_mode:
-                self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name] }. Still {len(filtered_items)} assets to check')
+                self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name]}. Still {len(filtered_items)} assets to check')
             try:
                 app_item = apps.get(app_name)
             except (KeyError, IndexError):
@@ -769,17 +778,17 @@ class AppCore:
             self._save_metadata(_ret)
         if meta_updated:
             if gui_g.progress_window_ref is not None:
-                gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extras data files...", new_max_value=len(_ret))
-            self.log.info(f'Updating extras data files...Could take a some time')
-            self._prune_extras_data(update_global_dict=False)
-            self._save_extras_data(self.uevmlfs.assets_extras_data, update_global_dict=False)
+                gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extra data files...", new_max_value=len(_ret))
+            self.log.info(f'Updating extra data files...Could take a some time')
+            self._prune_extra_data(update_global_dict=False)
+            self._save_extra_data(self.uevmlfs.assets_extra_data, update_global_dict=False)
         return _ret
 
     # end def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
 
     def _prune_metadata(self) -> None:
         """
-        Compile a list of assets without assets, then delete their metadata
+        Compile a list of assets without assets, then delete their metadata.
         """
         # compile list of assets without assets, then delete their metadata
         owned_assets = set()
@@ -789,22 +798,22 @@ class AppCore:
             self.log.debug(f'Removing old/unused metadata for "{app_name}"')
             self.uevmlfs.delete_item_meta(app_name)
 
-    def _prune_extras_data(self, update_global_dict: True) -> None:
+    def _prune_extra_data(self, update_global_dict: True) -> None:
         """
-        Compile a list of assets without assets, then delete their extras data
-        :param update_global_dict:  if True, update the global dict
+        Compile a list of assets without assets, then delete their extra data.
+        :param update_global_dict:  if True, update the global dict.
         """
         owned_assets = set()
         owned_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
 
         for app_name in self.uevmlfs.get_item_app_names():
-            self.log.debug(f'Removing old/unused extras data for "{app_name}"')
-            self.uevmlfs.delete_item_extras(app_name, update_global_dict=update_global_dict)
+            self.log.debug(f'Removing old/unused extra data for "{app_name}"')
+            self.uevmlfs.delete_item_extra(app_name, update_global_dict=update_global_dict)
 
     def _save_metadata(self, assets) -> None:
         """
-        Save the metadata for the given assets
-        :param assets:  List of assets to save
+        Save the metadata for the given assets.
+        :param assets:  List of assets to save.
         """
         self.log.info('Saving metadata in files... could take some time')
         for app in assets:
@@ -812,26 +821,25 @@ class AppCore:
                 return
             self.uevmlfs.set_item_meta(app.app_name, app)
 
-    def _save_extras_data(self, extras: dict, update_global_dict: True) -> None:
+    def _save_extra_data(self, extra: dict, update_global_dict: True) -> None:
         """
-        Save the extras data for the given assets
-        :param extras: Dict of extras data to save
-        :param update_global_dict: if True, update the global dict
+        Save the extra data for the given assets.
+        :param extra: Dict of extra data to save.
+        :param update_global_dict: Whether to update the global dict.
         """
-        self.log.info('Saving extras data in files... could take some time')
-        for app_name, eg_extras in extras.items():
+        self.log.info('Saving extra data in files... could take some time')
+        for app_name, eg_extra in extra.items():
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
-            self.uevmlfs.set_item_extras(app_name=app_name, extras=eg_extras, update_global_dict=update_global_dict)
+            self.uevmlfs.set_item_extra(app_name=app_name, extra=eg_extra, update_global_dict=update_global_dict)
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
         """
         Gets a list of Items without assets for installation, for instance Items delivered via
-        third-party stores that do not have assets for installation
-
-        :param force_refresh: Force a metadata refresh
-        :param skip_ue: Ignore Unreal Marketplace entries
-        :return: List of Items that do not have assets
+        third-party stores that do not have assets for installation.
+        :param force_refresh: Force a metadata refresh.
+        :param skip_ue: Ignore Unreal Marketplace entries.
+        :return: List of Items that do not have assets.
         """
         _ret = []
         # get all the app names we have to ignore
@@ -860,9 +868,9 @@ class AppCore:
     @staticmethod
     def load_manifest(data: bytes) -> Manifest:
         """
-        Load a manifest
-        :param data: Bytes object to load the manifest from
-        :return: Manifest object
+        Load a manifest.
+        :param data: Bytes object to load the manifest from.
+        :return: Manifest object.
         """
         if data[0:1] == b'{':
             return JSONManifest.read_all(data)
@@ -871,10 +879,10 @@ class AppCore:
 
     def get_cdn_urls(self, item, platform='Windows'):
         """
-        Get the CDN URLs
-        :param item: Item to get the CDN URLs for
-        :param platform: Platform to get the CDN URLs for
-        :return: List of CDN URLs
+        Get the CDN URLs.
+        :param item: Item to get the CDN URLs for.
+        :param platform: Platform to get the CDN URLs for.
+        :return: List of CDN URLs.
         """
         m_api_r = self.egs.get_item_manifest(item.namespace, item.catalog_item_id, item.app_name, platform)
 
@@ -900,12 +908,11 @@ class AppCore:
 
     def get_cdn_manifest(self, item, platform='Windows', disable_https=False):
         """
-        Get the CDN manifest
-        :param item: Item to get the CDN manifest for
-        :param platform: Platform to get the CDN manifest for
-        :param disable_https: Disable HTTPS for the manifest URLs
-        :return: list of base URLs, manifest hash
-        :raises ValueError
+        Get the CDN manifest.
+        :param item: Item to get the CDN manifest for.
+        :param platform: Platform to get the CDN manifest for.
+        :param disable_https: Disable HTTPS for the manifest URLs.
+        :return: list of base URLs, manifest hash.
         """
         manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(item, platform)
         if not manifest_urls:
@@ -920,7 +927,7 @@ class AppCore:
             try:
                 r = self.egs.unauth_session.get(url, timeout=10.0)
             except Exception as error:
-                self.log.warning(f'Unable to download manifest from "{urlparse(url).netloc}" '
+                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" '
                                  f'(Exception: {error!r}), trying next URL...')
                 continue
 
@@ -928,10 +935,10 @@ class AppCore:
                 manifest_bytes = r.content
                 break
             else:
-                self.log.warning(f'Unable to download manifest from "{urlparse(url).netloc}" '
+                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" '
                                  f'(status: {r.status_code}), trying next URL...')
         else:
-            raise ValueError(f'Unable to get manifest from any CDN URL, last result: {r.status_code} ({r.reason})')
+            raise ValueError(f'Failed to get manifest from any CDN URL, last result: {r.status_code} ({r.reason})')
 
         if sha1(manifest_bytes).hexdigest() != manifest_hash:
             raise ValueError('Manifest sha hash mismatch!')
@@ -940,9 +947,9 @@ class AppCore:
 
     def get_uri_manifest(self, uri: str) -> (bytes, List[str]):
         """
-        Get the manifest
-        :param uri: URI to get the manifest from
-        :return:  Manifest data and base URLs
+        Get the manifest.
+        :param uri: URI to get the manifest from.
+        :return:  Manifest data and base URLs.
         """
         if uri.startswith('http'):
             r = self.egs.unauth_session.get(uri)
@@ -959,9 +966,9 @@ class AppCore:
     # Check if the UE assets metadata cache must be updated
     def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False) -> None:
         """
-        Check if the UE assets metadata cache must be updated
-        :param assets_count: assets count from the API
-        :param force_refresh: force the refresh of the cache
+        Check if the UE assets metadata cache must be updated.
+        :param assets_count: assets count from the API.
+        :param force_refresh: force the refresh of the cache.
         """
         self.cache_is_invalidate = False
         cached = self.uevmlfs.get_assets_cache_info()
@@ -984,9 +991,40 @@ class AppCore:
 
     def clean_exit(self, code=0) -> None:
         """
-        Do cleanup, config saving, and quit
-        :param code: exit code
+        Do cleanup, config saving, and quit.
+        :param code: exit code.
         """
         self.uevmlfs.save_config()
         logging.shutdown()
         sys.exit(code)
+
+    def open_manifest_file(self, file_path: str) -> dict:
+        """
+        Open a manifest file and return its data.
+        :param file_path: Path to the manifest file.
+        :return: Manifest data.
+        """
+        try:
+            with open(file_path, 'rb') as file:
+                manifest_data = file.read()
+        except FileNotFoundError:
+            self.log.warning(f'The file {file_path} does not exist.')
+            return {}
+        manifest_info = {}
+        manifest = self.load_manifest(manifest_data)
+        manifest_info['app_name'] = manifest.meta.app_name
+
+        # file and chunk count
+        manifest_info['num_files'] = manifest.file_manifest_list.count
+        manifest_info['num_chunks'] = manifest.chunk_data_list.count
+        # total file size
+        total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
+        file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+        manifest_info['file_size'] = file_size
+        manifest_info['disk_size'] = total_size
+        # total chunk size
+        total_size = sum(c.file_size for c in manifest.chunk_data_list.elements)
+        chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+        manifest_info['chunk_size'] = chunk_size
+        manifest_info['download_size'] = total_size
+        return manifest_info

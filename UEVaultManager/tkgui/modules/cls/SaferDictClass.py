@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- SaferDict: a dictionary subclass that provides a safer alternative to handle non-existing keys
+- SaferDict: a dictionary subclass that provides a safer alternative to handle non-existing keys.
 """
 
 
@@ -13,49 +13,48 @@ class SaferDict(dict):
 
     def __getitem__(self, key):
         """
-        Returns the value associated with the given key.
+        Return the value associated with the given key.
         If the key does not exist, returns None.
-        :param key: the key to get
+        :param key: the key to get.
         """
         return super().get(key, None)
 
     def __getattr__(self, key):
         """
-        Returns the value associated with the given key using dot notation.
+        Return the value associated with the given key using dot notation.
         If the key does not exist, returns None.
-        :param key: the key to get
+        :param key: the key to get.
         """
         return super().get(key, None)
 
     def __delattr__(self, key):
         """
-        Deletes the key-value pair associated with the given key using dot notation.
+        Delete the key-value pair associated with the given key using dot notation.
         If the key does not exist, does nothing and does not raise an error.
-        :param key: the key to delete
+        :param key: the key to delete.
         """
         self.pop(key, None)
 
     def __setattr__(self, key, value):
         """
-        Sets the value associated with the given key using dot notation.
-        :param key: the key to set
+        Set the value associated with the given key using dot notation.
+        :param key: the key to set.
         """
         self[key] = value
 
     def get(self, key: str, default=None):
         """
-        Returns the value associated with the given key.
+        Return the value associated with the given key.
         If the key does not exist, returns the specified default value or None if no default value is provided.
-        :param key: the key to get
-        :param default: the default value to return if the key doesn't exist
+        :param key: the key to get.
+        :param default: the default value to return if the key doesn't exist.
         """
         return super().get(key, default)
 
     def copy_from(self, source: dict):
         """
-        Copies the content of the given source dictionary into the SaferDict.
-        :param source: the source dictionary to copy from
-        :raises TypeError: if the source is not a dictionary
+        Copie the content of the given source dictionary into the SaferDict.
+        :param source: the source dictionary to copy from.
         """
         if not isinstance(source, dict):
             raise TypeError("source must be a dictionary")

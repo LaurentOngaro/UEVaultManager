@@ -1,8 +1,7 @@
 # coding=utf-8
 """
-The rolling hash Epic uses, it appears to be a variation on CRC-64-ECMA
+The rolling hash Epic uses, it appears to be a variation on CRC-64-ECMA.
 """
-
 hash_poly = 0xC96C5795D7870F42
 hash_table = []
 

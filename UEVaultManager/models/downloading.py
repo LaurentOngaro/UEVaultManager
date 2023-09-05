@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from dataclasses import dataclass
-from enum import Flag, auto
+from enum import auto, Flag
 from typing import Optional
 
 from .manifest import ManifestComparison
@@ -10,7 +10,7 @@ from .manifest import ManifestComparison
 @dataclass
 class SharedMemorySegment:
     """
-    Segment of the shared memory used for one Chunk
+    Segment of the shared memory used for one Chunk.
     """
     offset: int
     end: int
@@ -23,7 +23,7 @@ class SharedMemorySegment:
 @dataclass
 class DownloaderTask:
     """
-    Task submitted to the download worker
+    Task submitted to the download worker.
     """
     url: str
     chunk_guid: int
@@ -33,7 +33,7 @@ class DownloaderTask:
 @dataclass
 class DownloaderTaskResult(DownloaderTask):
     """
-    Result of DownloaderTask provided by download workers
+    Result of DownloaderTask provided by download workers.
     """
     success: bool
     size_downloaded: Optional[int] = None
@@ -43,7 +43,7 @@ class DownloaderTaskResult(DownloaderTask):
 @dataclass
 class ChunkTask:
     """
-    A task describing a single read of a (partial) chunk from memory or an existing file
+    A task describing a single read of a (partial) chunk from memory or an existing file.
     """
     chunk_guid: int
     chunk_offset: int = 0
@@ -69,7 +69,7 @@ class TaskFlags(Flag):
 @dataclass
 class FileTask:
     """
-    A task describing some operation on the filesystem
+    A task describing some operation on the filesystem.
     """
     filename: str
     flags: TaskFlags
@@ -80,7 +80,7 @@ class FileTask:
 @dataclass
 class WriterTask:
     """
-    Task for FileWriter worker process, describing an operation on the filesystem
+    Task for FileWriter worker process, describing an operation on the filesystem.
     """
     filename: str
     flags: TaskFlags
@@ -100,7 +100,7 @@ class WriterTask:
 @dataclass
 class WriterTaskResult(WriterTask):
     """
-    Result from the FileWriter worker
+    Result from the FileWriter worker.
     """
     success: bool = False
     size: int = 0
@@ -109,7 +109,7 @@ class WriterTaskResult(WriterTask):
 @dataclass
 class UIUpdate:
     """
-    Status update object sent from the manager to the CLI/GUI to update status indicators
+    Status update object sent from the manager to the CLI/GUI to update status indicators.
     """
     progress: float
     download_speed: float
@@ -122,7 +122,7 @@ class UIUpdate:
 @dataclass
 class AnalysisResult:
     """
-    Result of processing a manifest for downloading
+    Result of processing a manifest for downloading.
     """
     dl_size: int = 0
     uncompressed_dl_size: int = 0
@@ -146,7 +146,7 @@ class AnalysisResult:
 @dataclass
 class ConditionCheckResult:
     """
-    Result of install condition checks
+    Result of install condition checks.
     """
     failures: Optional[set] = None
     warnings: Optional[set] = None
@@ -154,6 +154,6 @@ class ConditionCheckResult:
 
 class TerminateWorkerTask:
     """
-    Universal task to signal a worker to exit
+    Universal task to signal a worker to exit.
     """
     pass

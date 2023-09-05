@@ -2,19 +2,19 @@
 """
 implementation for:
 - AppAsset: App asset data
-- App: Combination of app asset, app metadata and app extras as stored on disk
+- App: Combination of app asset, app metadata and app extra as stored on disk
 - VerifyResult: Result of a verification
-
+.
 """
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict
+from typing import Dict, List
 
 
 @dataclass
 class AppAsset:
     """
-    App asset data
+    App asset data.
     """
     app_name: str = ''
     asset_id: str = ''
@@ -28,9 +28,9 @@ class AppAsset:
     @classmethod
     def from_egs_json(cls, json) -> 'AppAsset':
         """
-        Create AppAsset from EGS
-        :param json: data
-        :return: an AppAsset
+        Create AppAsset from EGS.
+        :param json: data.
+        :return: an AppAsset.
         """
         tmp = cls()
         tmp.app_name = json.get('appName', '')
@@ -46,9 +46,9 @@ class AppAsset:
     @classmethod
     def from_json(cls, json) -> 'AppAsset':
         """
-        Create AppAsset from json
-        :param json: data
-        :return: an AppAsset
+        Create AppAsset from json.
+        :param json: data.
+        :return: an AppAsset.
         """
         tmp = cls()
         tmp.app_name = json.get('app_name', '')
@@ -64,7 +64,7 @@ class AppAsset:
 @dataclass
 class App:
     """
-    Combination of app asset, app metadata and app extras as stored on disk
+    Combination of app asset, app metadata and app extra as stored on disk.
     """
     app_name: str
     app_title: str
@@ -75,9 +75,9 @@ class App:
 
     def app_version(self, platform='Windows'):
         """
-        Get app version for a given platform
-        :param platform: platform
-        :return: app version
+        Get app version for a given platform.
+        :param platform: platform.
+        :return: app version.
         """
         if platform not in self.asset_infos:
             return None
@@ -86,16 +86,16 @@ class App:
     @property
     def is_dlc(self) -> bool:
         """
-        Check if app is a DLC
-        :return: True if DLC, False otherwise
+        Check if app is a DLC.
+        :return: True if DLC, False otherwise.
         """
         return self.metadata and 'mainGameItem' in self.metadata
 
     @property
     def third_party_store(self):
         """
-        Get third party store
-        :return: third party store
+        Get third party store.
+        :return: third party store.
         """
         if not self.metadata:
             return None
@@ -104,8 +104,8 @@ class App:
     @property
     def catalog_item_id(self):
         """
-        Get catalog item id
-        :return: catalog item id
+        Get catalog item id.
+        :return: catalog item id.
         """
         if not self.metadata:
             return None
@@ -114,8 +114,8 @@ class App:
     @property
     def namespace(self):
         """
-        Get namespace
-        :return: namespace
+        Get namespace.
+        :return: namespace.
         """
         if not self.metadata:
             return None
@@ -124,11 +124,11 @@ class App:
     @classmethod
     def from_json(cls, json) -> 'App':
         """
-        Create App from json
-        :param json: data
-        :return: an App
+        Create App from json.
+        :param json: data.
+        :return: an App.
         """
-        tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''),)  # call to the class constructor
+        tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''), )  # call to the class constructor
         tmp.metadata = json.get('metadata', dict())
         if 'asset_infos' in json:
             tmp.asset_infos = {k: AppAsset.from_json(v) for k, v in json['asset_infos'].items()}
@@ -148,7 +148,7 @@ class App:
 
 class VerifyResult(Enum):
     """
-    Result of a verification
+    Result of a verification.
     """
     HASH_MATCH = 0
     HASH_MISMATCH = 1

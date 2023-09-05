@@ -2,24 +2,24 @@
 """
 GUI module for UEVaultManager
 this can be run directly by executing this script
-or by the --edit command option for the UEVaultManager cli application, for instance by running `cli --edit --input <my_source_file>'
+or by the --edit command option for the UEVaultManager cli application, for instance by running cli --edit --input <my_source_file>.
 """
 import os.path
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.tkgui.modules.EditableTableClass import DataSourceType
+from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.functions import log_error
-from UEVaultManager.tkgui.modules.UEVMGuiClass import UEVMGui
+from UEVaultManager.tkgui.modules.types import DataSourceType
 
 
 def init_gui(open_mainwindow=True, use_db=False) -> str:
     """
-    Main function for the GUI
-    :param open_mainwindow: if True, the main window will be opened (default mode).
-            Set to False for running the GUI initialization only, useful if called from cli.py
-    :param use_db: if True, the database will be used instead of the csv file
-    :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script
+    Main function for the GUI.
+    :param open_mainwindow: Whether the main window will be opened (default mode).
+            Set to False for running the GUI initialization only, useful if called from cli.py.
+    :param use_db: Whether the database will be used instead of the csv file.
+    :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script.
     """
     gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
     rebuild = False
@@ -37,7 +37,7 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
             rebuild = True
     if open_mainwindow:
         main_window = UEVMGui(
-            title=gui_g.s.app_title,
+            title=gui_g.s.app_title_long,
             icon=gui_g.s.app_icon_filename,
             screen_index=0,
             data_source_type=data_source_type,
@@ -50,4 +50,4 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
 
 
 if __name__ == '__main__':
-    init_gui(open_mainwindow=True, use_db=True)
+    init_gui(open_mainwindow=True, use_db=gui_g.s.testing_switch <= 0)

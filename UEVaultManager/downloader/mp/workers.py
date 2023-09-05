@@ -10,8 +10,9 @@ from queue import Empty
 
 import requests
 
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.chunk import Chunk
-from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, WriterTask, WriterTaskResult, TerminateWorkerTask, TaskFlags)
+from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, TaskFlags, TerminateWorkerTask, WriterTask, WriterTaskResult)
 
 
 class DLWorker(Process):
@@ -61,7 +62,7 @@ class DLWorker(Process):
                 while tries < self.max_retries:
                     # retry once immediately, otherwise do exponential backoff
                     if tries > 1:
-                        sleep_time = 2**(tries - 1)
+                        sleep_time = 2 ** (tries - 1)
                         logger.info(f'Sleeping {sleep_time} seconds before retrying.')
                         time.sleep(sleep_time)
 
@@ -124,7 +125,7 @@ class FileWorker(Process):
         self.q = queue
         self.o_q = out_queue
         self.base_path = base_path
-        self.cache_path = cache_path or os.path.join(base_path, '.cache')
+        self.cache_path = cache_path or path_join(base_path, '.cache')
         self.shm = SharedMemory(name=shm)
         self.log_level = logging.getLogger().level
         self.logging_queue = logging_queue
@@ -161,10 +162,10 @@ class FileWorker(Process):
 
                 # make directories if required
                 path = os.path.split(j.filename)[0]
-                if not os.path.exists(os.path.join(self.base_path, path)):
-                    os.makedirs(os.path.join(self.base_path, path))
+                if not os.path.exists(path_join(self.base_path, path)):
+                    os.makedirs(path_join(self.base_path, path))
 
-                full_path = os.path.join(self.base_path, j.filename)
+                full_path = path_join(self.base_path, j.filename)
 
                 if j.flags & TaskFlags.CREATE_EMPTY_FILE:  # just create an empty file
                     open(full_path, 'a').close()
@@ -203,7 +204,7 @@ class FileWorker(Process):
                             continue
 
                     try:
-                        os.rename(os.path.join(self.base_path, j.old_file), full_path)
+                        os.rename(path_join(self.base_path, j.old_file), full_path)
                     except OSError as error:
                         logger.error(f'Renaming file failed: {error!r}')
                         self.o_q.put(WriterTaskResult(success=False, **j.__dict__))
@@ -247,12 +248,12 @@ class FileWorker(Process):
                         shm_end = shm_offset + j.chunk_size
                         current_file.write(self.shm.buf[shm_offset:shm_end].tobytes())
                     elif j.cache_file:
-                        with open(os.path.join(self.cache_path, j.cache_file), 'rb') as f:
+                        with open(path_join(self.cache_path, j.cache_file), 'rb') as f:
                             if j.chunk_offset:
                                 f.seek(j.chunk_offset)
                             current_file.write(f.read(j.chunk_size))
                     elif j.old_file:
-                        with open(os.path.join(self.base_path, j.old_file), 'rb') as f:
+                        with open(path_join(self.base_path, j.old_file), 'rb') as f:
                             if j.chunk_offset:
                                 f.seek(j.chunk_offset)
                             current_file.write(f.read(j.chunk_size))

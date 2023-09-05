@@ -368,11 +368,9 @@ class CDL:
     def get_chunk_by_guid(self, guid):
         """
         Get chunk by GUID string or number, creates index of chunks on first call
-
         Integer GUIDs are usually faster and require less memory, use those when possible.
-
-        :param guid:
-        :return:
+        :param guid: GUID string or number
+        :return: Chunk.
         """
         if isinstance(guid, int):
             return self.get_chunk_by_guid_num(guid)
@@ -718,9 +716,9 @@ class FileManifest:
             _cp.append('[...]')
             cp_repr = ', '.join(_cp)
 
-        return '<FileManifest (filename="{}", symlink_target="{}", hash={}, flags={}, ' \
-               'install_tags=[{}], chunk_parts=[{}], file_size={})>'.format(self.filename, self.symlink_target, self.hash.hex(), self.flags,
-                                                                            ', '.join(self.install_tags), cp_repr, self.file_size)
+        return '<FileManifest (filename="{}", symlink_target="{}", hash={}, flags={}, install_tags=[{}], chunk_parts=[{}], file_size={})>'.format(
+            self.filename, self.symlink_target, self.hash.hex(), self.flags, ', '.join(self.install_tags), cp_repr, self.file_size
+        )
 
 
 class ChunkPart:
@@ -825,6 +823,7 @@ class ManifestComparison:
         self.added = set()
         self.removed = set()
         self.changed = set()
+
         self.unchanged = set()
 
     @classmethod

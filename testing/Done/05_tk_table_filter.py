@@ -33,7 +33,7 @@ def prev_page():
         update_table()
 
 
-df = pd.read_csv('../../results/list.csv')
+df = pd.read_csv('K:/UE/UEVM/results/list.csv')
 
 root = tk.Tk()
 
@@ -48,7 +48,6 @@ for i, col in enumerate(df.columns):
     entry.bind('<KeyRelease>', lambda event: update_table())
     entries.append(entry)
 
-
 rows_per_page = 10
 total_pages = (len(df) - 1) // rows_per_page + 1
 current_page = 1
@@ -56,7 +55,6 @@ data_frame = tk.Frame(root)
 data_frame.pack(fill=tk.X, expand=True)
 table = Table(data_frame, dataframe=df.iloc[0:rows_per_page])
 table.show()
-
 
 info_frame = tk.Frame(root)
 info_frame.pack(fill=tk.X, expand=True)

@@ -4,9 +4,7 @@ import json
 import struct
 from copy import deepcopy
 
-from UEVaultManager.models.manifest import (
-    Manifest, ManifestMeta, CDL, ChunkPart, ChunkInfo, FML, FileManifest, CustomFields
-)
+from UEVaultManager.models.manifest import (CDL, ChunkInfo, ChunkPart, CustomFields, FileManifest, FML, Manifest, ManifestMeta)
 
 
 def blob_to_num(in_str):
@@ -17,7 +15,6 @@ def blob_to_num(in_str):
     ...instead of just putting the fucking number in the JSON...
 
     Also, it's still little endian, so we have to bitshift it.
-
     """
     num = 0
     shift = 0
@@ -33,8 +30,7 @@ def guid_from_json(in_str):
 
 class JSONManifest(Manifest):
     """
-    Manifest-compatible reader for JSON based manifests
-
+    Manifest-compatible reader for JSON based manifests.
     """
 
     def __init__(self):
@@ -82,6 +78,7 @@ class JSONManifest(Manifest):
 
 
 class JSONManifestMeta(ManifestMeta):
+
     def __init__(self):
         super().__init__()
 
@@ -105,6 +102,7 @@ class JSONManifestMeta(ManifestMeta):
 
 
 class JSONCDL(CDL):
+
     def __init__(self):
         super().__init__()
 
@@ -138,6 +136,7 @@ class JSONCDL(CDL):
 
 
 class JSONFML(FML):
+
     def __init__(self):
         super().__init__()
 

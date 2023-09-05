@@ -2,7 +2,7 @@
 """
 Implementation for:
 - MockLauncher: mock launcher to handle the webview login
-- do_webview_login() : launch the webview login
+- do_webview_login() : launch the webview login.
 """
 import json
 import logging
@@ -59,8 +59,8 @@ sid_req.send();
 class MockLauncher:
     """
     Mock launcher to handle the webview login.
-    :param callback_sid: callback function to handle the SID login
-    :param callback_code: callback function to handle the exchange code
+    :param callback_sid: callback function to handle the SID login.
+    :param callback_code: callback function to handle the exchange code.
     """
 
     def __init__(self, callback_sid, callback_code):
@@ -96,8 +96,8 @@ class MockLauncher:
     def nop(self, *args, **kwargs) -> None:
         """
         No operation function.
-        :param args: arguments
-        :param kwargs: keyword arguments
+        :param args: arguments.
+        :param kwargs: keyword arguments.
         """
         return
 
@@ -105,14 +105,14 @@ class MockLauncher:
     def open_url_external(url: str) -> None:
         """
         Open the given url in the default browser.
-        :param url: url to open
+        :param url: url to open.
         """
         webbrowser.open(url)
 
     def set_exchange_code(self, exchange_code: str) -> None:
         """
         Callback function called when the exchange code is received.
-        :param exchange_code: exchange code
+        :param exchange_code: exchange code.
         """
         self.inject_js = False
         logger.debug('Got exchange code (stage 1)!')
@@ -145,7 +145,7 @@ class MockLauncher:
     def login_sid(self, sid_json: str) -> None:
         """
         Login with the given SID.
-        :param sid_json: SID json
+        :param sid_json: SID json.
         """
         # Try SID login, then log out
         try:
@@ -165,8 +165,8 @@ class MockLauncher:
 def do_webview_login(callback_sid=None, callback_code=None) -> None:
     """
     Open a webview window to log in to Epic Games.
-    :param callback_sid: callback function to handle the SID login
-    :param callback_code: callback function to handle the exchange code
+    :param callback_sid: callback function to handle the SID login.
+    :param callback_code: callback function to handle the exchange code.
     """
     api = MockLauncher(callback_sid=callback_sid, callback_code=callback_code)
     url = login_url
