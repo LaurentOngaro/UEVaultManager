@@ -68,6 +68,7 @@ class UEAssetScraper:
         engine_version_for_obsolete_assets=None,
         egs: EPCAPI = None,
         progress_window=None,  # don't use a typed annotation here to avoid import
+        cli_args=None,
     ) -> None:
         self._last_run_filename: str = 'last_run.json'
         self._urls_list_filename: str = 'urls_list.txt'
@@ -91,6 +92,7 @@ class UEAssetScraper:
         self.store_ids = store_ids
         self.use_raw_format: bool = use_raw_format
         self.clean_database: bool = clean_database
+        self.cli_args = cli_args
         # test several ways to get the following value depending on the context
         # noinspection PyBroadException
         try:
@@ -126,8 +128,8 @@ class UEAssetScraper:
 
     def _log_debug(self, message):
         """ a simple wrapper to use when cli is not initialized"""
-        if gui_g.UEVM_cli_ref is None:
-            print(message)
+        if gui_g.UEVM_cli_ref is None and self.cli_args.debug:
+            print(f'DEBUG {message}')
         else:
             if gui_g.s.testing_switch >= 1:
                 # force printing debug messages when testing
@@ -138,21 +140,21 @@ class UEAssetScraper:
     def _log_info(self, message):
         """ a simple wrapper to use when cli is not initialized"""
         if gui_g.UEVM_cli_ref is None:
-            print(message)
+            print(f'INFO {message}')
         else:
             self.logger.info(message)
 
     def _log_warning(self, message):
         """ a simple wrapper to use when cli is not initialized"""
         if gui_g.UEVM_cli_ref is None:
-            print(message)
+            print(f'WARNING {message}')
         else:
             self.logger.warning(message)
 
     def _log_error(self, message):
         """ a simple wrapper to use when cli is not initialized"""
         if gui_g.UEVM_cli_ref is None:
-            print(message)
+            print(f'ERROR {message}')
         else:
             self.logger.error(message)
 
