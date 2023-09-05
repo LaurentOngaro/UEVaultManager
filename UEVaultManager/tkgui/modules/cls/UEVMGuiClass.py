@@ -136,6 +136,10 @@ class UEVMGui(tk.Tk):
             update_rows_text_func=self.update_rows_text,
             set_control_state_func=self.set_control_state
         )
+        if data_table.get_data() is None:
+            self.logger.error('No valid source to read data from. Application will be closed')
+            self.quit()
+            sys.exit(1)
         self.editable_table = data_table
         data_table.set_preferences(gui_g.s.datatable_default_pref)
         data_table.show()
