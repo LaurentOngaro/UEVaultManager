@@ -13,6 +13,7 @@ import tkinter as tk
 from datetime import datetime
 from time import sleep
 from tkinter import filedialog as fd
+from typing import Optional
 
 import pandas as pd
 from rapidfuzz import fuzz
@@ -21,7 +22,7 @@ from requests import ReadTimeout
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import GrabResult
+from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.DbFilesWindowClass import DbFilesWindowClass
@@ -82,17 +83,9 @@ class UEVMGui(tk.Tk):
     :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
     :param show_open_file_dialog: Whether the open file dialog will be shown at startup.
     """
-    _frm_toolbar: UEVMGuiToolbarFrame = None
-    _frm_control: UEVMGuiControlFrame = None
-    _frm_option: UEVMGuiOptionFrame = None
-    _frm_content: UEVMGuiContentFrame = None
-    _frm_filter: FilterFrame = None
-    _errors: [Exception] = []
-    editable_table: EditableTable = None
-    progress_window: FakeProgressWindow = None
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
-    egs = None
+    _errors: [Exception] = []
 
     def __init__(
         self,
@@ -104,6 +97,14 @@ class UEVMGui(tk.Tk):
         show_open_file_dialog: bool = False,
         rebuild_data: bool = False,
     ):
+        self._frm_toolbar: Optional[UEVMGuiToolbarFrame] = None
+        self._frm_control: Optional[UEVMGuiControlFrame] = None
+        self._frm_option: Optional[UEVMGuiOptionFrame] = None
+        self._frm_content: Optional[UEVMGuiContentFrame] = None
+        self._frm_filter: Optional[FilterFrame] = None
+        self.editable_table: Optional[EditableTable] = None
+        self.progress_window: Optional[FakeProgressWindow] = None
+        self.egs: Optional[EPCAPI] = None
         super().__init__()
         self.data_source_type = data_source_type
         if data_source_type == DataSourceType.SQLITE:
@@ -594,9 +595,9 @@ class UEVMGui(tk.Tk):
         add_new_row = True
         data_table = self.editable_table  # shortcut
         if gui_g.s.browse_when_add_row:
+            title = 'Choose a folder for the assets to add to the datatable.\nThis folder will be used to scan for assets, Url slugs and marketplace urls.\nIf no folder is selected, an empty row will be added.'
             folder = fd.askdirectory(
-                title=
-                'Choose a folder for the assets to add to the datatable.\nThis folder will be used to scan for assets, Url slugs and marketplace urls.\nIf no folder is selected, an empty row will be added.',
+                title=title,
                 initialdir=gui_g.s.last_opened_folder
                 if gui_g.s.last_opened_folder else gui_g.s.folders_to_scan[0] if gui_g.s.folders_to_scan else None,
             )
