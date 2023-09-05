@@ -5,6 +5,7 @@ implementation for:
 """
 
 
+# noinspection PyMethodMayBeStatic,PyUnusedLocal
 class FakeProgressWindow:
     """
     A fake ProgressWindow object to use when no ProgressWindow object is provided and provide the same interface
@@ -96,7 +97,7 @@ class FakeProgressWindow:
 
     def update_and_continue(self, value=0, increment=0, text=None) -> bool:
         """ FAKE METHOD"""
-        pass
+        return True
 
     def close_window(self, destroy_window=True, _event=None) -> None:
         """ FAKE METHOD"""

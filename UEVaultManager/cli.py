@@ -1258,7 +1258,7 @@ class UEVaultManagerCLI:
             load_from_files=load_from_files,
             engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
             egs=self.core.egs,  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
-            cli_args = args
+            cli_args=args
         )
 
         scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
