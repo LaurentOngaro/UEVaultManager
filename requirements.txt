@@ -21,3 +21,4 @@ Faker~=19.3.1
 rapidfuzz~=2.15  # do not install 3.x version. because build exe will fails
 Jinja2~=3.1
 python-dateutil ~= 2.8
+sphinx_rtd_theme

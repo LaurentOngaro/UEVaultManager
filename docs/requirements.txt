@@ -1,1 +1,3 @@
 # this file must exist for readthedocs to work
+
+sphinx_rtd_theme
