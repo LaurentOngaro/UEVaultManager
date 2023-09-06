@@ -152,6 +152,23 @@ class DLManager(Process):
                 self.log.info(f'Skipping {len(completed_files)} files based on resume data.')
             except Exception as error:
                 self.log.warning(f'Reading resume file failed: {error!r}, continuing as normal...')
+        elif resume:
+            # Basic check if files exist locally, put all missing files into "added"
+            # This allows new SDL tags to be installed without having to do a repair as well.
+            missing_files = set()
+
+            for fm in manifest.file_manifest_list.elements:
+                if fm.filename in mc.added:
+                    continue
+
+                local_path = os.path.join(self.dl_dir, fm.filename)
+                if not os.path.exists(local_path):
+                    missing_files.add(fm.filename)
+
+            self.log.info(f'Found {len(missing_files)} missing files.')
+            mc.added |= missing_files
+            mc.changed -= missing_files
+            mc.unchanged -= missing_files
 
         # Install tags are used for selective downloading, e.g. for language packs
         additional_deletion_tasks = []
