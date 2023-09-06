@@ -962,6 +962,20 @@ class UEVaultManagerCLI:
             else:
                 manifest_info.append(InfoItem('Prerequisites', 'prerequisites', None, None))
 
+            if manifest.meta.uninstall_action_path:
+                human_list = [
+                    f'Uninstaller path: {manifest.meta.uninstall_action_path}',
+                    f'Uninstaller args: {manifest.meta.uninstall_action_args or "(None)"}',
+                ]
+                manifest_info.append(
+                    InfoItem(
+                        'Uninstaller', 'uninstaller', human_list,
+                        dict(path=manifest.meta.uninstall_action_path, args=manifest.meta.uninstall_action_args)
+                    )
+                )
+            else:
+                manifest_info.append(InfoItem('Uninstaller', 'uninstaller', None, None))
+
             install_tags = {''}
             for fm in manifest.file_manifest_list.elements:
                 for tag in fm.install_tags:
@@ -1342,6 +1356,11 @@ def main():
     """
     Main function.
     """
+    # Set output encoding to UTF-8 if not outputting to a terminal
+    if not sys.stdout.isatty():
+        # noinspection PyUnresolvedReferences
+        sys.stdout.reconfigure(encoding='utf-8')
+
     parser = argparse.ArgumentParser(description=f'UEVaultManager v{UEVM_version} - "{UEVM_codename}"')
     parser.register('action', 'parsers', HiddenAliasSubparsersAction)
 
