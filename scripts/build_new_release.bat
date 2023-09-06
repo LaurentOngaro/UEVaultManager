@@ -27,12 +27,12 @@ if %errorlevel% neq 0 (
     pip install -U sphinx
 )
 
+set relaunched=0
 :docs
 echo #################
 echo Building docs...
 echo #################
 pause
-set relaunched=0
 cd ../docs/
 rmdir build\html /S /Q
 call make.bat
@@ -41,18 +41,19 @@ if %errorlevel% neq 0 (
       echo building DOCS execution can not be fixed. Please check the console log and try to fix it manually
       goto end
     )
+    set relaunched=1
     echo An issue occured when building DOCS. Try to fix by installing some modules...
     pip install --ignore-installed  requirements-parser
-    set relaunched=1
+    pip install --ignore-installed  sphinx_rtd_theme
     goto docs
 )
 
+set relaunched=0
 :build
 echo #################
 echo Building dist...
 echo #################
 pause
-set relaunched=0
 cd ..
 rmdir dist /S /Q
 python setup.py sdist bdist_wheel
@@ -62,18 +63,18 @@ if %errorlevel% neq 0 (
       goto end
     )
     echo An issue occured when running setup.py. Try to fix by installing some modules...
+    set relaunched=1
     pip install --ignore-installed wheel
     pip install --ignore-installed sdist
     pip install --ignore-installed  requirements-parser
-    set relaunched=1
     goto build
 )
 
+set relaunched=0
 :dist
 echo #################
 echo Check dist...
 echo #################
-set relaunched=0
 twine check dist/*
 if %errorlevel% neq 0 (
     if %relaunched% neq 0 (
@@ -81,8 +82,8 @@ if %errorlevel% neq 0 (
       goto end
     )
     echo An issue occured when running twine. Try to fix by installing some modules...
-    pip install --ignore-installed twine
     set relaunched=1
+    pip install --ignore-installed twine
     goto dist
 )
 
