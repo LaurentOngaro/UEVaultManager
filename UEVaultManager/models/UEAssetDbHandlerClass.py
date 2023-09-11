@@ -553,7 +553,7 @@ class UEAssetDbHandler:
                 rows = cursor.fetchall()
                 cursor.close()
             except sqlite3.OperationalError as error:
-                self.logger.warning(f"Error while getting assets data: {error!r}")
+                self.logger.warning(f"Error while getting asset's data: {error!r}")
         return rows
 
     def get_columns_name_for_csv(self) -> list:

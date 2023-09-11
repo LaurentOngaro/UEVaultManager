@@ -709,7 +709,7 @@ class AppCore:
         if gui_g.progress_window_ref is not None:
             # gui_g.progress_window_ref.show_progress_bar()  # show progress bar, must be before reset
             gui_g.progress_window_ref.show_btn_stop()
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking and Fetching assets data...", new_max_value=len(filtered_items))
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking and Fetching asset's data...", new_max_value=len(filtered_items))
         # loop through valid and filtered items
         meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
         fetch_try_count = {}

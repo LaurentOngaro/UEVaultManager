@@ -91,7 +91,7 @@ Usage
       --tsv                   List asset in TSV format
       --json                  List asset in JSON format
       -f,  --force-refresh    Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
-      -fc, --filter-category  Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive
+      -fc, --filter-category  Filter assets by category. Search against the asset category in the marketplace. Search is case-insensitive
                                 and can be partial
       -o, --output            The file name (with path) where the list should be written to
       -g,  --gui              Display additional informations using gui elements like dialog boxes or progress window

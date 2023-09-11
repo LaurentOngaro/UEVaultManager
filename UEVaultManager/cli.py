@@ -302,11 +302,11 @@ class UEVaultManagerCLI:
 
         if args.auth_delete:
             if not self.core.uevmlfs.userdata:
-                self._log_and_gui_display(self.logger.info, "You are not logged in. You have to run the auth command to login.")
+                self._log_and_gui_display(self.logger.info, "You are not logged in. You have to run the auth command to log in.")
                 return
             else:
                 self.core.uevmlfs.invalidate_userdata()
-                self._log_and_gui_display(self.logger.info, "User data deleted. You'll have to run the auth command again to login.")
+                self._log_and_gui_display(self.logger.info, "User data deleted. You'll have to run the auth command again to log in.")
                 return
         try:
             self._log_and_gui_display(self.logger.info, 'Testing existing login data if present...')
@@ -337,7 +337,7 @@ class UEVaultManagerCLI:
                     self.logger.warning('Login session from EGS seems to no longer be valid.')
                     self.core.clean_exit(1)
             except Exception as error:
-                message = f'No EGS login session found, please login manually. (Exception: {error!r})'
+                message = f'No EGS login session found, please log in manually. (Exception: {error!r})'
                 self._log_and_gui_message(self.logger.critical, message)
 
         exchange_token = ''
@@ -348,7 +348,7 @@ class UEVaultManagerCLI:
 
             if not webview_available or args.no_webview or self.core.webview_killswitch:
                 # unfortunately the captcha stuff makes a complete CLI login flow kinda impossible right now...
-                custom_print('Please login via the epic web login!')
+                custom_print('Please log in via the epic web login!')
                 url = 'https://legendary.gl/epiclogin'
                 webbrowser.open(url)
                 custom_print(f'If the web page did not open automatically, please manually open the following URL: {url}')
@@ -378,7 +378,7 @@ class UEVaultManagerCLI:
             exchange_token = args.ex_token
 
         if not exchange_token and not auth_code:
-            self.logger.fatal('No exchange token/authorization code, cannot login.')
+            self.logger.fatal('No exchange token/authorization code, cannot log in.')
             return
 
         if exchange_token and self.core.auth_ex_token(exchange_token):
@@ -579,7 +579,7 @@ class UEVaultManagerCLI:
         items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
 
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging assets data...", new_max_value=cpt_max)
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging asset's data...", new_max_value=cpt_max)
         for item in items:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -1026,7 +1026,7 @@ class UEVaultManagerCLI:
                                                    f'(Chunks: {len(tag_chunk_guids)})')
 
             manifest_info.append(InfoItem('Disk size by install tag', 'tag_disk_size', tag_disk_size_human or 'N/A', tag_disk_size))
-            manifest_info.append(InfoItem('Download size by install tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size))
+            manifest_info.append(InfoItem('Download size by installation tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size))
 
         if not args.json:
 
@@ -1090,7 +1090,7 @@ class UEVaultManagerCLI:
 
     def cleanup(self, args) -> None:
         """
-        Cleans up the local assets data folders and logs.
+        Cleans up the local asset's data folders and logs.
         :param args: options passed to the command.
         """
         uewm_gui_exists = False
@@ -1192,7 +1192,7 @@ class UEVaultManagerCLI:
             self.logger.info(f'The file {data_source} will be used to read data from')
         else:
             data_source = gui_g.s.csv_filename
-            self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
+            self.logger.warning('The file to read data from has not been set by the --input command option. The default file name will be used.')
 
         data_source = gui_fn.path_from_relative_to_absolute(data_source)
         data_source = os.path.normpath(data_source)
@@ -1390,7 +1390,7 @@ def main():
         '--gui',
         dest='gui',
         action='store_true',
-        help='Display additional informations using gui elements like dialog boxes or progress window'
+        help='Display additional information using gui elements like dialog boxes or progress window'
     )
     gui_g.UEVM_parser_ref = parser
 
@@ -1440,22 +1440,22 @@ def main():
         '-T', '--third-party', dest='include_non_asset', action='store_true', default=False, help='Include assets that are not installable.'
     )
     # noinspection DuplicatedCode
-    list_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in in CSV format')
-    list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in in TSV format')
-    list_parser.add_argument('--json', dest='json', action='store_true', help='Output in in JSON format')
+    list_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in CSV format')
+    list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in TSV format')
+    list_parser.add_argument('--json', dest='json', action='store_true', help='Output in JSON format')
     list_parser.add_argument(
         '-f',
         '--force-refresh',
         dest='force_refresh',
         action='store_true',
-        help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
     )
     list_parser.add_argument(
         '-fc',
         '--filter-category',
         dest='filter_category',
         action='store',
-        help='Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial'
+        help='Filter assets by category. Search against the asset category in the marketplace. Search is case-insensitive and can be partial'
     )
     list_parser.add_argument(
         '-o', '--output', dest='output', metavar='<path/name>', action='store', help='The file name (with path) where the list should be written'
@@ -1465,7 +1465,7 @@ def main():
         '--gui',
         dest='gui',
         action='store_true',
-        help='Display additional informations using gui elements like dialog boxes or progress window'
+        help='Display additional information using gui elements like dialog boxes or progress window'
     )
 
     list_files_parser.add_argument(
@@ -1476,27 +1476,27 @@ def main():
     # noinspection DuplicatedCode
     list_files_parser.add_argument('--json', dest='json', action='store_true', help='Output in JSON format')
     list_files_parser.add_argument(
-        '--hashlist', dest='hashlist', action='store_true', help='Output file hash list in hashCheck/sha1sum -c compatible format'
+        '--hashlist', dest='hashlist', action='store_true', help='Output file hash list in hash Check/sha1 sum -c compatible format'
     )
     list_files_parser.add_argument(
         '-f',
         '--force-refresh',
         dest='force_refresh',
         action='store_true',
-        help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
     )
     list_files_parser.add_argument(
         '-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console'
     )
 
-    status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not login')
+    status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not log in')
     status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
     status_parser.add_argument(
         '-f',
         '--force-refresh',
         dest='force_refresh',
         action='store_true',
-        help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
     )
     status_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
@@ -1526,7 +1526,7 @@ def main():
         '--force-refresh',
         dest='force_refresh',
         action='store_true',
-        help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
     )
     info_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
@@ -1561,7 +1561,7 @@ def main():
         '--force-refresh',
         dest='force_refresh',
         action='store_true',
-        help='Force a refresh of all assets data. It could take some time ! If not forced, the cached data will be used'
+        help="Force a refresh of all asset's data. It could take some time ! If not forced, the cached data will be used"
     )
     scrap_parser.add_argument(
         '--offline', dest='offline', action='store_true', help='Use previous saved data files (json) instead of grabing urls and scapping new data'

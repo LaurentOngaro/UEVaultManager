@@ -241,15 +241,15 @@ class UEVMLFS:
     @property
     def assets(self):
         """
-        Returns the assets data as a dict.
-        :return: Assets data.
+        Returns the asset's data as a dict.
+        :return: asset's data.
         """
         if self._assets is None:
             try:
                 tmp = json.load(open(path_join(self.path, 'assets.json')))
                 self._assets = {k: [AppAsset.from_json(j) for j in v] for k, v in tmp.items()}
             except Exception as error:
-                self.log.debug(f'Failed to load assets data: {error!r}')
+                self.log.debug(f"Failed to load asset's data: {error!r}")
                 return None
 
         return self._assets

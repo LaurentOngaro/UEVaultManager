@@ -1044,7 +1044,7 @@ class UEVMGui(tk.Tk):
         pw = None
         row_count = len(row_indexes)
         if marketplace_url is None:
-            base_text = 'Scraping assets data. Could take a while...'
+            base_text = "Scraping asset's data. Could take a while..."
             if row_count > 1:
                 pw = gui_f.show_progress(
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True
