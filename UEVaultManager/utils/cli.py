@@ -11,7 +11,7 @@ from UEVaultManager.models.csv_sql_fields import get_sql_field_name
 
 def get_boolean_choice(prompt: str, default=True) -> bool:
     """
-    Prompts the user with a yes/no question and returns a boolean value based on their choice.
+    Prompt the user with a yes/no question and return a boolean value based on their choice.
     :param prompt: The question prompt.
     :param default: The default choice. Defaults to True.
     :return: True if the user chooses yes, False if they choose no.
@@ -29,7 +29,7 @@ def get_boolean_choice(prompt: str, default=True) -> bool:
 
 def get_int_choice(prompt: str, default=None, min_choice=None, max_choice=None, return_on_invalid=False) -> any:
     """
-    Prompts the user to enter an integer choice within a specified range.
+    Prompt the user to enter an integer choice within a specified range.
     :param prompt: The question prompt.
     :param default: The default choice. Defaults to None.
     :param min_choice: The minimum allowed choice. Defaults to None.
@@ -103,7 +103,7 @@ def str_is_bool(val: str) -> bool:
 
 def check_and_create_path(full_file_name: str) -> bool:
     """
-    Checks if the given file path exists and creates it if it doesn't.
+    Check if the given file path exists and create it if it doesn't.
     :param full_file_name: The full path of the file.
     :return: True if the path exists or is successfully created, False otherwise.
     """
@@ -116,13 +116,27 @@ def check_and_create_path(full_file_name: str) -> bool:
             os.makedirs(file_path, exist_ok=True)
         except OSError:
             return False
+    return True
 
+
+def check_and_create_folder(full_folder_name: str) -> bool:
+    """
+    Check if the given folder path exists and create it if it doesn't.
+    :param full_folder_name: The full path of the folder.
+    :return: True if the path exists or is successfully created, False otherwise.
+    """
+    # Check if the folder exists, create it if it doesn't
+    if not os.path.isdir(full_folder_name):
+        try:
+            os.makedirs(full_folder_name, exist_ok=True)
+        except OSError:
+            return False
     return True
 
 
 def convert_string_to_float_list(string: str, increment=0.01) -> list:
     """
-    Converts a string in the format 'start - end' to a list of float values.
+    Convert a string in the format 'start - end' to a list of float values.
     :param string: The string in the format 'start - end'.
     :param increment: The increment between each float value. Defaults to 0.1.
     :return: A list of float values between the start and end values (inclusive).
@@ -146,8 +160,8 @@ def float_range(start: float, stop: float, step: float) -> iter:
 
 def create_list_from_string(string: str) -> list:
     """
-    Creates a list from a string using ',' as a separator. If an item contains a '-', it is converted into a string of float values.
-    :param  string: The input string.
+    Create a list from a string using ',' as a separator. If an item contains a '-', it is converted into a string of float values.
+    :param: string: The input string.
     :return: The resulting list.
     """
     items = string.split(',')
