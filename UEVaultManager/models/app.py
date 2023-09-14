@@ -146,6 +146,45 @@ class App:
         return dict(metadata=self.metadata, asset_infos=assets_dict, app_name=self.app_name, app_title=self.app_title, base_urls=self.base_urls)
 
 
+@dataclass
+class InstalledApp:
+    """
+    Local metadata for an installed app (i.e. asset)
+    """
+    app_name: str
+    install_path: str
+    title: str
+    version: str
+    base_urls: List[str] = field(default_factory=list)
+    egl_guid: str = ''
+    install_size: int = 0
+    manifest_path: str = ''
+    needs_verification: bool = False
+    platform: str = 'Windows'
+
+    @classmethod
+    def from_json(cls, json) -> 'InstalledApp':
+        """
+        Create InstalledApp from json.
+        :param json: data. 
+        :return: an InstalledApp.
+        """
+        tmp = cls(
+            app_name=json.get('app_name', ''),
+            install_path=json.get('install_path', ''),
+            title=json.get('title', ''),
+            version=json.get('version', ''),
+        )
+
+        tmp.base_urls = json.get('base_urls', list())
+        tmp.egl_guid = json.get('egl_guid', '')
+        tmp.install_size = json.get('install_size', 0)
+        tmp.manifest_path = json.get('manifest_path', '')
+        tmp.needs_verification = json.get('needs_verification', False) is True
+        tmp.platform = json.get('platform', 'Windows')
+        return tmp
+
+
 class VerifyResult(Enum):
     """
     Result of a verification.
