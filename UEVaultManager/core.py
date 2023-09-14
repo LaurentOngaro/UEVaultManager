@@ -226,7 +226,6 @@ class AppCore:
         Import refresh token from EGL installation and use it to log in.
         :return: True if successful, False otherwise.
         """
-        self.egl.read_config()
         remember_me_data = self.egl.config.get('RememberMe', 'Data')
         raw_data = b64decode(remember_me_data)
         # data is encrypted
