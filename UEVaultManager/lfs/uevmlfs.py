@@ -8,11 +8,12 @@ import json
 import logging
 import os
 from time import time
+from typing import Optional
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.app import App, AppAsset
+from UEVaultManager.models.app import App, AppAsset, InstalledApp
 from UEVaultManager.models.config import AppConf
 from UEVaultManager.tkgui.modules.functions import create_file_backup
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
@@ -114,9 +115,31 @@ class UEVMLFS:
             has_changed = True
 
         # Add opt-out options with explainers
-        if not self.config.has_option('UEVaultManager', 'start_in_edit_mode'):
-            self.config.set('UEVaultManager', ';Set to True to start the App in Edit mode (since v1.4.4) with the GUI')
-            self.config.set('UEVaultManager', 'start_in_edit_mode', 'False')
+        if not self.config.has_option('UEVaultManager', 'max_memory'):
+            self.config.set('UEVaultManager', '; Set preferred CDN host (e.g. to improve download speed)')
+            self.config.set('UEVaultManager', 'max_memory', '2048')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'max_workers'):
+            self.config.set(
+                'UEVaultManager', '; maximum number of worker processes when downloading (fewer will be slower, use less system resources)'
+            )
+            self.config.set('UEVaultManager', 'max_workers', '8')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'locale'):
+            self.config.set('UEVaultManager', '; locale override, must be in RFC 1766 format (e.g. "en-US")')
+            self.config.set('UEVaultManager', 'locale', 'en-US')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'egl_programdata'):
+            self.config.set('UEVaultManager', '; path to the "Manifests" folder in the EGL ProgramData directory for non Windows platforms')
+            self.config.set('UEVaultManager', 'egl_programdata', 'THIS_MUST_BE_SET_ON_NON_WINDOWS_PLATFORMS')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'preferred_cdn'):
+            self.config.set('UEVaultManager', '; maximum shared memory (in MiB) to use for installation')
+            self.config.set('UEVaultManager', 'preferred_cdn', 'epicgames-download1.akamaized.net')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'disable_https'):
+            self.config.set('UEVaultManager', '; disable HTTPS for downloads (e.g. to use a LanCache)')
+            self.config.set('UEVaultManager', 'disable_https', 'false')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'disable_update_check'):
             self.config.set('UEVaultManager', ';Set to True to disable the automatic update check')
@@ -125,6 +148,10 @@ class UEVMLFS:
         if not self.config.has_option('UEVaultManager', 'disable_update_notice'):
             self.config.set('UEVaultManager', '; Set to True to disable the notice about an available update on exit')
             self.config.set('UEVaultManager', 'disable_update_notice', 'False' if is_windows_mac_or_pyi() else 'True')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'start_in_edit_mode'):
+            self.config.set('UEVaultManager', ';Set to True to start the App in Edit mode (since v1.4.4) with the GUI')
+            self.config.set('UEVaultManager', 'start_in_edit_mode', 'False')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'create_output_backup'):
             self.config.set(
@@ -173,6 +200,13 @@ class UEVMLFS:
         if has_changed:
             self.save_config()
 
+        # load existing installed assets/apps
+        try:
+            self._installed = json.load(open(path_join(self.path, 'installed.json')))
+        except Exception as error:
+            self.log.debug(f'Loading installed assets failed: {error!r}')
+            self._installed = None
+
         # load existing app metadata
         _meta = None
         for gm_file in os.listdir(path_join(self.path, 'metadata')):
@@ -205,7 +239,7 @@ class UEVMLFS:
     @property
     def userdata(self):
         """
-        Returns the user data as a dict.
+        Return the user data as a dict.
         :return: User data.
         """
         if self._user_data is not None:
@@ -241,7 +275,7 @@ class UEVMLFS:
     @property
     def assets(self):
         """
-        Returns the asset's data as a dict.
+        Return the asset's data as a dict.
         :return: asset's data.
         """
         if self._assets is None:
@@ -261,7 +295,7 @@ class UEVMLFS:
         :param assets: assets.
         """
         if assets is None:
-            raise ValueError('Assets is none!')
+            raise ValueError('No Assets data!')
 
         self._assets = assets
         json.dump(
@@ -272,6 +306,27 @@ class UEVMLFS:
             indent=2,
             sort_keys=True
         )
+
+    def _get_manifest_filename(self, app_name: str, version: str, platform: str = None) -> str:
+        """
+        Get the manifest filename.
+        :param app_name: app name.
+        :param version: version of the manifest.
+        :param platform: platform of the manifest.
+        :return: The manifest filename.
+        """
+        if platform:
+            fname = clean_filename(f'{app_name}_{platform}_{version}')
+        else:
+            fname = clean_filename(f'{app_name}_{version}')
+        return path_join(self.path, 'manifests', f'{fname}.manifest')
+
+    def get_tmp_path(self) -> str:
+        """
+        Get the path to the tmp folder.
+        :return: The path to the tmp folder.
+        """
+        return path_join(self.path, 'tmp')
 
     def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:
         """
@@ -317,6 +372,34 @@ class UEVMLFS:
                 elif os.path.isdir(file_name):
                     folders_to_clean.append(file_name)
         return size_deleted
+
+    def load_manifest(self, app_name: str, version: str, platform: str = 'Windows') -> any:
+        """
+        Load the manifest data from a file.
+        :param app_name: The name of the item.
+        :param version: version of the manifest.
+        :param platform: platform of the manifest.
+        :return: The manifest data.
+        """
+        try:
+            return open(self._get_manifest_filename(app_name, version, platform), 'rb').read()
+        except FileNotFoundError:  # all other errors should propagate
+            self.log.debug(f'Loading manifest failed, retrying without platform in filename...')
+            try:
+                return open(self._get_manifest_filename(app_name, version), 'rb').read()
+            except FileNotFoundError:  # all other errors should propagate
+                return None
+
+    def save_manifest(self, app_name: str, manifest_data, version: str, platform: str = 'Windows') -> None:
+        """
+        Save the manifest data to a file.
+        :param app_name: The name of the item.
+        :param manifest_data: The manifest data.
+        :param version: version of the manifest.
+        :param platform: platform of the manifest.
+        """
+        with open(self._get_manifest_filename(app_name, version, platform), 'wb') as f:
+            f.write(manifest_data)
 
     def get_item_meta(self, app_name: str):
         """
@@ -455,6 +538,36 @@ class UEVMLFS:
         """
         folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
         return self.delete_folder_content(folders, ['.log', '.bak'])
+
+    def get_installed_app(self, app_name: str) -> Optional[InstalledApp]:
+        """
+        Get the installed app data.
+        :param app_name: The app name.
+        :return: The installed app data or None if not found.
+        """
+        if self._installed is None:
+            try:
+                self._installed = json.load(open(path_join(self.path, 'installed.json')))
+            except Exception as error:
+                self.log.debug(f'Failed to load installed asset data: {error!r}')
+                return None
+        if json_data := self._installed.get(app_name, None):
+            return InstalledApp.from_json(json_data)
+        return None
+
+    def set_installed_app(self, app_name: str, install_info: {}) -> None:
+        """
+        Set the installed app data.
+        :param app_name: The app name.
+        :param install_info: The installed app data.
+        """
+        if self._installed is None:
+            self._installed = dict()
+        if app_name in self._installed:
+            self._installed[app_name].update(install_info.__dict__)
+        else:
+            self._installed[app_name] = install_info.__dict__
+        json.dump(self._installed, open(path_join(self.path, 'installed.json'), 'w'), indent=2, sort_keys=True)
 
     def save_config(self) -> None:
         """
