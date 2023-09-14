@@ -4,6 +4,7 @@ Implementation for:
 - EPCAPI : Epic Games Client API
 - GrabResult : Enum for the result of grabbing a page.
 - create_empty_assets_extra : Create an empty asset extra dict.
+- is_asset_obsolete : Check if an asset is obsolete.
 """
 import json
 import logging
