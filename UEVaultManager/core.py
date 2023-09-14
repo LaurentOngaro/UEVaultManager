@@ -7,6 +7,7 @@ import concurrent
 import json
 import logging
 import os
+import shutil
 import sys
 import time
 from base64 import b64decode
@@ -14,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from hashlib import sha1
 from locale import getlocale, LC_CTYPE
+from multiprocessing import Queue
 from platform import system
 from threading import current_thread, enumerate as thread_enumerate
 from typing import Dict, List
@@ -27,14 +29,17 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager import __version__ as UEVM_version
 from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.api.uevm import UEVMAPI
+from UEVaultManager.downloader.mp.manager import DLManager
 from UEVaultManager.lfs.egl import EPCLFS
 from UEVaultManager.lfs.uevmlfs import UEVMLFS
-from UEVaultManager.models.app import App, AppAsset
+from UEVaultManager.lfs.utils import clean_filename, path_join
+from UEVaultManager.models.app import App, AppAsset, InstalledApp
+from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResult
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.tkgui.modules.functions import box_message
-from UEVaultManager.utils.cli import check_and_create_path, get_max_threads
+from UEVaultManager.utils.cli import check_and_create_folder, check_and_create_path, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
@@ -202,7 +207,7 @@ class AppCore:
             self.uevmlfs.userdata = self.egs.start_session(authorization_code=code)
             return True
         except Exception as error:
-            self.log.error(f'Logging in failed with {error!r}, please try again.')
+            self.log.error(f'Log in failed with {error!r}, please try again.')
             return False
 
     def auth_ex_token(self, code) -> bool:
@@ -213,12 +218,12 @@ class AppCore:
             self.uevmlfs.userdata = self.egs.start_session(exchange_token=code)
             return True
         except Exception as error:
-            self.log.error(f'Logging in failed with {error!r}, please try again.')
+            self.log.error(f'Log in failed with {error!r}, please try again.')
             return False
 
     def auth_import(self) -> bool:
         """
-        Import refresh token from EGL installation and use it for loging in.
+        Import refresh token from EGL installation and use it to log in.
         :return: True if successful, False otherwise.
         """
         self.egl.read_config()
@@ -245,12 +250,12 @@ class AppCore:
             self.uevmlfs.userdata = self.egs.start_session(refresh_token=refresh_token)
             return True
         except Exception as error:
-            self.log.error(f'Logging in failed with {error!r}, please try again.')
+            self.log.error(f'Logging failed with {error!r}, please try again.')
             return False
 
     def login(self, force_refresh: bool = False, raise_error: bool = True) -> bool:
         """
-        Attempts loging in with existing credentials.
+        Attempt log in with existing credentials.
         :param force_refresh: Whether to force a refresh of the session.
         :param raise_error: Whether to raise an exception if login fails.
         :return: True if successful, False otherwise.
@@ -302,11 +307,11 @@ class AppCore:
             self.log.info('Logging in...')
             userdata = self.egs.start_session(self.uevmlfs.userdata['refresh_token'])
         except InvalidCredentialsError:
-            self.log.error('Stored credentials are no longer valid! Please login again.')
+            self.log.error('Stored credentials are no longer valid! Please log in again.')
             self.uevmlfs.invalidate_userdata()
             return False
         except (HTTPError, ConnectionError) as error:
-            self.log.error(f'HTTP request for login failed: {error!r}, please try again later.')
+            self.log.error(f'HTTP request for log in failed: {error!r}, please try again later.')
             return False
 
         self.uevmlfs.userdata = userdata
@@ -315,14 +320,14 @@ class AppCore:
 
     def update_check_enabled(self) -> bool:
         """
-        Returns whether update checks are enabled or not.
+        Return whether update checks are enabled or not.
         :return: True if update checks are enabled, False otherwise.
         """
         return not self.uevmlfs.config.getboolean('UEVaultManager', 'disable_update_check', fallback=False)
 
     def update_notice_enabled(self) -> bool:
         """
-        Returns whether update notices are enabled or not.
+        Return whether update notices are enabled or not.
         :return: True if update notices are enabled, False otherwise.
         """
         if self.force_show_update:
@@ -331,13 +336,13 @@ class AppCore:
 
     def check_for_updates(self, force=False) -> None:
         """
-        Checks for updates and sets the update_available flag accordingly.
+        Check for updates and sets the update_available flag accordingly.
         :param force: force update check.
         """
 
         def version_tuple(v):
             """
-            Converts a version string to a tuple of ints.
+            Convert a version string to a tuple of ints.
             :param v: version string.
             :return:  tuple of ints.
             """
@@ -354,14 +359,14 @@ class AppCore:
 
     def get_update_info(self) -> dict:
         """
-        Returns update info dict.
+        Return update info dict.
         :return: update info dict.
         """
         return self.uevmlfs.get_cached_version()['data']
 
     def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
         """
-        Returns a list of assets for the given platform.
+        Return a list of assets for the given platform.
         :param update_assets: Whether to always fetches a new list of assets from the server.
         :param platform: platform to fetch assets for.
         :return: list of AppAsset objects.
@@ -384,7 +389,7 @@ class AppCore:
 
     def get_asset(self, app_name: str, platform='Windows', update=False) -> AppAsset:
         """
-        Returns an AppAsset object for the given app name and platform.
+        Return an AppAsset object for the given app name and platform.
         :param app_name: app name to get.
         :param platform: platform to get asset for.
         :param update: force update of asset list.
@@ -400,7 +405,7 @@ class AppCore:
 
     def asset_available(self, item: App, platform='Windows') -> bool:
         """
-        Returns whether an asset is available for the given item and platform.
+        Return whether an asset is available for the given item and platform.
         :param item: item to check.
         :param platform:.
         :return: True if asset is available, False otherwise.
@@ -417,7 +422,7 @@ class AppCore:
 
     def get_item(self, app_name, update_meta=False, platform='Windows') -> App:
         """
-        Returns an App object.
+        Return an App object.
         :param app_name: name to get.
         :param update_meta: force update of metadata.
         :param platform: platform to get app for.
@@ -693,16 +698,6 @@ class AppCore:
                             # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
                             stop_executor(futures)
                 self.thread_executor.shutdown(wait=False)
-                """
-                # Wait for all the tasks to finish
-                concurrent.futures.wait(futures.values())
-                for key, future in futures.items():
-                    try:
-                        future.result()
-                    except Exception as error:
-                        self.log.warning(f'thread execution with key {key} generated an exception: {error!r}')
-                self.thread_executor.shutdown(wait=False)
-                """
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
@@ -833,6 +828,14 @@ class AppCore:
                 return
             self.uevmlfs.set_item_extra(app_name=app_name, extra=eg_extra, update_global_dict=update_global_dict)
 
+    def get_installed_app(self, app_name) -> InstalledApp:
+        """
+        Return an InstalledApp object for the given app name.
+        :param app_name: App name to get.
+        :return: InstalledApp object.
+        """
+        return self.uevmlfs.get_installed_app(app_name)
+
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
         """
         Gets a list of Items without assets for installation, for instance Items delivered via
@@ -865,6 +868,14 @@ class AppCore:
 
         return _ret
 
+    def is_installed(self, app_name: str) -> bool:
+        """
+        Return whether an app is installed.
+        :param app_name: App name to check.
+        :return: True if app is installed, False otherwise.
+        """
+        return self.get_installed_app(app_name) is not None
+
     @staticmethod
     def load_manifest(data: bytes) -> Manifest:
         """
@@ -876,6 +887,16 @@ class AppCore:
             return JSONManifest.read_all(data)
         else:
             return Manifest.read_all(data)
+
+    def get_installed_manifest(self, app_name):
+        """
+        Get the installed manifest.
+        :param app_name: App name to get the installed manifest for.
+        :return:
+        """
+        installed_app = self.get_installed_app(app_name)
+        old_bytes = self.uevmlfs.load_manifest(app_name, installed_app.version, installed_app.platform)
+        return old_bytes, installed_app.base_urls
 
     def get_cdn_urls(self, item, platform='Windows'):
         """
@@ -962,6 +983,224 @@ class AppCore:
                 new_manifest_data = f.read()
 
         return new_manifest_data, base_urls
+
+    def prepare_download(
+        self,
+        app: App,
+        download_folder: str = '',
+        install_folder: str = '',
+        no_resume: bool = False,
+        platform: str = 'Windows',
+        max_shm: int = 0,
+        max_workers: int = 0,
+        dl_optimizations: bool = False,
+        timeout: (float, float) = (7, 7),
+        override_manifest: str = '',
+        override_old_manifest: str = '',
+        override_base_url: str = '',
+        status_queue: Queue = None,
+        disable_patching: bool = False,
+        file_prefix_filter: list = None,
+        file_exclude_filter: list = None,
+        file_install_tag: list = None,
+        preferred_cdn: str = None,
+        disable_https: bool = False
+    ) -> (DLManager, AnalysisResult, InstalledApp):
+        """
+        Prepare a download.
+        :param app:App to prepare the download for.
+        :param download_folder: Folder to download the app to.
+        :param install_folder: Folder to install the app to.
+        :param platform: Platform to prepare the download for.
+        :param no_resume: Avoid to resume. Force a new download.
+        :param max_shm: Maximum amount of shared memory to use.
+        :param max_workers: Maximum number of workers to use.
+        :param dl_optimizations: Download optimizations.
+        :param timeout: Download timeout.
+        :param override_manifest: Override the manifest.
+        :param override_old_manifest: Override the old manifest.
+        :param override_base_url: Override the base URL.
+        :param disable_patching: Disable patching.
+        :param status_queue: Status queue to send status updates to.
+        :param file_prefix_filter: File prefix filter.
+        :param file_exclude_filter: File exclude filter.
+        :param file_install_tag: File install tag.
+        :param preferred_cdn: Preferred CDN.
+        :param disable_https: Disable HTTPS. For LAN installs only.
+        :return: (DLManager object, AnalysisResult object, InstalledApp object).
+        """
+        old_manifest = None
+        egl_guid = ''
+
+        # load old manifest if we have one
+        if override_old_manifest:
+            self.log.info(f'Overriding old manifest with "{override_old_manifest}"')
+            old_bytes, _ = self.get_uri_manifest(override_old_manifest)
+            old_manifest = self.load_manifest(old_bytes)
+        elif not disable_patching and not no_resume and self.is_installed(app.app_name):
+            old_bytes, _base_urls = self.get_installed_manifest(app.app_name)
+            if _base_urls and not app.base_urls:
+                app.base_urls = _base_urls
+
+            if not old_bytes:
+                self.log.error(f'Could not load old manifest, patching will not work!')
+            else:
+                old_manifest = self.load_manifest(old_bytes)
+
+        base_urls = app.base_urls
+
+        # The EGS client uses plaintext HTTP by default for the purposes of enabling simple DNS based
+        # CDN redirection to a (local) cache. In Legendary this will be a config option.
+        disable_https = disable_https or self.uevmlfs.config.getboolean('UEVaultManager', 'disable_https', fallback=False)
+
+        if override_manifest:
+            self.log.info(f'Overriding manifest with "{override_manifest}"')
+            new_manifest_data, _base_urls = self.get_uri_manifest(override_manifest)
+            # if override manifest has a base URL use that instead
+            if _base_urls:
+                base_urls = _base_urls
+        else:
+            new_manifest_data, base_urls = self.get_cdn_manifest(app, platform, disable_https=disable_https)
+            # overwrite base urls in metadata with current ones to avoid using old/dead CDNs
+            app.base_urls = base_urls
+            # save base urls to game metadata
+            self.uevmlfs.set_item_meta(app.app_name, app)
+
+        self.log.info('Parsing game manifest...')
+        new_manifest = self.load_manifest(new_manifest_data)
+        self.log.debug(f'Base urls: {base_urls}')
+        # save manifest with version name as well for testing/downgrading/etc.
+        self.uevmlfs.save_manifest(app.app_name, new_manifest_data, version=new_manifest.meta.build_version, platform=platform)
+
+        # make sure donwload folder actually exists (but do not create asset folder)
+        if not check_and_create_folder(download_folder):
+            self.log.info(f'"{download_folder}" did not exist, it has been created.')
+        if not os.access(download_folder, os.W_OK):
+            raise PermissionError(f'No write access to "{download_folder}"')
+
+        # reuse existing installation's directory
+        if installed_app := self.get_installed_app(app.app_name):
+            install_path = installed_app.install_path
+            egl_guid = installed_app.egl_guid
+        else:
+            install_path = path_join(install_folder, 'Content')
+
+        # check for write access on the installation path or its parent directory if it doesn't exist yet
+        if not check_and_create_folder(install_path):
+            self.log.info(f'"{install_path}" did not exist, it has been created.')
+        if not os.access(install_path, os.W_OK):
+            raise PermissionError(f'No write access to "{install_path}"')
+
+        self.log.info(f'Install path: {install_path}')
+
+        if not no_resume:
+            filename = clean_filename(f'{app.app_name}.resume')
+            resume_file = path_join(self.uevmlfs.get_tmp_path(), filename)
+        else:
+            resume_file = None
+
+        # Use user-specified base URL or preferred CDN first, otherwise fall back to
+        # EGS's behaviour of just selecting the first CDN in the list.
+        base_url = None
+        if override_base_url:
+            self.log.info(f'Overriding base URL with "{override_base_url}"')
+            base_url = override_base_url
+        elif preferred_cdn or (preferred_cdn := self.uevmlfs.config.get('UEVaultManager', 'preferred_cdn', fallback=None)):
+            for url in base_urls:
+                if preferred_cdn in url:
+                    base_url = url
+                    break
+            else:
+                self.log.warning(f'Preferred CDN "{preferred_cdn}" unavailable, using default selection.')
+        # Use first, fail if none known
+        if not base_url:
+            if not base_urls:
+                raise ValueError('No base URLs found, please try again.')
+            base_url = base_urls[0]
+
+        if disable_https:
+            base_url = base_url.replace('https://', 'http://')
+
+        self.log.debug(f'Using base URL: {base_url}')
+        scheme, cdn_host = base_url.split('/')[0:3:2]
+        self.log.info(f'Selected CDN: {cdn_host} ({scheme.strip(":")})')
+
+        if not max_shm:
+            max_shm = self.uevmlfs.config.getint('UEVaultManager', 'max_memory', fallback=2048)
+
+        if dl_optimizations:
+            self.log.info('Download order optimizations are enabled.')
+            process_opt = True
+        else:
+            process_opt = False
+
+        if not max_workers:
+            max_workers = self.uevmlfs.config.getint('UEVaultManager', 'max_workers', fallback=0)
+
+        download_manager = DLManager(
+            download_dir=download_folder,
+            base_url=base_url,
+            resume_file=resume_file,
+            status_q=status_queue,
+            max_shared_memory=max_shm * 1024 * 1024,
+            max_workers=max_workers,
+            timeout=timeout
+        )
+        analyse_res = download_manager.run_analysis(
+            manifest=new_manifest,
+            old_manifest=old_manifest,
+            patch=not disable_patching,
+            resume=not no_resume,
+            file_prefix_filter=file_prefix_filter,
+            file_exclude_filter=file_exclude_filter,
+            file_install_tag=file_install_tag,
+            processing_optimization=process_opt
+        )
+        installed_app = InstalledApp(
+            app_name=app.app_name,
+            title=app.app_title,
+            version=new_manifest.meta.build_version,
+            manifest_path=override_manifest,
+            base_urls=base_urls,
+            install_path=install_path,
+            install_size=analyse_res.install_size,
+            egl_guid=egl_guid,
+            platform=platform
+        )
+
+        return download_manager, analyse_res, installed_app
+
+    @staticmethod
+    def check_installation_conditions(analysis: AnalysisResult, install_path: str = '', ignore_space_req: bool = False) -> ConditionCheckResult:
+        """
+        Check installation conditions.
+        :param analysis:
+        :param install_path:
+        :param ignore_space_req:
+        :return:
+        """
+        results = ConditionCheckResult(failures=set(), warnings=set())
+
+        base_path = os.path.split(install_path)[0]
+        if os.path.exists(base_path):
+            # Ensure that we have enough disk space for the installation process, as calculated by the analyser
+            min_disk_space = analysis.disk_space_delta
+            _, _, free = shutil.disk_usage(base_path)
+            if free < min_disk_space:
+                free_gib = free / 1024 ** 3
+                required_gib = min_disk_space / 1024 ** 3
+                if ignore_space_req:
+                    results.warnings.add(f'Potentially not enough available disk space! {free_gib:.02f} GiB < {required_gib:.02f} GiB')
+                else:
+                    results.failures.add(f'Not enough available disk space! {free_gib:.02f} GiB < {required_gib:.02f} GiB')
+        else:
+            results.failures.add(f'Install path "{base_path}" does not exist, make sure all necessary disks are available.')
+
+        return results
+
+    def install_app(self, installed_app: InstalledApp) -> None:
+        """Save app metadata and info to mark it "installed" """
+        self.uevmlfs.set_installed_app(installed_app.app_name, installed_app)
 
     # Check if the UE assets metadata cache must be updated
     def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False) -> None:

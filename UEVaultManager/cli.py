@@ -25,6 +25,7 @@ from UEVaultManager import __codename__ as UEVM_codename, __version__ as UEVM_ve
 from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
+from UEVaultManager.lfs.utils import copy_folder, path_join
 from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, get_csv_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -38,7 +39,7 @@ from UEVaultManager.tkgui.modules.functions import box_message, create_file_back
     show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
-from UEVaultManager.utils.cli import check_and_create_path, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
+from UEVaultManager.utils.cli import check_and_create_path, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
 from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
 
 # add the parent folder to the sys.path list, to run the script from the command line without import module error
@@ -155,10 +156,9 @@ class UEVaultManagerCLI:
         :param message: message to log.
         :param quit_on_error: Whether the app will quit the application.
         """
-        if not UEVaultManagerCLI.is_gui:
-            log_function(message)
-            return
-        box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the app to quit
+        log_function(message)
+        if UEVaultManagerCLI.is_gui:
+            box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the app to quit
 
     @staticmethod
     def _log_and_gui_display(log_function: callable, message: str) -> None:
@@ -378,7 +378,7 @@ class UEVaultManagerCLI:
             exchange_token = args.ex_token
 
         if not exchange_token and not auth_code:
-            self.logger.fatal('No exchange token/authorization code, cannot log in.')
+            self.logger.critical('No exchange token/authorization code, cannot log in.')
             return
 
         if exchange_token and self.core.auth_ex_token(exchange_token):
@@ -522,10 +522,11 @@ class UEVaultManagerCLI:
                 message = f'Could not create result file {file_src}. Quiting Application...'
                 self._log_and_gui_message(self.logger.critical, message)
 
-        self.logger.info('Logging in...')
+        self.logger.info('Login...')
         if not self.core.login(raise_error=False):
-            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n. Quiting Application...'
-            self._log_and_gui_message(self.logger.critical, message)
+            message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n.'
+            self._log_and_gui_message(self.logger.error, message)
+            return
 
         if args.force_refresh:
             self.logger.info(
@@ -744,9 +745,9 @@ class UEVaultManagerCLI:
             self.logger.info(f'Loading manifest from "{args.override_manifest}"')
             manifest_data, _ = self.core.get_uri_manifest(args.override_manifest)
         else:
-            self.logger.info(f'Logging in and downloading manifest for {args.app_name}')
+            self.logger.info(f'Login and downloading manifest for {args.app_name}')
             if not self.core.login(raise_error=False):
-                message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\nCannot continue with download process.'
+                message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nCannot continue with download process.'
                 self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                 return
             update_meta = args.force_refresh
@@ -806,8 +807,8 @@ class UEVaultManagerCLI:
         if not args.offline:
             try:
                 if not self.core.login(raise_error=False):
-                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
-                    self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
+                    message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n'
+                    self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                     return
             except ValueError:
                 pass
@@ -877,8 +878,8 @@ class UEVaultManagerCLI:
         if not args.offline and not manifest_uri:
             try:
                 if not self.core.login(raise_error=False):
-                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
-                    self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
+                    message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n'
+                    self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                     return
             except ValueError:
                 pass
@@ -1026,7 +1027,9 @@ class UEVaultManagerCLI:
                                                    f'(Chunks: {len(tag_chunk_guids)})')
 
             manifest_info.append(InfoItem('Disk size by install tag', 'tag_disk_size', tag_disk_size_human or 'N/A', tag_disk_size))
-            manifest_info.append(InfoItem('Download size by installation tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size))
+            manifest_info.append(
+                InfoItem('Download size by installation tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size)
+            )
 
         if not args.json:
 
@@ -1142,12 +1145,12 @@ class UEVaultManagerCLI:
 
     def get_token(self, args) -> None:
         """
-        Gets the access token for the current user.
+        Get the access token for the current user.
         :param args: options passed to the command.
         """
         if not self.core.login(force_refresh=args.bearer, raise_error=False):
-            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
-            self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
+            message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n'
+            self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
             return
 
         if args.bearer:
@@ -1201,11 +1204,11 @@ class UEVaultManagerCLI:
         gui_g.UEVM_log_ref = self.logger
         gui_g.UEVM_cli_ref = self
 
-        # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
+        # set output file name from the input one. Used by the "rebuild" button (or rebuild_data method)
         init_gui_args(args, additional_args={'output': data_source})
 
         if not self.core.login(raise_error=False):
-            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\nSome functionalities could be disabled and data could be wrong.'
+            message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nSome functionalities could be disabled and data could be wrong.'
             self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
 
         rebuild = False
@@ -1243,7 +1246,7 @@ class UEVaultManagerCLI:
             load_from_files = False
             try:
                 if not self.core.login(raise_error=False):
-                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
+                    message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n'
                     self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                     return
             except ValueError:
@@ -1333,9 +1336,118 @@ class UEVaultManagerCLI:
         if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
             gui_g.UEVM_gui_ref.mainloop()
 
+    def install_asset(self, args):
+        """
+        Installs an asset.
+        :param args: options passed to the command.
+        """
+        if args.subparser_name == 'download':
+            self._log_and_gui_message(self.logger.info, 'Setting --no-install flag since "download" command was used')
+            args.no_install = True
+
+        if not self.core.login():
+            self._log_and_gui_message(
+                self.logger.error,
+                'You are not connected or log in failed.\nYou should log first or check your credential. Application will be closed',
+                quit_on_error=False
+            )
+            self.core.clean_exit(1)
+        # TODO: add a progressWindow to show the progress of the installation
+        # TODO: next line uses the same code as the one in the list_asset (old one). and could take some time to update the metadata
+        # TODO: Should we use the new API call like in scrap_assets ?
+        app = self.core.get_item(args.app_name, update_meta=args.force_refresh)
+        if not app:
+            self._log_and_gui_message(self.logger.error, f'Could not find "{args.app_name}" in list of available assets. Application will be closed')
+            self.core.clean_exit(1)
+
+        self._log_and_gui_message(self.logger.info, f'Preparing download for "{app.app_title}" ({app.app_name})...')
+        download_path_base = args.download_path
+        # in the vaultCache, the data is in a subfolder named like the app
+        download_path = path_join(download_path_base, app.app_name, 'data')
+        install_path_base = args.install_path
+        dlm, analysis, installed_app = self.core.prepare_download(
+            app=app,
+            download_folder=download_path,
+            install_folder=install_path_base,
+            no_resume=args.no_resume,
+            max_shm=args.shared_memory,
+            max_workers=args.max_workers,
+            dl_optimizations=args.order_opt,
+            timeout=args.timeout,
+            override_manifest=args.override_manifest,
+            override_base_url=args.override_base_url,
+            preferred_cdn=args.preferred_cdn,
+            disable_https=args.disable_https
+        )
+
+        self._log_and_gui_message(self.logger.info, f'Install size: {analysis.install_size / 1024 / 1024:.02f} MiB')
+        compression = (1 - (analysis.dl_size / analysis.uncompressed_dl_size)) * 100
+        self._log_and_gui_message(
+            self.logger.info, f'Download size: {analysis.dl_size / 1024 / 1024:.02f} MiB (Compression savings: {compression:.01f}%)'
+        )
+        self._log_and_gui_message(
+            self.logger.info,
+            f'Reusable size: {analysis.reuse_size / 1024 / 1024:.02f} MiB (chunks) / {analysis.unchanged / 1024 / 1024:.02f} MiB (unchanged / skipped)'
+        )
+        self._log_and_gui_message(
+            self.logger.info, 'Downloads are resumable, you can interrupt the download with CTRL-C and resume it using the same command later on.'
+        )
+
+        res = self.core.check_installation_conditions(analysis=analysis, install_path=install_path_base, ignore_space_req=args.ignore_space)
+
+        if res.warnings or res.failures:
+            print('\nInstallation requirements check returned the following results:')
+
+        if res.warnings:
+            for warn in sorted(res.warnings):
+                print(' - Warning:', warn)
+            if not res.failures:
+                print()
+
+        if res.failures:
+            for msg in sorted(res.failures):
+                print(' ! Failure:', msg)
+            print()
+            self._log_and_gui_message(self.logger.critical, 'Installation cannot proceed. Application will be closed')
+            self.core.clean_exit(1)
+
+        if not args.yes:
+            if not get_boolean_choice(f'Do you wish to install "{app.app_title}" ?'):  # todo: use a gui yes/no if gui is enabled
+                print('Aborting...')
+                self.core.clean_exit(0)
+        start_t = time.time()
+        # the asset s data will be downloaded in the download folder
+        try:
+            # set up logging stuff (should be moved somewhere else later)
+            dlm.logging_queue = self.logging_queue
+            dlm.proc_debug = args.dlm_debug
+            dlm.start()
+            dlm.join()
+        except Exception as error:
+            end_t = time.time()
+            self._log_and_gui_message(self.logger.info, f'Installation failed after {end_t - start_t:.02f} seconds.')
+            self._log_and_gui_message(
+                self.logger.warning,
+                f'The following exception occurred while waiting for the downloader to finish: {error!r}.\nTry restarting the process.\nIf it continues to fail please open an issue on GitHub.'
+            )
+        else:
+            end_t = time.time()
+            message = f'Finished installation process in {end_t - start_t:.02f} seconds.\nFiles has been downloaded in {dlm.download_dir}'
+            if not args.no_install:
+                self.core.install_app(installed_app)
+                self.core.uevmlfs.set_installed_app(app.app_name, installed_app)
+                self._log_and_gui_message(self.logger.info, 'Copying downloaded data to install folder...')
+                # copy the downloaded data to the installation folder
+                dest_folder = installed_app.install_path
+                copy_folder(dlm.download_dir, dest_folder, check_copy=True, )
+                message += f'\nFiles has been copied to {dest_folder}'
+                self._log_and_gui_message(self.logger.info, message)
+            else:
+                self._log_and_gui_message(self.logger.info, message)
+
     def run_test(self, _args) -> None:
         """
-        Prints the version of UEVaultManager and exit.
+        Run a test command using a CLI prompt. Just for developpers.
         """
         print('UEVaultManager RUN TEST')
         print('"opening a manifest file from disk...')
@@ -1386,11 +1498,7 @@ def main():
         help='API HTTP request timeout (default: 10 seconds)'
     )  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
     parser.add_argument(
-        '-g',
-        '--gui',
-        dest='gui',
-        action='store_true',
-        help='Display additional information using gui elements like dialog boxes or progress window'
+        '-g', '--gui', dest='gui', action='store_true', help='Display additional information using gui elements like dialog boxes or progress window'
     )
     gui_g.UEVM_parser_ref = parser
 
@@ -1404,13 +1512,14 @@ def main():
     status_parser = subparsers.add_parser('status', help='Show UEVaultManager status information')
     edit_parser = subparsers.add_parser('edit', aliases=('edit-assets', ), help='Edit the assets list file')
     scrap_parser = subparsers.add_parser('scrap', aliases=('scrap-assets', ), help='Scrap all the available assets on the marketplace')
-
+    install_parser = subparsers.add_parser('install', aliases=('download', ), help='Download or Install an asset')
     # hidden commands have no help text
     get_token_parser = subparsers.add_parser('get-token')
 
     # Positional arguments
-    list_files_parser.add_argument('app_name', nargs='?', metavar='<App Name>', help='Name of the app (optional)')
-    info_parser.add_argument('app_name_or_manifest', help='App name or manifest path/URI', metavar='<App Name/Manifest URI>')
+    install_parser.add_argument('app_name', nargs='?', metavar='<App Name>', help='Uid of the Asset to install')
+    list_files_parser.add_argument('app_name', nargs='?', metavar='<App Name>', help='Uid of the Asset to list files from')
+    info_parser.add_argument('app_name_or_manifest', help='Uid of the Asset to get info from or manifest path', metavar='<App Name/Manifest URI>')
 
     # Flags
     auth_parser.add_argument(
@@ -1461,11 +1570,7 @@ def main():
         '-o', '--output', dest='output', metavar='<path/name>', action='store', help='The file name (with path) where the list should be written'
     )
     list_parser.add_argument(
-        '-g',
-        '--gui',
-        dest='gui',
-        action='store_true',
-        help='Display additional information using gui elements like dialog boxes or progress window'
+        '-g', '--gui', dest='gui', action='store_true', help='Display additional information using gui elements like dialog boxes or progress window'
     )
 
     list_files_parser.add_argument(
@@ -1516,7 +1621,6 @@ def main():
         help='Also delete scraping data files. They are kept by default'
     )
     # noinspection DuplicatedCode
-    clean_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
     # noinspection DuplicatedCode
     info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
@@ -1532,6 +1636,7 @@ def main():
 
     get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
     get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
+    clean_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
     edit_parser.add_argument(
         '-i',
@@ -1567,6 +1672,93 @@ def main():
         '--offline', dest='offline', action='store_true', help='Use previous saved data files (json) instead of grabing urls and scapping new data'
     )
     scrap_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
+
+    install_parser.add_argument(
+        '--install-path', dest='install_path', action='store', metavar='<path>', help='Path where the Asset will be installed'
+    )
+    install_parser.add_argument(
+        '--download-path',
+        dest='download_path',
+        action='store',
+        metavar='<path>',
+        help='Path where the Asset will be downloaded. If empty, the Epic launcher Vault cache will be used.'
+    )
+    install_parser.add_argument(
+        '-f',
+        '--force-refresh',
+        dest='force_refresh',
+        action='store_true',
+        help="Force a refresh of all asset's data. It could take some time ! If not forced, the cached data will be used"
+    )
+    install_parser.add_argument(
+        '--max-shared-memory',
+        dest='shared_memory',
+        action='store',
+        metavar='<size>',
+        type=int,
+        help='Maximum amount of shared memory to use (in MiB), default: 1 GiB'
+    )
+    install_parser.add_argument(
+        '--max-workers',
+        dest='max_workers',
+        action='store',
+        metavar='<num>',
+        type=int,
+        help='Maximum amount of download workers, default: min(2 * CPUs, 16)'
+    )
+    install_parser.add_argument(
+        '--manifest',
+        dest='override_manifest',
+        action='store',
+        metavar='<uri>',
+        help='Manifest URL or path to use instead of the CDN one (e.g. for downgrading)'
+    )
+    install_parser.add_argument(
+        '--base-url',
+        dest='override_base_url',
+        action='store',
+        metavar='<url>',
+        help='Base URL to download from (e.g. to test or switch to a different CDNs)'
+    )
+    install_parser.add_argument('--no-resume', dest='no_resume', action='store_true', help='Force Download all files / ignore resume')
+    install_parser.add_argument(
+        '--download-only',
+        '--no-install',
+        dest='no_install',
+        action='store_true',
+        help='Do not install app and do not run prerequisite installers after download'
+    )
+    install_parser.add_argument(
+        '--dlm-debug', dest='dlm_debug', action='store_true', help='Set download manager and worker processes\' loglevel to debug'
+    )
+    install_parser.add_argument(
+        '--enable-reordering',
+        dest='order_opt',
+        action='store_true',
+        help='Enable reordering optimization to reduce RAM requirements '
+        'during download (may have adverse results for some titles)'
+    )
+    install_parser.add_argument(
+        '--timeout',
+        dest='timeout',
+        action='store',
+        metavar='<sec>',
+        type=int,
+        help='Connection and read timeout for downloader (default: 10 seconds)'
+    )
+    install_parser.add_argument(
+        '--ignore-free-space', dest='ignore_space', action='store_true', help='Do not abort if not enough free space is available'
+    )
+    install_parser.add_argument(
+        '--preferred-cdn',
+        dest='preferred_cdn',
+        action='store',
+        metavar='<hostname>',
+        help='Set the hostname of the preferred CDN to use when available'
+    )
+    install_parser.add_argument(
+        '--no-https', dest='disable_https', action='store_true', help='Download games via plaintext HTTP (like EGS), e.g. for use with a lan cache'
+    )
 
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
@@ -1649,6 +1841,8 @@ def main():
             args.gui = True
             UEVaultManagerCLI.is_gui = True
             cli.scrap_assets(args)
+        elif args.subparser_name in {'download', 'install'}:
+            cli.install_asset(args)
         elif start_in_edit_mode:
             args.gui = True
             UEVaultManagerCLI.is_gui = True
@@ -1676,10 +1870,8 @@ def main():
             if update_info['severity'] == UpdateSeverity.HIGH.name:
                 print('! This update is recommended as it fixes major issues.')
                 print(f'\n- Release URL: {update_info["release_url"]}')
-
-    cli.core.clean_exit()
     ql.stop()
-    sys.exit(0)
+    cli.core.clean_exit(0)
 
 
 if __name__ == '__main__':
