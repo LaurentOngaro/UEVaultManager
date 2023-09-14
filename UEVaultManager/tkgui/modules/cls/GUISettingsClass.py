@@ -12,8 +12,7 @@ from termcolor import colored
 # UEVaultManager.tkgui.modules.functions_no_deps
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __codename__, __name__, __version__
-from UEVaultManager.lfs.utils import clean_filename
-from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.lfs.utils import clean_filename, path_join
 from UEVaultManager.models.config import AppConf
 from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
@@ -85,7 +84,7 @@ class GUISettings:
         self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
         self.data_filetypes = (
-            ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
+            ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('SQlite file', '*.db')
         )
 
         self.preview_max_width: int = 150
@@ -564,17 +563,17 @@ class GUISettings:
         # store all the properties that must be saved in config file
         # no need of fallback values here, they are set in the config file by default
         config_vars = {
-            'rows_per_page': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'rows_per_page')),
+            'rows_per_page': self.config.getint('UEVaultManager', 'rows_per_page'),
             'data_filters': self.config.get('UEVaultManager', 'data_filters'),
-            'x_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'x_pos')),
-            'y_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'y_pos')),
-            'width': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'width')),
-            'height': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'height')),
-            'debug_mode': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'debug_mode')),
-            'never_update_data_files': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'never_update_data_files')),
-            'reopen_last_file': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'reopen_last_file')),
-            'use_colors_for_data': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_colors_for_data')),
-            'image_cache_max_time': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'image_cache_max_time')),
+            'x_pos': self.config.getint('UEVaultManager', 'x_pos'),
+            'y_pos': self.config.getint('UEVaultManager', 'y_pos'),
+            'width': self.config.getint('UEVaultManager', 'width'),
+            'height': self.config.getint('UEVaultManager', 'height'),
+            'debug_mode': self.config.getboolean('UEVaultManager', 'debug_mode'),
+            'never_update_data_files': self.config.getboolean('UEVaultManager', 'never_update_data_files'),
+            'reopen_last_file': self.config.getboolean('UEVaultManager', 'reopen_last_file'),
+            'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),
+            'image_cache_max_time': self.config.getint('UEVaultManager', 'image_cache_max_time'),
             'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file'),
             'cache_folder': self.config.get('UEVaultManager', 'cache_folder'),
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
@@ -582,12 +581,12 @@ class GUISettings:
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
             'column_infos': self.config.get('UEVaultManager', 'column_infos'),
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
-            'use_threads': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_threads')),
+            'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
             'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
-            'testing_switch': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'testing_switch')),
+            'testing_switch': self.config.getint('UEVaultManager', 'testing_switch'),
             'assets_order_col': self.config.get('UEVaultManager', 'assets_order_col'),
-            'check_asset_folders': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'check_asset_folders')),
-            'browse_when_add_row': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'browse_when_add_row')),
+            'check_asset_folders': self.config.getboolean('UEVaultManager', 'check_asset_folders'),
+            'browse_when_add_row': self.config.getboolean('UEVaultManager', 'browse_when_add_row'),
             'last_opened_folder': self.config.get('UEVaultManager', 'last_opened_folder'),
         }
         return config_vars
