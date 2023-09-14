@@ -17,6 +17,7 @@ from datetime import datetime
 from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
+from shutil import rmtree
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -334,7 +335,7 @@ class UEVaultManagerCLI:
                     self._log_and_gui_display(self.logger.info, f'Now logged in as user "{self.core.uevmlfs.userdata["displayName"]}"')
                     return
                 else:
-                    self.logger.warning('Login session from EGS seems to no longer be valid.')
+                    self._log_and_gui_display(self.logger.warning, 'Login session from EGS seems to no longer be valid.')
                     self.core.clean_exit(1)
             except Exception as error:
                 message = f'No EGS login session found, please log in manually. (Exception: {error!r})'
@@ -1342,23 +1343,33 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
         if args.subparser_name == 'download':
-            self._log_and_gui_message(self.logger.info, 'Setting --no-install flag since "download" command was used')
+            self._log_and_gui_message(self.logger.debug, 'Setting --no-install flag since "download" command was used')
             args.no_install = True
+
+        if args.clean_dowloaded_data and args.no_install:
+            self._log_and_gui_message(
+                self.logger.error,
+                'You have selected to not install the asset and to not keep the dow loaded data.\nSo, nothing can be done for you. Application will be closed',
+                quit_on_error=True
+            )
+            self.core.clean_exit(0)  # previous line could not quit
 
         if not self.core.login():
             self._log_and_gui_message(
                 self.logger.error,
                 'You are not connected or log in failed.\nYou should log first or check your credential. Application will be closed',
-                quit_on_error=False
+                quit_on_error=True
             )
-            self.core.clean_exit(1)
+            self.core.clean_exit(1)  # previous line could not quit
         # TODO: add a progressWindow to show the progress of the installation
         # TODO: next line uses the same code as the one in the list_asset (old one). and could take some time to update the metadata
         # TODO: Should we use the new API call like in scrap_assets ?
         app = self.core.get_item(args.app_name, update_meta=args.force_refresh)
         if not app:
-            self._log_and_gui_message(self.logger.error, f'Could not find "{args.app_name}" in list of available assets. Application will be closed')
-            self.core.clean_exit(1)
+            self._log_and_gui_message(
+                self.logger.error, f'Could not find "{args.app_name}" in list of available assets. Application will be closed', quit_on_error=True
+            )
+            self.core.clean_exit(1)  # previous line could not quit
 
         self._log_and_gui_message(self.logger.info, f'Preparing download for "{app.app_title}" ({app.app_name})...')
         download_path_base = args.download_path
@@ -1408,15 +1419,15 @@ class UEVaultManagerCLI:
             for msg in sorted(res.failures):
                 print(' ! Failure:', msg)
             print()
-            self._log_and_gui_message(self.logger.critical, 'Installation cannot proceed. Application will be closed')
-            self.core.clean_exit(1)
+            self._log_and_gui_message(self.logger.critical, 'Installation cannot proceed. Application will be closed', quit_on_error=True)
+            self.core.clean_exit(1)  # previous line could not quit
 
         if not args.yes:
             if not get_boolean_choice(f'Do you wish to install "{app.app_title}" ?'):  # todo: use a gui yes/no if gui is enabled
                 print('Aborting...')
                 self.core.clean_exit(0)
         start_t = time.time()
-        # the asset s data will be downloaded in the download folder
+        # the asset data will be downloaded in the download folder
         try:
             # set up logging stuff (should be moved somewhere else later)
             dlm.logging_queue = self.logging_queue
@@ -1444,6 +1455,11 @@ class UEVaultManagerCLI:
                 self._log_and_gui_message(self.logger.info, message)
             else:
                 self._log_and_gui_message(self.logger.info, message)
+        if args.clean_dowloaded_data:
+            self._log_and_gui_message(self.logger.info, 'Cleaning downloaded data...')
+            # delete the dlm.download_dir folder
+            rmtree(dlm.download_dir)
+            self.core.uevmlfs.clean_tmp_data()
 
     def run_test(self, _args) -> None:
         """
@@ -1689,6 +1705,13 @@ def main():
         dest='force_refresh',
         action='store_true',
         help="Force a refresh of all asset's data. It could take some time ! If not forced, the cached data will be used"
+    )
+    install_parser.add_argument(
+        '-c',
+        '--clean-dowloaded-data',
+        dest='clean_dowloaded_data',
+        action='store_true',
+        help="Delete the folder with dowloaded data. Keep the installed version if it has been installed."
     )
     install_parser.add_argument(
         '--max-shared-memory',
