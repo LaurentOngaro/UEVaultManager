@@ -128,7 +128,7 @@ class MockLauncher:
         except Exception as _error:
             logger.error(f'Logging in via exchange-code failed with {_error!r}')
         finally:
-            # We cannot destroy the browser from here,
+            # We can not destroy the browser from here,
             # so we'll load a small goodbye site first.
             self.window.load_url(goodbye_url)
 

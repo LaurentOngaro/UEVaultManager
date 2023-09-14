@@ -379,7 +379,7 @@ class UEVaultManagerCLI:
             exchange_token = args.ex_token
 
         if not exchange_token and not auth_code:
-            self.logger.critical('No exchange token/authorization code, cannot log in.')
+            self.logger.critical('No exchange token/authorization code, can not log in.')
             return
 
         if exchange_token and self.core.auth_ex_token(exchange_token):
@@ -911,7 +911,7 @@ class UEVaultManagerCLI:
                 with open(manifest_uri, 'rb') as f:
                     manifest_data = f.read()
             else:
-                self.logger.info('Asset not installed and offline mode enabled, cannot load manifest.')
+                self.logger.info('Asset not installed and offline mode enabled, can not load manifest.')
         elif item:
             # entitlements = self.core.egs.get_user_entitlements()
             egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
@@ -1419,7 +1419,7 @@ class UEVaultManagerCLI:
             for msg in sorted(res.failures):
                 print(' ! Failure:', msg)
             print()
-            self._log_and_gui_message(self.logger.critical, 'Installation cannot proceed. Application will be closed', quit_on_error=True)
+            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed. Application will be closed', quit_on_error=True)
             self.core.clean_exit(1)  # previous line could not quit
 
         if not args.yes:

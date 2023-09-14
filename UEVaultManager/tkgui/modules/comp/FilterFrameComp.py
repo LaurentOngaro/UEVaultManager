@@ -34,11 +34,11 @@ class FilterFrame(ttk.LabelFrame):
         value_for_all: str = 'All',
     ):
         if container is None:
-            raise ValueError('container cannot be None')
+            raise ValueError('container can not be None')
         if data_func is None:
-            raise ValueError('data_func cannot be None')
+            raise ValueError('data_func can not be None')
         if update_func is None:
-            raise ValueError('update_func cannot be None')
+            raise ValueError('update_func can not be None')
 
         super().__init__(container, text=title)
         self._filters = {}
@@ -62,10 +62,10 @@ class FilterFrame(ttk.LabelFrame):
         self.save_filter_func = save_filter_func
         self.dynamic_filters_func = dynamic_filters_func
         if self.data_func is None:
-            raise ValueError('data_func cannot be None')
+            raise ValueError('data_func can not be None')
         self.update_func = update_func
         if self.update_func is None:
-            raise ValueError('update_func cannot be None')
+            raise ValueError('update_func can not be None')
         # call the dynamic filters function to add dynamic filters to the quick filters
         if self.dynamic_filters_func is not None:
             dynamic_filters = self.dynamic_filters_func()

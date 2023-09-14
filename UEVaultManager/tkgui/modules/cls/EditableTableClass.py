@@ -93,7 +93,7 @@ class EditableTable(Table):
         **kwargs
     ):
         if container is None:
-            raise ValueError('container cannot be None')
+            raise ValueError('container can not be None')
         self._container = container
         self.data_source_type: DataSourceType = data_source_type
         self.data_source = data_source
@@ -400,7 +400,7 @@ class EditableTable(Table):
         :param frm_filter: The filter frame.
         """
         if frm_filter is None:
-            raise ValueError('frm_filter cannot be None')
+            raise ValueError('frm_filter can not be None')
         self._frm_filter = frm_filter
 
     def set_frm_quick_edit(self, frm_quick_edit=None) -> None:
@@ -409,7 +409,7 @@ class EditableTable(Table):
         :param frm_quick_edit: The quick edit frame.
         """
         if frm_quick_edit is None:
-            raise ValueError('frm_quick_edit cannot be None')
+            raise ValueError('frm_quick_edit can not be None')
         self._frm_quick_edit = frm_quick_edit
 
     def set_columns_type(self, df: pd.DataFrame) -> pd.DataFrame:
