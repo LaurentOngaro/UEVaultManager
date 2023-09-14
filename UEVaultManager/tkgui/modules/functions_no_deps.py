@@ -189,9 +189,9 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
     if not os.path.exists(path):
         try:
             os.makedirs(path)
-        except (OSError, PermissionError) as e:
+        except (OSError, PermissionError) as error:
             is_valid = False
-            log(f'Error while creating the directory {path}: {e}')
+            log(f'Error while creating the directory {path}: {error!r}')
             if home_dir := os.environ.get('XDG_CONFIG_HOME'):
                 path = path_join(home_dir, 'UEVaultManager')
             else:
