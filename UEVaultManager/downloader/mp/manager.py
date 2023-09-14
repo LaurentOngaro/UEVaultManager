@@ -1,5 +1,7 @@
 # coding: utf-8
-
+"""
+Download manager process that handles all the download and writing tasks.
+"""
 # please don't look at this code too hard, it's a mess.
 
 import logging
@@ -21,35 +23,38 @@ from UEVaultManager.models.manifest import Manifest, ManifestComparison
 
 
 class DLManager(Process):
+    """
+    Download manager process that handles all the download and writing tasks.
+    """
 
     def __init__(
         self,
-        download_dir,
-        base_url,
-        cache_dir=None,
+        download_dir: str,
+        base_url: str,
+        cache_dir: str = '',
         status_q=None,
-        max_workers=0,
-        update_interval=1.0,
-        dl_timeout=10,
+        max_workers: int = 0,
+        update_interval: float = 1.0,
+        timeout: (float, float) = (7, 7),
         resume_file=None,
-        max_shared_memory=1024 * 1024 * 1024
+        max_shared_memory: int = 1024 * 1024 * 1024
     ):
         super().__init__(name='DLManager')
         self.log = logging.getLogger('DLM')
         self.proc_debug = False
 
         self.base_url = base_url
-        self.dl_dir = download_dir
+        self.download_dir = download_dir
         self.cache_dir = cache_dir or path_join(download_dir, '.cache')
 
         # All the queues!
         self.logging_queue = None
-        self.dl_worker_queue = None
+        self.worker_queue = None
         self.writer_queue = None
-        self.dl_result_q = None
-        self.writer_result_q = None
+        self.result_queue = None
+        self.writer_result_queue = None
         self.max_workers = max_workers or min(cpu_count() * 2, 16)
-        self.dl_timeout = dl_timeout
+        self.timeout = timeout
 
         # Analysis stuff
         self.analysis = None
@@ -91,12 +96,12 @@ class DLManager(Process):
         self,
         manifest: Manifest,
         old_manifest: Manifest = None,
-        patch=True,
-        resume=True,
-        file_prefix_filter=None,
-        file_exclude_filter=None,
-        file_install_tag=None,
-        processing_optimization=False
+        patch: bool = True,
+        resume: bool = True,
+        file_prefix_filter: list = None,
+        file_exclude_filter: list = None,
+        file_install_tag: list = None,
+        processing_optimization: bool = False
     ) -> AnalysisResult:
         """
         Run analysis on manifest and old manifest (if not None) and return a result
@@ -131,7 +136,7 @@ class DLManager(Process):
 
                 for line in open(self.resume_file, encoding='utf-8').readlines():
                     file_hash, _, filename = line.strip().partition(':')
-                    _p = path_join(self.dl_dir, filename)
+                    _p = path_join(self.download_dir, filename)
                     if not os.path.exists(_p):
                         self.log.debug(f'File does not exist but is in resume file: "{_p}"')
                         missing += 1
@@ -161,7 +166,7 @@ class DLManager(Process):
                 if fm.filename in mc.added:
                     continue
 
-                local_path = os.path.join(self.dl_dir, fm.filename)
+                local_path = path_join(self.download_dir, fm.filename)
                 if not os.path.exists(local_path):
                     missing_files.add(fm.filename)
 
@@ -419,20 +424,16 @@ class DLManager(Process):
             shared_mib = f'{self.max_shared_memory / 1024 / 1024:.01f} MiB'
             required_mib = f'{analysis_res.min_memory / 1024 / 1024:.01f} MiB'
             suggested_mib = round(self.max_shared_memory / 1024 / 1024 + (analysis_res.min_memory - self.max_shared_memory) / 1024 / 1024 + 32)
-
             if processing_optimization:
                 message = f'Try running UEVaultManager with "--enable-reordering --max-shared-memory {suggested_mib:.0f}"'
             else:
-                message = 'Try running UEVaultManager with "--enable-reordering" to reduce memory usage, ' \
-                          f'or use "--max-shared-memory {suggested_mib:.0f}" to increase the limit.'
+                message = 'Try running UEVaultManager with "--enable-reordering" to reduce memory usage, or use "--max-shared-memory {suggested_mib:.0f}" to increase the limit.'
 
             raise MemoryError(f'Current shared memory cache is smaller than required: {shared_mib} < {required_mib}. ' + message)
 
         # calculate actual dl and patch write size.
-        analysis_res.dl_size = \
-            sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)
-        analysis_res.uncompressed_dl_size = \
-            sum(c.window_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)
+        analysis_res.dl_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)
+        analysis_res.uncompressed_dl_size = sum(c.window_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)
 
         # add jobs to remove files
         for fname in mc.removed:
@@ -446,6 +447,11 @@ class DLManager(Process):
         return analysis_res
 
     def download_job_manager(self, task_cond: Condition, shm_cond: Condition):
+        """
+        Download job manager that handles adding download jobs to the queue.
+        :param task_cond: task condition
+        :param shm_cond: shared memory condition
+        """
         while self.chunks_to_dl and self.running:
             while self.active_tasks < self.max_workers * 2 and self.chunks_to_dl:
                 try:
@@ -459,7 +465,7 @@ class DLManager(Process):
                 chunk = self.chunk_data_list.get_chunk_by_guid(c_guid)
                 self.log.debug(f'Adding {chunk.guid_num} (active: {self.active_tasks})')
                 try:
-                    self.dl_worker_queue.put(DownloaderTask(url=self.base_url + '/' + chunk.path, chunk_guid=c_guid, shm=sms), timeout=1.0)
+                    self.worker_queue.put(DownloaderTask(url=self.base_url + '/' + chunk.path, chunk_guid=c_guid, shm=sms), timeout=1.0)
                 except Exception as error:
                     self.log.warning(f'Failed to add to download queue: {error!r}')
                     self.chunks_to_dl.appendleft(c_guid)
@@ -469,7 +475,7 @@ class DLManager(Process):
             else:
                 # active tasks limit hit, wait for tasks to finish
                 with task_cond:
-                    self.log.debug('Waiting for download tasks to complete..')
+                    self.log.debug('Waiting for download tasks to complete...')
                     task_cond.wait(timeout=1.0)
                     continue
 
@@ -482,6 +488,10 @@ class DLManager(Process):
         self.log.debug('Download Job Manager quitting...')
 
     def dl_results_handler(self, task_cond: Condition):
+        """
+        Download result handler that handles adding writer jobs to the queue.
+        :param task_cond: task condition
+        """
         in_buffer = dict()
 
         task = self.tasks.popleft()
@@ -539,7 +549,7 @@ class DLManager(Process):
                     break
             else:  # only enter blocking code if the loop did not break
                 try:
-                    res = self.dl_result_q.get(timeout=1)
+                    res = self.result_queue.get(timeout=1)
                     self.active_tasks -= 1
                     with task_cond:
                         task_cond.notify()
@@ -553,7 +563,7 @@ class DLManager(Process):
                         self.log.error(f'Download for {res.chunk_guid} failed, retrying...')
                         try:
                             # since the result is a subclass of the task we can simply resubmit the result object
-                            self.dl_worker_queue.put(res, timeout=1.0)
+                            self.worker_queue.put(res, timeout=1.0)
                             self.active_tasks += 1
                         except Exception as error:
                             self.log.warning(f'Failed adding retry task to queue! {error!r}')
@@ -567,9 +577,13 @@ class DLManager(Process):
         self.log.debug('Download result handler quitting...')
 
     def fw_results_handler(self, shm_cond: Condition):
+        """
+        Writer result handler that handles releasing shared memory and writing to the resume file.
+        :param shm_cond: shared memory condition
+        """
         while self.running:
             try:
-                res = self.writer_result_q.get(timeout=1.0)
+                res = self.writer_result_queue.get(timeout=1.0)
 
                 if isinstance(res, TerminateWorkerTask):
                     self.log.debug('Got termination command in FW result handler')
@@ -588,7 +602,7 @@ class DLManager(Process):
 
                 if not res.success:
                     # todo make this kill the installation process or at least skip the file and mark it as failed
-                    self.log.fatal(f'Writing for {res.filename} failed!')
+                    self.log.critical(f'Writing for {res.filename} failed!')
                 if res.flags & TaskFlags.RELEASE_MEMORY:
                     self.sms.appendleft(res.shared_memory)
                     with shm_cond:
@@ -608,6 +622,9 @@ class DLManager(Process):
         self.log.debug('Writer result handler quitting...')
 
     def run(self):
+        """
+        Run the download manager (wrapper)
+        """
         if not self.analysis:
             raise ValueError('Did not run analysis before trying to run download!')
 
@@ -647,7 +664,7 @@ class DLManager(Process):
             # clean up all the queues, otherwise this process won't terminate properly
             for name, q in zip(
                 ('Download jobs', 'Writer jobs', 'Download results', 'Writer results'),
-                (self.dl_worker_queue, self.writer_queue, self.dl_result_q, self.writer_result_q)
+                (self.worker_queue, self.writer_queue, self.result_queue, self.writer_result_queue)
             ):
                 self.log.debug(f'Cleaning up queue "{name}"')
                 try:
@@ -658,6 +675,9 @@ class DLManager(Process):
                     q.join_thread()
 
     def run_real(self):
+        """
+        Run the download manager
+        """
         self.shared_memory = SharedMemory(create=True, size=self.max_shared_memory)
         self.log.debug(f'Created shared memory of size: {self.shared_memory.size / 1024 / 1024:.02f} MiB')
 
@@ -669,26 +689,26 @@ class DLManager(Process):
         self.log.debug(f'Created {len(self.sms)} shared memory segments.')
 
         # Create queues
-        self.dl_worker_queue = MPQueue(-1)
+        self.worker_queue = MPQueue(-1)
         self.writer_queue = MPQueue(-1)
-        self.dl_result_q = MPQueue(-1)
-        self.writer_result_q = MPQueue(-1)
+        self.result_queue = MPQueue(-1)
+        self.writer_result_queue = MPQueue(-1)
 
         self.log.info(f'Starting download workers...')
         for i in range(self.max_workers):
             w = DLWorker(
                 f'DLWorker {i + 1}',
-                self.dl_worker_queue,
-                self.dl_result_q,
+                self.worker_queue,
+                self.result_queue,
                 self.shared_memory.name,
                 logging_queue=self.logging_queue,
-                dl_timeout=self.dl_timeout
+                timeout=self.timeout
             )
             self.children.append(w)
             w.start()
 
         self.log.info('Starting file writing worker...')
-        writer_p = FileWorker(self.writer_queue, self.writer_result_q, self.dl_dir, self.shared_memory.name, self.cache_dir, self.logging_queue)
+        writer_p = FileWorker(self.writer_queue, self.writer_result_queue, self.download_dir, self.shared_memory.name, self.cache_dir, self.logging_queue)
         self.children.append(writer_p)
         writer_p.start()
 
@@ -795,7 +815,7 @@ class DLManager(Process):
             time.sleep(self.update_interval)
 
         for i in range(self.max_workers):
-            self.dl_worker_queue.put_nowait(TerminateWorkerTask())
+            self.worker_queue.put_nowait(TerminateWorkerTask())
 
         self.log.info('Waiting for installation to finish...')
         self.writer_queue.put_nowait(TerminateWorkerTask())
