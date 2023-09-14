@@ -92,7 +92,7 @@ class WriterTask:
     # Whether shared memory segment shall be released back to the pool on completion
     shared_memory: Optional[SharedMemorySegment] = None
 
-    # File to read old chunk from, disk chunk cache or old game file
+    # File to read old chunk from, disk chunk cache or old file
     old_file: Optional[str] = None
     cache_file: Optional[str] = None
 

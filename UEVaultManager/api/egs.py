@@ -3,7 +3,7 @@
 Implementation for:
 - EPCAPI : Epic Games Client API
 - GrabResult : Enum for the result of grabbing a page.
-- create_empty_assets_extra : Creates an empty asset extra dict.
+- create_empty_assets_extra : Create an empty asset extra dict.
 """
 import json
 import logging
@@ -59,7 +59,7 @@ def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=
 
 def create_empty_assets_extra(asset_name: str) -> dict:
     """
-    Creates an empty asset extra dict.
+    Create an empty asset extra dict.
     :param asset_name:  The name of the asset.
     :return: The empty asset extra dict.
      """
@@ -209,7 +209,7 @@ class EPCAPI:
 
     def get_marketplace_product_url(self, asset_slug: str = '') -> str:
         """
-        Returns the url for the asset in the marketplace.
+        Return the url for the asset in the marketplace.
         :param asset_slug: The asset slug.
         :return: The url.
         """
@@ -218,7 +218,7 @@ class EPCAPI:
 
     def get_api_product_url(self, uid: str = '') -> str:
         """
-        Returns the url for the asset using the UE API.
+        Return the url for the asset using the UE API.
         :param uid: The id of the asset (not the slug, nor the catalog_id).
         :return: The url.
         """

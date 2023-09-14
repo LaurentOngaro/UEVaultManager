@@ -27,7 +27,7 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
         data_source = gui_fn.path_from_relative_to_absolute(gui_g.s.sqlite_filename)
         data_source_type = DataSourceType.SQLITE
         if not os.path.isfile(data_source):
-            log_error(f'Database File {data_source} not found. Exiting...')
+            log_error(f'Database File {data_source} not found. Application will be closed')
             exit(1)
     else:
         data_source_type = DataSourceType.FILE

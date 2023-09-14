@@ -156,7 +156,7 @@ class MockLauncher:
             if exchange_code:
                 self.callback_result = self.callback_code(exchange_code)
         except Exception as _error:
-            logger.error(f'SID login failed with {_error!r}')
+            logger.error(f'SID log in failed with {_error!r}')
         finally:
             logger.debug('Starting browser logout...')
             self.window.load_url(logout_url)

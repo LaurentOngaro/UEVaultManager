@@ -16,8 +16,8 @@ from setuptools import setup
 
 from UEVaultManager import __name__, __version__, __codename__, __license__, __author__, __author_email__, __description__, __url__
 
-if sys.version_info < (3, 9):
-    sys.exit('python 3.9 or higher is required for UEVaultManager')
+if sys.version_info < (3, 10):
+    sys.exit('python 3.10 or higher is required for UEVaultManager')
 
 current_folder = Path(__file__).parent
 

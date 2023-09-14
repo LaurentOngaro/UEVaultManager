@@ -113,17 +113,17 @@ r_con = (
 
 
 def bytes2matrix(text):
-    """ Converts a 16-byte array into a 4x4 matrix.  """
+    """ Convert a 16-byte array into a 4x4 matrix.  """
     return [list(text[i:i + 4]) for i in range(0, len(text), 4)]
 
 
 def matrix2bytes(matrix):
-    """ Converts a 4x4 matrix into a 16-byte array.  """
+    """ Convert a 4x4 matrix into a 16-byte array.  """
     return bytes(sum(matrix, []))
 
 
 def xor_bytes(a, b):
-    """ Returns a new byte array with the elements xor'ed. """
+    """ Return a new byte array with the elements xor'ed. """
     return bytes(i ^ j for i, j in zip(a, b))
 
 
@@ -163,7 +163,7 @@ class AES:
 
     def _expand_key(self, master_key):
         """
-        Expands and returns a list of key matrices for the given master_key.
+        Expand and return a list of key matrices for the given master_key.
         """
         # Initialize round keys with raw key material.
         key_columns = bytes2matrix(master_key)

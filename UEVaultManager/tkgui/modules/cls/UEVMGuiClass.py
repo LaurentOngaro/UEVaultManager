@@ -139,7 +139,7 @@ class UEVMGui(tk.Tk):
         if data_table.get_data() is None:
             self.logger.error('No valid source to read data from. Application will be closed')
             self.quit()
-            sys.exit(1)
+            self.core.clean_exit(1)
         self.editable_table = data_table
         data_table.set_preferences(gui_g.s.datatable_default_pref)
         data_table.show()
@@ -1492,7 +1492,7 @@ class UEVMGui(tk.Tk):
         Run the window to update missing data in database from json files.
         """
         if self.editable_table.data_source_type != DataSourceType.SQLITE:
-            gui_f.box_message('This command can only by run with a database as data source', level='warning')
+            gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
         tool_window = JsonProcessingWindow(
             title='Json Files Data Processing',
@@ -1510,7 +1510,7 @@ class UEVMGui(tk.Tk):
         Run the window to import/export database to csv files.
         """
         if self.editable_table.data_source_type != DataSourceType.SQLITE:
-            gui_f.box_message('This command can only by run with a database as data source', level='warning')
+            gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
         tool_window = DbFilesWindowClass(
             title='Database Import/Export Window',

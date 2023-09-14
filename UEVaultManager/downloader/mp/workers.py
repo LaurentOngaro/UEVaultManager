@@ -1,5 +1,9 @@
 # coding: utf-8
-
+"""
+Implementation for:
+- DownloadWorker: Downloads chunks from the internet and writes them to the shared memory segment.
+- FileWorker: Writes chunks to files.
+"""
 import logging
 import os
 import time
@@ -16,8 +20,18 @@ from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskRes
 
 
 class DLWorker(Process):
+    """
+    Worker process that downloads chunks from the internet and writes them to the shared memory segment.
+    :param name: Name of the process
+    :param queue: Queue to get jobs from
+    :param out_queue: Queue to put results in
+    :param shm: Name of the shared memory segment to write to
+    :param max_retries: Maximum number of retries for a chunk
+    :param logging_queue: Queue to send log messages to
+    :param timeout: Timeout for a single chunk download
+    """
 
-    def __init__(self, name, queue, out_queue, shm, max_retries=7, logging_queue=None, dl_timeout=10):
+    def __init__(self, name, queue, out_queue, shm, max_retries=7, logging_queue=None, timeout=(7, 7)):
         super().__init__(name=name)
         self.q = queue
         self.o_q = out_queue
@@ -27,9 +41,12 @@ class DLWorker(Process):
         self.shm = SharedMemory(name=shm)
         self.log_level = logging.getLogger().level
         self.logging_queue = logging_queue
-        self.dl_timeout = float(dl_timeout) if dl_timeout else 10.0
+        self.timeout = timeout
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Main loop of the worker process.
+        """
         # we have to fix up the logger before we can start
         _root = logging.getLogger()
         _root.handlers = []
@@ -70,7 +87,7 @@ class DLWorker(Process):
                     logger.debug(f'Downloading {job.url}')
 
                     try:
-                        r = self.session.get(job.url, timeout=self.dl_timeout)
+                        r = self.session.get(job.url, timeout=self.timeout)
                         r.raise_for_status()
                     except Exception as error:
                         logger.warning(f'Chunk download for {job.chunk_guid} failed: ({error!r}), retrying...')
@@ -102,7 +119,7 @@ class DLWorker(Process):
             try:
                 size = len(chunk.data)
                 if size > job.shm.size:
-                    logger.fatal('Downloaded chunk is longer than SharedMemorySegment!')
+                    logger.critical('Downloaded chunk is longer than SharedMemorySegment!')
 
                 self.shm.buf[job.shm.offset:job.shm.offset + size] = bytes(chunk.data)
                 del chunk
@@ -119,6 +136,15 @@ class DLWorker(Process):
 
 
 class FileWorker(Process):
+    """
+    Worker process that writes chunks to files.
+    :param queue: Queue to get jobs from
+    :param out_queue: Queue to put results in
+    :param base_path: Base path to write files to
+    :param shm: Name of the shared memory segment to read from
+    :param cache_path: Path to the cache directory
+    :param logging_queue: Queue to send log messages to
+    """
 
     def __init__(self, queue, out_queue, base_path, shm, cache_path=None, logging_queue=None):
         super().__init__(name='FileWorker')
@@ -130,7 +156,10 @@ class FileWorker(Process):
         self.log_level = logging.getLogger().level
         self.logging_queue = logging_queue
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Main loop of the worker process.
+        """
         # we have to fix up the logger before we can start
         _root = logging.getLogger()
         _root.handlers = []
@@ -149,7 +178,7 @@ class FileWorker(Process):
                 try:
                     j: WriterTask = self.q.get(timeout=10.0)
                 except Empty:
-                    logger.warning('Writer queue empty!')
+                    logger.warning('Writer queue empty')
                     continue
 
                 if isinstance(j, TerminateWorkerTask):

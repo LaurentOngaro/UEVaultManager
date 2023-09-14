@@ -89,7 +89,7 @@ class ExtendedWidget:
 
     def get_content(self) -> str:
         """
-        Gets the content of the widget.
+        Get the content of the widget.
         :return: content of the widget.
         """
         try:
@@ -218,7 +218,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
 
     def get_content(self) -> str:
         """
-        Gets the content of the widget.
+        Get the content of the widget.
         :return: content of the widget.
         """
         try:
@@ -375,7 +375,7 @@ class ExtendedCheckButton(ExtendedWidget):
 
     def get_content(self) -> bool:
         """
-        Gets the content of the widget.
+        Get the content of the widget.
         :return: True if the checkbutton is checked, False otherwise.
         """
         return bool(self._var.get())

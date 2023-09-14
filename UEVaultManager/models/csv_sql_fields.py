@@ -8,6 +8,7 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int, create_uid
 
+# noinspection GrazieInspection
 csv_sql_fields = {
     # fields mapping from csv to sql
     # key: csv field name, value: {sql name, state }

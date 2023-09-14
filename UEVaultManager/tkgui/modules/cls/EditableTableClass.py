@@ -491,7 +491,7 @@ class EditableTable(Table):
         elif df_type == DataFrameUsed.MODEL:
             df = self.model.df
         elif df_type == DataFrameUsed.BOTH:
-            self.logger.warning("The df_type parameter can't be DataFrameUsed.BOTH in that case. Using DataFrameUsed.AUTO instead.")
+            self.logger.warning('The df_type parameter can not be "DataFrameUsed.BOTH" in that case. Using "DataFrameUsed.AUTO" instead.')
             return int(self.get_real_index(row_number))
         else:
             return int(self.get_real_index(row_number))
@@ -534,7 +534,7 @@ class EditableTable(Table):
         elif df_type == DataFrameUsed.MODEL:
             return self.model.df
         elif df_type == DataFrameUsed.BOTH:
-            self.logger.warning("The df_type parameter can't be DataFrameUsed.BOTH in that case. Using DataFrameUsed.AUTO instead.")
+            self.logger.warning('The df_type parameter can not be "DataFrameUsed.BOTH" in that case. Using "DataFrameUsed.AUTO" instead.')
             return self.get_data(df_type=DataFrameUsed.AUTO)
 
     def set_data(self, df: pd.DataFrame, df_type: DataFrameUsed = DataFrameUsed.UNFILTERED) -> None:
@@ -644,11 +644,6 @@ class EditableTable(Table):
         """
         Load data from the specified CSV file or database.
         :return: The data loaded from the file.
-        """
-        """
-        if self.data_source is None or not os.path.isfile(self.data_source):
-            self.logger.warning(f'File to read data from is not defined or not found: {self.data_source}')
-            return False
         """
         self.must_rebuild = False
         if not self.valid_source_type(self.data_source):
