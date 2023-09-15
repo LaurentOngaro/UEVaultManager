@@ -494,7 +494,10 @@ class DLManager(Process):
         """
         in_buffer = dict()
 
-        task = self.tasks.popleft()
+        try:
+            task = self.tasks.popleft()
+        except IndexError:  # finished
+            task = None
         current_file = ''
 
         while task and self.running:

@@ -19,11 +19,11 @@ class EPCLFS:
         self.manifests = dict()
         self.is_windows = os.name == 'nt'
         if self.is_windows:
-            self.userprofile_path = os.path.expandvars('$USERPROFILE')
-            self.appdata_path = os.path.expandvars(r'%LOCALAPPDATA%\EpicGamesLauncher\Saved\Config\Windows')
-            self.programdata_path = os.path.expandvars(r'%PROGRAMDATA%\Epic\EpicGamesLauncher')
+            self.userprofile_path = os.path.normpath(os.path.expandvars(r'$USERPROFILE'))
+            self.appdata_path = os.path.normpath(os.path.expandvars(r'%LOCALAPPDATA%\EpicGamesLauncher\Saved\Config\Windows'))
+            self.programdata_path = os.path.normpath(os.path.expandvars(r'%PROGRAMDATA%\Epic\EpicGamesLauncher'))
         else:
-            self.userprofile_path = '$HOME'
+            self.userprofile_path = os.path.normpath(os.path.expandvars(r'$HOME'))
             self.appdata_path = self.programdata_path = None
         self.config = configparser.ConfigParser(strict=False)
         self.config.optionxform = lambda option: option
