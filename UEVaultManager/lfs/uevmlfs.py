@@ -390,16 +390,19 @@ class UEVMLFS:
             except FileNotFoundError:  # all other errors should propagate
                 return None
 
-    def save_manifest(self, app_name: str, manifest_data, version: str, platform: str = 'Windows') -> None:
+    def save_manifest(self, app_name: str, manifest_data, version: str, platform: str = 'Windows') -> str:
         """
         Save the manifest data to a file.
         :param app_name: The name of the item.
         :param manifest_data: The manifest data.
         :param version: version of the manifest.
         :param platform: platform of the manifest.
+        :return: The manifest filename.
         """
-        with open(self._get_manifest_filename(app_name, version, platform), 'wb') as f:
+        filename = self._get_manifest_filename(app_name, version, platform)
+        with open(filename, 'wb') as f:
             f.write(manifest_data)
+        return filename
 
     def get_item_meta(self, app_name: str):
         """

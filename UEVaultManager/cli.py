@@ -8,6 +8,7 @@ import csv
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -1371,10 +1372,17 @@ class UEVaultManagerCLI:
             )
             self.core.clean_exit(1)  # previous line could not quit
 
+        if args.vault_cache:
+            self._log_and_gui_message(
+                self.logger.info, 'Use the vault cache folder to store the downloaded asset. Other download options will be ignored'
+            )
+            args.clean_dowloaded_data = False
+            # in the vaultCache, the data is in a subfolder named like the app
+            download_path = self.core.egl.vault_cache_folder
+        else:
+            download_path = args.download_path
+        download_path = path_join(download_path, app.app_name)
         self._log_and_gui_message(self.logger.info, f'Preparing download for "{app.app_title}" ({app.app_name})...')
-        download_path_base = args.download_path
-        # in the vaultCache, the data is in a subfolder named like the app
-        download_path = path_join(download_path_base, app.app_name, 'data')
         install_path_base = args.install_path
         dlm, analysis, installed_app = self.core.prepare_download(
             app=app,
@@ -1383,6 +1391,7 @@ class UEVaultManagerCLI:
             no_resume=args.no_resume,
             max_shm=args.shared_memory,
             max_workers=args.max_workers,
+            reuse_last_install=args.reuse_last_install,
             dl_optimizations=args.order_opt,
             timeout=args.timeout,
             override_manifest=args.override_manifest,
@@ -1392,7 +1401,7 @@ class UEVaultManagerCLI:
         )
 
         self._log_and_gui_message(self.logger.info, f'Install size: {analysis.install_size / 1024 / 1024:.02f} MiB')
-        compression = (1 - (analysis.dl_size / analysis.uncompressed_dl_size)) * 100
+        compression = (1 - (analysis.dl_size / analysis.uncompressed_dl_size)) * 100 if analysis.uncompressed_dl_size else 0
         self._log_and_gui_message(
             self.logger.info, f'Download size: {analysis.dl_size / 1024 / 1024:.02f} MiB (Compression savings: {compression:.01f}%)'
         )
@@ -1404,21 +1413,20 @@ class UEVaultManagerCLI:
             self.logger.info, 'Downloads are resumable, you can interrupt the download with CTRL-C and resume it using the same command later on.'
         )
 
-        res = self.core.check_installation_conditions(analysis=analysis, install_path=install_path_base, ignore_space_req=args.ignore_space)
+        res = self.core.check_installation_conditions(
+            analysis=analysis, folders=[download_path, install_path_base], ignore_space_req=args.ignore_free_space
+        )
+        message_list = []
 
         if res.warnings or res.failures:
-            print('\nInstallation requirements check returned the following results:')
-
-        if res.warnings:
-            for warn in sorted(res.warnings):
-                print(' - Warning:', warn)
-            if not res.failures:
-                print()
+            message_list.append('\nInstallation requirements check returned the following results:')
+            for message in res.warnings:
+                message_list.append(' - Warning:' + message)
+            for message in res.failures:
+                message_list.append(' ! Failure:' + message)
+            self._log_and_gui_message(self.logger.warning, '\n'.join(message_list), quit_on_error=False)
 
         if res.failures:
-            for msg in sorted(res.failures):
-                print(' ! Failure:', msg)
-            print()
             self._log_and_gui_message(self.logger.critical, 'Installation can not proceed. Application will be closed', quit_on_error=True)
             self.core.clean_exit(1)  # previous line could not quit
 
@@ -1427,7 +1435,6 @@ class UEVaultManagerCLI:
                 print('Aborting...')
                 self.core.clean_exit(0)
         start_t = time.time()
-        # the asset data will be downloaded in the download folder
         try:
             # set up logging stuff (should be moved somewhere else later)
             dlm.logging_queue = self.logging_queue
@@ -1443,23 +1450,43 @@ class UEVaultManagerCLI:
             )
         else:
             end_t = time.time()
-            message = f'Finished installation process in {end_t - start_t:.02f} seconds.\nFiles has been downloaded in {dlm.download_dir}'
+            download_path = dlm.download_dir  # it could have been changed by the dlm
+            message = f'Finished download process in {end_t - start_t:.02f} seconds.\nFiles has been downloaded in {dlm.download_dir}'
+            self._log_and_gui_message(self.logger.info, message)
+            start_t = time.time()
+            message = ''
             if not args.no_install:
+                self._log_and_gui_message(self.logger.info, 'Start copying downloaded data to install folder...')
                 self.core.install_app(installed_app)
                 self.core.uevmlfs.set_installed_app(app.app_name, installed_app)
-                self._log_and_gui_message(self.logger.info, 'Copying downloaded data to install folder...')
                 # copy the downloaded data to the installation folder
+                last_part_src = os.path.basename(download_path).lower()
+                # the downloaded data should always have a "Content" inside
+                # so, we need to add it to the src_folder if it is not already there to avoid copying the content folder inside the content folder
+                if last_part_src == 'content':
+                    src_folder = download_path
+                else:
+                    src_folder = path_join(download_path, 'Content')
                 dest_folder = installed_app.install_path
-                copy_folder(dlm.download_dir, dest_folder, check_copy=True, )
-                message += f'\nFiles has been copied to {dest_folder}'
-                self._log_and_gui_message(self.logger.info, message)
-            else:
-                self._log_and_gui_message(self.logger.info, message)
-        if args.clean_dowloaded_data:
-            self._log_and_gui_message(self.logger.info, 'Cleaning downloaded data...')
-            # delete the dlm.download_dir folder
-            rmtree(dlm.download_dir)
-            self.core.uevmlfs.clean_tmp_data()
+                if copy_folder(src_folder, dest_folder, check_copy_size=True):
+                    message += f'\nAsset have been installed in {dest_folder}'
+                else:
+                    message += f'\nAsset could not be installed in {dest_folder}'
+            if args.vault_cache and installed_app.manifest_path:
+                # copy the manifest file to the vault cache folder
+                message += '\nManifest file has been copied in the VaultCache folder.'
+                manifest_filename = path_join(download_path, 'manifest.json')
+                shutil.copy(installed_app.manifest_path, manifest_filename)
+                # rename the 'content' subfolder to 'data' because that's what the vault cache folder expects
+                shutil.move(path_join(download_path, 'Content'), path_join(download_path, 'data'))
+            elif args.clean_dowloaded_data:
+                message += '\nDownloaded data have been deleted.'
+                # delete the dlm.download_dir folder
+                rmtree(download_path)
+                self.core.uevmlfs.clean_tmp_data()
+            end_t = time.time()
+            message += f'\n\nFinished installation process in {end_t - start_t:.02f} seconds.'
+            self._log_and_gui_message(self.logger.info, message)
 
     def run_test(self, _args) -> None:
         """
@@ -1495,8 +1522,8 @@ def main():
     # general arguments
     parser.add_argument('-H', '--full-help', dest='full_help', action='store_true', help='Show full help (including individual command help)')
     parser.add_argument('-d', '--debug', dest='debug', action='store_true', help='Set loglevel to debug')
-    # noinspection DuplicatedCode
     parser.add_argument('-y', '--yes', dest='yes', action='store_true', help='Default to yes for all prompts')
+    # noinspection DuplicatedCode
     parser.add_argument('-V', '--version', dest='version', action='store_true', help='Print version and exit')
     parser.add_argument('-T', '--runtest', dest='runtest', action='store_true', help='Run a test command using a CLI prompt. Just for developpers')
     parser.add_argument(
@@ -1676,7 +1703,6 @@ def main():
     # edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
     # edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
 
-    # noinspection DuplicatedCode
     scrap_parser.add_argument(
         '-f',
         '--force-refresh',
@@ -1684,15 +1710,17 @@ def main():
         action='store_true',
         help="Force a refresh of all asset's data. It could take some time ! If not forced, the cached data will be used"
     )
+    # noinspection DuplicatedCode
     scrap_parser.add_argument(
         '--offline', dest='offline', action='store_true', help='Use previous saved data files (json) instead of grabing urls and scapping new data'
     )
     scrap_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
     install_parser.add_argument(
-        '--install-path', dest='install_path', action='store', metavar='<path>', help='Path where the Asset will be installed'
+        '-i', '--install-path', dest='install_path', action='store', metavar='<path>', help='Path where the Asset will be installed'
     )
     install_parser.add_argument(
+        '-dp',
         '--download-path',
         dest='download_path',
         action='store',
@@ -1705,6 +1733,14 @@ def main():
         dest='force_refresh',
         action='store_true',
         help="Force a refresh of all asset's data. It could take some time ! If not forced, the cached data will be used"
+    )
+    install_parser.add_argument(
+        '-vc',
+        '--vault-cache',
+        dest='vault_cache',
+        action='store_true',
+        help=
+        "Use the vault cache folder to store the downloaded asset. It will use Epic Game Launcher setting to get this value. In that case the download_path option will be ignored"
     )
     install_parser.add_argument(
         '-c',
@@ -1752,6 +1788,13 @@ def main():
         help='Do not install app and do not run prerequisite installers after download'
     )
     install_parser.add_argument(
+        '-r',
+        '--reuse-last-install',
+        dest='reuse_last_install',
+        action='store_true',
+        help='If the asset has been previouly installed, the installation folder will be reused. In that case, the install-path option will be ignored'
+    )
+    install_parser.add_argument(
         '--dlm-debug', dest='dlm_debug', action='store_true', help='Set download manager and worker processes\' loglevel to debug'
     )
     install_parser.add_argument(
@@ -1770,7 +1813,7 @@ def main():
         help='Connection and read timeout for downloader (default: 10 seconds)'
     )
     install_parser.add_argument(
-        '--ignore-free-space', dest='ignore_space', action='store_true', help='Do not abort if not enough free space is available'
+        '--ignore-free-space', dest='ignore_free_space', action='store_true', help='Do not abort if not enough free space is available'
     )
     install_parser.add_argument(
         '--preferred-cdn',

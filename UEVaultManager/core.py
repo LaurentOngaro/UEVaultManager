@@ -998,6 +998,7 @@ class AppCore:
         override_old_manifest: str = '',
         override_base_url: str = '',
         status_queue: Queue = None,
+        reuse_last_install: bool = False,
         disable_patching: bool = False,
         file_prefix_filter: list = None,
         file_exclude_filter: list = None,
@@ -1019,6 +1020,7 @@ class AppCore:
         :param override_manifest: Override the manifest.
         :param override_old_manifest: Override the old manifest.
         :param override_base_url: Override the base URL.
+        :param reuse_last_install: Update previous installation.
         :param disable_patching: Disable patching.
         :param status_queue: Status queue to send status updates to.
         :param file_prefix_filter: File prefix filter.
@@ -1066,10 +1068,10 @@ class AppCore:
             self.uevmlfs.set_item_meta(app.app_name, app)
 
         self.log.info('Parsing game manifest...')
-        new_manifest = self.load_manifest(new_manifest_data)
+        manifest = self.load_manifest(new_manifest_data)
         self.log.debug(f'Base urls: {base_urls}')
         # save manifest with version name as well for testing/downgrading/etc.
-        self.uevmlfs.save_manifest(app.app_name, new_manifest_data, version=new_manifest.meta.build_version, platform=platform)
+        manifest_filename=self.uevmlfs.save_manifest(app.app_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
 
         # make sure donwload folder actually exists (but do not create asset folder)
         if not check_and_create_folder(download_folder):
@@ -1078,7 +1080,8 @@ class AppCore:
             raise PermissionError(f'No write access to "{download_folder}"')
 
         # reuse existing installation's directory
-        if installed_app := self.get_installed_app(app.app_name):
+        installed_app = self.get_installed_app(app.app_name)
+        if reuse_last_install and installed_app:
             install_path = installed_app.install_path
             egl_guid = installed_app.egl_guid
         else:
@@ -1146,7 +1149,7 @@ class AppCore:
             timeout=timeout
         )
         analyse_res = download_manager.run_analysis(
-            manifest=new_manifest,
+            manifest=manifest,
             old_manifest=old_manifest,
             patch=not disable_patching,
             resume=not no_resume,
@@ -1158,8 +1161,8 @@ class AppCore:
         installed_app = InstalledApp(
             app_name=app.app_name,
             title=app.app_title,
-            version=new_manifest.meta.build_version,
-            manifest_path=override_manifest,
+            version=manifest.meta.build_version,
+            manifest_path=override_manifest if override_manifest else manifest_filename,
             base_urls=base_urls,
             install_path=install_path,
             install_size=analyse_res.install_size,
@@ -1170,31 +1173,36 @@ class AppCore:
         return download_manager, analyse_res, installed_app
 
     @staticmethod
-    def check_installation_conditions(analysis: AnalysisResult, install_path: str = '', ignore_space_req: bool = False) -> ConditionCheckResult:
+    def check_installation_conditions(analysis: AnalysisResult, folders: [], ignore_space_req: bool = False) -> ConditionCheckResult:
         """
         Check installation conditions.
-        :param analysis:
-        :param install_path:
+        :param analysis: Analysis result to check.
+        :param folders: Folders to check free size for.
         :param ignore_space_req:
         :return:
         """
         results = ConditionCheckResult(failures=set(), warnings=set())
-
-        base_path = os.path.split(install_path)[0]
-        if os.path.exists(base_path):
-            # Ensure that we have enough disk space for the installation process, as calculated by the analyser
+        if not isinstance(folders, list):
+            folders = [folders]
+        for folder in folders:
+            if not folder:
+                results.failures.add(f'"At least one folder is not defined. Check your config and command options.')
+                break
+            if not os.path.exists(folder):
+                results.failures.add(
+                    f'"{folder}" does not exist. Check your config and command options and make sure all necessary disks are available.'
+                )
+                break
             min_disk_space = analysis.disk_space_delta
-            _, _, free = shutil.disk_usage(base_path)
+            _, _, free = shutil.disk_usage(folder)
             if free < min_disk_space:
                 free_gib = free / 1024 ** 3
                 required_gib = min_disk_space / 1024 ** 3
+                message = f'"{folder}": Potentially not enough available disk space: {free_gib:.02f} GiB < {required_gib:.02f} GiB'
                 if ignore_space_req:
-                    results.warnings.add(f'Potentially not enough available disk space! {free_gib:.02f} GiB < {required_gib:.02f} GiB')
+                    results.warnings.add(message)
                 else:
-                    results.failures.add(f'Not enough available disk space! {free_gib:.02f} GiB < {required_gib:.02f} GiB')
-        else:
-            results.failures.add(f'Install path "{base_path}" does not exist, make sure all necessary disks are available.')
-
+                    results.failures.add(message)
         return results
 
     def install_app(self, installed_app: InstalledApp) -> None:
