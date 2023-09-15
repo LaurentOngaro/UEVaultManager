@@ -329,7 +329,7 @@ def show_progress(
     It will create a new progress window if one does not exist and update parent._progress_window
     """
     root = get_tk_root(parent)
-    if root and root.progress_window is None:
+    if root and (not hasattr(root, 'progress_window') or root.progress_window is None):
         pw = ProgressWindow(
             title=gui_g.s.app_title,
             parent=parent,
