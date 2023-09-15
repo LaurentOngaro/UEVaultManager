@@ -98,7 +98,8 @@ class EditCellWindow(tk.Toplevel):
         :param width: the width.
         :param height: the height
         
-        Note: The window is centered on the screen.
+        Notes:
+            The window is centered on the screen.
         """
         geometry = gui_fn.center_window_on_screen(0, width, height)
         self.geometry(geometry)

@@ -1071,7 +1071,7 @@ class AppCore:
         manifest = self.load_manifest(new_manifest_data)
         self.log.debug(f'Base urls: {base_urls}')
         # save manifest with version name as well for testing/downgrading/etc.
-        manifest_filename=self.uevmlfs.save_manifest(app.app_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
+        manifest_filename = self.uevmlfs.save_manifest(app.app_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
 
         # make sure donwload folder actually exists (but do not create asset folder)
         if not check_and_create_folder(download_folder):

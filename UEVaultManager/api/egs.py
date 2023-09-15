@@ -643,7 +643,8 @@ class EPCAPI:
         Get the asset data from the marketplace using beautifulsoup.
         :param url: The url to grab.
 
-        Note: This is the only way I know to get the id of an asset from its slug (or url)
+        Notes:
+            This is the only way I know to get the id of an asset from its slug (or url)
         """
         empty_data = {
             'id': '',

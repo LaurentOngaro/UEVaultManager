@@ -262,7 +262,8 @@ class ExtendedCheckButton(ExtendedWidget):
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedCheckButton instance.
 
-    Note: We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
+    Notes:
+        We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
     """
     default_content = False
 

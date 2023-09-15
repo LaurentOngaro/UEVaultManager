@@ -350,7 +350,8 @@ class EditableTable(Table):
         """
         Reset the colors of the cells. Initialize the rowcolors dataframe.
 
-        Note: Overridden for selecting the right datatable to use.
+        Notes:
+            Overridden for selecting the right datatable to use.
         """
         df = self.get_data(df_type=self._dftype_for_coloring)
         self.rowcolors = pd.DataFrame(index=df[gui_g.s.index_copy_col_name])
@@ -368,7 +369,8 @@ class EditableTable(Table):
         """
         Create the event bindings for the table.
 
-        Note: a CellSelectionChanged event is generated if the selected cell has changed.
+        Notes:
+            A CellSelectionChanged event is generated if the selected cell has changed.
         """
         selected_row = self.currentrow
         selected_col = self.currentcol
@@ -440,7 +442,9 @@ class EditableTable(Table):
         """
         GHet the current column infos sorted
         :return: The current column infos sorted by position.
-        Note that the config file is not saved here.
+
+        Notes:
+            The config file is not saved here.
         """
         col_infos = {}
         for index, col in enumerate(self.model.df.columns):  # df.model checked
@@ -458,7 +462,9 @@ class EditableTable(Table):
         Update the column infos in the config file.
         :param updated_info: The updated column infos.
         :param apply_resize_cols: True to apply the new column width, False otherwise.
-        Note that the config file is not saved here.
+
+        Notes:
+            The config file is not saved here.
         """
         if updated_info is None:
             updated_info = self.get_col_infos()
@@ -520,7 +526,8 @@ class EditableTable(Table):
         :param df_type: The dataframe type to get. See DataFrameUsed type description for more details
         :return: The dataframe.
 
-        Note: the unfiltered dataframe must be returned by default because it's used in by the FilterFrame class.
+        Notes:
+            The unfiltered dataframe must be returned by default because it's used in by the FilterFrame class.
         """
         if df_type == DataFrameUsed.AUTO:
             if self.is_filtered:
@@ -698,7 +705,8 @@ class EditableTable(Table):
         :param do_not_save: True to not save the row in the database.
         :return: (The created row, the index of the created row)
 
-        Note: be sure to call self.update() after calling this function to copy the changes in all the dataframes.
+        Notes:
+            Be sure to call self.update() after calling this function to copy the changes in all the dataframes.
         """
         table_row = None
         new_index = 0
@@ -752,7 +760,8 @@ class EditableTable(Table):
         :param convert_to_index: True to convert the row number to the real index, False otherwise.
         :param confirm_dialog: True to display a confirmation dialog, False otherwise.
 
-        Note: self.tableChanged() is called if some rows have been deleted
+        Notes:
+            self.tableChanged() is called if some rows have been deleted
         """
         if row_numbers is None:
             row_numbers = self.multiplerowlist
@@ -960,7 +969,8 @@ class EditableTable(Table):
         :param max_val: The maximum value to use for the gradient. If None, the maximum value of each column is used.
         :param is_reversed: True to reverse the gradient, False otherwise.
 
-        Note: called by set_colors() on each update
+        Notes:
+            Called by set_colors() on each update
         """
         if col_names is None:
             return
@@ -1001,7 +1011,8 @@ class EditableTable(Table):
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
 
-        Note: called by set_colors() on each update
+        Notes:
+            Called by set_colors() on each update
         """
         if col_names is None:
             return
@@ -1021,7 +1032,8 @@ class EditableTable(Table):
         :param color: The color to set the cell to.
         :param value_to_check: The value to check for.
 
-        Note: called by set_colors() on each update
+        Notes:
+            Called by set_colors() on each update
         """
         if col_names is None:
             return
@@ -1042,7 +1054,8 @@ class EditableTable(Table):
         :param color: The color to set the row to.
         :param value_to_check: The value to check for.
 
-        Note: called by set_colors() on each update
+        Notes:
+            Called by set_colors() on each update
         """
 
         df = self.get_data(df_type=self._dftype_for_coloring)
@@ -1335,7 +1348,8 @@ class EditableTable(Table):
         Adds the specified row to the list of rows to save.
         :param row_index: The (real) index of the row to save.
 
-        Note: self.tableChanged() is called if some rows must be saved
+        Notes:
+            self.tableChanged() is called if some rows must be saved
         """
         if row_index < 0 or row_index > len(self.get_data()) or row_index in self._changed_rows:
             return
@@ -1449,7 +1463,8 @@ class EditableTable(Table):
         :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value.
         :return: the value of the cell or None if the row or column index is out of range.
 
-        Note: if row_number or col_index are not passed, the last selected row or column will be used.
+        Notes:
+            If row_number or col_index are not passed, the last selected row or column will be used.
         """
         if row_number < 0:
             row_number = self._last_selected_row

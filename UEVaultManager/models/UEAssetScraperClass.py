@@ -450,7 +450,8 @@ class UEAssetScraper:
         The execution is done in parallel using threads.
         :param owned_assets_only: Whether only the owned assets are scraped
 
-        Note: if self.urls is None or empty, gather_urls() will be called first.
+        Notes:
+            If self.urls is None or empty, gather_urls() will be called first.
         """
 
         def stop_executor(tasks) -> None:

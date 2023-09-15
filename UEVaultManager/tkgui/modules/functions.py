@@ -96,7 +96,8 @@ def log_info(msg: str) -> None:
     Log an info message.
     :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
@@ -110,7 +111,7 @@ def log_debug(msg: str) -> None:
     Log a debug message.
     :param msg: the message to log.
 
-    Note:
+    Notes:
         It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
         This message will only be logged if the debug mode is enabled.
     """
@@ -133,7 +134,8 @@ def log_warning(msg: str) -> None:
     Log a warning message.
     :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
@@ -145,9 +147,11 @@ def log_warning(msg: str) -> None:
 def log_error(msg: str) -> None:
     """
     Log an error message.
-    :param msg: the message to log. Note that the app will exit after logging the message.
+    :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        The app will (normally) exit after logging the message. Sometimes it doesn't work (check ?)
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.error(msg)
@@ -391,7 +395,7 @@ def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> Non
     :param logger: the logger
     :param debug_value: the value to set. If None, it will use the value of gui_g.s.debug_mode
 
-    Note:
+    Notes:
         Will also update all the loggers level of the UEVM classes.
         Call this function when the debug mode is changed.
     """
