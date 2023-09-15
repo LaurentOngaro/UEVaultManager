@@ -208,6 +208,9 @@ class UEVaultManagerCLI:
         :param bool_true_data: bool (True) value to use if no bool data is found.
         :param bool_false_data: bool (False) value to use if no bool data is found.
         :return: (asset_id, dict containing all the data for an asset).
+
+        Notes:
+            This method is only used when getting OWNED assets data with the "old" method used by legendary
         """
         record = {}
         metadata = item.metadata
@@ -244,7 +247,7 @@ class UEVaultManagerCLI:
         # next fields are missing in some assets pages
         discount_percentage = extra_data.get('discount_percentage', no_int_data)
         discounted = extra_data.get('discounted', bool_false_data)
-        owned = extra_data.get('owned', bool_false_data)
+        owned = extra_data.get('owned', bool_true_data)
         obsolete = is_asset_obsolete(supported_versions, self.core.engine_version_for_obsolete_assets)
         try:
             values = (
@@ -1242,7 +1245,8 @@ class UEVaultManagerCLI:
         Scrap assets from the Epic Games Store or from previously saved files.
         :param args: options passed to the command
 
-        Note: ! Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
+        Notes:
+            Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
         """
         if not args.offline:
             load_from_files = False

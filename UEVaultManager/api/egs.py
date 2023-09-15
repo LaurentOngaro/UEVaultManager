@@ -70,7 +70,7 @@ def create_empty_assets_extra(asset_name: str) -> dict:
         'price': 0,
         'discount_price': 0,
         'review': 0,
-        'owned': False,
+        'owned': True,
         'discount_percentage': 0,
         'discounted': False,
         'asset_url': '',
@@ -526,8 +526,8 @@ class EPCAPI:
 
         search_for_price = True
 
-        # check if already owned
-        owned = False
+        # owned = False
+        owned = True  # all the assets get with the legendary method are owned. No need to check. Could create incoherent info if parsing fails
         owned_elt = soup_logged.find('div', class_='purchase')
         if owned_elt is not None:
             if 'Free' in owned_elt.getText():
@@ -538,9 +538,10 @@ class EPCAPI:
                     self.log.info(f'{asset_name} is free (check 1)')
             elif 'Open in Launcher' in owned_elt.getText():
                 # owned asset
-                owned = True
-                if verbose_mode:
-                    self.log.info(f'{asset_name} is already owned')
+                # owned = True
+                # if verbose_mode:
+                #     self.log.info(f'{asset_name} is already owned')
+
                 # grab the price on a non logged soup (price will be available on that page only)
                 try:
                     response = requests.get(asset_url, timeout=timeout)  # not using session, so not logged in Epic game
