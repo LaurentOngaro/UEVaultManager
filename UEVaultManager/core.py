@@ -475,7 +475,11 @@ class AppCore:
             name, namespace, catalog_item_id, _process_meta, _process_extra = fetch_list[name]
 
             if _process_meta:
-                eg_meta, status_code = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
+                try:
+                    eg_meta, status_code = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
+                except HTTPError as error_l:
+                    self.log.warning(f'Failed to fetch metadata for {name}: {error_l!r}')
+                    return False
                 if status_code != 200:
                     self.log.warning(f'Failed to fetch metadata for {name}: reponse code = {status_code}')
                     return False
