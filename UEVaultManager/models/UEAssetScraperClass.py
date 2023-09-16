@@ -14,8 +14,8 @@ from itertools import chain
 from threading import current_thread
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import EPCAPI, GrabResult, is_asset_obsolete
-from UEVaultManager.core import default_datetime_format
+from UEVaultManager.api.egs import GrabResult, is_asset_obsolete
+from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -43,8 +43,9 @@ class UEAssetScraper:
     :param use_raw_format: A boolean indicating whether to store the data in a raw format (as returned by the API) or after data have been parsed. Defaults to True.
     :param clean_database: A boolean indicating whether to clean the database before saving the data. Defaults to False.
     :param engine_version_for_obsolete_assets: A string representing the engine version to use to check if an asset is obsolete.
-    :param egs: An EPCAPI object (session handler). Defaults to None. If None, a new EPCAPI object will be created and the session used WON'T BE LOGGED.
+    :param core: An AppCore object. Defaults to None. If None, a new AppCore object will be created.
     :param progress_window: A ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
+    :param cli_args: A CliArgs object. Defaults to None. If None, a new CliArgs object will be created.
     """
 
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
@@ -66,7 +67,7 @@ class UEAssetScraper:
         load_from_files: bool = False,
         clean_database: bool = False,
         engine_version_for_obsolete_assets=None,
-        egs: EPCAPI = None,
+        core: AppCore = None,
         progress_window=None,  # don't use a typed annotation here to avoid import
         cli_args=None,
     ) -> None:
@@ -103,7 +104,7 @@ class UEAssetScraper:
         except Exception:
             self.engine_version_for_obsolete_assets = None
 
-        self.egs = EPCAPI(timeout=timeout) if egs is None else egs
+        self.core = AppCore(timeout=timeout) if core is None else core
         self.asset_db_handler = UEAssetDbHandler(self._db_name)
 
         if progress_window is None:
@@ -186,7 +187,7 @@ class UEAssetScraper:
                 return ''
             existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
             asset_existing_data = existing_data.get(uid, None)
-            asset_data['asset_url'] = self.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
+            asset_data['asset_url'] = self.core.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
             if not uid:
                 continue
             # self._log_debug(f"uid='{uid}'")  # debug only ex:'c77526fd4365450c9810e198450d2b91'
@@ -293,16 +294,23 @@ class UEAssetScraper:
             # asset_data['ue_version'] = no_text_data
             # asset_data['uid'] = no_text_data
 
-            # we use an UEAsset object to store the data and create a valid dict from it
-            ue_asset = UEAsset()
-
             # we use copy data for user_fields to preserve user data
             if asset_existing_data:
                 for field in self.asset_db_handler.user_fields:
                     old_value = asset_existing_data.get(field, None)
                     if old_value:
                         asset_data[field] = old_value
+            # installed_folders
+            installed_folders = asset_data['installed_folders']  # asset_existing_data
+            app_installed = self.core.uevmlfs.get_app_installed(asset_data['app_name'])
+            if app_installed:
+                app_installed_folders = app_installed.installed_folders
+                # merge the 2 lists without duplicates
+                installed_folders = list(set(installed_folders + app_installed_folders))
+            asset_data['installed_folders'] = sorted(installed_folders)
 
+            # we use an UEAsset object to store the data and create a valid dict from it
+            ue_asset = UEAsset()
             ue_asset.init_from_dict(asset_data)
             tags = ue_asset.data.get('tags', [])
             tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
@@ -365,7 +373,7 @@ class UEAssetScraper:
             self._urls = []
         start_time = time.time()
         if self.stop <= 0:
-            self.stop = self.egs.get_scraped_asset_count(owned_assets_only=owned_assets_only)
+            self.stop = self.core.egs.get_scraped_asset_count(owned_assets_only=owned_assets_only)
         assets_count = self.stop - self.start
         pages_count = int(assets_count / self.assets_per_page)
         if (assets_count % self.assets_per_page) > 0:
@@ -376,9 +384,9 @@ class UEAssetScraper:
                 return
             start = self.start + (i * self.assets_per_page)
             if owned_assets_only:
-                url = self.egs.get_owned_scrap_url(start, self.assets_per_page)
+                url = self.core.egs.get_owned_scrap_url(start, self.assets_per_page)
             else:
-                url = self.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
+                url = self.core.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
             self._urls.append(url)
         self._log_info(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
         if save_result:
@@ -407,7 +415,7 @@ class UEAssetScraper:
 
             self._log_info(f'--- START scraping data from {url}{thread_data}')
 
-            json_data = self.egs.get_json_data_from_url(url)
+            json_data = self.core.egs.get_json_data_from_url(url)
             if json_data.get('errorCode', '') != '':
                 self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
                 return

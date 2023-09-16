@@ -409,10 +409,6 @@ class AppCore:
         :param platform:.
         :return: True if asset is available, False otherwise.
         """
-        # Just say yes for Origin titles
-        if item.third_party_store:
-            return True
-
         try:
             asset = self.get_asset(item.app_name, platform=platform)
             return asset is not None
@@ -490,7 +486,10 @@ class AppCore:
 
             if _process_extra:
                 # we use title because it's less ambiguous than a name when searching an asset
-                eg_extra = self.egs.grab_assets_extra(asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode)
+                installed_app = self.uevmlfs.get_installed_app(name)
+                eg_extra = self.egs.grab_assets_extra(
+                    asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode, installed_app=installed_app
+                )
 
                 # check for data consistency
                 if 'stomt' in app_name.lower() or 'terrainmagic' in app_name.lower():
@@ -1162,18 +1161,18 @@ class AppCore:
             file_install_tag=file_install_tag,
             processing_optimization=process_opt
         )
-        installed_app = InstalledApp(
-            app_name=app.app_name,
-            title=app.app_title,
-            version=manifest.meta.build_version,
-            manifest_path=override_manifest if override_manifest else manifest_filename,
-            base_urls=base_urls,
-            install_path=install_path,
-            install_size=analyse_res.install_size,
-            egl_guid=egl_guid,
-            platform=platform
-        )
-
+        installed_app = self.get_installed_app(app.app_name)
+        if installed_app is None:
+            # create a new installed app
+            installed_app = InstalledApp(app_name=app.app_name, title=app.app_title)
+        # update the installed app
+        installed_app.version = manifest.meta.build_version
+        installed_app.base_urls = base_urls
+        installed_app.egl_guid = egl_guid
+        installed_app.install_size = analyse_res.install_size
+        installed_app.manifest_path = override_manifest if override_manifest else manifest_filename
+        installed_app.platform = platform
+        installed_app.install_path = install_path  # will add install_path to the installed_folders list after checking if it is not already in it
         return download_manager, analyse_res, installed_app
 
     @staticmethod
@@ -1208,10 +1207,6 @@ class AppCore:
                 else:
                     results.failures.add(message)
         return results
-
-    def install_app(self, installed_app: InstalledApp) -> None:
-        """Save app metadata and info to mark it "installed" """
-        self.uevmlfs.set_installed_app(installed_app.app_name, installed_app)
 
     # Check if the UE assets metadata cache must be updated
     def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False) -> None:

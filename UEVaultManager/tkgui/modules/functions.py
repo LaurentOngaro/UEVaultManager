@@ -276,7 +276,7 @@ def custom_print(text='', keep_mode=True) -> None:
     :param keep_mode: whether to keep the existing content when adding a new one.
     """
     if gui_g.display_content_window_ref is not None:
-        gui_g.display_content_window_ref.display(content=text + '\n', keep_mode=keep_mode)
+        gui_g.display_content_window_ref.display(content=text, keep_mode=keep_mode)
     else:
         print(text)
 

@@ -193,7 +193,7 @@ class UEVMGuiControlFrame(ttk.Frame):
 
         lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Installed folder',
+            tag='Installed folders',
             default_content='Installed in',
             focus_out_callback=container.on_quick_edit_focus_out,
             focus_in_callback=container.on_quick_edit_focus_in

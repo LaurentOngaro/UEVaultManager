@@ -274,7 +274,7 @@ class UEVaultManagerCLI:
                 , no_float_data  # 'Stars'
                 , bool_false_data  # 'Must buy'
                 , no_text_data  # 'Test result
-                , no_text_data  # 'Installed folder'
+                , no_text_data  # 'Installed folders'
                 , no_text_data  # 'Alternative'
                 , origin  # 'Origin
                 , bool_false_data  # 'Added manually'
@@ -918,9 +918,14 @@ class UEVaultManagerCLI:
                 self.logger.info('Asset not installed and offline mode enabled, can not load manifest.')
         elif item:
             # entitlements = self.core.egs.get_user_entitlements()
-            egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
-            if status_code != 200:
-                self.logger.warning(f'Failed to fetch metadata for {item.app_name}: reponse code = {status_code}')
+            try:
+                egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
+                if status_code != 200:
+                    self.logger.error(f'Failed to fetch metadata for {item.app_name}: reponse code = {status_code}')
+                    return
+            except (Exception, ) as error:
+                self.logger.error(f'Failed to fetch metadata for {item.app_name}: {error!r}')
+                return
             item.metadata = egl_meta
             # Get manifest if asset exists for current platform
             if 'Windows' in item.asset_infos:
@@ -1287,7 +1292,7 @@ class UEVaultManagerCLI:
             store_ids=False,  # useless for now
             load_from_files=load_from_files,
             engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
-            egs=self.core.egs,  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
+            core=self.core,  # VERY IMPORTANT: pass the code object to the scraper to keep the same session
             cli_args=args
         )
 
@@ -1461,7 +1466,6 @@ class UEVaultManagerCLI:
             message = ''
             if not args.no_install:
                 self._log_and_gui_message(self.logger.info, 'Start copying downloaded data to install folder...')
-                self.core.install_app(installed_app)
                 self.core.uevmlfs.set_installed_app(app.app_name, installed_app)
                 # copy the downloaded data to the installation folder
                 last_part_src = os.path.basename(download_path).lower()
@@ -1743,9 +1747,7 @@ def main():
         '--vault-cache',
         dest='vault_cache',
         action='store_true',
-        help=
-        "Use the vault cache folder to store the downloaded asset. It will use Epic Game Launcher setting to get this value. In that case the download_path option will be ignored"
-    )
+        help="Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case,the download_path option will be ignored")
     install_parser.add_argument(
         '-c',
         '--clean-dowloaded-data',

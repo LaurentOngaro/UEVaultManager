@@ -424,16 +424,11 @@ class UEAssetDbHandler:
             self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V10
         if upgrade_from_version == DbVersionNum.V10:
-            """
-            does not exist yet
-            """
-            """
-            # do some stuff here
+            query = "ALTER TABLE assets RENAME COLUMN installed_folder TO installed_folders;"
+            self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V11
-            """
-            pass
         if previous_version != self.db_version:
-            self.logger.info(f'Database upgraded to {self.db_version}')
+            self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)
 
     def is_table_exist(self, table_name) -> bool:
@@ -1053,7 +1048,7 @@ class UEAssetDbHandler:
                 random.randint(1, 5),  # stars
                 random.choice([0, 1]),  # must_buy
                 fake.word(),  # test_result
-                fake.file_path(),  # installed_folder
+                fake.file_path(),  # installed_folders
                 fake.sentence(),  # alternative
                 fake.word(),  # origin
                 random.choice([0, 1]),  # added_manually

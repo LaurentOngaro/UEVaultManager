@@ -76,6 +76,7 @@ def create_empty_assets_extra(asset_name: str) -> dict:
         'asset_url': '',
         'page_title': '',
         'supported_versions': '',
+        'installed_folders': [],
         'grab_result': GrabResult.NO_ERROR.name,
     }
 
@@ -484,13 +485,14 @@ class EPCAPI:
         url = 'https://www.unrealengine.com' + links[0]
         return [url, asset_slug, GrabResult.NO_ERROR.name]
 
-    def grab_assets_extra(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
+    def grab_assets_extra(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False, installed_app=None) -> dict:
         """
         Grab the extra data of an asset (price, review...) using BeautifulSoup from the marketplace.
         :param asset_name: name of the asset.
         :param asset_title: title of the asset.
         :param timeout: connection timeout.
         :param verbose_mode: verbose mode.
+        :param installed_app: installed app of the same name if any.
         :return: a dict with the extra data.
         """
         not_found_price = 0.0
@@ -520,12 +522,9 @@ class EPCAPI:
             return no_result
 
         soup_logged = BeautifulSoup(response.text, 'html.parser')
-
         price = not_found_price
         discount_price = not_found_price
-
         search_for_price = True
-
         # owned = False
         owned = True  # all the assets get with the legendary method are owned. No need to check. Could create incoherent info if parsing fails
         owned_elt = soup_logged.find('div', class_='purchase')
@@ -623,6 +622,8 @@ class EPCAPI:
         )
         discounted = (discount_price < price) or discount_percentage > 0.0
 
+        # get Installed_Folders
+        installed_folders = installed_app.installed_folders if installed_app else []
         self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')
         return {
             'asset_name': asset_name,
@@ -636,6 +637,7 @@ class EPCAPI:
             'asset_url': asset_url,
             'page_title': page_title,
             'supported_versions': supported_versions,
+            'installed_folders': installed_folders,
             'grab_result': error_code,
         }
 

@@ -84,24 +84,6 @@ class App:
         return self.asset_infos[platform].build_version
 
     @property
-    def is_dlc(self) -> bool:
-        """
-        Check if app is a DLC.
-        :return: True if DLC, False otherwise.
-        """
-        return self.metadata and 'mainGameItem' in self.metadata
-
-    @property
-    def third_party_store(self):
-        """
-        Get third party store.
-        :return: third party store.
-        """
-        if not self.metadata:
-            return None
-        return self.metadata.get('customAttributes', {}).get('ThirdPartyManagedApp', {}).get('value', None)
-
-    @property
     def catalog_item_id(self):
         """
         Get catalog item id.
@@ -152,37 +134,55 @@ class InstalledApp:
     Local metadata for an installed app (i.e. asset)
     """
     app_name: str
-    install_path: str
-    title: str
-    version: str
+    title: str = ''
+    version: str = ''
     base_urls: List[str] = field(default_factory=list)
     egl_guid: str = ''
     install_size: int = 0
     manifest_path: str = ''
-    needs_verification: bool = False
     platform: str = 'Windows'
+    installed_folders: List[str] = field(default_factory=list)
 
     @classmethod
     def from_json(cls, json) -> 'InstalledApp':
         """
         Create InstalledApp from json.
-        :param json: data. 
+        :param json: data.
         :return: an InstalledApp.
         """
         tmp = cls(
             app_name=json.get('app_name', ''),
-            install_path=json.get('install_path', ''),
+            installed_folders=json.get('installed_folders', []),
             title=json.get('title', ''),
             version=json.get('version', ''),
         )
-
-        tmp.base_urls = json.get('base_urls', list())
+        tmp.base_urls = json.get('base_urls', [])
         tmp.egl_guid = json.get('egl_guid', '')
         tmp.install_size = json.get('install_size', 0)
         tmp.manifest_path = json.get('manifest_path', '')
-        tmp.needs_verification = json.get('needs_verification', False) is True
         tmp.platform = json.get('platform', 'Windows')
         return tmp
+
+    @property
+    def install_path(self) -> str:
+        """
+        Get the "install path" (i.e. the last from installed_folders).
+        :return: install path.
+        """
+        install_path = self.installed_folders
+        if isinstance(install_path, list):
+            install_path = install_path.pop()
+        return install_path
+
+    @install_path.setter
+    def install_path(self, path):
+        """
+        Set the "install path" (i.e. add it to the installed_folders ).
+        :param path: install path.
+        """
+        if path not in self.installed_folders:
+            self.installed_folders.append(path)
+        # sorted(self.installed_folders) # if sorted, the "install path" won't be the last one anymore
 
 
 class VerifyResult(Enum):

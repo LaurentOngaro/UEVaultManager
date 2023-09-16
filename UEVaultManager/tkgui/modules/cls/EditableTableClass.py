@@ -937,7 +937,7 @@ class EditableTable(Table):
                 load_from_files=load_from_files,
                 clean_database=False,
                 engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
-                egs=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core.egs,
+                core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
                 progress_window=pw
             )
             scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)

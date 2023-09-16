@@ -998,7 +998,7 @@ class UEVMGui(tk.Tk):
                 store_ids=False,  # useless for now
                 load_from_files=False,
                 engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
-                egs=self.core.egs  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
+                core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
             )
             scraper.get_data_from_url(api_product_url)
             asset_data = scraper.pop_last_scrapped_data()  # returns a list of one element

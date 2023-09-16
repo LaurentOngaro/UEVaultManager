@@ -146,8 +146,8 @@ csv_sql_fields = {
         'state': CSVFieldState.USER,
         'field_type': CSVFieldType.STR
     },
-    'Installed folder': {
-        'sql_name': 'installed_folder',
+    'Installed folders': {
+        'sql_name': 'installed_folders',
         'state': CSVFieldState.USER,
         'field_type': CSVFieldType.STR
     },
