@@ -12,6 +12,10 @@ import pandas as pd
 from UEVaultManager.tkgui.modules.functions import box_message, log_info
 
 
+# not needed here
+# warnings.filterwarnings('ignore', category=FutureWarning)  # Avoid the FutureWarning when PANDAS use ser.astype(object).apply()
+
+
 class FilterFrame(ttk.LabelFrame):
     """
     A frame that contains widgets for filtering a DataFrame.

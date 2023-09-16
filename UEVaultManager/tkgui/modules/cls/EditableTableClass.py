@@ -6,6 +6,7 @@ Implementation for:
 import io
 import os
 import tkinter as tk
+import warnings
 import webbrowser
 from tkinter import ttk
 
@@ -26,6 +27,8 @@ from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgres
 from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_explorer
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
+
+warnings.filterwarnings('ignore', category=FutureWarning)  # Avoid the FutureWarning when PANDAS use ser.astype(object).apply()
 
 
 class EditableTable(Table):
@@ -155,6 +158,22 @@ class EditableTable(Table):
         """
         self._old_is_filtered = self._is_filtered
         self._is_filtered = value
+
+    @staticmethod
+    def fillna_fixed(dataframe: pd.DataFrame) -> None:
+        """
+        Fill the empty cells in the dataframe. Fix FutureWarning messages by using the correct value for each dtype
+        :param dataframe: The dataframe to fill.
+        """
+        for col in dataframe.columns:
+            if dataframe[col].dtype == 'object':
+                dataframe[col].fillna(gui_g.s.empty_cell, inplace=True)
+            elif dataframe[col].dtype == 'int64':
+                dataframe[col].fillna(0, inplace=True)
+            elif dataframe[col].dtype == 'float64':
+                dataframe[col].fillna(0.0, inplace=True)
+            elif dataframe[col].dtype == 'bool':
+                dataframe[col].fillna(False, inplace=True)
 
     def handle_arrow_keys(self, event):
         """
@@ -576,8 +595,9 @@ class EditableTable(Table):
         if num_cols <= 0:
             return
         if abs(num_cols - self.cols) > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
+
             gui_f.box_message(
-                f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({num_cols}).'
+                f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({num_cols}).\nThis will be fixed automatically and a backup of the config file has been made on quit.'
             )
         try:
             # reordering columns
@@ -692,7 +712,8 @@ class EditableTable(Table):
             # noinspection PyTypeChecker
             return None
         else:
-            df.fillna(gui_g.s.empty_cell, inplace=True)
+            self.fillna_fixed(df)
+            # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
             self.df_unfiltered = df
             self.total_pages = (data_count - 1) // self.rows_per_page + 1
             return df
@@ -750,7 +771,8 @@ class EditableTable(Table):
             self.add_to_rows_to_save(new_index)  # done inside self.must_save = True
         elif table_row is not None:
             self.must_rebuild = True
-        table_row.fillna(gui_g.s.empty_cell, inplace=True)
+        # table_row.fillna(gui_g.s.empty_cell, inplace=True)   # cause a FutureWarning
+        self.fillna_fixed(table_row)
         return table_row, new_index
 
     def del_rows(self, row_numbers=None, convert_to_index=True, confirm_dialog=True) -> bool:

@@ -39,6 +39,10 @@ from UEVaultManager.tkgui.modules.functions_no_deps import is_an_int, set_custom
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
 
 
+# not needed here
+# warnings.filterwarnings('ignore', category=FutureWarning)  # Avoid the FutureWarning when PANDAS use ser.astype(object).apply()
+
+
 def clean_ue_asset_name(name_to_clean: str) -> str:
     """
     Clean a name to remove unwanted characters.
