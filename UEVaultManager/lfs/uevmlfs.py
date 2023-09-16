@@ -202,10 +202,10 @@ class UEVMLFS:
 
         # load existing installed assets/apps
         try:
-            self._installed = json.load(open(path_join(self.path, 'installed.json')))
+            self._installed_apps = json.load(open(path_join(self.path, 'installed.json')))
         except Exception as error:
             self.log.debug(f'Loading installed assets failed: {error!r}')
-            self._installed = None
+            self._installed_apps = None
 
         # load existing app metadata
         _meta = None
@@ -548,13 +548,13 @@ class UEVMLFS:
         :param app_name: The app name.
         :return: The installed app data or None if not found.
         """
-        if self._installed is None:
+        if self._installed_apps is None:
             try:
-                self._installed = json.load(open(path_join(self.path, 'installed.json')))
+                self._installed_apps = json.load(open(path_join(self.path, 'installed.json')))
             except Exception as error:
                 self.log.debug(f'Failed to load installed asset data: {error!r}')
                 return None
-        if json_data := self._installed.get(app_name, None):
+        if json_data := self._installed_apps.get(app_name, None):
             return InstalledApp.from_json(json_data)
         return None
 
@@ -564,13 +564,13 @@ class UEVMLFS:
         :param app_name: The app name.
         :param install_info: The installed app data.
         """
-        if self._installed is None:
-            self._installed = dict()
-        if app_name in self._installed:
-            self._installed[app_name].update(install_info.__dict__)
+        if self._installed_apps is None:
+            self._installed_apps = dict()
+        if app_name in self._installed_apps:
+            self._installed_apps[app_name].update(install_info.__dict__)
         else:
-            self._installed[app_name] = install_info.__dict__
-        json.dump(self._installed, open(path_join(self.path, 'installed.json'), 'w'), indent=2, sort_keys=True)
+            self._installed_apps[app_name] = install_info.__dict__
+        json.dump(self._installed_apps, open(path_join(self.path, 'installed.json'), 'w'), indent=2, sort_keys=True)
 
     def save_config(self) -> None:
         """
