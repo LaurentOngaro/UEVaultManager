@@ -96,8 +96,8 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
-        lbl_testing_switch = ttk.Label(lblf_gui_settings, text='Testing switch value')
-        lbl_testing_switch.grid(row=cur_row, column=cur_col, **grid_e_options)
+        ttk_item = ttk.Label(lblf_gui_settings, text='Testing switch value')
+        ttk_item.grid(row=cur_row, column=cur_col, **grid_e_options)
         cur_col += 1
         self.var_testing_switch = tk.IntVar(value=gui_g.s.testing_switch)
         self.var_testing_switch.trace_add('write', lambda name, index, mode: self.update_gui_options())
@@ -153,11 +153,11 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
-        btn_add_folder = ttk.Button(lblf_folders_to_scan, text='Add Folder', command=self.add_folder_to_scan)
-        btn_add_folder.grid(row=cur_row, column=cur_col, **grid_ew_options)
+        ttk_item = ttk.Button(lblf_folders_to_scan, text='Add Folder', command=self.add_folder_to_scan)
+        ttk_item.grid(row=cur_row, column=cur_col, **grid_ew_options)
         cur_col += 1
-        btn_remove_folder = ttk.Button(lblf_folders_to_scan, text='Remove Folder', command=self.remove_folder_to_scan)
-        btn_remove_folder.grid(row=cur_row, column=cur_col, **grid_ew_options)
+        ttk_item = ttk.Button(lblf_folders_to_scan, text='Remove Folder', command=self.remove_folder_to_scan)
+        ttk_item.grid(row=cur_row, column=cur_col, **grid_ew_options)
 
     def update_gui_options(self):
         """

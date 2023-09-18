@@ -97,11 +97,10 @@ class DisplayContentWindow(tk.Toplevel):
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': True, 'fill': tk.X}
             lblf_commands = ttk.LabelFrame(self, text='Commands')
             lblf_commands.pack(**lblf_def_options)
-            # noinspection PyArgumentList
             ttk.Button(lblf_commands, text='Clean content', command=container.clean).pack(**pack_def_options, side=tk.LEFT)
-            # noinspection PyArgumentList
             ttk.Button(lblf_commands, text='Save To File', command=container.save_changes).pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
+            # (bootstyle is not recognized by PyCharm)
             ttk.Button(lblf_commands, text='Close', command=container.on_close, bootstyle=WARNING).pack(**pack_def_options, side=tk.RIGHT)
 
     # noinspection DuplicatedCode
