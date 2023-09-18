@@ -12,6 +12,7 @@ import tkinter as tk
 from datetime import datetime
 from io import BytesIO
 from tkinter import messagebox
+from typing import Optional
 
 import requests
 from PIL import Image, ImageTk
@@ -312,7 +313,7 @@ def show_progress(
     quit_on_close: bool = False,
     function: callable = None,
     function_parameters: dict = None
-) -> ProgressWindow:
+) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
     :param parent: The parent window.
@@ -329,7 +330,13 @@ def show_progress(
     It will create a new progress window if one does not exist and update parent._progress_window
     """
     root = get_tk_root(parent)
-    if root and (not hasattr(root, 'progress_window') or root.progress_window is None):
+    if not root:
+        return None
+    try:
+        # check if a progress window already exists
+        pw = root.progress_window
+        pw.set_activation(False)  # test if the window is still active
+    except (tk.TclError, AttributeError):
         pw = ProgressWindow(
             title=gui_g.s.app_title,
             parent=parent,
@@ -344,11 +351,10 @@ def show_progress(
             function_parameters=function_parameters
         )
         root.progress_window = pw
-    else:
-        pw = root.progress_window
-    pw.set_text(text)
-    pw.set_activation(False)
-    pw.update()
+    if pw:
+        pw.set_activation(False)
+        pw.set_text(text)
+        pw.update()
     return pw
 
 
