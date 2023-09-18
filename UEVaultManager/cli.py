@@ -1299,54 +1299,6 @@ class UEVaultManagerCLI:
         scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
         scraper.save(owned_assets_only=owned_assets_only)
 
-    @staticmethod
-    def print_help(args, parser=None, forced=False) -> None:
-        """
-        Prints the help for the command.
-        :param args:.
-        :param parser: command line parser. If not provided, gui_g.UEVM_parser_ref will be used.
-        :param forced: Whether the help will be printed even if the --help option is not present.
-        """
-        if parser is None:
-            parser = gui_g.UEVM_parser_ref
-        if parser is None:
-            return
-        uewm_gui_exists = False
-
-        if args.full_help or forced:
-            if UEVaultManagerCLI.is_gui:
-                uewm_gui_exists, _ = init_display_window()
-            custom_print(keep_mode=False, text=parser.format_help())
-
-            # Commands that should not be shown in full help/list of commands (e.g. aliases)
-            _hidden_commands = {'download', 'update', 'repair', 'get-token', 'verify-asset', 'list-assets'}
-            # Print the help for all the subparsers. Thanks stackoverflow!
-            custom_print(text='Individual command help:')
-            # noinspection PyProtectedMember,PyUnresolvedReferences
-            subparsers = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
-            # noinspection PyUnresolvedReferences
-            for choice, subparser in subparsers.choices.items():
-                if choice in _hidden_commands:
-                    continue
-                custom_print(text=f'\nCommand: {choice}')
-                custom_print(text=subparser.format_help())
-        elif os.name == 'nt':
-            from UEVaultManager.lfs.windows_helpers import double_clicked
-            if double_clicked():
-                custom_print(text='Please note that this is not the intended way to run UEVaultManager.')
-                custom_print(text='If you want to start it without arguments, you can start it in edit mode by default.')
-                custom_print(text='For that, you must set the line start_in_edit_mode=true in the configuration file.')
-                custom_print(text='More info on usage and configuration can be found in https://github.com/LaurentOngaro/UEVaultManager#readme')
-                subprocess.Popen(['cmd', '/K', 'echo>nul'])
-        else:
-            # on non-windows systems
-            # UEVaultManagerCLI.print_help(args, parser=parser, forced=True)
-            UEVaultManagerCLI.print_version()
-            return
-
-        if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
-            gui_g.UEVM_gui_ref.mainloop()
-
     def install_asset(self, args):
         """
         Installs an asset.
@@ -1375,6 +1327,7 @@ class UEVaultManagerCLI:
         # TODO: next line uses the same code as the one in the list_asset (old one). and could take some time to update the metadata
         # TODO: Should we use the new API call like in scrap_assets ?
         app = self.core.get_item(args.app_name, update_meta=args.force_refresh)
+
         if not app:
             self._log_and_gui_message(
                 self.logger.error, f'Could not find "{args.app_name}" in list of available assets. Application will be closed', quit_on_error=True
@@ -1471,7 +1424,7 @@ class UEVaultManagerCLI:
                 last_part_src = os.path.basename(download_path).lower()
                 # the downloaded data should always have a "Content" inside
                 # so, we need to add it to the src_folder if it is not already there to avoid copying the content folder inside the content folder
-                if last_part_src == 'content':
+                if last_part_src == 'content':  # MUST BE LOWERCASE for comparison
                     src_folder = download_path
                 else:
                     src_folder = path_join(download_path, 'Content')
@@ -1485,7 +1438,7 @@ class UEVaultManagerCLI:
                 message += '\nManifest file has been copied in the VaultCache folder.'
                 manifest_filename = path_join(download_path, 'manifest.json')
                 shutil.copy(installed_app.manifest_path, manifest_filename)
-                # rename the 'content' subfolder to 'data' because that's what the vault cache folder expects
+                # rename the 'Content' subfolder to 'data' because that's what the vault cache folder expects
                 shutil.move(path_join(download_path, 'Content'), path_join(download_path, 'data'))
             elif args.clean_dowloaded_data:
                 message += '\nDownloaded data have been deleted.'
@@ -1496,6 +1449,62 @@ class UEVaultManagerCLI:
             message += f'\n\nFinished installation process in {end_t - start_t:.02f} seconds.'
             self._log_and_gui_message(self.logger.info, message)
 
+    @staticmethod
+    def print_version():
+        """
+        Prints the version of UEVaultManager and exit.
+        """
+        print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
+        sys.exit(0)
+
+    @staticmethod
+    def print_help(args, parser=None, forced=False) -> None:
+        """
+        Prints the help for the command.
+        :param args:.
+        :param parser: command line parser. If not provided, gui_g.UEVM_parser_ref will be used.
+        :param forced: Whether the help will be printed even if the --help option is not present.
+        """
+        if parser is None:
+            parser = gui_g.UEVM_parser_ref
+        if parser is None:
+            return
+        uewm_gui_exists = False
+
+        if args.full_help or forced:
+            if UEVaultManagerCLI.is_gui:
+                uewm_gui_exists, _ = init_display_window()
+            custom_print(keep_mode=False, text=parser.format_help())
+
+            # Commands that should not be shown in full help/list of commands (e.g. aliases)
+            _hidden_commands = {'download', 'update', 'repair', 'get-token', 'verify-asset', 'list-assets'}
+            # Print the help for all the subparsers. Thanks stackoverflow!
+            custom_print(text='Individual command help:')
+            # noinspection PyProtectedMember,PyUnresolvedReferences
+            subparsers = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+            # noinspection PyUnresolvedReferences
+            for choice, subparser in subparsers.choices.items():
+                if choice in _hidden_commands:
+                    continue
+                custom_print(text=f'\nCommand: {choice}')
+                custom_print(text=subparser.format_help())
+        elif os.name == 'nt':
+            from UEVaultManager.lfs.windows_helpers import double_clicked
+            if double_clicked():
+                custom_print(text='Please note that this is not the intended way to run UEVaultManager.')
+                custom_print(text='If you want to start it without arguments, you can start it in edit mode by default.')
+                custom_print(text='For that, you must set the line start_in_edit_mode=true in the configuration file.')
+                custom_print(text='More info on usage and configuration can be found in https://github.com/LaurentOngaro/UEVaultManager#readme')
+                subprocess.Popen(['cmd', '/K', 'echo>nul'])
+        else:
+            # on non-windows systems
+            # UEVaultManagerCLI.print_help(args, parser=parser, forced=True)
+            UEVaultManagerCLI.print_version()
+            return
+
+        if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
+            gui_g.UEVM_gui_ref.mainloop()
+
     def run_test(self, _args) -> None:
         """
         Run a test command using a CLI prompt. Just for developpers.
@@ -1505,14 +1514,6 @@ class UEVaultManagerCLI:
         # read manifest_data from file
         file_path = "G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_III/EliteLane90e1a8f98bbV1/manifest"
         json_print_key_val(self.core.open_manifest_file(file_path))
-
-    @staticmethod
-    def print_version():
-        """
-        Prints the version of UEVaultManager and exit.
-        """
-        print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
-        sys.exit(0)
 
 
 def main():
@@ -1747,7 +1748,9 @@ def main():
         '--vault-cache',
         dest='vault_cache',
         action='store_true',
-        help="Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case,the download_path option will be ignored")
+        help=
+        "Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case,the download_path option will be ignored"
+    )
     install_parser.add_argument(
         '-c',
         '--clean-dowloaded-data',
