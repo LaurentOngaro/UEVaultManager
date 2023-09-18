@@ -301,8 +301,8 @@ class UEAssetScraper:
                     if old_value:
                         asset_data[field] = old_value
             # installed_folders
-            installed_folders = asset_data['installed_folders']  # asset_existing_data
-            app_installed = self.core.uevmlfs.get_app_installed(asset_data['app_name'])
+            installed_folders = asset_data.get('installed_folders', '')  # asset_existing_data
+            app_installed = self.core.uevmlfs.get_installed_app(asset_data.get('asset_id', ''))
             if app_installed:
                 app_installed_folders = app_installed.installed_folders
                 # merge the 2 lists without duplicates

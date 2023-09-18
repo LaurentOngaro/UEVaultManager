@@ -167,7 +167,8 @@ class EditableTable(Table):
         """
         for col in dataframe.columns:
             if dataframe[col].dtype == 'object':
-                dataframe[col].fillna(gui_g.s.empty_cell, inplace=True)
+                # dataframe[col].fillna(gui_g.s.empty_cell, inplace=True)  # does not replace all possible values
+                dataframe[col].replace(gui_g.s.cell_is_empty_list, gui_g.s.empty_cell, regex=False, inplace=True)
             elif dataframe[col].dtype == 'int64':
                 dataframe[col].fillna(0, inplace=True)
             elif dataframe[col].dtype == 'float64':
@@ -712,8 +713,6 @@ class EditableTable(Table):
             # noinspection PyTypeChecker
             return None
         else:
-            self.fillna_fixed(df)
-            # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
             self.df_unfiltered = df
             self.total_pages = (data_count - 1) // self.rows_per_page + 1
             return df
@@ -734,15 +733,12 @@ class EditableTable(Table):
         df = self.get_data()
         if self.data_source_type == DataSourceType.FILE:
             # create an empty row with the correct columns
-            str_data = gui_t.get_csv_field_name_list(return_as_string=True)  # column names
-            str_data += '\n'
-            str_data += gui_t.create_empty_csv_row(return_as_string=True)  # dummy row
-            table_row = pd.read_csv(io.StringIO(str_data), **gui_g.s.csv_options)
+            col_data = gui_t.get_csv_field_name_list(return_as_string=True)  # column names
+            str_data = col_data + '\n' + gui_t.create_empty_csv_row(return_as_string=True)  # dummy row
+            table_row = pd.read_csv(io.StringIO(str_data), usecols=col_data.split(','), nrows=1, **gui_g.s.csv_options)
         elif self.data_source_type == DataSourceType.SQLITE:
             # create an empty row (in the database) with the correct columns
-            data = self._db_handler.create_empty_row(
-                return_as_string=False, empty_cell=gui_g.s.empty_cell, empty_row_prefix=gui_g.s.empty_row_prefix, do_not_save=do_not_save
-            )  # dummy row
+            data = self._db_handler.create_empty_row(return_as_string=False, do_not_save=do_not_save)  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
             table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
             try:
@@ -772,7 +768,7 @@ class EditableTable(Table):
         elif table_row is not None:
             self.must_rebuild = True
         # table_row.fillna(gui_g.s.empty_cell, inplace=True)   # cause a FutureWarning
-        self.fillna_fixed(table_row)
+        # self.fillna_fixed(table_row)
         return table_row, new_index
 
     def del_rows(self, row_numbers=None, convert_to_index=True, confirm_dialog=True) -> bool:
@@ -1184,6 +1180,9 @@ class EditableTable(Table):
             # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
             gui_f.show_progress(self, text='Formating and converting DataTable...')
             self.set_data(self.set_columns_type(df))
+            self.fillna_fixed(df)
+            # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
+
         if update_filters:
             self._frm_filter.create_mask()
         mask = self._frm_filter.get_filter_mask() if self._frm_filter is not None else None

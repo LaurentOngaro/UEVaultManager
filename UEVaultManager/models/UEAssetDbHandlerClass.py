@@ -17,12 +17,11 @@ from faker import Faker
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list
+from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list, set_default_values
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, path_from_relative_to_absolute
-from UEVaultManager.tkgui.modules.types import UEAssetType
 from UEVaultManager.utils.cli import check_and_create_path
 
 
@@ -492,14 +491,19 @@ class UEAssetDbHandler:
             str_today = datetime.datetime.now().strftime(default_datetime_format)
             # Note: the order of columns and value must match the order of the fields in UEAsset.init_data() method
             for asset in assets:
+                # make some conversion before saving the asset
                 asset['update_date'] = str_today
                 asset['creation_date'] = convert_to_str_datetime(value=asset['creation_date'], date_format=default_datetime_format)
                 asset['date_added_in_db'] = convert_to_str_datetime(
                     value=asset['date_added_in_db'], date_format=default_datetime_format, default=str_today
                 )
+                # converting lists to strings
                 tags = asset.get('tags', [])
                 tags_str = self.convert_tag_list_to_string(tags)
                 asset['tags'] = tags_str
+                installed_folders = asset.get('installed_folders', [])
+                asset['installed_folders'] = ','.join(installed_folders) if len(installed_folders) else None
+
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
@@ -575,12 +579,10 @@ class UEAssetDbHandler:
                 self.logger.warning(f"Error while getting columns name: {error!r}")
         return csv_column_names
 
-    def create_empty_row(self, return_as_string=True, empty_cell='None', empty_row_prefix='dummy_row_', do_not_save=False):
+    def create_empty_row(self, return_as_string=True, do_not_save=False):
         """
         Create an empty row in the 'assets' table.
         :param return_as_string: True to return the row as a string, False to.
-        :param empty_cell: The value to use for empty cells.
-        :param empty_row_prefix: The prefix to use for the row ID.
         :param do_not_save: True to not save the row in the database.
         :return: A row (dict) or a string representing the empty row.
         """
@@ -597,11 +599,8 @@ class UEAssetDbHandler:
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
-            ue_asset.data['asset_id'] = empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
-            ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
-            ue_asset.data['added_manually'] = True
-            ue_asset.data['id'] = uid
-            ue_asset.data['category'] = UEAssetType.Unknown.category_name
+            ue_asset.data = set_default_values(ue_asset.data)
+
             if not do_not_save:
                 self.save_ue_asset(ue_asset)
             if return_as_string:
@@ -990,6 +989,7 @@ class UEAssetDbHandler:
                             if not row:
                                 continue
                             data_dict = dict(zip(csv_columns, row))
+                            # no conversion needed here because in CSV files, all is basically a string
                             if self._insert_or_update_row(table_name, data_dict):
                                 success_count += 1
                             else:

@@ -548,6 +548,8 @@ class UEVMLFS:
         :param app_name: The app name.
         :return: The installed app data or None if not found.
         """
+        if not app_name:
+            return None
         if self._installed_apps is None:
             try:
                 self._installed_apps = json.load(open(path_join(self.path, 'installed.json')))

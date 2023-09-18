@@ -979,13 +979,15 @@ class UEVMGui(tk.Tk):
             self.logger.warning(result)
 
     def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False):
+        is_ok = False
         asset_data = None
         # check if the marketplace_url is a marketplace marketplace_url
         ue_marketplace_url = self.core.egs.get_marketplace_product_url()
         if ue_marketplace_url.lower() in marketplace_url.lower():
             # get the data from the marketplace marketplace_url
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
-            if asset_data is None or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
+            if asset_data is None or asset_data == [] or asset_data.get('grab_result',
+                                                                        None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
                 msg = f'Failed to grab data from {marketplace_url}'
                 if show_message:
                     gui_f.box_message(msg, level='warning')
@@ -1006,11 +1008,14 @@ class UEVMGui(tk.Tk):
             )
             scraper.get_data_from_url(api_product_url)
             asset_data = scraper.pop_last_scrapped_data()  # returns a list of one element
-            if forced_data is not None:
-                for key, value in forced_data.items():
-                    asset_data[0][key] = value
-            scraper.asset_db_handler.set_assets(asset_data)
-        else:
+            if asset_data is not None and len(asset_data) > 0:
+                if forced_data is not None:
+                    for key, value in forced_data.items():
+                        asset_data[0][key] = value
+                scraper.asset_db_handler.set_assets(asset_data)
+                is_ok = True
+        if not is_ok:
+            asset_data = None
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
             if show_message:
                 gui_f.box_message(msg, level='warning')

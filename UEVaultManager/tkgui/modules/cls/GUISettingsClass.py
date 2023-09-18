@@ -64,17 +64,20 @@ class GUISettings:
         self.sqlite_filename: str = path_join(self.scraping_folder, 'assets.db')
 
         self.app_monitor: int = 1
-        self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
-        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder. MUST BE LOWERCASE
-        self.ue_valid_file_content = ('.uplugin', '.uproject')
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder. MUST BE LOWERCASE
-        self.ue_valid_folder_content = ('content', '')  # must be a tuple
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file. MUST BE LOWERCASE
-        self.ue_valid_manifest_content = ('data', '')  # must be a tuple
-        # if a folder is in this tuple, the folder won't be scanned to find ue folders. MUST BE LOWERCASE
-        self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data')
-        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure. MUST BE LOWERCASE
-        self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')
+        # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
+        self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
+        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
+        self.ue_valid_file_content = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder
+        self.ue_valid_folder_content = ('content', '')  # must be a tuple. MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
+        self.ue_valid_manifest_content = ('data', '')  # must be a tuple. MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the folder won't be scanned to find ue folders
+        self.ue_invalid_folder_content = (
+            'binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data'
+        )  # must be a tuple. MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
+        self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')  # must be a tuple. MUST BE LOWERCASE for comparison
 
         self.assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'marketplace')
         self.owned_assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'owned')
@@ -92,6 +95,7 @@ class GUISettings:
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
         # self.empty_cell: str = 'None'
+        self.cell_is_empty_list = ['None', 'nan', 'NA', 'NaN', 'False', '0', '0.0']
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'dummy_row_'
         self.tag_prefix = 't_'
