@@ -35,7 +35,6 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiCon
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionFrameComp import UEVMGuiOptionFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
-from UEVaultManager.tkgui.modules.functions_no_deps import is_an_int, set_custom_style
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
 
 
@@ -114,7 +113,7 @@ class UEVMGui(tk.Tk):
         if data_source_type == DataSourceType.SQLITE:
             show_open_file_dialog = False
         self.title(title)
-        self.style = set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         width: int = gui_g.s.width
         height: int = gui_g.s.height
         x_pos: int = gui_g.s.x_pos
@@ -136,9 +135,9 @@ class UEVMGui(tk.Tk):
             data_source=data_source,
             rows_per_page=37,
             show_statusbar=True,
-            update_page_numbers_func=self.update_controls_and_redraw,
+            update_page_numbers_func=self.update_controls_state,
             update_rows_text_func=self.update_rows_text,
-            set_control_state_func=self.set_control_state
+            set_widget_state_func=gui_f.set_widget_state
         )
         if data_table.get_data() is None:
             self.logger.error('No valid source to read data from. Application will be closed')
@@ -177,21 +176,6 @@ class UEVMGui(tk.Tk):
 
         self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
-
-        # List of controls for activating/deactivating them when needed
-        self.controls = {
-            'first_item': self._frm_toolbar.btn_first_item,  #
-            'last_item': self._frm_toolbar.btn_last_item,  #
-            'prev_page': self._frm_toolbar.btn_prev_page,  #
-            'next_page': self._frm_toolbar.btn_next_page,  #
-            'prev_asset': self._frm_toolbar.btn_prev_asset,  #
-            'next_asset': self._frm_toolbar.btn_next_asset,  #
-            'current_item': self._frm_toolbar.entry_current_item,  #
-            'scrap': self._frm_control.buttons['Scrap']['widget'],  #
-            'del': self._frm_control.buttons['Del']['widget'],  #
-            'edit': self._frm_control.buttons['Edit']['widget'],  #
-            'save': self._frm_control.buttons['Save']['widget'],  #
-        }
 
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
@@ -395,7 +379,7 @@ class UEVMGui(tk.Tk):
         """
         row_number = event.widget.currentrow
         self.editable_table.update_quick_edit(row_number)
-        self.update_controls_and_redraw()
+        self.update_controls_state()
 
     def on_left_click(self, event=None) -> None:
         """
@@ -408,7 +392,7 @@ class UEVMGui(tk.Tk):
             data_table.selectNone()
             data_table.clearSelected()
             data_table.delete('rowrect')  # remove the highlight rect
-        self.update_controls_and_redraw()
+        self.update_controls_state()
 
     def on_entry_current_item_changed(self, _event=None) -> None:
         """
@@ -481,7 +465,9 @@ class UEVMGui(tk.Tk):
         :param event: event that triggered the call.
         """
         self.editable_table.on_header_release(event)
-        self.enable_control('save')
+        # TODO: check if the column order has changed before enabling the widget
+        widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+        gui_f.enable_widgets_in_list(widget_list)
 
     def on_close(self, _event=None) -> None:
         """
@@ -545,7 +531,7 @@ class UEVMGui(tk.Tk):
                     return filename
                 data_table.current_page = 1
                 data_table.update(update_format=True)
-                self.update_controls_and_redraw()
+                self.update_controls_state()
                 self.update_data_source()
                 gui_f.box_message(f'The data source {filename} as been read')
                 # gui_f.close_progress(self)  # done in data_table.update(update_format=True)
@@ -612,7 +598,7 @@ class UEVMGui(tk.Tk):
             if folder:
                 gui_g.s.last_opened_folder = folder
                 add_new_row = False
-                self.scan_folders([folder])
+                self.scan_for_assets([folder])
                 # if row_data is None:
                 #     row_data = {}
                 # row_data['Origin'] = os.path.abspath(folder)
@@ -628,9 +614,15 @@ class UEVMGui(tk.Tk):
 
     def del_row(self) -> None:
         """
-        Remove the selected row from the DataFrame.
+        Remove the selected row from the DataFrame (Wrapper).
         """
         self.editable_table.del_rows()
+
+    def edit_row(self) -> None:
+        """
+        Edit the selected row (Wrapper).
+        """
+        self.editable_table.create_edit_row_window()
 
     def search_for_url(self, folder: str, parent: str, check_if_valid: bool = False) -> str:
         """
@@ -685,7 +677,7 @@ class UEVMGui(tk.Tk):
 
         return found_url
 
-    def scan_folders(self, folder_list: list = None) -> None:
+    def scan_for_assets(self, folder_list: list = None) -> None:
         """
         Scan the folders to find files that can be loaded.
         :param folder_list: the list of folders to scan. If empty, use the folders in the config file.
@@ -1122,7 +1114,7 @@ class UEVMGui(tk.Tk):
             self._frm_toolbar.btn_toggle_pagination.config(text='Enable  Pagination')
         else:
             self._frm_toolbar.btn_toggle_pagination.config(text='Disable Pagination')
-        self.update_controls_and_redraw()  # will also update buttons status
+        self.update_controls_state()  # will also update buttons status
 
     def first_item(self) -> None:
         """
@@ -1135,7 +1127,7 @@ class UEVMGui(tk.Tk):
             data_table.move_to_row(0)
             data_table.yview_moveto(0)
             data_table.redrawVisible()
-        self.update_controls_and_redraw()
+        self.update_controls_state()
 
     def last_item(self) -> None:
         """
@@ -1148,35 +1140,35 @@ class UEVMGui(tk.Tk):
             data_table.move_to_row(len(data_table.get_data()) - 1)
             data_table.yview_moveto(1)
             data_table.redrawVisible()
-        self.update_controls_and_redraw()
+        self.update_controls_state()
 
     def prev_page(self) -> None:
         """
         Show the previous page of the table.
         """
         self.editable_table.prev_page()
-        self.update_controls_and_redraw()
+        self.update_controls_state()
 
     def next_page(self) -> None:
         """
         Show the next page of the table.
         """
         self.editable_table.next_page()
-        self.update_controls_and_redraw()
+        self.update_controls_state()
 
     def prev_asset(self) -> None:
         """
         Move to the previous asset in the table.
         """
         self.editable_table.prev_row()
-        self.update_controls_and_redraw()
+        self.update_controls_state()
 
     def next_asset(self) -> None:
         """
         Move to the next asset in the table.
         """
         self.editable_table.next_row()
-        self.update_controls_and_redraw()
+        self.update_controls_state()
 
     # noinspection DuplicatedCode
     def toggle_actions_panel(self, force_showing: bool = None) -> None:
@@ -1213,91 +1205,48 @@ class UEVMGui(tk.Tk):
             self._frm_toolbar.btn_toggle_options.config(text='Show Options')
             self._frm_toolbar.btn_toggle_controls.config(state=tk.NORMAL)
 
-    def set_control_state(self, name: str, is_enabled: bool) -> None:
-        """
-        Enable or disable a control.
-        :param name: name of the control.
-        :param is_enabled: Whether to enable the control, if False, disable it.
-        """
-        control = self.controls.get(name, None)
-        if control is not None:
-            if name == 'save':
-                # the save buttons is always on. Only its text change
-                text = 'Save *' if is_enabled else 'Save  '
-                control.config(text=text)
-            else:
-                state = tk.NORMAL if is_enabled else tk.DISABLED
-                control.config(state=state)
+    @staticmethod
+    def _update_widget_state(condition, widget_key, text_swap=None):
+        widget_list = gui_g.stated_widgets.get(widget_key, [])
+        gui_f.set_widget_state_in_list(widget_list, is_enabled=condition, text_swap=text_swap)
 
-    def enable_control(self, name: str) -> None:
+    def update_controls_state(self) -> None:
         """
-        Enable a control.
-        :param name: name of the control.
+        Update the controls and redraw the table.
+        :return: 
         """
-        self.set_control_state(name, True)
-
-    def disable_control(self, name: str) -> None:
-        """
-        Disable a control.
-        :param name: name of the control.
-        """
-        self.set_control_state(name, False)
-
-    def update_controls_and_redraw(self) -> None:
-        """
-        Update some controls in the toolbar.
-        """
-        self.title(gui_g.s.app_title_long)  # the title can change with live settings
+        self.title(gui_g.s.app_title_long)
 
         if self._frm_toolbar is None:
-            # toolbar not created yet
             return
 
-        # Enable all controls by default
-        for key in self.controls.keys():
-            self.enable_control(key)
-
-        data_table = self.editable_table  # shortcut
-        # Disable some buttons if needed
-        current_index = data_table.getSelectedRow()
+        data_table = self.editable_table
         max_index = len(data_table.get_data())
-        if len(data_table.multiplerowlist) < 1:
-            self.disable_control('scrap')
-            self.disable_control('del')
-            self.disable_control('edit')
+        current_index = data_table.add_page_offset(data_table.getSelectedRow())
 
-        if not data_table.must_save:
-            self.disable_control('save')
-
-        current_index = data_table.add_page_offset(current_index)
-        if current_index <= 0:
-            self.disable_control('prev_asset')
-        elif current_index >= max_index - 1:
-            self.disable_control('next_asset')
+        self._update_widget_state(len(data_table.multiplerowlist) > 0, 'row_is_selected')
+        self._update_widget_state(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
+        self._update_widget_state(current_index > 0, 'not_first_asset')
+        self._update_widget_state(current_index < max_index - 1, 'not_last_asset')
 
         if not data_table.pagination_enabled:
             max_displayed = len(data_table.get_data(df_type=DataFrameUsed.AUTO))
             first_item_text = 'First Asset'
             last_item_text = 'Last Asset'
-            self.disable_control('prev_page')
-            self.disable_control('next_page')
-            if current_index <= 0:
-                self.disable_control('first_item')
-            if current_index >= max_index - 1:
-                self.disable_control('last_item')
+            gui_f.disable_widgets_in_list(gui_g.stated_widgets.get('not_first_page', []))
+            gui_f.disable_widgets_in_list(gui_g.stated_widgets.get('not_last_page', []))
+            self._update_widget_state(current_index > 0, 'not_first_item')
+            self._update_widget_state(current_index < max_index - 1, 'not_last_item')
         else:
             max_displayed = data_table.total_pages
             current_index = data_table.current_page
             first_item_text = 'First Page'
             last_item_text = 'Last Page'
-            if current_index <= 1:
-                self.disable_control('first_item')
-                self.disable_control('prev_page')
-            if current_index >= max_index:
-                self.disable_control('last_item')
-                self.disable_control('next_page')
+            self._update_widget_state(current_index > 1, 'not_first_item')
+            self._update_widget_state(current_index > 1, 'not_first_page')
+            self._update_widget_state(current_index < max_displayed, 'not_last_item')
+            self._update_widget_state(current_index < max_displayed, 'not_last_page')
 
-        # Update btn_first_item and btn_last_item text
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)
         self._frm_toolbar.var_entry_current_item.set('{:04d}'.format(current_index))
@@ -1376,7 +1325,7 @@ class UEVMGui(tk.Tk):
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
             if data_table.rebuild_data():
-                self.update_controls_and_redraw()
+                self.update_controls_state()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
 
@@ -1396,6 +1345,7 @@ class UEVMGui(tk.Tk):
             return
         row_index: int = self.editable_table.getSelectedRow()
         app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('App name'))
+
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY
         # set default options for the cli command to execute
         gui_g.UEVM_cli_args['gui'] = True  # mandatory for displaying the result in the DisplayContentWindow
@@ -1435,7 +1385,7 @@ class UEVMGui(tk.Tk):
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         function_to_call(gui_g.UEVM_cli_args)
         self._wait_for_window(gui_g.display_content_window_ref)  # a local variable won't work here
-        # gui_f.make_modal(display_window)
+        # make_modal(display_window)
 
     # noinspection PyUnusedLocal
     def open_asset_url(self, event=None) -> None:
@@ -1451,6 +1401,19 @@ class UEVMGui(tk.Tk):
         Open the asset URL (Wrapper).
         """
         self.editable_table.open_origin_folder()
+
+    def download_asset(self) -> None:
+        """
+        Open the asset URL (Wrapper).
+        """
+        gui_g.UEVM_cli_args['no_install'] = True
+        self.run_uevm_command('install_asset')
+
+    def install_asset(self) -> None:
+        """
+        Open the asset URL (Wrapper).
+        """
+        self.run_uevm_command('install_asset')
 
     # noinspection PyUnusedLocal
     def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback
@@ -1569,7 +1532,7 @@ class UEVMGui(tk.Tk):
         :return: a mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Tags'].str.split(',').apply(lambda x: any(is_an_int(i, gui_g.s.tag_prefix) for i in x))
+        mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix) for i in x))
         return mask
 
     def filter_with_comment(self) -> pd.Series:

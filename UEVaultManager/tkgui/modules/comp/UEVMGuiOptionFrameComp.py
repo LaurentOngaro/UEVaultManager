@@ -179,7 +179,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
             gui_g.s.debug_mode = value
 
         try:
-            self._container.update_controls_and_redraw()  # will update the title of the window
+            self._container.update_controls_state()  # will update the title of the window
         except AttributeError:
             # the container is not a UEVMGui instance,
             pass

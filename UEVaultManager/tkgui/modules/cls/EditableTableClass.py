@@ -836,7 +836,6 @@ class EditableTable(Table):
                 # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
                 self.update(update_filters=True)
                 self.tableChanged()
-                self.set_control_state_func('save', True)
             return number_deleted > 0
         else:
             return False
@@ -1376,7 +1375,6 @@ class EditableTable(Table):
             return
         self._changed_rows.append(row_index)
         self.tableChanged()
-        self.set_control_state_func('save', True)
 
     def clear_rows_to_save(self) -> None:
         """
@@ -1576,8 +1574,8 @@ class EditableTable(Table):
         if row_number is None:
             return None
         title = 'Edit current row'
-        width = 900
-        height = 1000
+        width = 800
+        height = 950
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()

@@ -425,3 +425,72 @@ def make_modal(window: tk.Toplevel = None, wait_for_close=True) -> None:
     if wait_for_close:
         # Note: this will block the main window
         window.wait_window()
+
+
+def set_widget_state(widget: tk.Widget, is_enabled: bool, text_swap: {} = None) -> None:
+    """
+    Enable or disable a widget.
+    :param widget: widget to update.
+    :param is_enabled: Whether to enable the widget, if False, disable it.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    if widget is not None:
+        state = tk.NORMAL if is_enabled else tk.DISABLED
+        state_inversed = tk.NORMAL if not is_enabled else tk.DISABLED
+        try:
+            # noinspection PyUnresolvedReferences
+            widget.config(state=state)
+            current_text = widget.cget('text')
+            if text_swap is not None and text_swap.get(state, '') == current_text:
+                swapped_text = text_swap.get(state_inversed, '')
+                if swapped_text:
+                    # noinspection PyUnresolvedReferences
+                    widget.config(text=swapped_text)
+        except tk.TclError:
+            pass
+
+
+def enable_widget(widget) -> None:
+    """
+    Enable a widget.
+    :param widget: widget to update.
+    """
+    set_widget_state(widget, True)
+
+
+def disable_widget(widget) -> None:
+    """
+    Disable a widget.
+    :param widget: widget to update.
+    """
+    set_widget_state(widget, False)
+
+
+def set_widget_state_in_list(list_of_widget: [], is_enabled: bool, text_swap: {} = None) -> None:
+    """
+    Enable or disable a widget.
+     :param list_of_widget: the list of widgets to update.
+    :param is_enabled: Whether to enable the widget, if False, disable it.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    for widget in list_of_widget:
+        set_widget_state(widget, is_enabled, text_swap)
+
+
+def enable_widgets_in_list(list_of_widget: []) -> None:
+    """
+    Enable a list of widgets.
+    :param list_of_widget: the list of widgets to enable.
+    """
+    for widget in list_of_widget:
+        enable_widget(widget)
+
+
+def disable_widgets_in_list(list_of_widget: []) -> None:
+    """
+    Disable a list of widgets.
+    :param list_of_widget: the list of widgets to disable.
+    :return:
+    """
+    for widget in list_of_widget:
+        disable_widget(widget)

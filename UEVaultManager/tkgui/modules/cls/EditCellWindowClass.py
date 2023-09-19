@@ -50,10 +50,12 @@ class EditCellWindow(tk.Toplevel):
         self.bind('<Control-Tab>', self._focus_next_widget)
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
+        self.bind('<Button-1>', self.on_left_click)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         gui_g.edit_cell_window_ref = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+        self.update_controls_state()
 
     @staticmethod
     def _focus_next_widget(event):
@@ -86,10 +88,15 @@ class EditCellWindow(tk.Toplevel):
             ttk.Label(self, text='Respect the initial format when changing a value').grid(row=0, column=0, columnspan=2, **grid_def_options)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
-            ttk.Button(self, text='Save Changes', command=container.save_changes, bootstyle=INFO).grid(row=1, column=0, **grid_def_options)
+            btn_save_cell = ttk.Button(self, text='Save Changes', command=container.save_changes, bootstyle=INFO)
+            btn_save_cell.grid(row=1, column=0, **grid_def_options)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
-            ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING).grid(row=1, column=1, **grid_def_options)
+            ttk_item = ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING)
+            ttk_item.grid(row=1, column=1, **grid_def_options)
+            widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+            gui_fn.append_no_duplicate(widget_list, btn_save_cell)
+
             self.columnconfigure('all', weight=1)
             self.rowconfigure('all', weight=1)
 
@@ -111,7 +118,7 @@ class EditCellWindow(tk.Toplevel):
         Event when a key is pressed.
         :param event: the event that triggered the call of this function.
         """
-        # print(event.keysym)
+        self.update_controls_state()
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             self.on_close()
@@ -119,14 +126,19 @@ class EditCellWindow(tk.Toplevel):
             self.save_changes()
         return 'break'
 
+    # noinspection PyUnusedLocal
+    def on_left_click(self, event=None) -> None:
+        """
+        When the left mouse button is clicked, show the selected row in the quick edit frame.
+        :param event:
+        """
+        self.update_controls_state()  # to update when clicking on the checkbox
+
     def on_close(self, _event=None) -> None:
         """
         Event when the window is closing.
         :param _event: the event that triggered the call of this function.
         """
-        current_values = self.editable_table.get_edit_cell_values()
-        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
-        self.must_save = current_values and self.initial_values != current_values
         if self.must_save:
             if gui_f.box_yesno('Changes have been made in the window. Do you want to keep them ?'):
                 self.save_changes()
@@ -146,3 +158,16 @@ class EditCellWindow(tk.Toplevel):
         """
         self.must_save = False
         self.editable_table.save_edit_cell_value()
+
+    def update_controls_state(self) -> None:
+        """
+        Update some controls in the window depending on conditions
+        """
+        current_values = self.editable_table.get_edit_cell_values()
+        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
+        self.must_save = current_values and self.initial_values != current_values
+
+        true_cond = self.must_save
+        widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+        # print(f'current_values: {current_values}  self.initial_values={self.initial_values}  true_cond={true_cond}')
+        gui_f.set_widget_state_in_list(widget_list, is_enabled=true_cond)

@@ -56,11 +56,12 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Control-Tab>', self._focus_next_widget)
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
+        self.bind('<Button-1>', self.on_left_click)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        self.btn_open_folder = self.frm_control.btn_open_folder
         gui_g.edit_row_window_ref = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+        self.update_controls_state()
 
     @staticmethod
     def _focus_next_widget(event):
@@ -94,10 +95,15 @@ class EditRowWindow(tk.Toplevel):
 
             lblf_navigation = ttk.LabelFrame(self, text='Navigation')
             lblf_navigation.grid(row=0, column=0, **grid_def_options)
-            btn_prev_asset = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
-            btn_prev_asset.pack(**pack_def_options, side=tk.LEFT)
-            btn_next_asset = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
-            btn_next_asset.pack(**pack_def_options, side=tk.RIGHT)
+            btn_prev_asset_edit = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
+            btn_prev_asset_edit.pack(**pack_def_options, side=tk.LEFT)
+            btn_next_asset_edit = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
+            btn_next_asset_edit.pack(**pack_def_options, side=tk.RIGHT)
+
+            widget_list = gui_g.stated_widgets.get('not_first_asset', [])
+            gui_fn.append_no_duplicate(widget_list, [btn_prev_asset_edit])
+            widget_list = gui_g.stated_widgets.get('not_last_asset', [])
+            gui_fn.append_no_duplicate(widget_list, [btn_next_asset_edit])
 
             lbf_preview = ttk.LabelFrame(self, text='Image Preview')
             lbf_preview.grid(row=0, column=1, **grid_def_options)
@@ -110,33 +116,32 @@ class EditRowWindow(tk.Toplevel):
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=2, **grid_def_options)
-            btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
-            btn_open_url.pack(**pack_def_options, side=tk.LEFT)
-            btn_open_folder = ttk.Button(lblf_actions, text="Open Folder", command=container.open_asset_folder)
-            btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
+            ttk_item = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
+            ttk_item.pack(**pack_def_options, side=tk.LEFT)
+            ttk_item = ttk.Button(lblf_actions, text="Open Folder", command=container.open_asset_folder)
+            ttk_item.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
-            btn_on_close = ttk.Button(lblf_actions, text='Close', command=container.on_close, bootstyle=WARNING)
-            btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
+            # (bootstyle is not recognized by PyCharm)
+            ttk_item = ttk.Button(lblf_actions, text='Close', command=container.on_close, bootstyle=WARNING)
+            ttk_item.pack(**pack_def_options, side=tk.RIGHT)
             # noinspection PyArgumentList
-            bnt_save = ttk.Button(lblf_actions, text='Save Changes', command=container.save_changes, bootstyle=INFO)
-            bnt_save.pack(**pack_def_options, side=tk.RIGHT)
+            # (bootstyle is not recognized by PyCharm)
+            btn_save_row = ttk.Button(lblf_actions, text='Save Changes', command=container.save_changes, bootstyle=INFO)
+            btn_save_row.pack(**pack_def_options, side=tk.RIGHT)
+            widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+            gui_fn.append_no_duplicate(widget_list, btn_save_row)
 
-            # Configure the columns to take all the available width
             self.columnconfigure(0, weight=1)
             self.columnconfigure(1, weight=2)
             self.columnconfigure(2, weight=1)
 
             self.canvas_image = canvas_image
-            self.btn_open_folder = btn_open_folder
 
     def on_close(self, _event=None) -> None:
         """
         Event when the window is closing.
         :param _event: the event that triggered the call of this function.
         """
-        current_values = self.editable_table.get_edited_row_values()
-        # current_values is empty is save_button has been pressed because global variables have been cleared in save_changess()
-        self.must_save = current_values and self.initial_values != current_values
         if self.must_save:
             if gui_f.box_yesno('Changes have been made in the window. Do you want to keep them ?'):
                 self.save_changes()
@@ -148,12 +153,21 @@ class EditRowWindow(tk.Toplevel):
         Event when a key is pressed.
         :param event: the event that triggered the call of this function.
         """
+        self.update_controls_state()
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             self.on_close()
         elif control_pressed and (event.keysym == 's' or event.keysym == 'S'):
             self.save_changes()
         return 'break'
+
+    # noinspection PyUnusedLocal
+    def on_left_click(self, event=None) -> None:
+        """
+        When the left mouse button is clicked, show the selected row in the quick edit frame.
+        :param event:
+        """
+        self.update_controls_state()  # to update when clicking on the checkbox
 
     def close_window(self) -> None:
         """
@@ -195,3 +209,28 @@ class EditRowWindow(tk.Toplevel):
         Open the asset URL (Wrapper).
         """
         self.editable_table.open_origin_folder()
+
+    def update_controls_state(self) -> None:
+        """
+        Update some controls in the window depending on conditions
+        """
+        data_table = self.editable_table  # shortcut
+        max_index = len(data_table.get_data())
+        current_index = data_table.getSelectedRow()
+        current_index = data_table.add_page_offset(current_index)
+        true_cond = current_index > 0
+        widget_list = gui_g.stated_widgets.get('not_first_asset', [])
+        gui_f.set_widget_state_in_list(widget_list, is_enabled=true_cond)
+
+        true_cond = current_index < max_index - 1
+        widget_list = gui_g.stated_widgets.get('not_last_asset', [])
+        gui_f.set_widget_state_in_list(widget_list, is_enabled=true_cond)
+
+        current_values = self.editable_table.get_edited_row_values()
+        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
+        self.must_save = current_values and self.initial_values != current_values
+
+        true_cond = self.must_save
+        widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+        # print(f'current_values: {current_values}  self.initial_values={self.initial_values}  true_cond={true_cond}')
+        gui_f.set_widget_state_in_list(widget_list, is_enabled=true_cond)
