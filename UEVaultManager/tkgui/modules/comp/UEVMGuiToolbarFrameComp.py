@@ -89,8 +89,8 @@ class UEVMGuiToolbarFrame(ttk.Frame):
 
         lblf_commands = ttk.LabelFrame(self, text='Other commands')
         lblf_commands.pack(side=tk.LEFT, **lblf_def_options)
-        ttk_item = ttk.Button(lblf_commands, text='Login', command=lambda: container.run_uevm_command('auth'))
-        ttk_item.pack(**pack_def_options, side=tk.LEFT)
+        btn_login = ttk.Button(lblf_commands, text='Login', command=lambda: container.run_uevm_command('auth'))
+        btn_login.pack(**pack_def_options, side=tk.LEFT)
         ttk_item = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
         ttk_item.pack(**pack_def_options, side=tk.LEFT)
         ttk_item = ttk.Button(lblf_commands, text='Status', command=lambda: container.run_uevm_command('status'))
@@ -101,6 +101,8 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         ttk_item.pack(**pack_def_options, side=tk.LEFT)
         ttk_item = ttk.Button(lblf_commands, text='Db Import/Export', command=lambda: container.database_processing())
         ttk_item.pack(**pack_def_options, side=tk.LEFT)
+        widget_list = gui_g.stated_widgets.get('not_offline', [])
+        append_no_duplicate(widget_list, [btn_login])
 
         lblf_actions = ttk.LabelFrame(self, text='Actions')
         lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)

@@ -720,14 +720,17 @@ class UEVMGui(tk.Tk):
                 'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature',  #
                 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
             ]
-        if gui_g.s.check_asset_folders:
-            self.clean_asset_folders()
+        if gui_g.s.offline_mode:
+            gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
+            return
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
         if not folder_to_scan:
             gui_f.box_message('No folder to scan. Please add some in the config file', level='warning')
             return
+        if gui_g.s.check_asset_folders:
+            self.clean_asset_folders()
         if len(folder_to_scan) > 1 and not gui_f.box_yesno(
             'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
         ):
@@ -1030,6 +1033,9 @@ class UEVMGui(tk.Tk):
         :param update_dataframe: Whether to update the dataframe after scraping
         """
 
+        if gui_g.s.offline_mode:
+            gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
+            return
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
@@ -1213,12 +1219,13 @@ class UEVMGui(tk.Tk):
         widget_list = gui_g.stated_widgets.get(widget_key, [])
         gui_f.set_widget_state_in_list(widget_list, is_enabled=condition, text_swap=text_swap)
 
-    def update_controls_state(self) -> None:
+    def update_controls_state(self, update_title=False) -> None:
         """
         Update the controls and redraw the table.
         :return: 
         """
-        self.title(gui_g.s.app_title_long)
+        if update_title:
+            self.title(gui_g.s.app_title_long)
 
         if self._frm_toolbar is None:
             return
@@ -1231,6 +1238,7 @@ class UEVMGui(tk.Tk):
         self._update_widget_state(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
         self._update_widget_state(current_index > 0, 'not_first_asset')
         self._update_widget_state(current_index < max_index - 1, 'not_last_asset')
+        self._update_widget_state(not gui_g.s.offline_mode, 'not_offline')
 
         if not data_table.pagination_enabled:
             max_displayed = len(data_table.get_data(df_type=DataFrameUsed.AUTO))

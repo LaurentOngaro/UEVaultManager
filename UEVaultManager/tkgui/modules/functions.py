@@ -192,6 +192,9 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
     :param scale: the scale to apply to the image.
     :param timeout: the timeout in seconds to wait for the image to be downloaded.
     """
+    if gui_g.s.offline_mode:
+        # could be usefull if connexion is slow
+        show_default_image(canvas_image)
     if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
         return
     try:

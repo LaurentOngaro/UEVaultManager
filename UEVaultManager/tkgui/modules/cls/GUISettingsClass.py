@@ -127,6 +127,7 @@ class GUISettings:
         # keep at the end
         self._app_title_long: str = ''  # use a getter to upddate the value in live
         self.app_title: str = __name__
+        self.offline_mode = False
 
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
@@ -177,8 +178,9 @@ class GUISettings:
     def app_title_long(self) -> str:
         """ Getter for app_title_long """
         self._app_title_long: str = f'{__name__} Gui v{__version__} ({__codename__})'
-        self._app_title_long += ' - DEBUG MODE' if self.debug_mode else ''
         self._app_title_long += f' - SWITCH VALUE {self.testing_switch} ' if self.testing_switch > 0 else ''
+        self._app_title_long += ' - DEBUG MODE' if self.debug_mode else ''
+        self._app_title_long += ' - OFFLINE MODE' if self.offline_mode else ''
         return self._app_title_long
 
     @property

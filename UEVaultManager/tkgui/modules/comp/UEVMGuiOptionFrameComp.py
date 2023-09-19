@@ -22,8 +22,6 @@ class UEVMGuiOptionFrame(ttk.Frame):
         self._container = _container
         self._folders_to_scan = gui_g.s.folders_to_scan if gui_g.s.folders_to_scan else []
         self._folders_to_scan = []
-        self._container = None
-        self._cb_folders_to_scan = None
 
         # pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
         lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'fill': tk.X}
@@ -120,6 +118,13 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
+        self.var_offline_mode = tk.BooleanVar(value=gui_g.s.offline_mode)
+        self.var_offline_mode.trace_add('write', lambda name, index, mode: self.update_gui_options())
+        ck_offline_mode = ttk.Checkbutton(lblf_gui_settings, text='Offline mode (GUI and CLI)', variable=self.var_offline_mode)
+        ck_offline_mode.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
+        # new row
+        cur_row += 1
+        cur_col = 0
         var_use_colors_for_data = tk.BooleanVar(value=gui_g.s.use_colors_for_data)
         var_use_colors_for_data.trace_add('write', lambda name, index, mode: gui_g.set_use_colors_for_data(var_use_colors_for_data.get()))
         ck_use_colors_for_data = ttk.Checkbutton(lblf_gui_settings, text='Use colors in data table', variable=var_use_colors_for_data)
@@ -170,6 +175,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
             pass
         else:
             gui_g.s.testing_switch = value
+
         try:
             value = self.var_debug_gui.get()
             value = bool(value)
@@ -179,9 +185,19 @@ class UEVMGuiOptionFrame(ttk.Frame):
             gui_g.s.debug_mode = value
 
         try:
-            self._container.update_controls_state()  # will update the title of the window
-        except AttributeError:
-            # the container is not a UEVMGui instance,
+            value = self.var_offline_mode.get()
+            value = bool(value)
+        except (ValueError, tk.TclError):
+            pass
+        else:
+            gui_g.s.offline_mode = value
+            gui_g.UEVM_cli_args['offline'] = value
+
+        try:
+            self._container.update_controls_state(update_title=True)  # will update the title of the window
+        except AttributeError as error:
+            # the container is not a UEVMGui instance
+            self._container.logger.debug(f'An error occured in update_gui_options: {error!r}')
             pass
 
     def add_folder_to_scan(self):

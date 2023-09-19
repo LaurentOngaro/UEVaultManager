@@ -939,10 +939,13 @@ class EditableTable(Table):
             else:
                 start_row = 0
                 stop_row = 0
-            if gui_g.UEVM_cli_args and gui_g.UEVM_cli_args.get('force_refresh', False):
-                load_from_files = False
+            if gui_g.s.offline_mode:
+                load_from_files = True
             else:
-                load_from_files = gui_g.UEVM_cli_args.get('offline', True)
+                if gui_g.UEVM_cli_args and gui_g.UEVM_cli_args.get('force_refresh', False):
+                    load_from_files = False
+                else:
+                    load_from_files = gui_g.UEVM_cli_args.get('offline', True)
             scraper = UEAssetScraper(
                 start=start_row,
                 stop=stop_row,

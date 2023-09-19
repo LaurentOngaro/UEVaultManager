@@ -57,6 +57,8 @@ stated_widgets = {
     'not_first_page': [],
     # selected page is not the last one
     'not_last_page': [],
+    # not in offline_mode
+    'not_offline': [],
 }
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 

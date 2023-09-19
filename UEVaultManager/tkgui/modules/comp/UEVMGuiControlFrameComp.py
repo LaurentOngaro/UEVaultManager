@@ -121,6 +121,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         append_no_duplicate(widget_list, [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], self.buttons['scrap_row']['widget']])
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
+        widget_list = gui_g.stated_widgets.get('not_offline', [])
+        append_no_duplicate(widget_list, [self.buttons['scrap_row']['widget'], self.buttons['scan_for_assets']['widget']])
 
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
