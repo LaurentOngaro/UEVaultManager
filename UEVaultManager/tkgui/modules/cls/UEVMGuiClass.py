@@ -384,14 +384,17 @@ class UEVMGui(tk.Tk):
     def on_left_click(self, event=None) -> None:
         """
         When the left mouse button is clicked, show the selected row in the quick edit frame.
-        :param event:
+        :param event: event that triggered the call.
         """
         data_table = self.editable_table  # shortcut
         # if the clic is on a frame (i.e. an empty zone), clean the selection in the table
-        if event.widget.widgetName == 'ttk::frame':
-            data_table.selectNone()
-            data_table.clearSelected()
-            data_table.delete('rowrect')  # remove the highlight rect
+        try:
+            if event.widget.widgetName == 'ttk::frame':
+                data_table.selectNone()
+                data_table.clearSelected()
+                data_table.delete('rowrect')  # remove the highlight rect
+        except AttributeError:
+            pass
         self.update_controls_state()
 
     def on_entry_current_item_changed(self, _event=None) -> None:
