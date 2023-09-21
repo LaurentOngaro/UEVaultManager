@@ -25,6 +25,16 @@ from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_dateti
 from UEVaultManager.utils.cli import check_and_create_path
 
 
+class UEADBH_Settings:
+    """
+    Settings for the class when running as main.
+    """
+    clean_data = True
+    read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
+    db_folder = path_from_relative_to_absolute('../../../scraping/')
+    db_name = path_join(db_folder, 'assets.db')
+
+
 class UEAssetDbHandler:
     """
     Handles database operations for the UE Assets.
@@ -1086,22 +1096,17 @@ class UEAssetDbHandler:
 
 if __name__ == "__main__":
     # the following code is just for class testing purposes
-    clean_data = True
-    read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
-
-    db_folder = path_from_relative_to_absolute('../../../scraping/')
-    db_name = path_join(db_folder, 'assets.db')
-    check_and_create_path(db_name)
-    asset_handler = UEAssetDbHandler(database_name=db_name, reset_database=(clean_data and not read_data_only))
-
-    if read_data_only:
+    st = UEADBH_Settings()
+    check_and_create_path(st.db_name)
+    asset_handler = UEAssetDbHandler(database_name=st.db_name, reset_database=(st.clean_data and not st.read_data_only))
+    if st.read_data_only:
         # Read existing assets
         asset_list = asset_handler.get_assets_data()
         print("Assets:", asset_list)
     elif gui_g.s.testing_switch == 1:
         # Create fake assets
         rows_to_create = 300
-        if not clean_data:
+        if not st.clean_data:
             rows_count = asset_handler.get_rows_count()
             print(f"Rows count: {rows_count}")
             rows_to_create -= rows_count

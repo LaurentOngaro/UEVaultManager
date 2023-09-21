@@ -59,21 +59,6 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         self.btn_first_item = btn_first_item  # need for text change
         self.btn_last_item = btn_last_item  # need for text change
 
-        widget_list = gui_g.stated_widgets.get('not_first_item', [])
-        append_no_duplicate(widget_list, [btn_first_item])
-        widget_list = gui_g.stated_widgets.get('not_last_item', [])
-        append_no_duplicate(widget_list, [btn_last_item])
-
-        widget_list = gui_g.stated_widgets.get('not_first_page', [])
-        append_no_duplicate(widget_list, [btn_prev_page])
-        widget_list = gui_g.stated_widgets.get('not_last_page', [])
-        append_no_duplicate(widget_list, [btn_next_page])
-
-        widget_list = gui_g.stated_widgets.get('not_first_asset', [])
-        append_no_duplicate(widget_list, [btn_prev_asset])
-        widget_list = gui_g.stated_widgets.get('not_last_asset', [])
-        append_no_duplicate(widget_list, [btn_next_asset])
-
         lblf_display = ttk.LabelFrame(self, text='Display')
         lblf_display.pack(side=tk.LEFT, **lblf_def_options)
         ttk_item = ttk.Button(lblf_display, text='Expand Cols', command=data_table.expand_columns)
@@ -101,8 +86,6 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         ttk_item.pack(**pack_def_options, side=tk.LEFT)
         ttk_item = ttk.Button(lblf_commands, text='Db Import/Export', command=lambda: container.database_processing())
         ttk_item.pack(**pack_def_options, side=tk.LEFT)
-        widget_list = gui_g.stated_widgets.get('not_offline', [])
-        append_no_duplicate(widget_list, [btn_login])
 
         lblf_actions = ttk.LabelFrame(self, text='Actions')
         lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
@@ -112,9 +95,24 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         self.btn_toggle_controls.pack(**pack_def_options, side=tk.LEFT)
         # noinspection PyArgumentList
         # (bootstyle is not recognized by PyCharm)
-        btn_on_close = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)
-        btn_on_close.pack(**pack_def_options, side=tk.RIGHT)
+        ttk_item = ttk.Button(lblf_actions, text='Quit', command=container.on_close, bootstyle=WARNING)
+        ttk_item.pack(**pack_def_options, side=tk.RIGHT)
 
         # Bind events for the Entry widget
         self.entry_current_item.bind('<FocusOut>', container.on_entry_current_item_changed)
         self.entry_current_item.bind('<Return>', container.on_entry_current_item_changed)
+
+        widget_list = gui_g.stated_widgets.get('not_first_item', [])
+        append_no_duplicate(widget_list, [btn_first_item])
+        widget_list = gui_g.stated_widgets.get('not_last_item', [])
+        append_no_duplicate(widget_list, [btn_last_item])
+        widget_list = gui_g.stated_widgets.get('not_first_page', [])
+        append_no_duplicate(widget_list, [btn_prev_page])
+        widget_list = gui_g.stated_widgets.get('not_last_page', [])
+        append_no_duplicate(widget_list, [btn_next_page])
+        widget_list = gui_g.stated_widgets.get('not_first_asset', [])
+        append_no_duplicate(widget_list, [btn_prev_asset])
+        widget_list = gui_g.stated_widgets.get('not_last_asset', [])
+        append_no_duplicate(widget_list, [btn_next_asset])
+        widget_list = gui_g.stated_widgets.get('not_offline', [])
+        append_no_duplicate(widget_list, [btn_login])

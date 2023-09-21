@@ -117,12 +117,6 @@ class UEVMGuiControlFrame(ttk.Frame):
                 cur_row += 1
                 cur_col = 0
             self.buttons[key]['widget'] = btn
-        widget_list = gui_g.stated_widgets.get('row_is_selected', [])
-        append_no_duplicate(widget_list, [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], self.buttons['scrap_row']['widget']])
-        widget_list = gui_g.stated_widgets.get('table_has_changed', [])
-        append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
-        widget_list = gui_g.stated_widgets.get('not_offline', [])
-        append_no_duplicate(widget_list, [self.buttons['scrap_row']['widget'], self.buttons['scan_for_assets']['widget']])
 
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
@@ -149,13 +143,11 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_open_url.pack(**pack_def_options, side=tk.LEFT)
         btn_open_folder = ttk.Button(frm_asset_action, text='Open Folder', command=container.open_asset_folder)
         btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
-        btn_download_asset = ttk.Button(frm_asset_action, text='download', command=container.download_asset)
+        btn_download_asset = ttk.Button(frm_asset_action, text='Download', command=container.download_asset)
         btn_download_asset.pack(**pack_def_options, side=tk.LEFT)
         btn_install_asset = ttk.Button(frm_asset_action, text='INSTALL', command=container.install_asset)
         btn_install_asset.pack(**pack_def_options, side=tk.LEFT)
         frm_asset_action.pack(**lblf_fw_options)
-        widget_list = gui_g.stated_widgets.get('row_is_selected', [])
-        append_no_duplicate(widget_list, [btn_open_url, btn_open_folder, btn_download_asset, btn_install_asset])
 
         ttk_item = ttk.Label(self.lbtf_quick_edit, text='Values bellow will be updated for the selected row on focus lost', foreground='#158CBA')
         ttk_item.pack()
@@ -250,6 +242,19 @@ class UEVMGuiControlFrame(ttk.Frame):
         lblf_bottom = ttk.Frame(self)
         lblf_bottom.pack(**lblf_def_options)
         ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
+
+        widget_list = gui_g.stated_widgets.get('row_is_selected', [])
+        append_no_duplicate(widget_list, [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], self.buttons['scrap_row']['widget']])
+        widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+        append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
+        widget_list = gui_g.stated_widgets.get('not_offline', [])
+        append_no_duplicate(widget_list, [self.buttons['scrap_row']['widget'], self.buttons['scan_for_assets']['widget']])
+        widget_list = gui_g.stated_widgets.get('asset_is_owned', [])
+        append_no_duplicate(widget_list, [btn_download_asset, btn_install_asset])
+        widget_list = gui_g.stated_widgets.get('asset_has_url', [])
+        append_no_duplicate(widget_list, [btn_open_url])
+        widget_list = gui_g.stated_widgets.get('asset_added_mannually', [])
+        append_no_duplicate(widget_list, [btn_open_folder])
 
     @staticmethod
     def save_filters(filters: dict):

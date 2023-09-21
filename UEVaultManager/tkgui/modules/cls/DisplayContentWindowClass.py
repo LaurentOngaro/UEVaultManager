@@ -3,7 +3,6 @@
 Implementation for:
 - DisplayContentWindow: the window to display a text content.
 """
-import os
 import tkinter as tk
 from tkinter import filedialog as fd
 from tkinter import ttk
@@ -28,7 +27,16 @@ class DisplayContentWindow(tk.Toplevel):
     :param quit_on_close: whether to quit the application when the window is closed.
     """
 
-    def __init__(self, title: str, width: int = 600, height: int = 430, icon=None, screen_index: int = 0, quit_on_close: bool = False):
+    def __init__(
+        self,
+        title: str,
+        width: int = 600,
+        height: int = 430,
+        icon=None,
+        screen_index: int = 0,
+        quit_on_close: bool = False,
+        result_filename: str = 'UEVM_output.txt'
+    ):
         super().__init__()
         self.title(title)
         try:
@@ -41,6 +49,7 @@ class DisplayContentWindow(tk.Toplevel):
         self.resizable(True, False)
         self.keep_existing: bool = False  # whether to keep the existing content when adding a new one
         self.quit_on_close = quit_on_close
+        self.result_filename = result_filename
         self.frm_content = self.ContentFrame(self)
         self.frm_control = self.ControlFrame(self)
 
@@ -139,15 +148,18 @@ class DisplayContentWindow(tk.Toplevel):
         :param content: the text to print.
         :param keep_mode: whether to keep the existing content when a new one is added.
         """
-        if self.keep_existing:
-            content += '\n'
-            self.frm_content.text_content.insert(tk.END, content)
-        else:
-            self.frm_content.text_content.delete('1.0', tk.END)
-            self.frm_content.text_content.insert(tk.END, content)
-        # set the mode at the end to allow using display() to be used to change the mode for the next call
-        self.keep_existing = keep_mode
-        self.update()
+        try:
+            if self.keep_existing:
+                content += '\n'
+                self.frm_content.text_content.insert(tk.END, content)
+            else:
+                self.frm_content.text_content.delete('1.0', tk.END)
+                self.frm_content.text_content.insert(tk.END, content)
+            # set the mode at the end to allow using display() to be used to change the mode for the next call
+            self.keep_existing = keep_mode
+            self.update()
+        except tk.TclError as error:
+            gui_f.log_warning(f'Error in display_content_window: {error!r}')
 
     def clean(self) -> None:
         """
@@ -160,9 +172,9 @@ class DisplayContentWindow(tk.Toplevel):
         """
         Save the content displayed to a file.
         """
-        initial_dir = os.path.dirname(gui_g.s.csv_filename)
+        initial_dir = gui_g.s.last_opened_folder
         filename = fd.asksaveasfilename(
-            title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile='UEVM_output.txt'
+            title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=self.result_filename
         )
         if filename:
             with open(filename, 'w') as f:

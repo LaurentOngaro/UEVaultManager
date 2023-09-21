@@ -25,6 +25,31 @@ from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder,
     extract_variables_from_url
 
 
+class UEAS_Settings:
+    """
+    Settings for the class when running as main.
+    """
+    # set the number of rows to retrieve per page
+    # As the asset are saved individually by default, this value is only use for pagination in the files that store the url
+    # it speeds up the process of requesting the asset list
+    ue_asset_per_page = 100
+
+    if gui_g.s.testing_switch == 1:
+        # shorter and faster list for testing only
+        # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
+        threads = 0  # set to 0 to disable threading
+        start_row = 15000
+        stop_row = 15000 + ue_asset_per_page
+        clean_db = False
+        load_data_from_files = False
+    else:
+        threads = 16
+        start_row = 0
+        stop_row = 0  # 0 means no limit
+        clean_db = True
+        load_data_from_files = False  # by default the scraper will rebuild the database from scratch
+
+
 class UEAssetScraper:
     """
     A class that handles scraping data from the Unreal Engine Marketplace.
@@ -77,7 +102,7 @@ class UEAssetScraper:
         self._files_count: int = 0
         self._thread_executor = None
         self._scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
-        self._db_name: str = path_join(gui_g.s.scraping_folder, 'assets.db')
+        self._db_name: str = path_join(gui_g.s.scraping_folder, gui_g.s.sqlite_filename)
         self._scraped_ids = []  # store IDs of all items
         self._owned_asset_ids = []  # store IDs of all owned items
         self._urls = []  # list of all urls to scrap
@@ -678,36 +703,16 @@ class UEAssetScraper:
 
 if __name__ == '__main__':
     # the following code is just for class testing purposes
-
-    # set the number of rows to retrieve per page
-    # As the asset are saved individually by default, this value is only use for pagination in the files that store the url
-    # it speeds up the process of requesting the asset list
-    ue_asset_per_page = 100
-
-    if gui_g.s.testing_switch == 1:
-        # shorter and faster list for testing only
-        # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
-        threads = 0  # set to 0 to disable threading
-        start_row = 15000
-        stop_row = 15000 + ue_asset_per_page
-        clean_db = False
-        load_data_from_files = False
-    else:
-        threads = 16
-        start_row = 0
-        stop_row = 0  # 0 means no limit
-        clean_db = True
-        load_data_from_files = False  # by default the scraper will rebuild the database from scratch
-
+    st = UEAS_Settings()
     scraper = UEAssetScraper(
-        start=start_row,
-        stop=stop_row,
-        assets_per_page=ue_asset_per_page,
-        max_threads=threads,
+        start=st.start_row,
+        stop=st.stop_row,
+        assets_per_page=st.ue_asset_per_page,
+        max_threads=st.threads,
         store_in_db=True,
-        store_in_files=not load_data_from_files,
+        store_in_files=not st.load_data_from_files,
         store_ids=False,
-        load_from_files=load_data_from_files,
-        clean_database=clean_db
+        load_from_files=st.load_data_from_files,
+        clean_database=st.clean_db
     )
     scraper.save()

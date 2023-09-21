@@ -94,11 +94,12 @@ class EditCellWindow(tk.Toplevel):
             # (bootstyle is not recognized by PyCharm)
             ttk_item = ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING)
             ttk_item.grid(row=1, column=1, **grid_def_options)
-            widget_list = gui_g.stated_widgets.get('table_has_changed', [])
-            gui_fn.append_no_duplicate(widget_list, btn_save_cell)
 
             self.columnconfigure('all', weight=1)
             self.rowconfigure('all', weight=1)
+
+            widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+            gui_fn.append_no_duplicate(widget_list, btn_save_cell)
 
     def set_size(self, width: int, height: int) -> None:
         """
@@ -167,7 +168,4 @@ class EditCellWindow(tk.Toplevel):
         # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
         self.must_save = current_values and self.initial_values != current_values
 
-        true_cond = self.must_save
-        widget_list = gui_g.stated_widgets.get('table_has_changed', [])
-        # print(f'current_values: {current_values}  self.initial_values={self.initial_values}  true_cond={true_cond}')
-        gui_f.set_widget_state_in_list(widget_list, is_enabled=true_cond)
+        gui_f.update_widgets_in_list(self.must_save, 'table_has_changed')

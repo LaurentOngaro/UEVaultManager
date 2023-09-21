@@ -61,7 +61,7 @@ class EditRowWindow(tk.Toplevel):
 
         gui_g.edit_row_window_ref = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
-        self.update_controls_state()
+        self.after(500, self.update_controls_state)  # run after a delay to let the caller fill the widgets
 
     @staticmethod
     def _focus_next_widget(event):
@@ -100,11 +100,6 @@ class EditRowWindow(tk.Toplevel):
             btn_next_asset_edit = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
             btn_next_asset_edit.pack(**pack_def_options, side=tk.RIGHT)
 
-            widget_list = gui_g.stated_widgets.get('not_first_asset', [])
-            gui_fn.append_no_duplicate(widget_list, [btn_prev_asset_edit])
-            widget_list = gui_g.stated_widgets.get('not_last_asset', [])
-            gui_fn.append_no_duplicate(widget_list, [btn_next_asset_edit])
-
             lbf_preview = ttk.LabelFrame(self, text='Image Preview')
             lbf_preview.grid(row=0, column=1, **grid_def_options)
             width = int(gui_g.s.preview_max_width * container.preview_scale)
@@ -116,10 +111,10 @@ class EditRowWindow(tk.Toplevel):
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=2, **grid_def_options)
-            ttk_item = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
-            ttk_item.pack(**pack_def_options, side=tk.LEFT)
-            ttk_item = ttk.Button(lblf_actions, text="Open Folder", command=container.open_asset_folder)
-            ttk_item.pack(**pack_def_options, side=tk.LEFT)
+            btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
+            btn_open_url.pack(**pack_def_options, side=tk.LEFT)
+            btn_open_folder = ttk.Button(lblf_actions, text="Open Folder", command=container.open_asset_folder)
+            btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
             ttk_item = ttk.Button(lblf_actions, text='Close', command=container.on_close, bootstyle=WARNING)
@@ -128,14 +123,23 @@ class EditRowWindow(tk.Toplevel):
             # (bootstyle is not recognized by PyCharm)
             btn_save_row = ttk.Button(lblf_actions, text='Save Changes', command=container.save_changes, bootstyle=INFO)
             btn_save_row.pack(**pack_def_options, side=tk.RIGHT)
-            widget_list = gui_g.stated_widgets.get('table_has_changed', [])
-            gui_fn.append_no_duplicate(widget_list, btn_save_row)
 
             self.columnconfigure(0, weight=1)
             self.columnconfigure(1, weight=2)
             self.columnconfigure(2, weight=1)
 
             self.canvas_image = canvas_image
+
+            widget_list = gui_g.stated_widgets.get('not_first_asset', [])
+            gui_fn.append_no_duplicate(widget_list, [btn_prev_asset_edit])
+            widget_list = gui_g.stated_widgets.get('not_last_asset', [])
+            gui_fn.append_no_duplicate(widget_list, [btn_next_asset_edit])
+            widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+            gui_fn.append_no_duplicate(widget_list, btn_save_row)
+            widget_list = gui_g.stated_widgets.get('asset_has_url', [])
+            gui_fn.append_no_duplicate(widget_list, [btn_open_url])
+            widget_list = gui_g.stated_widgets.get('asset_added_mannually', [])
+            gui_fn.append_no_duplicate(widget_list, [btn_open_folder])
 
     def on_close(self, _event=None) -> None:
         """
@@ -216,21 +220,18 @@ class EditRowWindow(tk.Toplevel):
         """
         data_table = self.editable_table  # shortcut
         max_index = len(data_table.get_data())
-        current_index = data_table.getSelectedRow()
-        current_index = data_table.add_page_offset(current_index)
-        true_cond = current_index > 0
-        widget_list = gui_g.stated_widgets.get('not_first_asset', [])
-        gui_f.set_widget_state_in_list(widget_list, is_enabled=true_cond)
-
-        true_cond = current_index < max_index - 1
-        widget_list = gui_g.stated_widgets.get('not_last_asset', [])
-        gui_f.set_widget_state_in_list(widget_list, is_enabled=true_cond)
+        current_index = data_table.add_page_offset(data_table.getSelectedRow())
+        gui_f.update_widgets_in_list(current_index > 0, 'not_first_asset')
+        gui_f.update_widgets_in_list(current_index < max_index - 1, 'not_last_asset')
 
         current_values = self.editable_table.get_edited_row_values()
-        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
         self.must_save = current_values and self.initial_values != current_values
+        gui_f.update_widgets_in_list(self.must_save, 'table_has_changed')
 
-        true_cond = self.must_save
-        widget_list = gui_g.stated_widgets.get('table_has_changed', [])
-        # print(f'current_values: {current_values}  self.initial_values={self.initial_values}  true_cond={true_cond}')
-        gui_f.set_widget_state_in_list(widget_list, is_enabled=true_cond)
+        # conditions based on info about the current asset
+        widgets = data_table.get_edited_row_values()
+        if len(widgets):
+            is_added = widgets.get('Added manually', False)
+            url = widgets.get('Url', '')
+            gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
+            gui_f.update_widgets_in_list(url != '', 'asset_has_url')

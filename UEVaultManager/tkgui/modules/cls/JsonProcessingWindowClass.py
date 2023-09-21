@@ -16,7 +16,7 @@ from UEVaultManager.lfs.utils import path_join
 
 class JSPW_Settings:
     """
-    Settings for the app.
+    Settings for the class when running as main.
     """
     folder_for_tags_path = 'K:/UE/UEVM/scraping/assets/marketplace'
     folder_for_rating_path = 'K:/UE/UEVM/scraping/global'
