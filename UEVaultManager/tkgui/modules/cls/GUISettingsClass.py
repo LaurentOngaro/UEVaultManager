@@ -53,15 +53,16 @@ class GUISettings:
         # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
         self.assets_folder: str = gui_fn.path_from_relative_to_absolute('../../assets')
 
+        self.default_filename = 'assets'
         self.app_icon_filename: str = path_join(self.assets_folder, 'main.ico')
         self.default_image_filename: str = path_join(self.assets_folder, 'UEVM_200x200.png')
 
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename: str = self.config_vars['last_opened_file']
         else:
-            self.csv_filename: str = path_join(self.results_folder, 'list.csv')
+            self.csv_filename: str = path_join(self.results_folder, self.default_filename+'.csv')
 
-        self.sqlite_filename: str = path_join(self.scraping_folder, 'assets.db')
+        self.sqlite_filename: str = path_join(self.scraping_folder, self.default_filename+'.db')
 
         self.app_monitor: int = 1
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
@@ -404,6 +405,26 @@ class GUISettings:
         """ Setter for last_opened_folder """
         self.config_vars['last_opened_folder'] = value
 
+    @property
+    def last_opened_project(self) -> str:
+        """ Getter for last_opened_project """
+        return self.config_vars['last_opened_project']
+
+    @last_opened_project.setter
+    def last_opened_project(self, value):
+        """ Setter for last_opened_project """
+        self.config_vars['last_opened_project'] = value
+
+    @property
+    def last_opened_engine(self) -> str:
+        """ Getter for last_opened_engine """
+        return self.config_vars['last_opened_engine']
+
+    @last_opened_engine.setter
+    def last_opened_engine(self, value):
+        """ Setter for last_opened_engine """
+        self.config_vars['last_opened_engine'] = value
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -544,6 +565,14 @@ class GUISettings:
                 'comment': 'The last opened Folder name. Automatically saved when browsing a folder',
                 'value': ''
             },
+            'last_opened_project': {
+                'comment': 'The last opened project name. Automatically saved when browsing a project folder',
+                'value': ''
+            },
+            'last_opened_engine': {
+                'comment': 'The last opened Folder name. Automatically saved when browsing an engine folder',
+                'value': ''
+            },
         }
 
         has_changed = False
@@ -594,6 +623,8 @@ class GUISettings:
             'check_asset_folders': self.config.getboolean('UEVaultManager', 'check_asset_folders'),
             'browse_when_add_row': self.config.getboolean('UEVaultManager', 'browse_when_add_row'),
             'last_opened_folder': self.config.get('UEVaultManager', 'last_opened_folder'),
+            'last_opened_project': self.config.get('UEVaultManager', 'last_opened_project'),
+            'last_opened_engine': self.config.get('UEVaultManager', 'last_opened_engine'),
         }
         return config_vars
 
