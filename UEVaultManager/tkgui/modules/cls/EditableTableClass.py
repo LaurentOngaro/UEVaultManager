@@ -226,6 +226,21 @@ class EditableTable(Table):
             # not usefull here because the columns are not reodered yet
             # self.update_col_infos()
 
+    def get_selected_row_fixed(self):
+        """
+        Get currently selected row.
+        :return: The currently selected row or None if none is selected.
+
+        Notes:
+            The original method returns 0 if none is selected OR if the first row is selected
+            We don't want to return 0 if the first row is selected
+            We don"t override the original method because a changed return type could break the code
+        """
+        current_row = self.currentrow
+        if current_row == 0:
+            current_row = self.multiplerowlist[-1] if len(self.multiplerowlist) > 0 else None
+        return current_row
+
     def redraw(self, event=None, callback=None):
         """
         Redraw the table
@@ -374,7 +389,11 @@ class EditableTable(Table):
             Overridden for selecting the right datatable to use.
         """
         df = self.get_data(df_type=self._dftype_for_coloring)
-        self.rowcolors = pd.DataFrame(index=df[gui_g.s.index_copy_col_name])
+        try:
+            # index copy column is not always present
+            self.rowcolors = pd.DataFrame(index=df[gui_g.s.index_copy_col_name])
+        except KeyError:
+            self.rowcolors = pd.DataFrame(index=df.index)
         return
 
     def _set_with_for_hidden_columns(self) -> None:
@@ -1275,13 +1294,6 @@ class EditableTable(Table):
         self.gotoprevRow()
         self._generate_cell_selection_changed_event()
         return self.getSelectedRow()
-        # old version
-        # row_selected = self.getSelectedRow()
-        # if row_selected is None or row_selected == 0:
-        #     return -1
-        # row_selected -= 1
-        # self.move_to_row(row_selected)
-        # return row_selected
 
     def next_row(self) -> int:
         """
@@ -1291,14 +1303,6 @@ class EditableTable(Table):
         self.gotonextRow()
         self._generate_cell_selection_changed_event()
         return self.getSelectedRow()
-        # old version
-        # row_selected = self.getSelectedRow()
-        # max_displayed_rows = self.get_data(df_type=DataFrameUsed.AUTO).shape[0] - 1  # best way to get the number of displayed rows
-        # if row_selected is None or row_selected >= max_displayed_rows:
-        #     return -1
-        # row_selected += 1
-        # self.move_to_row(row_selected)
-        # return row_selected
 
     def next_page(self) -> None:
         """
@@ -1571,9 +1575,9 @@ class EditableTable(Table):
             if event.type != tk.EventType.KeyPress:
                 row_number = self.get_row_clicked(event)
             else:
-                row_number = self.getSelectedRow()
+                row_number = self.get_selected_row_fixed()
         else:
-            row_number = self.getSelectedRow()
+            row_number = self.get_selected_row_fixed()
         if row_number is None:
             return None
         title = 'Edit current row'
@@ -1709,7 +1713,7 @@ class EditableTable(Table):
             row_number = self.get_row_clicked(event)
             col_index = self.get_col_clicked(event)
         else:
-            row_number = self.getSelectedRow()
+            row_number = self.get_selected_row_fixed()
             col_index = self.getSelectedColumn()
         if row_number is None or col_index is None:
             return None
@@ -1895,7 +1899,7 @@ class EditableTable(Table):
         """
         Open the asset origin folder.
         """
-        row_number = self.getSelectedRow()
+        row_number = self.get_selected_row_fixed()
         if row_number is None or row_number < 0:
             return
         added = self.get_cell(row_number, self.get_col_index('Added manually'))
