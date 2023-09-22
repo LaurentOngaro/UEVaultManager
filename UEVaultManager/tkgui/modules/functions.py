@@ -497,3 +497,14 @@ def disable_widgets_in_list(list_of_widget: []) -> None:
     """
     for widget in list_of_widget:
         disable_widget(widget)
+
+
+def update_widgets_in_list(is_enabled: bool, list_name: str, text_swap=None) -> None:
+    """
+    Update the state of a list of widgets.
+    :param is_enabled: True to enable the widgets, False to disable them.
+    :param list_name: the name of the list of widgets to update.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    widget_list = gui_g.stated_widgets.get(list_name, [])
+    set_widget_state_in_list(widget_list, is_enabled=is_enabled, text_swap=text_swap)
