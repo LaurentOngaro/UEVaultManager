@@ -199,8 +199,15 @@ class UEVMGui(tk.Tk):
                 self.close_window(True)
 
         gui_f.show_progress(self, text='Initializing Data Table...')
-        if gui_g.s.data_filters:
-            self.load_filters(gui_g.s.data_filters)
+        if gui_g.s.filters_filename:
+            filters = self.core.uevmlfs.load_filters()
+            if filters is not None:
+                try:
+                    self._frm_filter.set_filters(filters)
+                    # self.update_navigation() # done in load_filters and inner calls
+                except (Exception,) as error:
+                    self.add_error(error)
+                    self.logger.error(f'Error loading filters: {error!r}')
         else:
             data_table.update(update_format=True)
         # Quick edit the first row
@@ -523,12 +530,13 @@ class UEVMGui(tk.Tk):
         :return: the name of the file that was loaded.
         """
         data_table = self.editable_table  # shortcut
-        filename = self._open_file_dialog(filename=data_table.data_source)
+        filename = self._open_file_dialog(filename=gui_g.s.last_opened_file)
         if filename and os.path.isfile(filename):
             data_table.data_source = filename
             if data_table.valid_source_type(filename):
                 gui_f.show_progress(self, text='Loading Data from file...')
-                if not data_table.read_data():
+                df_loaded = data_table.read_data()
+                if df_loaded is None:
                     gui_f.box_message('Error when loading data', level='warning')
                     gui_f.close_progress(self)
                     return filename
@@ -573,11 +581,13 @@ class UEVMGui(tk.Tk):
         """
         data_table = self.editable_table  # shortcut
         selected_rows = []
-        selected_row_indices = data_table.multiplerowlist
-        if selected_row_indices:
-            selected_rows = data_table.get_data().iloc[selected_row_indices]  # iloc checked
+        row_numbers = data_table.multiplerowlist
+        if row_numbers:
+            # convert row numbers to row indexes
+            row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
+            selected_rows = data_table.get_data().iloc[row_indexes]  # iloc checked
         if len(selected_rows):
-            filename = self._open_file_dialog(save_mode=True, filename=data_table.data_source)
+            filename = self._open_file_dialog(save_mode=True)
             if filename:
                 selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
@@ -971,7 +981,10 @@ class UEVMGui(tk.Tk):
             result = '\n'.join(invalid_folders)
             result = f'The following folders have produce invalid results during the scan:\n{result}'
             if gui_g.display_content_window_ref is None:
-                gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM: status command output', quit_on_close=False)
+                file_name = f'scan_folder_results_{datetime.now().strftime("%y-%m-%d")}.txt'
+                gui_g.display_content_window_ref = DisplayContentWindow(
+                    title='UEVM: status command output', quit_on_close=False, result_filename=file_name
+                )
                 gui_g.display_content_window_ref.display(result)
                 gui_f.make_modal(gui_g.display_content_window_ref)
             self.logger.warning(result)
@@ -1094,20 +1107,6 @@ class UEVMGui(tk.Tk):
         if update_dataframe:
             data_table.update()
 
-    def load_filters(self, filters: {} = None):
-        """
-        Load the filters from a dictionary.
-        :param filters: filters.
-        """
-        if filters is None:
-            return
-        try:
-            self._frm_filter.load_filters(filters)
-            # self.update_navigation() # done in load_filters and inner calls
-        except (Exception, ) as error:
-            self.add_error(error)
-            self.logger.error(f'Error loading filters: {error!r}')
-
     def toggle_pagination(self, forced_value: bool = None) -> None:
         """
         Toggle pagination. Will change the navigation buttons states when pagination is changed.
@@ -1214,11 +1213,6 @@ class UEVMGui(tk.Tk):
             self._frm_toolbar.btn_toggle_options.config(text='Show Options')
             self._frm_toolbar.btn_toggle_controls.config(state=tk.NORMAL)
 
-    @staticmethod
-    def _update_widget_state(condition, widget_key, text_swap=None):
-        widget_list = gui_g.stated_widgets.get(widget_key, [])
-        gui_f.set_widget_state_in_list(widget_list, is_enabled=condition, text_swap=text_swap)
-
     def update_controls_state(self, update_title=False) -> None:
         """
         Update the controls and redraw the table.
@@ -1232,36 +1226,52 @@ class UEVMGui(tk.Tk):
 
         data_table = self.editable_table
         max_index = len(data_table.get_data())
-        current_index = data_table.add_page_offset(data_table.getSelectedRow())
+        current_row = data_table.get_selected_row_fixed()
+        current_row_index = data_table.add_page_offset(current_row) if current_row is not None else -1
 
-        self._update_widget_state(len(data_table.multiplerowlist) > 0, 'row_is_selected')
-        self._update_widget_state(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
-        self._update_widget_state(current_index > 0, 'not_first_asset')
-        self._update_widget_state(current_index < max_index - 1, 'not_last_asset')
-        self._update_widget_state(not gui_g.s.offline_mode, 'not_offline')
+        gui_f.update_widgets_in_list(len(data_table.multiplerowlist) > 0, 'row_is_selected')
+        gui_f.update_widgets_in_list(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
+        gui_f.update_widgets_in_list(current_row_index > 0, 'not_first_asset')
+        gui_f.update_widgets_in_list(current_row_index < max_index - 1, 'not_last_asset')
+        gui_f.update_widgets_in_list(not gui_g.s.offline_mode, 'not_offline')
 
         if not data_table.pagination_enabled:
-            max_displayed = len(data_table.get_data(df_type=DataFrameUsed.AUTO))
+            # ! keep the same variable names here !
+            total_displayed = len(data_table.get_data(df_type=DataFrameUsed.AUTO))
             first_item_text = 'First Asset'
             last_item_text = 'Last Asset'
+            index_displayed = current_row_index
             gui_f.disable_widgets_in_list(gui_g.stated_widgets.get('not_first_page', []))
             gui_f.disable_widgets_in_list(gui_g.stated_widgets.get('not_last_page', []))
-            self._update_widget_state(current_index > 0, 'not_first_item')
-            self._update_widget_state(current_index < max_index - 1, 'not_last_item')
+            gui_f.update_widgets_in_list(index_displayed > 0, 'not_first_item')
+            gui_f.update_widgets_in_list(index_displayed < max_index - 1, 'not_last_item')
         else:
-            max_displayed = data_table.total_pages
-            current_index = data_table.current_page
+            # ! keep the same variable names here !
+            total_displayed = data_table.total_pages
+            index_displayed = data_table.current_page
             first_item_text = 'First Page'
             last_item_text = 'Last Page'
-            self._update_widget_state(current_index > 1, 'not_first_item')
-            self._update_widget_state(current_index > 1, 'not_first_page')
-            self._update_widget_state(current_index < max_displayed, 'not_last_item')
-            self._update_widget_state(current_index < max_displayed, 'not_last_page')
+            gui_f.update_widgets_in_list(index_displayed > 1, 'not_first_item')
+            gui_f.update_widgets_in_list(index_displayed > 1, 'not_first_page')
+            gui_f.update_widgets_in_list(index_displayed < total_displayed, 'not_last_item')
+            gui_f.update_widgets_in_list(index_displayed < total_displayed, 'not_last_page')
+
+        # conditions based on info about the current asset
+        is_owned = False
+        is_added = False
+        url = ''
+        if current_row is not None:
+            url = data_table.get_cell(current_row, data_table.get_col_index('Url'))
+            is_added = data_table.get_cell(current_row, data_table.get_col_index('Added manually'))
+            is_owned = data_table.get_cell(current_row, data_table.get_col_index('Owned'))
+        gui_f.update_widgets_in_list(is_owned, 'asset_is_owned')
+        gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
+        gui_f.update_widgets_in_list(url != '', 'asset_has_url')
 
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)
-        self._frm_toolbar.var_entry_current_item.set('{:04d}'.format(current_index))
-        self._frm_toolbar.lbl_page_count.config(text=f'/{max_displayed:04d}')
+        self._frm_toolbar.var_entry_current_item.set('{:04d}'.format(index_displayed))
+        self._frm_toolbar.lbl_page_count.config(text=f'/{total_displayed:04d}')
 
     def update_data_source(self) -> None:
         """
@@ -1354,8 +1364,10 @@ class UEVMGui(tk.Tk):
         if gui_g.UEVM_cli_ref is None:
             gui_f.from_cli_only_message()
             return
-        row_index: int = self.editable_table.getSelectedRow()
-        app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('App name'))
+        row_index = self.editable_table.get_selected_row_fixed()
+        app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('Asset_id')) if row_index is not None else ''
+        if app_name != '':
+            gui_g.UEVM_cli_args['app_name'] = app_name
 
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY
         # set default options for the cli command to execute
@@ -1378,8 +1390,6 @@ class UEVMGui(tk.Tk):
 
         # arguments for help command
         gui_g.UEVM_cli_args['full_help'] = True
-        if app_name != '':
-            gui_g.UEVM_cli_args['app_name'] = app_name
 
         # already_displayed = gui_g.display_content_window_ref is not None
         # if already_displayed:
@@ -1391,10 +1401,11 @@ class UEVMGui(tk.Tk):
         #     function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         #     function_to_call(gui_g.UEVM_cli_args)
 
-        display_window = DisplayContentWindow(title='UEVM: status command output')
+        display_window = DisplayContentWindow(title=f'UEVM: {command_name} display result')
         gui_g.display_content_window_ref = display_window
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         function_to_call(gui_g.UEVM_cli_args)
+        display_window.display(f'Running command {command_name}...Please wait')
         self._wait_for_window(gui_g.display_content_window_ref)  # a local variable won't work here
         # make_modal(display_window)
 
@@ -1417,13 +1428,15 @@ class UEVMGui(tk.Tk):
         """
         Open the asset URL (Wrapper).
         """
-        gui_g.UEVM_cli_args['no_install'] = True
-        self.run_uevm_command('install_asset')
+        gui_g.UEVM_cli_args['subparser_name'] = 'download'
+        self.install_asset()
 
     def install_asset(self) -> None:
         """
         Open the asset URL (Wrapper).
         """
+        gui_g.UEVM_cli_args['yes'] = True
+        gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
         self.run_uevm_command('install_asset')
 
     # noinspection PyUnusedLocal

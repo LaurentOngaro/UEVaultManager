@@ -83,8 +83,8 @@ This is an example of this file content and the settings you can change:
   cache_folder = ../../../cache
   ;Folder (relative or absolute) to store result files to read and save data from
   results_folder = ../../../results
-  ;Filters to apply to the datatable. Stored in json format
-  data_filters = {"Grab result": "NO_ERROR"}
+  ;Name of the file to read filters from. Should ONLY contain the file name with no the path. The folder that contain the file is fixed.
+  filters_filename = 'filters.json'
   ;Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value
   rows_per_page = 37
   ;Folder (relative or absolute) to store the scraped files for the assets in markeplace

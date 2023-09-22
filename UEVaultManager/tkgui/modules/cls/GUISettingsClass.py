@@ -84,7 +84,7 @@ class GUISettings:
         self.owned_assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'owned')
         self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
         self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
-
+        self.filters_folder = path_join(self.path, 'filters')
         self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
         self.data_filetypes = (
@@ -195,14 +195,14 @@ class GUISettings:
         self.config_vars['rows_per_page'] = value
 
     @property
-    def data_filters(self) -> dict:
-        """ Getter for data_filters """
-        return self._get_serialized('data_filters', is_dict=True)
+    def filters_filename(self) -> dict:
+        """ Getter for filters_filename """
+        return self.config_vars['filters_filename']
 
-    @data_filters.setter
-    def data_filters(self, values: dict):
-        """ Setter for data_filters """
-        self._set_serialized('data_filters', values)
+    @filters_filename.setter
+    def filters_filename(self, value: str):
+        """ Setter for filters_filename """
+        self.config_vars['filters_filename'] = value
 
     @property
     def x_pos(self) -> int:
@@ -459,8 +459,8 @@ class GUISettings:
                 'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
                 'value': 37
             },
-            'data_filters': {
-                'comment': 'Filters to apply to the datatable. Stored in json format. Automatically saved on quit',
+            'filters_filename': {
+                'comment': 'Name of the file to read filters from. Should ONLY contain the file name with no the path. The folder that contain the file is fixed',
                 'value': ''
             },
             'x_pos': {
@@ -599,7 +599,7 @@ class GUISettings:
         # no need of fallback values here, they are set in the config file by default
         config_vars = {
             'rows_per_page': self.config.getint('UEVaultManager', 'rows_per_page'),
-            'data_filters': self.config.get('UEVaultManager', 'data_filters'),
+            'filters_filename': self.config.get('UEVaultManager', 'filters_filename'),
             'x_pos': self.config.getint('UEVaultManager', 'x_pos'),
             'y_pos': self.config.getint('UEVaultManager', 'y_pos'),
             'width': self.config.getint('UEVaultManager', 'width'),

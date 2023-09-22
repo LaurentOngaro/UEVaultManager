@@ -307,6 +307,38 @@ class UEVMLFS:
             sort_keys=True
         )
 
+    @staticmethod
+    def load_filter_list(filename: str = '') -> dict:
+        """
+        Load the filters from a json file
+        :return: The filters or None if not found.
+        """
+        if filename == '':
+            filename = gui_g.s.filters_filename
+        folder = gui_g.s.filters_folder
+        full_filename = path_join(folder, filename)
+        if not os.path.isfile(full_filename):
+            return {}
+        filters = {}
+        try:
+            filters = json.load(open(full_filename))
+        except (Exception, ):
+            pass
+        return filters
+
+    @staticmethod
+    def save_filter_list(filters: {}, filename: str = '') -> None:
+        """
+        Save the filters to a json file.
+        """
+        if filename == '':
+            filename = gui_g.s.filters_filename
+        folder = gui_g.s.filters_folder
+        full_filename = path_join(folder, filename)
+        if not full_filename:
+            return
+        json.dump(filters, open(full_filename, 'w'), indent=2, sort_keys=True)
+
     def _get_manifest_filename(self, app_name: str, version: str, platform: str = None) -> str:
         """
         Get the manifest filename.

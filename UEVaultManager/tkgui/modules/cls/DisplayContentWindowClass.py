@@ -158,8 +158,9 @@ class DisplayContentWindow(tk.Toplevel):
             # set the mode at the end to allow using display() to be used to change the mode for the next call
             self.keep_existing = keep_mode
             self.update()
-        except tk.TclError as error:
-            gui_f.log_warning(f'Error in display_content_window: {error!r}')
+        except tk.TclError:
+            # gui_f.log_warning(f'Error in display_content_window: {error!r})  # will flood because it occurs frequently
+            pass
 
     def clean(self) -> None:
         """

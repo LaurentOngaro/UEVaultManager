@@ -19,6 +19,7 @@ from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
 from shutil import rmtree
+from tkinter import filedialog
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -37,7 +38,7 @@ from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.tkgui.modules.functions import box_message, create_file_backup, custom_print, \
+from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, create_file_backup, custom_print, \
     show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
@@ -73,9 +74,10 @@ def init_gui_args(args, additional_args=None) -> None:
     gui_g.UEVM_cli_args.copy_from(temp_dict)
 
 
-def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWindow):
+def init_progress_window(text: str, args, logger=None, callback: callable = None) -> (bool, ProgressWindow):
     """
     Initialize the progress window.
+    :param text: text to display in the progress window.
     :param args: args of the command line.
     :param logger: logger to use.
     :param callback: callback function to call while progress updating.
@@ -93,7 +95,7 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
     force_refresh = True if args.force_refresh else False
     pw = show_progress(
         parent=gui_g.UEVM_gui_ref,
-        text='Updating Assets List',
+        text=text,
         quit_on_close=not uewm_gui_exists,
         function=callback,
         function_parameters={
@@ -136,7 +138,7 @@ class UEVaultManagerCLI:
     :param override_config: path to a config file to use instead of the default one.
     :param api_timeout: timeout for API requests.
     """
-    is_gui = False
+    is_gui = False  # class property to be accessible by static methods
 
     def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
@@ -158,9 +160,11 @@ class UEVaultManagerCLI:
         :param message: message to log.
         :param quit_on_error: Whether the app will quit the application.
         """
-        log_function(message)
         if UEVaultManagerCLI.is_gui:
             box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the app to quit
+            # log_function() is called in box_message
+        else:
+            log_function(message)
 
     @staticmethod
     def _log_and_gui_display(log_function: callable, message: str) -> None:
@@ -171,7 +175,35 @@ class UEVaultManagerCLI:
         """
         log_function(message)
         if UEVaultManagerCLI.is_gui and gui_g.display_content_window_ref is not None:
-            gui_g.display_content_window_ref.display(message + '\n')
+            gui_g.display_content_window_ref.display(message)
+
+    def _init_data_for_gui(self, args) -> (str, DataSourceType):
+        data_source_type = DataSourceType.FILE
+        use_database = False
+        use_input = False
+        try:
+            use_database = args.database
+            use_input = args.input
+        except AttributeError:
+            pass
+        if use_database:
+            data_source = args.database
+            data_source_type = DataSourceType.SQLITE
+            self.logger.info(f'The database {data_source} will be used to read data from')
+        elif use_input:
+            data_source = args.input
+            self.logger.info(f'The file {data_source} will be used to read data from')
+        else:
+            data_source = gui_g.s.csv_filename
+            self.logger.warning('The file to read data from has not been set by the --input command option. The default file name will be used.')
+
+        data_source = gui_fn.path_from_relative_to_absolute(data_source)
+        data_source = os.path.normpath(data_source)
+
+        gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+        gui_g.UEVM_log_ref = self.logger
+        gui_g.UEVM_cli_ref = self
+        return data_source, data_source_type
 
     def setup_threaded_logging(self) -> QueueListener:
         """
@@ -545,18 +577,18 @@ class UEVaultManagerCLI:
             self.logger.info(f'The String "{args.filter_category}" will be search in Assets category')
 
         gui_g.progress_window_ref = None
-        progress_window = None
+        pw = None
         if UEVaultManagerCLI.is_gui:
-            uewm_gui_exists, progress_window = init_progress_window(args=args, logger=self.logger, callback=self.core.get_asset_list)
+            uewm_gui_exists, pw = init_progress_window(text='Updating Assets List', args=args, logger=self.logger, callback=self.core.get_asset_list)
             if uewm_gui_exists:
                 # if the main gui is running, we already have a tk.mainloop running
                 # we need to constantly update the progress bar
-                while not progress_window.must_end:
-                    progress_window.update()
+                while not pw.must_end:
+                    pw.update()
             else:
                 # if the main gui is not running, we need to start a tk.mainloop
-                progress_window.mainloop()
-            items = progress_window.get_result()
+                pw.mainloop()
+            items = pw.get_result()
         else:
             items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
 
@@ -716,16 +748,16 @@ class UEVaultManagerCLI:
                 # During the editabletable initial rebuild_data process, the window will not close
                 # So we try to close it several times
                 # max_tries = 3
-                # progress_window.quit_on_close = True  # gentle quit
+                # pw.quit_on_close = True  # gentle quit
                 # tries = 0
-                # while progress_window is not None and progress_window.winfo_viewable() and tries < max_tries:
-                #     progress_window.close_window()
+                # while progress_window is not None and pw.winfo_viewable() and tries < max_tries:
+                #     pw.close_window()
                 #     time.sleep(0.2)
                 #     tries += 1
-                # progress_window.quit_on_close = False  # force destroy the window
-                # progress_window.close_window()
-                progress_window.quit_on_close = False
-                progress_window.close_window(destroy_window=True)
+                # pw.quit_on_close = False  # force destroy the window
+                # pw.close_window()
+                pw.quit_on_close = False
+                pw.close_window(destroy_window=True)
             return
 
         # here, no other output has been done before, so we print the asset in a quick format to the console
@@ -1188,31 +1220,8 @@ class UEVaultManagerCLI:
         Edit assets in the database using a GUI.
         :param args: options passed to the command.
         """
-        data_source_type = DataSourceType.FILE
-        use_database = False
-        use_input = False
-        try:
-            use_database = args.database
-            use_input = args.input
-        except AttributeError:
-            pass
-        if use_database:
-            data_source = args.database
-            data_source_type = DataSourceType.SQLITE
-            self.logger.info(f'The database {data_source} will be used to read data from')
-        elif use_input:
-            data_source = args.input
-            self.logger.info(f'The file {data_source} will be used to read data from')
-        else:
-            data_source = gui_g.s.csv_filename
-            self.logger.warning('The file to read data from has not been set by the --input command option. The default file name will be used.')
 
-        data_source = gui_fn.path_from_relative_to_absolute(data_source)
-        data_source = os.path.normpath(data_source)
-
-        gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
-        gui_g.UEVM_log_ref = self.logger
-        gui_g.UEVM_cli_ref = self
+        data_source, data_source_type = self._init_data_for_gui(args)
 
         # set output file name from the input one. Used by the "rebuild" button (or rebuild_data method)
         init_gui_args(args, additional_args={'output': data_source})
@@ -1304,38 +1313,68 @@ class UEVaultManagerCLI:
         Installs an asset.
         :param args: options passed to the command.
         """
-        if args.subparser_name == 'download':
-            self._log_and_gui_message(self.logger.debug, 'Setting --no-install flag since "download" command was used')
-            args.no_install = True
+        uewm_gui_exists = gui_g.UEVM_gui_ref is not None
 
         if args.clean_dowloaded_data and args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
-                'You have selected to not install the asset and to not keep the dow loaded data.\nSo, nothing can be done for you. Application will be closed',
-                quit_on_error=True
+                'You have selected to not install the asset and to not keep the dow loaded data.\nSo, nothing can be done for you. Command is aborted',
+                quit_on_error=not uewm_gui_exists
             )
-            self.core.clean_exit(0)  # previous line could not quit
+            return False
 
         if not self.core.login():
             self._log_and_gui_message(
                 self.logger.error,
-                'You are not connected or log in failed.\nYou should log first or check your credential. Application will be closed',
-                quit_on_error=True
+                'You are not connected or log in failed.\nYou should log first or check your credential. Command is aborted',
+                quit_on_error=not uewm_gui_exists
             )
-            self.core.clean_exit(1)  # previous line could not quit
-        # TODO: add a progressWindow to show the progress of the installation
-        # TODO: next line uses the same code as the one in the list_asset (old one). and could take some time to update the metadata
-        # TODO: Should we use the new API call like in scrap_assets ?
-        app = self.core.get_item(args.app_name, update_meta=args.force_refresh)
+            return False
 
+        # we use the "old" method (i.e. legendary way) to get the app, because we need to access to the metadata and its "base_urls"
+        # that is not available in the "new" method (i.e. new API way)
+        # Anyway, we can only install asset we own, so the "old" method is enough
+        app = self.core.get_item(args.app_name, update_meta=args.force_refresh)
         if not app:
             self._log_and_gui_message(
-                self.logger.error, f'Could not find "{args.app_name}" in list of available assets. Application will be closed', quit_on_error=True
+                self.logger.error,
+                f'Metadata are missing for "{args.app_name}". You can only install an asset you own. Installation can not be done. Command is aborted',
+                quit_on_error=not uewm_gui_exists
             )
-            self.core.clean_exit(1)  # previous line could not quit
+            return False
+        categories = app.metadata.get('categories', None)
+        category = categories[0]['path'] if categories else ''
+        is_plugin = category and 'plugin' in category.lower()
+        install_path_base = args.install_path  # could be none
+        if not install_path_base and not args.no_install:
+            if uewm_gui_exists:
+                if is_plugin and box_yesno('This asset is a plugin. Do you want to install it into an engine folder ?'):
+                    install_path_base = filedialog.askdirectory(
+                        title='Select an Engine version to install the plugin into', initialdir=gui_g.s.last_opened_engine
+                    )
+                    if install_path_base:
+                        gui_g.s.last_opened_engine = install_path_base
+                else:
+                    install_path_base = filedialog.askdirectory(
+                        title='Select a project to install the asset into', initialdir=gui_g.s.last_opened_project
+                    )
+                    if install_path_base:
+                        gui_g.s.last_opened_project = install_path_base
+
+        if not install_path_base and not args.no_install:
+            self._log_and_gui_message(
+                self.logger.error,
+                'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you. Command is aborted',
+                quit_on_error=not uewm_gui_exists
+            )
+            return False
+
+        dw = None
+        if UEVaultManagerCLI.is_gui:
+            uewm_gui_exists, dw = init_display_window(self.logger)
 
         if args.vault_cache:
-            self._log_and_gui_message(
+            self._log_and_gui_display(
                 self.logger.info, 'Use the vault cache folder to store the downloaded asset. Other download options will be ignored'
             )
             args.clean_dowloaded_data = False
@@ -1344,8 +1383,7 @@ class UEVaultManagerCLI:
         else:
             download_path = args.download_path
         download_path = path_join(download_path, app.app_name)
-        self._log_and_gui_message(self.logger.info, f'Preparing download for "{app.app_title}" ({app.app_name})...')
-        install_path_base = args.install_path
+        self._log_and_gui_display(self.logger.info, f'Preparing download for "{app.app_title}" ({app.app_name})...')
         dlm, analysis, installed_app = self.core.prepare_download(
             app=app,
             download_folder=download_path,
@@ -1359,22 +1397,21 @@ class UEVaultManagerCLI:
             override_manifest=args.override_manifest,
             override_base_url=args.override_base_url,
             preferred_cdn=args.preferred_cdn,
-            disable_https=args.disable_https
+            disable_https=args.disable_https,
         )
 
-        self._log_and_gui_message(self.logger.info, f'Install size: {analysis.install_size / 1024 / 1024:.02f} MiB')
+        self._log_and_gui_display(self.logger.info, f'Install size: {analysis.install_size / 1024 / 1024:.02f} MiB')
         compression = (1 - (analysis.dl_size / analysis.uncompressed_dl_size)) * 100 if analysis.uncompressed_dl_size else 0
-        self._log_and_gui_message(
+        self._log_and_gui_display(
             self.logger.info, f'Download size: {analysis.dl_size / 1024 / 1024:.02f} MiB (Compression savings: {compression:.01f}%)'
         )
-        self._log_and_gui_message(
+        self._log_and_gui_display(
             self.logger.info,
             f'Reusable size: {analysis.reuse_size / 1024 / 1024:.02f} MiB (chunks) / {analysis.unchanged / 1024 / 1024:.02f} MiB (unchanged / skipped)'
         )
-        self._log_and_gui_message(
+        self._log_and_gui_display(
             self.logger.info, 'Downloads are resumable, you can interrupt the download with CTRL-C and resume it using the same command later on.'
         )
-
         res = self.core.check_installation_conditions(
             analysis=analysis, folders=[download_path, install_path_base], ignore_space_req=args.ignore_free_space
         )
@@ -1386,16 +1423,18 @@ class UEVaultManagerCLI:
                 message_list.append(' - Warning:' + message)
             for message in res.failures:
                 message_list.append(' ! Failure:' + message)
-            self._log_and_gui_message(self.logger.warning, '\n'.join(message_list), quit_on_error=False)
+            self._log_and_gui_display(self.logger.warning, '\n'.join(message_list))
 
         if res.failures:
-            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed. Application will be closed', quit_on_error=True)
-            self.core.clean_exit(1)  # previous line could not quit
+            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed. Command is aborted', quit_on_error=not uewm_gui_exists)
+            # not in GUI self.core.clean_exit(1)  # previous line could not quit
+            return False
 
         if not args.yes:
             if not get_boolean_choice(f'Do you wish to install "{app.app_title}" ?'):  # todo: use a gui yes/no if gui is enabled
                 print('Aborting...')
-                self.core.clean_exit(0)
+                # not in GUI self.core.clean_exit(0)
+                return False
         start_t = time.time()
         try:
             # set up logging stuff (should be moved somewhere else later)
@@ -1405,8 +1444,8 @@ class UEVaultManagerCLI:
             dlm.join()
         except Exception as error:
             end_t = time.time()
-            self._log_and_gui_message(self.logger.info, f'Installation failed after {end_t - start_t:.02f} seconds.')
-            self._log_and_gui_message(
+            self._log_and_gui_display(self.logger.info, f'Installation failed after {end_t - start_t:.02f} seconds.')
+            self._log_and_gui_display(
                 self.logger.warning,
                 f'The following exception occurred while waiting for the downloader to finish: {error!r}.\nTry restarting the process.\nIf it continues to fail please open an issue on GitHub.'
             )
@@ -1414,11 +1453,11 @@ class UEVaultManagerCLI:
             end_t = time.time()
             download_path = dlm.download_dir  # it could have been changed by the dlm
             message = f'Finished download process in {end_t - start_t:.02f} seconds.\nFiles has been downloaded in {dlm.download_dir}'
-            self._log_and_gui_message(self.logger.info, message)
+            self._log_and_gui_display(self.logger.info, message)
             start_t = time.time()
             message = ''
             if not args.no_install:
-                self._log_and_gui_message(self.logger.info, 'Start copying downloaded data to install folder...')
+                self._log_and_gui_display(self.logger.info, 'Start copying downloaded data to install folder...')
                 self.core.uevmlfs.set_installed_app(app.app_name, installed_app)
                 # copy the downloaded data to the installation folder
                 last_part_src = os.path.basename(download_path).lower()
@@ -1447,7 +1486,10 @@ class UEVaultManagerCLI:
                 self.core.uevmlfs.clean_tmp_data()
             end_t = time.time()
             message += f'\n\nFinished installation process in {end_t - start_t:.02f} seconds.'
-            self._log_and_gui_message(self.logger.info, message)
+            self._log_and_gui_display(self.logger.info, message)
+        if uewm_gui_exists:
+            dw.close_window()
+        return True
 
     @staticmethod
     def print_version():
@@ -1748,8 +1790,8 @@ def main():
         '--vault-cache',
         dest='vault_cache',
         action='store_true',
-        help=
-        "Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case,the download_path option will be ignored"
+        help="Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value." +
+        "In that case, the download_path option will be ignored"
     )
     install_parser.add_argument(
         '-c',

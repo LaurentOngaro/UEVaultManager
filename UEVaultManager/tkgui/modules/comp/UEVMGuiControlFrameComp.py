@@ -3,7 +3,9 @@
 Implementation for:
 - UEVMGuiControlFrame: a control frame for the UEVMGui Class.
 """
+import os
 import tkinter as tk
+from tkinter import filedialog as fd, messagebox
 
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import WARNING
@@ -19,7 +21,7 @@ from UEVaultManager.tkgui.modules.types import WidgetType
 class UEVMGuiControlFrame(ttk.Frame):
     """
     A control frame for the UEVMGui Class.
-    :param container: The parent container.
+    :param container: The parent self._container.
     :param data_table: The EditableTable instance.
     """
 
@@ -30,7 +32,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         if data_table is None:
             raise ValueError('data_table must be a UEVMGuiContentFrame instance')
 
-        self.data_table: EditableTable = data_table
+        self._data_table: EditableTable = data_table
+        self._container = container
 
         pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': True}
         grid_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0}  # no padding
@@ -69,43 +72,43 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.buttons = {
             'add_row': {
                 'text': 'Add',  # if empty, the key of the dict will be used
-                'command': container.add_row
+                'command': self._container.add_row
             },  #
             'del_row': {
                 'text': 'Del',  # if empty, the key of the dict will be used
-                'command': container.del_row
+                'command': self._container.del_row
             },  #
             'edit_row': {
                 'text': 'Edit',  # if empty, the key of the dict will be used
-                'command': container.edit_row
+                'command': self._container.edit_row
             },  #
             'scrap_row': {
                 'text': 'Scrap',  # if empty, the key of the dict will be used
-                'command': container.scrap_row
+                'command': self._container.scrap_row
             },  #
             'scan_for_assets': {
                 'text': 'Scan Assets',  # if empty, the key of the dict will be used
-                'command': container.scan_for_assets
+                'command': self._container.scan_for_assets
             },  #
             'load_table': {
                 'text': 'Load',  # if empty, the key of the dict will be used
-                'command': container.open_file
+                'command': self._container.open_file
             },  #
             'save_changes': {
                 'text': ' Save ',  # if empty, the key of the dict will be used
-                'command': container.save_changes
+                'command': self._container.save_changes
             },  #
             'export_selection': {
                 'text': 'Export',  # if empty, the key of the dict will be used
-                'command': container.export_selection
+                'command': self._container.export_selection
             },  #
             'reload_data': {
                 'text': 'Reload',  # if empty, the key of the dict will be used
-                'command': container.reload_data
+                'command': self._container.reload_data
             },  #
             'rebuild_data': {
                 'text': 'Rebuild',  # if empty, the key of the dict will be used
-                'command': container.rebuild_data
+                'command': self._container.rebuild_data
             },  #
         }
         for key, values in self.buttons.items():
@@ -125,11 +128,12 @@ class UEVMGuiControlFrame(ttk.Frame):
             data_func=data_table.get_data,
             update_func=data_table.update,
             save_filter_func=self.save_filters,
+            load_filter_func=self.load_filters,
             value_for_all=gui_g.s.default_value_for_all,
-            dynamic_filters_func=container.create_dynamic_filters,
+            dynamic_filters_func=self._container.create_dynamic_filters,
         )
         frm_filter.pack(**lblf_def_options)
-        container._frm_filter = frm_filter
+        self._container._frm_filter = frm_filter
         data_table.set_frm_filter(frm_filter)
 
         # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
@@ -139,17 +143,17 @@ class UEVMGuiControlFrame(ttk.Frame):
         data_table.set_frm_quick_edit(self.lbtf_quick_edit)
 
         frm_asset_action = ttk.Frame(self.lbtf_quick_edit)
-        btn_open_url = ttk.Button(frm_asset_action, text='Open Url', command=container.open_asset_url)
+        btn_open_url = ttk.Button(frm_asset_action, text='Open Url', command=self._container.open_asset_url)
         btn_open_url.pack(**pack_def_options, side=tk.LEFT)
-        btn_open_folder = ttk.Button(frm_asset_action, text='Open Folder', command=container.open_asset_folder)
+        btn_open_folder = ttk.Button(frm_asset_action, text='Open Folder', command=self._container.open_asset_folder)
         btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
-        btn_download_asset = ttk.Button(frm_asset_action, text='Download', command=container.download_asset)
+        btn_download_asset = ttk.Button(frm_asset_action, text='Download', command=self._container.download_asset)
         btn_download_asset.pack(**pack_def_options, side=tk.LEFT)
-        btn_install_asset = ttk.Button(frm_asset_action, text='INSTALL', command=container.install_asset)
+        btn_install_asset = ttk.Button(frm_asset_action, text='INSTALL', command=self._container.install_asset)
         btn_install_asset.pack(**pack_def_options, side=tk.LEFT)
         frm_asset_action.pack(**lblf_fw_options)
 
-        ttk_item = ttk.Label(self.lbtf_quick_edit, text='Values bellow will be updated for the selected row on focus lost', foreground='#158CBA')
+        ttk_item = ttk.Label(self.lbtf_quick_edit, text='The selected row values are updated when focus changes', foreground='#158CBA')
         ttk_item.pack()
         self.var_asset_id = tk.StringVar(value='')
         self.lbtf_quick_edit.add_child(
@@ -158,53 +162,53 @@ class UEVMGuiControlFrame(ttk.Frame):
             state='readonly',
             label='Asset id (click to copy)',
             width=5,
-            click_on_callback=container.copy_asset_id,
+            click_on_callback=self._container.copy_asset_id,
             textvariable=self.var_asset_id,
         )
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Url',
-            focus_out_callback=container.on_quick_edit_focus_out,
-            focus_in_callback=container.on_quick_edit_focus_in
+            focus_out_callback=self._container.on_quick_edit_focus_out,
+            focus_in_callback=self._container.on_quick_edit_focus_in
         )
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.TEXT,
             tag='Comment',
-            focus_out_callback=container.on_quick_edit_focus_out,
-            focus_in_callback=container.on_quick_edit_focus_in,
+            focus_out_callback=self._container.on_quick_edit_focus_out,
+            focus_in_callback=self._container.on_quick_edit_focus_in,
             width=10,
             height=4
         )
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Stars',
-            focus_out_callback=container.on_quick_edit_focus_out,
-            focus_in_callback=container.on_quick_edit_focus_in
+            focus_out_callback=self._container.on_quick_edit_focus_out,
+            focus_in_callback=self._container.on_quick_edit_focus_in
         )
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Test result',
-            focus_out_callback=container.on_quick_edit_focus_out,
-            focus_in_callback=container.on_quick_edit_focus_in
+            focus_out_callback=self._container.on_quick_edit_focus_out,
+            focus_in_callback=self._container.on_quick_edit_focus_in
         )
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Installed folders',
             default_content='Installed in',
-            focus_out_callback=container.on_quick_edit_focus_out,
-            focus_in_callback=container.on_quick_edit_focus_in
+            focus_out_callback=self._container.on_quick_edit_focus_out,
+            focus_in_callback=self._container.on_quick_edit_focus_in
         )
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Origin',
-            focus_out_callback=container.on_quick_edit_focus_out,
-            focus_in_callback=container.on_quick_edit_focus_in
+            focus_out_callback=self._container.on_quick_edit_focus_out,
+            focus_in_callback=self._container.on_quick_edit_focus_in
         )
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Alternative',
-            focus_out_callback=container.on_quick_edit_focus_out,
-            focus_in_callback=container.on_quick_edit_focus_in
+            focus_out_callback=self._container.on_quick_edit_focus_out,
+            focus_in_callback=self._container.on_quick_edit_focus_in
         )
 
         frm_inner = ttk.Frame(self.lbtf_quick_edit, relief=tk.RIDGE, borderwidth=1)
@@ -217,7 +221,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             tag='Must buy',
             label='Must buy',
             images_folder=gui_g.s.assets_folder,
-            click_on_callback=container.on_switch_edit_flag,
+            click_on_callback=self._container.on_switch_edit_flag,
             default_content=False
         )
         self.lbtf_quick_edit.add_child(
@@ -225,9 +229,9 @@ class UEVMGuiControlFrame(ttk.Frame):
             alternate_container=frm_inner,
             layout_option=inner_pack_options,
             tag='Added manually',
-            label='          Added manually',
+            label='          Added manually',  # add spaces to align with the "Must buy" checkbutton
             images_folder=gui_g.s.assets_folder,
-            click_on_callback=container.on_switch_edit_flag,
+            click_on_callback=self._container.on_switch_edit_flag,
             default_content=False
         )
 
@@ -256,12 +260,64 @@ class UEVMGuiControlFrame(ttk.Frame):
         widget_list = gui_g.stated_widgets.get('asset_added_mannually', [])
         append_no_duplicate(widget_list, [btn_open_folder])
 
-    @staticmethod
-    def save_filters(filters: dict):
+    def save_filters(self, filters: dict) -> None:
         """
-        Save the filters to the config file.
-        :param filters:.
-        :return:
+        Save the filters to a file (Wrapper)
+        :param filters: The filters to save.
         """
-        gui_g.s.data_filters = filters  # will call set_data_filters
-        gui_g.s.save_config_file()
+        if not filters or len(filters) == 0:
+            return
+        folder = gui_g.s.filters_folder if gui_g.s.filters_folder else gui_g.s.path
+        folder = os.path.abspath(folder)
+        if folder and not os.path.isdir(folder):
+            os.mkdir(folder)
+        filename = fd.asksaveasfilename(
+            title='Choose a file to save filters to', initialdir=folder, filetypes=[('json file', '*.json')], initialfile=gui_g.s.filters_filename
+        )
+        if not filename:
+            return
+        fd_folder = os.path.abspath(os.path.dirname(filename))
+        filename = os.path.basename(filename)  # remove the folder from the filename
+        filename, ext = os.path.splitext(filename)
+        if ext != '.json':
+            messagebox.showwarning('Warning', f'Filters can only be save to a json file. Do not forget to add the extension to the filename.')
+            return
+        if folder != fd_folder:
+            messagebox.showwarning('Warning', f'The folder to save filters into can not be changed. The file will be saved in {folder}')
+        try:
+            self._container.core.uevmlfs.save_filter_list(filters, filename)
+        except AttributeError:
+            pass
+
+    def load_filters(self) -> dict:
+        """
+        Load the filters from a file (Wrapper)
+        """
+        folder = gui_g.s.filters_folder if gui_g.s.filters_folder else gui_g.s.path
+        folder = os.path.abspath(folder)
+        if folder and not os.path.isdir(folder):
+            os.mkdir(folder)
+        filename = fd.askopenfilename(
+            title='Choose a file to load filters from',
+            initialdir=gui_g.s.filters_folder,
+            filetypes=[('json file', '*.json')],
+            initialfile=gui_g.s.filters_filename
+        )
+        if not filename:
+            return {}
+        fd_folder = os.path.abspath(os.path.dirname(filename))
+        if folder != fd_folder:
+            messagebox.showwarning(
+                'Warning', f'Only files in the folder {folder} can be loaded as filters. Please try again without changing the folder.'
+            )
+            return {}
+        filename = os.path.basename(filename)  # remove the folder from the filename
+        _, ext = os.path.splitext(filename)
+        if ext != '.json':
+            messagebox.showwarning('Warning', f'Filters can only be read from a json file.')
+            return {}
+        try:
+            filters = self._container.core.uevmlfs.load_filter_list(filename)
+            return filters
+        except AttributeError:
+            return {}
