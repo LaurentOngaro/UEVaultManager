@@ -59,6 +59,12 @@ stated_widgets = {
     'not_last_page': [],
     # not in offline_mode
     'not_offline': [],
+    # a row is selected and the asset is owned
+    'asset_is_owned': [],
+    # a row is selected and the asset has an url
+    'asset_has_url': [],
+    # a row is selected and the asset is local
+    'asset_added_mannually': [],
 }
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 
