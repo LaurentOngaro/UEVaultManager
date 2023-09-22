@@ -123,6 +123,15 @@ class AppCore:
         self.thread_executor_must_stop = False
         self.engine_version_for_obsolete_assets = gui_g.s.engine_version_for_obsolete_assets
 
+    def log_info_and_gui_display(self, message: str) -> None:
+        """
+        Wrapper to log a message using a log function AND use a DisplayWindows to display the message if the gui is active.
+        :param message: message to log.
+        """
+        self.log.info(message)
+        if gui_g.display_content_window_ref is not None:
+            gui_g.display_content_window_ref.display(message)
+
     def setup_assets_loggers(self) -> None:
         """
         Setup logging for ignored, not found and bad data assets.
@@ -1058,7 +1067,7 @@ class AppCore:
         disable_https = disable_https or self.uevmlfs.config.getboolean('UEVaultManager', 'disable_https', fallback=False)
 
         if override_manifest:
-            self.log.info(f'Overriding manifest with "{override_manifest}"')
+            self.log_info_and_gui_display(f'Overriding manifest with "{override_manifest}"')
             new_manifest_data, _base_urls = self.get_uri_manifest(override_manifest)
             # if override manifest has a base URL use that instead
             if _base_urls:
@@ -1070,7 +1079,7 @@ class AppCore:
             # save base urls to game metadata
             self.uevmlfs.set_item_meta(app.app_name, app)
 
-        self.log.info('Parsing game manifest...')
+        self.log_info_and_gui_display('Parsing game manifest...')
         manifest = self.load_manifest(new_manifest_data)
         self.log.debug(f'Base urls: {base_urls}')
         # save manifest with version name as well for testing/downgrading/etc.
@@ -1078,7 +1087,7 @@ class AppCore:
 
         # make sure donwload folder actually exists (but do not create asset folder)
         if not check_and_create_folder(download_folder):
-            self.log.info(f'"{download_folder}" did not exist, it has been created.')
+            self.log_info_and_gui_display(f'"{download_folder}" did not exist, it has been created.')
         if not os.access(download_folder, os.W_OK):
             raise PermissionError(f'No write access to "{download_folder}"')
 
@@ -1092,11 +1101,11 @@ class AppCore:
 
         # check for write access on the installation path or its parent directory if it doesn't exist yet
         if not check_and_create_folder(install_path):
-            self.log.info(f'"{install_path}" did not exist, it has been created.')
+            self.log_info_and_gui_display(f'"{install_path}" did not exist, it has been created.')
         if not os.access(install_path, os.W_OK):
             raise PermissionError(f'No write access to "{install_path}"')
 
-        self.log.info(f'Install path: {install_path}')
+        self.log_info_and_gui_display(f'Install path: {install_path}')
 
         if not no_resume:
             filename = clean_filename(f'{app.app_name}.resume')
@@ -1108,7 +1117,7 @@ class AppCore:
         # EGS's behaviour of just selecting the first CDN in the list.
         base_url = None
         if override_base_url:
-            self.log.info(f'Overriding base URL with "{override_base_url}"')
+            self.log_info_and_gui_display(f'Overriding base URL with "{override_base_url}"')
             base_url = override_base_url
         elif preferred_cdn or (preferred_cdn := self.uevmlfs.config.get('UEVaultManager', 'preferred_cdn', fallback=None)):
             for url in base_urls:
@@ -1128,13 +1137,13 @@ class AppCore:
 
         self.log.debug(f'Using base URL: {base_url}')
         scheme, cdn_host = base_url.split('/')[0:3:2]
-        self.log.info(f'Selected CDN: {cdn_host} ({scheme.strip(":")})')
+        self.log_info_and_gui_display(f'Selected CDN: {cdn_host} ({scheme.strip(":")})')
 
         if not max_shm:
             max_shm = self.uevmlfs.config.getint('UEVaultManager', 'max_memory', fallback=2048)
 
         if dl_optimizations:
-            self.log.info('Download order optimizations are enabled.')
+            self.log_info_and_gui_display('Download order optimizations are enabled.')
             process_opt = True
         else:
             process_opt = False
@@ -1149,7 +1158,8 @@ class AppCore:
             status_q=status_queue,
             max_shared_memory=max_shm * 1024 * 1024,
             max_workers=max_workers,
-            timeout=timeout
+            timeout=timeout,
+            trace_func=self.log_info_and_gui_display,
         )
         analyse_res = download_manager.run_analysis(
             manifest=manifest,
