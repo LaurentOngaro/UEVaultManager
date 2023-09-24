@@ -29,6 +29,7 @@ from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_ass
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import copy_folder, path_join
+from UEVaultManager.models.app import App
 from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, get_csv_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -927,14 +928,23 @@ class UEVaultManagerCLI:
 
         update_meta = not args.offline and args.force_refresh
 
+        # check the item using the UEVM method (old)
         item = self.core.get_item(app_name, update_meta=update_meta, platform='Windows')
+        message = f'Asset information for "{app_name}" is missing, this may be due to the asset not being available on the selected platform or currently logged-in account.'
         if item and not self.core.asset_available(item, platform='Windows'):
-            self.logger.warning(
-                f'Asset information for "{item.app_name}" is missing, this may be due to the asset '
-                f'not being available on the selected platform or currently logged-in account.'
-            )
+            self._log_and_gui_message(self.logger.warning, message)
             args.offline = True
-
+        else:
+            # check the item using the EGS method (new)
+            try:
+                json_data_egs = UEAssetScraper.read_json_file(app_name)
+                json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs[0])
+                item = App.from_json(json_data_uevm)  # create an object from the App class using the json data
+            except (Exception, ):
+                item = None
+        if not item:
+            self._log_and_gui_message(self.logger.warning, message)
+            args.offline = True
         manifest_data = None
         # entitlements = None
         # load installed manifest or URI
@@ -1615,7 +1625,8 @@ def main():
     list_files_parser.add_argument('app_name', nargs='?', metavar='<App Name>', help='Uid of the Asset to list files from')
     info_parser.add_argument('app_name_or_manifest', help='Uid of the Asset to get info from or manifest path', metavar='<App Name/Manifest URI>')
 
-    # Flags
+    # Flags for parsers
+    #####
     auth_parser.add_argument(
         '--import', dest='import_egs_auth', action='store_true', help='Import Epic Games Launcher authentication data (logs out of EGL)'
     )
@@ -1639,12 +1650,42 @@ def main():
     auth_parser.add_argument('--delete', dest='auth_delete', action='store_true', help='Remove existing authentication (log out)')
     auth_parser.add_argument('--disable-webview', dest='no_webview', action='store_true', help='Do not use embedded browser for login')
 
-    list_parser.add_argument(
-        '-T', '--third-party', dest='include_non_asset', action='store_true', default=False, help='Include assets that are not installable.'
+    ######
+    clean_parser.add_argument(
+        '-m,'
+        '--delete-metadata', dest='delete_metadata', action='store_true', help='Also delete metadata files. They are kept by default'
+    )
+    clean_parser.add_argument(
+        '-e,'
+        '--delete-extra-data', dest='delete_extra_data', action='store_true', help='Also delete extra data files. They are kept by default'
+    )
+    clean_parser.add_argument(
+        '-s,'
+        '--delete-scraping-data',
+        dest='delete_scraping_data',
+        action='store_true',
+        help='Also delete scraping data files. They are kept by default'
     )
     # noinspection DuplicatedCode
+    clean_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
+
+    ######
+    info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
+    info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
+    info_parser.add_argument(
+        '-f',
+        '--force-refresh',
+        dest='force_refresh',
+        action='store_true',
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
+    )
+    info_parser.add_argument('-a', '--all', dest='all', action='store_true', help='Display all the information even if non-relevant for an asset')
+    info_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
+
+    #####
     list_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in CSV format')
     list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in TSV format')
+    # noinspection DuplicatedCode
     list_parser.add_argument('--json', dest='json', action='store_true', help='Output in JSON format')
     list_parser.add_argument(
         '-f',
@@ -1664,16 +1705,21 @@ def main():
         '-o', '--output', dest='output', metavar='<path/name>', action='store', help='The file name (with path) where the list should be written'
     )
     list_parser.add_argument(
+        '-T', '--third-party', dest='include_non_asset', action='store_true', default=False, help='Also list assets that are not installable.'
+    )
+    list_parser.add_argument(
         '-g', '--gui', dest='gui', action='store_true', help='Display additional information using gui elements like dialog boxes or progress window'
     )
 
+    #####
+    # noinspection DuplicatedCode
     list_files_parser.add_argument(
         '--manifest', dest='override_manifest', action='store', metavar='<uri>', help='Manifest URL or path to use instead of the CDN one'
     )
     list_files_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in CSV format')
     list_files_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in TSV format')
-    # noinspection DuplicatedCode
     list_files_parser.add_argument('--json', dest='json', action='store_true', help='Output in JSON format')
+    # noinspection DuplicatedCode
     list_files_parser.add_argument(
         '--hashlist', dest='hashlist', action='store_true', help='Output file hash list in hash Check/sha1 sum -c compatible format'
     )
@@ -1688,7 +1734,9 @@ def main():
         '-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console'
     )
 
+    #####
     status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not log in')
+    # noinspection DuplicatedCode
     status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
     status_parser.add_argument(
         '-f',
@@ -1699,39 +1747,7 @@ def main():
     )
     status_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
-    clean_parser.add_argument(
-        '-m,'
-        '--delete-metadata', dest='delete_metadata', action='store_true', help='Also delete metadata files. They are kept by default'
-    )
-    clean_parser.add_argument(
-        '-e,'
-        '--delete-extra-data', dest='delete_extra_data', action='store_true', help='Also delete extra data files. They are kept by default'
-    )
-    clean_parser.add_argument(
-        '-s,'
-        '--delete-scraping-data',
-        dest='delete_scraping_data',
-        action='store_true',
-        help='Also delete scraping data files. They are kept by default'
-    )
-    # noinspection DuplicatedCode
-
-    # noinspection DuplicatedCode
-    info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
-    info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
-    info_parser.add_argument(
-        '-f',
-        '--force-refresh',
-        dest='force_refresh',
-        action='store_true',
-        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
-    )
-    info_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
-
-    get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
-    get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
-    clean_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
-
+    ######
     edit_parser.add_argument(
         '-i',
         '--input',
@@ -1748,12 +1764,11 @@ def main():
         action='store',
         help='The sqlite file name (with path) where the list should be read from (it exludes the --input option)'
     )
-
     # not use for now
     # edit_parser.add_argument('--csv', dest='csv', action='store_true', help='Input file is in CSV format')
     # edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
     # edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
-
+    ######
     scrap_parser.add_argument(
         '-f',
         '--force-refresh',
@@ -1767,6 +1782,7 @@ def main():
     )
     scrap_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
+    ######
     install_parser.add_argument(
         '-i', '--install-path', dest='install_path', action='store', metavar='<path>', help='Path where the Asset will be installed'
     )
@@ -1790,15 +1806,13 @@ def main():
         '--vault-cache',
         dest='vault_cache',
         action='store_true',
-        help="Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value." +
-        "In that case, the download_path option will be ignored"
-    )
+        help='Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case, the download_path option will be ignored'    )
     install_parser.add_argument(
         '-c',
         '--clean-dowloaded-data',
         dest='clean_dowloaded_data',
         action='store_true',
-        help="Delete the folder with dowloaded data. Keep the installed version if it has been installed."
+        help='Delete the folder with dowloaded data. Keep the installed version if it has been installed.'
     )
     install_parser.add_argument(
         '--max-shared-memory',
@@ -1877,8 +1891,13 @@ def main():
         '--no-https', dest='disable_https', action='store_true', help='Download games via plaintext HTTP (like EGS), e.g. for use with a lan cache'
     )
 
+    ######
+    get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
+    get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
+
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
+
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
 
     if args.version:
