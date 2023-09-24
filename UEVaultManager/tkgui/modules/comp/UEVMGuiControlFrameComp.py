@@ -279,6 +279,9 @@ class UEVMGuiControlFrame(ttk.Frame):
         fd_folder = os.path.abspath(os.path.dirname(filename))
         filename = os.path.basename(filename)  # remove the folder from the filename
         filename, ext = os.path.splitext(filename)
+        if not ext:
+            ext = '.json'
+            filename += ext
         if ext != '.json':
             messagebox.showwarning('Warning', f'Filters can only be save to a json file. Do not forget to add the extension to the filename.')
             return
