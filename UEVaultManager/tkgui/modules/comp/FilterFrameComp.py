@@ -105,13 +105,13 @@ class FilterFrame(ttk.LabelFrame):
         # new row
         cur_row = 0
         cur_col = 0
-        ttk_item = ttk.Label(self, text='Select filter')
+        ttk_item = ttk.Label(self, text='Select quick filter')
         ttk_item.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        ttk_item = ttk.Label(self, text='Or Set a filter On')
+        ttk_item = ttk.Label(self, text='Or set a filter On')
         ttk_item.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         cur_col += 3
-        ttk_item = ttk.Label(self, text='That is or contains')
+        ttk_item = ttk.Label(self, text='that is or contains')
         ttk_item.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         # new row
         cur_row += 1
