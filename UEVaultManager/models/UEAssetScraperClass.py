@@ -152,6 +152,79 @@ class UEAssetScraper:
         message += f'\nAsset Ids will be saved in {self._last_run_filename} or in database' if self.store_ids else ''
         self._log_info(message)
 
+    @staticmethod
+    def read_json_file(app_name: str, owned_assets_only=False) -> (dict, str):
+        """
+        Load JSON data from a file.
+        :param app_name: The name of the app to load the data from.
+        :param owned_assets_only: Whether only the owned assets are scraped.
+        :return: A dictionary containing the loaded data.
+        """
+        folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
+        filename = app_name + '.json'
+        json_data = {}
+        message = ''
+        with open(path_join(folder, filename), 'r') as fh:
+            try:
+                json_data = json.load(fh)
+            except json.decoder.JSONDecodeError as error:
+                message = f'The following error occured when loading data from {filename}:{error!r}'
+        return json_data, message
+
+    @staticmethod
+    def json_data_mapping(data_from_egs_format: dict) -> dict:
+        """
+        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary
+        :param data_from_egs_format: json data from EGS format (NEW)
+        :return: json data in UEVM format (OLD)
+        """
+        app_name = data_from_egs_format['releaseInfo'][-1]['appId']
+        category = data_from_egs_format['categories'][0]['path']
+
+        if category == 'assets/codeplugins':
+            category = 'plugins/engine'
+        category_1 = category.split('/')[0]
+        categorie = [{'path': category}, {'path': category_1}]
+        data_to_uevm_format = {
+            'app_name': app_name,
+            'app_title': data_from_egs_format['title'],
+            'asset_infos': {
+                'Windows': {
+                    'app_name': app_name,
+                    # 'asset_id': data_from_egs_format['id'], # no common value between EGS and UEVM
+                    # 'build_version': app_name,  # no common value between EGS and UEVM
+                    'catalog_item_id': data_from_egs_format['catalogItemId'],
+                    # 'label_name': 'Live-Windows',
+                    'metadata': {},
+                    'namespace': data_from_egs_format['namespace']
+                }
+            },
+            'base_urls': [],
+            'metadata': {
+                'categories': categorie,
+                'creationDate': data_from_egs_format['effectiveDate'],
+                'description': data_from_egs_format['description'],
+                'developer': data_from_egs_format['seller']['name'],
+                'developerId': data_from_egs_format['seller']['id'],
+                # 'endOfSupport': False,
+                'entitlementName': data_from_egs_format['catalogItemId'],
+                # 'entitlementType' : 'EXECUTABLE',
+                # 'eulaIds': [],
+                'id': data_from_egs_format['catalogItemId'],
+                # 'itemType': 'DURABLE',
+                'keyImages': data_from_egs_format['keyImages'],
+                'lastModifiedDate': data_from_egs_format['effectiveDate'],
+                'longDescription': data_from_egs_format['longDescription'],
+                'namespace': data_from_egs_format['namespace'],
+                'releaseInfo': data_from_egs_format['releaseInfo'],
+                'status': data_from_egs_format['status'],
+                'technicalDetails': data_from_egs_format['technicalDetails'],
+                'title': data_from_egs_format['title'],
+                # 'unsearchable': False
+            }
+        }
+        return data_to_uevm_format
+
     def _log_debug(self, message):
         """ a simple wrapper to use when cli is not initialized"""
         if gui_g.UEVM_cli_ref is None and self.cli_args.debug:
