@@ -1,0 +1,154 @@
+{
+    "app_name": "3DRudder_4.22",
+    "app_title": "3dRudder Foot Motion Controller Plugin",
+    "asset_infos": {
+        "Windows": {
+            "app_name": "3DRudder_4.22",
+            "catalog_item_id": "806bafc23468479f93bcabee24223e14",
+            "metadata": {},
+            "namespace": "ue"
+        }
+    },
+    "base_urls": [],
+    "metadata": {
+        "categories": [
+            {
+                "path": "plugins/engine"
+            },
+            {
+                "path": "plugins"
+            }
+        ],
+        "creationDate": "2017-07-27T00:00:00.000Z",
+        "description": "The 3dRudder is an amazing foot-powered motion controller for VR",
+        "developer": "3dRudder",
+        "developerId": "o-8385ee2d96474bac1c871c0afa7388",
+        "entitlementName": "806bafc23468479f93bcabee24223e14",
+        "id": "806bafc23468479f93bcabee24223e14",
+        "keyImages": [
+            {
+                "type": "Screenshot",
+                "url": "https://cdn1.epicgames.com/ue/item/3dRudder Controller Plugin (BluePrint)_screenshot_01-1920x1080-33a23732942c35f6ffd1ca4641445efa.png",
+                "md5": "33a23732942c35f6ffd1ca4641445efa",
+                "width": 1920,
+                "height": 1080,
+                "size": 575346,
+                "uploadedDate": "2017-06-09T17:55:13.374Z"
+            },
+            {
+                "type": "Screenshot",
+                "url": "https://cdn1.epicgames.com/ue/item/3dRudder Controller Plugin (BluePrint)_screenshot_02-1920x1080-3f48cc2449724e999691cffdb902079f.png",
+                "md5": "3f48cc2449724e999691cffdb902079f",
+                "width": 1920,
+                "height": 1080,
+                "size": 472490,
+                "uploadedDate": "2017-06-09T17:55:11.723Z"
+            },
+            {
+                "type": "Thumbnail",
+                "url": "https://cdn1.epicgames.com/ue/item/3dRudder Controller Plugin (BluePrint)_Thumb-512x512-3212a9719f7e06e5cdf54132cef4ec11.png",
+                "md5": "3212a9719f7e06e5cdf54132cef4ec11",
+                "width": 512,
+                "height": 512,
+                "size": 355996,
+                "uploadedDate": "2017-06-09T17:55:10.281Z"
+            },
+            {
+                "type": "Featured",
+                "url": "https://cdn1.epicgames.com/ue/item/3dRudder Controller Plugin (BluePrint)_featured-894x488-0d89eb05d274562fabb5a0b8f555c39a.png",
+                "md5": "0d89eb05d274562fabb5a0b8f555c39a",
+                "width": 894,
+                "height": 488,
+                "size": 547081,
+                "uploadedDate": "2017-06-09T17:55:15.400Z"
+            }
+        ],
+        "lastModifiedDate": "2017-07-27T00:00:00.000Z",
+        "longDescription": "To develop with our Asset/Plugin",
+        "namespace": "ue",
+        "releaseInfo": [
+            {
+                "id": "4a3fa519cedd4d96abbbdb86fbf6580e",
+                "appId": "3DRudder_4.15",
+                "compatibleApps": [
+                    "UE_4.15"
+                ],
+                "platform": [
+                    "Windows"
+                ],
+                "dateAdded": "2017-06-09T00:00:00.000Z",
+                "versionTitle": "3DRudder_4.15"
+            },
+            {
+                "id": "4b261dc5f56345198e968143056cdaa2",
+                "appId": "3DRudder_4.16",
+                "compatibleApps": [
+                    "UE_4.16"
+                ],
+                "platform": [
+                    "Windows"
+                ],
+                "dateAdded": "2017-06-09T00:00:00.000Z",
+                "versionTitle": "3DRudder_4.16"
+            },
+            {
+                "id": "21486ab7cb7749e18d927bf85b4002fb",
+                "appId": "3DRudder_4.17",
+                "compatibleApps": [
+                    "UE_4.17"
+                ],
+                "platform": [
+                    "Windows"
+                ],
+                "dateAdded": "2017-09-20T15:06:17.258Z",
+                "releaseNote": "",
+                "versionTitle": "3DRudder_4.17"
+            },
+            {
+                "id": "09c1a94efa224aff8d9b6f15fa5ad42b",
+                "appId": "3DRudder_4.18",
+                "compatibleApps": [
+                    "UE_4.18"
+                ],
+                "platform": [
+                    "Windows"
+                ],
+                "dateAdded": "2017-11-09T00:00:00.000Z",
+                "versionTitle": "3DRudder_4.18"
+            },
+            {
+                "id": "4b89b8f53cb84883ad52e07703a64e52",
+                "appId": "3DRudder_4.19",
+                "compatibleApps": [
+                    "UE_4.19"
+                ],
+                "platform": [
+                    "Windows"
+                ],
+                "dateAdded": "2018-04-10T00:00:00.000Z",
+                "releaseNote": "",
+                "versionTitle": "3DRudder_4.19"
+            },
+            {
+                "id": "c66e5eccdff7427f88df03b9e6fd02da",
+                "appId": "3DRudder_4.22",
+                "compatibleApps": [
+                    "UE_4.22"
+                ],
+                "platform": [
+                    "Windows",
+                    "SteamVR / HTC Vive",
+                    "Oculus",
+                    "PS4",
+                    "Android"
+                ],
+                "dateAdded": "2019-06-12T00:00:00.000Z",
+                "releaseNote": "",
+                "versionTitle": "3DRudder_4.22"
+            }
+        ],
+        "status": "ACTIVE",
+        "technicalDetails": "<p>List of Features:</p>",
+        "title": "3dRudder Foot Motion Controller Plugin"
+    }
+}
