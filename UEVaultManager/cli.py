@@ -1225,7 +1225,7 @@ class UEVaultManagerCLI:
             return
         self.logger.info(f'Exchange code: {token["code"]}')
 
-    def edit_assets(self, args) -> None:
+    def edit(self, args) -> None:
         """
         Edit assets in the database using a GUI.
         :param args: options passed to the command.
@@ -1806,7 +1806,9 @@ def main():
         '--vault-cache',
         dest='vault_cache',
         action='store_true',
-        help='Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case, the download_path option will be ignored'    )
+        help=
+        'Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case, the download_path option will be ignored'
+    )
     install_parser.add_argument(
         '-c',
         '--clean-dowloaded-data',
@@ -1955,36 +1957,36 @@ def main():
     try:
         if args.subparser_name == 'auth':
             cli.auth(args)
+        elif args.subparser_name == 'cleanup':
+            cli.cleanup(args)
+        elif args.subparser_name == 'info':
+            cli.info(args)
         elif args.subparser_name in {'list', 'list-assets'}:
             cli.list_assets(args)
         elif args.subparser_name == 'list-files':
             cli.list_files(args)
         elif args.subparser_name == 'status':
             cli.status(args)
-        elif args.subparser_name == 'info':
-            cli.info(args)
-        elif args.subparser_name == 'cleanup':
-            cli.cleanup(args)
-        elif args.subparser_name == 'get-token':
-            cli.get_token(args)
         elif args.subparser_name in {'edit', 'edit-assets'}:
             if args.database and args.input:
                 remove_command_argument(edit_parser, 'input')
             args.gui = True
             UEVaultManagerCLI.is_gui = True
-            cli.edit_assets(args)
+            cli.edit(args)
         elif args.subparser_name in {'scrap', 'scrap-assets'}:
             args.gui = True
             UEVaultManagerCLI.is_gui = True
             cli.scrap_assets(args)
         elif args.subparser_name in {'download', 'install'}:
             cli.install_asset(args)
+        elif args.subparser_name == 'get-token':
+            cli.get_token(args)
         elif start_in_edit_mode:
             args.gui = True
             UEVaultManagerCLI.is_gui = True
             args.subparser_name = 'edit'
             args.input = init_gui(False)
-            cli.edit_assets(args)
+            cli.edit(args)
     except KeyboardInterrupt:
         cli.logger.info('Command was aborted via KeyboardInterrupt, cleaning up...')
 
