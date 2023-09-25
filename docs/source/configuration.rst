@@ -83,8 +83,8 @@ This is an example of this file content and the settings you can change:
   cache_folder = ../../../cache
   ;Folder (relative or absolute) to store result files to read and save data from
   results_folder = ../../../results
-  ;Name of the file to read filters from. Should ONLY contain the file name with no the path. The folder that contain the file is fixed.
-  filters_filename = 'filters.json'
+  ;The last opened filter file name.Automatically saved when loading a filter.Leave empty to load no filter at start.Contains the file name only, not the path
+  last_opened_filter =
   ;Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value
   rows_per_page = 37
   ;Folder (relative or absolute) to store the scraped files for the assets in markeplace

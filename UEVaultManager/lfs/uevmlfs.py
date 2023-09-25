@@ -308,22 +308,21 @@ class UEVMLFS:
         )
 
     @staticmethod
-    def load_filter_list(filename: str = '') -> dict:
+    def load_filter_list(filename: str = '') -> Optional[dict]:
         """
         Load the filters from a json file
-        :return: The filters or None if not found.
+        :return: The filters or {} if not found. Will return None on error
         """
         if filename == '':
-            filename = gui_g.s.filters_filename
+            filename = gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
         full_filename = path_join(folder, filename)
         if not os.path.isfile(full_filename):
             return {}
-        filters = {}
         try:
             filters = json.load(open(full_filename))
         except (Exception, ):
-            pass
+            return None
         return filters
 
     @staticmethod
@@ -332,7 +331,7 @@ class UEVMLFS:
         Save the filters to a json file.
         """
         if filename == '':
-            filename = gui_g.s.filters_filename
+            filename = gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
         full_filename = path_join(folder, filename)
         if not full_filename:

@@ -272,7 +272,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         if folder and not os.path.isdir(folder):
             os.mkdir(folder)
         filename = fd.asksaveasfilename(
-            title='Choose a file to save filters to', initialdir=folder, filetypes=[('json file', '*.json')], initialfile=gui_g.s.filters_filename
+            title='Choose a file to save filters to', initialdir=folder, filetypes=[('json file', '*.json')], initialfile=gui_g.s.last_opened_filter
         )
         if not filename:
             return
@@ -304,7 +304,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             title='Choose a file to load filters from',
             initialdir=gui_g.s.filters_folder,
             filetypes=[('json file', '*.json')],
-            initialfile=gui_g.s.filters_filename
+            initialfile=gui_g.s.last_opened_filter
         )
         if not filename:
             return {}
@@ -321,6 +321,11 @@ class UEVMGuiControlFrame(ttk.Frame):
             return {}
         try:
             filters = self._container.core.uevmlfs.load_filter_list(filename)
-            return filters
+            gui_g.s.last_opened_filter = filename
+            gui_g.s.save_config_file()
         except AttributeError:
-            return {}
+            filters = None
+        if filters is None:
+            messagebox.showwarning('Warning', f'An error occurs when opening the filter file. Check its content')
+            filters = {}
+        return filters

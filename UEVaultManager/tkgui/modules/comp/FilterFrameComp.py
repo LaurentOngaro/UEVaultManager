@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Tuple
 
 import pandas as pd
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.functions import box_message, log_info
 
 
@@ -23,6 +24,8 @@ class FilterFrame(ttk.LabelFrame):
     :param data_func: A function that returns the DataFrame to be filtered.
     :param update_func: A function that updates the table.
     :param save_filter_func: A function that save the filters.
+    :param load_filter_func: A function that load the filters.
+    :param dynamic_filters_func: A function used to create dynamic filter added to the quick filter list.
     :param title: The title of the frame.
     :param value_for_all: The value to use for the 'All' option.
     """
@@ -147,7 +150,7 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_view_filters = ttk.Button(self, text='View', command=self.view_filters)
         self.btn_view_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        self.btn_clear_filters = ttk.Button(self, text='Clear', command=self.reset_filters)
+        self.btn_clear_filters = ttk.Button(self, text='Clear', command=self.clear_filters)
         self.btn_clear_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         if self.save_filter_func is not None:
             cur_col += 1
@@ -355,7 +358,7 @@ class FilterFrame(ttk.LabelFrame):
         self.update_controls()
         self.update_func(reset_page=True, update_filters=True)
 
-    def reset_filters(self) -> None:
+    def clear_filters(self) -> None:
         """
         Reset all filter conditions and update the caller.
         """
@@ -367,6 +370,8 @@ class FilterFrame(ttk.LabelFrame):
             self.filter_widget.delete(0, 'end')
         self._filters = {}
         self._filter_mask = None
+        gui_g.s.last_opened_filter = ''
+        gui_g.s.save_config_file()
         self._update_filter_widgets()
         self.update_func(reset_page=True)
 

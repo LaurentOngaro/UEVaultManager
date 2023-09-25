@@ -198,17 +198,18 @@ class UEVMGui(tk.Tk):
                 self.logger.error('This application could not run without a file to read data from')
                 self.close_window(True)
 
-        gui_f.show_progress(self, text='Initializing Data Table...')
-        if gui_g.s.filters_filename:
-            filters = self.core.uevmlfs.load_filters()
+        if gui_g.s.last_opened_filter != '':
+            filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
             if filters is not None:
+                gui_f.show_progress(self, text=f'Loading filters from {gui_g.s.last_opened_filter}...')
                 try:
                     self._frm_filter.set_filters(filters)
-                    # self.update_navigation() # done in load_filters and inner calls
+                    # data_table.update(update_format=True) # done in load_filters and inner calls
                 except (Exception,) as error:
                     self.add_error(error)
                     self.logger.error(f'Error loading filters: {error!r}')
         else:
+            gui_f.show_progress(self, text='Initializing Data Table...')
             data_table.update(update_format=True)
         # Quick edit the first row
         # self.editable_table.update_quick_edit(0)

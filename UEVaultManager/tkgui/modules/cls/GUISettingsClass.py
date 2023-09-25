@@ -60,9 +60,9 @@ class GUISettings:
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename: str = self.config_vars['last_opened_file']
         else:
-            self.csv_filename: str = path_join(self.results_folder, self.default_filename+'.csv')
+            self.csv_filename: str = path_join(self.results_folder, self.default_filename + '.csv')
 
-        self.sqlite_filename: str = path_join(self.scraping_folder, self.default_filename+'.db')
+        self.sqlite_filename: str = path_join(self.scraping_folder, self.default_filename + '.db')
 
         self.app_monitor: int = 1
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
@@ -193,16 +193,6 @@ class GUISettings:
     def rows_per_page(self, value):
         """ Setter for rows_per_page """
         self.config_vars['rows_per_page'] = value
-
-    @property
-    def filters_filename(self) -> dict:
-        """ Getter for filters_filename """
-        return self.config_vars['filters_filename']
-
-    @filters_filename.setter
-    def filters_filename(self, value: str):
-        """ Setter for filters_filename """
-        self.config_vars['filters_filename'] = value
 
     @property
     def x_pos(self) -> int:
@@ -425,6 +415,16 @@ class GUISettings:
         """ Setter for last_opened_engine """
         self.config_vars['last_opened_engine'] = value
 
+    @property
+    def last_opened_filter(self) -> str:
+        """ Getter for last_opened_filter """
+        return self.config_vars['last_opened_filter']
+
+    @last_opened_filter.setter
+    def last_opened_filter(self, value):
+        """ Setter for last_opened_filter """
+        self.config_vars['last_opened_filter'] = value
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -458,10 +458,6 @@ class GUISettings:
                 'comment':
                 'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
                 'value': 37
-            },
-            'filters_filename': {
-                'comment': 'Name of the file to read filters from. Should ONLY contain the file name with no the path. The folder that contain the file is fixed',
-                'value': ''
             },
             'x_pos': {
                 'comment': 'X position of the main windows. Set to 0 to center the window. Automatically saved on quit',
@@ -573,6 +569,11 @@ class GUISettings:
                 'comment': 'The last opened Folder name. Automatically saved when browsing an engine folder',
                 'value': ''
             },
+            'last_opened_filter': {
+                'comment':
+                'The last opened filter file name.Automatically saved when loading a filter.Leave empty to load no filter at start.Contains the file name only, not the path',
+                'value': ''
+            },
         }
 
         has_changed = False
@@ -599,7 +600,6 @@ class GUISettings:
         # no need of fallback values here, they are set in the config file by default
         config_vars = {
             'rows_per_page': self.config.getint('UEVaultManager', 'rows_per_page'),
-            'filters_filename': self.config.get('UEVaultManager', 'filters_filename'),
             'x_pos': self.config.getint('UEVaultManager', 'x_pos'),
             'y_pos': self.config.getint('UEVaultManager', 'y_pos'),
             'width': self.config.getint('UEVaultManager', 'width'),
@@ -625,6 +625,7 @@ class GUISettings:
             'last_opened_folder': self.config.get('UEVaultManager', 'last_opened_folder'),
             'last_opened_project': self.config.get('UEVaultManager', 'last_opened_project'),
             'last_opened_engine': self.config.get('UEVaultManager', 'last_opened_engine'),
+            'last_opened_filter': self.config.get('UEVaultManager', 'last_opened_filter'),
         }
         return config_vars
 
