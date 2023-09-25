@@ -85,7 +85,7 @@ class EGLManifest:
         """
         Create EGLManifest from json.
         :param json: json data.
-        :return: EGLManifest.
+        :return: eGLManifest.
         """
         json = deepcopy(json)
         tmp = cls()

@@ -25,7 +25,7 @@ class ExtendedWidget:
     :param tag: tag of the widget.
     :param row: row of the widget.
     :param col: column of the widget.
-    :return: ExtendedWidget instance.
+    :return: extendedWidget instance.
     """
 
     def __init__(self, tag=None, row: int = -1, col: int = -1, default_content=''):
@@ -126,7 +126,7 @@ class ExtendedWidget:
     def get_default_font(self) -> tk.font.Font:
         """
         Get the default font for ttk widgets. If the default font is not found, use the TkDefaultFont.
-        :return: The default font for ttk widgets.
+        :return: the default font for ttk widgets.
         """
         default_font = nametofont("TkDefaultFont")
         style = self.get_style()
@@ -143,9 +143,9 @@ class ExtendedEntry(ExtendedWidget, ttk.Entry):
     """
     Extended widget version of a ttk.Entry class.
     :param master: container for the widget.
-    :param label: Text to display next to the checkbutton.
+    :param label: text to display next to the checkbutton.
     :param kwargs: kwargs to pass to the widget.
-    :return: ExtendedEntry instance.
+    :return: extendedEntry instance.
     """
 
     def __init__(self, master=None, **kwargs):
@@ -173,7 +173,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
     Extended widget version of a ttk.Text. Also add a "ttk.style" like property to the widget.
     :param master: container for the widget.
     :param kwargs: kwargs to pass to the widget.
-    :return: ExtendedText instance.
+    :return: extendedText instance.
     """
 
     def __init__(self, master=None, **kwargs):
@@ -235,9 +235,9 @@ class ExtendedLabel(ExtendedWidget, ttk.Label):
     """
     Extended widget version of a ttk.Label.
     :param master: container for the widget.
-    :param text: Text to display next to the checkbutton.
+    :param text: text to display next to the checkbutton.
     :param kwargs: kwargs to pass to the widget.
-    :return: ExtendedLabel instance.
+    :return: extendedLabel instance.
     """
 
     def __init__(self, master=None, **kwargs):
@@ -255,12 +255,12 @@ class ExtendedLabel(ExtendedWidget, ttk.Label):
 class ExtendedCheckButton(ExtendedWidget):
     """
     Create a new widget version of a ttk.Checkbutton.
-    :param master: Parent widget.
-    :param label: Text to display next to the checkbutton.
-    :param images_folder: Path to the folder containing the images for the checkbutton. If empty, the './assets' folder will be used.
-    :param change_state_on_click: Whether the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method.
+    :param master: parent widget.
+    :param label: text to display next to the checkbutton.
+    :param images_folder: path to the folder containing the images for the checkbutton. If empty, the './assets' folder will be used.
+    :param change_state_on_click: whether the state of the checkbutton will change when clicking on the text or the checkbutton. if not, the change must be done manually by calling the switch_state method.
     :param kwargs: kwargs to pass to the widget.
-    :return: ExtendedCheckButton instance.
+    :return: extendedCheckButton instance.
 
     Notes:
         We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
@@ -325,7 +325,7 @@ class ExtendedCheckButton(ExtendedWidget):
     def bind(self, sequence=None, command=None) -> None:
         """
         Binds a callback to the widget.
-        :param sequence: Sequence to bind to.
+        :param sequence: sequence to bind to.
         :param command:  function to bind.
         """
         self._lbl_text.bind(sequence, command)
@@ -388,7 +388,7 @@ class ExtendedButton(ExtendedWidget, ttk.Button):
     :param master: container for the widget.
     :param command: function to call when the button is clicked.
     :param kwargs: kwargs to pass to the widget.
-    :return: ExtendedButton instance.
+    :return: extendedButton instance.
     """
 
     def __init__(self, master=None, command: str = '', **kwargs):

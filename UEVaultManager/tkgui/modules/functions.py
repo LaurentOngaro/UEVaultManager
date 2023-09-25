@@ -239,10 +239,10 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
     """
     Pretty prints a JSON object in a simple 'key: value' format.
     :param json_obj:  The JSON object to print.
-    :param indent: The number of spaces to indent each level.
-    :param print_result: Determines whether to print the result.
-    :param output_on_gui: Determines whether to print the result on the GUI.
-    :return: The pretty printed JSON object.
+    :param indent: the number of spaces to indent each level.
+    :param print_result: determines whether to print the result.
+    :param output_on_gui: determines whether to print the result on the GUI.
+    :return: the pretty printed JSON object.
     """
 
     def _process(obj, level=0):
@@ -320,18 +320,18 @@ def show_progress(
 ) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
-    :param parent: The parent window.
-    :param text: The text to display in the progress window.
-    :param width: The width of the progress window.
-    :param height: The height of the progress window.
-    :param max_value_l: The maximum value of the progress bar.
-    :param show_progress_l: Whether to show the progress bar.
-    :param show_btn_stop_l: Whether to show the stop button.
+    :param parent: the parent window.
+    :param text: the text to display in the progress window.
+    :param width: the width of the progress window.
+    :param height: the height of the progress window.
+    :param max_value_l: the maximum value of the progress bar.
+    :param show_progress_l: whether to show the progress bar.
+    :param show_btn_stop_l: whether to show the stop button.
     :param quit_on_close: whether to quit the application when the window is closed.
     :param keep_existing: whether to keep the existing content when adding a new one.
     :param function: the function to execute.
     :param function_parameters: the parameters of the function.
-    :return: The progress window.
+    :return: the progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
     root = get_tk_root(parent)
@@ -368,7 +368,7 @@ def show_progress(
 def close_progress(parent) -> None:
     """
     Close the progress window.
-    :param parent: The parent window.
+    :param parent: the parent window.
     It accesses to the parent.progress_window property
     """
     root = get_tk_root(parent)
@@ -438,7 +438,7 @@ def set_widget_state(widget: tk.Widget, is_enabled: bool, text_swap: {} = None) 
     """
     Enable or disable a widget.
     :param widget: widget to update.
-    :param is_enabled: Whether to enable the widget, if False, disable it.
+    :param is_enabled: whether to enable the widget, if False, disable it.
     :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
     """
     if widget is not None:
@@ -477,7 +477,7 @@ def set_widget_state_in_list(list_of_widget: [], is_enabled: bool, text_swap: {}
     """
     Enable or disable a widget.
      :param list_of_widget: the list of widgets to update.
-    :param is_enabled: Whether to enable the widget, if False, disable it.
+    :param is_enabled: whether to enable the widget, if False, disable it.
     :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
     """
     for widget in list_of_widget:
@@ -506,7 +506,7 @@ def disable_widgets_in_list(list_of_widget: []) -> None:
 def update_widgets_in_list(is_enabled: bool, list_name: str, text_swap=None) -> None:
     """
     Update the state of a list of widgets.
-    :param is_enabled: True to enable the widgets, False to disable them.
+    :param is_enabled: true to enable the widgets, False to disable them.
     :param list_name: the name of the list of widgets to update.
     :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
     """

@@ -386,9 +386,9 @@ def open_folder_in_file_explorer(folder_path) -> bool:
 def append_no_duplicate(list_to_append: list, items: any, ok_if_exists: object = False) -> bool:
     """
     Append some items value to a list. Could raise an error if an object is already in the list.
-    :param list_to_append: The list to append to.
-    :param items: The items to append to the list. Could be a single object or a list of items.
-    :param ok_if_exists: If True, no error will be raised if an object is already in the list.
+    :param list_to_append: the list to append to.
+    :param items: the items to append to the list. Could be a single object or a list of items.
+    :param ok_if_exists: if True, no error will be raised if an object is already in the list.
     :return: True if all the items were appended, False if at least one was already in the list.
     """
     if not isinstance(items, list):

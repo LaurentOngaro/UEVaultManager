@@ -30,7 +30,7 @@ class UpdateSeverity(Enum):
 def extract_codename(pypi_description: str) -> str:
     """
     Extract the codename from the PyPI description.
-    :param pypi_description: PyPI's description.
+    :param pypi_description: pyPI's description.
     :return: codename.
     """
     pattern = r'## codename:(.*?)##'

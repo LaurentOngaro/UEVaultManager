@@ -14,7 +14,7 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 class UEVMGuiOptionFrame(ttk.Frame):
     """
     an options/settings frame for the UEVMGui Class.
-    :param _container: The parent container.
+    :param _container: the parent container.
     """
 
     def __init__(self, _container):

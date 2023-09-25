@@ -22,7 +22,7 @@ from UEVaultManager.utils.env import is_windows_mac_or_pyi
 class UEVMLFS:
     """
     Class to handle all local filesystem related tasks.
-    :param config_file: Path to config file to use instead of default.
+    :param config_file: path to config file to use instead of default.
     """
 
     def __init__(self, config_file=None):
@@ -240,7 +240,7 @@ class UEVMLFS:
     def userdata(self):
         """
         Return the user data as a dict.
-        :return: User data.
+        :return: user data.
         """
         if self._user_data is not None:
             return self._user_data
@@ -256,7 +256,7 @@ class UEVMLFS:
     def userdata(self, userdata: dict) -> None:
         """
         Set the user data.
-        :param userdata: User data.
+        :param userdata: user data.
         """
         if userdata is None:
             raise ValueError('Userdata is none!')
@@ -311,7 +311,7 @@ class UEVMLFS:
     def load_filter_list(filename: str = '') -> Optional[dict]:
         """
         Load the filters from a json file
-        :return: The filters or {} if not found. Will return None on error
+        :return: the filters or {} if not found. Will return None on error
         """
         if filename == '':
             filename = gui_g.s.last_opened_filter
@@ -344,7 +344,7 @@ class UEVMLFS:
         :param app_name: app name.
         :param version: version of the manifest.
         :param platform: platform of the manifest.
-        :return: The manifest filename.
+        :return: the manifest filename.
         """
         if platform:
             fname = clean_filename(f'{app_name}_{platform}_{version}')
@@ -355,17 +355,17 @@ class UEVMLFS:
     def get_tmp_path(self) -> str:
         """
         Get the path to the tmp folder.
-        :return: The path to the tmp folder.
+        :return: the path to the tmp folder.
         """
         return path_join(self.path, 'tmp')
 
     def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:
         """
         Delete all the files in a folder that are not in the list_of_items_to_keep list.
-        :param folders: The list of folder to clean. Could be a list or a string for a single folder.If None, the function will return 0.
-        :param extensions_to_delete: The list of extensions to delete. Leave to Empty to delete all extentions.
-        :param file_name_to_keep: The list of items to keep. Leave to Empty to delete all files.
-        :return: The total size of deleted files.
+        :param folders: the list of folder to clean. Could be a list or a string for a single folder.If None, the function will return 0.
+        :param extensions_to_delete: the list of extensions to delete. Leave to Empty to delete all extentions.
+        :param file_name_to_keep: the list of items to keep. Leave to Empty to delete all files.
+        :return: the total size of deleted files.
         """
         if folders is None or not folders:
             return 0
@@ -407,10 +407,10 @@ class UEVMLFS:
     def load_manifest(self, app_name: str, version: str, platform: str = 'Windows') -> any:
         """
         Load the manifest data from a file.
-        :param app_name: The name of the item.
+        :param app_name: the name of the item.
         :param version: version of the manifest.
         :param platform: platform of the manifest.
-        :return: The manifest data.
+        :return: the manifest data.
         """
         try:
             return open(self._get_manifest_filename(app_name, version, platform), 'rb').read()
@@ -424,11 +424,11 @@ class UEVMLFS:
     def save_manifest(self, app_name: str, manifest_data, version: str, platform: str = 'Windows') -> str:
         """
         Save the manifest data to a file.
-        :param app_name: The name of the item.
-        :param manifest_data: The manifest data.
+        :param app_name: the name of the item.
+        :param manifest_data: the manifest data.
         :param version: version of the manifest.
         :param platform: platform of the manifest.
-        :return: The manifest filename.
+        :return: the manifest filename.
         """
         filename = self._get_manifest_filename(app_name, version, platform)
         with open(filename, 'wb') as f:
@@ -438,7 +438,7 @@ class UEVMLFS:
     def get_item_meta(self, app_name: str):
         """
         Get the metadata for an item.
-        :param app_name: The name of the item.
+        :param app_name: the name of the item.
         :return: an App object.
         """
         # Note: self._assets_metadata is filled at the start of the list command by reading all the json files in the metadata folder
@@ -449,8 +449,8 @@ class UEVMLFS:
     def set_item_meta(self, app_name: str, meta) -> None:
         """
         Set the metadata for an item.
-        :param app_name: The name of the item.
-        :param meta: The metadata object.
+        :param app_name: the name of the item.
+        :param meta: the metadata object.
         """
         json_meta = meta.__dict__
         self.assets_metadata[app_name] = json_meta
@@ -460,7 +460,7 @@ class UEVMLFS:
     def delete_item_meta(self, app_name: str) -> None:
         """
         Delete the metadata for an item.
-        :param app_name: The name of the item.
+        :param app_name: the name of the item.
         """
         if app_name not in self.assets_metadata:
             raise ValueError(f'Item {app_name} does not exist in metadata DB!')
@@ -473,8 +473,8 @@ class UEVMLFS:
     def get_item_extra(self, app_name: str) -> dict:
         """
         Get the extra data for an app.
-        :param app_name: The app name.
-        :return: The extra data.
+        :param app_name: the app name.
+        :return: the extra data.
         """
         gm_file = app_name + '.json'
         extra = self.assets_extra_data.get(app_name, None)
@@ -496,9 +496,9 @@ class UEVMLFS:
     def set_item_extra(self, app_name: str, extra: dict, update_global_dict: True) -> None:
         """
         Save the extra data for an app.
-        :param app_name: The app name.
-        :param extra: The extra data.
-        :param update_global_dict: Update the global dict with the new data.
+        :param app_name: the app name.
+        :param extra: the extra data.
+        :param update_global_dict: update the global dict with the new data.
         """
         extra_file = path_join(self.path, self.extra_folder, f'{app_name}.json')
         self.log.debug(f'--- SAVING {len(extra)} extra data for {app_name} in {extra_file}')
@@ -509,8 +509,8 @@ class UEVMLFS:
     def delete_item_extra(self, app_name: str, update_global_dict: True) -> None:
         """
         Delete the extra data for an app.
-        :param app_name: The app name.
-        :param update_global_dict: Update the global dict with the new data.
+        :param app_name: the app name.
+        :param update_global_dict: update the global dict with the new data.
         """
         if update_global_dict and self.assets_extra_data.get(app_name):
             del self.assets_extra_data[app_name]
@@ -521,14 +521,14 @@ class UEVMLFS:
     def get_item_app_names(self) -> list:
         """
         Get the list of app names.
-        :return: The list of app names.
+        :return: the list of app names.
         """
         return sorted(self.assets_metadata.keys())
 
     def clean_tmp_data(self) -> int:
         """
         Delete all the files in the tmp folder.
-        :return: The size of the deleted files.
+        :return: the size of the deleted files.
         """
         folder = path_join(self.path, self.tmp_folder)
         return self.delete_folder_content(folder)
@@ -536,15 +536,15 @@ class UEVMLFS:
     def clean_cache_data(self) -> int:
         """
         Delete all the files in the cache folders.
-        :return: The size of the deleted files.
+        :return: the size of the deleted files.
         """
         return self.delete_folder_content(gui_g.s.cache_folder)
 
     def clean_metadata(self, app_names_to_keep: list) -> int:
         """
         Delete all the metadata files that are not in the app_names_to_keep list.
-        :param app_names_to_keep: The list of app names to keep.
-        :return: The size of the deleted files.
+        :param app_names_to_keep: the list of app names to keep.
+        :return: the size of the deleted files.
         """
         folder = path_join(self.path, self.metadata_folder)
         return self.delete_folder_content(folder, file_name_to_keep=app_names_to_keep)
@@ -552,8 +552,8 @@ class UEVMLFS:
     def clean_extra(self, app_names_to_keep: list) -> int:
         """
         Delete all the metadata files that are not in the app_names_to_keep list.
-        :param app_names_to_keep: The list of app names to keep.
-        :return: The size of the deleted files.
+        :param app_names_to_keep: the list of app names to keep.
+        :return: the size of the deleted files.
         """
         folder = path_join(self.path, self.extra_folder)
         return self.delete_folder_content(folder, file_name_to_keep=app_names_to_keep)
@@ -568,7 +568,7 @@ class UEVMLFS:
     def clean_logs_and_backups(self) -> int:
         """
         Delete all the log and backup files in the app folders.
-        :return: The size of the deleted files.
+        :return: the size of the deleted files.
         """
         folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
         return self.delete_folder_content(folders, ['.log', '.bak'])
@@ -576,8 +576,8 @@ class UEVMLFS:
     def get_installed_app(self, app_name: str) -> Optional[InstalledApp]:
         """
         Get the installed app data.
-        :param app_name: The app name.
-        :return: The installed app data or None if not found.
+        :param app_name: the app name.
+        :return: the installed app data or None if not found.
         """
         if not app_name:
             return None
@@ -594,8 +594,8 @@ class UEVMLFS:
     def set_installed_app(self, app_name: str, install_info: {}) -> None:
         """
         Set the installed app data.
-        :param app_name: The app name.
-        :param install_info: The installed app data.
+        :param app_name: the app name.
+        :param install_info: the installed app data.
         """
         if self._installed_apps is None:
             self._installed_apps = dict()
@@ -623,7 +623,7 @@ class UEVMLFS:
     def clean_scrapping(self) -> int:
         """
         Delete all the metadata files that are not in the app_names_to_keep list.
-        :return: The size of the deleted files.
+        :return: the size of the deleted files.
         """
         folders = [gui_g.s.assets_data_folder, gui_g.s.owned_assets_data_folder, gui_g.s.assets_global_folder, gui_g.s.assets_csv_files_folder]
         return self.delete_folder_content(folders)
@@ -646,7 +646,7 @@ class UEVMLFS:
     def set_cached_version(self, version_data: dict) -> None:
         """
         Set the cached version data.
-        :param version_data: The version data.
+        :param version_data: the version data.
         """
         if not version_data:
             return

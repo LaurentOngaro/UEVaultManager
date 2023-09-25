@@ -9,7 +9,7 @@ import ttkbootstrap as ttk
 class UEVMGuiContentFrame(ttk.Frame):
     """
     A container for a datatable widget for the UEVMGui Class.
-    :param container: The parent container.
+    :param container: the parent container.
     """
 
     def __init__(self, container):

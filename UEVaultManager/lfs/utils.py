@@ -14,7 +14,7 @@ logger = logging.getLogger('LFS Utils')
 def clean_filename(filename: str) -> str:
     """
     Clean a filename from invalid characters.
-    :param filename: The filename to clean.
+    :param filename: the filename to clean.
     :return:  The cleaned filename.
     """
     return ''.join(i for i in filename if i not in '<>:"/\\|?*')
@@ -23,7 +23,7 @@ def clean_filename(filename: str) -> str:
 def get_dir_size(path: str) -> int:
     """
     Get the size of a directory.
-    :param path: The path to the directory.
+    :param path: the path to the directory.
     :return:
     """
     return sum(f.stat().st_size for f in Path(path).glob('**/*') if f.is_file())
@@ -32,8 +32,8 @@ def get_dir_size(path: str) -> int:
 def path_join(*paths):
     """
     Join multiple paths together. Make the return value unified
-    :param paths: The paths to join.
-    :return: The joined paths.
+    :param paths: the paths to join.
+    :return: the joined paths.
     """
     return os.path.normpath(Path(*paths).resolve())
 
@@ -83,9 +83,9 @@ def copy_folder(src_folder: str, dest_folder: str, check_copy_size=True) -> bool
 def compare_folders(folder1: str, folder2: str) -> list:
     """
     Compare two directories and return a list of files that are different
-    :param folder1: First directory
-    :param folder2: Second directory
-    :return: List of files that are different
+    :param folder1: first directory
+    :param folder2: second directory
+    :return: list of files that are different
     """
     comparison = filecmp.dircmp(folder1, folder2)
     return comparison.diff_files

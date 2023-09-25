@@ -29,7 +29,7 @@ def log_info(msg: str) -> None:
 class GUISettings:
     """
     A class that contains all the settings for the GUI.
-    :param config_file: Path to config file to use instead of default
+    :param config_file: path to config file to use instead of default
 .
     """
     path: str = ''
@@ -134,9 +134,9 @@ class GUISettings:
         """
         Getter for a serialized config vars
         :param var_name: name of the config var to get
-        :param is_dict: True if the value is a dict, False if it's a list
-        :param force_reload: True to force reloading the value from the config file and update the deserialized value
-        :return: List or Dict
+        :param is_dict: true if the value is a dict, False if it's a list
+        :param force_reload: true to force reloading the value from the config file and update the deserialized value
+        :return: list or Dict
         """
         default = {} if is_dict else []
         if not force_reload and self._config_vars_deserialized.get(var_name, None) is not None:
@@ -166,7 +166,7 @@ class GUISettings:
         """
         Setter for a serialized config vars
         :param var_name: name of the config var to get
-        :param values: List or Dict to serialize
+        :param values: list or Dict to serialize
         """
         if values is None or values == {} or values == []:
             json_str = ''

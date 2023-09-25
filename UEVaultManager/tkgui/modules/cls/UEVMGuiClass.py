@@ -79,12 +79,12 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
 class UEVMGui(tk.Tk):
     """
     This class is used to create the main window for the application.
-    :param title: The title.
-    :param icon: The icon.
-    :param screen_index: The screen index where the window will be displayed.
-    :param data_source: The source where the data is stored or read from.
-    :param data_source_type: The type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
-    :param show_open_file_dialog: Whether the open file dialog will be shown at startup.
+    :param title: the title.
+    :param icon: the icon.
+    :param screen_index: the screen index where the window will be displayed.
+    :param data_source: the source where the data is stored or read from.
+    :param data_source_type: the type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
+    :param show_open_file_dialog: whether the open file dialog will be shown at startup.
     """
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
@@ -246,7 +246,7 @@ class UEVMGui(tk.Tk):
     def _open_file_dialog(self, save_mode: bool = False, filename: str = None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
-        :param save_mode: Whether the dialog will be in saving mode, else in loading mode.
+        :param save_mode: whether the dialog will be in saving mode, else in loading mode.
         :param filename: the default filename to use.
         :return: the chosen filename.
         """
@@ -554,7 +554,7 @@ class UEVMGui(tk.Tk):
     def save_changes(self, show_dialog: bool = True) -> str:
         """
         Save the data to the current data source.
-        :param show_dialog: Whether to show a dialog to select the file to save to, if False, use the current file.
+        :param show_dialog: whether to show a dialog to select the file to save to, if False, use the current file.
         :return: the name of the file that was saved.
         """
         data_table = self.editable_table  # shortcut
@@ -643,7 +643,7 @@ class UEVMGui(tk.Tk):
         Search for a marketplace_url file that matches a folder name in a given folder.
         :param folder: name to search for.
         :param parent: parent folder to search in.
-        :param check_if_valid: Whether to check if the marketplace_url is valid. Return an empty string if not.
+        :param check_if_valid: whether to check if the marketplace_url is valid. Return an empty string if not.
         :return: the marketplace_url found in the file or an empty string if not found.
         """
 
@@ -1043,8 +1043,8 @@ class UEVMGui(tk.Tk):
         :param marketplace_url: marketplace_url to scrap.
         :param row_index: the (real) index of the row to scrap.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
-        :param show_message: Whether to show a message if the marketplace_url is not valid
-        :param update_dataframe: Whether to update the dataframe after scraping
+        :param show_message: whether to show a message if the marketplace_url is not valid
+        :param update_dataframe: whether to update the dataframe after scraping
         """
 
         if gui_g.s.offline_mode:
@@ -1183,7 +1183,7 @@ class UEVMGui(tk.Tk):
     def toggle_actions_panel(self, force_showing: bool = None) -> None:
         """
         Toggle the visibility of the Actions panel.
-        :param force_showing: Whether to will force showing the actions panel, if False, will force hiding it.If None, will toggle the visibility.
+        :param force_showing: whether to will force showing the actions panel, if False, will force hiding it.If None, will toggle the visibility.
         """
         if force_showing is None:
             force_showing = not self._frm_control.winfo_ismapped()
@@ -1200,7 +1200,7 @@ class UEVMGui(tk.Tk):
     def toggle_options_panel(self, force_showing: bool = None) -> None:
         """
         Toggle the visibility of the Options panel.
-        :param force_showing: Whether to will force showing the options panel, if False, will force hiding it.If None, will toggle the visibility.
+        :param force_showing: whether to will force showing the options panel, if False, will force hiding it.If None, will toggle the visibility.
         """
         # noinspection DuplicatedCode
         if force_showing is None:

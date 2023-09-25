@@ -15,9 +15,9 @@ class HiddenAliasSubparsersAction(argparse._SubParsersAction):
     def add_parser(self, name: str, **kwargs):
         """
         Add a parser to the set of parsers for this action.
-        :param name: Name of the parser.
-        :param kwargs: Keyword arguments.
-        :return: The created parser.
+        :param name: name of the parser.
+        :param kwargs: keyword arguments.
+        :return: the created parser.
         """
         # set prog from the existing prefix
         if kwargs.get('prog') is None:

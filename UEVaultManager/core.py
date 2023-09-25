@@ -264,8 +264,8 @@ class AppCore:
     def login(self, force_refresh: bool = False, raise_error: bool = True) -> bool:
         """
         Attempt log in with existing credentials.
-        :param force_refresh: Whether to force a refresh of the session.
-        :param raise_error: Whether to raise an exception if login fails.
+        :param force_refresh: whether to force a refresh of the session.
+        :param raise_error: whether to raise an exception if login fails.
         :return: True if successful, False otherwise.
         """
         if not self.uevmlfs.userdata:
@@ -375,7 +375,7 @@ class AppCore:
     def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
         """
         Return a list of assets for the given platform.
-        :param update_assets: Whether to always fetches a new list of assets from the server.
+        :param update_assets: whether to always fetches a new list of assets from the server.
         :param platform: platform to fetch assets for.
         :return: list of AppAsset objects.
         """
@@ -401,7 +401,7 @@ class AppCore:
         :param app_name: app name to get.
         :param platform: platform to get asset for.
         :param update: force update of asset list.
-        :return: AppAsset object.
+        :return: appAsset object.
         """
         if update or platform not in self.uevmlfs.assets:
             self.get_assets(update_assets=True, platform=platform)
@@ -430,7 +430,7 @@ class AppCore:
         :param app_name: name to get.
         :param update_meta: force update of metadata.
         :param platform: platform to get app for.
-        :return: App object.
+        :return: app object.
         """
         if update_meta:
             self.get_asset_list(True, platform=platform)
@@ -443,7 +443,7 @@ class AppCore:
         :param platform: platform to get assets for.
         :param filter_category: filter by category.
         :param force_refresh: force refresh of asset list.
-        :return: Assets list.
+        :return: assets list.
         """
 
         # Cancel all outstanding tasks and shut down the executor
@@ -830,8 +830,8 @@ class AppCore:
     def _save_extra_data(self, extra: dict, update_global_dict: True) -> None:
         """
         Save the extra data for the given assets.
-        :param extra: Dict of extra data to save.
-        :param update_global_dict: Whether to update the global dict.
+        :param extra: dict of extra data to save.
+        :param update_global_dict: whether to update the global dict.
         """
         self.log.info('Saving extra data in files... could take some time')
         for app_name, eg_extra in extra.items():
@@ -842,8 +842,8 @@ class AppCore:
     def get_installed_app(self, app_name) -> InstalledApp:
         """
         Return an InstalledApp object for the given app name.
-        :param app_name: App name to get.
-        :return: InstalledApp object.
+        :param app_name: app name to get.
+        :return: installedApp object.
         """
         return self.uevmlfs.get_installed_app(app_name)
 
@@ -851,9 +851,9 @@ class AppCore:
         """
         Gets a list of Items without assets for installation, for instance Items delivered via
         third-party stores that do not have assets for installation.
-        :param force_refresh: Force a metadata refresh.
-        :param skip_ue: Ignore Unreal Marketplace entries.
-        :return: List of Items that do not have assets.
+        :param force_refresh: force a metadata refresh.
+        :param skip_ue: ignore Unreal Marketplace entries.
+        :return: list of Items that do not have assets.
         """
         _ret = []
         # get all the app names we have to ignore
@@ -882,7 +882,7 @@ class AppCore:
     def is_installed(self, app_name: str) -> bool:
         """
         Return whether an app is installed.
-        :param app_name: App name to check.
+        :param app_name: app name to check.
         :return: True if app is installed, False otherwise.
         """
         return self.get_installed_app(app_name) is not None
@@ -891,8 +891,8 @@ class AppCore:
     def load_manifest(data: bytes) -> Manifest:
         """
         Load a manifest.
-        :param data: Bytes object to load the manifest from.
-        :return: Manifest object.
+        :param data: bytes object to load the manifest from.
+        :return: manifest object.
         """
         if data[0:1] == b'{':
             return JSONManifest.read_all(data)
@@ -902,7 +902,7 @@ class AppCore:
     def get_installed_manifest(self, app_name):
         """
         Get the installed manifest.
-        :param app_name: App name to get the installed manifest for.
+        :param app_name: app name to get the installed manifest for.
         :return:
         """
         installed_app = self.get_installed_app(app_name)
@@ -912,9 +912,9 @@ class AppCore:
     def get_cdn_urls(self, item, platform='Windows'):
         """
         Get the CDN URLs.
-        :param item: Item to get the CDN URLs for.
-        :param platform: Platform to get the CDN URLs for.
-        :return: List of CDN URLs.
+        :param item: item to get the CDN URLs for.
+        :param platform: platform to get the CDN URLs for.
+        :return: list of CDN URLs.
         """
         m_api_r = self.egs.get_item_manifest(item.namespace, item.catalog_item_id, item.app_name, platform)
 
@@ -941,9 +941,9 @@ class AppCore:
     def get_cdn_manifest(self, item, platform='Windows', disable_https=False):
         """
         Get the CDN manifest.
-        :param item: Item to get the CDN manifest for.
-        :param platform: Platform to get the CDN manifest for.
-        :param disable_https: Disable HTTPS for the manifest URLs.
+        :param item: item to get the CDN manifest for.
+        :param platform: platform to get the CDN manifest for.
+        :param disable_https: disable HTTPS for the manifest URLs.
         :return: list of base URLs, manifest hash.
         """
         manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(item, platform)
@@ -980,7 +980,7 @@ class AppCore:
     def get_uri_manifest(self, uri: str) -> (bytes, List[str]):
         """
         Get the manifest.
-        :param uri: URI to get the manifest from.
+        :param uri: uRI to get the manifest from.
         :return:  Manifest data and base URLs.
         """
         if uri.startswith('http'):
@@ -1021,25 +1021,25 @@ class AppCore:
         """
         Prepare a download.
         :param app:App to prepare the download for.
-        :param download_folder: Folder to download the app to.
-        :param install_folder: Folder to install the app to.
-        :param platform: Platform to prepare the download for.
-        :param no_resume: Avoid to resume. Force a new download.
-        :param max_shm: Maximum amount of shared memory to use.
-        :param max_workers: Maximum number of workers to use.
-        :param dl_optimizations: Download optimizations.
-        :param timeout: Download timeout.
-        :param override_manifest: Override the manifest.
-        :param override_old_manifest: Override the old manifest.
-        :param override_base_url: Override the base URL.
-        :param reuse_last_install: Update previous installation.
-        :param disable_patching: Disable patching.
-        :param status_queue: Status queue to send status updates to.
-        :param file_prefix_filter: File prefix filter.
-        :param file_exclude_filter: File exclude filter.
-        :param file_install_tag: File install tag.
-        :param preferred_cdn: Preferred CDN.
-        :param disable_https: Disable HTTPS. For LAN installs only.
+        :param download_folder: folder to download the app to.
+        :param install_folder: folder to install the app to.
+        :param platform: platform to prepare the download for.
+        :param no_resume: avoid to resume. Force a new download.
+        :param max_shm: maximum amount of shared memory to use.
+        :param max_workers: maximum number of workers to use.
+        :param dl_optimizations: download optimizations.
+        :param timeout: download timeout.
+        :param override_manifest: override the manifest.
+        :param override_old_manifest: override the old manifest.
+        :param override_base_url: override the base URL.
+        :param reuse_last_install: update previous installation.
+        :param disable_patching: disable patching.
+        :param status_queue: status queue to send status updates to.
+        :param file_prefix_filter: file prefix filter.
+        :param file_exclude_filter: file exclude filter.
+        :param file_install_tag: file install tag.
+        :param preferred_cdn: preferred CDN.
+        :param disable_https: disable HTTPS. For LAN installs only.
         :return: (DLManager object, AnalysisResult object, InstalledApp object).
         """
         old_manifest = None
@@ -1189,8 +1189,8 @@ class AppCore:
     def check_installation_conditions(analysis: AnalysisResult, folders: [], ignore_space_req: bool = False) -> ConditionCheckResult:
         """
         Check installation conditions.
-        :param analysis: Analysis result to check.
-        :param folders: Folders to check free size for.
+        :param analysis: analysis result to check.
+        :param folders: folders to check free size for.
         :param ignore_space_req:
         :return:
         """
@@ -1256,8 +1256,8 @@ class AppCore:
     def open_manifest_file(self, file_path: str) -> dict:
         """
         Open a manifest file and return its data.
-        :param file_path: Path to the manifest file.
-        :return: Manifest data.
+        :param file_path: path to the manifest file.
+        :return: manifest data.
         """
         try:
             with open(file_path, 'rb') as file:

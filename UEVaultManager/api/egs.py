@@ -38,8 +38,8 @@ class GrabResult(Enum):
 
 def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=None) -> bool:
     """
-    :param supported_versions: The supported versions the check the obsolete status against.
-    :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete.
+    :param supported_versions: the supported versions the check the obsolete status against.
+    :param engine_version_for_obsolete_assets: the engine version to use to check if an asset is obsolete.
     :return: True if the asset is obsolete, False otherwise.
     """
     if not engine_version_for_obsolete_assets or not supported_versions:
@@ -62,7 +62,7 @@ def create_empty_assets_extra(asset_name: str) -> dict:
     """
     Create an empty asset extra dict.
     :param asset_name:  The name of the asset.
-    :return: The empty asset extra dict.
+    :return: the empty asset extra dict.
      """
     return {
         'asset_name': asset_name,
@@ -84,9 +84,9 @@ def create_empty_assets_extra(asset_name: str) -> dict:
 class EPCAPI:
     """
     Epic Games Client API.
-    :param lc: The language code.
-    :param cc: The country code.
-    :param timeout: The timeout for requests.
+    :param lc: the language code.
+    :param cc: the country code.
+    :param timeout: the timeout for requests.
     """
     ignored_logger = None
 
@@ -161,9 +161,9 @@ class EPCAPI:
     def _extract_price_from_elt(self, dom_elt=None, asset_name='NO NAME') -> float:
         """
         Extracts the price from a BeautifulSoup element.
-        :param dom_elt: The BeautifulSoup element.
-        :param asset_name: The name of the asset (for display purpose only).
-        :return: The price.
+        :param dom_elt: the BeautifulSoup element.
+        :param asset_name: the name of the asset (for display purpose only).
+        :return: the price.
         """
         if dom_elt is None or dom_elt == '':
             self.log.debug(f'Price not found for {asset_name}')
@@ -212,8 +212,8 @@ class EPCAPI:
     def get_marketplace_product_url(self, asset_slug: str = '') -> str:
         """
         Return the url for the asset in the marketplace.
-        :param asset_slug: The asset slug.
-        :return: The url.
+        :param asset_slug: the asset slug.
+        :return: the url.
         """
         url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
         return url
@@ -221,8 +221,8 @@ class EPCAPI:
     def get_api_product_url(self, uid: str = '') -> str:
         """
         Return the url for the asset using the UE API.
-        :param uid: The id of the asset (not the slug, nor the catalog_id).
-        :return: The url.
+        :param uid: the id of the asset (not the slug, nor the catalog_id).
+        :return: the url.
         """
         url = f'https://{self._url_asset}/{uid}'
         return url
@@ -230,7 +230,7 @@ class EPCAPI:
     def get_scraped_asset_count(self, owned_assets_only=False) -> int:
         """
         Return the number of assets in the marketplace.
-        :param owned_assets_only: Whether to only the owned assets are counted.
+        :param owned_assets_only: whether to only the owned assets are counted.
         """
         assets_count = 0
         if owned_assets_only:
@@ -249,7 +249,7 @@ class EPCAPI:
     def is_valid_url(self, url='') -> bool:
         """
         Check is the url is valid (i.e. http response status is 200).
-        :param url: The url to check.
+        :param url: the url to check.
         :return: True if the url is valid.
         """
         result = False
@@ -267,8 +267,8 @@ class EPCAPI:
     def get_json_data_from_url(self, url='') -> dict:
         """
         Return the scraped assets.
-        :param url: The url to scrap.
-        :return: The json data.
+        :param url: the url to scrap.
+        :return: the json data.
         """
         json_data = {}
         if not url:
@@ -281,8 +281,8 @@ class EPCAPI:
     def resume_session(self, session: dict) -> dict:
         """
         Resumes a session.
-        :param session: The session.
-        :return: The session.
+        :param session: the session.
+        :return: the session.
         """
         self.session.headers['Authorization'] = f'bearer {session["access_token"]}'
         url = f'https://{self._oauth_host}/account/api/oauth/verify'
@@ -309,7 +309,7 @@ class EPCAPI:
         :param exchange_token: exchange token.
         :param authorization_code: authorization code.
         :param client_credentials: client credentials.
-        :return: The session.
+        :return: the session.
         :raise: ValueError,InvalidCredentialsError.
         """
         if refresh_token:
@@ -352,7 +352,7 @@ class EPCAPI:
         """
         Get the item token.
         Unused but kept for the global API reference.
-        :return: The item token using json format.
+        :return: the item token using json format.
         """
         url = f'https://{self._oauth_host}/account/api/oauth/exchange'
         r = self.session.get(url, timeout=self.request_timeout)
@@ -364,7 +364,7 @@ class EPCAPI:
         Get the item assets.
         :param platform: platform to get assets for.
         :param label: label of the assets.
-        :return: The item assets using json format.
+        :return: the item assets using json format.
         """
         url = f'https://{self._launcher_host}/launcher/api/public/assets/{platform}'
         r = self.session.get(url, params=dict(label=label), timeout=self.request_timeout)
@@ -379,7 +379,7 @@ class EPCAPI:
         :param app_name: app name.
         :param platform: platform to get manifest for.
         :param label: label of the manifest.
-        :return: The item manifest using json format.
+        :return: the item manifest using json format.
         """
         url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
         r = self.session.get(url, timeout=self.request_timeout)
@@ -389,9 +389,9 @@ class EPCAPI:
     def get_item_info(self, namespace: str, catalog_item_id: str, timeout: float = None) -> (dict, int):
         """
         Get the item info.
-        :param namespace: Namespace of the item.
-        :param catalog_item_id: Catalog item id of the item.
-        :param timeout: Timeout for the request.
+        :param namespace: namespace of the item.
+        :param catalog_item_id: catalog item id of the item.
+        :param timeout: timeout for the request.
         :return: (The item info, status code).
         """
         url = f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items'
@@ -408,8 +408,8 @@ class EPCAPI:
     def get_library_items(self, include_metadata=True) -> list:
         """
         Get the library items.
-        :param include_metadata: Whether to include metadata.
-        :return: The library items.
+        :param include_metadata: whether to include metadata.
+        :return: the library items.
         """
         records = []
         url = f'https://{self._library_host}/library/api/public/items'
@@ -644,7 +644,7 @@ class EPCAPI:
     def get_asset_data_from_marketplace(self, url: str) -> dict:
         """
         Get the asset data from the marketplace using beautifulsoup.
-        :param url: The url to grab.
+        :param url: the url to grab.
 
         Notes:
             This is the only way I know to get the id of an asset from its slug (or url)

@@ -159,7 +159,7 @@ class UEVaultManagerCLI:
         Wrapper to log a message using a log function AND use a messagebox to display the message if the gui is active.
         :param log_function: function to use to log.
         :param message: message to log.
-        :param quit_on_error: Whether the app will quit the application.
+        :param quit_on_error: whether the app will quit the application.
         """
         if UEVaultManagerCLI.is_gui:
             box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the app to quit
@@ -1515,7 +1515,7 @@ class UEVaultManagerCLI:
         Prints the help for the command.
         :param args:.
         :param parser: command line parser. If not provided, gui_g.UEVM_parser_ref will be used.
-        :param forced: Whether the help will be printed even if the --help option is not present.
+        :param forced: whether the help will be printed even if the --help option is not present.
         """
         if parser is None:
             parser = gui_g.UEVM_parser_ref

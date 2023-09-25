@@ -145,7 +145,7 @@ class MockLauncher:
     def login_sid(self, sid_json: str) -> None:
         """
         Login with the given SID.
-        :param sid_json: SID json.
+        :param sid_json: sID json.
         """
         # Try SID login, then log out
         try:

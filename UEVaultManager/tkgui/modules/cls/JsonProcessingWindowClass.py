@@ -117,7 +117,7 @@ class JsonProcessingWindow(tk.Toplevel):
             """
             Add text to the result label.
             :param text: text to add
-            :param set_status: True for setting the status label, False otherwise
+            :param set_status: true for setting the status label, False otherwise
             """
             if set_status:
                 self.set_status(text)
@@ -141,7 +141,7 @@ class JsonProcessingWindow(tk.Toplevel):
         def activate_processing(self, for_start=True):
             """
             Activate or deactivate processing.
-            :param for_start: True for enabling Start, False otherwise
+            :param for_start: true for enabling Start, False otherwise
             """
 
             if for_start:
@@ -249,7 +249,7 @@ class JsonProcessingWindow(tk.Toplevel):
         """
         Extract tags from JSON data and saves them in the database.
         :param cursor: database cursor
-        :param json_data: JSON data
+        :param json_data: jSON data
         """
         tags = json_data.get('tags', [])
         for tag in tags:
@@ -275,7 +275,7 @@ class JsonProcessingWindow(tk.Toplevel):
         """
         Extract ratings from JSON data and saves them in the database.
         :param cursor: database cursor
-        :param json_data: JSON data
+        :param json_data: jSON data
         """
         if 'data' in json_data and 'elements' in json_data['data']:
             for index, element in enumerate(json_data['data']['elements']):

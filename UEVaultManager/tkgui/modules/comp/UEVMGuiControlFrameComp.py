@@ -21,8 +21,8 @@ from UEVaultManager.tkgui.modules.types import WidgetType
 class UEVMGuiControlFrame(ttk.Frame):
     """
     A control frame for the UEVMGui Class.
-    :param container: The parent self._container.
-    :param data_table: The EditableTable instance.
+    :param container: the parent self._container.
+    :param data_table: the EditableTable instance.
     """
 
     def __init__(self, container, data_table: EditableTable):
@@ -263,7 +263,7 @@ class UEVMGuiControlFrame(ttk.Frame):
     def save_filters(self, filters: dict) -> None:
         """
         Save the filters to a file (Wrapper)
-        :param filters: The filters to save.
+        :param filters: the filters to save.
         """
         if not filters or len(filters) == 0:
             return

@@ -20,14 +20,14 @@ from UEVaultManager.tkgui.modules.functions import box_message, log_info
 class FilterFrame(ttk.LabelFrame):
     """
     A frame that contains widgets for filtering a DataFrame.
-    :param container: Container widget.
-    :param data_func: A function that returns the DataFrame to be filtered.
-    :param update_func: A function that updates the table.
-    :param save_filter_func: A function that save the filters.
-    :param load_filter_func: A function that load the filters.
-    :param dynamic_filters_func: A function used to create dynamic filter added to the quick filter list.
-    :param title: The title of the frame.
-    :param value_for_all: The value to use for the 'All' option.
+    :param container: container widget.
+    :param data_func: a function that returns the DataFrame to be filtered.
+    :param update_func: a function that updates the table.
+    :param save_filter_func: a function that save the filters.
+    :param load_filter_func: a function that load the filters.
+    :param dynamic_filters_func: a function used to create dynamic filter added to the quick filter list.
+    :param title: the title of the frame.
+    :param value_for_all: the value to use for the 'All' option.
     """
 
     def __init__(
@@ -228,7 +228,7 @@ class FilterFrame(ttk.LabelFrame):
     def _get_filter_value_and_type(self) -> Tuple[str, Any]:
         """
         Read current value from filter widgets and determines its type.
-        :return: A tuple containing the type (str) and value of the filter condition.
+        :return: a tuple containing the type (str) and value of the filter condition.
         """
         if not self.filter_widget:
             return 'str', ''
@@ -308,7 +308,7 @@ class FilterFrame(ttk.LabelFrame):
     def set_filters(self, filters: Dict[str, Tuple[type, Any]]) -> None:
         """
         Set the filters used.
-        :param filters: The filter dictionary containing the filter conditions.
+        :param filters: the filter dictionary containing the filter conditions.
         """
         if filters is None or not isinstance(filters, dict) or len(filters) == 0:
             return
@@ -388,8 +388,8 @@ class FilterFrame(ttk.LabelFrame):
     def quick_filter(self, only_return_filter=False) -> dict:
         """
         Update the widgets that are used for filtering based on the selected column.
-        :param only_return_filter: If True, only return the filter string without applying it.
-        :return: The filter dict.
+        :param only_return_filter: if True, only return the filter string without applying it.
+        :return: the filter dict.
         """
         filter_dict = {}
         selected_filter = self.cb_quick_filter.get()

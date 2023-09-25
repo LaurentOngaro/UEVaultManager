@@ -14,9 +14,9 @@ from UEVaultManager.tkgui.modules.types import WidgetType
 class TaggedLabelFrame(ttk.LabelFrame):
     """
     A custom LabelFrame widget that allows child widgets to be identified by tags.
-    :param args: Args to pass to the widget.
-    :param kwargs: Kwargs to pass to the widget.
-    :return: TaggedLabelFrame instance.
+    :param args: args to pass to the widget.
+    :param kwargs: kwargs to pass to the widget.
+    :return: taggedLabelFrame instance.
     """
 
     def __init__(self, *args, **kwargs):
@@ -46,22 +46,22 @@ class TaggedLabelFrame(ttk.LabelFrame):
     ):
         """
         Adds a child widget to the LabelFrame and associates it with the given tag.
-        :param tag: Tag to search for (case-insensitive).
-        :param widget_type: Type of widget to add.
-        :param alternate_container: Alternate container to use for the child widget. If None, uses the TaggedLabelFrame.
-        :param width: Width of the child widget. Only used for text widgets.
-        :param height: Height of the child widget. Only used for text widgets.
-        :param label: Text to display in the child widget.
-        :param state: State of the child widget.
-        :param default_content: Default content of the child widget.
-        :param layout_option: Layout options to use. Default, full width.
+        :param tag: tag to search for (case-insensitive).
+        :param widget_type: type of widget to add.
+        :param alternate_container: alternate container to use for the child widget. If None, uses the TaggedLabelFrame.
+        :param width: width of the child widget. Only used for text widgets.
+        :param height: height of the child widget. Only used for text widgets.
+        :param label: text to display in the child widget.
+        :param state: state of the child widget.
+        :param default_content: default content of the child widget.
+        :param layout_option: layout options to use. Default, full width.
         :param images_folder: folder for image used by some widgets.
-        :param add_label_before: Whether to add a label before the child widget.
-        :param textvariable: Variable to use for the child widget.
-        :param focus_out_callback: Callback to call when the child widget loses focus.
-        :param focus_in_callback: Callback to call when the child widget get focus.
-        :param click_on_callback: Callback to call when the child widget is clicked or checked.
-        :return: Child widget
+        :param add_label_before: whether to add a label before the child widget.
+        :param textvariable: variable to use for the child widget.
+        :param focus_out_callback: callback to call when the child widget loses focus.
+        :param focus_in_callback: callback to call when the child widget get focus.
+        :param click_on_callback: callback to call when the child widget is clicked or checked.
+        :return: child widget
 
         Notes:
             We can not use command parameter to manage callback here because it should be transmited
@@ -115,8 +115,8 @@ class TaggedLabelFrame(ttk.LabelFrame):
     def get_child_by_tag(self, tag: str):
         """
         Return the child widget associated with the given tag.
-        :param tag: Tag to search for (case-insensitive).
-        :return: Child widget.
+        :param tag: tag to search for (case-insensitive).
+        :return: child widget.
         """
         tag_lower = tag.lower()
         return self._tagged_child.get(tag_lower)
@@ -124,14 +124,14 @@ class TaggedLabelFrame(ttk.LabelFrame):
     def get_children(self) -> dict:
         """
         Return the dictionary of tagged children.
-        :return: A dictionary of tagged children.
+        :return: a dictionary of tagged children.
         """
         return self._tagged_child
 
     def set_default_content(self, tag='') -> None:
         """
         Set the default content of the child widget associated with the given tag.
-        :param tag: Tag to search for (case-insensitive).
+        :param tag: tag to search for (case-insensitive).
         """
         tag_lower = tag.lower()
         widget = self.get_child_by_tag(tag_lower)
@@ -142,11 +142,11 @@ class TaggedLabelFrame(ttk.LabelFrame):
         """
         Set the content of the child widget associated with the given tag.
         Also sets its row and column index.
-        :param tag: Tag to search for (case-insensitive).
-        :param label: Text to set (only for CheckButton widget).
-        :param content: Content to set.
-        :param row: Row index to set.
-        :param col: Column index to set.
+        :param tag: tag to search for (case-insensitive).
+        :param label: text to set (only for CheckButton widget).
+        :param content: content to set.
+        :param row: row index to set.
+        :param col: column index to set.
         """
         tag_lower = tag.lower()
         widget = self.get_child_by_tag(tag_lower)

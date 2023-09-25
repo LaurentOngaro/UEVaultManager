@@ -124,7 +124,7 @@ class DbFilesWindowClass(tk.Toplevel):
             """
             Add text to the result label.
             :param text: text to add
-            :param set_status: True for setting the status label, False otherwise
+            :param set_status: true for setting the status label, False otherwise
             """
             if set_status:
                 self.set_status(text)

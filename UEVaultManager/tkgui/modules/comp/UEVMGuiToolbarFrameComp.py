@@ -16,8 +16,8 @@ from UEVaultManager.tkgui.modules.functions_no_deps import append_no_duplicate
 class UEVMGuiToolbarFrame(ttk.Frame):
     """
     A toolbar frame for the UEVMGui Class.
-    :param container: The parent container.
-    :param data_table: The EditableTable instance.
+    :param container: the parent container.
+    :param data_table: the EditableTable instance.
     """
 
     def __init__(self, container, data_table: EditableTable):

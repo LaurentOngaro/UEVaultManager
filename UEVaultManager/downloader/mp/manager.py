@@ -109,15 +109,15 @@ class DLManager(Process):
         """
         Run analysis on manifest and old manifest (if not None) and return a result
         with a summary resources required in order to install the provided manifest.
-        :param manifest: Manifest to install.
-        :param old_manifest: Old manifest to patch from (if applicable).
-        :param patch: Patch instead of redownloading the entire file.
-        :param resume: Continue based on resume file if it exists.
-        :param file_prefix_filter: Only download files that start with this prefix.
-        :param file_exclude_filter: Exclude files with this prefix from download.
-        :param file_install_tag: Only install files with the specified tag.
-        :param processing_optimization: Attempt to optimize processing order and RAM usage.
-        :return: AnalysisResult.
+        :param manifest: manifest to install.
+        :param old_manifest: old manifest to patch from (if applicable).
+        :param patch: patch instead of redownloading the entire file.
+        :param resume: continue based on resume file if it exists.
+        :param file_prefix_filter: only download files that start with this prefix.
+        :param file_exclude_filter: exclude files with this prefix from download.
+        :param file_install_tag: only install files with the specified tag.
+        :param processing_optimization: attempt to optimize processing order and RAM usage.
+        :return: analysisResult.
         """
         analysis_res = AnalysisResult()
         analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
