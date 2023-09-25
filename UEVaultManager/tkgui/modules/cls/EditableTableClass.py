@@ -1199,7 +1199,7 @@ class EditableTable(Table):
         df = self.get_data()
         if update_format:
             # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
-            gui_f.show_progress(self, text='Formating and converting DataTable...')
+            gui_f.show_progress(self, text='Formating and converting DataTable...', keep_existing=True)
             self.set_data(self.set_columns_type(df))
             self.fillna_fixed(df)
             # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning

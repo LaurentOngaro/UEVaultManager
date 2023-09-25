@@ -314,6 +314,7 @@ def show_progress(
     show_progress_l=False,
     show_btn_stop_l=False,
     quit_on_close: bool = False,
+    keep_existing: bool = False,
     function: callable = None,
     function_parameters: dict = None
 ) -> Optional[ProgressWindow]:
@@ -326,9 +327,10 @@ def show_progress(
     :param max_value_l: The maximum value of the progress bar.
     :param show_progress_l: Whether to show the progress bar.
     :param show_btn_stop_l: Whether to show the stop button.
+    :param quit_on_close: whether to quit the application when the window is closed.
+    :param keep_existing: whether to keep the existing content when adding a new one.
     :param function: the function to execute.
     :param function_parameters: the parameters of the function.
-    :param quit_on_close: whether to quit the application when the window is closed.
     :return: The progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
@@ -356,6 +358,8 @@ def show_progress(
         root.progress_window = pw
     if pw:
         pw.set_activation(False)
+        if keep_existing:
+            text = pw.get_text() + '\n' + text
         pw.set_text(text)
         pw.update()
     return pw
