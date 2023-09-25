@@ -64,9 +64,9 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :return: Child widget
 
         Notes:
-        we can not use command parameter to manage callback here because it should be transmited
-        to the parent widget and in that case tag won't be available as an indentificator.
-        If alternate_container is not None, the widget the layout of the child must be managed by the caller.
+            We can not use command parameter to manage callback here because it should be transmited
+            to the parent widget and in that case tag won't be available as an indentificator.
+            If alternate_container is not None, the widget the layout of the child must be managed by the caller.
         """
         tag_lower = tag.lower()
         if alternate_container is None:

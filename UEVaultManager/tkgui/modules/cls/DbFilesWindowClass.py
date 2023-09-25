@@ -1,6 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
+- DbFilesWindowClass: the window to import/export data from/to CSV files.
 """
 import os
 import tkinter as tk
@@ -13,7 +14,7 @@ from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 
 class DBFW_Settings:
     """
-    Settings for the app.
+    Settings for the class when running as main.
     """
     folder_for_csv_files = 'K:/UE/UEVM/scraping/csv'
     db_path = 'K:/UE/UEVM/scraping/assets.db'

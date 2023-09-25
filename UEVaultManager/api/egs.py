@@ -3,7 +3,8 @@
 Implementation for:
 - EPCAPI : Epic Games Client API
 - GrabResult : Enum for the result of grabbing a page.
-- create_empty_assets_extra : Creates an empty asset extra dict.
+- create_empty_assets_extra : Create an empty asset extra dict.
+- is_asset_obsolete : Check if an asset is obsolete.
 """
 import json
 import logging
@@ -59,7 +60,7 @@ def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=
 
 def create_empty_assets_extra(asset_name: str) -> dict:
     """
-    Creates an empty asset extra dict.
+    Create an empty asset extra dict.
     :param asset_name:  The name of the asset.
     :return: The empty asset extra dict.
      """
@@ -69,12 +70,13 @@ def create_empty_assets_extra(asset_name: str) -> dict:
         'price': 0,
         'discount_price': 0,
         'review': 0,
-        'owned': False,
+        'owned': True,
         'discount_percentage': 0,
         'discounted': False,
         'asset_url': '',
         'page_title': '',
         'supported_versions': '',
+        'installed_folders': [],
         'grab_result': GrabResult.NO_ERROR.name,
     }
 
@@ -209,7 +211,7 @@ class EPCAPI:
 
     def get_marketplace_product_url(self, asset_slug: str = '') -> str:
         """
-        Returns the url for the asset in the marketplace.
+        Return the url for the asset in the marketplace.
         :param asset_slug: The asset slug.
         :return: The url.
         """
@@ -218,7 +220,7 @@ class EPCAPI:
 
     def get_api_product_url(self, uid: str = '') -> str:
         """
-        Returns the url for the asset using the UE API.
+        Return the url for the asset using the UE API.
         :param uid: The id of the asset (not the slug, nor the catalog_id).
         :return: The url.
         """
@@ -483,13 +485,14 @@ class EPCAPI:
         url = 'https://www.unrealengine.com' + links[0]
         return [url, asset_slug, GrabResult.NO_ERROR.name]
 
-    def grab_assets_extra(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False) -> dict:
+    def grab_assets_extra(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False, installed_app=None) -> dict:
         """
         Grab the extra data of an asset (price, review...) using BeautifulSoup from the marketplace.
         :param asset_name: name of the asset.
         :param asset_title: title of the asset.
         :param timeout: connection timeout.
         :param verbose_mode: verbose mode.
+        :param installed_app: installed app of the same name if any.
         :return: a dict with the extra data.
         """
         not_found_price = 0.0
@@ -519,14 +522,11 @@ class EPCAPI:
             return no_result
 
         soup_logged = BeautifulSoup(response.text, 'html.parser')
-
         price = not_found_price
         discount_price = not_found_price
-
         search_for_price = True
-
-        # check if already owned
-        owned = False
+        # owned = False
+        owned = True  # all the assets get with the legendary method are owned. No need to check. Could create incoherent info if parsing fails
         owned_elt = soup_logged.find('div', class_='purchase')
         if owned_elt is not None:
             if 'Free' in owned_elt.getText():
@@ -537,9 +537,10 @@ class EPCAPI:
                     self.log.info(f'{asset_name} is free (check 1)')
             elif 'Open in Launcher' in owned_elt.getText():
                 # owned asset
-                owned = True
-                if verbose_mode:
-                    self.log.info(f'{asset_name} is already owned')
+                # owned = True
+                # if verbose_mode:
+                #     self.log.info(f'{asset_name} is already owned')
+
                 # grab the price on a non logged soup (price will be available on that page only)
                 try:
                     response = requests.get(asset_url, timeout=timeout)  # not using session, so not logged in Epic game
@@ -621,6 +622,8 @@ class EPCAPI:
         )
         discounted = (discount_price < price) or discount_percentage > 0.0
 
+        # get Installed_Folders
+        installed_folders = installed_app.installed_folders if installed_app else []
         self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')
         return {
             'asset_name': asset_name,
@@ -634,6 +637,7 @@ class EPCAPI:
             'asset_url': asset_url,
             'page_title': page_title,
             'supported_versions': supported_versions,
+            'installed_folders': installed_folders,
             'grab_result': error_code,
         }
 
@@ -642,7 +646,8 @@ class EPCAPI:
         Get the asset data from the marketplace using beautifulsoup.
         :param url: The url to grab.
 
-        Note: This is the only way I know to get the id of an asset from its slug (or url)
+        Notes:
+            This is the only way I know to get the id of an asset from its slug (or url)
         """
         empty_data = {
             'id': '',

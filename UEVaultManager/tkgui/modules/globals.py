@@ -36,7 +36,36 @@ UEVM_parser_ref = None
 UEVM_cli_args: SaferDict = {}
 UEVM_filter_category = ''
 UEVM_logger_names = []  # list of logger names used by UEVM classes
+# lists of widgets that need to be enabled/disabled when some conditions change
+# - add widgets to the approprriate list when they are created by calling the append_no_duplicate() method
+# - the update_controls_state on window subclasses will use each list with the correct condition
 
+stated_widgets = {
+    # at least a row must be selected
+    'row_is_selected' : [],
+    # table content has changed
+    'table_has_changed': [],
+    # selected item (row/page) is not the first one
+    'not_first_item': [],
+    # selected item (row/page)  is not the last one
+    'not_last_item': [],
+    # selected asset is not the first one
+    'not_first_asset': [],
+    # selected asset is not the last one
+    'not_last_asset': [],
+    # selected page is not the first one
+    'not_first_page': [],
+    # selected page is not the last one
+    'not_last_page': [],
+    # not in offline_mode
+    'not_offline': [],
+    # a row is selected and the asset is owned
+    'asset_is_owned': [],
+    # a row is selected and the asset has an url
+    'asset_has_url': [],
+    # a row is selected and the asset is local
+    'asset_added_mannually': [],
+}
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 
 

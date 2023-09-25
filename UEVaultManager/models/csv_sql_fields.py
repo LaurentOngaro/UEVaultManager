@@ -7,7 +7,9 @@ from datetime import datetime
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int, create_uid
+from UEVaultManager.tkgui.modules.types import GrabResult, UEAssetType
 
+# noinspection GrazieInspection
 csv_sql_fields = {
     # fields mapping from csv to sql
     # key: csv field name, value: {sql name, state }
@@ -145,8 +147,8 @@ csv_sql_fields = {
         'state': CSVFieldState.USER,
         'field_type': CSVFieldType.STR
     },
-    'Installed folder': {
-        'sql_name': 'installed_folder',
+    'Installed folders': {
+        'sql_name': 'installed_folders',
         'state': CSVFieldState.USER,
         'field_type': CSVFieldType.STR
     },
@@ -505,19 +507,32 @@ def get_csv_field_name(sql_field_name: str) -> str:
     return result
 
 
+def set_default_values(data: dict) -> dict:
+    """
+    Set default values to a new row.
+    :param data: data to set default values to.
+    :return: data with default values set.
+    """
+    uid = create_uid()
+    data['Asset_id'] = gui_g.s.empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
+    data['Image'] = gui_g.s.empty_cell  # avoid displaying image warning on mouse over
+    data['Added Manually'] = True
+    data['Uid'] = uid
+    data['Category'] = UEAssetType.Unknown.category_name
+    data['Grab result'] = GrabResult.INCONSISTANT_DATA.name
+    return data
+
+
 def create_empty_csv_row(return_as_string=False):
     """
     Create an empty row for the csv file.
     :return: empty row.
     """
     data = {}
-    uid = create_uid()
     for key in get_csv_field_name_list():
         data[key] = get_default_value(csv_field_name=key)
-    data['Asset_id'] = gui_g.s.empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
-    data['Image'] = gui_g.s.empty_cell  # avoid displaying image warning on mouse over
-    data['Added Manually'] = True
-    data['Uid'] = uid
+
+    data = set_default_values(data)
     if return_as_string:
         data = ','.join(str(value) for value in data.values())
     return data

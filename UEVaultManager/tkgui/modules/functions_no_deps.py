@@ -189,9 +189,9 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
     if not os.path.exists(path):
         try:
             os.makedirs(path)
-        except (OSError, PermissionError) as e:
+        except (OSError, PermissionError) as error:
             is_valid = False
-            log(f'Error while creating the directory {path}: {e}')
+            log(f'Error while creating the directory {path}: {error!r}')
             if home_dir := os.environ.get('XDG_CONFIG_HOME'):
                 path = path_join(home_dir, 'UEVaultManager')
             else:
@@ -381,3 +381,23 @@ def open_folder_in_file_explorer(folder_path) -> bool:
             return False
     else:
         return False
+
+
+def append_no_duplicate(list_to_append: list, items: any, ok_if_exists: object = False) -> bool:
+    """
+    Append some items value to a list. Could raise an error if an object is already in the list.
+    :param list_to_append: The list to append to.
+    :param items: The items to append to the list. Could be a single object or a list of items.
+    :param ok_if_exists: If True, no error will be raised if an object is already in the list.
+    :return: True if all the items were appended, False if at least one was already in the list.
+    """
+    if not isinstance(items, list):
+        items = [items]
+    for item in items:
+        if item not in list_to_append:
+            list_to_append.append(item)
+        else:
+            if not ok_if_exists:
+                raise ValueError(f'append_no_duplicate method: Value {item} already in list {list_to_append}')
+            return False
+    return True

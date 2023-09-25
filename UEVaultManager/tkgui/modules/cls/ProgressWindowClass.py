@@ -167,6 +167,13 @@ class ProgressWindow(tk.Toplevel):
             self.function_return_value = self.result_queue.get()
             self.close_window(destroy_window=self.quit_on_close)  # the window is kept to allow further calls to the progress bar
 
+    def get_text(self) -> str:
+        """
+        Get the text of the label.
+        :return: the text.
+        """
+        return self.frm_content.lbl_function.cget("text")
+
     def set_text(self, new_text: str) -> None:
         """
         Set the text of the label.

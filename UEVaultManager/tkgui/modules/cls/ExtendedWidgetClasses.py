@@ -89,7 +89,7 @@ class ExtendedWidget:
 
     def get_content(self) -> str:
         """
-        Gets the content of the widget.
+        Get the content of the widget.
         :return: content of the widget.
         """
         try:
@@ -218,7 +218,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
 
     def get_content(self) -> str:
         """
-        Gets the content of the widget.
+        Get the content of the widget.
         :return: content of the widget.
         """
         try:
@@ -262,7 +262,8 @@ class ExtendedCheckButton(ExtendedWidget):
     :param kwargs: kwargs to pass to the widget.
     :return: ExtendedCheckButton instance.
 
-    Note: We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
+    Notes:
+        We don't use the ttk.Checkbutton because it's hard to sync its state when using the on_click event.
     """
     default_content = False
 
@@ -375,7 +376,7 @@ class ExtendedCheckButton(ExtendedWidget):
 
     def get_content(self) -> bool:
         """
-        Gets the content of the widget.
+        Get the content of the widget.
         :return: True if the checkbutton is checked, False otherwise.
         """
         return bool(self._var.get())

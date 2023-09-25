@@ -14,8 +14,8 @@ from itertools import chain
 from threading import current_thread
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import EPCAPI, GrabResult, is_asset_obsolete
-from UEVaultManager.core import default_datetime_format
+from UEVaultManager.api.egs import GrabResult, is_asset_obsolete
+from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -23,6 +23,31 @@ from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgres
 from UEVaultManager.tkgui.modules.functions import box_yesno, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, convert_to_datetime, convert_to_str_datetime, create_uid, \
     extract_variables_from_url
+
+
+class UEAS_Settings:
+    """
+    Settings for the class when running as main.
+    """
+    # set the number of rows to retrieve per page
+    # As the asset are saved individually by default, this value is only use for pagination in the files that store the url
+    # it speeds up the process of requesting the asset list
+    ue_asset_per_page = 100
+
+    if gui_g.s.testing_switch == 1:
+        # shorter and faster list for testing only
+        # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
+        threads = 0  # set to 0 to disable threading
+        start_row = 15000
+        stop_row = 15000 + ue_asset_per_page
+        clean_db = False
+        load_data_from_files = False
+    else:
+        threads = 16
+        start_row = 0
+        stop_row = 0  # 0 means no limit
+        clean_db = True
+        load_data_from_files = False  # by default the scraper will rebuild the database from scratch
 
 
 class UEAssetScraper:
@@ -43,8 +68,9 @@ class UEAssetScraper:
     :param use_raw_format: A boolean indicating whether to store the data in a raw format (as returned by the API) or after data have been parsed. Defaults to True.
     :param clean_database: A boolean indicating whether to clean the database before saving the data. Defaults to False.
     :param engine_version_for_obsolete_assets: A string representing the engine version to use to check if an asset is obsolete.
-    :param egs: An EPCAPI object (session handler). Defaults to None. If None, a new EPCAPI object will be created and the session used WON'T BE LOGGED.
+    :param core: An AppCore object. Defaults to None. If None, a new AppCore object will be created.
     :param progress_window: A ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
+    :param cli_args: A CliArgs object. Defaults to None. If None, a new CliArgs object will be created.
     """
 
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
@@ -66,7 +92,7 @@ class UEAssetScraper:
         load_from_files: bool = False,
         clean_database: bool = False,
         engine_version_for_obsolete_assets=None,
-        egs: EPCAPI = None,
+        core: AppCore = None,
         progress_window=None,  # don't use a typed annotation here to avoid import
         cli_args=None,
     ) -> None:
@@ -76,7 +102,7 @@ class UEAssetScraper:
         self._files_count: int = 0
         self._thread_executor = None
         self._scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
-        self._db_name: str = path_join(gui_g.s.scraping_folder, 'assets.db')
+        self._db_name: str = path_join(gui_g.s.scraping_folder, gui_g.s.sqlite_filename)
         self._scraped_ids = []  # store IDs of all items
         self._owned_asset_ids = []  # store IDs of all owned items
         self._urls = []  # list of all urls to scrap
@@ -103,7 +129,7 @@ class UEAssetScraper:
         except Exception:
             self.engine_version_for_obsolete_assets = None
 
-        self.egs = EPCAPI(timeout=timeout) if egs is None else egs
+        self.core = AppCore(timeout=timeout) if core is None else core
         self.asset_db_handler = UEAssetDbHandler(self._db_name)
 
         if progress_window is None:
@@ -125,6 +151,79 @@ class UEAssetScraper:
         message += f'\nData will be saved in database in {self._db_name}' if self.store_in_db else ''
         message += f'\nAsset Ids will be saved in {self._last_run_filename} or in database' if self.store_ids else ''
         self._log_info(message)
+
+    @staticmethod
+    def read_json_file(app_name: str, owned_assets_only=False) -> (dict, str):
+        """
+        Load JSON data from a file.
+        :param app_name: The name of the app to load the data from.
+        :param owned_assets_only: Whether only the owned assets are scraped.
+        :return: A dictionary containing the loaded data.
+        """
+        folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
+        filename = app_name + '.json'
+        json_data = {}
+        message = ''
+        with open(path_join(folder, filename), 'r') as fh:
+            try:
+                json_data = json.load(fh)
+            except json.decoder.JSONDecodeError as error:
+                message = f'The following error occured when loading data from {filename}:{error!r}'
+        return json_data, message
+
+    @staticmethod
+    def json_data_mapping(data_from_egs_format: dict) -> dict:
+        """
+        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary
+        :param data_from_egs_format: json data from EGS format (NEW)
+        :return: json data in UEVM format (OLD)
+        """
+        app_name = data_from_egs_format['releaseInfo'][-1]['appId']
+        category = data_from_egs_format['categories'][0]['path']
+
+        if category == 'assets/codeplugins':
+            category = 'plugins/engine'
+        category_1 = category.split('/')[0]
+        categorie = [{'path': category}, {'path': category_1}]
+        data_to_uevm_format = {
+            'app_name': app_name,
+            'app_title': data_from_egs_format['title'],
+            'asset_infos': {
+                'Windows': {
+                    'app_name': app_name,
+                    # 'asset_id': data_from_egs_format['id'], # no common value between EGS and UEVM
+                    # 'build_version': app_name,  # no common value between EGS and UEVM
+                    'catalog_item_id': data_from_egs_format['catalogItemId'],
+                    # 'label_name': 'Live-Windows',
+                    'metadata': {},
+                    'namespace': data_from_egs_format['namespace']
+                }
+            },
+            'base_urls': [],
+            'metadata': {
+                'categories': categorie,
+                'creationDate': data_from_egs_format['effectiveDate'],
+                'description': data_from_egs_format['description'],
+                'developer': data_from_egs_format['seller']['name'],
+                'developerId': data_from_egs_format['seller']['id'],
+                # 'endOfSupport': False,
+                'entitlementName': data_from_egs_format['catalogItemId'],
+                # 'entitlementType' : 'EXECUTABLE',
+                # 'eulaIds': [],
+                'id': data_from_egs_format['catalogItemId'],
+                # 'itemType': 'DURABLE',
+                'keyImages': data_from_egs_format['keyImages'],
+                'lastModifiedDate': data_from_egs_format['effectiveDate'],
+                'longDescription': data_from_egs_format['longDescription'],
+                'namespace': data_from_egs_format['namespace'],
+                'releaseInfo': data_from_egs_format['releaseInfo'],
+                'status': data_from_egs_format['status'],
+                'technicalDetails': data_from_egs_format['technicalDetails'],
+                'title': data_from_egs_format['title'],
+                # 'unsearchable': False
+            }
+        }
+        return data_to_uevm_format
 
     def _log_debug(self, message):
         """ a simple wrapper to use when cli is not initialized"""
@@ -186,7 +285,7 @@ class UEAssetScraper:
                 return ''
             existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
             asset_existing_data = existing_data.get(uid, None)
-            asset_data['asset_url'] = self.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
+            asset_data['asset_url'] = self.core.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
             if not uid:
                 continue
             # self._log_debug(f"uid='{uid}'")  # debug only ex:'c77526fd4365450c9810e198450d2b91'
@@ -293,16 +392,23 @@ class UEAssetScraper:
             # asset_data['ue_version'] = no_text_data
             # asset_data['uid'] = no_text_data
 
-            # we use an UEAsset object to store the data and create a valid dict from it
-            ue_asset = UEAsset()
-
             # we use copy data for user_fields to preserve user data
             if asset_existing_data:
                 for field in self.asset_db_handler.user_fields:
                     old_value = asset_existing_data.get(field, None)
                     if old_value:
                         asset_data[field] = old_value
+            # installed_folders
+            installed_folders = asset_data.get('installed_folders', '')  # asset_existing_data
+            app_installed = self.core.uevmlfs.get_installed_app(asset_data.get('asset_id', ''))
+            if app_installed:
+                app_installed_folders = app_installed.installed_folders
+                # merge the 2 lists without duplicates
+                installed_folders = list(set(installed_folders + app_installed_folders))
+            asset_data['installed_folders'] = sorted(installed_folders)
 
+            # we use an UEAsset object to store the data and create a valid dict from it
+            ue_asset = UEAsset()
             ue_asset.init_from_dict(asset_data)
             tags = ue_asset.data.get('tags', [])
             tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
@@ -365,7 +471,7 @@ class UEAssetScraper:
             self._urls = []
         start_time = time.time()
         if self.stop <= 0:
-            self.stop = self.egs.get_scraped_asset_count(owned_assets_only=owned_assets_only)
+            self.stop = self.core.egs.get_scraped_asset_count(owned_assets_only=owned_assets_only)
         assets_count = self.stop - self.start
         pages_count = int(assets_count / self.assets_per_page)
         if (assets_count % self.assets_per_page) > 0:
@@ -376,9 +482,9 @@ class UEAssetScraper:
                 return
             start = self.start + (i * self.assets_per_page)
             if owned_assets_only:
-                url = self.egs.get_owned_scrap_url(start, self.assets_per_page)
+                url = self.core.egs.get_owned_scrap_url(start, self.assets_per_page)
             else:
-                url = self.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
+                url = self.core.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
             self._urls.append(url)
         self._log_info(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
         if save_result:
@@ -407,7 +513,7 @@ class UEAssetScraper:
 
             self._log_info(f'--- START scraping data from {url}{thread_data}')
 
-            json_data = self.egs.get_json_data_from_url(url)
+            json_data = self.core.egs.get_json_data_from_url(url)
             if json_data.get('errorCode', '') != '':
                 self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
                 return
@@ -450,7 +556,8 @@ class UEAssetScraper:
         The execution is done in parallel using threads.
         :param owned_assets_only: Whether only the owned assets are scraped
 
-        Note: if self.urls is None or empty, gather_urls() will be called first.
+        Notes:
+            If self.urls is None or empty, gather_urls() will be called first.
         """
 
         def stop_executor(tasks) -> None:
@@ -669,36 +776,16 @@ class UEAssetScraper:
 
 if __name__ == '__main__':
     # the following code is just for class testing purposes
-
-    # set the number of rows to retrieve per page
-    # As the asset are saved individually by default, this value is only use for pagination in the files that store the url
-    # it speeds up the process of requesting the asset list
-    ue_asset_per_page = 100
-
-    if gui_g.s.testing_switch == 1:
-        # shorter and faster list for testing only
-        # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
-        threads = 0  # set to 0 to disable threading
-        start_row = 15000
-        stop_row = 15000 + ue_asset_per_page
-        clean_db = False
-        load_data_from_files = False
-    else:
-        threads = 16
-        start_row = 0
-        stop_row = 0  # 0 means no limit
-        clean_db = True
-        load_data_from_files = False  # by default the scraper will rebuild the database from scratch
-
+    st = UEAS_Settings()
     scraper = UEAssetScraper(
-        start=start_row,
-        stop=stop_row,
-        assets_per_page=ue_asset_per_page,
-        max_threads=threads,
+        start=st.start_row,
+        stop=st.stop_row,
+        assets_per_page=st.ue_asset_per_page,
+        max_threads=st.threads,
         store_in_db=True,
-        store_in_files=not load_data_from_files,
+        store_in_files=not st.load_data_from_files,
         store_ids=False,
-        load_from_files=load_data_from_files,
-        clean_database=clean_db
+        load_from_files=st.load_data_from_files,
+        clean_database=st.clean_db
     )
     scraper.save()

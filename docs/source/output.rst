@@ -204,8 +204,8 @@ file:
           'state': FieldState.USER,
           'field_type': FieldType.STR
       },
-      'Installed folder': {
-          'sql_name': 'installed_folder',
+      'Installed folders': {
+          'sql_name': 'installed_folders',
           'state': FieldState.USER,
           'field_type': FieldType.STR
       },

@@ -89,7 +89,7 @@ class Chunk:
         head_start = bio.tell()
 
         if struct.unpack('<I', bio.read(4))[0] != cls.header_magic:
-            raise ValueError('Chunk magic doesn\'t match!')
+            raise ValueError("Chunk magic doesn't match!")
 
         _chunk = cls()
         _chunk._bio = bio

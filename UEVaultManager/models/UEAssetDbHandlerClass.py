@@ -17,13 +17,22 @@ from faker import Faker
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.core import default_datetime_format
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list
+from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list, set_default_values
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, path_from_relative_to_absolute
-from UEVaultManager.tkgui.modules.types import UEAssetType
 from UEVaultManager.utils.cli import check_and_create_path
+
+
+class UEADBH_Settings:
+    """
+    Settings for the class when running as main.
+    """
+    clean_data = True
+    read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
+    db_folder = path_from_relative_to_absolute('../../../scraping/')
+    db_name = path_join(db_folder, 'assets.db')
 
 
 class UEAssetDbHandler:
@@ -110,7 +119,8 @@ class UEAssetDbHandler:
         Initialize the database connection.
         :return: The sqlite3.Connection object.
 
-        Note: It will also set self.Connection property.
+        Notes:
+            It will also set self.Connection property.
         """
         self._close_connection()  # close the connection IF IT WAS ALREADY OPENED
         try:
@@ -167,7 +177,8 @@ class UEAssetDbHandler:
         :param table_name: Name of the table.
         :param required_columns: Dictionary of columns to add. Key is the column name, value is the data type.
 
-        Note: the AFTER parameter in SQL is not supported in the SQLite version used.
+        Notes:
+            The AFTER parameter in SQL is not supported in the SQLite version used.
         """
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -422,16 +433,11 @@ class UEAssetDbHandler:
             self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V10
         if upgrade_from_version == DbVersionNum.V10:
-            """
-            does not exist yet
-            """
-            """
-            # do some stuff here
+            query = "ALTER TABLE assets RENAME COLUMN installed_folder TO installed_folders;"
+            self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V11
-            """
-            pass
         if previous_version != self.db_version:
-            self.logger.info(f'Database upgraded to {self.db_version}')
+            self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)
 
     def is_table_exist(self, table_name) -> bool:
@@ -483,7 +489,8 @@ class UEAssetDbHandler:
         Insert or update assets into the 'assets' table.
         :param assets: A dictionary or a list of dictionaries representing assets.
 
-        Note: the (existing) user fields data should have already been added or merged the asset dictionary.
+        Notes:
+            The (existing) user fields data should have already been added or merged the asset dictionary.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
@@ -494,14 +501,19 @@ class UEAssetDbHandler:
             str_today = datetime.datetime.now().strftime(default_datetime_format)
             # Note: the order of columns and value must match the order of the fields in UEAsset.init_data() method
             for asset in assets:
+                # make some conversion before saving the asset
                 asset['update_date'] = str_today
                 asset['creation_date'] = convert_to_str_datetime(value=asset['creation_date'], date_format=default_datetime_format)
                 asset['date_added_in_db'] = convert_to_str_datetime(
                     value=asset['date_added_in_db'], date_format=default_datetime_format, default=str_today
                 )
+                # converting lists to strings
                 tags = asset.get('tags', [])
                 tags_str = self.convert_tag_list_to_string(tags)
                 asset['tags'] = tags_str
+                installed_folders = asset.get('installed_folders', [])
+                asset['installed_folders'] = ','.join(installed_folders) if len(installed_folders) else None
+
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
@@ -577,12 +589,10 @@ class UEAssetDbHandler:
                 self.logger.warning(f"Error while getting columns name: {error!r}")
         return csv_column_names
 
-    def create_empty_row(self, return_as_string=True, empty_cell='None', empty_row_prefix='dummy_row_', do_not_save=False):
+    def create_empty_row(self, return_as_string=True, do_not_save=False):
         """
         Create an empty row in the 'assets' table.
         :param return_as_string: True to return the row as a string, False to.
-        :param empty_cell: The value to use for empty cells.
-        :param empty_row_prefix: The prefix to use for the row ID.
         :param do_not_save: True to not save the row in the database.
         :return: A row (dict) or a string representing the empty row.
         """
@@ -599,11 +609,8 @@ class UEAssetDbHandler:
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
-            ue_asset.data['asset_id'] = empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
-            ue_asset.data['thumbnail_url'] = empty_cell  # avoid displaying image warning on mouse over
-            ue_asset.data['added_manually'] = True
-            ue_asset.data['id'] = uid
-            ue_asset.data['category'] = UEAssetType.Unknown.category_name
+            ue_asset.data = set_default_values(ue_asset.data)
+
             if not do_not_save:
                 self.save_ue_asset(ue_asset)
             if return_as_string:
@@ -755,7 +762,8 @@ class UEAssetDbHandler:
         :param tag_value: If not None, only get the rows that have a tag == tag_value.
         :return: A list of asset_id.
 
-        Note: if tag_value is None, the returned list contains the asset_id that have at least a tag in the tags field that is an id in the tag table
+        Notes:
+            If tag_value is None, the returned list contains the asset_id that have at least a tag in the tags field that is an id in the tag table
         """
         rows = []
         if self.connection is not None:
@@ -856,7 +864,8 @@ class UEAssetDbHandler:
         :param suffix: A suffix to add to the CSV file name.
         :return: list of CSV files that have been writen, [] if none.
 
-        Note: each table will be exported to a separate CSV file using the table name as the file name.
+        Notes:
+            Each table will be exported to a separate CSV file using the table name as the file name.
         """
         result = []
         if self.connection is not None:
@@ -990,6 +999,7 @@ class UEAssetDbHandler:
                             if not row:
                                 continue
                             data_dict = dict(zip(csv_columns, row))
+                            # no conversion needed here because in CSV files, all is basically a string
                             if self._insert_or_update_row(table_name, data_dict):
                                 success_count += 1
                             else:
@@ -1048,7 +1058,7 @@ class UEAssetDbHandler:
                 random.randint(1, 5),  # stars
                 random.choice([0, 1]),  # must_buy
                 fake.word(),  # test_result
-                fake.file_path(),  # installed_folder
+                fake.file_path(),  # installed_folders
                 fake.sentence(),  # alternative
                 fake.word(),  # origin
                 random.choice([0, 1]),  # added_manually
@@ -1086,22 +1096,17 @@ class UEAssetDbHandler:
 
 if __name__ == "__main__":
     # the following code is just for class testing purposes
-    clean_data = True
-    read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
-
-    db_folder = path_from_relative_to_absolute('../../../scraping/')
-    db_name = path_join(db_folder, 'assets.db')
-    check_and_create_path(db_name)
-    asset_handler = UEAssetDbHandler(database_name=db_name, reset_database=(clean_data and not read_data_only))
-
-    if read_data_only:
+    st = UEADBH_Settings()
+    check_and_create_path(st.db_name)
+    asset_handler = UEAssetDbHandler(database_name=st.db_name, reset_database=(st.clean_data and not st.read_data_only))
+    if st.read_data_only:
         # Read existing assets
         asset_list = asset_handler.get_assets_data()
         print("Assets:", asset_list)
     elif gui_g.s.testing_switch == 1:
         # Create fake assets
         rows_to_create = 300
-        if not clean_data:
+        if not st.clean_data:
             rows_count = asset_handler.get_rows_count()
             print(f"Rows count: {rows_count}")
             rows_to_create -= rows_count

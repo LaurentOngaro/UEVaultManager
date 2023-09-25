@@ -12,8 +12,7 @@ from termcolor import colored
 # UEVaultManager.tkgui.modules.functions_no_deps
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __codename__, __name__, __version__
-from UEVaultManager.lfs.utils import clean_filename
-from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.lfs.utils import clean_filename, path_join
 from UEVaultManager.models.config import AppConf
 from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
@@ -54,38 +53,42 @@ class GUISettings:
         # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
         self.assets_folder: str = gui_fn.path_from_relative_to_absolute('../../assets')
 
+        self.default_filename = 'assets'
         self.app_icon_filename: str = path_join(self.assets_folder, 'main.ico')
         self.default_image_filename: str = path_join(self.assets_folder, 'UEVM_200x200.png')
 
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename: str = self.config_vars['last_opened_file']
         else:
-            self.csv_filename: str = path_join(self.results_folder, 'list.csv')
+            self.csv_filename: str = path_join(self.results_folder, self.default_filename + '.csv')
 
-        self.sqlite_filename: str = path_join(self.scraping_folder, 'assets.db')
+        self.sqlite_filename: str = path_join(self.scraping_folder, self.default_filename + '.db')
 
         self.app_monitor: int = 1
-        self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True}
-        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder. MUST BE LOWERCASE
-        self.ue_valid_file_content = ('.uplugin', '.uproject')
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder. MUST BE LOWERCASE
-        self.ue_valid_folder_content = ('content', '')  # must be a tuple
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file. MUST BE LOWERCASE
-        self.ue_valid_manifest_content = ('data', '')  # must be a tuple
-        # if a folder is in this tuple, the folder won't be scanned to find ue folders. MUST BE LOWERCASE
-        self.ue_invalid_folder_content = ('binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data')
-        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure. MUST BE LOWERCASE
-        self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')
+        # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
+        self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
+        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
+        self.ue_valid_file_content = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder
+        self.ue_valid_folder_content = ('content', '')  # must be a tuple. MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
+        self.ue_valid_manifest_content = ('data', '')  # must be a tuple. MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the folder won't be scanned to find ue folders
+        self.ue_invalid_folder_content = (
+            'binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data'
+        )  # must be a tuple. MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
+        self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')  # must be a tuple. MUST BE LOWERCASE for comparison
 
         self.assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'marketplace')
         self.owned_assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'owned')
         self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
         self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
-
+        self.filters_folder = path_join(self.path, 'filters')
         self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
         self.epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
         self.data_filetypes = (
-            ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('sqlite file', '*.db')
+            ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('SQlite file', '*.db')
         )
 
         self.preview_max_width: int = 150
@@ -93,6 +96,7 @@ class GUISettings:
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
         # self.empty_cell: str = 'None'
+        self.cell_is_empty_list = ['None', 'nan', 'NA', 'NaN', 'False', '0', '0.0']
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'dummy_row_'
         self.tag_prefix = 't_'
@@ -124,6 +128,7 @@ class GUISettings:
         # keep at the end
         self._app_title_long: str = ''  # use a getter to upddate the value in live
         self.app_title: str = __name__
+        self.offline_mode = False
 
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
@@ -174,8 +179,9 @@ class GUISettings:
     def app_title_long(self) -> str:
         """ Getter for app_title_long """
         self._app_title_long: str = f'{__name__} Gui v{__version__} ({__codename__})'
-        self._app_title_long += ' - DEBUG MODE' if self.debug_mode else ''
         self._app_title_long += f' - SWITCH VALUE {self.testing_switch} ' if self.testing_switch > 0 else ''
+        self._app_title_long += ' - DEBUG MODE' if self.debug_mode else ''
+        self._app_title_long += ' - OFFLINE MODE' if self.offline_mode else ''
         return self._app_title_long
 
     @property
@@ -187,16 +193,6 @@ class GUISettings:
     def rows_per_page(self, value):
         """ Setter for rows_per_page """
         self.config_vars['rows_per_page'] = value
-
-    @property
-    def data_filters(self) -> dict:
-        """ Getter for data_filters """
-        return self._get_serialized('data_filters', is_dict=True)
-
-    @data_filters.setter
-    def data_filters(self, values: dict):
-        """ Setter for data_filters """
-        self._set_serialized('data_filters', values)
 
     @property
     def x_pos(self) -> int:
@@ -399,6 +395,36 @@ class GUISettings:
         """ Setter for last_opened_folder """
         self.config_vars['last_opened_folder'] = value
 
+    @property
+    def last_opened_project(self) -> str:
+        """ Getter for last_opened_project """
+        return self.config_vars['last_opened_project']
+
+    @last_opened_project.setter
+    def last_opened_project(self, value):
+        """ Setter for last_opened_project """
+        self.config_vars['last_opened_project'] = value
+
+    @property
+    def last_opened_engine(self) -> str:
+        """ Getter for last_opened_engine """
+        return self.config_vars['last_opened_engine']
+
+    @last_opened_engine.setter
+    def last_opened_engine(self, value):
+        """ Setter for last_opened_engine """
+        self.config_vars['last_opened_engine'] = value
+
+    @property
+    def last_opened_filter(self) -> str:
+        """ Getter for last_opened_filter """
+        return self.config_vars['last_opened_filter']
+
+    @last_opened_filter.setter
+    def last_opened_filter(self, value):
+        """ Setter for last_opened_filter """
+        self.config_vars['last_opened_filter'] = value
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -432,10 +458,6 @@ class GUISettings:
                 'comment':
                 'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
                 'value': 37
-            },
-            'data_filters': {
-                'comment': 'Filters to apply to the datatable. Stored in json format. Automatically saved on quit',
-                'value': ''
             },
             'x_pos': {
                 'comment': 'X position of the main windows. Set to 0 to center the window. Automatically saved on quit',
@@ -539,6 +561,19 @@ class GUISettings:
                 'comment': 'The last opened Folder name. Automatically saved when browsing a folder',
                 'value': ''
             },
+            'last_opened_project': {
+                'comment': 'The last opened project name. Automatically saved when browsing a project folder',
+                'value': ''
+            },
+            'last_opened_engine': {
+                'comment': 'The last opened Folder name. Automatically saved when browsing an engine folder',
+                'value': ''
+            },
+            'last_opened_filter': {
+                'comment':
+                'The last opened filter file name.Automatically saved when loading a filter.Leave empty to load no filter at start.Contains the file name only, not the path',
+                'value': ''
+            },
         }
 
         has_changed = False
@@ -564,17 +599,16 @@ class GUISettings:
         # store all the properties that must be saved in config file
         # no need of fallback values here, they are set in the config file by default
         config_vars = {
-            'rows_per_page': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'rows_per_page')),
-            'data_filters': self.config.get('UEVaultManager', 'data_filters'),
-            'x_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'x_pos')),
-            'y_pos': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'y_pos')),
-            'width': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'width')),
-            'height': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'height')),
-            'debug_mode': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'debug_mode')),
-            'never_update_data_files': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'never_update_data_files')),
-            'reopen_last_file': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'reopen_last_file')),
-            'use_colors_for_data': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_colors_for_data')),
-            'image_cache_max_time': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'image_cache_max_time')),
+            'rows_per_page': self.config.getint('UEVaultManager', 'rows_per_page'),
+            'x_pos': self.config.getint('UEVaultManager', 'x_pos'),
+            'y_pos': self.config.getint('UEVaultManager', 'y_pos'),
+            'width': self.config.getint('UEVaultManager', 'width'),
+            'height': self.config.getint('UEVaultManager', 'height'),
+            'debug_mode': self.config.getboolean('UEVaultManager', 'debug_mode'),
+            'never_update_data_files': self.config.getboolean('UEVaultManager', 'never_update_data_files'),
+            'reopen_last_file': self.config.getboolean('UEVaultManager', 'reopen_last_file'),
+            'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),
+            'image_cache_max_time': self.config.getint('UEVaultManager', 'image_cache_max_time'),
             'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file'),
             'cache_folder': self.config.get('UEVaultManager', 'cache_folder'),
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
@@ -582,13 +616,16 @@ class GUISettings:
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
             'column_infos': self.config.get('UEVaultManager', 'column_infos'),
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
-            'use_threads': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'use_threads')),
+            'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
             'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
-            'testing_switch': gui_fn.convert_to_int(self.config.get('UEVaultManager', 'testing_switch')),
+            'testing_switch': self.config.getint('UEVaultManager', 'testing_switch'),
             'assets_order_col': self.config.get('UEVaultManager', 'assets_order_col'),
-            'check_asset_folders': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'check_asset_folders')),
-            'browse_when_add_row': gui_fn.convert_to_bool(self.config.get('UEVaultManager', 'browse_when_add_row')),
+            'check_asset_folders': self.config.getboolean('UEVaultManager', 'check_asset_folders'),
+            'browse_when_add_row': self.config.getboolean('UEVaultManager', 'browse_when_add_row'),
             'last_opened_folder': self.config.get('UEVaultManager', 'last_opened_folder'),
+            'last_opened_project': self.config.get('UEVaultManager', 'last_opened_project'),
+            'last_opened_engine': self.config.get('UEVaultManager', 'last_opened_engine'),
+            'last_opened_filter': self.config.get('UEVaultManager', 'last_opened_filter'),
         }
         return config_vars
 

@@ -16,7 +16,7 @@ from UEVaultManager.lfs.utils import path_join
 
 class JSPW_Settings:
     """
-    Settings for the app.
+    Settings for the class when running as main.
     """
     folder_for_tags_path = 'K:/UE/UEVM/scraping/assets/marketplace'
     folder_for_rating_path = 'K:/UE/UEVM/scraping/global'
@@ -237,9 +237,9 @@ class JsonProcessingWindow(tk.Toplevel):
             status_text = f'{data_type.title()} has been stored in the database. Updated: {self.updated}, Added: {self.added}'
             self.frm_control.add_result(status_text, True)
 
-        except sqlite3.Error as e:
+        except sqlite3.Error as error:
             conn.rollback()
-            self.frm_control.add_result(f'An error occurred: {e}')
+            self.frm_control.add_result(f'An error occurred: {error!r}')
 
         finally:
             conn.close()

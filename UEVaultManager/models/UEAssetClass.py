@@ -35,7 +35,8 @@ class UEAsset:
         """
         Initialize the EGS data dictionary.
 
-        Note: the keys of self.Data dict are initialized here.
+        Notes:
+            The keys of self.Data dict are initialized here.
         """
         data = {}
         for key in get_sql_field_name_list(include_asset_only=True):

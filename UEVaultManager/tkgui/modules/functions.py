@@ -12,6 +12,7 @@ import tkinter as tk
 from datetime import datetime
 from io import BytesIO
 from tkinter import messagebox
+from typing import Optional
 
 import requests
 from PIL import Image, ImageTk
@@ -96,7 +97,8 @@ def log_info(msg: str) -> None:
     Log an info message.
     :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
@@ -110,7 +112,7 @@ def log_debug(msg: str) -> None:
     Log a debug message.
     :param msg: the message to log.
 
-    Note:
+    Notes:
         It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
         This message will only be logged if the debug mode is enabled.
     """
@@ -133,7 +135,8 @@ def log_warning(msg: str) -> None:
     Log a warning message.
     :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
@@ -145,9 +148,11 @@ def log_warning(msg: str) -> None:
 def log_error(msg: str) -> None:
     """
     Log an error message.
-    :param msg: the message to log. Note that the app will exit after logging the message.
+    :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        The app will (normally) exit after logging the message. Sometimes it doesn't work (check ?)
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.error(msg)
@@ -187,6 +192,9 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
     :param scale: the scale to apply to the image.
     :param timeout: the timeout in seconds to wait for the image to be downloaded.
     """
+    if gui_g.s.offline_mode:
+        # could be usefull if connexion is slow
+        show_default_image(canvas_image)
     if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
         return
     try:
@@ -272,7 +280,7 @@ def custom_print(text='', keep_mode=True) -> None:
     :param keep_mode: whether to keep the existing content when adding a new one.
     """
     if gui_g.display_content_window_ref is not None:
-        gui_g.display_content_window_ref.display(content=text + '\n', keep_mode=keep_mode)
+        gui_g.display_content_window_ref.display(content=text, keep_mode=keep_mode)
     else:
         print(text)
 
@@ -306,9 +314,10 @@ def show_progress(
     show_progress_l=False,
     show_btn_stop_l=False,
     quit_on_close: bool = False,
+    keep_existing: bool = False,
     function: callable = None,
     function_parameters: dict = None
-) -> ProgressWindow:
+) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
     :param parent: The parent window.
@@ -318,14 +327,21 @@ def show_progress(
     :param max_value_l: The maximum value of the progress bar.
     :param show_progress_l: Whether to show the progress bar.
     :param show_btn_stop_l: Whether to show the stop button.
+    :param quit_on_close: whether to quit the application when the window is closed.
+    :param keep_existing: whether to keep the existing content when adding a new one.
     :param function: the function to execute.
     :param function_parameters: the parameters of the function.
-    :param quit_on_close: whether to quit the application when the window is closed.
     :return: The progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
     root = get_tk_root(parent)
-    if root and root.progress_window is None:
+    if not root:
+        return None
+    try:
+        # check if a progress window already exists
+        pw = root.progress_window
+        pw.set_activation(False)  # test if the window is still active
+    except (tk.TclError, AttributeError):
         pw = ProgressWindow(
             title=gui_g.s.app_title,
             parent=parent,
@@ -340,11 +356,12 @@ def show_progress(
             function_parameters=function_parameters
         )
         root.progress_window = pw
-    else:
-        pw = root.progress_window
-    pw.set_text(text)
-    pw.set_activation(False)
-    pw.update()
+    if pw:
+        pw.set_activation(False)
+        if keep_existing:
+            text = pw.get_text() + '\n' + text
+        pw.set_text(text)
+        pw.update()
     return pw
 
 
@@ -391,7 +408,7 @@ def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> Non
     :param logger: the logger
     :param debug_value: the value to set. If None, it will use the value of gui_g.s.debug_mode
 
-    Note:
+    Notes:
         Will also update all the loggers level of the UEVM classes.
         Call this function when the debug mode is changed.
     """
@@ -415,3 +432,83 @@ def make_modal(window: tk.Toplevel = None, wait_for_close=True) -> None:
     if wait_for_close:
         # Note: this will block the main window
         window.wait_window()
+
+
+def set_widget_state(widget: tk.Widget, is_enabled: bool, text_swap: {} = None) -> None:
+    """
+    Enable or disable a widget.
+    :param widget: widget to update.
+    :param is_enabled: Whether to enable the widget, if False, disable it.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    if widget is not None:
+        state = tk.NORMAL if is_enabled else tk.DISABLED
+        state_inversed = tk.NORMAL if not is_enabled else tk.DISABLED
+        try:
+            # noinspection PyUnresolvedReferences
+            widget.config(state=state)
+            current_text = widget.cget('text')
+            if text_swap is not None and text_swap.get(state, '') == current_text:
+                swapped_text = text_swap.get(state_inversed, '')
+                if swapped_text:
+                    # noinspection PyUnresolvedReferences
+                    widget.config(text=swapped_text)
+        except tk.TclError:
+            pass
+
+
+def enable_widget(widget) -> None:
+    """
+    Enable a widget.
+    :param widget: widget to update.
+    """
+    set_widget_state(widget, True)
+
+
+def disable_widget(widget) -> None:
+    """
+    Disable a widget.
+    :param widget: widget to update.
+    """
+    set_widget_state(widget, False)
+
+
+def set_widget_state_in_list(list_of_widget: [], is_enabled: bool, text_swap: {} = None) -> None:
+    """
+    Enable or disable a widget.
+     :param list_of_widget: the list of widgets to update.
+    :param is_enabled: Whether to enable the widget, if False, disable it.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    for widget in list_of_widget:
+        set_widget_state(widget, is_enabled, text_swap)
+
+
+def enable_widgets_in_list(list_of_widget: []) -> None:
+    """
+    Enable a list of widgets.
+    :param list_of_widget: the list of widgets to enable.
+    """
+    for widget in list_of_widget:
+        enable_widget(widget)
+
+
+def disable_widgets_in_list(list_of_widget: []) -> None:
+    """
+    Disable a list of widgets.
+    :param list_of_widget: the list of widgets to disable.
+    :return:
+    """
+    for widget in list_of_widget:
+        disable_widget(widget)
+
+
+def update_widgets_in_list(is_enabled: bool, list_name: str, text_swap=None) -> None:
+    """
+    Update the state of a list of widgets.
+    :param is_enabled: True to enable the widgets, False to disable them.
+    :param list_name: the name of the list of widgets to update.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    widget_list = gui_g.stated_widgets.get(list_name, [])
+    set_widget_state_in_list(widget_list, is_enabled=is_enabled, text_swap=text_swap)

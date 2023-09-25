@@ -1,0 +1,163 @@
+{
+  "app_name": "3DRudder_4.22",
+  "app_title": "3dRudder Foot Motion Controller Plugin",
+  "asset_infos": {
+    "Windows": {
+      "app_name": "3DRudder_4.22",
+      "asset_id": "3DRudder",
+      "build_version": "4.22.0-6953818+++depot+UE4-UserContent-Windows",
+      "catalog_item_id": "806bafc23468479f93bcabee24223e14",
+      "label_name": "Live-Windows",
+      "metadata": {},
+      "namespace": "ue"
+    }
+  },
+  "base_urls": [],
+  "metadata": {
+    "categories": [
+      {
+        "path": "plugins/engine"
+      },
+      {
+        "path": "plugins"
+      }
+    ],
+    "creationDate": "2017-05-25T22:29:12.225Z",
+    "description": "The 3dRudder is an amazing foot-powered motion controller for VR",
+    "developer": "3dRudder",
+    "developerId": "o-8385ee2d96474bac1c871c0afa7388",
+    "endOfSupport": false,
+    "entitlementName": "806bafc23468479f93bcabee24223e14",
+    "entitlementType": "EXECUTABLE",
+    "eulaIds": [],
+    "id": "806bafc23468479f93bcabee24223e14",
+    "itemType": "DURABLE",
+    "keyImages": [
+      {
+        "height": 1080,
+        "md5": "33a23732942c35f6ffd1ca4641445efa",
+        "size": 575346,
+        "type": "Screenshot",
+        "uploadedDate": "2017-06-09T17:55:13.374Z",
+        "url": "https://cdn1.epicgames.com/ue/item/3dRudder Controller Plugin (BluePrint)_screenshot_01-1920x1080-33a23732942c35f6ffd1ca4641445efa.png",
+        "width": 1920
+      },
+      {
+        "height": 1080,
+        "md5": "3f48cc2449724e999691cffdb902079f",
+        "size": 472490,
+        "type": "Screenshot",
+        "uploadedDate": "2017-06-09T17:55:11.723Z",
+        "url": "https://cdn1.epicgames.com/ue/item/3dRudder Controller Plugin (BluePrint)_screenshot_02-1920x1080-3f48cc2449724e999691cffdb902079f.png",
+        "width": 1920
+      },
+      {
+        "height": 512,
+        "md5": "3212a9719f7e06e5cdf54132cef4ec11",
+        "size": 355996,
+        "type": "Thumbnail",
+        "uploadedDate": "2017-06-09T17:55:10.281Z",
+        "url": "https://cdn1.epicgames.com/ue/item/3dRudder Controller Plugin (BluePrint)_Thumb-512x512-3212a9719f7e06e5cdf54132cef4ec11.png",
+        "width": 512
+      },
+      {
+        "height": 488,
+        "md5": "0d89eb05d274562fabb5a0b8f555c39a",
+        "size": 547081,
+        "type": "Featured",
+        "uploadedDate": "2017-06-09T17:55:15.400Z",
+        "url": "https://cdn1.epicgames.com/ue/item/3dRudder Controller Plugin (BluePrint)_featured-894x488-0d89eb05d274562fabb5a0b8f555c39a.png",
+        "width": 894
+      }
+    ],
+    "lastModifiedDate": "2020-07-24T13:30:27.514Z",
+    "longDescription": "<h2>To develop with our Asset/Plugin, it&#39;s necessary to use our 3dRudder dev Kit. For this, please contact us at\u00a0<a href=\"mailto:support&#64;3drudder.com\" rel=\"nofollow\">support&#64;3drudder.com</a></h2><h2><strong><u>Warning: this version is obsolete go to our website to </u></strong><a href=\"https://3drudder-dev.com/downloads/#unreal-engine\" rel=\"nofollow\"><strong><u>download</u></strong></a><strong><u> the latest version and PS4 support </u></strong></h2><p><br /></p><p>Trailer: <a href=\"https://www.youtube.com/watch?v&#61;ktm5qnWx-rI\" rel=\"nofollow\">https://www.youtube.com/watch?v&#61;ktm5qnWx-rI</a></p><p>The 3dRudder is an amazing foot-powered controller that can be used in a variety of settings.</p><p>In VR, for simulation or gaming, the 3dRudder enables the users to move intuitively and naturally with their feet while their hands focus on doing. It only takes a few seconds for anyone to learn how to use it, even for people who do not know how to use a gamepad.</p><p>In Gaming, the 3dRudder lets you build new gameplays and offers a renewed experience to users.</p><p>Finally, the 3dRudder is a great accessibility device for anyone with upper body disabilities. When making a game, a computer software\u2026 accessible, the 3dRudder is a relevant addition.</p><p>The 3dRudder lets you move in both UE4 Editor and UE4 VR Editor. In VR Editor you\u2019ll have the ability to hover over your scene and adopt any point of view\u00a0intuitively. You\u2019ll also be able to move objects while you move\u00a0yourself. As you can use the 3dRudder directly at your desk you\u2019ll be able to switch between Editor and VR Editor seamlessly.</p><p><br /></p><p><a href=\"https://3drudder-dev.com/docs/introduction/sdk_licensing_agreement/\" rel=\"nofollow\">License</a></p>",
+    "namespace": "ue",
+    "releaseInfo": [
+      {
+        "appId": "3DRudder_4.15",
+        "compatibleApps": [
+          "UE_4.15"
+        ],
+        "dateAdded": "2017-06-09T00:00:00.000Z",
+        "id": "4a3fa519cedd4d96abbbdb86fbf6580e",
+        "platform": [
+          "Windows"
+        ],
+        "versionTitle": "3DRudder_4.15"
+      },
+      {
+        "appId": "3DRudder_4.16",
+        "compatibleApps": [
+          "UE_4.16"
+        ],
+        "dateAdded": "2017-06-09T00:00:00.000Z",
+        "id": "4b261dc5f56345198e968143056cdaa2",
+        "platform": [
+          "Windows"
+        ],
+        "versionTitle": "3DRudder_4.16"
+      },
+      {
+        "appId": "3DRudder_4.17",
+        "compatibleApps": [
+          "UE_4.17"
+        ],
+        "dateAdded": "2017-09-20T15:06:17.258Z",
+        "id": "21486ab7cb7749e18d927bf85b4002fb",
+        "platform": [
+          "Windows"
+        ],
+        "releaseNote": "",
+        "versionTitle": "3DRudder_4.17"
+      },
+      {
+        "appId": "3DRudder_4.18",
+        "compatibleApps": [
+          "UE_4.18"
+        ],
+        "dateAdded": "2017-11-09T00:00:00.000Z",
+        "id": "09c1a94efa224aff8d9b6f15fa5ad42b",
+        "platform": [
+          "Windows"
+        ],
+        "releaseNote": "4.18 IWYU",
+        "versionTitle": "3DRudder_4.18"
+      },
+      {
+        "appId": "3DRudder_4.19",
+        "compatibleApps": [
+          "UE_4.19"
+        ],
+        "dateAdded": "2018-04-10T00:00:00.000Z",
+        "id": "4b89b8f53cb84883ad52e07703a64e52",
+        "platform": [
+          "Windows"
+        ],
+        "releaseNote": "",
+        "versionTitle": "3DRudder_4.19"
+      },
+      {
+        "appId": "3DRudder_4.22",
+        "compatibleApps": [
+          "UE_4.22"
+        ],
+        "dateAdded": "2019-06-12T00:00:00.000Z",
+        "id": "c66e5eccdff7427f88df03b9e6fd02da",
+        "platform": [
+          "Windows",
+          "SteamVR / HTC Vive",
+          "Oculus",
+          "PS4",
+          "Android"
+        ],
+        "releaseNote": "",
+        "versionTitle": "3DRudder_4.22"
+      }
+    ],
+    "status": "ACTIVE",
+    "technicalDetails": "<p>List of Features:</p>",
+    "title": "3dRudder Foot Motion Controller Plugin",
+    "unsearchable": false
+  }
+}

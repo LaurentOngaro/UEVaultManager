@@ -32,7 +32,7 @@ class EditCellWindow(tk.Toplevel):
             # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         except Exception as error:
-            gui_f.log_warning(f'Error in EditCellWindowClass: {error}')
+            gui_f.log_warning(f'Error in EditCellWindowClass: {error!r}')
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
@@ -50,10 +50,12 @@ class EditCellWindow(tk.Toplevel):
         self.bind('<Control-Tab>', self._focus_next_widget)
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
+        self.bind('<Button-1>', self.on_left_click)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         gui_g.edit_cell_window_ref = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+        self.update_controls_state()
 
     @staticmethod
     def _focus_next_widget(event):
@@ -83,14 +85,21 @@ class EditCellWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
-            # (bootstyle is not recognized by PyCharm)
             ttk.Label(self, text='Respect the initial format when changing a value').grid(row=0, column=0, columnspan=2, **grid_def_options)
             # noinspection PyArgumentList
-            ttk.Button(self, text='Save Changes', command=container.save_changes, bootstyle=INFO).grid(row=1, column=0, **grid_def_options)
+            # (bootstyle is not recognized by PyCharm)
+            btn_save_cell = ttk.Button(self, text='Save Changes', command=container.save_changes, bootstyle=INFO)
+            btn_save_cell.grid(row=1, column=0, **grid_def_options)
             # noinspection PyArgumentList
-            ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING).grid(row=1, column=1, **grid_def_options)
+            # (bootstyle is not recognized by PyCharm)
+            ttk_item = ttk.Button(self, text='Close', command=container.on_close, bootstyle=WARNING)
+            ttk_item.grid(row=1, column=1, **grid_def_options)
+
             self.columnconfigure('all', weight=1)
             self.rowconfigure('all', weight=1)
+
+            widget_list = gui_g.stated_widgets.get('table_has_changed', [])
+            gui_fn.append_no_duplicate(widget_list, btn_save_cell)
 
     def set_size(self, width: int, height: int) -> None:
         """
@@ -98,7 +107,8 @@ class EditCellWindow(tk.Toplevel):
         :param width: the width.
         :param height: the height
         
-        Note: The window is centered on the screen.
+        Notes:
+            The window is centered on the screen.
         """
         geometry = gui_fn.center_window_on_screen(0, width, height)
         self.geometry(geometry)
@@ -109,7 +119,7 @@ class EditCellWindow(tk.Toplevel):
         Event when a key is pressed.
         :param event: the event that triggered the call of this function.
         """
-        # print(event.keysym)
+        self.update_controls_state()
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
             self.on_close()
@@ -117,14 +127,19 @@ class EditCellWindow(tk.Toplevel):
             self.save_changes()
         return 'break'
 
+    # noinspection PyUnusedLocal
+    def on_left_click(self, event=None) -> None:
+        """
+        When the left mouse button is clicked, show the selected row in the quick edit frame.
+        :param event:
+        """
+        self.update_controls_state()  # to update when clicking on the checkbox
+
     def on_close(self, _event=None) -> None:
         """
         Event when the window is closing.
         :param _event: the event that triggered the call of this function.
         """
-        current_values = self.editable_table.get_edit_cell_values()
-        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
-        self.must_save = current_values and self.initial_values != current_values
         if self.must_save:
             if gui_f.box_yesno('Changes have been made in the window. Do you want to keep them ?'):
                 self.save_changes()
@@ -144,3 +159,13 @@ class EditCellWindow(tk.Toplevel):
         """
         self.must_save = False
         self.editable_table.save_edit_cell_value()
+
+    def update_controls_state(self) -> None:
+        """
+        Update some controls in the window depending on conditions
+        """
+        current_values = self.editable_table.get_edit_cell_values()
+        # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
+        self.must_save = current_values and self.initial_values != current_values
+
+        gui_f.update_widgets_in_list(self.must_save, 'table_has_changed')
