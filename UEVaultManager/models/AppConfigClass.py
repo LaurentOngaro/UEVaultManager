@@ -1,14 +1,14 @@
 # coding=utf-8
 """
 Implementation for:
-- AppConf: ConfigParser subclass that saves modification time of config file.
+- AppConfig: ConfigParser subclass that saves modification time of config file.
 """
 import configparser
 import os
 import time
 
 
-class AppConf(configparser.ConfigParser):
+class AppConfig(configparser.ConfigParser):
     """
     ConfigParser subclass that saves modification time of config file.
     :param args: arguments.

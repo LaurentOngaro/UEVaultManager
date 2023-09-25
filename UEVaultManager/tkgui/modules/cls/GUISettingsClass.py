@@ -13,7 +13,7 @@ from termcolor import colored
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __codename__, __name__, __version__
 from UEVaultManager.lfs.utils import clean_filename, path_join
-from UEVaultManager.models.config import AppConf
+from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
 
@@ -37,7 +37,7 @@ class GUISettings:
     config_file: str = ''  # config file path for cli part (cli). Set by the cli part
 
     def __init__(self, config_file=None):
-        self.config = AppConf(comment_prefixes='/', allow_no_value=True)
+        self.config = AppConfig(comment_prefixes='/', allow_no_value=True)
 
         self.init_gui_config_file(config_file)
 

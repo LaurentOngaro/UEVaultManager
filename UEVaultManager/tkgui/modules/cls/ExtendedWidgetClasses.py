@@ -41,7 +41,7 @@ class ExtendedWidget:
     def _remove_extended_args(kwargs, function_signature) -> None:
         """
         Removes the extended args from the kwargs.
-        :param kwargs: args to extract from.
+        :param kwargs: keyword arguments.
         :param function_signature: function to get the signature from. We can't use a non-static method because the init function will be the derived class's init function.
         """
         init_args = inspect.signature(function_signature)

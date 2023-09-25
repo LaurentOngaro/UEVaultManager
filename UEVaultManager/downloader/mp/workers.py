@@ -1,7 +1,7 @@
 # coding: utf-8
 """
 Implementation for:
-- DownloadWorker: Downloads chunks from the internet and writes them to the shared memory segment.
+- DLWorker: Downloads chunks from the internet and writes them to the shared memory segment.
 - FileWorker: Writes chunks to files.
 """
 import logging
@@ -15,7 +15,7 @@ from queue import Empty
 import requests
 
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.chunk import Chunk
+from UEVaultManager.models.ChunkClass import Chunk
 from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, TaskFlags, TerminateWorkerTask, WriterTask, WriterTaskResult)
 
 

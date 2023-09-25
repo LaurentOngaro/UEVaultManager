@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- MockLauncher: mock launcher to handle the webview login
+- WebviewWindow: Window to handle the webview login.
 - do_webview_login() : launch the webview login.
 """
 import json
@@ -56,9 +56,9 @@ sid_req.send();
 '''
 
 
-class MockLauncher:
+class WebviewWindow:
     """
-    Mock launcher to handle the webview login.
+    WebviewWindow to handle EGS login using a webview.
     :param callback_sid: callback function to handle the SID login.
     :param callback_code: callback function to handle the exchange code.
     """
@@ -70,6 +70,14 @@ class MockLauncher:
         self.inject_js = True
         self.destroy_on_load = False
         self.callback_result = None
+
+    @staticmethod
+    def open_url_external(url: str) -> None:
+        """
+        Open the given url in the default browser.
+        :param url: url to open.
+        """
+        webbrowser.open(url)
 
     def on_loaded(self) -> None:
         """
@@ -100,14 +108,6 @@ class MockLauncher:
         :param kwargs: keyword arguments.
         """
         return
-
-    @staticmethod
-    def open_url_external(url: str) -> None:
-        """
-        Open the given url in the default browser.
-        :param url: url to open.
-        """
-        webbrowser.open(url)
 
     def set_exchange_code(self, exchange_code: str) -> None:
         """
@@ -168,7 +168,7 @@ def do_webview_login(callback_sid=None, callback_code=None) -> None:
     :param callback_sid: callback function to handle the SID login.
     :param callback_code: callback function to handle the exchange code.
     """
-    api = MockLauncher(callback_sid=callback_sid, callback_code=callback_code)
+    api = WebviewWindow(callback_sid=callback_sid, callback_code=callback_code)
     url = login_url
 
     if os.name == 'nt':

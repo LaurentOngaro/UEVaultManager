@@ -1,9 +1,10 @@
 # coding: utf-8
 """
 Imlementations for:
-- UpdateSeverity: Enum for update severity.
 - UEVMAPI: Class for interacting with the UEVaultManager API.
-- extract_codename and extract_severity functions.
+- UpdateSeverity: Enum for update severity.
+- extract_codename(): Extract the codename from the PyPI description.
+- extract_severity(): Get the update severity of a new version.
 """
 import logging
 import re

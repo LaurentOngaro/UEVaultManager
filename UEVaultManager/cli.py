@@ -29,7 +29,7 @@ from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_ass
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import copy_folder, path_join
-from UEVaultManager.models.app import App
+from UEVaultManager.models.Asset import Asset
 from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, get_csv_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -44,7 +44,7 @@ from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, creat
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import check_and_create_path, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
-from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
+from UEVaultManager.utils.HiddenAliasSubparsersActionClass import HiddenAliasSubparsersAction
 
 # add the parent folder to the sys.path list, to run the script from the command line without import module error
 # must be done before importing project module (ex: global.py)
@@ -382,7 +382,7 @@ class UEVaultManagerCLI:
         auth_code = ''
         if not args.auth_code and not args.session_id:
             # only import here since pywebview import is slow
-            from UEVaultManager.utils.webview_login import webview_available, do_webview_login
+            from UEVaultManager.utils.WebviewWindowClass import webview_available, do_webview_login
 
             if not webview_available or args.no_webview or self.core.webview_killswitch:
                 # unfortunately the captcha stuff makes a complete CLI login flow kinda impossible right now...
@@ -939,7 +939,7 @@ class UEVaultManagerCLI:
             try:
                 json_data_egs = UEAssetScraper.read_json_file(app_name)
                 json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs[0])
-                item = App.from_json(json_data_uevm)  # create an object from the App class using the json data
+                item = Asset.from_json(json_data_uevm)  # create an object from the App class using the json data
             except (Exception, ):
                 item = None
         if not item:
@@ -1806,8 +1806,8 @@ def main():
         '--vault-cache',
         dest='vault_cache',
         action='store_true',
-        help=
-        'Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case, the download_path option will be ignored'
+        help='Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value.'  #
+        + 'In that case, the download_path option will be ignored'
     )
     install_parser.add_argument(
         '-c',

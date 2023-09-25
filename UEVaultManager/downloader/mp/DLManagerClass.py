@@ -1,6 +1,7 @@
 # coding: utf-8
 """
-Download manager process that handles all the download and writing tasks.
+Implementation for:
+- DLManager: Download manager process that handles all the download and writing tasks.
 """
 # please don't look at this code too hard, it's a mess.
 
@@ -27,7 +28,6 @@ class DLManager(Process):
     """
     Download manager process that handles all the download and writing tasks.
     """
-
     def __init__(
         self,
         download_dir: str,

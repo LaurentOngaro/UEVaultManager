@@ -13,8 +13,8 @@ from typing import Optional
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import clean_filename
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.app import App, AppAsset, InstalledApp
-from UEVaultManager.models.config import AppConf
+from UEVaultManager.models.AppConfigClass import AppConfig
+from UEVaultManager.models.Asset import Asset, AssetBase, InstalledAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
@@ -49,7 +49,7 @@ class UEVMLFS:
         self._assets_cache_info = None
 
         # Config with item specific settings (e.g. start parameters, env variables)
-        self.config = AppConf(comment_prefixes='/', allow_no_value=True)
+        self.config = AppConfig(comment_prefixes='/', allow_no_value=True)
 
         # Folders used by the app
         self.manifests_folder = 'manifests'
@@ -281,7 +281,7 @@ class UEVMLFS:
         if self._assets is None:
             try:
                 tmp = json.load(open(path_join(self.path, 'assets.json')))
-                self._assets = {k: [AppAsset.from_json(j) for j in v] for k, v in tmp.items()}
+                self._assets = {k: [AssetBase.from_json(j) for j in v] for k, v in tmp.items()}
             except Exception as error:
                 self.log.debug(f"Failed to load asset's data: {error!r}")
                 return None
@@ -435,7 +435,7 @@ class UEVMLFS:
             f.write(manifest_data)
         return filename
 
-    def get_item_meta(self, app_name: str):
+    def get_item_meta(self, app_name: str) -> Optional[Asset]:
         """
         Get the metadata for an item.
         :param app_name: the name of the item.
@@ -443,7 +443,7 @@ class UEVMLFS:
         """
         # Note: self._assets_metadata is filled at the start of the list command by reading all the json files in the metadata folder
         if _meta := self.assets_metadata.get(app_name, None):
-            return App.from_json(_meta)  # create an object from the App class using the json data
+            return Asset.from_json(_meta)  # create an object from the App class using the json data
         return None
 
     def set_item_meta(self, app_name: str, meta) -> None:
@@ -573,7 +573,7 @@ class UEVMLFS:
         folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
         return self.delete_folder_content(folders, ['.log', '.bak'])
 
-    def get_installed_app(self, app_name: str) -> Optional[InstalledApp]:
+    def get_installed_app(self, app_name: str) -> Optional[InstalledAsset]:
         """
         Get the installed app data.
         :param app_name: the app name.
@@ -588,7 +588,7 @@ class UEVMLFS:
                 self.log.debug(f'Failed to load installed asset data: {error!r}')
                 return None
         if json_data := self._installed_apps.get(app_name, None):
-            return InstalledApp.from_json(json_data)
+            return InstalledAsset.from_json(json_data)
         return None
 
     def set_installed_app(self, app_name: str, install_info: {}) -> None:

@@ -29,11 +29,11 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager import __version__ as UEVM_version
 from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.api.uevm import UEVMAPI
-from UEVaultManager.downloader.mp.manager import DLManager
-from UEVaultManager.lfs.egl import EPCLFS
-from UEVaultManager.lfs.uevmlfs import UEVMLFS
+from UEVaultManager.downloader.mp.DLManagerClass import DLManager
+from UEVaultManager.lfs.EPCLFSClass import EPCLFS
+from UEVaultManager.lfs.UEVMLFSClass import UEVMLFS
 from UEVaultManager.lfs.utils import clean_filename, path_join
-from UEVaultManager.models.app import App, AppAsset, InstalledApp
+from UEVaultManager.models.Asset import Asset, AssetBase, InstalledAsset
 from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResult
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
@@ -122,6 +122,51 @@ class AppCore:
         self.thread_executor = None
         self.thread_executor_must_stop = False
         self.engine_version_for_obsolete_assets = gui_g.s.engine_version_for_obsolete_assets
+
+    @staticmethod
+    def load_manifest(data: bytes) -> Manifest:
+        """
+        Load a manifest.
+        :param data: bytes object to load the manifest from.
+        :return: manifest object.
+        """
+        if data[0:1] == b'{':
+            return JSONManifest.read_all(data)
+        else:
+            return Manifest.read_all(data)
+
+    @staticmethod
+    def check_installation_conditions(analysis: AnalysisResult, folders: [], ignore_space_req: bool = False) -> ConditionCheckResult:
+        """
+        Check installation conditions.
+        :param analysis: analysis result to check.
+        :param folders: folders to check free size for.
+        :param ignore_space_req:
+        :return:
+        """
+        results = ConditionCheckResult(failures=set(), warnings=set())
+        if not isinstance(folders, list):
+            folders = [folders]
+        for folder in folders:
+            if not folder:
+                results.failures.add(f'"At least one folder is not defined. Check your config and command options.')
+                break
+            if not os.path.exists(folder):
+                results.failures.add(
+                    f'"{folder}" does not exist. Check your config and command options and make sure all necessary disks are available.'
+                )
+                break
+            min_disk_space = analysis.disk_space_delta
+            _, _, free = shutil.disk_usage(folder)
+            if free < min_disk_space:
+                free_gib = free / 1024 ** 3
+                required_gib = min_disk_space / 1024 ** 3
+                message = f'"{folder}": Potentially not enough available disk space: {free_gib:.02f} GiB < {required_gib:.02f} GiB'
+                if ignore_space_req:
+                    results.warnings.add(message)
+                else:
+                    results.failures.add(message)
+        return results
 
     def log_info_and_gui_display(self, message: str) -> None:
         """
@@ -372,12 +417,12 @@ class AppCore:
         """
         return self.uevmlfs.get_cached_version()['data']
 
-    def get_assets(self, update_assets=False, platform='Windows') -> List[AppAsset]:
+    def get_assets(self, update_assets=False, platform='Windows') -> List[AssetBase]:
         """
         Return a list of assets for the given platform.
         :param update_assets: whether to always fetches a new list of assets from the server.
         :param platform: platform to fetch assets for.
-        :return: list of AppAsset objects.
+        :return: list of AssetBase objects.
         """
         # do not save and always fetch list when platform is overridden
         if not self.uevmlfs.assets or update_assets or platform not in self.uevmlfs.assets:
@@ -387,7 +432,7 @@ class AppCore:
 
             assets = self.uevmlfs.assets.copy() if self.uevmlfs.assets else dict()
 
-            assets.update({platform: [AppAsset.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
+            assets.update({platform: [AssetBase.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
 
             # only save (and write to disk) if there were changes
             if self.uevmlfs.assets != assets:
@@ -395,9 +440,9 @@ class AppCore:
 
         return self.uevmlfs.assets[platform]
 
-    def get_asset(self, app_name: str, platform='Windows', update=False) -> AppAsset:
+    def get_asset(self, app_name: str, platform='Windows', update=False) -> AssetBase:
         """
-        Return an AppAsset object for the given app name and platform.
+        Return an AssetBase object for the given app name and platform.
         :param app_name: app name to get.
         :param platform: platform to get asset for.
         :param update: force update of asset list.
@@ -411,7 +456,7 @@ class AppCore:
         except StopIteration:
             raise ValueError
 
-    def asset_available(self, item: App, platform='Windows') -> bool:
+    def asset_available(self, item: Asset, platform='Windows') -> bool:
         """
         Return whether an asset is available for the given item and platform.
         :param item: item to check.
@@ -424,7 +469,7 @@ class AppCore:
         except ValueError:
             return False
 
-    def get_item(self, app_name, update_meta=False, platform='Windows') -> App:
+    def get_item(self, app_name, update_meta=False, platform='Windows') -> Asset:
         """
         Return an App object.
         :param app_name: name to get.
@@ -436,7 +481,7 @@ class AppCore:
             self.get_asset_list(True, platform=platform)
         return self.uevmlfs.get_item_meta(app_name)
 
-    def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[App], Dict[str, List[App]]):
+    def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[Asset], Dict[str, List[Asset]]):
         """
         Returns a list of all available assets for the given platform.
         :param update_assets: force update of asset list.
@@ -489,7 +534,7 @@ class AppCore:
                     self.log.warning(f'Failed to fetch metadata for {name}: reponse code = {status_code}')
                     return False
 
-                app = App(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
+                app = Asset(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
                 self.uevmlfs.set_item_meta(app.app_name, app)
                 apps[name] = app
 
@@ -839,15 +884,15 @@ class AppCore:
                 return
             self.uevmlfs.set_item_extra(app_name=app_name, extra=eg_extra, update_global_dict=update_global_dict)
 
-    def get_installed_app(self, app_name) -> InstalledApp:
+    def get_installed_app(self, app_name) -> InstalledAsset:
         """
-        Return an InstalledApp object for the given app name.
+        Return an InstalledAsset object for the given app name.
         :param app_name: app name to get.
         :return: installedApp object.
         """
         return self.uevmlfs.get_installed_app(app_name)
 
-    def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[App], Dict[str, List[App]]):
+    def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[Asset], Dict[str, List[Asset]]):
         """
         Gets a list of Items without assets for installation, for instance Items delivered via
         third-party stores that do not have assets for installation.
@@ -871,7 +916,7 @@ class AppCore:
                 if status_code != 200:
                     self.log.warning(f'Failed to fetch metadata for {lib_item["appName"]}: reponse code = {status_code}')
                     continue
-                item = App(app_name=lib_item['appName'], app_title=eg_meta['title'], metadata=eg_meta)
+                item = Asset(app_name=lib_item['appName'], app_title=eg_meta['title'], metadata=eg_meta)
                 self.uevmlfs.set_item_meta(item.app_name, item)
 
             if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])):
@@ -886,18 +931,6 @@ class AppCore:
         :return: True if app is installed, False otherwise.
         """
         return self.get_installed_app(app_name) is not None
-
-    @staticmethod
-    def load_manifest(data: bytes) -> Manifest:
-        """
-        Load a manifest.
-        :param data: bytes object to load the manifest from.
-        :return: manifest object.
-        """
-        if data[0:1] == b'{':
-            return JSONManifest.read_all(data)
-        else:
-            return Manifest.read_all(data)
 
     def get_installed_manifest(self, app_name):
         """
@@ -997,7 +1030,7 @@ class AppCore:
 
     def prepare_download(
         self,
-        app: App,
+        app: Asset,
         download_folder: str = '',
         install_folder: str = '',
         no_resume: bool = False,
@@ -1017,7 +1050,7 @@ class AppCore:
         file_install_tag: list = None,
         preferred_cdn: str = None,
         disable_https: bool = False
-    ) -> (DLManager, AnalysisResult, InstalledApp):
+    ) -> (DLManager, AnalysisResult, InstalledAsset):
         """
         Prepare a download.
         :param app:App to prepare the download for.
@@ -1040,7 +1073,7 @@ class AppCore:
         :param file_install_tag: file install tag.
         :param preferred_cdn: preferred CDN.
         :param disable_https: disable HTTPS. For LAN installs only.
-        :return: (DLManager object, AnalysisResult object, InstalledApp object).
+        :return: (DLManager object, AnalysisResult object, InstalledAsset object).
         """
         old_manifest = None
         egl_guid = ''
@@ -1174,7 +1207,7 @@ class AppCore:
         installed_app = self.get_installed_app(app.app_name)
         if installed_app is None:
             # create a new installed app
-            installed_app = InstalledApp(app_name=app.app_name, title=app.app_title)
+            installed_app = InstalledAsset(app_name=app.app_name, title=app.app_title)
         # update the installed app
         installed_app.version = manifest.meta.build_version
         installed_app.base_urls = base_urls
@@ -1184,39 +1217,6 @@ class AppCore:
         installed_app.platform = platform
         installed_app.install_path = install_path  # will add install_path to the installed_folders list after checking if it is not already in it
         return download_manager, analyse_res, installed_app
-
-    @staticmethod
-    def check_installation_conditions(analysis: AnalysisResult, folders: [], ignore_space_req: bool = False) -> ConditionCheckResult:
-        """
-        Check installation conditions.
-        :param analysis: analysis result to check.
-        :param folders: folders to check free size for.
-        :param ignore_space_req:
-        :return:
-        """
-        results = ConditionCheckResult(failures=set(), warnings=set())
-        if not isinstance(folders, list):
-            folders = [folders]
-        for folder in folders:
-            if not folder:
-                results.failures.add(f'"At least one folder is not defined. Check your config and command options.')
-                break
-            if not os.path.exists(folder):
-                results.failures.add(
-                    f'"{folder}" does not exist. Check your config and command options and make sure all necessary disks are available.'
-                )
-                break
-            min_disk_space = analysis.disk_space_delta
-            _, _, free = shutil.disk_usage(folder)
-            if free < min_disk_space:
-                free_gib = free / 1024 ** 3
-                required_gib = min_disk_space / 1024 ** 3
-                message = f'"{folder}": Potentially not enough available disk space: {free_gib:.02f} GiB < {required_gib:.02f} GiB'
-                if ignore_space_req:
-                    results.warnings.add(message)
-                else:
-                    results.failures.add(message)
-        return results
 
     # Check if the UE assets metadata cache must be updated
     def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False) -> None:
