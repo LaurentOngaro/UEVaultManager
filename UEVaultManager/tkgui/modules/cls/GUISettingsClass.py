@@ -57,6 +57,19 @@ class GUISettings:
         self.app_icon_filename: str = path_join(self.assets_folder, 'main.ico')
         self.default_image_filename: str = path_join(self.assets_folder, 'UEVM_200x200.png')
 
+        # filename for storing the user data (filled by the 'auth' command).
+        self.user_data_filename: str = path_join(self.path, 'user_data.json')
+        # filename for storing data about the current version of the app
+        self.app_version_filename: str = path_join(self.path, 'app_version.json')
+        # filename for storing cache data for asset's metadata updating
+        self.assets_cache_info_filename: str = path_join(self.path, 'assets_cache_info.json')
+        # filename for storing 'basic' data of assets.
+        self.assets_data_filename: str = path_join(self.path, 'assets.json')
+        # filename for the installed assets list
+        self.installed_asset_filename: str = path_join(self.path, 'installed_assets.json')
+        # filename for storing the size of asset (filled by the 'info' command).
+        self.asset_sizes_filename: str = path_join(self.path, 'asset_sizes.json')
+
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename: str = self.config_vars['last_opened_file']
         else:

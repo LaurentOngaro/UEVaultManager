@@ -136,7 +136,7 @@ class UEVMGui(tk.Tk):
             rows_per_page=37,
             show_statusbar=True,
             update_page_numbers_func=self.update_controls_state,
-            update_rows_text_func=self.update_rows_text,
+            update_preview_info_func=self.update_preview_info,
             set_widget_state_func=gui_f.set_widget_state
         )
         if data_table.get_data() is None:
@@ -205,7 +205,7 @@ class UEVMGui(tk.Tk):
                 try:
                     self._frm_filter.set_filters(filters)
                     # data_table.update(update_format=True) # done in load_filters and inner calls
-                except (Exception,) as error:
+                except (Exception, ) as error:
                     self.add_error(error)
                     self.logger.error(f'Error loading filters: {error!r}')
         else:
@@ -365,7 +365,7 @@ class UEVMGui(tk.Tk):
             row_number: int = self.editable_table.get_row_clicked(event)
             if row_number < 0 or row_number == '':
                 return
-            self.update_rows_text(row_number)
+            self.update_preview_info(row_number)
             image_url = self.editable_table.get_image_url(row_number)
             gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
         except IndexError:
@@ -376,7 +376,7 @@ class UEVMGui(tk.Tk):
         Show the default image when the mouse leaves the cell.
         :param _event:
         """
-        self.update_rows_text()
+        self.update_preview_info()
         canvas_image = self._frm_control.canvas_image
         gui_f.show_default_image(canvas_image=canvas_image)
 
@@ -1303,7 +1303,7 @@ class UEVMGui(tk.Tk):
         grab_results.insert(0, gui_g.s.default_value_for_all)
         return {'categories': categories, 'grab_results': grab_results}
 
-    def update_rows_text(self, row_number: int = -1):
+    def update_preview_info(self, row_number: int = -1):
         """
         Set the text to display in the preview frame about the number of rows.
         :param row_number: row number from a datatable. Will be converted into real row index.
@@ -1311,15 +1311,30 @@ class UEVMGui(tk.Tk):
         if self._frm_control is None:
             return
         data_table = self.editable_table  # shortcut
+        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         df_filtered = data_table.get_data(df_type=DataFrameUsed.FILTERED)
         row_count_filtered = len(df_filtered) if df_filtered is not None else 0
-        row_count = len(data_table.get_data(df_type=DataFrameUsed.UNFILTERED))
-        row_text = f'| {row_count} rows count' if row_count_filtered == row_count else f'| {row_count_filtered} filtered | {row_count} total'
-        if row_number >= 0:
-            idx = data_table.get_real_index(row_number)
-            self._frm_control.lbf_image_preview.config(text=f'Image Preview - Row Index {idx} {row_text}')
+        row_count = len(df)
+        asset_info = []
+        idx = data_table.get_real_index(row_number)
+        asset_info.append(f'Total rows: {row_count}')
+        if row_count_filtered != row_count:
+            asset_info.append(f'Filtered rows: {row_count_filtered} ')
+        if idx >= 0:
+            app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
+            asset_info.append(f'Asset id: {app_name}')
+            asset_info.append(f'Row Index: {idx}')
+            size = self.core.uevmlfs.get_asset_size(app_name)
+            if size > 0:
+                size_formatted = '{:.02f} GiB'.format(size / 1024 / 1024 /
+                                                      1024) if size > 1024 * 1024 * 1024 else '{:.02f} MiB'.format(size / 1024 / 1024)
+                asset_info.append(f'Asset size: {size_formatted}')
+            else:
+                asset_info.append(f'Asset size: Not Get Yet')
         else:
-            self._frm_control.lbf_image_preview.config(text=f'No Image Preview {row_text}')
+            asset_info.append('No Row selected')
+        self._frm_control.txt_info.delete('1.0', tk.END)
+        self._frm_control.txt_info.insert('1.0', '\n'.join(asset_info))
 
     def reload_data(self) -> None:
         """
@@ -1404,9 +1419,9 @@ class UEVMGui(tk.Tk):
 
         display_window = DisplayContentWindow(title=f'UEVM: {command_name} display result')
         gui_g.display_content_window_ref = display_window
+        display_window.display(f'Running command {command_name}...Please wait')
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         function_to_call(gui_g.UEVM_cli_args)
-        display_window.display(f'Running command {command_name}...Please wait')
         self._wait_for_window(gui_g.display_content_window_ref)  # a local variable won't work here
         # make_modal(display_window)
 

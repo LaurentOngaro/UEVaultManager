@@ -169,6 +169,9 @@ class UEAssetScraper:
                 json_data = json.load(fh)
             except json.decoder.JSONDecodeError as error:
                 message = f'The following error occured when loading data from {filename}:{error!r}'
+            # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
+            # it needed by the json_data_mapping() method
+            json_data['appName'] = app_name
         return json_data, message
 
     @staticmethod
@@ -178,7 +181,7 @@ class UEAssetScraper:
         :param data_from_egs_format: json data from EGS format (NEW)
         :return: json data in UEVM format (OLD)
         """
-        app_name = data_from_egs_format['releaseInfo'][-1]['appId']
+        app_name = data_from_egs_format['appName']
         category = data_from_egs_format['categories'][0]['path']
 
         if category == 'assets/codeplugins':

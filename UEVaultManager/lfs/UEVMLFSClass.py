@@ -52,11 +52,12 @@ class UEVMLFS:
         self.config = AppConfig(comment_prefixes='/', allow_no_value=True)
 
         # Folders used by the app
-        self.manifests_folder = 'manifests'
-        self.metadata_folder = 'metadata'
-        self.tmp_folder = 'tmp'
-        self.extra_folder = 'extra'
-
+        self.manifests_folder: str = 'manifests'
+        self.metadata_folder: str = 'metadata'
+        self.tmp_folder: str = 'tmp'
+        self.extra_folder: str = 'extra'
+        # store the dowload size of assets
+        self._asset_sizes = None
         if config_file:
             # if user specified a valid relative/absolute path use that,
             # otherwise create file in UEVaultManager config directory
@@ -69,38 +70,10 @@ class UEVMLFS:
             self.config_file = path_join(self.path, 'config.ini')
 
         # ensure folders exist.
-
         for f in ['', self.manifests_folder, self.metadata_folder, self.tmp_folder, self.extra_folder]:
             if not os.path.exists(path_join(self.path, f)):
                 os.makedirs(path_join(self.path, f))
 
-        # if "old" folder exists migrate files and remove it
-        if os.path.exists(path_join(self.path, self.manifests_folder, 'old')):
-            self.log.info('Migrating manifest files from old folders to new, please wait...')
-            # remove not versioned manifest files
-            for _f in os.listdir(path_join(self.path, self.manifests_folder)):
-                if '.manifest' not in _f:
-                    continue
-                if '_' not in _f or (_f.startswith('UE_') and _f.count('_') < 2):
-                    self.log.debug(f'Deleting "{_f}" ...')
-                    os.remove(path_join(self.path, self.manifests_folder, _f))
-
-            # move files from "old" to the base folder
-            for _f in os.listdir(path_join(self.path, self.manifests_folder, 'old')):
-                try:
-                    self.log.debug(f'Renaming "{_f}"')
-                    os.rename(path_join(self.path, self.manifests_folder, 'old', _f), path_join(self.path, self.manifests_folder, _f))
-                except Exception as error:
-                    self.log.warning(f'Renaming manifest file "{_f}" failed: {error!r}')
-
-            # remove "old" folder
-            try:
-                os.removedirs(path_join(self.path, self.manifests_folder, 'old'))
-            except Exception as error:
-                self.log.warning(f'Removing "{path_join(self.path, "manifests", "old")}" folder failed: '
-                                 f'{error!r}, please remove manually')
-
-        # try loading config
         try:
             self.config.read(self.config_file)
         except Exception as error:
@@ -200,14 +173,21 @@ class UEVMLFS:
         if has_changed:
             self.save_config()
 
-        # load existing installed assets/apps
+        # load existing installed assets
         try:
-            self._installed_apps = json.load(open(path_join(self.path, 'installed.json')))
+            self._installed_assets = json.load(open(gui_g.s.installed_asset_filename))
         except Exception as error:
             self.log.debug(f'Loading installed assets failed: {error!r}')
-            self._installed_apps = None
+            self._installed_assets = None
 
-        # load existing app metadata
+        # load asset sizes
+        try:
+            self._asset_sizes = json.load(open(gui_g.s.asset_sizes_filename))
+        except Exception as error:
+            self.log.debug(f'Loading assets sizes failed: {error!r}')
+            self._asset_sizes = None
+
+        # load existing assets metadata
         _meta = None
         for gm_file in os.listdir(path_join(self.path, 'metadata')):
             try:
@@ -225,16 +205,17 @@ class UEVMLFS:
         #    except Exception as error:
         #        self.log.debug(f'Loading asset extra file "{gm_file}" failed: {error!r}')
 
+        # not used anymore
         # load auto-aliases if enabled
-        self.aliases = dict()
-        if not self.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False):
-            try:
-                _j = json.load(open(path_join(self.path, 'aliases.json')))
-                for app_name, aliases in _j.items():
-                    for alias in aliases:
-                        self.aliases[alias] = app_name
-            except Exception as error:
-                self.log.debug(f'Loading aliases failed with {error!r}')
+        # self.aliases = dict()
+        # if not self.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False):
+        #     try:
+        #         _j = json.load(open(path_join(self.path, 'aliases.json')))
+        #         for app_name, aliases in _j.items():
+        #             for alias in aliases:
+        #                 self.aliases[alias] = app_name
+        #     except Exception as error:
+        #         self.log.debug(f'Loading aliases failed with {error!r}')
 
     @property
     def userdata(self):
@@ -246,7 +227,7 @@ class UEVMLFS:
             return self._user_data
 
         try:
-            self._user_data = json.load(open(path_join(self.path, 'user.json')))
+            self._user_data = json.load(open(gui_g.s.user_data_filename))
             return self._user_data
         except Exception as error:
             self.log.debug(f'Failed to load user data: {error!r}')
@@ -262,25 +243,25 @@ class UEVMLFS:
             raise ValueError('Userdata is none!')
 
         self._user_data = userdata
-        json.dump(userdata, open(path_join(self.path, 'user.json'), 'w'), indent=2, sort_keys=True)
+        json.dump(userdata, open(gui_g.s.user_data_filename, 'w'), indent=2, sort_keys=True)
 
     def invalidate_userdata(self) -> None:
         """
         Invalidate the user data.
         """
         self._user_data = None
-        if os.path.exists(path_join(self.path, 'user.json')):
-            os.remove(path_join(self.path, 'user.json'))
+        if os.path.exists(gui_g.s.user_data_filename):
+            os.remove(gui_g.s.user_data_filename)
 
     @property
     def assets(self):
         """
-        Return the asset's data as a dict.
+        Return the asset's data as a dict. If not loaded, load it from the json file.
         :return: asset's data.
         """
         if self._assets is None:
             try:
-                tmp = json.load(open(path_join(self.path, 'assets.json')))
+                tmp = json.load(open(gui_g.s.assets_data_filename))
                 self._assets = {k: [AssetBase.from_json(j) for j in v] for k, v in tmp.items()}
             except Exception as error:
                 self.log.debug(f"Failed to load asset's data: {error!r}")
@@ -291,7 +272,7 @@ class UEVMLFS:
     @assets.setter
     def assets(self, assets) -> None:
         """
-        Set the asset data.
+        Set the asset data and saved it to a json file.
         :param assets: assets.
         """
         if assets is None:
@@ -302,10 +283,33 @@ class UEVMLFS:
             {
                 platform: [a.__dict__ for a in assets] for platform, assets in self._assets.items()
             },
-            open(path_join(self.path, 'assets.json'), 'w'),
+            open(gui_g.s.assets_data_filename, 'w'),
             indent=2,
             sort_keys=True
         )
+
+    @property
+    def asset_sizes(self):
+        """
+        Return the asset's sizes as a dict. If not loaded, load it from the json file.
+        :return: asset's size.
+        """
+        if self._asset_sizes is None:
+            try:
+                self._asset_sizes = json.load(open(gui_g.s.asset_sizes_filename))
+            except Exception as error:
+                self.log.debug(f"Failed to load asset's size: {error!r}")
+                return None
+        return self._asset_sizes
+
+    @asset_sizes.setter
+    def asset_sizes(self, asset_sizes) -> None:
+        """
+        Set the asset data and saved it to a json file.
+        :param asset_sizes: asset sizes.
+        """
+        self._asset_sizes = asset_sizes
+        json.dump(self._asset_sizes, open(gui_g.s.asset_sizes_filename, 'w'), indent=2, sort_keys=True)
 
     @staticmethod
     def load_filter_list(filename: str = '') -> Optional[dict]:
@@ -575,35 +579,55 @@ class UEVMLFS:
 
     def get_installed_app(self, app_name: str) -> Optional[InstalledAsset]:
         """
-        Get the installed app data.
-        :param app_name: the app name.
+        Get the installed asset data.
+        :param app_name: the asset name.
         :return: the installed app data or None if not found.
         """
         if not app_name:
             return None
-        if self._installed_apps is None:
+        if self._installed_assets is None:
             try:
-                self._installed_apps = json.load(open(path_join(self.path, 'installed.json')))
+                self._installed_assets = json.load(open(gui_g.s.installed_asset_filename))
             except Exception as error:
                 self.log.debug(f'Failed to load installed asset data: {error!r}')
                 return None
-        if json_data := self._installed_apps.get(app_name, None):
+        if json_data := self._installed_assets.get(app_name, None):
             return InstalledAsset.from_json(json_data)
         return None
 
-    def set_installed_app(self, app_name: str, install_info: {}) -> None:
+    def set_installed_asset(self, app_name: str, install_info: {}) -> None:
         """
-        Set the installed app data.
-        :param app_name: the app name.
+        Set the installed asset data.
+        :param app_name: the asset name.
         :param install_info: the installed app data.
         """
-        if self._installed_apps is None:
-            self._installed_apps = dict()
-        if app_name in self._installed_apps:
-            self._installed_apps[app_name].update(install_info.__dict__)
+        if self._installed_assets is None:
+            self._installed_assets = dict()
+        if app_name in self._installed_assets:
+            self._installed_assets[app_name].update(install_info.__dict__)
         else:
-            self._installed_apps[app_name] = install_info.__dict__
-        json.dump(self._installed_apps, open(path_join(self.path, 'installed.json'), 'w'), indent=2, sort_keys=True)
+            self._installed_assets[app_name] = install_info.__dict__
+        json.dump(self._installed_assets, open(gui_g.s.installed_asset_filename, 'w'), indent=2, sort_keys=True)
+
+    def get_asset_size(self, app_name: str)-> int:
+        """
+        Get the size of an asset.
+        :param app_name: the asset name.
+        :return: the size of the asset. -1 if not found.
+        """
+        if self._asset_sizes is not None:
+            return self._asset_sizes.get(app_name, -1)
+
+    def set_asset_size(self, app_name: str, size: int) -> None:
+        """
+        Set the size of an asset.
+        :param app_name: the asset name.
+        :param size: the size of the asset
+        """
+        if self._asset_sizes is None:
+            self._asset_sizes = {}
+        self._asset_sizes[app_name] = size
+        json.dump(self._asset_sizes, open(gui_g.s.asset_sizes_filename, 'w'), indent=2, sort_keys=True)
 
     def save_config(self) -> None:
         """
@@ -636,7 +660,7 @@ class UEVMLFS:
         if self._update_info:
             return self._update_info
         try:
-            self._update_info = json.load(open(path_join(self.path, 'version.json')))
+            self._update_info = json.load(gui_g.s.app_version_filename)
         except Exception as error:
             self.log.debug(f'Failed to load cached update data: {error!r}')
             self._update_info = dict(last_update=0, data=None)
@@ -651,7 +675,7 @@ class UEVMLFS:
         if not version_data:
             return
         self._update_info = dict(last_update=time(), data=version_data)
-        json.dump(self._update_info, open(path_join(self.path, 'version.json'), 'w'), indent=2, sort_keys=True)
+        json.dump(self._update_info, open(gui_g.s.app_version_filename, 'w'), indent=2, sort_keys=True)
 
     def get_assets_cache_info(self) -> dict:
         """
@@ -662,7 +686,7 @@ class UEVMLFS:
             return self._assets_cache_info
 
         try:
-            self._assets_cache_info = json.load(open(path_join(self.path, 'assets_cache_info.json')))
+            self._assets_cache_info = json.load(gui_g.s.assets_cache_info_filename)
         except Exception as error:
             self.log.debug(f'Failed to UE assets last update data: {error!r}')
             self._assets_cache_info = dict(last_update=0, ue_assets_count=0)
@@ -678,4 +702,4 @@ class UEVMLFS:
         :return:
         """
         self._assets_cache_info = dict(last_update=last_update, ue_assets_count=ue_assets_count)
-        json.dump(self._assets_cache_info, open(path_join(self.path, 'assets_cache_info.json'), 'w'), indent=2, sort_keys=True)
+        json.dump(self._assets_cache_info, open(gui_g.s.assets_cache_info_filename, 'w'), indent=2, sort_keys=True)

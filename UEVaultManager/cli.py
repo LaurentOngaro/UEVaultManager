@@ -908,6 +908,7 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
         name_or_path = args.app_name_or_manifest or args.app_name
+        show_all_info = args.all
         app_name = manifest_uri = None
         if os.path.exists(name_or_path) or name_or_path.startswith('http'):
             manifest_uri = name_or_path
@@ -943,9 +944,11 @@ class UEVaultManagerCLI:
             except (Exception, ):
                 item = None
         if not item:
-            self._log_and_gui_message(self.logger.warning, message)
+            self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
             args.offline = True
         manifest_data = None
+        install_tags = {''}
+
         # entitlements = None
         # load installed manifest or URI
         if args.offline or manifest_uri:
@@ -969,10 +972,13 @@ class UEVaultManagerCLI:
                 self.logger.error(f'Failed to fetch metadata for {item.app_name}: {error!r}')
                 return
             item.metadata = egl_meta
-            # Get manifest if asset exists for current platform
-            if 'Windows' in item.asset_infos:
-                manifest_data, _ = self.core.get_cdn_manifest(item, 'Windows')
-
+            try:
+                # Get manifest if asset exists for current platform
+                if 'Windows' in item.asset_infos:
+                    manifest_data, _ = self.core.get_cdn_manifest(item, 'Windows')
+            except (Exception, ) as error:
+                self.logger.error(f'Failed to get manifest for the asset {item.app_name}: {error!r}')
+                return
         if item:
             asset_infos = info_items['assets']
             asset_infos.append(InfoItem('App name', 'app_name', item.app_name, item.app_name))
@@ -992,56 +998,59 @@ class UEVaultManagerCLI:
             manifest_info.append(InfoItem('Manifest version', 'version', manifest.version, manifest.version))
             manifest_info.append(InfoItem('Manifest feature level', 'feature_level', manifest.meta.feature_level, manifest.meta.feature_level))
             manifest_info.append(InfoItem('Manifest app name', 'app_name', manifest.meta.app_name, manifest.meta.app_name))
-            manifest_info.append(InfoItem('Launch EXE', 'launch_exe', manifest.meta.launch_exe or 'N/A', manifest.meta.launch_exe))
-            manifest_info.append(InfoItem('Launch Command', 'launch_command', manifest.meta.launch_command or '(None)', manifest.meta.launch_command))
             manifest_info.append(InfoItem('Build version', 'build_version', manifest.meta.build_version, manifest.meta.build_version))
             manifest_info.append(InfoItem('Build ID', 'build_id', manifest.meta.build_id, manifest.meta.build_id))
-            if manifest.meta.prereq_ids:
-                human_list = [
-                    f'Prerequisite IDs: {", ".join(manifest.meta.prereq_ids)}', f'Prerequisite name: {manifest.meta.prereq_name}',
-                    f'Prerequisite path: {manifest.meta.prereq_path}', f'Prerequisite args: {manifest.meta.prereq_args or "(None)"}',
-                ]
+            if show_all_info:
+                manifest_info.append(InfoItem('Launch EXE', 'launch_exe', manifest.meta.launch_exe or 'N/A', manifest.meta.launch_exe))
                 manifest_info.append(
-                    InfoItem(
-                        'Prerequisites', 'prerequisites', human_list,
-                        dict(
-                            ids=manifest.meta.prereq_ids,
-                            name=manifest.meta.prereq_name,
-                            path=manifest.meta.prereq_path,
-                            args=manifest.meta.prereq_args
+                    InfoItem('Launch Command', 'launch_command', manifest.meta.launch_command or '(None)', manifest.meta.launch_command)
+                )
+                if manifest.meta.prereq_ids:
+                    human_list = [
+                        f'Prerequisite IDs: {", ".join(manifest.meta.prereq_ids)}', f'Prerequisite name: {manifest.meta.prereq_name}',
+                        f'Prerequisite path: {manifest.meta.prereq_path}', f'Prerequisite args: {manifest.meta.prereq_args or "(None)"}',
+                    ]
+                    manifest_info.append(
+                        InfoItem(
+                            'Prerequisites', 'prerequisites', human_list,
+                            dict(
+                                ids=manifest.meta.prereq_ids,
+                                name=manifest.meta.prereq_name,
+                                path=manifest.meta.prereq_path,
+                                args=manifest.meta.prereq_args
+                            )
                         )
                     )
-                )
-            else:
-                manifest_info.append(InfoItem('Prerequisites', 'prerequisites', None, None))
+                else:
+                    manifest_info.append(InfoItem('Prerequisites', 'prerequisites', None, None))
 
-            if manifest.meta.uninstall_action_path:
-                human_list = [
-                    f'Uninstaller path: {manifest.meta.uninstall_action_path}',
-                    f'Uninstaller args: {manifest.meta.uninstall_action_args or "(None)"}',
-                ]
-                manifest_info.append(
-                    InfoItem(
-                        'Uninstaller', 'uninstaller', human_list,
-                        dict(path=manifest.meta.uninstall_action_path, args=manifest.meta.uninstall_action_args)
+                if manifest.meta.uninstall_action_path:
+                    human_list = [
+                        f'Uninstaller path: {manifest.meta.uninstall_action_path}',
+                        f'Uninstaller args: {manifest.meta.uninstall_action_args or "(None)"}',
+                    ]
+                    manifest_info.append(
+                        InfoItem(
+                            'Uninstaller', 'uninstaller', human_list,
+                            dict(path=manifest.meta.uninstall_action_path, args=manifest.meta.uninstall_action_args)
+                        )
                     )
-                )
-            else:
-                manifest_info.append(InfoItem('Uninstaller', 'uninstaller', None, None))
+                else:
+                    manifest_info.append(InfoItem('Uninstaller', 'uninstaller', None, None))
 
-            install_tags = {''}
-            for fm in manifest.file_manifest_list.elements:
-                for tag in fm.install_tags:
-                    install_tags.add(tag)
+                for fm in manifest.file_manifest_list.elements:
+                    for tag in fm.install_tags:
+                        install_tags.add(tag)
 
-            install_tags = sorted(install_tags)
-            install_tags_human = ', '.join(i if i else '(empty)' for i in install_tags)
-            manifest_info.append(InfoItem('Install tags', 'install_tags', install_tags_human, install_tags))
+                install_tags = sorted(install_tags)
+                install_tags_human = ', '.join(i if i else '(empty)' for i in install_tags)
+                manifest_info.append(InfoItem('Install tags', 'install_tags', install_tags_human, install_tags))
             # file and chunk count
             manifest_info.append(InfoItem('Files', 'num_files', manifest.file_manifest_list.count, manifest.file_manifest_list.count))
             manifest_info.append(InfoItem('Chunks', 'num_chunks', manifest.chunk_data_list.count, manifest.chunk_data_list.count))
             # total file size
             total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
+            self.core.uevmlfs.set_asset_size(item.app_name, total_size)  # update the global list AND save it into a json file
             file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
             manifest_info.append(InfoItem('Disk size (uncompressed)', 'disk_size', file_size, total_size))
             # total chunk size
@@ -1049,39 +1058,44 @@ class UEVaultManagerCLI:
             chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
             manifest_info.append(InfoItem('Download size (compressed)', 'download_size', chunk_size, total_size))
 
-            # if there are install tags break downsize by tag
-            tag_disk_size = []
-            tag_disk_size_human = []
-            tag_download_size = []
-            tag_download_size_human = []
-            if len(install_tags) > 1:
-                longest_tag = max(max(len(t) for t in install_tags), len('(empty)'))
-                for tag in install_tags:
-                    # sum up all file sizes for the tag
-                    human_tag = tag or '(empty)'
-                    tag_files = [fm for fm in manifest.file_manifest_list.elements if (tag in fm.install_tags) or (not tag and not fm.install_tags)]
-                    tag_file_size = sum(fm.file_size for fm in tag_files)
-                    tag_disk_size.append(dict(tag=tag, size=tag_file_size, count=len(tag_files)))
-                    tag_file_size_human = '{:.02f} GiB'.format(tag_file_size / 1024 / 1024 / 1024)
-                    tag_disk_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_file_size_human} '
-                                               f'(Files: {len(tag_files)})')
-                    # tag_disk_size_human.append(f'Size: {tag_file_size_human}, Files: {len(tag_files)}, Tag: "{tag}"')
-                    # accumulate chunk guids used for this tag and count their size too
-                    tag_chunk_guids = set()
-                    for fm in tag_files:
-                        for cp in fm.chunk_parts:
-                            tag_chunk_guids.add(cp.guid_num)
+            if show_all_info:
+                # if there are install tags break downsize by tag
+                tag_disk_size = []
+                tag_disk_size_human = []
+                tag_download_size = []
+                tag_download_size_human = []
+                if len(install_tags) > 1:
+                    longest_tag = max(max(len(t) for t in install_tags), len('(empty)'))
+                    for tag in install_tags:
+                        # sum up all file sizes for the tag
+                        human_tag = tag or '(empty)'
+                        tag_files = [
+                            fm for fm in manifest.file_manifest_list.elements if (tag in fm.install_tags) or (not tag and not fm.install_tags)
+                        ]
+                        tag_file_size = sum(fm.file_size for fm in tag_files)
+                        tag_disk_size.append(dict(tag=tag, size=tag_file_size, count=len(tag_files)))
+                        tag_file_size_human = '{:.02f} GiB'.format(tag_file_size / 1024 / 1024 / 1024)
+                        tag_disk_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_file_size_human} '
+                                                   f'(Files: {len(tag_files)})')
+                        # tag_disk_size_human.append(f'Size: {tag_file_size_human}, Files: {len(tag_files)}, Tag: "{tag}"')
+                        # accumulate chunk guids used for this tag and count their size too
+                        tag_chunk_guids = set()
+                        for fm in tag_files:
+                            for cp in fm.chunk_parts:
+                                tag_chunk_guids.add(cp.guid_num)
 
-                    tag_chunk_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in tag_chunk_guids)
-                    tag_download_size.append(dict(tag=tag, size=tag_chunk_size, count=len(tag_chunk_guids)))
-                    tag_chunk_size_human = '{:.02f} GiB'.format(tag_chunk_size / 1024 / 1024 / 1024)
-                    tag_download_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_chunk_size_human} '
-                                                   f'(Chunks: {len(tag_chunk_guids)})')
+                        tag_chunk_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in tag_chunk_guids)
+                        tag_download_size.append(dict(tag=tag, size=tag_chunk_size, count=len(tag_chunk_guids)))
+                        tag_chunk_size_human = '{:.02f} GiB'.format(tag_chunk_size / 1024 / 1024 / 1024)
+                        tag_download_size_human.append(
+                            f'{human_tag.ljust(longest_tag)} - {tag_chunk_size_human} '
+                            f'(Chunks: {len(tag_chunk_guids)})'
+                        )
 
-            manifest_info.append(InfoItem('Disk size by install tag', 'tag_disk_size', tag_disk_size_human or 'N/A', tag_disk_size))
-            manifest_info.append(
-                InfoItem('Download size by installation tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size)
-            )
+                manifest_info.append(InfoItem('Disk size by install tag', 'tag_disk_size', tag_disk_size_human or 'N/A', tag_disk_size))
+                manifest_info.append(
+                    InfoItem('Download size by installation tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size)
+                )
 
         if not args.json:
 
@@ -1468,7 +1482,7 @@ class UEVaultManagerCLI:
             message = ''
             if not args.no_install:
                 self._log_and_gui_display(self.logger.info, 'Start copying downloaded data to install folder...')
-                self.core.uevmlfs.set_installed_app(app.app_name, installed_app)
+                self.core.uevmlfs.set_installed_asset(app.app_name, installed_app)
                 # copy the downloaded data to the installation folder
                 last_part_src = os.path.basename(download_path).lower()
                 # the downloaded data should always have a "Content" inside
