@@ -184,19 +184,21 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -
     canvas.image = tk_image
 
 
-def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> None:
+def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> bool:
     """
     Show the image of the given asset in the given canvas.
     :param image_url: the url of the image to display.
     :param canvas_image: the canvas to display the image in.
     :param scale: the scale to apply to the image.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
+    :return: True if the image has been displayed, False otherwise.
     """
     if gui_g.s.offline_mode:
         # could be usefull if connexion is slow
         show_default_image(canvas_image)
+        return False
     if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
-        return
+        return False
     try:
         # print(image_url)
         # noinspection DuplicatedCode
@@ -213,8 +215,19 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
             with open(image_filename, "wb") as file:
                 file.write(response.content)
         resize_and_show_image(image, canvas_image, scale)
+        return True
     except Exception as error:
         log_warning(f'Error showing image: {error!r}')
+        gui_g.timeout_error_count += 1
+        # check error timeout
+        if gui_g.timeout_error_count >= 5:
+            box_message(
+                f'The app had {gui_g.timeout_error_count} timeout errors when loading images.\nThe application is going offline to avoid been too slow.\nTo fix that, check you internet connection.\nYou can disabled offline mode in the "Show options" panel, or by restarting the app.',
+                level='warning'
+            )
+            gui_g.timeout_error_count = 0
+            gui_g.s.offline_mode = True
+            return False
 
 
 def show_default_image(canvas_image=None) -> None:

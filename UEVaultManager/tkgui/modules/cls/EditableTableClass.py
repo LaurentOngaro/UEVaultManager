@@ -1666,14 +1666,15 @@ class EditableTable(Table):
                 entry.grid(row=row, column=1, columnspan=3, sticky=tk.EW)
             row += 1
             entries[key] = entry
-
-        # image preview
-        gui_f.show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale)
-
         self._edit_row_entries = entries
         self._edit_row_number = row_number
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
+        # image preview
+        if not gui_f.show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale):
+            # the image could not be loaded and the offline mode could have been enabled
+            # TODO: check if a nicer method could be used here to avoid coupling whithout a big refactoring (i.e. passing an "update" function)
+            self._container.update_controls_state(update_title=True)
         gui_f.make_modal(edit_row_window)
 
     def save_edit_row(self) -> None:
@@ -1821,8 +1822,7 @@ class EditableTable(Table):
             col_index = self.get_col_index(col_name)
             value = self.get_cell(row_number, col_index)
             if col_name == 'Asset_id':
-                # frm_quick_edit.config(text=f'Quick Editing Asset: {value}')
-                # TODO: check if a nicer method could be used here whithout a big refactoring
+                # TODO: check if a nicer method could be used here to avoid coupling whithout a big refactoring (i.e. passing an "update" function)
                 frm_content = self._container
                 uevm_gui = frm_content.container
                 uevm_gui.set_asset_id(value)

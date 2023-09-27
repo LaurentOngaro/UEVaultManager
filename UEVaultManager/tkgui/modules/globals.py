@@ -32,6 +32,7 @@ UEVM_log_ref = None
 UEVM_parser_ref = None
 
 # global variables
+s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 # noinspection PyTypeChecker
 UEVM_cli_args: SaferDict = {}
 UEVM_filter_category = ''
@@ -39,10 +40,9 @@ UEVM_logger_names = []  # list of logger names used by UEVM classes
 # lists of widgets that need to be enabled/disabled when some conditions change
 # - add widgets to the approprriate list when they are created by calling the append_no_duplicate() method
 # - the update_controls_state on window subclasses will use each list with the correct condition
-
 stated_widgets = {
     # at least a row must be selected
-    'row_is_selected' : [],
+    'row_is_selected': [],
     # table content has changed
     'table_has_changed': [],
     # selected item (row/page) is not the first one
@@ -66,7 +66,8 @@ stated_widgets = {
     # a row is selected and the asset is local
     'asset_added_mannually': [],
 }
-s = GUISettings()  # using the shortest variable name for GUISettings for convenience
+# incremented each time an image generate a request timeout
+timeout_error_count = 0
 
 
 # options that can be changed in the GUI

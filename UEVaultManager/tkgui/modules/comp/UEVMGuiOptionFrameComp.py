@@ -33,7 +33,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         lblf_options.pack(side=tk.TOP, **{'ipadx': 1, 'ipady': 1, 'fill': tk.BOTH, 'expand': True})
 
         # Options for Commands frame
-        lblf_command_options = ttk.LabelFrame(lblf_options, text='Options for Commands')
+        lblf_command_options = ttk.LabelFrame(lblf_options, text='Options for CLI Commands')
         lblf_command_options.pack(side=tk.TOP, **lblf_def_options)
         cur_row = -1
         # new row
@@ -41,7 +41,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         cur_col = 0
         var_debug = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('debug', False))
         var_debug.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(var_debug.get()))
-        ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode (CLI)', variable=var_debug)
+        ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode (All)', variable=var_debug)
         ck_debug.grid(row=cur_row, column=cur_col, **grid_ew_options)
         # new row
         cur_row += 1
@@ -62,7 +62,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         cur_col = 0
         var_auth_delete = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('auth_delete', False))
         var_auth_delete.trace_add('write', lambda name, index, mode: gui_g.set_args_auth_delete(var_auth_delete.get()))
-        ck_auth_delete = ttk.Checkbutton(lblf_command_options, text='Delete auth (login)', variable=var_auth_delete)
+        ck_auth_delete = ttk.Checkbutton(lblf_command_options, text='Delete auth (auth/login)', variable=var_auth_delete)
         ck_auth_delete.grid(row=cur_row, column=cur_col, **grid_ew_options)
         # new row
         cur_row += 1

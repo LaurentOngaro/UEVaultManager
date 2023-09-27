@@ -241,7 +241,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.canvas_image.pack(side=tk.RIGHT, expand=True, anchor=tk.CENTER)
         self.canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
         asset_info = 'No info'
-        self.txt_info = ttk.Text(self.asset_infos, height=5, width=30)
+        self.txt_info = ttk.Text(self.asset_infos, height=5, width=34)
         self.txt_info.pack(side=tk.LEFT, expand=True, anchor=tk.CENTER)
         self.txt_info.insert(tk.END, asset_info)
 

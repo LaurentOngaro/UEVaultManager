@@ -367,7 +367,9 @@ class UEVMGui(tk.Tk):
                 return
             self.update_preview_info(row_number)
             image_url = self.editable_table.get_image_url(row_number)
-            gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image)
+            if not gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image):
+                # the image could not be loaded and the offline mode could have been enabled
+                self.update_controls_state(update_title=True)
         except IndexError:
             gui_f.show_default_image(canvas_image)
 
