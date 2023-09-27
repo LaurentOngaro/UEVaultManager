@@ -158,19 +158,19 @@ class JSONCDL(CDL):
         _cdl._manifest_version = manifest_version
         _cdl.count = len(json_data['ChunkFilesizeList'])
 
-        cfl = json_data.pop('ChunkFilesizeList')
-        chl = json_data.pop('ChunkHashList')
-        csl = json_data.pop('ChunkShaList')
-        dgl = json_data.pop('DataGroupList')
+        cfl = json_data.get('ChunkFilesizeList',{})
+        chl = json_data.get('ChunkHashList',{})
+        csl = json_data.get('ChunkShaList',{})
+        dgl = json_data.get('DataGroupList',{})
         _guids = list(cfl.keys())
 
         for guid in _guids:
             _ci = ChunkInfo(manifest_version=manifest_version)
             _ci.guid = guid_from_json(guid)
-            _ci.file_size = blob_to_num(cfl.pop(guid))
-            _ci.hash = blob_to_num(chl.pop(guid))
-            _ci.sha_hash = bytes.fromhex(csl.pop(guid))
-            _ci.group_num = blob_to_num(dgl.pop(guid))
+            _ci.file_size = blob_to_num(cfl.get(guid,0))
+            _ci.hash = blob_to_num(chl.get(guid,0))
+            _ci.sha_hash = bytes.fromhex(csl.get(guid,''))
+            _ci.group_num = blob_to_num(dgl.get(guid,0))
             _ci.window_size = 1024 * 1024
             _cdl.elements.append(_ci)
 

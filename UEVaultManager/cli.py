@@ -32,6 +32,7 @@ from UEVaultManager.lfs.utils import copy_folder, path_join
 from UEVaultManager.models.Asset import Asset
 from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, get_csv_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
@@ -969,10 +970,10 @@ class UEVaultManagerCLI:
             try:
                 egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
                 if status_code != 200:
-                    self.logger.error(f'Failed to fetch metadata for {item.app_name}: reponse code = {status_code}')
+                    self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: reponse code = {status_code}')
                     return
             except (Exception, ) as error:
-                self.logger.error(f'Failed to fetch metadata for {item.app_name}: {error!r}')
+                self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: {error!r}')
                 return
             item.metadata = egl_meta
             try:
@@ -980,7 +981,7 @@ class UEVaultManagerCLI:
                 if 'Windows' in item.asset_infos:
                     manifest_data, _ = self.core.get_cdn_manifest(item, 'Windows')
             except (Exception, ) as error:
-                self.logger.error(f'Failed to get manifest for the asset {item.app_name}: {error!r}')
+                self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to get manifest for the asset {item.app_name}: {error!r}')
                 return
         if item:
             asset_infos = info_items['assets']
@@ -1341,11 +1342,12 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
         uewm_gui_exists = gui_g.UEVM_gui_ref is not None
-
+        if args.subparser_name == 'download':
+            args.no_install = True
         if args.clean_dowloaded_data and args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
-                'You have selected to not install the asset and to not keep the dow loaded data.\nSo, nothing can be done for you. Command is aborted',
+                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you. Command is aborted',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1372,7 +1374,8 @@ class UEVaultManagerCLI:
         categories = app.metadata.get('categories', None)
         category = categories[0]['path'] if categories else ''
         is_plugin = category and 'plugin' in category.lower()
-        install_path_base = args.install_path  # could be none
+        install_path_base = args.install_path if args.install_path is not None else ''
+        folders_to_check = []
         if not install_path_base and not args.no_install:
             if uewm_gui_exists:
                 if is_plugin and box_yesno('This asset is a plugin. Do you want to install it into an engine folder ?'):
@@ -1388,6 +1391,7 @@ class UEVaultManagerCLI:
                     if install_path_base:
                         gui_g.s.last_opened_project = install_path_base
 
+            folders_to_check.append(install_path_base)
         if not install_path_base and not args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
@@ -1396,7 +1400,6 @@ class UEVaultManagerCLI:
             )
             return False
 
-        dw = None
         if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, dw = init_display_window(self.logger)
 
@@ -1438,9 +1441,8 @@ class UEVaultManagerCLI:
         self._log_and_gui_display(
             self.logger.info, 'Downloads are resumable, you can interrupt the download with CTRL-C and resume it using the same command later on.'
         )
-        res = self.core.check_installation_conditions(
-            analysis=analysis, folders=[download_path, install_path_base], ignore_space_req=args.ignore_free_space
-        )
+        folders_to_check.append(download_path)
+        res = self.core.check_installation_conditions(analysis=analysis, folders=folders_to_check, ignore_space_req=args.ignore_free_space)
         message_list = []
 
         if res.warnings or res.failures:
@@ -1484,7 +1486,6 @@ class UEVaultManagerCLI:
             message = ''
             if not args.no_install:
                 self._log_and_gui_display(self.logger.info, 'Start copying downloaded data to install folder...')
-                self.core.uevmlfs.set_installed_asset(app.app_name, installed_app)
                 # copy the downloaded data to the installation folder
                 last_part_src = os.path.basename(download_path).lower()
                 # the downloaded data should always have a "Content" inside
@@ -1495,6 +1496,10 @@ class UEVaultManagerCLI:
                     src_folder = path_join(download_path, 'Content')
                 dest_folder = installed_app.install_path
                 if copy_folder(src_folder, dest_folder, check_copy_size=True):
+                    self.core.uevmlfs.set_installed_asset(app.app_name, installed_app)
+                    if args.database:
+                        db_handler = UEAssetDbHandler(database_name=args.database)
+                        db_handler.add_to_installed_folders(asset_id=app.app_name, folder=dest_folder)
                     message += f'\nAsset have been installed in {dest_folder}'
                 else:
                     message += f'\nAsset could not be installed in {dest_folder}'
@@ -1503,18 +1508,21 @@ class UEVaultManagerCLI:
                 message += '\nManifest file has been copied in the VaultCache folder.'
                 manifest_filename = path_join(download_path, 'manifest.json')
                 shutil.copy(installed_app.manifest_path, manifest_filename)
+                # delete data folder if it exists
+                dest_folder = path_join(download_path, 'data')
+                rmtree(dest_folder, ignore_errors=True)
                 # rename the 'Content' subfolder to 'data' because that's what the vault cache folder expects
-                shutil.move(path_join(download_path, 'Content'), path_join(download_path, 'data'))
+                shutil.move(path_join(download_path, 'Content'), dest_folder)
             elif args.clean_dowloaded_data:
                 message += '\nDownloaded data have been deleted.'
                 # delete the dlm.download_dir folder
                 rmtree(download_path)
                 self.core.uevmlfs.clean_tmp_data()
             end_t = time.time()
-            message += f'\n\nFinished installation process in {end_t - start_t:.02f} seconds.'
+            message += f'\n\nProcess finished in {end_t - start_t:.02f} seconds.'
             self._log_and_gui_display(self.logger.info, message)
-        if uewm_gui_exists:
-            dw.close_window()
+        # if uewm_gui_exists:
+        #     dw.close_window()
         return True
 
     @staticmethod
@@ -1592,7 +1600,7 @@ def main():
     try:
         # noinspection PyUnresolvedReferences
         sys.stdout.reconfigure(encoding='utf-8')
-    except (Exception,):
+    except (Exception, ):
         pass
     parser = argparse.ArgumentParser(description=f'UEVaultManager v{UEVM_version} - "{UEVM_codename}"')
     parser.register('action', 'parsers', HiddenAliasSubparsersAction)

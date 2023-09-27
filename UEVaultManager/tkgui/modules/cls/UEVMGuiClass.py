@@ -1447,12 +1447,15 @@ class UEVMGui(tk.Tk):
         Open the asset URL (Wrapper).
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'download'
-        self.install_asset()
+        gui_g.UEVM_cli_args['yes'] = True
+        gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
+        self.run_uevm_command('install_asset')
 
     def install_asset(self) -> None:
         """
         Open the asset URL (Wrapper).
         """
+        gui_g.UEVM_cli_args['subparser_name'] = 'install'
         gui_g.UEVM_cli_args['yes'] = True
         gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
         self.run_uevm_command('install_asset')

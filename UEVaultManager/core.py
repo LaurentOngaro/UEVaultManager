@@ -998,16 +998,14 @@ class AppCore:
             try:
                 r = self.egs.unauth_session.get(url, timeout=self.timeout)
             except Exception as error:
-                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" '
-                                 f'(Exception: {error!r}), trying next URL...')
+                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" (Exception: {error!r}), trying next URL...')
                 continue
 
             if r.status_code == 200:
                 manifest_bytes = r.content
                 break
             else:
-                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" '
-                                 f'(status: {r.status_code}), trying next URL...')
+                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" (status: {r.status_code}), trying next URL...')
         else:
             raise ValueError(f'Failed to get manifest from any CDN URL, last result: {r.status_code} ({r.reason})')
 
@@ -1134,12 +1132,12 @@ class AppCore:
             install_path = installed_app.install_path
             egl_guid = installed_app.egl_guid
         else:
-            install_path = path_join(install_folder, 'Content')
+            install_path = path_join(install_folder, 'Content') if install_folder!='' else ''
 
         # check for write access on the installation path or its parent directory if it doesn't exist yet
         if not check_and_create_folder(install_path):
             self.log_info_and_gui_display(f'"{install_path}" did not exist, it has been created.')
-        if not os.access(install_path, os.W_OK):
+        if install_path!='' and not os.access(install_path, os.W_OK):
             raise PermissionError(f'No write access to "{install_path}"')
 
         self.log_info_and_gui_display(f'Install path: {install_path}')
@@ -1219,7 +1217,9 @@ class AppCore:
         installed_app.install_size = analyse_res.install_size
         installed_app.manifest_path = override_manifest if override_manifest else manifest_filename
         installed_app.platform = platform
-        installed_app.install_path = install_path  # will add install_path to the installed_folders list after checking if it is not already in it
+        if install_path != '':
+            # will add install_path to the installed_folders list after checking if it is not already in it
+            installed_app.install_path = install_path
         return download_manager, analyse_res, installed_app
 
     # Check if the UE assets metadata cache must be updated

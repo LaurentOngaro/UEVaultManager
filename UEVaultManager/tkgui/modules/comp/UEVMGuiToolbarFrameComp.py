@@ -86,8 +86,8 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         ttk_item.pack(**pack_def_options, side=tk.LEFT)
         ttk_item = ttk.Button(lblf_commands, text='Help', command=lambda: container.run_uevm_command('print_help'))
         ttk_item.pack(**pack_def_options, side=tk.LEFT)
-        ttk_asset_info = ttk.Button(lblf_commands, text='Asset Info', command=lambda: container.run_uevm_command('info'))
-        ttk_asset_info.pack(**pack_def_options, side=tk.LEFT)
+        btn_asset_info = ttk.Button(lblf_commands, text='Asset Info', command=lambda: container.run_uevm_command('info'))
+        btn_asset_info.pack(**pack_def_options, side=tk.LEFT)
 
         lblf_actions = ttk.LabelFrame(self, text='Actions')
         lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
@@ -118,5 +118,5 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         append_no_duplicate(widget_list, [btn_next_asset])
         widget_list = gui_g.stated_widgets.get('not_offline', [])
         append_no_duplicate(widget_list, [btn_login])
-        widget_list = gui_g.stated_widgets.get('row_is_selected', [])
-        append_no_duplicate(widget_list, [ttk_asset_info])
+        widget_list = gui_g.stated_widgets.get('asset_is_owned', [])
+        append_no_duplicate(widget_list, [btn_asset_info])

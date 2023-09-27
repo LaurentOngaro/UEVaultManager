@@ -700,7 +700,7 @@ class UEAssetDbHandler:
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V7, caller_name=inspect.currentframe().f_code.co_name):
             return
-        if data.get('id', None) is None or data.get('name', None) is None:
+        if self.connection is None or data.get('id', None) is None or data.get('name', None) is None:
             return
         if self.get_tag_by_id(data['id']) is None:
             cursor = self.connection.cursor()
@@ -756,6 +756,41 @@ class UEAssetDbHandler:
             cursor.close()
             result = (row['averageRating'], row['total']) if row else result
         return result
+
+    def get_installed_folders(self, asset_id: str) -> str:
+        """
+        Get the list of installed folders for the given asset.
+        :param asset_id: the asset_id (i.e. app_name) of the asset to get.
+        :return: a list of installed folders.
+        """
+        if self.connection is None or asset_id == '':
+            return ''
+        else:
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT installed_folders from assets WHERE asset_id = ?", (asset_id, ))
+            row = cursor.fetchone()
+            cursor.close()
+            result = row[0] if row else ''
+            return result
+
+    def add_to_installed_folders(self, asset_id: str, folder: str = ''):
+        """
+        Add a folder to the list of installed folders for the given asset.
+        :param asset_id: the asset_id (i.e. app_name) of the asset to get.
+        :param folder: the folder to add.
+        """
+        if self.connection is None or asset_id == '' or folder == '':
+            return
+        data_str = self.get_installed_folders(asset_id)
+        installed_folders = data_str.split(',') if data_str else []
+        if folder not in installed_folders:
+            installed_folders.append(folder)
+            data_str = ','.join(installed_folders)
+            query = f"UPDATE assets SET installed_folders = '{data_str}' WHERE asset_id = '{asset_id}'"
+            cursor = self.connection.cursor()
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
 
     def get_rows_with_tags_to_convert(self, tag_value: int = None) -> list:
         """

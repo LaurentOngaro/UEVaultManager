@@ -22,6 +22,7 @@ from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.downloading import AnalysisResult, ChunkTask, DownloaderTask, FileTask, SharedMemorySegment, TaskFlags, \
     TerminateWorkerTask, UIUpdate, WriterTask
 from UEVaultManager.models.manifest import Manifest, ManifestComparison
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 
 
 class DLManager(Process):
@@ -40,7 +41,7 @@ class DLManager(Process):
         timeout: (float, float) = (7, 7),
         resume_file=None,
         max_shared_memory: int = 1024 * 1024 * 1024,
-        trace_func: Callable = None
+        trace_func: Callable = None,
     ):
         super().__init__(name='DLManager')
         self.log = logging.getLogger('DLM')
@@ -684,6 +685,10 @@ class DLManager(Process):
     def run_real(self):
         """
         Run the download manager
+
+        Notes:
+        The DisplayContentWindow_ref is anavailable here. So the display windows will not be updated when calling trace_func.
+
         """
         self.shared_memory = SharedMemory(create=True, size=self.max_shared_memory)
         self.log.debug(f'Created shared memory of size: {self.shared_memory.size / 1024 / 1024:.02f} MiB')
@@ -700,6 +705,11 @@ class DLManager(Process):
         self.writer_queue = MPQueue(-1)
         self.result_queue = MPQueue(-1)
         self.writer_result_queue = MPQueue(-1)
+
+        pw = ProgressWindow(
+            title='Download in progress...', width=300, show_btn_stop=True, show_progress=True, quit_on_close=False
+        )
+        pw.set_activation(False)
 
         self.trace_func(f'Starting download workers...')
         for i in range(self.max_workers):
@@ -792,11 +802,14 @@ class DLManager(Process):
                 hours = minutes = seconds = 0
                 rt_hours = rt_minutes = rt_seconds = 0
 
-            self.trace_func(
-                f'= Progress: {perc:.02f}% ({processed_chunks}/{num_chunk_tasks}), '
-                f'Running for {rt_hours:02d}:{rt_minutes:02d}:{rt_seconds:02d}, '
-                f'ETA: {hours:02d}:{minutes:02d}:{seconds:02d}'
-            )
+            pw.set_max_value(num_chunk_tasks)
+            message = f'Downloaded: {total_dl / 1024 / 1024:.02f} MiB  ({perc:.02f}%)'
+            if not pw.update_and_continue(value=processed_chunks, text=message):
+                self.log.warning('User requested immediate exit!')
+                break
+            self.trace_func(f'= Progress: {perc:.02f}% ({processed_chunks}/{num_chunk_tasks})')
+            self.trace_func(f'Running for {rt_hours:02d}:{rt_minutes:02d}:{rt_seconds:02d}')
+            self.trace_func(f'ETA: {hours:02d}:{minutes:02d}:{seconds:02d}')
             self.trace_func(f' - Downloaded: {total_dl / 1024 / 1024:.02f} MiB,Written: {total_write / 1024 / 1024:.02f} MiB')
             self.trace_func(f' - Cache usage: {total_used:.02f} MiB, active tasks: {self.active_tasks}')
             self.trace_func(f' + Download\t- {dl_speed / 1024 / 1024:.02f} MiB/s (raw) / {dl_unc_speed / 1024 / 1024:.02f} MiB/s (decompressed)')
@@ -853,7 +866,8 @@ class DLManager(Process):
         self.shared_memory.close()
         self.shared_memory.unlink()
         self.shared_memory = None
-
+        # pw.close_window(destroy_window=True)
         self.trace_func('All done! Download manager quitting...')
+        pw.close_window(destroy_window=True)
         # finally, exit the process.
         sys.exit(0)

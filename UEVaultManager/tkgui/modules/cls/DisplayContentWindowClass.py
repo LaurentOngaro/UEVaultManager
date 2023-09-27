@@ -158,6 +158,7 @@ class DisplayContentWindow(tk.Toplevel):
             # set the mode at the end to allow using display() to be used to change the mode for the next call
             self.keep_existing = keep_mode
             self.update()
+            self.focus_set()
         except tk.TclError:
             # gui_f.log_warning(f'Error in display_content_window: {error!r})  # will flood because it occurs frequently
             pass
@@ -182,3 +183,11 @@ class DisplayContentWindow(tk.Toplevel):
                 file.write(self.frm_content.text_content.get('1.0', tk.END))
             gui_f.box_message(f'Content Saved to {filename}')
         return filename
+
+    def set_focus(self) -> None:
+        """
+        Set the focus on the window.
+        """
+        self.focus_set()
+        self.grab_set()
+        self.wait_window()
