@@ -1585,10 +1585,11 @@ def main():
     Main function.
     """
     # Set output encoding to UTF-8 if not outputting to a terminal
-    if not sys.stdout.isatty():
+    try:
         # noinspection PyUnresolvedReferences
         sys.stdout.reconfigure(encoding='utf-8')
-
+    except (Exception,):
+        pass
     parser = argparse.ArgumentParser(description=f'UEVaultManager v{UEVM_version} - "{UEVM_codename}"')
     parser.register('action', 'parsers', HiddenAliasSubparsersAction)
 
