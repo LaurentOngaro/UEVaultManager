@@ -26,7 +26,6 @@ class EPCLFS:
             self.userprofile_path = os.path.normpath(os.path.expandvars(r'$HOME'))
             self.appdata_path = self.programdata_path = None
         self.config = configparser.ConfigParser(strict=False)
-        self.config.optionxform = lambda option: option
         self.vault_cache_folder = ''
         self.projects_path = ''
         self.engines_path = ''
