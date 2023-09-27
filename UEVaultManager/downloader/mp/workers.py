@@ -176,7 +176,7 @@ class FileWorker(Process):
         while True:
             try:
                 try:
-                    j: WriterTask = self.q.get(timeout=(7, 7))
+                    j: WriterTask = self.q.get(timeout=7)  # no tuple here !
                 except Empty:
                     logger.warning('Writer queue empty')
                     continue
