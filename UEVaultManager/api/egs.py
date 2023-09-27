@@ -86,7 +86,7 @@ class EPCAPI:
     Epic Games Client API.
     :param lc: the language code.
     :param cc: the country code.
-    :param timeout: the timeout for requests.
+    :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
     ignored_logger = None
 
@@ -156,7 +156,7 @@ class EPCAPI:
         self.language_code = lc
         self.country_code = cc
 
-        self.request_timeout = timeout
+        self.timeout = timeout
 
     def _extract_price_from_elt(self, dom_elt=None, asset_name='NO NAME') -> float:
         """
@@ -237,7 +237,7 @@ class EPCAPI:
             url = f'https://{self._url_owned_assets}'
         else:
             url = f'https://{self._url_asset_list}'
-        r = self.session.get(url, timeout=self.request_timeout)
+        r = self.session.get(url, timeout=self.timeout)
         r.raise_for_status()
         json_content = r.json()
         try:
@@ -256,7 +256,7 @@ class EPCAPI:
         if not url:
             return result
         try:
-            r = self.session.get(url, timeout=self.request_timeout)
+            r = self.session.get(url, timeout=self.timeout)
         except (requests.exceptions.Timeout, ConnectionError):
             self.log.warning(f'Timeout for {url}')
             return result
@@ -273,7 +273,7 @@ class EPCAPI:
         json_data = {}
         if not url:
             return json_data
-        r = self.session.get(url, timeout=self.request_timeout)
+        r = self.session.get(url, timeout=self.timeout)
         # r.raise_for_status() # commented line because we want the exceptions to be raised
         json_data = r.json()
         return json_data
@@ -286,7 +286,7 @@ class EPCAPI:
         """
         self.session.headers['Authorization'] = f'bearer {session["access_token"]}'
         url = f'https://{self._oauth_host}/account/api/oauth/verify'
-        r = self.session.get(url, timeout=self.request_timeout)
+        r = self.session.get(url, timeout=self.timeout)
         if r.status_code >= 500:
             r.raise_for_status()
 
@@ -324,7 +324,7 @@ class EPCAPI:
             raise ValueError('At least one token type must be specified!')
 
         url = f'https://{self._oauth_host}/account/api/oauth/token'
-        r = self.session.post(url, data=params, auth=self._oauth_basic, timeout=self.request_timeout)
+        r = self.session.post(url, data=params, auth=self._oauth_basic, timeout=self.timeout)
         # Only raise HTTP exceptions on server errors
         if r.status_code >= 500:
             r.raise_for_status()
@@ -355,7 +355,7 @@ class EPCAPI:
         :return: the item token using json format.
         """
         url = f'https://{self._oauth_host}/account/api/oauth/exchange'
-        r = self.session.get(url, timeout=self.request_timeout)
+        r = self.session.get(url, timeout=self.timeout)
         r.raise_for_status()
         return r.json()
 
@@ -367,7 +367,7 @@ class EPCAPI:
         :return: the item assets using json format.
         """
         url = f'https://{self._launcher_host}/launcher/api/public/assets/{platform}'
-        r = self.session.get(url, params=dict(label=label), timeout=self.request_timeout)
+        r = self.session.get(url, params=dict(label=label), timeout=self.timeout)
         r.raise_for_status()
         return r.json()
 
@@ -382,16 +382,15 @@ class EPCAPI:
         :return: the item manifest using json format.
         """
         url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
-        r = self.session.get(url, timeout=self.request_timeout)
+        r = self.session.get(url, timeout=self.timeout)
         r.raise_for_status()
         return r.json()
 
-    def get_item_info(self, namespace: str, catalog_item_id: str, timeout: float = None) -> (dict, int):
+    def get_item_info(self, namespace: str, catalog_item_id: str) -> (dict, int):
         """
         Get the item info.
         :param namespace: namespace of the item.
         :param catalog_item_id: catalog item id of the item.
-        :param timeout: timeout for the request.
         :return: (The item info, status code).
         """
         url = f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items'
@@ -400,7 +399,7 @@ class EPCAPI:
             params=dict(
                 id=catalog_item_id, includeDLCDetails=True, includeMainGameDetails=True, country=self.country_code, locale=self.language_code
             ),
-            timeout=timeout or self.request_timeout
+            timeout=self.timeout
         )
         r.raise_for_status()
         return r.json().get(catalog_item_id, None), r.status_code
@@ -413,7 +412,7 @@ class EPCAPI:
         """
         records = []
         url = f'https://{self._library_host}/library/api/public/items'
-        r = self.session.get(url, params=dict(includeMetadata=include_metadata), timeout=self.request_timeout)
+        r = self.session.get(url, params=dict(includeMetadata=include_metadata), timeout=self.timeout)
         r.raise_for_status()
         j = r.json()
         records.extend(j['records'])
@@ -421,18 +420,17 @@ class EPCAPI:
         # Fetch remaining library entries as long as there is a cursor
         url = f'https://{self._library_host}/library/api/public/items'
         while cursor := j['responseMetadata'].get('nextCursor', None):
-            r = self.session.get(url, params=dict(includeMetadata=include_metadata, cursor=cursor), timeout=self.request_timeout)
+            r = self.session.get(url, params=dict(includeMetadata=include_metadata, cursor=cursor), timeout=self.timeout)
             r.raise_for_status()
             j = r.json()
             records.extend(j['records'])
 
         return records
 
-    def search_for_asset_url(self, asset_name: str, timeout=10.0) -> []:
+    def search_for_asset_url(self, asset_name: str) -> []:
         """
         Find the asset url from the asset name by searching the asset name in the unreal engine marketplace.
         :param asset_name: asset name to search.
-        :param timeout: timeout for the request.
         :return: (The asset url, the asset name (converted or found), the grab result code).
         """
         # remove the suffix _EngineVersion (ex _4.27) at the end of the name to have a valid search value
@@ -458,7 +456,7 @@ class EPCAPI:
         search_url_root = f'https://{self._search_url}/assets?keywords='
         search_url_full = search_url_root + converted_name_lower
         try:
-            r = self.session.get(search_url_full, timeout=timeout)
+            r = self.session.get(search_url_full, timeout=self.timeout)
         except requests.exceptions.Timeout:
             self.log.warning(f'Timeout for {asset_name}')
             return [url, asset_slug, GrabResult.TIMEOUT.name]
@@ -485,12 +483,11 @@ class EPCAPI:
         url = 'https://www.unrealengine.com' + links[0]
         return [url, asset_slug, GrabResult.NO_ERROR.name]
 
-    def grab_assets_extra(self, asset_name: str, asset_title: str, timeout=10.0, verbose_mode=False, installed_app=None) -> dict:
+    def grab_assets_extra(self, asset_name: str, asset_title: str, verbose_mode=False, installed_app=None) -> dict:
         """
         Grab the extra data of an asset (price, review...) using BeautifulSoup from the marketplace.
         :param asset_name: name of the asset.
         :param asset_title: title of the asset.
-        :param timeout: connection timeout.
         :param verbose_mode: verbose mode.
         :param installed_app: installed app of the same name if any.
         :return: a dict with the extra data.
@@ -502,7 +499,7 @@ class EPCAPI:
         no_result = create_empty_assets_extra(asset_name=asset_name)
 
         # try to find the url of the asset by doing a search in the marketplace
-        asset_url, asset_slug, error_code = self.search_for_asset_url(asset_title, timeout)
+        asset_url, asset_slug, error_code = self.search_for_asset_url(asset_title)
 
         # TODO: improve the following code to use the marketplace API instead of Scraping using beautifulsoup
         if asset_url == '' or error_code != GrabResult.NO_ERROR.name:
@@ -543,7 +540,7 @@ class EPCAPI:
 
                 # grab the price on a non logged soup (price will be available on that page only)
                 try:
-                    response = requests.get(asset_url, timeout=timeout)  # not using session, so not logged in Epic game
+                    response = requests.get(asset_url, timeout=self.timeout)  # not using session, so not logged in Epic game
                     response.raise_for_status()
                     soup_not_logged = BeautifulSoup(response.text, 'html.parser')
                     owned_elt = soup_not_logged.find('div', class_='purchase')

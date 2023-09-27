@@ -7,7 +7,7 @@ Definition for the types used in this module:
 """
 from enum import Enum
 
-from UEVaultManager.tkgui.modules import globals as gui_g
+from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int
 
 
@@ -50,7 +50,7 @@ class CSVFieldType(Enum):
         if self == self.BOOL:
             return convert_to_bool(value)
         if self == self.BOOL:
-            return convert_to_datetime(value, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])
+            return convert_to_datetime(value, formats_to_use=[GUISettings.epic_datetime_format, GUISettings.csv_datetime_format])
         return str(value)
 
 

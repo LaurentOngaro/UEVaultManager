@@ -43,7 +43,7 @@ from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, creat
     show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
-from UEVaultManager.utils.cli import check_and_create_path, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
+from UEVaultManager.utils.cli import check_and_create_file, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
 from UEVaultManager.utils.HiddenAliasSubparsersActionClass import HiddenAliasSubparsersAction
 
 # add the parent folder to the sys.path list, to run the script from the command line without import module error
@@ -166,6 +166,10 @@ class UEVaultManagerCLI:
             # log_function() is called in box_message
         else:
             log_function(message)
+            name = log_function.__name__
+            # check if name contains 'error' or 'critical' to quit the app
+            if quit_on_error and ('error' in name or 'critical' in name or 'fatal' in name):
+                sys.exit(1)
 
     @staticmethod
     def _log_and_gui_display(log_function: callable, message: str) -> None:
@@ -552,11 +556,7 @@ class UEVaultManagerCLI:
         if args.output:
             file_src = args.output
             # test if the folder is writable
-            if not check_and_create_path(file_src):
-                message = f'Could not create folder for {file_src}. Quiting Application...'
-                self._log_and_gui_message(self.logger.critical, message)
-            # we try to open it for writing
-            if not os.access(file_src, os.W_OK):
+            if not check_and_create_file(file_src):
                 message = f'Could not create result file {file_src}. Quiting Application...'
                 self._log_and_gui_message(self.logger.critical, message)
 
@@ -700,7 +700,6 @@ class UEVaultManagerCLI:
                 try:
                     with open(file_src, 'r', encoding='utf-8') as output:
                         assets_in_file = json.load(output)
-                        output.close()
                 except (FileExistsError, OSError, UnicodeDecodeError, StopIteration, json.decoder.JSONDecodeError):
                     self.logger.warning(f'Could not read Json record from the file {args.output}')
                 # reopen file for writing
@@ -860,7 +859,7 @@ class UEVaultManagerCLI:
             user_name = self.core.uevmlfs.userdata['displayName']
 
         cache_information = self.core.uevmlfs.get_assets_cache_info()
-        update_information = self.core.uevmlfs.get_cached_version()
+        update_information = self.core.uevmlfs.get_cached_app_version()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
         last_cache_update = cache_information.get('last_update', '')
@@ -957,8 +956,8 @@ class UEVaultManagerCLI:
                 r.raise_for_status()
                 manifest_data = r.content
             elif manifest_uri and os.path.exists(manifest_uri):
-                with open(manifest_uri, 'rb') as f:
-                    manifest_data = f.read()
+                with open(manifest_uri, 'rb') as file:
+                    manifest_data = file.read()
             else:
                 self.logger.info('Asset not installed and offline mode enabled, can not load manifest.')
         elif item:
@@ -1417,7 +1416,6 @@ class UEVaultManagerCLI:
             max_workers=args.max_workers,
             reuse_last_install=args.reuse_last_install,
             dl_optimizations=args.order_opt,
-            timeout=args.timeout,
             override_manifest=args.override_manifest,
             override_base_url=args.override_base_url,
             preferred_cdn=args.preferred_cdn,

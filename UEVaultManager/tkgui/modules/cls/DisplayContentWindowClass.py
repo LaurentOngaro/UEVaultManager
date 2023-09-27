@@ -178,7 +178,7 @@ class DisplayContentWindow(tk.Toplevel):
             title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=self.result_filename
         )
         if filename:
-            with open(filename, 'w') as f:
-                f.write(self.frm_content.text_content.get('1.0', tk.END))
+            with open(filename, 'w', encoding='utf-8') as file:
+                file.write(self.frm_content.text_content.get('1.0', tk.END))
             gui_f.box_message(f'Content Saved to {filename}')
         return filename

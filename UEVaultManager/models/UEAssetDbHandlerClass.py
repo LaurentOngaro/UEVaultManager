@@ -22,16 +22,16 @@ from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, path_from_relative_to_absolute
-from UEVaultManager.utils.cli import check_and_create_path
+from UEVaultManager.utils.cli import check_and_create_file
 
 
 class UEADBH_Settings:
     """
     Settings for the class when running as main.
     """
-    clean_data = True
+    clean_data = False
     read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
-    db_folder = path_from_relative_to_absolute('../../../scraping/')
+    db_folder = path_from_relative_to_absolute('K:/UE/UEVM/scraping')
     db_name = path_join(db_folder, 'assets.db')
 
 
@@ -433,7 +433,8 @@ class UEAssetDbHandler:
             self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V10
         if upgrade_from_version == DbVersionNum.V10:
-            query = "ALTER TABLE assets RENAME COLUMN installed_folder TO installed_folders;"
+            column = 'installed_folder'  # use a var to avoid issue whith pycharm inspection
+            query = f"ALTER TABLE assets RENAME COLUMN {column} TO installed_folders;"
             self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V11
         if previous_version != self.db_version:
@@ -530,7 +531,7 @@ class UEAssetDbHandler:
         if not isinstance(fields, str):
             fields = ', '.join(fields)
         row_data = {}
-        where_clause = f"WHERE id='{uid}'" if id is not None else ''
+        where_clause = f"WHERE id='{uid}'" if uid is not None else ''
         if self.connection is not None:
             self.connection.row_factory = sqlite3.Row
             cursor = self.connection.cursor()
@@ -895,8 +896,8 @@ class UEAssetDbHandler:
                 query = f"SELECT {fields} FROM {table_name}"
                 rows = cursor.execute(query).fetchall()
                 try:
-                    with open(file_name_p, 'w', newline='', encoding='utf-8') as f:
-                        writer = csv.writer(f, dialect='unix')
+                    with open(file_name_p, 'w', newline='', encoding='utf-8') as file:
+                        writer = csv.writer(file, dialect='unix')
                         # Write column names
                         writer.writerow(column_names)
                         # Write rows
@@ -983,8 +984,8 @@ class UEAssetDbHandler:
                     cursor.execute(f"DELETE FROM {table_name} WHERE 1")
                     self.connection.commit()
                 try:
-                    with open(file_name_p, 'r', newline='', encoding='utf-8') as f:
-                        reader = csv.reader(f, dialect='unix')
+                    with open(file_name_p, 'r', newline='', encoding='utf-8') as file:
+                        reader = csv.reader(file, dialect='unix')
                         csv_columns = next(reader)
                         # Get column names from database
                         cursor.execute(f"PRAGMA table_info({table_name});")
@@ -1097,7 +1098,8 @@ class UEAssetDbHandler:
 if __name__ == "__main__":
     # the following code is just for class testing purposes
     st = UEADBH_Settings()
-    check_and_create_path(st.db_name)
+    check_and_create_file(st.db_name, create_file=False)
+    print(f'\nOpening database "{st.db_name}"\n')
     asset_handler = UEAssetDbHandler(database_name=st.db_name, reset_database=(st.clean_data and not st.read_data_only))
     if st.read_data_only:
         # Read existing assets

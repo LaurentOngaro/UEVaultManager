@@ -28,6 +28,7 @@ class DLManager(Process):
     """
     Download manager process that handles all the download and writing tasks.
     """
+
     def __init__(
         self,
         download_dir: str,
@@ -825,7 +826,7 @@ class DLManager(Process):
         self.trace_func('Waiting for installation to finish...')
         self.writer_queue.put_nowait(TerminateWorkerTask())
 
-        writer_p.join(timeout=10.0)
+        writer_p.join(timeout=7)
         if writer_p.exitcode is None:
             self.log.warning(f'Terminating writer process, no exit code!')
             writer_p.terminate()

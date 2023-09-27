@@ -190,7 +190,7 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
     :param image_url: the url of the image to display.
     :param canvas_image: the canvas to display the image in.
     :param scale: the scale to apply to the image.
-    :param timeout: the timeout in seconds to wait for the image to be downloaded.
+    :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
     if gui_g.s.offline_mode:
         # could be usefull if connexion is slow
@@ -210,12 +210,11 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
         else:
             response = requests.get(image_url, timeout=timeout)
             image = Image.open(BytesIO(response.content))
-
-            with open(image_filename, "wb") as f:
-                f.write(response.content)
+            with open(image_filename, "wb") as file:
+                file.write(response.content)
         resize_and_show_image(image, canvas_image, scale)
     except Exception as error:
-        log_warning(f"Error showing image: {error!r}")
+        log_warning(f'Error showing image: {error!r}')
 
 
 def show_default_image(canvas_image=None) -> None:
@@ -232,7 +231,7 @@ def show_default_image(canvas_image=None) -> None:
             # noinspection PyTypeChecker
             resize_and_show_image(def_image, canvas_image)
     except Exception as error:
-        log_warning(f"Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error!r}")
+        log_warning(f'Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error!r}')
 
 
 def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=False) -> None:

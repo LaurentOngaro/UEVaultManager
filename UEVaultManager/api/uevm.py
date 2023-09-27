@@ -81,7 +81,7 @@ class UEVMAPI:
         :return: version information.
         """
         url = f'https://pypi.org/pypi/{self._package_name}/json'
-        r = self.session.get(url, timeout=10.0)
+        r = self.session.get(url, timeout=(7, 7))
         r.raise_for_status()
         data = r.json()
         pypi_version = '0.0.0'

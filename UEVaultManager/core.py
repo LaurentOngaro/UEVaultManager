@@ -39,7 +39,7 @@ from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.tkgui.modules.functions import box_message
-from UEVaultManager.utils.cli import check_and_create_folder, check_and_create_path, get_max_threads
+from UEVaultManager.utils.cli import check_and_create_file, check_and_create_folder, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
@@ -53,13 +53,14 @@ class AppCore:
     the downloader, lfs, and api components to make writing CLI/GUI
     code easier and cleaner and avoid duplication.
     :param override_config: path to a config file to use instead of the default.
-    :param timeout: timeout in seconds for requests.
+    :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
     _egl_version = '11.0.1-14907503+++Portal+Release-Live'
 
-    def __init__(self, override_config=None, timeout=10.0):
+    def __init__(self, override_config=None, timeout=(7, 7)):
+        self.timeout = timeout
         self.log = logging.getLogger('Core')
-        self.egs = EPCAPI(timeout=timeout)
+        self.egs = EPCAPI(timeout=self.timeout)
         self.uevmlfs = UEVMLFS(config_file=override_config)
         self.egl = EPCLFS()
         self.uevm_api = UEVMAPI()
@@ -190,7 +191,7 @@ class AppCore:
             :return: logger.
             """
             filename_log = filename_log.replace('~/.config', self.uevmlfs.path)
-            if check_and_create_path(filename_log):
+            if check_and_create_file(filename_log):
                 handler = logging.FileHandler(filename_log, mode='w')
                 handler.setFormatter(formatter)
                 logger = logging.Logger(logger_name, 'INFO')
@@ -401,11 +402,11 @@ class AppCore:
             """
             return tuple(map(int, (v.split('.'))))
 
-        cached = self.uevmlfs.get_cached_version()
+        cached = self.uevmlfs.get_cached_app_version()
         version_info = cached['data']
         if force or not version_info or (datetime.now().timestamp() - cached['last_update']) > 24 * 3600:
             version_info = self.uevm_api.get_version_information()
-            self.uevmlfs.set_cached_version(version_info)
+            self.uevmlfs.set_cached_app_version(version_info)
 
         web_version = version_info['version']
         self.update_available = version_tuple(web_version) > version_tuple(UEVM_version)
@@ -415,7 +416,7 @@ class AppCore:
         Return update info dict.
         :return: update info dict.
         """
-        return self.uevmlfs.get_cached_version()['data']
+        return self.uevmlfs.get_cached_app_version()['data']
 
     def get_assets(self, update_assets=False, platform='Windows') -> List[AssetBase]:
         """
@@ -438,7 +439,8 @@ class AppCore:
             if self.uevmlfs.assets != assets:
                 self.uevmlfs.assets = assets
 
-        return self.uevmlfs.assets[platform]
+        assets = self.uevmlfs.assets.get(platform, None)
+        return assets
 
     def get_asset(self, app_name: str, platform='Windows', update=False) -> AssetBase:
         """
@@ -481,7 +483,11 @@ class AppCore:
             self.get_asset_list(True, platform=platform)
         return self.uevmlfs.get_item_meta(app_name)
 
-    def get_asset_list(self, update_assets=True, platform='Windows', filter_category='', force_refresh=False) -> (List[Asset], Dict[str, List[Asset]]):
+    def get_asset_list(self,
+                       update_assets=True,
+                       platform='Windows',
+                       filter_category='',
+                       force_refresh=False) -> (List[Asset], Dict[str, List[Asset]]):
         """
         Returns a list of all available assets for the given platform.
         :param update_assets: force update of asset list.
@@ -526,7 +532,7 @@ class AppCore:
 
             if _process_meta:
                 try:
-                    eg_meta, status_code = self.egs.get_item_info(namespace, catalog_item_id, timeout=10.0)
+                    eg_meta, status_code = self.egs.get_item_info(namespace, catalog_item_id)
                 except HTTPError as error_l:
                     self.log.warning(f'Failed to fetch metadata for {name}: {error_l!r}')
                     return False
@@ -542,7 +548,10 @@ class AppCore:
                 # we use title because it's less ambiguous than a name when searching an asset
                 installed_app = self.uevmlfs.get_installed_app(name)
                 eg_extra = self.egs.grab_assets_extra(
-                    asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode, installed_app=installed_app
+                    asset_name=name,
+                    asset_title=apps[name].app_title,
+                    verbose_mode=self.verbose_mode,
+                    installed_app=installed_app,
                 )
 
                 # check for data consistency
@@ -990,7 +999,7 @@ class AppCore:
         for url in manifest_urls:
             self.log.debug(f'Trying to download manifest from "{url}"...')
             try:
-                r = self.egs.unauth_session.get(url, timeout=10.0)
+                r = self.egs.unauth_session.get(url, timeout=self.timeout)
             except Exception as error:
                 self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" '
                                  f'(Exception: {error!r}), trying next URL...')
@@ -1038,7 +1047,6 @@ class AppCore:
         max_shm: int = 0,
         max_workers: int = 0,
         dl_optimizations: bool = False,
-        timeout: (float, float) = (7, 7),
         override_manifest: str = '',
         override_old_manifest: str = '',
         override_base_url: str = '',
@@ -1061,7 +1069,6 @@ class AppCore:
         :param max_shm: maximum amount of shared memory to use.
         :param max_workers: maximum number of workers to use.
         :param dl_optimizations: download optimizations.
-        :param timeout: download timeout.
         :param override_manifest: override the manifest.
         :param override_old_manifest: override the old manifest.
         :param override_base_url: override the base URL.
@@ -1142,7 +1149,7 @@ class AppCore:
 
         if not no_resume:
             filename = clean_filename(f'{app.app_name}.resume')
-            resume_file = path_join(self.uevmlfs.get_tmp_path(), filename)
+            resume_file = path_join(self.uevmlfs.tmp_folder, filename)
         else:
             resume_file = None
 
@@ -1191,7 +1198,7 @@ class AppCore:
             status_q=status_queue,
             max_shared_memory=max_shm * 1024 * 1024,
             max_workers=max_workers,
-            timeout=timeout,
+            timeout=self.timeout,
             trace_func=self.log_info_and_gui_display,
         )
         analyse_res = download_manager.run_analysis(

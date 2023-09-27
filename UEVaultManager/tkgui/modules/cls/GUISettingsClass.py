@@ -35,6 +35,11 @@ class GUISettings:
     path: str = ''
     config_file_gui: str = ''  # config file path for gui part (tkgui)
     config_file: str = ''  # config file path for cli part (cli). Set by the cli part
+    csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
+    epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
+    data_filetypes = (
+        ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('SQlite file', '*.db')
+    )
 
     def __init__(self, config_file=None):
         self.config = AppConfig(comment_prefixes='/', allow_no_value=True)
@@ -43,6 +48,7 @@ class GUISettings:
 
         self.config_vars = self.read_config_properties()
         self._config_vars_deserialized = {}  # will store config_vars after they have been deserialized from json
+
         # the following folders are relative to the current file location
         # they must be used trought path_from_relative_to_absolute
         # following vars are not set as properties to avoid storing absolute paths in the config file
@@ -52,23 +58,30 @@ class GUISettings:
 
         # Folder for assets (aka. images, icon... not "UE assets") used for the GUI. THIS IS NOT A SETTING THAT CAN BE CHANGED BY THE USER
         self.assets_folder: str = gui_fn.path_from_relative_to_absolute('../../assets')
+        self.assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'marketplace')
+        self.owned_assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'owned')
+        self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
+        self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
+        self.filters_folder = path_join(self.path, 'filters')
 
         self.default_filename = 'assets'
+        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
+        self.ue_valid_file_content = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder
+        self.ue_valid_folder_content = ('content', '')  # must be a tuple. MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
+        self.ue_valid_manifest_content = ('data', '')  # must be a tuple. MUST BE LOWERCASE for comparison
+        # name of the column that will be used to store the index in datatables. It will be added by default to the hidden columns list
+        self.index_copy_col_name = 'Index copy'
+        # if a folder is in this tuple, the folder won't be scanned to find ue folders
+        self.ue_invalid_folder_content = (
+            'binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data'
+        )  # must be a tuple. MUST BE LOWERCASE for comparison
+        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
+        self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')  # must be a tuple. MUST BE LOWERCASE for comparison
+
         self.app_icon_filename: str = path_join(self.assets_folder, 'main.ico')
         self.default_image_filename: str = path_join(self.assets_folder, 'UEVM_200x200.png')
-
-        # filename for storing the user data (filled by the 'auth' command).
-        self.user_data_filename: str = path_join(self.path, 'user_data.json')
-        # filename for storing data about the current version of the app
-        self.app_version_filename: str = path_join(self.path, 'app_version.json')
-        # filename for storing cache data for asset's metadata updating
-        self.assets_cache_info_filename: str = path_join(self.path, 'assets_cache_info.json')
-        # filename for storing 'basic' data of assets.
-        self.assets_data_filename: str = path_join(self.path, 'assets.json')
-        # filename for the installed assets list
-        self.installed_asset_filename: str = path_join(self.path, 'installed_assets.json')
-        # filename for storing the size of asset (filled by the 'info' command).
-        self.asset_sizes_filename: str = path_join(self.path, 'asset_sizes.json')
 
         if self.config_vars['reopen_last_file'] and os.path.isfile((self.config_vars['last_opened_file'])):
             self.csv_filename: str = self.config_vars['last_opened_file']
@@ -80,30 +93,6 @@ class GUISettings:
         self.app_monitor: int = 1
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
-        # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
-        self.ue_valid_file_content = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder
-        self.ue_valid_folder_content = ('content', '')  # must be a tuple. MUST BE LOWERCASE for comparison
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
-        self.ue_valid_manifest_content = ('data', '')  # must be a tuple. MUST BE LOWERCASE for comparison
-        # if a folder is in this tuple, the folder won't be scanned to find ue folders
-        self.ue_invalid_folder_content = (
-            'binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data'
-        )  # must be a tuple. MUST BE LOWERCASE for comparison
-        # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
-        self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')  # must be a tuple. MUST BE LOWERCASE for comparison
-
-        self.assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'marketplace')
-        self.owned_assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'owned')
-        self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
-        self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
-        self.filters_folder = path_join(self.path, 'filters')
-        self.csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
-        self.epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
-        self.data_filetypes = (
-            ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('SQlite file', '*.db')
-        )
-
         self.preview_max_width: int = 150
         self.preview_max_height: int = 150
         self.default_global_search: str = 'Text to search...'
@@ -136,10 +125,9 @@ class GUISettings:
             'textcolor': 'black'  #
         }
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
-        self.index_copy_col_name = 'Index copy'  # name of the column that will be used to store the index in datatables. It will be added by default to the hidden columns list
 
         # keep at the end
-        self._app_title_long: str = ''  # use a getter to upddate the value in live
+        self._app_title_long: str = ''  # use a getter to uddate the value in live
         self.app_title: str = __name__
         self.offline_mode = False
 
@@ -670,5 +658,5 @@ class GUISettings:
                 )
                 os.rename(self.config_file_gui, path_join(os.path.dirname(self.config_file_gui), new_filename))
 
-        with open(self.config_file_gui, 'w') as cf:
-            self.config.write(cf)
+        with open(self.config_file_gui, 'w', encoding='utf-8') as file:
+            self.config.write(file)

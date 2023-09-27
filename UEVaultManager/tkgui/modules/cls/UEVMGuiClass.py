@@ -669,8 +669,8 @@ class UEVMGui(tk.Tk):
                         break
 
                 if fuzz_score >= minimal_score:
-                    with open(entry.path, 'r') as f:
-                        for line in f:
+                    with open(entry.path, 'r', encoding='utf-8') as file:
+                        for line in file:
                             if line.startswith('URL='):
                                 returned_urls[0] = line.replace('URL=', '').strip()
                                 return True
@@ -1325,7 +1325,7 @@ class UEVMGui(tk.Tk):
             asset_info.append(f'Asset id: {app_name}')
             asset_info.append(f'Row Index: {idx}')
             size = self.core.uevmlfs.get_asset_size(app_name)
-            if size > 0:
+            if size is not None and size > 0:
                 size_formatted = '{:.02f} GiB'.format(size / 1024 / 1024 /
                                                       1024) if size > 1024 * 1024 * 1024 else '{:.02f} MiB'.format(size / 1024 / 1024)
                 asset_info.append(f'Asset size: {size_formatted}')
