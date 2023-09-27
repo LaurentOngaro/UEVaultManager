@@ -937,12 +937,16 @@ class UEVaultManagerCLI:
         else:
             # check the item using the EGS method (new)
             try:
-                json_data_egs = UEAssetScraper.read_json_file(app_name)
-                json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs[0])
-                item = Asset.from_json(json_data_uevm)  # create an object from the App class using the json data
+                json_data_egs, json_message = UEAssetScraper.read_json_file(app_name)
+                if json_message != '':
+                    self._log_and_gui_message(self.logger.warning, json_message, quit_on_error=False)
+                    item = None
+                else:
+                    json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs)
+                    item = Asset.from_json(json_data_uevm)  # create an object from the App class using the json data
             except (Exception, ):
                 item = None
-        if not item:
+        if not item or item is None:
             self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
             args.offline = True
         manifest_data = None
