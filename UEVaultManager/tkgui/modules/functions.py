@@ -297,16 +297,18 @@ def custom_print(text='', keep_mode=True) -> None:
         print(text)
 
 
-def get_tk_root(container) -> tk.Tk:
+def get_tk_root(container) -> Optional[tk.Tk]:
     """
     Get the root window.
     :param container:  the container window or object
     :return: the root window
     """
+    if container is None:
+        return None
     root = None
     # get the root window to avoid creating multiple progress windows
     try:
-        # a tk window chid class
+        # a tk window child class
         root = container.winfo_toplevel()
     except (AttributeError, tk.TclError):
         # an editableTable class
@@ -318,7 +320,7 @@ def get_tk_root(container) -> tk.Tk:
 
 
 def show_progress(
-    parent,
+    parent=None,
     text='Working...Please wait',
     width=500,
     height=120,
@@ -332,7 +334,7 @@ def show_progress(
 ) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
-    :param parent: the parent window.
+    :param parent: the parent window. Could be None
     :param text: the text to display in the progress window.
     :param width: the width of the progress window.
     :param height: the height of the progress window.
