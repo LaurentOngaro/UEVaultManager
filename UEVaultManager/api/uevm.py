@@ -34,7 +34,7 @@ def extract_codename(pypi_description: str) -> str:
     :param pypi_description: pyPI's description.
     :return: codename.
     """
-    pattern = r'## codename:(.*?)##'
+    pattern = r'## codename:(.*?)(##.*)?$'
     match = re.search(pattern, pypi_description, re.IGNORECASE | re.DOTALL)
     if match:
         return match.group(1).strip()
@@ -75,7 +75,7 @@ class UEVMAPI:
         self.log = logging.getLogger('UEVMAPI')
         self.session.headers['User-Agent'] = self._user_agent
 
-    def get_version_information(self) -> dict:
+    def get_online_version_information(self) -> dict:
         """
         Get the latest packagage version information from PyPI.
         :return: version information.

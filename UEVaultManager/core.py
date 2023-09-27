@@ -402,11 +402,11 @@ class AppCore:
             """
             return tuple(map(int, (v.split('.'))))
 
-        cached = self.uevmlfs.get_cached_app_version()
+        cached = self.uevmlfs.get_online_version_saved()
         version_info = cached['data']
         if force or not version_info or (datetime.now().timestamp() - cached['last_update']) > 24 * 3600:
-            version_info = self.uevm_api.get_version_information()
-            self.uevmlfs.set_cached_app_version(version_info)
+            version_info = self.uevm_api.get_online_version_information()
+            self.uevmlfs.set_online_version_saved(version_info)
 
         web_version = version_info['version']
         self.update_available = version_tuple(web_version) > version_tuple(UEVM_version)
@@ -416,7 +416,7 @@ class AppCore:
         Return update info dict.
         :return: update info dict.
         """
-        return self.uevmlfs.get_cached_app_version()['data']
+        return self.uevmlfs.get_online_version_saved()['data']
 
     def get_assets(self, update_assets=False, platform='Windows') -> List[AssetBase]:
         """

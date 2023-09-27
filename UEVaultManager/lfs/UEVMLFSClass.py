@@ -74,7 +74,7 @@ class UEVMLFS:
         # filename for storing the user data (filled by the 'auth' command).
         self.user_data_filename: str = path_join(self.json_files_folder, 'user_data.json')
         # filename for storing data about the current version of the app
-        self.app_version_filename: str = path_join(self.json_files_folder, 'app_version.json')
+        self.online_version_filename: str = path_join(self.json_files_folder, 'online_version.json')
         # filename for storing cache data for asset's metadata updating
         self.assets_cache_info_filename: str = path_join(self.json_files_folder, 'assets_cache_info.json')
         # filename for storing 'basic' data of assets.
@@ -665,7 +665,7 @@ class UEVMLFS:
         folders = [gui_g.s.assets_data_folder, gui_g.s.owned_assets_data_folder, gui_g.s.assets_global_folder, gui_g.s.assets_csv_files_folder]
         return self.delete_folder_content(folders)
 
-    def get_cached_app_version(self) -> dict:
+    def get_online_version_saved(self) -> dict:
         """
         Get the cached version data.
         :return: version data.
@@ -673,14 +673,14 @@ class UEVMLFS:
         if self._update_info:
             return self._update_info
         try:
-            with open(self.app_version_filename, 'r', encoding='utf-8') as file:
+            with open(self.online_version_filename, 'r', encoding='utf-8') as file:
                 self._update_info = json.load(file)
         except Exception as error:
             self.log.debug(f'Failed to load cached version data: {error!r}')
             self._update_info = dict(last_update=0, data=None)
         return self._update_info
 
-    def set_cached_app_version(self, version_data: dict) -> None:
+    def set_online_version_saved(self, version_data: dict) -> None:
         """
         Set the cached version data.
         :param version_data: the version data.
@@ -688,7 +688,7 @@ class UEVMLFS:
         if not version_data:
             return
         self._update_info = dict(last_update=time(), data=version_data)
-        with open(self.app_version_filename, 'w', encoding='utf-8') as file:
+        with open(self.online_version_filename, 'w', encoding='utf-8') as file:
             json.dump(self._update_info, file, indent=2, sort_keys=True)
 
     def get_assets_cache_info(self) -> dict:

@@ -859,7 +859,7 @@ class UEVaultManagerCLI:
             user_name = self.core.uevmlfs.userdata['displayName']
 
         cache_information = self.core.uevmlfs.get_assets_cache_info()
-        update_information = self.core.uevmlfs.get_cached_app_version()
+        update_information = self.core.uevmlfs.get_online_version_saved()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
         last_cache_update = cache_information.get('last_update', '')
