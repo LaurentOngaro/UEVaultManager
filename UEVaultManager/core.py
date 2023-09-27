@@ -548,10 +548,7 @@ class AppCore:
                 # we use title because it's less ambiguous than a name when searching an asset
                 installed_app = self.uevmlfs.get_installed_app(name)
                 eg_extra = self.egs.grab_assets_extra(
-                    asset_name=name,
-                    asset_title=apps[name].app_title,
-                    verbose_mode=self.verbose_mode,
-                    installed_app=installed_app,
+                    asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode, installed_app=installed_app,
                 )
 
                 # check for data consistency
