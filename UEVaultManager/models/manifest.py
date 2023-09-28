@@ -1,5 +1,19 @@
 # coding: utf-8
-
+"""
+Implementation for:
+- Manifest: Manifest-compatible reader for binary manifests.
+- ManifestMeta: Manifest Meta
+- CDL: Chunk Data List
+- FML: File Manifest List
+- CustomFields: Custom Fields
+- ChunkInfo: Chunk Info
+- ChunkPart: Chunk Part
+- FileManifest: File Manifest
+- ManifestComparison: Manifest comparison
+- read_fstring(): Read a string from a binary file.
+- write_fstring(): Write a string to a binary file.
+- get_chunk_dir(): Get the chunk directory name based on the manifest version.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -14,6 +28,11 @@ logger = logging.getLogger('Manifest')
 
 
 def read_fstring(bio):
+    """
+    Read a string from a binary file.
+    :param bio:
+    :return:
+    """
     length = struct.unpack('<i', bio.read(4))[0]
 
     # if the length is negative the string is UTF-16 encoded, this was a pain to figure out.
@@ -33,6 +52,12 @@ def read_fstring(bio):
 
 
 def write_fstring(bio, string):
+    """
+    Write a string to a binary file.
+    :param bio:
+    :param string:
+    :return:
+    """
     if not string:
         bio.write(struct.pack('<i', 0))
         return
@@ -50,6 +75,11 @@ def write_fstring(bio, string):
 
 
 def get_chunk_dir(version):
+    """
+    Get the chunk directory name based on the manifest version.
+    :param version: manifest version.
+    :return: chunk directory name.
+    """
     # The lowest version I've ever seen was 12 (Unreal Tournament), but for completeness’s sake leave all of them in
     if version >= 15:
         return 'ChunksV4'
@@ -62,6 +92,9 @@ def get_chunk_dir(version):
 
 
 class Manifest:
+    """
+    Manifest-compatible reader for binary manifests.
+    """
     header_magic = 0x44BEC00C
     default_serialisation_version = 17
 
@@ -227,6 +260,9 @@ class Manifest:
 
 
 class ManifestMeta:
+    """
+    Manifest Meta
+    """
 
     def __init__(self):
         self.meta_size = 0
@@ -342,6 +378,9 @@ class ManifestMeta:
 
 
 class CDL:
+    """
+    Chunk Data List
+    """
 
     def __init__(self):
         self.version = 0
@@ -474,6 +513,9 @@ class CDL:
 
 
 class ChunkInfo:
+    """
+    Chunk Info
+    """
 
     def __init__(self, manifest_version=18):
         self.guid = None
@@ -530,6 +572,9 @@ class ChunkInfo:
 
 
 class FML:
+    """
+    File Manifest List
+    """
 
     def __init__(self):
         self.version = 0
@@ -679,6 +724,9 @@ class FML:
 
 
 class FileManifest:
+    """
+    File Manifest
+    """
 
     def __init__(self):
         self.filename = ''
@@ -722,6 +770,9 @@ class FileManifest:
 
 
 class ChunkPart:
+    """
+    Chunk Part
+    """
 
     def __init__(self, guid=None, offset=0, size=0, file_offset=0):
         self.guid = guid
@@ -750,6 +801,9 @@ class ChunkPart:
 
 
 class CustomFields:
+    """
+    Custom Fields
+    """
 
     def __init__(self):
         self.size = 0
@@ -818,6 +872,9 @@ class CustomFields:
 
 
 class ManifestComparison:
+    """
+    Manifest Comparison
+    """
 
     def __init__(self):
         self.added = set()

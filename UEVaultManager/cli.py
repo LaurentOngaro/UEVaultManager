@@ -29,9 +29,10 @@ from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_ass
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import copy_folder, path_join
-from UEVaultManager.models.app import App
+from UEVaultManager.models.Asset import Asset
 from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, get_csv_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
@@ -43,8 +44,8 @@ from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, creat
     show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
-from UEVaultManager.utils.cli import check_and_create_path, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
-from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
+from UEVaultManager.utils.cli import check_and_create_file, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
+from UEVaultManager.utils.HiddenAliasSubparsersActionClass import HiddenAliasSubparsersAction
 
 # add the parent folder to the sys.path list, to run the script from the command line without import module error
 # must be done before importing project module (ex: global.py)
@@ -166,6 +167,10 @@ class UEVaultManagerCLI:
             # log_function() is called in box_message
         else:
             log_function(message)
+            name = log_function.__name__
+            # check if name contains 'error' or 'critical' to quit the app
+            if quit_on_error and ('error' in name or 'critical' in name or 'fatal' in name):
+                sys.exit(1)
 
     @staticmethod
     def _log_and_gui_display(log_function: callable, message: str) -> None:
@@ -382,7 +387,7 @@ class UEVaultManagerCLI:
         auth_code = ''
         if not args.auth_code and not args.session_id:
             # only import here since pywebview import is slow
-            from UEVaultManager.utils.webview_login import webview_available, do_webview_login
+            from UEVaultManager.utils.WebviewWindowClass import webview_available, do_webview_login
 
             if not webview_available or args.no_webview or self.core.webview_killswitch:
                 # unfortunately the captcha stuff makes a complete CLI login flow kinda impossible right now...
@@ -552,11 +557,7 @@ class UEVaultManagerCLI:
         if args.output:
             file_src = args.output
             # test if the folder is writable
-            if not check_and_create_path(file_src):
-                message = f'Could not create folder for {file_src}. Quiting Application...'
-                self._log_and_gui_message(self.logger.critical, message)
-            # we try to open it for writing
-            if not os.access(file_src, os.W_OK):
+            if not check_and_create_file(file_src):
                 message = f'Could not create result file {file_src}. Quiting Application...'
                 self._log_and_gui_message(self.logger.critical, message)
 
@@ -700,7 +701,6 @@ class UEVaultManagerCLI:
                 try:
                     with open(file_src, 'r', encoding='utf-8') as output:
                         assets_in_file = json.load(output)
-                        output.close()
                 except (FileExistsError, OSError, UnicodeDecodeError, StopIteration, json.decoder.JSONDecodeError):
                     self.logger.warning(f'Could not read Json record from the file {args.output}')
                 # reopen file for writing
@@ -860,7 +860,7 @@ class UEVaultManagerCLI:
             user_name = self.core.uevmlfs.userdata['displayName']
 
         cache_information = self.core.uevmlfs.get_assets_cache_info()
-        update_information = self.core.uevmlfs.get_cached_version()
+        update_information = self.core.uevmlfs.get_online_version_saved()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
         last_cache_update = cache_information.get('last_update', '')
@@ -908,6 +908,7 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
         name_or_path = args.app_name_or_manifest or args.app_name
+        show_all_info = args.all
         app_name = manifest_uri = None
         if os.path.exists(name_or_path) or name_or_path.startswith('http'):
             manifest_uri = name_or_path
@@ -937,15 +938,21 @@ class UEVaultManagerCLI:
         else:
             # check the item using the EGS method (new)
             try:
-                json_data_egs = UEAssetScraper.read_json_file(app_name)
-                json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs[0])
-                item = App.from_json(json_data_uevm)  # create an object from the App class using the json data
+                json_data_egs, json_message = UEAssetScraper.read_json_file(app_name)
+                if json_message != '':
+                    self._log_and_gui_message(self.logger.warning, json_message, quit_on_error=False)
+                    item = None
+                else:
+                    json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs)
+                    item = Asset.from_json(json_data_uevm)  # create an object from the App class using the json data
             except (Exception, ):
                 item = None
-        if not item:
-            self._log_and_gui_message(self.logger.warning, message)
+        if not item or item is None:
+            self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
             args.offline = True
         manifest_data = None
+        install_tags = {''}
+
         # entitlements = None
         # load installed manifest or URI
         if args.offline or manifest_uri:
@@ -954,8 +961,8 @@ class UEVaultManagerCLI:
                 r.raise_for_status()
                 manifest_data = r.content
             elif manifest_uri and os.path.exists(manifest_uri):
-                with open(manifest_uri, 'rb') as f:
-                    manifest_data = f.read()
+                with open(manifest_uri, 'rb') as file:
+                    manifest_data = file.read()
             else:
                 self.logger.info('Asset not installed and offline mode enabled, can not load manifest.')
         elif item:
@@ -963,16 +970,19 @@ class UEVaultManagerCLI:
             try:
                 egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
                 if status_code != 200:
-                    self.logger.error(f'Failed to fetch metadata for {item.app_name}: reponse code = {status_code}')
+                    self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: reponse code = {status_code}')
                     return
             except (Exception, ) as error:
-                self.logger.error(f'Failed to fetch metadata for {item.app_name}: {error!r}')
+                self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: {error!r}')
                 return
             item.metadata = egl_meta
-            # Get manifest if asset exists for current platform
-            if 'Windows' in item.asset_infos:
-                manifest_data, _ = self.core.get_cdn_manifest(item, 'Windows')
-
+            try:
+                # Get manifest if asset exists for current platform
+                if 'Windows' in item.asset_infos:
+                    manifest_data, _ = self.core.get_cdn_manifest(item, 'Windows')
+            except (Exception, ) as error:
+                self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to get manifest for the asset {item.app_name}: {error!r}')
+                return
         if item:
             asset_infos = info_items['assets']
             asset_infos.append(InfoItem('App name', 'app_name', item.app_name, item.app_name))
@@ -992,56 +1002,59 @@ class UEVaultManagerCLI:
             manifest_info.append(InfoItem('Manifest version', 'version', manifest.version, manifest.version))
             manifest_info.append(InfoItem('Manifest feature level', 'feature_level', manifest.meta.feature_level, manifest.meta.feature_level))
             manifest_info.append(InfoItem('Manifest app name', 'app_name', manifest.meta.app_name, manifest.meta.app_name))
-            manifest_info.append(InfoItem('Launch EXE', 'launch_exe', manifest.meta.launch_exe or 'N/A', manifest.meta.launch_exe))
-            manifest_info.append(InfoItem('Launch Command', 'launch_command', manifest.meta.launch_command or '(None)', manifest.meta.launch_command))
             manifest_info.append(InfoItem('Build version', 'build_version', manifest.meta.build_version, manifest.meta.build_version))
             manifest_info.append(InfoItem('Build ID', 'build_id', manifest.meta.build_id, manifest.meta.build_id))
-            if manifest.meta.prereq_ids:
-                human_list = [
-                    f'Prerequisite IDs: {", ".join(manifest.meta.prereq_ids)}', f'Prerequisite name: {manifest.meta.prereq_name}',
-                    f'Prerequisite path: {manifest.meta.prereq_path}', f'Prerequisite args: {manifest.meta.prereq_args or "(None)"}',
-                ]
+            if show_all_info:
+                manifest_info.append(InfoItem('Launch EXE', 'launch_exe', manifest.meta.launch_exe or 'N/A', manifest.meta.launch_exe))
                 manifest_info.append(
-                    InfoItem(
-                        'Prerequisites', 'prerequisites', human_list,
-                        dict(
-                            ids=manifest.meta.prereq_ids,
-                            name=manifest.meta.prereq_name,
-                            path=manifest.meta.prereq_path,
-                            args=manifest.meta.prereq_args
+                    InfoItem('Launch Command', 'launch_command', manifest.meta.launch_command or '(None)', manifest.meta.launch_command)
+                )
+                if manifest.meta.prereq_ids:
+                    human_list = [
+                        f'Prerequisite IDs: {", ".join(manifest.meta.prereq_ids)}', f'Prerequisite name: {manifest.meta.prereq_name}',
+                        f'Prerequisite path: {manifest.meta.prereq_path}', f'Prerequisite args: {manifest.meta.prereq_args or "(None)"}',
+                    ]
+                    manifest_info.append(
+                        InfoItem(
+                            'Prerequisites', 'prerequisites', human_list,
+                            dict(
+                                ids=manifest.meta.prereq_ids,
+                                name=manifest.meta.prereq_name,
+                                path=manifest.meta.prereq_path,
+                                args=manifest.meta.prereq_args
+                            )
                         )
                     )
-                )
-            else:
-                manifest_info.append(InfoItem('Prerequisites', 'prerequisites', None, None))
+                else:
+                    manifest_info.append(InfoItem('Prerequisites', 'prerequisites', None, None))
 
-            if manifest.meta.uninstall_action_path:
-                human_list = [
-                    f'Uninstaller path: {manifest.meta.uninstall_action_path}',
-                    f'Uninstaller args: {manifest.meta.uninstall_action_args or "(None)"}',
-                ]
-                manifest_info.append(
-                    InfoItem(
-                        'Uninstaller', 'uninstaller', human_list,
-                        dict(path=manifest.meta.uninstall_action_path, args=manifest.meta.uninstall_action_args)
+                if manifest.meta.uninstall_action_path:
+                    human_list = [
+                        f'Uninstaller path: {manifest.meta.uninstall_action_path}',
+                        f'Uninstaller args: {manifest.meta.uninstall_action_args or "(None)"}',
+                    ]
+                    manifest_info.append(
+                        InfoItem(
+                            'Uninstaller', 'uninstaller', human_list,
+                            dict(path=manifest.meta.uninstall_action_path, args=manifest.meta.uninstall_action_args)
+                        )
                     )
-                )
-            else:
-                manifest_info.append(InfoItem('Uninstaller', 'uninstaller', None, None))
+                else:
+                    manifest_info.append(InfoItem('Uninstaller', 'uninstaller', None, None))
 
-            install_tags = {''}
-            for fm in manifest.file_manifest_list.elements:
-                for tag in fm.install_tags:
-                    install_tags.add(tag)
+                for fm in manifest.file_manifest_list.elements:
+                    for tag in fm.install_tags:
+                        install_tags.add(tag)
 
-            install_tags = sorted(install_tags)
-            install_tags_human = ', '.join(i if i else '(empty)' for i in install_tags)
-            manifest_info.append(InfoItem('Install tags', 'install_tags', install_tags_human, install_tags))
+                install_tags = sorted(install_tags)
+                install_tags_human = ', '.join(i if i else '(empty)' for i in install_tags)
+                manifest_info.append(InfoItem('Install tags', 'install_tags', install_tags_human, install_tags))
             # file and chunk count
             manifest_info.append(InfoItem('Files', 'num_files', manifest.file_manifest_list.count, manifest.file_manifest_list.count))
             manifest_info.append(InfoItem('Chunks', 'num_chunks', manifest.chunk_data_list.count, manifest.chunk_data_list.count))
             # total file size
             total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
+            self.core.uevmlfs.set_asset_size(item.app_name, total_size)  # update the global list AND save it into a json file
             file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
             manifest_info.append(InfoItem('Disk size (uncompressed)', 'disk_size', file_size, total_size))
             # total chunk size
@@ -1049,39 +1062,44 @@ class UEVaultManagerCLI:
             chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
             manifest_info.append(InfoItem('Download size (compressed)', 'download_size', chunk_size, total_size))
 
-            # if there are install tags break downsize by tag
-            tag_disk_size = []
-            tag_disk_size_human = []
-            tag_download_size = []
-            tag_download_size_human = []
-            if len(install_tags) > 1:
-                longest_tag = max(max(len(t) for t in install_tags), len('(empty)'))
-                for tag in install_tags:
-                    # sum up all file sizes for the tag
-                    human_tag = tag or '(empty)'
-                    tag_files = [fm for fm in manifest.file_manifest_list.elements if (tag in fm.install_tags) or (not tag and not fm.install_tags)]
-                    tag_file_size = sum(fm.file_size for fm in tag_files)
-                    tag_disk_size.append(dict(tag=tag, size=tag_file_size, count=len(tag_files)))
-                    tag_file_size_human = '{:.02f} GiB'.format(tag_file_size / 1024 / 1024 / 1024)
-                    tag_disk_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_file_size_human} '
-                                               f'(Files: {len(tag_files)})')
-                    # tag_disk_size_human.append(f'Size: {tag_file_size_human}, Files: {len(tag_files)}, Tag: "{tag}"')
-                    # accumulate chunk guids used for this tag and count their size too
-                    tag_chunk_guids = set()
-                    for fm in tag_files:
-                        for cp in fm.chunk_parts:
-                            tag_chunk_guids.add(cp.guid_num)
+            if show_all_info:
+                # if there are install tags break downsize by tag
+                tag_disk_size = []
+                tag_disk_size_human = []
+                tag_download_size = []
+                tag_download_size_human = []
+                if len(install_tags) > 1:
+                    longest_tag = max(max(len(t) for t in install_tags), len('(empty)'))
+                    for tag in install_tags:
+                        # sum up all file sizes for the tag
+                        human_tag = tag or '(empty)'
+                        tag_files = [
+                            fm for fm in manifest.file_manifest_list.elements if (tag in fm.install_tags) or (not tag and not fm.install_tags)
+                        ]
+                        tag_file_size = sum(fm.file_size for fm in tag_files)
+                        tag_disk_size.append(dict(tag=tag, size=tag_file_size, count=len(tag_files)))
+                        tag_file_size_human = '{:.02f} GiB'.format(tag_file_size / 1024 / 1024 / 1024)
+                        tag_disk_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_file_size_human} '
+                                                   f'(Files: {len(tag_files)})')
+                        # tag_disk_size_human.append(f'Size: {tag_file_size_human}, Files: {len(tag_files)}, Tag: "{tag}"')
+                        # accumulate chunk guids used for this tag and count their size too
+                        tag_chunk_guids = set()
+                        for fm in tag_files:
+                            for cp in fm.chunk_parts:
+                                tag_chunk_guids.add(cp.guid_num)
 
-                    tag_chunk_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in tag_chunk_guids)
-                    tag_download_size.append(dict(tag=tag, size=tag_chunk_size, count=len(tag_chunk_guids)))
-                    tag_chunk_size_human = '{:.02f} GiB'.format(tag_chunk_size / 1024 / 1024 / 1024)
-                    tag_download_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_chunk_size_human} '
-                                                   f'(Chunks: {len(tag_chunk_guids)})')
+                        tag_chunk_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in tag_chunk_guids)
+                        tag_download_size.append(dict(tag=tag, size=tag_chunk_size, count=len(tag_chunk_guids)))
+                        tag_chunk_size_human = '{:.02f} GiB'.format(tag_chunk_size / 1024 / 1024 / 1024)
+                        tag_download_size_human.append(
+                            f'{human_tag.ljust(longest_tag)} - {tag_chunk_size_human} '
+                            f'(Chunks: {len(tag_chunk_guids)})'
+                        )
 
-            manifest_info.append(InfoItem('Disk size by install tag', 'tag_disk_size', tag_disk_size_human or 'N/A', tag_disk_size))
-            manifest_info.append(
-                InfoItem('Download size by installation tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size)
-            )
+                manifest_info.append(InfoItem('Disk size by install tag', 'tag_disk_size', tag_disk_size_human or 'N/A', tag_disk_size))
+                manifest_info.append(
+                    InfoItem('Download size by installation tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size)
+                )
 
         if not args.json:
 
@@ -1324,11 +1342,12 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
         uewm_gui_exists = gui_g.UEVM_gui_ref is not None
-
+        if args.subparser_name == 'download':
+            args.no_install = True
         if args.clean_dowloaded_data and args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
-                'You have selected to not install the asset and to not keep the dow loaded data.\nSo, nothing can be done for you. Command is aborted',
+                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you. Command is aborted',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1355,7 +1374,8 @@ class UEVaultManagerCLI:
         categories = app.metadata.get('categories', None)
         category = categories[0]['path'] if categories else ''
         is_plugin = category and 'plugin' in category.lower()
-        install_path_base = args.install_path  # could be none
+        install_path_base = args.install_path if args.install_path is not None else ''
+        folders_to_check = []
         if not install_path_base and not args.no_install:
             if uewm_gui_exists:
                 if is_plugin and box_yesno('This asset is a plugin. Do you want to install it into an engine folder ?'):
@@ -1371,6 +1391,7 @@ class UEVaultManagerCLI:
                     if install_path_base:
                         gui_g.s.last_opened_project = install_path_base
 
+            folders_to_check.append(install_path_base)
         if not install_path_base and not args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
@@ -1379,7 +1400,6 @@ class UEVaultManagerCLI:
             )
             return False
 
-        dw = None
         if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, dw = init_display_window(self.logger)
 
@@ -1403,7 +1423,6 @@ class UEVaultManagerCLI:
             max_workers=args.max_workers,
             reuse_last_install=args.reuse_last_install,
             dl_optimizations=args.order_opt,
-            timeout=args.timeout,
             override_manifest=args.override_manifest,
             override_base_url=args.override_base_url,
             preferred_cdn=args.preferred_cdn,
@@ -1422,9 +1441,8 @@ class UEVaultManagerCLI:
         self._log_and_gui_display(
             self.logger.info, 'Downloads are resumable, you can interrupt the download with CTRL-C and resume it using the same command later on.'
         )
-        res = self.core.check_installation_conditions(
-            analysis=analysis, folders=[download_path, install_path_base], ignore_space_req=args.ignore_free_space
-        )
+        folders_to_check.append(download_path)
+        res = self.core.check_installation_conditions(analysis=analysis, folders=folders_to_check, ignore_space_req=args.ignore_free_space)
         message_list = []
 
         if res.warnings or res.failures:
@@ -1468,7 +1486,6 @@ class UEVaultManagerCLI:
             message = ''
             if not args.no_install:
                 self._log_and_gui_display(self.logger.info, 'Start copying downloaded data to install folder...')
-                self.core.uevmlfs.set_installed_app(app.app_name, installed_app)
                 # copy the downloaded data to the installation folder
                 last_part_src = os.path.basename(download_path).lower()
                 # the downloaded data should always have a "Content" inside
@@ -1479,6 +1496,10 @@ class UEVaultManagerCLI:
                     src_folder = path_join(download_path, 'Content')
                 dest_folder = installed_app.install_path
                 if copy_folder(src_folder, dest_folder, check_copy_size=True):
+                    self.core.uevmlfs.set_installed_asset(app.app_name, installed_app)
+                    if args.database:
+                        db_handler = UEAssetDbHandler(database_name=args.database)
+                        db_handler.add_to_installed_folders(asset_id=app.app_name, folder=dest_folder)
                     message += f'\nAsset have been installed in {dest_folder}'
                 else:
                     message += f'\nAsset could not be installed in {dest_folder}'
@@ -1487,18 +1508,21 @@ class UEVaultManagerCLI:
                 message += '\nManifest file has been copied in the VaultCache folder.'
                 manifest_filename = path_join(download_path, 'manifest.json')
                 shutil.copy(installed_app.manifest_path, manifest_filename)
+                # delete data folder if it exists
+                dest_folder = path_join(download_path, 'data')
+                rmtree(dest_folder, ignore_errors=True)
                 # rename the 'Content' subfolder to 'data' because that's what the vault cache folder expects
-                shutil.move(path_join(download_path, 'Content'), path_join(download_path, 'data'))
+                shutil.move(path_join(download_path, 'Content'), dest_folder)
             elif args.clean_dowloaded_data:
                 message += '\nDownloaded data have been deleted.'
                 # delete the dlm.download_dir folder
                 rmtree(download_path)
                 self.core.uevmlfs.clean_tmp_data()
             end_t = time.time()
-            message += f'\n\nFinished installation process in {end_t - start_t:.02f} seconds.'
+            message += f'\n\nProcess finished in {end_t - start_t:.02f} seconds.'
             self._log_and_gui_display(self.logger.info, message)
-        if uewm_gui_exists:
-            dw.close_window()
+        # if uewm_gui_exists:
+        #     dw.close_window()
         return True
 
     @staticmethod
@@ -1573,10 +1597,11 @@ def main():
     Main function.
     """
     # Set output encoding to UTF-8 if not outputting to a terminal
-    if not sys.stdout.isatty():
+    try:
         # noinspection PyUnresolvedReferences
         sys.stdout.reconfigure(encoding='utf-8')
-
+    except (Exception, ):
+        pass
     parser = argparse.ArgumentParser(description=f'UEVaultManager v{UEVM_version} - "{UEVM_codename}"')
     parser.register('action', 'parsers', HiddenAliasSubparsersAction)
 
@@ -1806,8 +1831,8 @@ def main():
         '--vault-cache',
         dest='vault_cache',
         action='store_true',
-        help=
-        'Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value. In that case, the download_path option will be ignored'
+        help='Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value.'  #
+        + 'In that case, the download_path option will be ignored'
     )
     install_parser.add_argument(
         '-c',

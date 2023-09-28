@@ -1,5 +1,19 @@
 # coding: utf-8
-
+"""
+Implementation for:
+- SharedMemorySegment: Segment of the shared memory used for one Chunk.
+- DownloaderTask: Task submitted to the download worker.
+- DownloaderTaskResult: Result of DownloaderTask provided by download workers.
+- ChunkTask: A task describing a single read of a (partial) chunk from memory or an existing file.
+- TaskFlags: Flags for FileTask.
+- FileTask: A task describing some operation on the filesystem.
+- WriterTask: Task for FileWriter worker process, describing an operation on the filesystem.
+- WriterTaskResult: Result from the FileWriter worker.
+- UIUpdate: Status update object sent from the manager to the CLI/GUI to update status indicators.
+- AnalysisResult: Result of processing a manifest for downloading.
+- ConditionCheckResult: Result of install condition checks.
+- TerminateWorkerTask: Universal task to signal a worker to exit.
+"""
 from dataclasses import dataclass
 from enum import auto, Flag
 from typing import Optional
@@ -55,6 +69,9 @@ class ChunkTask:
 
 
 class TaskFlags(Flag):
+    """
+    Flags for FileTask.
+    """
     NONE = 0
     OPEN_FILE = auto()
     CLOSE_FILE = auto()

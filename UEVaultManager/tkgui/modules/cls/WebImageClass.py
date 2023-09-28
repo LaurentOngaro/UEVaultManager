@@ -24,11 +24,11 @@ class WebImage:
         # initialize instance variables
         self.__image_pil = None
         self.__image_tk = None
-        self.request_timeout = (5, 5)  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
+        self.timeout = (4, 4)  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.url: str = url
         try:
             # use requests to get the image content as bytes
-            response = requests.get(url, timeout=self.request_timeout)
+            response = requests.get(url, timeout=self.timeout)
             # create a PIL.Image object from the bytes
             self.__image_pil = Image.open(BytesIO(response.content))
             # create a PhotoImage object from the PIL.Image

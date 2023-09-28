@@ -34,8 +34,8 @@ class ProgressWindow(tk.Toplevel):
 
     def __init__(
         self,
-        parent,
         title: str,
+        parent=None,
         width: int = 300,
         height: int = 150,
         icon=None,

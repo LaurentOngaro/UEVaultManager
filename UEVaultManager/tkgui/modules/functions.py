@@ -184,19 +184,21 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -
     canvas.image = tk_image
 
 
-def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> None:
+def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> bool:
     """
     Show the image of the given asset in the given canvas.
     :param image_url: the url of the image to display.
     :param canvas_image: the canvas to display the image in.
     :param scale: the scale to apply to the image.
-    :param timeout: the timeout in seconds to wait for the image to be downloaded.
+    :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
+    :return: True if the image has been displayed, False otherwise.
     """
     if gui_g.s.offline_mode:
         # could be usefull if connexion is slow
         show_default_image(canvas_image)
+        return False
     if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
-        return
+        return False
     try:
         # print(image_url)
         # noinspection DuplicatedCode
@@ -210,12 +212,22 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
         else:
             response = requests.get(image_url, timeout=timeout)
             image = Image.open(BytesIO(response.content))
-
-            with open(image_filename, "wb") as f:
-                f.write(response.content)
+            with open(image_filename, "wb") as file:
+                file.write(response.content)
         resize_and_show_image(image, canvas_image, scale)
+        return True
     except Exception as error:
-        log_warning(f"Error showing image: {error!r}")
+        log_warning(f'Error showing image: {error!r}')
+        gui_g.timeout_error_count += 1
+        # check error timeout
+        if gui_g.timeout_error_count >= 5:
+            box_message(
+                f'The app had {gui_g.timeout_error_count} timeout errors when loading images.\nThe application is going offline to avoid been too slow.\nTo fix that, check you internet connection.\nYou can disabled offline mode in the "Show options" panel, or by restarting the app.',
+                level='warning'
+            )
+            gui_g.timeout_error_count = 0
+            gui_g.s.offline_mode = True
+            return False
 
 
 def show_default_image(canvas_image=None) -> None:
@@ -232,7 +244,7 @@ def show_default_image(canvas_image=None) -> None:
             # noinspection PyTypeChecker
             resize_and_show_image(def_image, canvas_image)
     except Exception as error:
-        log_warning(f"Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error!r}")
+        log_warning(f'Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error!r}')
 
 
 def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=False) -> None:
@@ -285,16 +297,18 @@ def custom_print(text='', keep_mode=True) -> None:
         print(text)
 
 
-def get_tk_root(container) -> tk.Tk:
+def get_tk_root(container) -> Optional[tk.Tk]:
     """
     Get the root window.
     :param container:  the container window or object
     :return: the root window
     """
+    if container is None:
+        return None
     root = None
     # get the root window to avoid creating multiple progress windows
     try:
-        # a tk window chid class
+        # a tk window child class
         root = container.winfo_toplevel()
     except (AttributeError, tk.TclError):
         # an editableTable class
@@ -306,7 +320,7 @@ def get_tk_root(container) -> tk.Tk:
 
 
 def show_progress(
-    parent,
+    parent=None,
     text='Working...Please wait',
     width=500,
     height=120,
@@ -320,7 +334,7 @@ def show_progress(
 ) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
-    :param parent: the parent window.
+    :param parent: the parent window. Could be None
     :param text: the text to display in the progress window.
     :param width: the width of the progress window.
     :param height: the height of the progress window.

@@ -235,13 +235,15 @@ class UEVMGuiControlFrame(ttk.Frame):
             default_content=False
         )
 
-        self.lbf_image_preview = ttk.LabelFrame(self, text='Image Preview')
-        self.lbf_image_preview.pack(**lblf_fw_options, anchor=tk.SW)
-        self.canvas_image = tk.Canvas(
-            self.lbf_image_preview, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0
-        )
-        self.canvas_image.pack(side=tk.BOTTOM, expand=True, anchor=tk.CENTER)
+        self.asset_infos = ttk.LabelFrame(self, text='Asset Preview')
+        self.asset_infos.pack(**lblf_fw_options, anchor=tk.SW)
+        self.canvas_image = tk.Canvas(self.asset_infos, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
+        self.canvas_image.pack(side=tk.RIGHT, expand=True, anchor=tk.CENTER)
         self.canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
+        asset_info = 'No info'
+        self.txt_info = ttk.Text(self.asset_infos, height=5, width=34)
+        self.txt_info.pack(side=tk.LEFT, expand=True, anchor=tk.CENTER)
+        self.txt_info.insert(tk.END, asset_info)
 
         lblf_bottom = ttk.Frame(self)
         lblf_bottom.pack(**lblf_def_options)

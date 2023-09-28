@@ -101,10 +101,12 @@ def str_is_bool(val: str) -> bool:
         return False
 
 
-def check_and_create_path(full_file_name: str) -> bool:
+def check_and_create_file(full_file_name: str, create_file: bool = True, content=None) -> bool:
     """
     Check if the given file path exists and create it if it doesn't.
     :param full_file_name: the full path of the file.
+    :param create_file: if True, create the file if it doesn't exist. Defaults to True.
+    :param content: the content to write in the file if created. Defaults to None.
     :return: True if the path exists or is successfully created, False otherwise.
     """
     # Split the file path and name
@@ -116,7 +118,11 @@ def check_and_create_path(full_file_name: str) -> bool:
             os.makedirs(file_path, exist_ok=True)
         except OSError:
             return False
-    return True
+    if not os.path.isfile(full_file_name) and create_file:
+        with open(full_file_name, 'w', encoding='utf-8') as file:
+            if content:
+                file.write(content)
+    return os.access(full_file_name, os.W_OK)
 
 
 def check_and_create_folder(full_folder_name: str) -> bool:

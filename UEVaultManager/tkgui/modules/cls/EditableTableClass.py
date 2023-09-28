@@ -42,7 +42,7 @@ class EditableTable(Table):
     :param show_toolbar: whether to show the toolbar.
     :param show_statusbar: whether to show the status bar.
     :param update_page_numbers_func: a function that updates the page numbers.
-    :param update_rows_text_func: a function that updates the text that shows the number of rows.
+    :param update_preview_info_func: a function that updates previewed infos of the current asset.
     :param kwargs: additional arguments to pass to the pandastable.Table class.
     """
     _data: pd.DataFrame = None
@@ -91,7 +91,7 @@ class EditableTable(Table):
         show_toolbar: bool = False,
         show_statusbar: bool = False,
         update_page_numbers_func=None,
-        update_rows_text_func=None,
+        update_preview_info_func=None,
         set_control_state_func=None,
         **kwargs
     ):
@@ -104,7 +104,7 @@ class EditableTable(Table):
         self.show_statusbar: bool = show_statusbar
         self.rows_per_page: int = rows_per_page
         self.update_page_numbers_func = update_page_numbers_func
-        self.update_rows_text_func = update_rows_text_func
+        self.update_preview_info_func = update_preview_info_func
         self.set_control_state_func = set_control_state_func
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         gui_f.show_progress(container, text='Loading Data from data source...')
@@ -140,7 +140,7 @@ class EditableTable(Table):
         self._old_page = self._current_page
         self._current_page = value
         # self.update_page_numbers_func()
-        # self.update_rows_text_func()
+        # self.update_preview_info_func()
 
     @property
     def is_filtered(self) -> int:
@@ -1230,7 +1230,7 @@ class EditableTable(Table):
             gui_f.close_progress(self)
         if reset_page:
             self.current_page = 1
-            self.update_rows_text_func()
+            self.update_preview_info_func()
         if update_filters or self._old_is_filtered != self.is_filtered:
             self.resetColors()
         self.update_page(keep_col_infos=True)
@@ -1273,7 +1273,7 @@ class EditableTable(Table):
         if self.update_page_numbers_func is not None:
             self.update_page_numbers_func()
         if self.update_page_numbers_func is not None:
-            self.update_rows_text_func()
+            self.update_preview_info_func()
 
     def move_to_row(self, row_index: int) -> None:
         """
@@ -1666,14 +1666,15 @@ class EditableTable(Table):
                 entry.grid(row=row, column=1, columnspan=3, sticky=tk.EW)
             row += 1
             entries[key] = entry
-
-        # image preview
-        gui_f.show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale)
-
         self._edit_row_entries = entries
         self._edit_row_number = row_number
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
+        # image preview
+        if not gui_f.show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale):
+            # the image could not be loaded and the offline mode could have been enabled
+            # TODO: check if a nicer method could be used here to avoid coupling whithout a big refactoring (i.e. passing an "update" function)
+            self._container.update_controls_state(update_title=True)
         gui_f.make_modal(edit_row_window)
 
     def save_edit_row(self) -> None:
@@ -1821,8 +1822,7 @@ class EditableTable(Table):
             col_index = self.get_col_index(col_name)
             value = self.get_cell(row_number, col_index)
             if col_name == 'Asset_id':
-                # frm_quick_edit.config(text=f'Quick Editing Asset: {value}')
-                # TODO: check if a nicer method could be used here whithout a big refactoring
+                # TODO: check if a nicer method could be used here to avoid coupling whithout a big refactoring (i.e. passing an "update" function)
                 frm_content = self._container
                 uevm_gui = frm_content.container
                 uevm_gui.set_asset_id(value)

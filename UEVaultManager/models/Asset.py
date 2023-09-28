@@ -1,8 +1,8 @@
 # coding: utf-8
 """
 implementation for:
-- AppAsset: App asset data
-- App: Combination of app asset, app metadata and app extra as stored on disk
+- AssetBase: asset base data
+- Asset: Combination of app asset, app metadata and app extra as stored on disk
 - VerifyResult: Result of a verification
 .
 """
@@ -12,9 +12,9 @@ from typing import Dict, List
 
 
 @dataclass
-class AppAsset:
+class AssetBase:
     """
-    App asset data.
+    An asset with minimal data.
     """
     app_name: str = ''
     asset_id: str = ''
@@ -26,11 +26,11 @@ class AppAsset:
 
     # noinspection DuplicatedCode
     @classmethod
-    def from_egs_json(cls, json) -> 'AppAsset':
+    def from_egs_json(cls, json) -> 'AssetBase':
         """
-        Create AppAsset from EGS.
+        Create AssetBase from EGS.
         :param json: data.
-        :return: an AppAsset.
+        :return: an AssetBase.
         """
         tmp = cls()
         tmp.app_name = json.get('appName', '')
@@ -44,11 +44,11 @@ class AppAsset:
 
     # noinspection DuplicatedCode
     @classmethod
-    def from_json(cls, json) -> 'AppAsset':
+    def from_json(cls, json) -> 'AssetBase':
         """
-        Create AppAsset from json.
+        Create AssetBase from json.
         :param json: data.
-        :return: an AppAsset.
+        :return: an AssetBase.
         """
         tmp = cls()
         tmp.app_name = json.get('app_name', '')
@@ -62,14 +62,14 @@ class AppAsset:
 
 
 @dataclass
-class App:
+class Asset:
     """
-    Combination of app asset, app metadata and app extra as stored on disk.
+    Combination of a base asset, asset metadata and asset extra as stored on disk.
     """
     app_name: str
     app_title: str
 
-    asset_infos: Dict[str, AppAsset] = field(default_factory=dict)
+    asset_infos: Dict[str, AssetBase] = field(default_factory=dict)
     base_urls: List[str] = field(default_factory=list)
     metadata: Dict = field(default_factory=dict)
 
@@ -104,7 +104,7 @@ class App:
         return self.metadata['namespace']
 
     @classmethod
-    def from_json(cls, json) -> 'App':
+    def from_json(cls, json) -> 'Asset':
         """
         Create App from json.
         :param json: data.
@@ -113,10 +113,10 @@ class App:
         tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''), )  # call to the class constructor
         tmp.metadata = json.get('metadata', dict())
         if 'asset_infos' in json:
-            tmp.asset_infos = {k: AppAsset.from_json(v) for k, v in json['asset_infos'].items()}
+            tmp.asset_infos = {k: AssetBase.from_json(v) for k, v in json['asset_infos'].items()}
         else:
             # Migrate old asset_info to new asset_infos
-            tmp.asset_infos['Windows'] = AppAsset.from_json(json.get('asset_info', dict()))
+            tmp.asset_infos['Windows'] = AssetBase.from_json(json.get('asset_info', dict()))
 
         tmp.base_urls = json.get('base_urls', list())
         return tmp
@@ -129,9 +129,9 @@ class App:
 
 
 @dataclass
-class InstalledApp:
+class InstalledAsset:
     """
-    Local metadata for an installed app (i.e. asset)
+    Local metadata for an installed asset
     """
     app_name: str
     title: str = ''
@@ -144,11 +144,11 @@ class InstalledApp:
     installed_folders: List[str] = field(default_factory=list)
 
     @classmethod
-    def from_json(cls, json) -> 'InstalledApp':
+    def from_json(cls, json) -> 'InstalledAsset':
         """
-        Create InstalledApp from json.
+        Create InstalledAsset from json.
         :param json: data.
-        :return: an InstalledApp.
+        :return: an InstalledAsset.
         """
         tmp = cls(
             app_name=json.get('app_name', ''),

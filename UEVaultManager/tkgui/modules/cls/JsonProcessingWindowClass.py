@@ -223,9 +223,9 @@ class JsonProcessingWindow(tk.Toplevel):
                     break
                 self.frm_control.progress_bar['value'] = i
                 self.update()
-                with open(file_path, 'r') as json_file:
+                with open(file_path, 'r', encoding='utf-8') as file:
                     try:
-                        json_data = json.load(json_file)
+                        json_data = json.load(file)
                     except json.decoder.JSONDecodeError:
                         self.frm_control.add_result(f'{file_path} is invalid')
                     else:

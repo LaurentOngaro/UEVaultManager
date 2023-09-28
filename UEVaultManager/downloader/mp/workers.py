@@ -1,7 +1,7 @@
 # coding: utf-8
 """
 Implementation for:
-- DownloadWorker: Downloads chunks from the internet and writes them to the shared memory segment.
+- DLWorker: Downloads chunks from the internet and writes them to the shared memory segment.
 - FileWorker: Writes chunks to files.
 """
 import logging
@@ -15,7 +15,7 @@ from queue import Empty
 import requests
 
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.chunk import Chunk
+from UEVaultManager.models.ChunkClass import Chunk
 from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, TaskFlags, TerminateWorkerTask, WriterTask, WriterTaskResult)
 
 
@@ -28,7 +28,7 @@ class DLWorker(Process):
     :param shm: name of the shared memory segment to write to
     :param max_retries: maximum number of retries for a chunk
     :param logging_queue: queue to send log messages to
-    :param timeout: timeout for a single chunk download
+    :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
 
     def __init__(self, name, queue, out_queue, shm, max_retries=7, logging_queue=None, timeout=(7, 7)):
@@ -59,7 +59,7 @@ class DLWorker(Process):
         empty = False
         while True:
             try:
-                job: DownloaderTask = self.q.get(timeout=10.0)
+                job: DownloaderTask = self.q.get(timeout=7)
                 empty = False
             except Empty:
                 if not empty:
@@ -176,7 +176,7 @@ class FileWorker(Process):
         while True:
             try:
                 try:
-                    j: WriterTask = self.q.get(timeout=10.0)
+                    j: WriterTask = self.q.get(timeout=7)  # no tuple here !
                 except Empty:
                     logger.warning('Writer queue empty')
                     continue
@@ -277,15 +277,15 @@ class FileWorker(Process):
                         shm_end = shm_offset + j.chunk_size
                         current_file.write(self.shm.buf[shm_offset:shm_end].tobytes())
                     elif j.cache_file:
-                        with open(path_join(self.cache_path, j.cache_file), 'rb') as f:
+                        with open(path_join(self.cache_path, j.cache_file), 'rb') as file:
                             if j.chunk_offset:
-                                f.seek(j.chunk_offset)
-                            current_file.write(f.read(j.chunk_size))
+                                file.seek(j.chunk_offset)
+                            current_file.write(file.read(j.chunk_size))
                     elif j.old_file:
-                        with open(path_join(self.base_path, j.old_file), 'rb') as f:
+                        with open(path_join(self.base_path, j.old_file), 'rb') as file:
                             if j.chunk_offset:
-                                f.seek(j.chunk_offset)
-                            current_file.write(f.read(j.chunk_size))
+                                file.seek(j.chunk_offset)
+                            current_file.write(file.read(j.chunk_size))
                 except Exception as error:
                     logger.warning(f'Something in writing a file failed: {error!r}')
                     self.o_q.put(WriterTaskResult(success=False, size=j.chunk_size, **j.__dict__))

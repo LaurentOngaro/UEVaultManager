@@ -22,16 +22,16 @@ from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, path_from_relative_to_absolute
-from UEVaultManager.utils.cli import check_and_create_path
+from UEVaultManager.utils.cli import check_and_create_file
 
 
 class UEADBH_Settings:
     """
     Settings for the class when running as main.
     """
-    clean_data = True
+    clean_data = False
     read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
-    db_folder = path_from_relative_to_absolute('../../../scraping/')
+    db_folder = path_from_relative_to_absolute('K:/UE/UEVM/scraping')
     db_name = path_join(db_folder, 'assets.db')
 
 
@@ -433,7 +433,8 @@ class UEAssetDbHandler:
             self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V10
         if upgrade_from_version == DbVersionNum.V10:
-            query = "ALTER TABLE assets RENAME COLUMN installed_folder TO installed_folders;"
+            column = 'installed_folder'  # use a var to avoid issue whith pycharm inspection
+            query = f"ALTER TABLE assets RENAME COLUMN {column} TO installed_folders;"
             self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V11
         if previous_version != self.db_version:
@@ -530,7 +531,7 @@ class UEAssetDbHandler:
         if not isinstance(fields, str):
             fields = ', '.join(fields)
         row_data = {}
-        where_clause = f"WHERE id='{uid}'" if id is not None else ''
+        where_clause = f"WHERE id='{uid}'" if uid is not None else ''
         if self.connection is not None:
             self.connection.row_factory = sqlite3.Row
             cursor = self.connection.cursor()
@@ -699,7 +700,7 @@ class UEAssetDbHandler:
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V7, caller_name=inspect.currentframe().f_code.co_name):
             return
-        if data.get('id', None) is None or data.get('name', None) is None:
+        if self.connection is None or data.get('id', None) is None or data.get('name', None) is None:
             return
         if self.get_tag_by_id(data['id']) is None:
             cursor = self.connection.cursor()
@@ -755,6 +756,41 @@ class UEAssetDbHandler:
             cursor.close()
             result = (row['averageRating'], row['total']) if row else result
         return result
+
+    def get_installed_folders(self, asset_id: str) -> str:
+        """
+        Get the list of installed folders for the given asset.
+        :param asset_id: the asset_id (i.e. app_name) of the asset to get.
+        :return: a list of installed folders.
+        """
+        if self.connection is None or asset_id == '':
+            return ''
+        else:
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT installed_folders from assets WHERE asset_id = ?", (asset_id, ))
+            row = cursor.fetchone()
+            cursor.close()
+            result = row[0] if row else ''
+            return result
+
+    def add_to_installed_folders(self, asset_id: str, folder: str = ''):
+        """
+        Add a folder to the list of installed folders for the given asset.
+        :param asset_id: the asset_id (i.e. app_name) of the asset to get.
+        :param folder: the folder to add.
+        """
+        if self.connection is None or asset_id == '' or folder == '':
+            return
+        data_str = self.get_installed_folders(asset_id)
+        installed_folders = data_str.split(',') if data_str else []
+        if folder not in installed_folders:
+            installed_folders.append(folder)
+            data_str = ','.join(installed_folders)
+            query = f"UPDATE assets SET installed_folders = '{data_str}' WHERE asset_id = '{asset_id}'"
+            cursor = self.connection.cursor()
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
 
     def get_rows_with_tags_to_convert(self, tag_value: int = None) -> list:
         """
@@ -895,8 +931,8 @@ class UEAssetDbHandler:
                 query = f"SELECT {fields} FROM {table_name}"
                 rows = cursor.execute(query).fetchall()
                 try:
-                    with open(file_name_p, 'w', newline='', encoding='utf-8') as f:
-                        writer = csv.writer(f, dialect='unix')
+                    with open(file_name_p, 'w', newline='', encoding='utf-8') as file:
+                        writer = csv.writer(file, dialect='unix')
                         # Write column names
                         writer.writerow(column_names)
                         # Write rows
@@ -983,8 +1019,8 @@ class UEAssetDbHandler:
                     cursor.execute(f"DELETE FROM {table_name} WHERE 1")
                     self.connection.commit()
                 try:
-                    with open(file_name_p, 'r', newline='', encoding='utf-8') as f:
-                        reader = csv.reader(f, dialect='unix')
+                    with open(file_name_p, 'r', newline='', encoding='utf-8') as file:
+                        reader = csv.reader(file, dialect='unix')
                         csv_columns = next(reader)
                         # Get column names from database
                         cursor.execute(f"PRAGMA table_info({table_name});")
@@ -1097,7 +1133,8 @@ class UEAssetDbHandler:
 if __name__ == "__main__":
     # the following code is just for class testing purposes
     st = UEADBH_Settings()
-    check_and_create_path(st.db_name)
+    check_and_create_file(st.db_name, create_file=False)
+    print(f'\nOpening database "{st.db_name}"\n')
     asset_handler = UEAssetDbHandler(database_name=st.db_name, reset_database=(st.clean_data and not st.read_data_only))
     if st.read_data_only:
         # Read existing assets

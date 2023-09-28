@@ -1,5 +1,11 @@
 # coding: utf-8
-
+"""
+Implementation for:
+- JSONManifest: Manifest-compatible reader for JSON based manifests.
+- JSONManifestMeta: JSON Manifest Meta
+- JSONCDL: JSON Chunk Data List
+- JSONFML: JSON File Manifest List
+"""
 import json
 import struct
 from copy import deepcopy
@@ -9,11 +15,13 @@ from UEVaultManager.models.manifest import (CDL, ChunkInfo, ChunkPart, CustomFie
 
 def blob_to_num(in_str):
     """
+    Convert a string to a number.
+    :param in_str: string to convert.
+    :return: converted number.
+
+    Notes:
     The JSON manifest use a rather strange format for storing numbers.
-
-    It's essentially %03d for each char concatenated to a string.
-    ...instead of just putting the fucking number in the JSON...
-
+    It's essentially %03d for each char concatenated to a string instead of just putting the fucking number in the JSON...
     Also, it's still little endian, so we have to bitshift it.
     """
     num = 0
@@ -25,6 +33,11 @@ def blob_to_num(in_str):
 
 
 def guid_from_json(in_str):
+    """
+    Get guid from a json string.
+    :param in_str: string to convert.
+    :return: the Guid
+    """
     return struct.unpack('>IIII', bytes.fromhex(in_str))
 
 
@@ -39,6 +52,11 @@ class JSONManifest(Manifest):
 
     @classmethod
     def read_all(cls, manifest):
+        """
+        Read all kind of manifest
+        :param manifest:
+        :return: a json manifest
+        """
         _m = cls.read(manifest)
         _tmp = deepcopy(_m.json_data)
 
@@ -59,6 +77,11 @@ class JSONManifest(Manifest):
 
     @classmethod
     def read(cls, manifest):
+        """
+        Read the JSON manifest.
+        :param manifest: manifest data.
+        :return: Manifest object.
+        """
         _manifest = cls()
         _manifest.data = manifest
         _manifest.json_data = json.loads(manifest.decode('utf-8'))
@@ -69,6 +92,12 @@ class JSONManifest(Manifest):
         return _manifest
 
     def write(self, *args, **kwargs):
+        """
+        Write the JSON manifest.
+        :param args: options passed to the command.
+        :param kwargs: keyword arguments.
+        :return:
+        """
         # The version here only matters for the manifest header,
         # the feature level in meta determines chunk folders etc.
         # So all that's required for successful serialization is
@@ -78,12 +107,20 @@ class JSONManifest(Manifest):
 
 
 class JSONManifestMeta(ManifestMeta):
+    """
+    JSON Manifest Meta
+    """
 
     def __init__(self):
         super().__init__()
 
     @classmethod
     def read(cls, json_data):
+        """
+        Read the JSON manifest metadata.
+        :param json_data: JSON data.
+        :return: ManifestMeta object.
+        """
         _meta = cls()
 
         _meta.feature_level = blob_to_num(json_data.pop('ManifestFileVersion', '013000000000'))
@@ -102,29 +139,38 @@ class JSONManifestMeta(ManifestMeta):
 
 
 class JSONCDL(CDL):
+    """
+    JSON Chunk Data List
+    """
 
     def __init__(self):
         super().__init__()
 
     @classmethod
     def read(cls, json_data, manifest_version=13):
+        """
+        Read the JSON chunk data list.
+        :param json_data: JSON data.
+        :param manifest_version: manifest version.
+        :return: CDL object.
+        """
         _cdl = cls()
         _cdl._manifest_version = manifest_version
         _cdl.count = len(json_data['ChunkFilesizeList'])
 
-        cfl = json_data.pop('ChunkFilesizeList')
-        chl = json_data.pop('ChunkHashList')
-        csl = json_data.pop('ChunkShaList')
-        dgl = json_data.pop('DataGroupList')
+        cfl = json_data.get('ChunkFilesizeList',{})
+        chl = json_data.get('ChunkHashList',{})
+        csl = json_data.get('ChunkShaList',{})
+        dgl = json_data.get('DataGroupList',{})
         _guids = list(cfl.keys())
 
         for guid in _guids:
             _ci = ChunkInfo(manifest_version=manifest_version)
             _ci.guid = guid_from_json(guid)
-            _ci.file_size = blob_to_num(cfl.pop(guid))
-            _ci.hash = blob_to_num(chl.pop(guid))
-            _ci.sha_hash = bytes.fromhex(csl.pop(guid))
-            _ci.group_num = blob_to_num(dgl.pop(guid))
+            _ci.file_size = blob_to_num(cfl.get(guid,0))
+            _ci.hash = blob_to_num(chl.get(guid,0))
+            _ci.sha_hash = bytes.fromhex(csl.get(guid,''))
+            _ci.group_num = blob_to_num(dgl.get(guid,0))
             _ci.window_size = 1024 * 1024
             _cdl.elements.append(_ci)
 
@@ -136,12 +182,20 @@ class JSONCDL(CDL):
 
 
 class JSONFML(FML):
+    """
+    JSON File Manifest List
+    """
 
     def __init__(self):
         super().__init__()
 
     @classmethod
     def read(cls, json_data):
+        """
+        Read the JSON file manifest list.
+        :param json_data: JSON data.
+        :return: FML object.
+        """
         _fml = cls()
         _fml.count = len(json_data['FileManifestList'])
 

@@ -59,7 +59,7 @@ class UEAssetScraper:
     :param assets_per_page: an int representing the number of items to retrieve per request. Defaults to 100.
     :param sort_by: a string representing the field to sort by. Defaults to 'effectiveDate'.
     :param sort_order: a string representing the sort order. Defaults to 'ASC'.
-    :param timeout: a float representing the timeout for the requests. Defaults to 10.0.
+    :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     :param max_threads: an int representing the maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
     :param load_from_files: a boolean indicating whether to load the data from files instead of scraping it. Defaults to False. If set to True, store_in_files will be set to False and store_in_db will be set to True.
     :param store_in_files: a boolean indicating whether to store the data in csv files. Defaults to True. Could create lots of files (1 file per asset).
@@ -83,7 +83,7 @@ class UEAssetScraper:
         assets_per_page: int = 100,
         sort_by: str = 'effectiveDate',  # other values: 'title','currentPrice','discountPercentage'
         sort_order: str = 'DESC',  # other values: 'ASC'
-        timeout: float = 10.0,
+        timeout: float = (7, 7),
         max_threads: int = 8,
         store_in_files: bool = True,
         store_in_db: bool = True,
@@ -164,11 +164,14 @@ class UEAssetScraper:
         filename = app_name + '.json'
         json_data = {}
         message = ''
-        with open(path_join(folder, filename), 'r') as fh:
+        with open(path_join(folder, filename), 'r', encoding='utf-8') as file:
             try:
-                json_data = json.load(fh)
+                json_data = json.load(file)
             except json.decoder.JSONDecodeError as error:
                 message = f'The following error occured when loading data from {filename}:{error!r}'
+            # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
+            # it needed by the json_data_mapping() method
+            json_data['appName'] = app_name
         return json_data, message
 
     @staticmethod
@@ -178,7 +181,7 @@ class UEAssetScraper:
         :param data_from_egs_format: json data from EGS format (NEW)
         :return: json data in UEVM format (OLD)
         """
-        app_name = data_from_egs_format['releaseInfo'][-1]['appId']
+        app_name = data_from_egs_format['appName']
         category = data_from_egs_format['categories'][0]['path']
 
         if category == 'assets/codeplugins':
@@ -649,12 +652,12 @@ class UEAssetScraper:
             filename += '.json'
         filename = path_join(folder, filename)
         try:
-            with open(filename, 'w') as fh:
+            with open(filename, 'w', encoding='utf-8') as file:
                 if is_json:
-                    json.dump(data, fh)
+                    json.dump(data, file)
                 else:
                     # write data as a list in the file
-                    fh.write('\n'.join(data))
+                    file.write('\n'.join(data))
             self._log_debug(f'Data saved into {filename}')
             return True
         except PermissionError as error:
@@ -681,9 +684,9 @@ class UEAssetScraper:
         for filename in files:
             if filename.endswith('.json') and filename != self._last_run_filename:
                 # self._log_debug(f'Loading {filename}')
-                with open(path_join(folder, filename), 'r') as fh:
+                with open(path_join(folder, filename), 'r', encoding='utf-8') as file:
                     try:
-                        json_data = json.load(fh)
+                        json_data = json.load(file)
                     except json.decoder.JSONDecodeError as error:
                         self._log_warning(f'The following error occured when loading data from {filename}:{error!r}')
                         continue
@@ -707,8 +710,8 @@ class UEAssetScraper:
             'scraped_ids': self._scraped_ids if self.store_ids else ''
         }
         filename = path_join(folder, self._last_run_filename)
-        with open(filename, 'w') as fh:
-            json.dump(content, fh)
+        with open(filename, 'w', encoding='utf-8') as file:
+            json.dump(content, file)
 
         self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=0)
         # self._save_in_db(last_run_content=content) # duplicate with a caller
@@ -756,8 +759,8 @@ class UEAssetScraper:
         if save_last_run_file:
             folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
             filename = path_join(folder, self._last_run_filename)
-            with open(filename, 'w') as fh:
-                json.dump(content, fh)
+            with open(filename, 'w', encoding='utf-8') as file:
+                json.dump(content, file)
 
         self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=None)
         self._save_in_db(last_run_content=content)
