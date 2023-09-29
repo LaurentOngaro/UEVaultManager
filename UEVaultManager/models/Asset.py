@@ -182,7 +182,7 @@ class InstalledAsset:
         :return: install path.
 
         Notes:
-        Will return the most recent values from _installed_folders property.
+            Will return the most recent values from _installed_folders property.
         """
         install_path = self._installed_folders
         if isinstance(install_path, list):
@@ -194,9 +194,9 @@ class InstalledAsset:
         """
         Set an "install path"
         :param path: install path.
-        
+
         Notes:
-        Add the path to the _installed_folders property.
+            Add the path to the _installed_folders property.
         """
         self._add_to_installed_folders(path)
 

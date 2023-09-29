@@ -688,7 +688,7 @@ class DLManager(Process):
         Run the download manager
 
         Notes:
-        The DisplayContentWindow_ref is anavailable here. So the display windows will not be updated when calling trace_func.
+            The DisplayContentWindow_ref is anavailable here. So the display windows will not be updated when calling trace_func.
         """
         self.shared_memory = SharedMemory(create=True, size=self.max_shared_memory)
         self.log.debug(f'Created shared memory of size: {self.shared_memory.size / 1024 / 1024:.02f} MiB')

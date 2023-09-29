@@ -802,7 +802,7 @@ class UEAssetDbHandler:
         :return: a dict with {asset_id,title,installed folders}
 
         Notes:
-            The database does not contains all the data for an InstalledAsset object. The missing fields are set to default values and should be updated on a "real" installation.
+            The database does not contain all the data for an InstalledAsset object. The missing fields are set to default values and should be updated on a "real" installation.
         """
         if self.connection is None:
             return {}

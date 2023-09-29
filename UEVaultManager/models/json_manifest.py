@@ -20,9 +20,9 @@ def blob_to_num(in_str):
     :return: converted number.
 
     Notes:
-    The JSON manifest use a rather strange format for storing numbers.
-    It's essentially %03d for each char concatenated to a string instead of just putting the fucking number in the JSON...
-    Also, it's still little endian, so we have to bitshift it.
+        The JSON manifest use a rather strange format for storing numbers.
+        It's essentially %03d for each char concatenated to a string instead of just putting the fucking number in the JSON...
+        Also, it's still little endian, so we have to bitshift it.
     """
     num = 0
     shift = 0
