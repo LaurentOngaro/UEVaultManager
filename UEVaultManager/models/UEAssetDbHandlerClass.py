@@ -773,24 +773,51 @@ class UEAssetDbHandler:
             result = row[0] if row else ''
             return result
 
-    def add_to_installed_folders(self, asset_id: str, folder: str = ''):
+    def add_to_installed_folders(self, asset_id: str, folders: list = None) -> None:
         """
         Add a folder to the list of installed folders for the given asset.
         :param asset_id: the asset_id (i.e. app_name) of the asset to get.
-        :param folder: the folder to add.
+        :param folders: the folders list to add.
         """
-        if self.connection is None or asset_id == '' or folder == '':
+        if self.connection is None or asset_id == '' or folders is None or len(folders) == 0:
             return
         data_str = self.get_installed_folders(asset_id)
-        installed_folders = data_str.split(',') if data_str else []
-        if folder not in installed_folders:
-            installed_folders.append(folder)
-            data_str = ','.join(installed_folders)
-            query = f"UPDATE assets SET installed_folders = '{data_str}' WHERE asset_id = '{asset_id}'"
+        if isinstance(data_str, str):
+            installed_folders = data_str.split(',') if data_str else []
+        else:
+            installed_folders = data_str if data_str else []
+        cursor = self.connection.cursor()
+        for folder in folders:
+            if folder not in installed_folders:
+                installed_folders.append(folder)
+                data_str = ','.join(installed_folders)
+                query = f"UPDATE assets SET installed_folders = '{data_str}' WHERE asset_id = '{asset_id}'"
+                cursor.execute(query)
+        self.connection.commit()
+        cursor.close()
+
+    def get_rows_with_installed_folders(self) -> dict:
+        """
+        Get the list of assets with an installed folders defined.
+        :return: a dict with {asset_id,title,installed folders}
+
+        Notes:
+            The database does not contains all the data for an InstalledAsset object. The missing fields are set to default values and should be updated on a "real" installation.
+        """
+        if self.connection is None:
+            return {}
+        else:
+            self.connection.row_factory = sqlite3.Row
             cursor = self.connection.cursor()
-            cursor.execute(query)
-            self.connection.commit()
+            cursor.execute(
+                "SELECT asset_id, asset_id as app_name, title, installed_folders from assets WHERE installed_folders is not NULL and installed_folders !=''"
+            )
+            row_data = {}
+            for row in cursor.fetchall():
+                app_name = row['app_name']
+                row_data[app_name] = dict(row)
             cursor.close()
+            return row_data
 
     def get_rows_with_tags_to_convert(self, tag_value: int = None) -> list:
         """

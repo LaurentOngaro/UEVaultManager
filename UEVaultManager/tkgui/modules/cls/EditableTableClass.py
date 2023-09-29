@@ -159,6 +159,14 @@ class EditableTable(Table):
         self._old_is_filtered = self._is_filtered
         self._is_filtered = value
 
+    @property
+    def db_handler(self) -> UEAssetDbHandler:
+        """
+        Get the db handler.
+        :return: the db handler.
+        """
+        return self._db_handler
+
     @staticmethod
     def fillna_fixed(dataframe: pd.DataFrame) -> None:
         """
@@ -717,6 +725,7 @@ class EditableTable(Table):
                     df, _ = self.create_row(add_to_existing=False)
                 else:
                     df = pd.DataFrame(data, columns=column_names)
+                # use the
             else:
                 self.logger.error(f'Unknown data source type: {self.data_source_type}')
                 # previous line will quit the app
@@ -1218,7 +1227,7 @@ class EditableTable(Table):
                     self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
                 except IndexingError:
                     self.logger.warning(f'Still an IndexingError with defined filters. Deleting mask...')
-                    self._frm_filter.reset_filters()
+                    self._frm_filter.clear_filters()
                     self.set_data(df, df_type=DataFrameUsed.FILTERED)
                     self.is_filtered = False
         else:
@@ -1671,7 +1680,9 @@ class EditableTable(Table):
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
         # image preview
-        if not gui_f.show_asset_image(image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale):
+        if not gui_f.show_asset_image(
+            image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale
+        ):
             # the image could not be loaded and the offline mode could have been enabled
             # TODO: check if a nicer method could be used here to avoid coupling whithout a big refactoring (i.e. passing an "update" function)
             self._container.update_controls_state(update_title=True)

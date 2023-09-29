@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List
 
+from UEVaultManager.tkgui.modules.functions_no_deps import merge_lists_or_strings
+
 
 @dataclass
 class AssetBase:
@@ -73,7 +75,7 @@ class Asset:
     base_urls: List[str] = field(default_factory=list)
     metadata: Dict = field(default_factory=dict)
 
-    def app_version(self, platform='Windows'):
+    def app_version(self, platform: str = 'Windows'):
         """
         Get app version for a given platform.
         :param platform: platform.
@@ -104,21 +106,21 @@ class Asset:
         return self.metadata['namespace']
 
     @classmethod
-    def from_json(cls, json) -> 'Asset':
+    def from_json(cls, asset_data: dict) -> 'Asset':
         """
         Create App from json.
-        :param json: data.
+        :param asset_data: data.
         :return: an App.
         """
-        tmp = cls(app_name=json.get('app_name', ''), app_title=json.get('app_title', ''), )  # call to the class constructor
-        tmp.metadata = json.get('metadata', dict())
-        if 'asset_infos' in json:
-            tmp.asset_infos = {k: AssetBase.from_json(v) for k, v in json['asset_infos'].items()}
+        tmp = cls(app_name=asset_data.get('app_name', ''), app_title=asset_data.get('app_title', ''), )  # call to the class constructor
+        tmp.metadata = asset_data.get('metadata', dict())
+        if 'asset_infos' in asset_data:
+            tmp.asset_infos = {k: AssetBase.from_json(v) for k, v in asset_data['asset_infos'].items()}
         else:
             # Migrate old asset_info to new asset_infos
-            tmp.asset_infos['Windows'] = AssetBase.from_json(json.get('asset_info', dict()))
+            tmp.asset_infos['Windows'] = AssetBase.from_json(asset_data.get('asset_info', dict()))
 
-        tmp.base_urls = json.get('base_urls', list())
+        tmp.base_urls = asset_data.get('base_urls', list())
         return tmp
 
     @property
@@ -141,48 +143,62 @@ class InstalledAsset:
     install_size: int = 0
     manifest_path: str = ''
     platform: str = 'Windows'
-    installed_folders: List[str] = field(default_factory=list)
+    _installed_folders: List[str] = field(default_factory=list)
 
     @classmethod
-    def from_json(cls, json) -> 'InstalledAsset':
+    def from_json(cls, asset_data: dict) -> 'InstalledAsset':
         """
         Create InstalledAsset from json.
-        :param json: data.
+        :param asset_data: data.
         :return: an InstalledAsset.
         """
         tmp = cls(
-            app_name=json.get('app_name', ''),
-            installed_folders=json.get('installed_folders', []),
-            title=json.get('title', ''),
-            version=json.get('version', ''),
+            app_name=asset_data.get('app_name', ''),
+            title=asset_data.get('title', ''),
+            version=asset_data.get('version', ''),
         )
-        tmp.base_urls = json.get('base_urls', [])
-        tmp.egl_guid = json.get('egl_guid', '')
-        tmp.install_size = json.get('install_size', 0)
-        tmp.manifest_path = json.get('manifest_path', '')
-        tmp.platform = json.get('platform', 'Windows')
+        tmp.base_urls = asset_data.get('base_urls', [])
+        tmp.egl_guid = asset_data.get('egl_guid', '')
+        tmp.install_size = asset_data.get('install_size', 0)
+        tmp.manifest_path = asset_data.get('manifest_path', '')
+        tmp.platform = asset_data.get('platform', 'Windows')
+        tmp._add_to_installed_folders(asset_data.get('installed_folders', [])),
         return tmp
+
+    def _add_to_installed_folders(self, path: str):
+        """
+        Add path to installed_folders.
+        :param path: path to add.
+        """
+        if not path or len(path) == 0:
+            return
+        result = merge_lists_or_strings(self._installed_folders, path)
+        self._installed_folders = result
 
     @property
     def install_path(self) -> str:
         """
-        Get the "install path" (i.e. the last from installed_folders).
+        Get the "install path" of the installed asset.
         :return: install path.
+
+        Notes:
+        Will return the most recent values from _installed_folders property.
         """
-        install_path = self.installed_folders
+        install_path = self._installed_folders
         if isinstance(install_path, list):
             install_path = install_path.pop()
         return install_path
 
     @install_path.setter
-    def install_path(self, path):
+    def install_path(self, path: str):
         """
-        Set the "install path" (i.e. add it to the installed_folders ).
+        Set an "install path"
         :param path: install path.
+        
+        Notes:
+        Add the path to the _installed_folders property.
         """
-        if path not in self.installed_folders:
-            self.installed_folders.append(path)
-        # sorted(self.installed_folders) # if sorted, the "install path" won't be the last one anymore
+        self._add_to_installed_folders(path)
 
 
 class VerifyResult(Enum):

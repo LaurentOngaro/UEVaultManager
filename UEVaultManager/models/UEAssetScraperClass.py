@@ -22,7 +22,7 @@ from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.functions import box_yesno, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, convert_to_datetime, convert_to_str_datetime, create_uid, \
-    extract_variables_from_url
+    extract_variables_from_url, merge_lists_or_strings
 
 
 class UEAS_Settings:
@@ -403,11 +403,10 @@ class UEAssetScraper:
                         asset_data[field] = old_value
             # installed_folders
             installed_folders = asset_data.get('installed_folders', '')  # asset_existing_data
-            app_installed = self.core.uevmlfs.get_installed_app(asset_data.get('asset_id', ''))
+            app_installed = self.core.uevmlfs.get_installed_asset(asset_data.get('asset_id', ''))
             if app_installed:
                 app_installed_folders = app_installed.installed_folders
-                # merge the 2 lists without duplicates
-                installed_folders = list(set(installed_folders + app_installed_folders))
+                installed_folders = merge_lists_or_strings(installed_folders, app_installed_folders)
             asset_data['installed_folders'] = sorted(installed_folders)
 
             # we use an UEAsset object to store the data and create a valid dict from it

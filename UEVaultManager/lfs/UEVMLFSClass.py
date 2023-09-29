@@ -16,6 +16,7 @@ from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import Asset, AssetBase, InstalledAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup
+from UEVaultManager.tkgui.modules.functions_no_deps import merge_lists_or_strings
 from UEVaultManager.utils.cli import check_and_create_file
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
@@ -455,7 +456,7 @@ class UEVMLFS:
         """
         Get the metadata for an item.
         :param app_name: the name of the item.
-        :return: an App object.
+        :return: an Asset object.
         """
         # Note: self._assets_metadata is filled at the start of the list command by reading all the json files in the metadata folder
         if _meta := self.assets_metadata.get(app_name, None):
@@ -587,11 +588,18 @@ class UEVMLFS:
         folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
         return self.delete_folder_content(folders, ['.log', '.bak'])
 
-    def get_installed_app(self, app_name: str) -> Optional[InstalledAsset]:
+    def get_installed_assets(self) -> dict:
+        """
+        Get the installed asset data.
+        :return: the installed app data or None if not found.
+        """
+        return self._installed_assets
+
+    def get_installed_asset(self, app_name: str) -> Optional[InstalledAsset]:
         """
         Get the installed asset data.
         :param app_name: the asset name.
-        :return: the installed app data or None if not found.
+        :return: the installed asset or None if not found.
         """
         if not app_name:
             return None
@@ -606,20 +614,38 @@ class UEVMLFS:
             return InstalledAsset.from_json(json_data)
         return None
 
-    def set_installed_asset(self, app_name: str, install_info: {}) -> None:
+    def set_installed_asset(self, app_name: str, asset_data: dict = None, for_deletion: bool = False) -> None:
         """
         Set the installed asset data.
         :param app_name: the asset name.
-        :param install_info: the installed app data.
+        :param asset_data: the installed asset data.
+        :param for_deletion: True if the asset should be deleted.
         """
+        if not app_name:
+            return
         if self._installed_assets is None:
             self._installed_assets = dict()
-        if app_name in self._installed_assets:
-            self._installed_assets[app_name].update(install_info.__dict__)
+        has_changed = True
+        if for_deletion:
+            if app_name in self._installed_assets:
+                del self._installed_assets[app_name]
+            else:
+                has_changed = False
+        elif asset_data is not None:
+            if app_name in self._installed_assets:
+                asset_existing = self._installed_assets[app_name]
+                # merge the installed_folders fields
+                installed_folders_existing = asset_existing.get('installed_folders', [])
+                installed_folders_added = asset_data.get('installed_folders', [])
+                asset_data['installed_folders'] = merge_lists_or_strings(installed_folders_existing, installed_folders_added)
+                self._installed_assets[app_name].update(asset_data)
+            else:
+                self._installed_assets[app_name] = asset_data
         else:
-            self._installed_assets[app_name] = install_info.__dict__
-        with open(self.installed_asset_filename, 'w', encoding='utf-8') as file:
-            json.dump(self._installed_assets, file, indent=2, sort_keys=True)
+            return
+        if has_changed:
+            with open(self.installed_asset_filename, 'w', encoding='utf-8') as file:
+                json.dump(self._installed_assets, file, indent=2, sort_keys=True)
 
     def get_asset_size(self, app_name: str) -> int:
         """
@@ -627,6 +653,8 @@ class UEVMLFS:
         :param app_name: the asset name.
         :return: the size of the asset. -1 if not found.
         """
+        if not app_name:
+            return 0
         if self._asset_sizes is not None:
             return self._asset_sizes.get(app_name, -1)
 
@@ -636,6 +664,8 @@ class UEVMLFS:
         :param app_name: the asset name.
         :param size: the size of the asset
         """
+        if not app_name:
+            return
         if self._asset_sizes is None:
             self._asset_sizes = {}
         self._asset_sizes[app_name] = size

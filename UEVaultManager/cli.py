@@ -163,6 +163,8 @@ class UEVaultManagerCLI:
         :param quit_on_error: whether the app will quit the application.
         """
         if UEVaultManagerCLI.is_gui:
+            if gui_g.display_content_window_ref is not None:
+                gui_g.display_content_window_ref.close_window()
             box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the app to quit
             # log_function() is called in box_message
         else:
@@ -489,7 +491,10 @@ class UEVaultManagerCLI:
                             )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                         elif csv_field == 'Origin':
                             # all the folders when the asset came from are stored in a comma separated list
-                            folder_list = value.split(',')
+                            if isinstance(value, str):
+                                folder_list = value.split(',')
+                            else:
+                                folder_list = value if value else []
                             # add the new folder to the list without duplicates
                             if _csv_record[index] not in folder_list:
                                 folder_list.append(_csv_record[index])
@@ -795,7 +800,7 @@ class UEVaultManagerCLI:
                 self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                 return
 
-            manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
+            manifest_data, _, status_code = self.core.get_cdn_manifest(item, platform='Windows')
 
         manifest = self.core.load_manifest(manifest_data)
         files = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
@@ -970,18 +975,28 @@ class UEVaultManagerCLI:
             try:
                 egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
                 if status_code != 200:
-                    self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: reponse code = {status_code}')
+                    self._log_and_gui_display(
+                        self.logger.error,
+                        f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: reponse code = {status_code}'
+                    )
                     return
             except (Exception, ) as error:
-                self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: {error!r}')
+                self._log_and_gui_display(
+                    self.logger.error,
+                    f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: {error!r}'
+                )
                 return
             item.metadata = egl_meta
             try:
                 # Get manifest if asset exists for current platform
                 if 'Windows' in item.asset_infos:
-                    manifest_data, _ = self.core.get_cdn_manifest(item, 'Windows')
+                    manifest_data, base_urls, status_code = self.core.get_cdn_manifest(item, 'Windows')
             except (Exception, ) as error:
-                self._log_and_gui_display(self.logger.error, f'\nYou can only get information about assets you own !\nFailed to get manifest for the asset {item.app_name}: {error!r}')
+                if error.response.status_code == 404:
+                    message = f'\nThe manifest data is not available for the assets {item.app_name}. You can try to install it using the Epic Game Launcher'
+                else:
+                    message = f'\nYou can only get information about assets you own!\nFailed to get manifest for the asset {item.app_name}'
+                self._log_and_gui_display(self.logger.error, message)
                 return
         if item:
             asset_infos = info_items['assets']
@@ -1347,7 +1362,7 @@ class UEVaultManagerCLI:
         if args.clean_dowloaded_data and args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
-                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you. Command is aborted',
+                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you.\nCommand is aborted',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1355,7 +1370,7 @@ class UEVaultManagerCLI:
         if not self.core.login():
             self._log_and_gui_message(
                 self.logger.error,
-                'You are not connected or log in failed.\nYou should log first or check your credential. Command is aborted',
+                'You are not connected or log in failed.\nYou should log first or check your credential.\nCommand is aborted',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1367,7 +1382,7 @@ class UEVaultManagerCLI:
         if not app:
             self._log_and_gui_message(
                 self.logger.error,
-                f'Metadata are missing for "{args.app_name}". You can only install an asset you own. Installation can not be done. Command is aborted',
+                f'Metadata are not available for "{args.app_name}".\nYou can only install an asset you own.\nInstallation can not be done.\nCommand is aborted',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1395,7 +1410,7 @@ class UEVaultManagerCLI:
         if not install_path_base and not args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
-                'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you. Command is aborted',
+                'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you.\nCommand is aborted',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1405,7 +1420,7 @@ class UEVaultManagerCLI:
 
         if args.vault_cache:
             self._log_and_gui_display(
-                self.logger.info, 'Use the vault cache folder to store the downloaded asset. Other download options will be ignored'
+                self.logger.info, 'Use the vault cache folder to store the downloaded asset.\nOther download options will be ignored'
             )
             args.clean_dowloaded_data = False
             # in the vaultCache, the data is in a subfolder named like the app
@@ -1454,7 +1469,7 @@ class UEVaultManagerCLI:
             self._log_and_gui_display(self.logger.warning, '\n'.join(message_list))
 
         if res.failures:
-            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed. Command is aborted', quit_on_error=not uewm_gui_exists)
+            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed.\nCommand is aborted', quit_on_error=not uewm_gui_exists)
             # not in GUI self.core.clean_exit(1)  # previous line could not quit
             return False
 
@@ -1496,10 +1511,11 @@ class UEVaultManagerCLI:
                     src_folder = path_join(download_path, 'Content')
                 dest_folder = installed_app.install_path
                 if copy_folder(src_folder, dest_folder, check_copy_size=True):
-                    self.core.uevmlfs.set_installed_asset(app.app_name, installed_app)
+                    installed_app.install_path = dest_folder  # will also add it to existing installed_folders
+                    self.core.uevmlfs.set_installed_asset(app.app_name, installed_app.__dict__)
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
-                        db_handler.add_to_installed_folders(asset_id=app.app_name, folder=dest_folder)
+                        db_handler.add_to_installed_folders(asset_id=app.app_name, folders=[dest_folder])
                     message += f'\nAsset have been installed in {dest_folder}'
                 else:
                     message += f'\nAsset could not be installed in {dest_folder}'

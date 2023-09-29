@@ -473,11 +473,11 @@ class AppCore:
 
     def get_item(self, app_name, update_meta=False, platform='Windows') -> Asset:
         """
-        Return an App object.
+        Return an Asset object.
         :param app_name: name to get.
         :param update_meta: force update of metadata.
         :param platform: platform to get app for.
-        :return: app object.
+        :return: Asset object.
         """
         if update_meta:
             self.get_asset_list(True, platform=platform)
@@ -509,9 +509,9 @@ class AppCore:
 
         def fetch_asset_meta(name: str) -> bool:
             """
-            Fetches asset metadata for the given app name and adds it to the list of assets.
-            :param name: app name.
-            :return: True if successful, False otherwise.
+            Fetch metadata for the given asset.
+            :param name: asset name.
+            :return: True if metadata was fetched, False otherwise.
             """
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
@@ -546,7 +546,7 @@ class AppCore:
 
             if _process_extra:
                 # we use title because it's less ambiguous than a name when searching an asset
-                installed_app = self.uevmlfs.get_installed_app(name)
+                installed_app = self.uevmlfs.get_installed_asset(name)
                 eg_extra = self.egs.grab_assets_extra(
                     asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode, installed_app=installed_app,
                 )
@@ -890,13 +890,13 @@ class AppCore:
                 return
             self.uevmlfs.set_item_extra(app_name=app_name, extra=eg_extra, update_global_dict=update_global_dict)
 
-    def get_installed_app(self, app_name) -> InstalledAsset:
+    def get_installed_asset(self, app_name) -> InstalledAsset:
         """
         Return an InstalledAsset object for the given app name.
         :param app_name: app name to get.
-        :return: installedApp object.
+        :return: InstalledAsset object.
         """
-        return self.uevmlfs.get_installed_app(app_name)
+        return self.uevmlfs.get_installed_asset(app_name)
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[Asset], Dict[str, List[Asset]]):
         """
@@ -936,7 +936,7 @@ class AppCore:
         :param app_name: app name to check.
         :return: True if app is installed, False otherwise.
         """
-        return self.get_installed_app(app_name) is not None
+        return self.get_installed_asset(app_name) is not None
 
     def get_installed_manifest(self, app_name):
         """
@@ -944,7 +944,7 @@ class AppCore:
         :param app_name: app name to get the installed manifest for.
         :return:
         """
-        installed_app = self.get_installed_app(app_name)
+        installed_app = self.get_installed_asset(app_name)
         old_bytes = self.uevmlfs.load_manifest(app_name, installed_app.version, installed_app.platform)
         return old_bytes, installed_app.base_urls
 
@@ -983,7 +983,7 @@ class AppCore:
         :param item: item to get the CDN manifest for.
         :param platform: platform to get the CDN manifest for.
         :param disable_https: disable HTTPS for the manifest URLs.
-        :return: list of base URLs, manifest hash.
+        :return: tuple (manifest data, base URLs, request status code).
         """
         manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(item, platform)
         if not manifest_urls:
@@ -1012,7 +1012,7 @@ class AppCore:
         if sha1(manifest_bytes).hexdigest() != manifest_hash:
             raise ValueError('Manifest sha hash mismatch!')
 
-        return manifest_bytes, base_urls
+        return manifest_bytes, base_urls, r.status_code
 
     def get_uri_manifest(self, uri: str) -> (bytes, List[str]):
         """
@@ -1108,7 +1108,7 @@ class AppCore:
             if _base_urls:
                 base_urls = _base_urls
         else:
-            new_manifest_data, base_urls = self.get_cdn_manifest(app, platform, disable_https=disable_https)
+            new_manifest_data, base_urls, status_code = self.get_cdn_manifest(app, platform, disable_https=disable_https)
             # overwrite base urls in metadata with current ones to avoid using old/dead CDNs
             app.base_urls = base_urls
             # save base urls to game metadata
@@ -1127,17 +1127,17 @@ class AppCore:
             raise PermissionError(f'No write access to "{download_folder}"')
 
         # reuse existing installation's directory
-        installed_app = self.get_installed_app(app.app_name)
+        installed_app = self.get_installed_asset(app.app_name)
         if reuse_last_install and installed_app:
             install_path = installed_app.install_path
             egl_guid = installed_app.egl_guid
         else:
-            install_path = path_join(install_folder, 'Content') if install_folder!='' else ''
+            install_path = path_join(install_folder, 'Content') if install_folder != '' else ''
 
         # check for write access on the installation path or its parent directory if it doesn't exist yet
         if not check_and_create_folder(install_path):
             self.log_info_and_gui_display(f'"{install_path}" did not exist, it has been created.')
-        if install_path!='' and not os.access(install_path, os.W_OK):
+        if install_path != '' and not os.access(install_path, os.W_OK):
             raise PermissionError(f'No write access to "{install_path}"')
 
         self.log_info_and_gui_display(f'Install path: {install_path}')
@@ -1206,7 +1206,7 @@ class AppCore:
             file_install_tag=file_install_tag,
             processing_optimization=process_opt
         )
-        installed_app = self.get_installed_app(app.app_name)
+        installed_app = self.get_installed_asset(app.app_name)
         if installed_app is None:
             # create a new installed app
             installed_app = InstalledAsset(app_name=app.app_name, title=app.app_title)

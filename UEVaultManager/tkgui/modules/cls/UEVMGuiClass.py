@@ -139,10 +139,30 @@ class UEVMGui(tk.Tk):
             update_preview_info_func=self.update_preview_info,
             set_widget_state_func=gui_f.set_widget_state
         )
+
+        if data_source_type == DataSourceType.SQLITE:
+            # update the installed folder field in database from the installed_assets json file
+            installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
+            db_handler = data_table.db_handler
+            if db_handler is not None:
+                for app_name, asset in installed_assets_json.items():
+                    installed_folders = asset.get('installed_folders', None)
+                    if installed_folders is not None and len(installed_folders) > 0:
+                        db_handler.add_to_installed_folders(app_name, installed_folders)
+                    else:
+                        # the installed_folders field is empty for the installed_assets, we remove it from the json file
+                        self.core.uevmlfs.set_installed_asset(app_name, for_deletion=True)
+            # update the installed_assets json file from the database info
+            installed_assets_db = db_handler.get_rows_with_installed_folders()
+            for app_name, asset_data in installed_assets_db.items():
+                self.core.uevmlfs.set_installed_asset(app_name, asset_data)
+            data_table.get_data()
+        # get the data AFTER updating the installed folder field in database
         if data_table.get_data() is None:
             self.logger.error('No valid source to read data from. Application will be closed')
             self.quit()
             self.core.clean_exit(1)  # previous line could not quit
+
         self.editable_table = data_table
         data_table.set_preferences(gui_g.s.datatable_default_pref)
         data_table.show()
@@ -1569,6 +1589,7 @@ class UEVMGui(tk.Tk):
             'Tags with number': ['callable', self.filter_tags_with_number],  #
             'With comment': ['callable', self.filter_with_comment],  #
             'Free and not owned': ['callable', self.filter_free_and_not_owned],  #
+            'Installed in folder': ['callable', self.filter_with_installed_folders],  #
         }
 
     def filter_tags_with_number(self) -> pd.Series:
@@ -1582,7 +1603,7 @@ class UEVMGui(tk.Tk):
 
     def filter_with_comment(self) -> pd.Series:
         """
-        Create a mask to filter the data with tags that contains an integer.
+        Create a mask to filter the data with a non-empty comment value.
         :return: a mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
@@ -1602,4 +1623,14 @@ class UEVMGui(tk.Tk):
         mask = df['Owned'].ne(True) & ~df['Custom attributes'].str.contains('external_link') & (
             df['Free'].eq(True) | df['Discount price'].le(0.5) | df['Price'].le(0.5)
         )
+        return mask
+
+    def filter_with_installed_folders(self) -> pd.Series:
+        """
+        Create a mask to filter the data with a non-empty installed_folders value.
+        :return: a mask to filter the data.
+        """
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        mask = df['Installed folders'].notnull() & df['Installed folders'].ne('') & df['Installed folders'].ne('Installed folders') & df[
+            'Comment'].ne('Installed folders')  # not None and not empty string
         return mask
