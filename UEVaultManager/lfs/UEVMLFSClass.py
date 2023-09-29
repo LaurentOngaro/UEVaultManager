@@ -611,7 +611,8 @@ class UEVMLFS:
                 self.log.debug(f'Failed to load installed asset data: {error!r}')
                 return None
         if json_data := self._installed_assets.get(app_name, None):
-            return InstalledAsset.from_json(json_data)
+            asset = InstalledAsset.from_json(json_data)
+            return asset
         return None
 
     def set_installed_asset(self, app_name: str, asset_data: dict = None, for_deletion: bool = False) -> None:
@@ -637,8 +638,12 @@ class UEVMLFS:
                 # merge the installed_folders fields
                 installed_folders_existing = asset_existing.get('installed_folders', [])
                 installed_folders_added = asset_data.get('installed_folders', [])
-                asset_data['installed_folders'] = merge_lists_or_strings(installed_folders_existing, installed_folders_added)
-                self._installed_assets[app_name].update(asset_data)
+                installed_folders_merged = merge_lists_or_strings(installed_folders_existing, installed_folders_added)
+                if installed_folders_merged != installed_folders_existing:
+                    asset_data['installed_folders'] = installed_folders_merged
+                    self._installed_assets[app_name].update(asset_data)
+                else:
+                    has_changed = False
             else:
                 self._installed_assets[app_name] = asset_data
         else:

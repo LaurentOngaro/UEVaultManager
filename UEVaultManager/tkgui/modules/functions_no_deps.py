@@ -419,6 +419,6 @@ def merge_lists_or_strings(list_to_merge, list_to_append) -> list:
     # for folder in set(list_to_merge + list_to_append):
     #     if folder not in list_to_merge:
     #         list_to_merge.append(folder)
-    # return sorted(list_to_merge)
+    # return list_to_merge
     # shorter method
-    return sorted(list(set(list_to_merge + list_to_append)))
+    return list(set(list_to_merge + list_to_append)) # no sorting here because the order could stay first In first Out

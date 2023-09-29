@@ -1509,16 +1509,16 @@ class UEVaultManagerCLI:
                     src_folder = download_path
                 else:
                     src_folder = path_join(download_path, 'Content')
-                dest_folder = installed_app.install_path
-                if copy_folder(src_folder, dest_folder, check_copy_size=True):
-                    installed_app.install_path = dest_folder  # will also add it to existing installed_folders
+                dest_folder = installed_app.install_path  # the install_path has been updated in prepare_download() with the selected install path
+                if dest_folder and copy_folder(src_folder, dest_folder, check_copy_size=True):
+                    # ALREADY DONE installed_app.install_path = dest_folder  # will also add it to existing installed_folders
                     self.core.uevmlfs.set_installed_asset(app.app_name, installed_app.__dict__)
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
                         db_handler.add_to_installed_folders(asset_id=app.app_name, folders=[dest_folder])
-                    message += f'\nAsset have been installed in {dest_folder}'
+                    message += f'\nAsset have been installed in "{dest_folder}"'
                 else:
-                    message += f'\nAsset could not be installed in {dest_folder}'
+                    message += f'\nAsset could not be installed in "{dest_folder}"'
             if args.vault_cache and installed_app.manifest_path:
                 # copy the manifest file to the vault cache folder
                 message += '\nManifest file has been copied in the VaultCache folder.'

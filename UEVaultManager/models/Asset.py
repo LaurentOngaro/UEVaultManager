@@ -143,7 +143,7 @@ class InstalledAsset:
     install_size: int = 0
     manifest_path: str = ''
     platform: str = 'Windows'
-    _installed_folders: List[str] = field(default_factory=list)
+    installed_folders: List[str] = field(default_factory=list)
 
     @classmethod
     def from_json(cls, asset_data: dict) -> 'InstalledAsset':
@@ -154,6 +154,7 @@ class InstalledAsset:
         """
         tmp = cls(
             app_name=asset_data.get('app_name', ''),
+            installed_folders=asset_data.get('installed_folders', []),
             title=asset_data.get('title', ''),
             version=asset_data.get('version', ''),
         )
@@ -162,7 +163,6 @@ class InstalledAsset:
         tmp.install_size = asset_data.get('install_size', 0)
         tmp.manifest_path = asset_data.get('manifest_path', '')
         tmp.platform = asset_data.get('platform', 'Windows')
-        tmp._add_to_installed_folders(asset_data.get('installed_folders', [])),
         return tmp
 
     def _add_to_installed_folders(self, path: str):
@@ -172,8 +172,8 @@ class InstalledAsset:
         """
         if not path or len(path) == 0:
             return
-        result = merge_lists_or_strings(self._installed_folders, path)
-        self._installed_folders = result
+        result = merge_lists_or_strings(self.installed_folders, path)
+        self.installed_folders = result
 
     @property
     def install_path(self) -> str:
@@ -182,11 +182,11 @@ class InstalledAsset:
         :return: install path.
 
         Notes:
-            Will return the most recent values from _installed_folders property.
+            Will return the most recent values from installed_folders property.
         """
-        install_path = self._installed_folders
-        if isinstance(install_path, list):
-            install_path = install_path.pop()
+        install_path = ''
+        if isinstance(self.installed_folders, list) and len(self.installed_folders) > 0:
+            install_path = self.installed_folders[-1]
         return install_path
 
     @install_path.setter
@@ -196,7 +196,7 @@ class InstalledAsset:
         :param path: install path.
 
         Notes:
-            Add the path to the _installed_folders property.
+            Add the path to the installed_folders property.
         """
         self._add_to_installed_folders(path)
 
