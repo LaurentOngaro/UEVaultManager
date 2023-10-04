@@ -421,7 +421,7 @@ class EPCAPI:
         Get the item manifest.
         :param namespace:  namespace.
         :param catalog_item_id: catalog item id.
-        :param app_name: app name.
+        :param app_name: Asset name.
         :param platform: platform to get manifest for.
         :param label: label of the manifest.
         :return: the item manifest using json format.
@@ -528,13 +528,13 @@ class EPCAPI:
         url = 'https://www.unrealengine.com' + links[0]
         return [url, asset_slug, GrabResult.NO_ERROR.name]
 
-    def grab_assets_extra(self, asset_name: str, asset_title: str, verbose_mode=False, installed_app=None) -> dict:
+    def grab_assets_extra(self, asset_name: str, asset_title: str, verbose_mode=False, installed_asset=None) -> dict:
         """
         Grab the extra data of an asset (price, review...) using BeautifulSoup from the marketplace.
         :param asset_name: name of the asset.
         :param asset_title: title of the asset.
         :param verbose_mode: verbose mode.
-        :param installed_app: installed app of the same name if any.
+        :param installed_asset: installed asset of the same name if any.
         :return: a dict with the extra data.
         """
         not_found_price = 0.0
@@ -665,7 +665,7 @@ class EPCAPI:
         discounted = (discount_price < price) or discount_percentage > 0.0
 
         # get Installed_Folders
-        installed_folders = installed_app.installed_folders if installed_app else []
+        installed_folders = installed_asset.installed_folders if installed_asset else []
         self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')
         return {
             'asset_name': asset_name,

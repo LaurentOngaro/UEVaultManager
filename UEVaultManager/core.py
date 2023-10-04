@@ -546,9 +546,9 @@ class AppCore:
 
             if _process_extra:
                 # we use title because it's less ambiguous than a name when searching an asset
-                installed_app = self.uevmlfs.get_installed_asset(name)
+                installed_asset = self.uevmlfs.get_installed_asset(name)
                 eg_extra = self.egs.grab_assets_extra(
-                    asset_name=name, asset_title=assets[name].app_title, verbose_mode=self.verbose_mode, installed_app=installed_app,
+                    asset_name=name, asset_title=assets[name].app_title, verbose_mode=self.verbose_mode, installed_asset=installed_asset,
                 )
 
                 # check for data consistency
@@ -944,9 +944,9 @@ class AppCore:
         :param app_name: asset name to get the installed manifest for.
         :return:
         """
-        installed_app = self.get_installed_asset(app_name)
-        old_bytes = self.uevmlfs.load_manifest(app_name, installed_app.version, installed_app.platform)
-        return old_bytes, installed_app.base_urls
+        installed_asset = self.get_installed_asset(app_name)
+        old_bytes = self.uevmlfs.load_manifest(app_name, installed_asset.version, installed_asset.platform)
+        return old_bytes, installed_asset.base_urls
 
     def get_cdn_urls(self, item, platform='Windows'):
         """
@@ -1129,10 +1129,10 @@ class AppCore:
             raise PermissionError(f'No write access to "{download_folder}"')
 
         # reuse existing installation's directory
-        installed_app = self.get_installed_asset(asset.app_name)
-        if reuse_last_install and installed_app:
-            install_path = installed_app.install_path
-            egl_guid = installed_app.egl_guid
+        installed_asset = self.get_installed_asset(asset.app_name)
+        if reuse_last_install and installed_asset:
+            install_path = installed_asset.install_path
+            egl_guid = installed_asset.egl_guid
         else:
             # install_path = path_join(install_folder, 'Content') if install_folder != '' else ''
             version = ''  # TODO: how to get the version from the manifest ?
@@ -1200,17 +1200,17 @@ class AppCore:
             timeout=self.timeout,
             trace_func=self.log_info_and_gui_display,
         )
-        installed_app = self.get_installed_asset(asset.app_name)
-        if installed_app is None:
+        installed_asset = self.get_installed_asset(asset.app_name)
+        if installed_asset is None:
             # create a new installed asset
-            installed_app = InstalledAsset(app_name=asset.app_name, title=asset.app_title)
+            installed_asset = InstalledAsset(app_name=asset.app_name, title=asset.app_title)
         # update the installed asset
-        installed_app.version = manifest.meta.build_version
-        installed_app.base_urls = base_urls
-        installed_app.egl_guid = egl_guid
-        installed_app.manifest_path = override_manifest if override_manifest else manifest_filename
-        installed_app.platform = platform
-        already_installed = install_path and install_path in installed_app.installed_folders
+        installed_asset.version = manifest.meta.build_version
+        installed_asset.base_urls = base_urls
+        installed_asset.egl_guid = egl_guid
+        installed_asset.manifest_path = override_manifest if override_manifest else manifest_filename
+        installed_asset.platform = platform
+        already_installed = install_path and install_path in installed_asset.installed_folders
         analyse_res = download_manager.run_analysis(
             manifest=manifest,
             old_manifest=old_manifest,
@@ -1224,9 +1224,9 @@ class AppCore:
         )
         if install_path != '':
             # will add install_path to the installed_folders list after checking if it is not already in it
-            installed_app.install_path = install_path
-        installed_app.install_size = analyse_res.install_size
-        return download_manager, analyse_res, installed_app
+            installed_asset.install_path = install_path
+        installed_asset.install_size = analyse_res.install_size
+        return download_manager, analyse_res, installed_asset
 
     # Check if the UE assets metadata cache must be updated
     def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False) -> None:

@@ -84,9 +84,9 @@ def todo_message() -> None:
 
 def from_cli_only_message(content='This feature is only accessible') -> None:
     """
-    Display a message box with a message saying that the feature is only accessible when running the app using the UEVM cli command options.
+    Display a message box with a message saying that the feature is only accessible when running the application using the UEVM cli command options.
     """
-    msg = f'{content} when running these app using the UEVM cli command options. Once the UEVaultManager package installed, Type UEVaultManager -h for more help'
+    msg = f'{content} when running this application using the UEVM cli command options. Once the UEVaultManager package installed, Type UEVaultManager -h for more help'
     print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
     print(print_msg)
     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
@@ -151,7 +151,7 @@ def log_error(msg: str) -> None:
     :param msg: the message to log.
 
     Notes:
-        The app will (normally) exit after logging the message. Sometimes it doesn't work (check ?)
+        The application will (normally) exit after logging the message. Sometimes it doesn't work (check ?)
         It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
@@ -222,7 +222,7 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
         # check error timeout
         if gui_g.timeout_error_count >= 5:
             box_message(
-                f'The app had {gui_g.timeout_error_count} timeout errors when loading images.\nThe application is going offline to avoid been too slow.\nTo fix that, check you internet connection.\nYou can disabled offline mode in the "Show options" panel, or by restarting the app.',
+                f'The application had {gui_g.timeout_error_count} timeout errors when loading images.\nIt is going offline to avoid been too slow.\nTo fix that, check you internet connection.\nYou can disabled offline mode in the "Show options" panel, or by restarting the application.',
                 level='warning'
             )
             gui_g.timeout_error_count = 0

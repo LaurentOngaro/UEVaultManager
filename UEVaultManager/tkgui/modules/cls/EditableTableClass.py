@@ -113,7 +113,7 @@ class EditableTable(Table):
         df_loaded = self.read_data()
         if df_loaded is None:
             self.logger.error('Failed to load data from data source when initializing the table')
-            # previous line will NOT quit the app (why ?)
+            # previous line will NOT quit the application (why ?)
             return
         else:
             Table.__init__(self, container, dataframe=df_loaded, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
@@ -611,8 +611,8 @@ class EditableTable(Table):
             self.df_filtered = df
         elif df_type == DataFrameUsed.MODEL:
             self.model.df = df
-            # self.logger.error("The df_type parameter can't be DataFrameUsed.MODEL in that case. THIS MUST NOT OCCUR. Exiting App...")
-            # previous line will quit the app
+            # self.logger.error("The df_type parameter can't be DataFrameUsed.MODEL in that case. THIS MUST NOT OCCUR. Exiting application...")
+            # previous line will quit the application
 
     def resize_columns(self) -> None:
         """
@@ -728,7 +728,7 @@ class EditableTable(Table):
                 # use the
             else:
                 self.logger.error(f'Unknown data source type: {self.data_source_type}')
-                # previous line will quit the app
+                # previous line will quit the application
                 # noinspection PyTypeChecker
                 return None
         except EmptyDataError:
@@ -737,7 +737,7 @@ class EditableTable(Table):
             data_count = len(df)
         if df is None or df.empty:
             self.logger.error(f'No data found in data source: {self.data_source}')
-            # previous line will quit the app
+            # previous line will quit the application
             # noinspection PyTypeChecker
             return None
         else:
@@ -775,7 +775,7 @@ class EditableTable(Table):
                 self.logger.warning(f'Could not add column "{gui_g.s.index_copy_col_name}" to the row')
         else:
             self.logger.error(f'Unknown data source type: {self.data_source_type}')
-            # previous line will quit the app
+            # previous line will quit the application
         if table_row is None:
             self.logger.warning(f'Could not create an empty row for data source: {self.data_source}')
             return None, -1

@@ -65,7 +65,7 @@ class UEVMLFS:
         else:
             self.config_file = path_join(self.path, 'config.ini')
 
-        # Folders used by the app
+        # Folders used by the application
         self.manifests_folder: str = path_join(self.path, 'manifests')
         self.metadata_folder: str = path_join(self.path, 'metadata')
         self.tmp_folder: str = path_join(self.path, 'tmp')
@@ -74,7 +74,7 @@ class UEVMLFS:
 
         # filename for storing the user data (filled by the 'auth' command).
         self.user_data_filename: str = path_join(self.json_files_folder, 'user_data.json')
-        # filename for storing data about the current version of the app
+        # filename for storing data about the current version of the application
         self.online_version_filename: str = path_join(self.json_files_folder, 'online_version.json')
         # filename for storing cache data for asset's metadata updating
         self.assets_cache_info_filename: str = path_join(self.json_files_folder, 'assets_cache_info.json')
@@ -144,7 +144,7 @@ class UEVMLFS:
             self.config.set('UEVaultManager', 'disable_update_notice', 'False' if is_windows_mac_or_pyi() else 'True')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'start_in_edit_mode'):
-            self.config.set('UEVaultManager', ';Set to True to start the App in Edit mode (since v1.4.4) with the GUI')
+            self.config.set('UEVaultManager', ';Set to True to start the application in Edit mode (since v1.4.4) with the GUI')
             self.config.set('UEVaultManager', 'start_in_edit_mode', 'False')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'create_output_backup'):
@@ -217,7 +217,7 @@ class UEVMLFS:
                 self.log.debug(f'Loading asset meta file "{gm_file}" failed: {error!r}')
 
         # done when asset metadata is parsed to allow filtering
-        # load existing app extra data
+        # load existing Asset extra data
         # for gm_file in os.listdir(self.extra_folder):
         #    try:
         #        _extra = json.load(open(path_join(self.extra_folder, gm_file)))
@@ -361,7 +361,7 @@ class UEVMLFS:
     def _get_manifest_filename(self, app_name: str, version: str, platform: str = None) -> str:
         """
         Get the manifest filename.
-        :param app_name: app name.
+        :param app_name: Asset name.
         :param version: version of the manifest.
         :param platform: platform of the manifest.
         :return: the manifest filename.
@@ -456,7 +456,7 @@ class UEVMLFS:
         """
         # Note: self._assets_metadata is filled at the start of the list command by reading all the json files in the metadata folder
         if _meta := self.assets_metadata.get(app_name, None):
-            return Asset.from_json(_meta)  # create an object from the App class using the json data
+            return Asset.from_json(_meta)  # create an object from the Asset class using the json data
         return None
 
     def set_item_meta(self, app_name: str, meta) -> None:
@@ -486,8 +486,8 @@ class UEVMLFS:
 
     def get_item_extra(self, app_name: str) -> dict:
         """
-        Get the extra data for an app.
-        :param app_name: the app name.
+        Get the extra data for an Asset.
+        :param app_name: the Asset name.
         :return: the extra data.
         """
         extra = self.assets_extra_data.get(app_name, None)
@@ -509,8 +509,8 @@ class UEVMLFS:
 
     def set_item_extra(self, app_name: str, extra: dict, update_global_dict: True) -> None:
         """
-        Save the extra data for an app.
-        :param app_name: the app name.
+        Save the extra data for an Asset.
+        :param app_name: the Asset name.
         :param extra: the extra data.
         :param update_global_dict: update the global dict with the new data.
         """
@@ -523,8 +523,8 @@ class UEVMLFS:
 
     def delete_item_extra(self, app_name: str, update_global_dict: True) -> None:
         """
-        Delete the extra data for an app.
-        :param app_name: the app name.
+        Delete the extra data for an Asset.
+        :param app_name: the Asset name.
         :param update_global_dict: update the global dict with the new data.
         """
         if update_global_dict and self.assets_extra_data.get(app_name):
@@ -535,8 +535,8 @@ class UEVMLFS:
 
     def get_item_app_names(self) -> list:
         """
-        Get the list of app names.
-        :return: the list of app names.
+        Get the list of Asset names.
+        :return: the list of Asset names.
         """
         return sorted(self.assets_metadata.keys())
 
@@ -554,31 +554,31 @@ class UEVMLFS:
         """
         return self.delete_folder_content(gui_g.s.cache_folder)
 
-    def clean_metadata(self, app_names_to_keep: list) -> int:
+    def clean_metadata(self, names_to_keep: list) -> int:
         """
-        Delete all the metadata files that are not in the app_names_to_keep list.
-        :param app_names_to_keep: the list of app names to keep.
+        Delete all the metadata files that are not in the names_to_keep list.
+        :param names_to_keep: the list of asset names to keep.
         :return: the size of the deleted files.
         """
-        return self.delete_folder_content(self.metadata_folder, file_name_to_keep=app_names_to_keep)
+        return self.delete_folder_content(self.metadata_folder, file_name_to_keep=names_to_keep)
 
-    def clean_extra(self, app_names_to_keep: list) -> int:
+    def clean_extra(self, names_to_keep: list) -> int:
         """
-        Delete all the metadata files that are not in the app_names_to_keep list.
-        :param app_names_to_keep: the list of app names to keep.
+        Delete all the metadata files that are not in the names_to_keep list.
+        :param names_to_keep: the list of asset names to keep.
         :return: the size of the deleted files.
         """
-        return self.delete_folder_content(self.extra_folder, file_name_to_keep=app_names_to_keep)
+        return self.delete_folder_content(self.extra_folder, file_name_to_keep=names_to_keep)
 
     def clean_manifests(self) -> int:
         """
-        Delete all the metadata files that are not in the app_names_to_keep list.
+        Delete all the metadata files that are not in the names_to_keep list.
         """
         return self.delete_folder_content(self.manifests_folder)
 
     def clean_logs_and_backups(self) -> int:
         """
-        Delete all the log and backup files in the app folders.
+        Delete all the log and backup files in the application folders.
         :return: the size of the deleted files.
         """
         folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
@@ -715,7 +715,7 @@ class UEVMLFS:
 
     def clean_scrapping(self) -> int:
         """
-        Delete all the metadata files that are not in the app_names_to_keep list.
+        Delete all the metadata files that are not in the names_to_keep list.
         :return: the size of the deleted files.
         """
         folders = [gui_g.s.assets_data_folder, gui_g.s.owned_assets_data_folder, gui_g.s.assets_global_folder, gui_g.s.assets_csv_files_folder]

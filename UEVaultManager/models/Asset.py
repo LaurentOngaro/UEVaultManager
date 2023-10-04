@@ -1,8 +1,8 @@
 # coding: utf-8
 """
 implementation for:
-- AssetBase: asset base data
-- Asset: Combination of app asset, app metadata and app extra as stored on disk
+- AssetBase: Asset base data
+- Asset: Combination of Asset, Asset metadata and Asset extra as stored on disk
 - VerifyResult: Result of a verification
 .
 """
@@ -77,9 +77,9 @@ class Asset:
 
     def app_version(self, platform: str = 'Windows'):
         """
-        Get app version for a given platform.
+        Get Asset version for a given platform.
         :param platform: platform.
-        :return: app version.
+        :return: Asset version.
         """
         if platform not in self.asset_infos:
             return None
@@ -108,9 +108,9 @@ class Asset:
     @classmethod
     def from_json(cls, asset_data: dict) -> 'Asset':
         """
-        Create App from json.
+        Create Asset from json.
         :param asset_data: data.
-        :return: an App.
+        :return: an Asset.
         """
         tmp = cls(app_name=asset_data.get('app_name', ''), app_title=asset_data.get('app_title', ''), )  # call to the class constructor
         tmp.metadata = asset_data.get('metadata', dict())

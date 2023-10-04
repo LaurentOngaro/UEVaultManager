@@ -15,7 +15,7 @@ The location is:
 Config files
 ~~~~~~~~~~~~
 
-For the Cli App settings
+For the Cli Application settings
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 UEVaultManager supports some settings in its config file ``<config folder>/config.ini``:
@@ -25,7 +25,7 @@ This is an example of this file content and the settings you can change:
 .. code:: ini
 
     [UEVaultManager]
-    ;Set to True to start the App in Edit mode (since v1.4.4) with the GUI
+    ;Set to True to start the Application in Edit mode (since v1.4.4) with the GUI
     start_in_edit_mode = False
     ;Set to True to disable the automatic update check
     disable_update_check = False

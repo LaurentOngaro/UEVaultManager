@@ -156,7 +156,7 @@ class UEAssetScraper:
     def read_json_file(app_name: str, owned_assets_only=False) -> (dict, str):
         """
         Load JSON data from a file.
-        :param app_name: the name of the app to load the data from.
+        :param app_name: the name of the asset to load the data from.
         :param owned_assets_only: whether only the owned assets are scraped.
         :return: a dictionary containing the loaded data.
         """
@@ -405,10 +405,10 @@ class UEAssetScraper:
                         asset_data[field] = old_value
             # installed_folders
             installed_folders = asset_data.get('installed_folders', '')  # asset_existing_data
-            app_installed = self.core.uevmlfs.get_installed_asset(asset_data.get('asset_id', ''))
-            if app_installed:
-                app_installed_folders = app_installed.installed_folders
-                installed_folders = merge_lists_or_strings(installed_folders, app_installed_folders)
+            asset_installed = self.core.uevmlfs.get_installed_asset(asset_data.get('asset_id', ''))
+            if asset_installed:
+                asset_installed_folders = asset_installed.installed_folders
+                installed_folders = merge_lists_or_strings(installed_folders, asset_installed_folders)
             asset_data['installed_folders'] = sorted(installed_folders)
 
             # we use an UEAsset object to store the data and create a valid dict from it
