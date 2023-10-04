@@ -1389,13 +1389,27 @@ class UEVaultManagerCLI:
         categories = asset.metadata.get('categories', None)
         category = categories[0]['path'] if categories else ''
         is_plugin = category and 'plugin' in category.lower()
+        release_info = asset.metadata.get('releaseInfo', None)
+        # get version list from release info
+        releases = []
+        if release_info is not None and len(release_info) > 0:
+            # TODO: only keep releases that are compatible with the version of the selected project.
+            for item in release_info:
+                asset_id = item.get('appId', None)
+                title = item.get('versionTitle', None)
+                compatible = item.get('compatibleApps', None)
+                if asset_id is not None and title is not None and compatible is not None:
+                    data = {
+                        'title': title,  #
+                        'asset_id': asset_id,  #
+                        'compatible': compatible,  #
+                    }
+                    releases.append(data)
+        release_selected = releases[-1]  # by default, we take the lastest release
+        # TODO: create a widget to select the version
+        release_name = release_selected['asset_id']
+        title = release_selected['title']
         install_path_base = args.install_path if args.install_path is not None else ''
-
-        # remove the 'Content' at the end of the path if present
-        # to avoid copying the sub_folder folder inside the sub_folder
-        sub_folder = 'Content'
-        if os.path.basename(install_path_base).lower() == sub_folder.lower():  # MUST BE LOWERCASE for comparison
-            install_path_base = os.path.dirname(install_path_base)
 
         folders_to_check = []
         if not install_path_base and not args.no_install:
@@ -1413,7 +1427,6 @@ class UEVaultManagerCLI:
                     if install_path_base:
                         gui_g.s.last_opened_project = install_path_base
 
-            folders_to_check.append(install_path_base)
         if not install_path_base and not args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
@@ -1422,6 +1435,14 @@ class UEVaultManagerCLI:
             )
             return False
 
+        # remove the 'Content' at the end of the path if present
+        # to avoid copying the sub_folder folder inside the sub_folder
+        sub_folder = 'Content'
+        if os.path.basename(install_path_base).lower() == sub_folder.lower():  # MUST BE LOWERCASE for comparison
+            install_path_base = os.path.dirname(install_path_base)
+
+        folders_to_check.append(install_path_base)
+
         if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, dw = init_display_window(self.logger)
 
@@ -1429,7 +1450,7 @@ class UEVaultManagerCLI:
             args.clean_dowloaded_data = False
             # in the vaultCache, the data is in a subfolder named like the release of the Asset
             sub_folder = 'data'
-            download_path = path_join(self.core.egl.vault_cache_folder, asset.app_name, sub_folder)
+            download_path = path_join(self.core.egl.vault_cache_folder, release_name, sub_folder)
             self._log_and_gui_display(
                 self.logger.info, 'Use the vault cache folder to store the downloaded asset.\nOther download options will be ignored'
             )
@@ -1447,9 +1468,10 @@ class UEVaultManagerCLI:
         download_path = os.path.normpath(download_path)
         install_path_base = os.path.normpath(install_path_base)
 
-        self._log_and_gui_display(self.logger.info, f'Preparing download for "{asset.app_title}" ({asset.app_name})...')
+        self._log_and_gui_display(self.logger.info, f'Preparing download for {title}...')
         dlm, analysis, installed_asset = self.core.prepare_download(
             asset=asset,
+            release_name=release_name,
             download_folder=download_path,
             install_folder=install_path_base,
             no_resume=args.no_resume,
@@ -1498,7 +1520,7 @@ class UEVaultManagerCLI:
             return False
 
         if not args.yes:
-            if not get_boolean_choice(f'Do you wish to install "{asset.app_title}" ?'):  # todo: use a gui yes/no if gui is enabled
+            if not get_boolean_choice(f'Do you wish to install {title} ?'):  # todo: use a gui yes/no if gui is enabled
                 print('Aborting...')
                 # not in GUI self.core.clean_exit(0)
                 return False
@@ -1540,18 +1562,18 @@ class UEVaultManagerCLI:
                     dest_folder = path_join(installed_asset.install_path, 'Content')
                 if dest_folder and copy_folder(src_folder, dest_folder, check_copy_size=True):
                     # ALREADY DONE installed_asset.install_path = dest_folder  # will also add it to existing installed_folders
-                    self.core.uevmlfs.set_installed_asset(asset.app_name, installed_asset.__dict__)
+                    self.core.uevmlfs.set_installed_asset(release_name, installed_asset.__dict__)
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
-                        db_handler.add_to_installed_folders(asset.app_name, [dest_folder])
-                    message += f'\nAsset have been installed in "{dest_folder}"'
+                        db_handler.add_to_installed_folders(release_name, [installed_asset.install_path])
+                    message += f'\nAsset have been installed in "{installed_asset.install_path}"'
                 else:
-                    message += f'\nAsset could not be installed in "{dest_folder}"'
+                    message += f'\nAsset could not be installed in "{installed_asset.install_path}"'
             if args.vault_cache and installed_asset.manifest_path:
                 # copy the manifest file to the vault cache folder
                 parent_path = os.path.dirname(download_path)
                 message += f'\nThe manifest file has been copied in {parent_path}.'
-                #manifest_filename = path_join(parent_path, 'manifest.json')
+                # manifest_filename = path_join(parent_path, 'manifest.json')
                 manifest_filename = path_join(parent_path, 'manifest')
                 shutil.copy(installed_asset.manifest_path, manifest_filename)
                 # # delete data folder if it exists
