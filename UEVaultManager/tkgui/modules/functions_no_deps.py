@@ -421,4 +421,4 @@ def merge_lists_or_strings(list_to_merge, list_to_append) -> list:
     #         list_to_merge.append(folder)
     # return list_to_merge
     # shorter method
-    return list(set(list_to_merge + list_to_append)) # no sorting here because the order could stay first In first Out
+    return list(set(list_to_merge + list_to_append))  # no sorting here because the order could stay first In first Out
