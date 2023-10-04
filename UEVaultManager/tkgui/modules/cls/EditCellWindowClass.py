@@ -166,6 +166,5 @@ class EditCellWindow(tk.Toplevel):
         """
         current_values = self.editable_table.get_edit_cell_values()
         # current_values is empty if save_button has been pressed because global variables have been cleared in save_changess()
-        self.must_save = current_values and self.initial_values != current_values
-
+        self.must_save = self.initial_values != current_values
         gui_f.update_widgets_in_list(self.must_save, 'table_has_changed')
