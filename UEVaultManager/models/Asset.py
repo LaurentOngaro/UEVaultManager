@@ -170,6 +170,7 @@ class InstalledAsset:
         Add path to installed_folders.
         :param path: path to add.
         """
+        path = path.strip()
         if not path or len(path) == 0:
             return
         result = merge_lists_or_strings(self.installed_folders, path)

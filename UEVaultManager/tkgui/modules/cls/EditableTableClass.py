@@ -1212,7 +1212,6 @@ class EditableTable(Table):
             self.set_data(self.set_columns_type(df))
             self.fillna_fixed(df)
             # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
-
         if update_filters:
             self._frm_filter.create_mask()
         mask = self._frm_filter.get_filter_mask() if self._frm_filter is not None else None
