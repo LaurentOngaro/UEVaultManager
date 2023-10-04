@@ -31,6 +31,7 @@ class SharedMemorySegment:
 
     @property
     def size(self):
+        """ Size of the segment in bytes. """
         return self.end - self.offset
 
 
@@ -157,7 +158,8 @@ class AnalysisResult:
     added: int = 0
     changed: int = 0
     unchanged: int = 0
-    manifest_comparison: Optional[ManifestComparison] = None
+    manifest_comparison: Optional[ManifestComparison] = None,
+    already_installed: bool = False
 
 
 @dataclass

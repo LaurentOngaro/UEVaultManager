@@ -108,6 +108,7 @@ class DLManager(Process):
         file_exclude_filter: list = None,
         file_install_tag: list = None,
         processing_optimization: bool = False,
+        already_installed: bool = False
     ) -> AnalysisResult:
         """
         Run analysis on manifest and old manifest (if not None) and return a result
@@ -120,9 +121,11 @@ class DLManager(Process):
         :param file_exclude_filter: exclude files with this prefix from download.
         :param file_install_tag: only install files with the specified tag.
         :param processing_optimization: attempt to optimize processing order and RAM usage.
+        :param already_installed: True if the asset has already been installed into the installation folder. Note that this parem is TRAMSMITTED by the caller and stored as it in the "AnalysisResult".
         :return: analysisResult.
         """
         analysis_res = AnalysisResult()
+        analysis_res.already_installed = already_installed
         analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
         analysis_res.biggest_chunk = max(c.window_size for c in manifest.chunk_data_list.elements)
         analysis_res.biggest_file_size = max(f.file_size for f in manifest.file_manifest_list.elements)

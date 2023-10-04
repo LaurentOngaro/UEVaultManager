@@ -137,6 +137,51 @@ class EPCAPI:
     # liste json des tags courants
     # https://www.unrealengine.com/marketplace/api/tags
 
+    """ 
+    le champ release_info contient l'ID des manifest à telecharger pour chaque version
+    (voir app_id) 
+    urls dans EAM
+    - start_session
+    https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token
+    
+    - resume_session
+    https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/verify
+    
+    - invalidate_sesion
+    https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/sessions/kill/{}", access_token);
+    
+    - account_details
+    https://account-public-service-prod03.ol.epicgames.com/account/api/public/account/{}
+    
+    - account_ids_details
+    https://account-public-service-prod03.ol.epicgames.com/account/api/public/account
+    
+    - account_friends
+    https://friends-public-service-prod06.ol.epicgames.com/friends/api/public/friends/{}?includePending={}", id, include_pending);
+    
+    # asset
+    https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/{}?label={}", plat, lab);
+    
+    - asset_manifest
+    https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/v2/platform/{}/namespace/{}/catalogItem/{}/app/{}/label/{}",
+    
+    - asset_info
+    https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/{}/bulk/items?id={}&includeDLCDetails=true&includeMainGameDetails=true&country=us&locale=lc",asset.namespace, asset.catalog_item_id);
+    
+    - game_token
+    https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/exchange"
+    
+    - ownership_token
+    https://ecommerceintegration-public-service-ecomprod02.ol.epicgames.com/ecommerceintegration/api/public/platforms/EPIC/identities/{}/ownershipToken",
+    
+    - user_entitlements
+    https://entitlement-public-service-prod08.ol.epicgames.com/entitlement/api/account/{}/entitlements?start=0&count=5000",
+    
+    - library_items
+    https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}", include_metadata)
+    https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}&cursor={}", include_metadata, c)
+
+    """
     def __init__(self, lc='en', cc='US', timeout=(7, 7)):
         self.log = logging.getLogger('EPCAPI')
         self.notfound_logger = None  # will be setup when created in core.py
