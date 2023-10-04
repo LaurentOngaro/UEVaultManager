@@ -420,7 +420,6 @@ class UEAssetScraper:
             ue_asset.data['tags'] = tags_str
             content.append(ue_asset.data)
             message = f'Asset with uid={uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}'
-            # message += f'\nTAGS:{tags_str}' # this line seems to create BUGS in threads (WTF !!!!)
             self._log_debug(message)
             if self.store_ids:
                 try:
