@@ -23,6 +23,7 @@ from UEVaultManager.models.downloading import AnalysisResult, ChunkTask, Downloa
     TerminateWorkerTask, UIUpdate, WriterTask
 from UEVaultManager.models.manifest import Manifest, ManifestComparison
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
+from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 
 
 class DLManager(Process):
@@ -107,6 +108,7 @@ class DLManager(Process):
         file_exclude_filter: list = None,
         file_install_tag: list = None,
         processing_optimization: bool = False,
+        already_installed: bool = False
     ) -> AnalysisResult:
         """
         Run analysis on manifest and old manifest (if not None) and return a result
@@ -119,9 +121,11 @@ class DLManager(Process):
         :param file_exclude_filter: exclude files with this prefix from download.
         :param file_install_tag: only install files with the specified tag.
         :param processing_optimization: attempt to optimize processing order and RAM usage.
+        :param already_installed: True if the asset has already been installed into the installation folder. Note that this parem is TRAMSMITTED by the caller and stored as it in the "AnalysisResult".
         :return: analysisResult.
         """
         analysis_res = AnalysisResult()
+        analysis_res.already_installed = already_installed
         analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
         analysis_res.biggest_chunk = max(c.window_size for c in manifest.chunk_data_list.elements)
         analysis_res.biggest_file_size = max(f.file_size for f in manifest.file_manifest_list.elements)
@@ -687,8 +691,7 @@ class DLManager(Process):
         Run the download manager
 
         Notes:
-        The DisplayContentWindow_ref is anavailable here. So the display windows will not be updated when calling trace_func.
-
+            The DisplayContentWindow_ref is anavailable here. So the display windows will not be updated when calling trace_func.
         """
         self.shared_memory = SharedMemory(create=True, size=self.max_shared_memory)
         self.log.debug(f'Created shared memory of size: {self.shared_memory.size / 1024 / 1024:.02f} MiB')
@@ -706,9 +709,9 @@ class DLManager(Process):
         self.result_queue = MPQueue(-1)
         self.writer_result_queue = MPQueue(-1)
 
-        pw = ProgressWindow(
-            title='Download in progress...', width=300, show_btn_stop=True, show_progress=True, quit_on_close=False
-        )
+        # create a hiddenroot for the progress window because if not a tk window will be created and visible
+        fake_root = UEVMGuiHiddenRoot()
+        pw = ProgressWindow(parent=fake_root, title='Download in progress...', width=300, show_btn_stop=True, show_progress=True, quit_on_close=False)
         pw.set_activation(False)
 
         self.trace_func(f'Starting download workers...')

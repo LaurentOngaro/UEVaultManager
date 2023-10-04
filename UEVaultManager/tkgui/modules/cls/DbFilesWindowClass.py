@@ -23,7 +23,7 @@ class DBFW_Settings:
 
 class DbFilesWindowClass(tk.Toplevel):
     """
-    This app processes JSON files and stores some data in a database.
+    Processes JSON files and stores some data in a database.
     :param title: the title.
     :param width: the width.
     :param height: the height.
@@ -227,5 +227,5 @@ if __name__ == '__main__':
     main = tk.Tk()
     main.title('FAKE MAIN Window')
     main.geometry('200x100')
-    app = DbFilesWindowClass(title=st.title, db_path=st.db_path, folder_for_csv_files=st.folder_for_csv_files)
+    DbFilesWindowClass(title=st.title, db_path=st.db_path, folder_for_csv_files=st.folder_for_csv_files)
     main.mainloop()

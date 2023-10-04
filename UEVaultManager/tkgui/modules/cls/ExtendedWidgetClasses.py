@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- ExtendedWidget: base class for all widgets in the app
+- ExtendedWidget: base class for all widgets in the application
 - ExtendedEntry: extended entry widget
 - ExtendedText: extended text widget
 - ExtendedLabel: extended label widget
@@ -21,7 +21,7 @@ from UEVaultManager.tkgui.modules.types import WidgetType
 
 class ExtendedWidget:
     """
-    Base class for all widgets in the app.
+    Base class for all widgets in the application.
     :param tag: tag of the widget.
     :param row: row of the widget.
     :param col: column of the widget.

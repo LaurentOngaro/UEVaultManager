@@ -25,10 +25,10 @@ Note:
 UEVaultManager can be run as a CLI (command-line interface) application, it has to be run from a
 terminal (e.g. a Linux Shell, a PowerShell or a Dos Console).
 
-Since the version 1.1.0, the app can edit the content of a previous assets scan (using the 'list' or the 'scrap' commands).
+Since the version 1.1.0, the Application can edit the content of a previous assets scan (using the 'list' or the 'scrap' commands).
 This feature offers GUI interface to edit the assets list, and to add or edit the user data for each asset.
 
-If you find a problem with this app, please note that it's a free app,
+If you find a problem with this application, please note that it's a free application,
 and it 's made on my spare time. So be patient and comprehensive, you
 can try to solve it by your own means if possible.
 
@@ -56,10 +56,10 @@ Implemented Features:
    -  **extra data grabbed from the marketplace page of an asset :
       price, review, tags, owned or not...**
 -  **Scraping the marketplace page of an asset to get all the data using the EPIC MARKETPLACE API (since the version 1.8.0)**
--  Since version 1.8.0, the app can also use a sqlite database to store
+-  Since version 1.8.0, the application can also use a sqlite database to store
    the data and, as it, it could list ALLthe assets available on the marketplace (and not only the ones you own like in the previous versions).
 -  Using a cache system to avoid getting data using API calls and web
-   scraping each time the app is run. The delay of cache conservation
+   scraping each time the application is run. The delay of cache conservation
    can be set in the configuration file
 -  **Filtering the asset list by category before their listing (using the
    "-fc | -filter-category" optional argument)**
@@ -94,7 +94,7 @@ some addition regarding the listing and the management of unreal engine
 marketplace assets. So Thanks to the Legendary team for the fantastic
 work on their tool !!
 
-Till now, without it and its server REST API, This app won't be able to
+Till now, without it and its server REST API, This application won't be able to
 use the Epic API, specially the authentication part.
 
 Jetbrains

@@ -19,13 +19,13 @@ display_content_window_ref = None
 # noinspection PyTypeChecker
 progress_window_ref: ProgressWindow = None
 tool_window_ref = None
-# reference to the cli object of the UEVM main app (the main one, it gives all access to all the features)
+# reference to the cli object of the UEVM main application (the main one, it gives all access to all the features)
 # if empty, direct access to its features from this script won't be available and a message will be displayed instead
 # noinspection PyTypeChecker
-UEVM_cli_ref = None  # avoid importing classes from the UEVM main app here because it can cause circular dependencies when importing the module
+UEVM_cli_ref = None  # avoid importing classes from the UEVM main application here because it can cause circular dependencies when importing the module
 # noinspection PyTypeChecker
 UEVM_gui_ref = None  # avoid importing classes from the UEVM GUI class here because it can cause circular dependencies when importing the module
-#  reference to the log object of the UEVM main app.
+#  reference to the log object of the UEVM main application.
 #  If empty, log will be message printed in the console
 UEVM_log_ref = None
 #  reference to the default command line parser (used for help button in gui).

@@ -28,7 +28,7 @@ Usage
       <command>
        auth             Authenticate with the Epic Games Store
        cleanup          Remove old temporary, metadata, and manifest files
-       info             Prints info about specified app name or manifest
+       info             Prints info about specified Asset or manifest
        list             List the assets you OWNED (and only them). The process could take some time.
        list-files       List files in manifest
        status           Show UEVaultManager status information. Will update the assets list and could take some time.
@@ -66,11 +66,10 @@ Usage
 
 
   Command: info
-    usage: UEVaultManager info [-h] [--offline] [--json] [--force-refresh]
-                          <App Name/Manifest URI>
+    usage: UEVaultManager info [-h] [--offline] [--json] [--force-refresh] <Asset Name/Manifest URI>
 
     positional arguments:
-      <App Name/Manifest URI> App name or manifest path/URI
+      <Asset Name/Manifest URI> Asset Name or manifest path/URI
 
     optional arguments:
       -h, --help              Show this help message and exit
@@ -87,9 +86,9 @@ Usage
 
     optional arguments:
       -h,  --help             Show this help message and exit
-      --csv                   List asset in CSV format
-      --tsv                   List asset in TSV format
-      --json                  List asset in JSON format
+      --csv                   List assets in CSV format
+      --tsv                   List assets in TSV format
+      --json                  List assets in JSON format
       -f, --force-refresh     Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
       -fc, --filter-category  Filter assets by category. Search against the asset category in the marketplace. Search is case-insensitive
                                 and can be partial
@@ -100,10 +99,10 @@ Usage
 
   Command: list-files
     usage: UEVaultManager list-files [-h] [--manifest <uri>] [--csv] [--tsv] [--json]
-                          [--hashlist] [--force-refresh] [<App Name>]
+                          [--hashlist] [--force-refresh] [<Asset Name>]
 
     positional arguments:
-      <App Name>            Name of the app (optional)
+      <Asset Name>          Name of the asset (optional)
 
     optional arguments:
       -h, --help            Show this help message and exit
@@ -157,7 +156,7 @@ Usage
       --max-workers                  Maximum amount of download workers, default: min(2 * CPUs, 16)
       --manifest                     Manifest URL or path to use instead of the CDN one (e.g. for downgrading)
       --base-url                     Base URL to download from (e.g. to test or switch to a different CDNs)
-      --download-only, --no-install  Do not install app and do not run prerequisite installers after download
+      --download-only, --no-install  Do not install the Asset after download
       -r, --reuse-last-install       If the asset has been previouly installed, the installation folder will be reused. In that case, the install-path option will be ignored
       --enable-reordering            Enable reordering optimization to reduce RAM requirements during download (may have adverse results for some titles
       --timeout                      Connection and read timeout for downloader (default: 7 seconds for each)

@@ -137,6 +137,51 @@ class EPCAPI:
     # liste json des tags courants
     # https://www.unrealengine.com/marketplace/api/tags
 
+    """ 
+    le champ release_info contient l'ID des manifest à telecharger pour chaque version
+    (voir app_id) 
+    urls dans EAM
+    - start_session
+    https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token
+    
+    - resume_session
+    https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/verify
+    
+    - invalidate_sesion
+    https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/sessions/kill/{}", access_token);
+    
+    - account_details
+    https://account-public-service-prod03.ol.epicgames.com/account/api/public/account/{}
+    
+    - account_ids_details
+    https://account-public-service-prod03.ol.epicgames.com/account/api/public/account
+    
+    - account_friends
+    https://friends-public-service-prod06.ol.epicgames.com/friends/api/public/friends/{}?includePending={}", id, include_pending);
+    
+    # asset
+    https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/{}?label={}", plat, lab);
+    
+    - asset_manifest
+    https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/v2/platform/{}/namespace/{}/catalogItem/{}/app/{}/label/{}",
+    
+    - asset_info
+    https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/{}/bulk/items?id={}&includeDLCDetails=true&includeMainGameDetails=true&country=us&locale=lc",asset.namespace, asset.catalog_item_id);
+    
+    - game_token
+    https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/exchange"
+    
+    - ownership_token
+    https://ecommerceintegration-public-service-ecomprod02.ol.epicgames.com/ecommerceintegration/api/public/platforms/EPIC/identities/{}/ownershipToken",
+    
+    - user_entitlements
+    https://entitlement-public-service-prod08.ol.epicgames.com/entitlement/api/account/{}/entitlements?start=0&count=5000",
+    
+    - library_items
+    https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}", include_metadata)
+    https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}&cursor={}", include_metadata, c)
+
+    """
     def __init__(self, lc='en', cc='US', timeout=(7, 7)):
         self.log = logging.getLogger('EPCAPI')
         self.notfound_logger = None  # will be setup when created in core.py
@@ -376,7 +421,7 @@ class EPCAPI:
         Get the item manifest.
         :param namespace:  namespace.
         :param catalog_item_id: catalog item id.
-        :param app_name: app name.
+        :param app_name: Asset name.
         :param platform: platform to get manifest for.
         :param label: label of the manifest.
         :return: the item manifest using json format.
@@ -483,13 +528,13 @@ class EPCAPI:
         url = 'https://www.unrealengine.com' + links[0]
         return [url, asset_slug, GrabResult.NO_ERROR.name]
 
-    def grab_assets_extra(self, asset_name: str, asset_title: str, verbose_mode=False, installed_app=None) -> dict:
+    def grab_assets_extra(self, asset_name: str, asset_title: str, verbose_mode=False, installed_asset=None) -> dict:
         """
         Grab the extra data of an asset (price, review...) using BeautifulSoup from the marketplace.
         :param asset_name: name of the asset.
         :param asset_title: title of the asset.
         :param verbose_mode: verbose mode.
-        :param installed_app: installed app of the same name if any.
+        :param installed_asset: installed asset of the same name if any.
         :return: a dict with the extra data.
         """
         not_found_price = 0.0
@@ -620,7 +665,7 @@ class EPCAPI:
         discounted = (discount_price < price) or discount_percentage > 0.0
 
         # get Installed_Folders
-        installed_folders = installed_app.installed_folders if installed_app else []
+        installed_folders = installed_asset.installed_folders if installed_asset else []
         self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')
         return {
             'asset_name': asset_name,

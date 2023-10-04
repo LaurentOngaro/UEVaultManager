@@ -444,8 +444,8 @@ class AppCore:
 
     def get_asset(self, app_name: str, platform='Windows', update=False) -> AssetBase:
         """
-        Return an AssetBase object for the given app name and platform.
-        :param app_name: app name to get.
+        Return an AssetBase object for the given asset name and platform.
+        :param app_name: asset name to get.
         :param platform: platform to get asset for.
         :param update: force update of asset list.
         :return: appAsset object.
@@ -473,11 +473,11 @@ class AppCore:
 
     def get_item(self, app_name, update_meta=False, platform='Windows') -> Asset:
         """
-        Return an App object.
+        Return an Asset object.
         :param app_name: name to get.
         :param update_meta: force update of metadata.
-        :param platform: platform to get app for.
-        :return: app object.
+        :param platform: platform to get asset for.
+        :return: Asset object.
         """
         if update_meta:
             self.get_asset_list(True, platform=platform)
@@ -509,9 +509,9 @@ class AppCore:
 
         def fetch_asset_meta(name: str) -> bool:
             """
-            Fetches asset metadata for the given app name and adds it to the list of assets.
-            :param name: app name.
-            :return: True if successful, False otherwise.
+            Fetch metadata for the given asset.
+            :param name: asset name.
+            :return: True if metadata was fetched, False otherwise.
             """
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
@@ -540,15 +540,15 @@ class AppCore:
                     self.log.warning(f'Failed to fetch metadata for {name}: reponse code = {status_code}')
                     return False
 
-                app = Asset(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
-                self.uevmlfs.set_item_meta(app.app_name, app)
-                apps[name] = app
+                asset = Asset(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
+                self.uevmlfs.set_item_meta(asset.app_name, asset)
+                assets[name] = asset
 
             if _process_extra:
                 # we use title because it's less ambiguous than a name when searching an asset
-                installed_app = self.uevmlfs.get_installed_app(name)
+                installed_asset = self.uevmlfs.get_installed_asset(name)
                 eg_extra = self.egs.grab_assets_extra(
-                    asset_name=name, asset_title=apps[name].app_title, verbose_mode=self.verbose_mode, installed_app=installed_app,
+                    asset_name=name, asset_title=assets[name].app_title, verbose_mode=self.verbose_mode, installed_asset=installed_asset,
                 )
 
                 # check for data consistency
@@ -562,7 +562,7 @@ class AppCore:
                 self.uevmlfs.set_item_extra(app_name=name, extra=eg_extra, update_global_dict=True)
 
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
-                if eg_extra['page_title'] != '' and eg_extra['page_title'] != apps[name].app_title:
+                if eg_extra['page_title'] != '' and eg_extra['page_title'] != assets[name].app_title:
                     self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
                     eg_extra['grab_result'] = GrabResult.INCONSISTANT_DATA.name
                     if self.bad_data_logger:
@@ -629,7 +629,7 @@ class AppCore:
 
         fetch_list = {}
         assets_bypassed = {}
-        apps = {}
+        assets = {}
 
         # loop through assets items to check for if they are for ue or not
         valid_items = []
@@ -702,8 +702,8 @@ class AppCore:
                     i += 1
                     continue
                 asset_updated = any(item_metadata.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
-                apps[app_name] = item_metadata
-                self.log.debug(f'{app_name} has been ADDED to the apps list with asset_updated={asset_updated}')
+                assets[app_name] = item_metadata
+                self.log.debug(f'{app_name} has been ADDED to the assets list with asset_updated={asset_updated}')
 
             # get extra data only in not filtered
             if force_refresh or asset_updated:
@@ -735,7 +735,7 @@ class AppCore:
                 # gui_g.progress_window_ref.hide_progress_bar()
                 # gui_g.progress_window_ref.hide_btn_stop()
 
-            self.log.info(f'Fetching metadata for {len(fetch_list)} app(s).')
+            self.log.info(f'Fetching metadata for {len(fetch_list)} asset(s).')
             if self.use_threads:
                 # Note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
 
@@ -784,10 +784,10 @@ class AppCore:
             if self.verbose_mode:
                 self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name]}. Still {len(filtered_items)} assets to check')
             try:
-                app_item = apps.get(app_name)
+                app_item = assets.get(app_name)
             except (KeyError, IndexError):
-                self.log.debug(f'{app_name} has not been found int the app list. Bypassing')
-                # item not found in app, ignore and pass to next one
+                self.log.debug(f'{app_name} has not been found int the asset list. Bypassing')
+                # item not found in asset, ignore and pass to next one
                 continue
             # retry if the asset is still in fetch list (with active fetcher treads)
             if fetch_list.get(app_name) and (not currently_fetching.get(app_name) or 'Asset_Fetcher' not in thread_enumerate()):
@@ -841,7 +841,7 @@ class AppCore:
             self._save_extra_data(self.uevmlfs.assets_extra_data, update_global_dict=False)
         return _ret
 
-    # end def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[App], Dict[str, List[App]]):
+    # end def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[asset], Dict[str, List[asset]]):
 
     def _prune_metadata(self) -> None:
         """
@@ -873,10 +873,10 @@ class AppCore:
         :param assets:  List of assets to save.
         """
         self.log.info('Saving metadata in files... could take some time')
-        for app in assets:
+        for asset in assets:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
-            self.uevmlfs.set_item_meta(app.app_name, app)
+            self.uevmlfs.set_item_meta(asset.app_name, asset)
 
     def _save_extra_data(self, extra: dict, update_global_dict: True) -> None:
         """
@@ -890,13 +890,13 @@ class AppCore:
                 return
             self.uevmlfs.set_item_extra(app_name=app_name, extra=eg_extra, update_global_dict=update_global_dict)
 
-    def get_installed_app(self, app_name) -> InstalledAsset:
+    def get_installed_asset(self, app_name) -> InstalledAsset:
         """
-        Return an InstalledAsset object for the given app name.
-        :param app_name: app name to get.
-        :return: installedApp object.
+        Return an InstalledAsset object for the given asset name.
+        :param app_name: asset name to get.
+        :return: InstalledAsset object.
         """
-        return self.uevmlfs.get_installed_app(app_name)
+        return self.uevmlfs.get_installed_asset(app_name)
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[Asset], Dict[str, List[Asset]]):
         """
@@ -907,7 +907,7 @@ class AppCore:
         :return: list of Items that do not have assets.
         """
         _ret = []
-        # get all the app names we have to ignore
+        # get all the asset names we have to ignore
         ignore = set(i.app_name for i in self.get_assets())
 
         for lib_item in self.egs.get_library_items():
@@ -932,21 +932,21 @@ class AppCore:
 
     def is_installed(self, app_name: str) -> bool:
         """
-        Return whether an app is installed.
-        :param app_name: app name to check.
-        :return: True if app is installed, False otherwise.
+        Return whether an asset is installed.
+        :param app_name: asset name to check.
+        :return: True if asset is installed, False otherwise.
         """
-        return self.get_installed_app(app_name) is not None
+        return self.get_installed_asset(app_name) is not None
 
     def get_installed_manifest(self, app_name):
         """
         Get the installed manifest.
-        :param app_name: app name to get the installed manifest for.
+        :param app_name: asset name to get the installed manifest for.
         :return:
         """
-        installed_app = self.get_installed_app(app_name)
-        old_bytes = self.uevmlfs.load_manifest(app_name, installed_app.version, installed_app.platform)
-        return old_bytes, installed_app.base_urls
+        installed_asset = self.get_installed_asset(app_name)
+        old_bytes = self.uevmlfs.load_manifest(app_name, installed_asset.version, installed_asset.platform)
+        return old_bytes, installed_asset.base_urls
 
     def get_cdn_urls(self, item, platform='Windows'):
         """
@@ -983,7 +983,7 @@ class AppCore:
         :param item: item to get the CDN manifest for.
         :param platform: platform to get the CDN manifest for.
         :param disable_https: disable HTTPS for the manifest URLs.
-        :return: list of base URLs, manifest hash.
+        :return: tuple (manifest data, base URLs, request status code).
         """
         manifest_urls, base_urls, manifest_hash = self.get_cdn_urls(item, platform)
         if not manifest_urls:
@@ -1012,7 +1012,7 @@ class AppCore:
         if sha1(manifest_bytes).hexdigest() != manifest_hash:
             raise ValueError('Manifest sha hash mismatch!')
 
-        return manifest_bytes, base_urls
+        return manifest_bytes, base_urls, r.status_code
 
     def get_uri_manifest(self, uri: str) -> (bytes, List[str]):
         """
@@ -1034,9 +1034,10 @@ class AppCore:
 
     def prepare_download(
         self,
-        app: Asset,
+        asset: Asset,
         download_folder: str = '',
         install_folder: str = '',
+        sub_folder: str = 'Content',
         no_resume: bool = False,
         platform: str = 'Windows',
         max_shm: int = 0,
@@ -1056,9 +1057,10 @@ class AppCore:
     ) -> (DLManager, AnalysisResult, InstalledAsset):
         """
         Prepare a download.
-        :param app:App to prepare the download for.
-        :param download_folder: folder to download the app to.
-        :param install_folder: folder to install the app to.
+        :param asset:asset to prepare the download for.
+        :param download_folder: folder to download the asset to.
+        :param install_folder: base folder to install the asset to.
+        :param sub_folder: sub folder to install the asset to (i.e. 'data' or 'Content')
         :param platform: platform to prepare the download for.
         :param no_resume: avoid to resume. Force a new download.
         :param max_shm: maximum amount of shared memory to use.
@@ -1085,17 +1087,17 @@ class AppCore:
             self.log.info(f'Overriding old manifest with "{override_old_manifest}"')
             old_bytes, _ = self.get_uri_manifest(override_old_manifest)
             old_manifest = self.load_manifest(old_bytes)
-        elif not disable_patching and not no_resume and self.is_installed(app.app_name):
-            old_bytes, _base_urls = self.get_installed_manifest(app.app_name)
-            if _base_urls and not app.base_urls:
-                app.base_urls = _base_urls
+        elif not disable_patching and not no_resume and self.is_installed(asset.app_name):
+            old_bytes, _base_urls = self.get_installed_manifest(asset.app_name)
+            if _base_urls and not asset.base_urls:
+                asset.base_urls = _base_urls
 
             if not old_bytes:
                 self.log.error(f'Could not load old manifest, patching will not work!')
             else:
                 old_manifest = self.load_manifest(old_bytes)
 
-        base_urls = app.base_urls
+        base_urls = asset.base_urls
 
         # The EGS client uses plaintext HTTP by default for the purposes of enabling simple DNS based
         # CDN redirection to a (local) cache. In Legendary this will be a config option.
@@ -1108,17 +1110,17 @@ class AppCore:
             if _base_urls:
                 base_urls = _base_urls
         else:
-            new_manifest_data, base_urls = self.get_cdn_manifest(app, platform, disable_https=disable_https)
+            new_manifest_data, base_urls, status_code = self.get_cdn_manifest(asset, platform, disable_https=disable_https)
             # overwrite base urls in metadata with current ones to avoid using old/dead CDNs
-            app.base_urls = base_urls
+            asset.base_urls = base_urls
             # save base urls to game metadata
-            self.uevmlfs.set_item_meta(app.app_name, app)
+            self.uevmlfs.set_item_meta(asset.app_name, asset)
 
         self.log_info_and_gui_display('Parsing game manifest...')
         manifest = self.load_manifest(new_manifest_data)
         self.log.debug(f'Base urls: {base_urls}')
         # save manifest with version name as well for testing/downgrading/etc.
-        manifest_filename = self.uevmlfs.save_manifest(app.app_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
+        manifest_filename = self.uevmlfs.save_manifest(asset.app_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
 
         # make sure donwload folder actually exists (but do not create asset folder)
         if not check_and_create_folder(download_folder):
@@ -1127,23 +1129,25 @@ class AppCore:
             raise PermissionError(f'No write access to "{download_folder}"')
 
         # reuse existing installation's directory
-        installed_app = self.get_installed_app(app.app_name)
-        if reuse_last_install and installed_app:
-            install_path = installed_app.install_path
-            egl_guid = installed_app.egl_guid
+        installed_asset = self.get_installed_asset(asset.app_name)
+        if reuse_last_install and installed_asset:
+            install_path = installed_asset.install_path
+            egl_guid = installed_asset.egl_guid
         else:
-            install_path = path_join(install_folder, 'Content') if install_folder!='' else ''
+            # install_path = path_join(install_folder, 'Content') if install_folder != '' else ''
+            version = ''  # TODO: how to get the version from the manifest ?
+            install_path = os.path.join(install_folder, asset.app_name, version, sub_folder)
 
         # check for write access on the installation path or its parent directory if it doesn't exist yet
         if not check_and_create_folder(install_path):
             self.log_info_and_gui_display(f'"{install_path}" did not exist, it has been created.')
-        if install_path!='' and not os.access(install_path, os.W_OK):
+        if install_path != '' and not os.access(install_path, os.W_OK):
             raise PermissionError(f'No write access to "{install_path}"')
 
         self.log_info_and_gui_display(f'Install path: {install_path}')
 
         if not no_resume:
-            filename = clean_filename(f'{app.app_name}.resume')
+            filename = clean_filename(f'{asset.app_name}.resume')
             resume_file = path_join(self.uevmlfs.tmp_folder, filename)
         else:
             resume_file = None
@@ -1196,6 +1200,17 @@ class AppCore:
             timeout=self.timeout,
             trace_func=self.log_info_and_gui_display,
         )
+        installed_asset = self.get_installed_asset(asset.app_name)
+        if installed_asset is None:
+            # create a new installed asset
+            installed_asset = InstalledAsset(app_name=asset.app_name, title=asset.app_title)
+        # update the installed asset
+        installed_asset.version = manifest.meta.build_version
+        installed_asset.base_urls = base_urls
+        installed_asset.egl_guid = egl_guid
+        installed_asset.manifest_path = override_manifest if override_manifest else manifest_filename
+        installed_asset.platform = platform
+        already_installed = install_path and install_path in installed_asset.installed_folders
         analyse_res = download_manager.run_analysis(
             manifest=manifest,
             old_manifest=old_manifest,
@@ -1204,23 +1219,14 @@ class AppCore:
             file_prefix_filter=file_prefix_filter,
             file_exclude_filter=file_exclude_filter,
             file_install_tag=file_install_tag,
-            processing_optimization=process_opt
+            processing_optimization=process_opt,
+            already_installed=already_installed
         )
-        installed_app = self.get_installed_app(app.app_name)
-        if installed_app is None:
-            # create a new installed app
-            installed_app = InstalledAsset(app_name=app.app_name, title=app.app_title)
-        # update the installed app
-        installed_app.version = manifest.meta.build_version
-        installed_app.base_urls = base_urls
-        installed_app.egl_guid = egl_guid
-        installed_app.install_size = analyse_res.install_size
-        installed_app.manifest_path = override_manifest if override_manifest else manifest_filename
-        installed_app.platform = platform
         if install_path != '':
             # will add install_path to the installed_folders list after checking if it is not already in it
-            installed_app.install_path = install_path
-        return download_manager, analyse_res, installed_app
+            installed_asset.install_path = install_path
+        installed_asset.install_size = analyse_res.install_size
+        return download_manager, analyse_res, installed_asset
 
     # Check if the UE assets metadata cache must be updated
     def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False) -> None:

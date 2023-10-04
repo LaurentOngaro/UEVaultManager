@@ -108,7 +108,7 @@ class ProgressWindow(tk.Toplevel):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'padx': 5, 'pady': 5, 'fill': tk.X}
             if container.function is None:
-                lbl_function = ttk.Label(self, text='No callable function set Yet')
+                lbl_function = ttk.Label(self, text='Operation has started...')
             else:
                 lbl_function = ttk.Label(self, text='Running function: ' + container.function.__name__)
             lbl_function.pack(**pack_def_options)

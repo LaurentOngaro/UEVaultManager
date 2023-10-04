@@ -401,3 +401,24 @@ def append_no_duplicate(list_to_append: list, items: any, ok_if_exists: object =
                 raise ValueError(f'append_no_duplicate method: Value {item} already in list {list_to_append}')
             return False
     return True
+
+
+def merge_lists_or_strings(list_to_merge, list_to_append) -> list:
+    """
+    Merge 2 lists (or strings) without duplicates.
+    :param list_to_merge: the list to merge. Could be a list or a string of values separated by commas.
+    :param list_to_append: the list to append Could be a list or a string of values separated by commas.
+    :return: the merged list.
+    """
+    if isinstance(list_to_merge, str):
+        list_to_merge = list_to_merge.split(',')
+    if isinstance(list_to_append, str):
+        list_to_append = list_to_append.split(',')
+    # merge the 2 lists without duplicates
+    # old method
+    # for folder in set(list_to_merge + list_to_append):
+    #     if folder not in list_to_merge:
+    #         list_to_merge.append(folder)
+    # return list_to_merge
+    # shorter method
+    return list(set(list_to_merge + list_to_append))  # no sorting here because the order could stay first In first Out

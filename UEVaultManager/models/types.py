@@ -65,7 +65,7 @@ class DbVersionNum(Enum):
     V0 = 0  # invalid version
     V1 = 1  # initial version : only the "standard" marketplace columns
     V2 = 2  # add the columns used fo user data to the "standard" marketplace columns
-    V3 = 3  # add the last_run table to get data about the last run of the app
+    V3 = 3  # add the last_run table to get data about the last run of the application
     V4 = 4  # add custom_attributes field to the assets table
     V5 = 5  # add added_manually column to the assets table
     V6 = 6  # add tags column to the assets table
@@ -74,4 +74,5 @@ class DbVersionNum(Enum):
     V9 = 9  # create the "assets_tags" view for the tags in the assets table
     V10 = 10  # add an autoincrement id to the last_run table
     V11 = 11  # rename column installed_folder TO installed_folders
-    V12 = 12  # future version
+    V12 = 12  # add release_info columns to the assets table
+    V13 = 13  # future version

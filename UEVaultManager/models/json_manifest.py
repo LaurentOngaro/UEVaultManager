@@ -20,9 +20,9 @@ def blob_to_num(in_str):
     :return: converted number.
 
     Notes:
-    The JSON manifest use a rather strange format for storing numbers.
-    It's essentially %03d for each char concatenated to a string instead of just putting the fucking number in the JSON...
-    Also, it's still little endian, so we have to bitshift it.
+        The JSON manifest use a rather strange format for storing numbers.
+        It's essentially %03d for each char concatenated to a string instead of just putting the fucking number in the JSON...
+        Also, it's still little endian, so we have to bitshift it.
     """
     num = 0
     shift = 0
@@ -158,19 +158,19 @@ class JSONCDL(CDL):
         _cdl._manifest_version = manifest_version
         _cdl.count = len(json_data['ChunkFilesizeList'])
 
-        cfl = json_data.get('ChunkFilesizeList',{})
-        chl = json_data.get('ChunkHashList',{})
-        csl = json_data.get('ChunkShaList',{})
-        dgl = json_data.get('DataGroupList',{})
+        cfl = json_data.get('ChunkFilesizeList', {})
+        chl = json_data.get('ChunkHashList', {})
+        csl = json_data.get('ChunkShaList', {})
+        dgl = json_data.get('DataGroupList', {})
         _guids = list(cfl.keys())
 
         for guid in _guids:
             _ci = ChunkInfo(manifest_version=manifest_version)
             _ci.guid = guid_from_json(guid)
-            _ci.file_size = blob_to_num(cfl.get(guid,0))
-            _ci.hash = blob_to_num(chl.get(guid,0))
-            _ci.sha_hash = bytes.fromhex(csl.get(guid,''))
-            _ci.group_num = blob_to_num(dgl.get(guid,0))
+            _ci.file_size = blob_to_num(cfl.get(guid, 0))
+            _ci.hash = blob_to_num(chl.get(guid, 0))
+            _ci.sha_hash = bytes.fromhex(csl.get(guid, ''))
+            _ci.group_num = blob_to_num(dgl.get(guid, 0))
             _ci.window_size = 1024 * 1024
             _cdl.elements.append(_ci)
 
