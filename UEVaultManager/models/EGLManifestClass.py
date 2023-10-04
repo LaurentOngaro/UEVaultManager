@@ -34,7 +34,7 @@ _template = {
     'MandatoryAppFolderName': '',
     'ManifestLocation': '',
     'OwnershipToken': '',
-    'PrereqIds': [],
+    # 'PrereqIds': [],
     'ProcessNames': [],
     'StagingLocation': '',
     'TechnicalType': '',
@@ -92,6 +92,7 @@ class EGLManifest:
         tmp.app_name = json.pop('AppName')
         tmp.app_version_string = json.pop('AppVersionString', None)
         tmp.base_urls = json.pop('BaseURLs', list())
+        # noinspection DuplicatedCode
         tmp.build_label = json.pop('BuildLabel', '')
         tmp.catalog_item_id = json.pop('CatalogItemId', '')
         tmp.namespace = json.pop('CatalogNamespace', '')

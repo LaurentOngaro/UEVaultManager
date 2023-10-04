@@ -1037,7 +1037,6 @@ class AppCore:
         asset: Asset,
         download_folder: str = '',
         install_folder: str = '',
-        sub_folder: str = 'Content',
         no_resume: bool = False,
         platform: str = 'Windows',
         max_shm: int = 0,
@@ -1060,7 +1059,6 @@ class AppCore:
         :param asset:asset to prepare the download for.
         :param download_folder: folder to download the asset to.
         :param install_folder: base folder to install the asset to.
-        :param sub_folder: sub folder to install the asset to (i.e. 'data' or 'Content')
         :param platform: platform to prepare the download for.
         :param no_resume: avoid to resume. Force a new download.
         :param max_shm: maximum amount of shared memory to use.
@@ -1135,7 +1133,7 @@ class AppCore:
             egl_guid = installed_asset.egl_guid
         else:
             # asset are always installed in the 'Content' sub folder
-            # NO we don't want to store "content" in the install path
+            # NO we don't want to store "content" in the "install path"
             # install_path = path_join(install_folder, 'Content') if install_folder != '' else ''
             install_path = install_folder
 

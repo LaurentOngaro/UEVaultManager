@@ -1452,7 +1452,6 @@ class UEVaultManagerCLI:
             asset=asset,
             download_folder=download_path,
             install_folder=install_path_base,
-            sub_folder=sub_folder,
             no_resume=args.no_resume,
             max_shm=args.shared_memory,
             max_workers=args.max_workers,
@@ -1550,9 +1549,10 @@ class UEVaultManagerCLI:
                     message += f'\nAsset could not be installed in "{dest_folder}"'
             if args.vault_cache and installed_asset.manifest_path:
                 # copy the manifest file to the vault cache folder
-                message += f'\nThe manifest file has been copied in {download_path}.'
                 parent_path = os.path.dirname(download_path)
-                manifest_filename = path_join(parent_path, 'manifest.json')
+                message += f'\nThe manifest file has been copied in {parent_path}.'
+                #manifest_filename = path_join(parent_path, 'manifest.json')
+                manifest_filename = path_join(parent_path, 'manifest')
                 shutil.copy(installed_asset.manifest_path, manifest_filename)
                 # # delete data folder if it exists
                 # dest_folder = path_join(download_path, 'data')
