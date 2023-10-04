@@ -1427,12 +1427,24 @@ class UEVaultManagerCLI:
             download_path = self.core.egl.vault_cache_folder
         else:
             download_path = args.download_path
-        download_path = path_join(download_path, app.app_name)
+            # remove the 'content' folder at the end if present
+            download_path_subfolder = os.path.basename(download_path).lower()
+            # the downloaded data should always have a "Content" inside
+            # so, we need to add it to the src_folder if it is not already there to avoid copying the content folder inside the content folder
+            if download_path_subfolder == 'content':  # MUST BE LOWERCASE for comparison
+                download_path = os.path.dirname(download_path)
+
+        sub_folder = 'Content'
+        # next is usefull for comparisons
+        download_path = os.path.normpath(download_path)
+        install_path_base = os.path.normpath(install_path_base)
+
         self._log_and_gui_display(self.logger.info, f'Preparing download for "{app.app_title}" ({app.app_name})...')
         dlm, analysis, installed_app = self.core.prepare_download(
-            app=app,
+            asset=app,
             download_folder=download_path,
             install_folder=install_path_base,
+            sub_folder=sub_folder,
             no_resume=args.no_resume,
             max_shm=args.shared_memory,
             max_workers=args.max_workers,
@@ -1443,6 +1455,11 @@ class UEVaultManagerCLI:
             preferred_cdn=args.preferred_cdn,
             disable_https=args.disable_https,
         )
+        if install_path_base and not args.no_install and analysis.already_installed and not box_yesno(
+            f'The selected asset as already been installed in "{install_path_base}".\nDo you want to continue ?'
+        ):
+            self._log_and_gui_display(self.logger.info, f'Asset already installed.\nOperation aborted by user.')
+            return False
 
         self._log_and_gui_display(self.logger.info, f'Install size: {analysis.install_size / 1024 / 1024:.02f} MiB')
         compression = (1 - (analysis.dl_size / analysis.uncompressed_dl_size)) * 100 if analysis.uncompressed_dl_size else 0
@@ -1502,33 +1519,38 @@ class UEVaultManagerCLI:
             if not args.no_install:
                 self._log_and_gui_display(self.logger.info, 'Start copying downloaded data to install folder...')
                 # copy the downloaded data to the installation folder
-                last_part_src = os.path.basename(download_path).lower()
+                download_path_subfolder = os.path.basename(download_path).lower()
                 # the downloaded data should always have a "Content" inside
                 # so, we need to add it to the src_folder if it is not already there to avoid copying the content folder inside the content folder
-                if last_part_src == 'content':  # MUST BE LOWERCASE for comparison
+                if download_path_subfolder == 'content':  # MUST BE LOWERCASE for comparison
                     src_folder = download_path
                 else:
                     src_folder = path_join(download_path, 'Content')
-                dest_folder = installed_app.install_path  # the install_path has been updated in prepare_download() with the selected install path
+                install_path_subfolder = os.path.basename(installed_app.install_path).lower()
+                if install_path_subfolder == 'content':  # MUST BE LOWERCASE for comparison
+                    dest_folder = installed_app.install_path
+                else:
+                    dest_folder = path_join(installed_app.install_path, 'Content')
                 if dest_folder and copy_folder(src_folder, dest_folder, check_copy_size=True):
                     # ALREADY DONE installed_app.install_path = dest_folder  # will also add it to existing installed_folders
                     self.core.uevmlfs.set_installed_asset(app.app_name, installed_app.__dict__)
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
-                        db_handler.add_to_installed_folders(asset_id=app.app_name, folders=[dest_folder])
+                        db_handler.add_to_installed_folders(app.app_name, [dest_folder])
                     message += f'\nAsset have been installed in "{dest_folder}"'
                 else:
                     message += f'\nAsset could not be installed in "{dest_folder}"'
             if args.vault_cache and installed_app.manifest_path:
                 # copy the manifest file to the vault cache folder
-                message += '\nManifest file has been copied in the VaultCache folder.'
-                manifest_filename = path_join(download_path, 'manifest.json')
+                message += f'\nThe manifest file has been copied in {download_path}.'
+                parent_path = os.path.dirname(download_path)
+                manifest_filename = path_join(parent_path, 'manifest.json')
                 shutil.copy(installed_app.manifest_path, manifest_filename)
-                # delete data folder if it exists
-                dest_folder = path_join(download_path, 'data')
-                rmtree(dest_folder, ignore_errors=True)
-                # rename the 'Content' subfolder to 'data' because that's what the vault cache folder expects
-                shutil.move(path_join(download_path, 'Content'), dest_folder)
+                # # delete data folder if it exists
+                # dest_folder = path_join(download_path, 'data')
+                # rmtree(dest_folder, ignore_errors=True)
+                # # rename the 'Content' subfolder to 'data' because that's what the vault cache folder expects
+                # shutil.move(path_join(download_path, 'Content'), dest_folder)
             elif args.clean_dowloaded_data:
                 message += '\nDownloaded data have been deleted.'
                 # delete the dlm.download_dir folder
