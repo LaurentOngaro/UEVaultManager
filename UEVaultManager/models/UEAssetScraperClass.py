@@ -409,7 +409,8 @@ class UEAssetScraper:
             if asset_installed:
                 asset_installed_folders = asset_installed.installed_folders
                 installed_folders = merge_lists_or_strings(installed_folders, asset_installed_folders)
-            asset_data['installed_folders'] = sorted(installed_folders)
+            # asset_data['installed_folders'] = sorted(installed_folders)  # no sort to keep order of installations
+            asset_data['installed_folders'] = installed_folders
 
             # we use an UEAsset object to store the data and create a valid dict from it
             ue_asset = UEAsset()

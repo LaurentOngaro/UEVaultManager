@@ -1390,6 +1390,13 @@ class UEVaultManagerCLI:
         category = categories[0]['path'] if categories else ''
         is_plugin = category and 'plugin' in category.lower()
         install_path_base = args.install_path if args.install_path is not None else ''
+
+        # remove the 'Content' at the end of the path if present
+        # to avoid copying the sub_folder folder inside the sub_folder
+        sub_folder = 'Content'
+        if os.path.basename(install_path_base).lower() == sub_folder.lower():  # MUST BE LOWERCASE for comparison
+            install_path_base = os.path.dirname(install_path_base)
+
         folders_to_check = []
         if not install_path_base and not args.no_install:
             if uewm_gui_exists:
@@ -1419,23 +1426,24 @@ class UEVaultManagerCLI:
             uewm_gui_exists, dw = init_display_window(self.logger)
 
         if args.vault_cache:
+            args.clean_dowloaded_data = False
+            # in the vaultCache, the data is in a subfolder named like the release of the Asset
+            sub_folder = 'data'
+            download_path = path_join(self.core.egl.vault_cache_folder, asset.app_name, sub_folder)
             self._log_and_gui_display(
                 self.logger.info, 'Use the vault cache folder to store the downloaded asset.\nOther download options will be ignored'
             )
-            args.clean_dowloaded_data = False
-            # in the vaultCache, the data is in a subfolder named like the release of the Asset
-            download_path = self.core.egl.vault_cache_folder
         else:
-            download_path = args.download_path
-            # remove the 'content' folder at the end if present
-            download_path_subfolder = os.path.basename(download_path).lower()
             # the downloaded data should always have a "Content" inside
-            # so, we need to add it to the src_folder if it is not already there to avoid copying the content folder inside the content folder
-            if download_path_subfolder == 'content':  # MUST BE LOWERCASE for comparison
+            sub_folder = 'Content'
+            download_path = args.download_path
+            # remove the sub_folder at the end of the path if present
+            # to avoid copying the sub_folder folder inside the sub_folder
+            if os.path.basename(download_path).lower() == sub_folder.lower():  # MUST BE LOWERCASE for comparison
                 download_path = os.path.dirname(download_path)
+            download_path = path_join(download_path, sub_folder)
 
-        sub_folder = 'Content'
-        # next is usefull for comparisons
+        # normpath is usefull for future comparisons
         download_path = os.path.normpath(download_path)
         install_path_base = os.path.normpath(install_path_base)
 
@@ -1910,13 +1918,7 @@ def main():
         help='Base URL to download from (e.g. to test or switch to a different CDNs)'
     )
     install_parser.add_argument('--no-resume', dest='no_resume', action='store_true', help='Force Download all files / ignore resume')
-    install_parser.add_argument(
-        '--download-only',
-        '--no-install',
-        dest='no_install',
-        action='store_true',
-        help='Do not install asset after download'
-    )
+    install_parser.add_argument('--download-only', '--no-install', dest='no_install', action='store_true', help='Do not install asset after download')
     install_parser.add_argument(
         '-r',
         '--reuse-last-install',

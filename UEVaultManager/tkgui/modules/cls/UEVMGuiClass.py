@@ -24,6 +24,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.DbFilesWindowClass import DbFilesWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
@@ -129,21 +130,11 @@ class UEVMGui(tk.Tk):
         self._frm_content = frm_content
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
 
-        data_table = EditableTable(
-            container=frm_content,
-            data_source_type=data_source_type,
-            data_source=data_source,
-            rows_per_page=37,
-            show_statusbar=True,
-            update_page_numbers_func=self.update_controls_state,
-            update_preview_info_func=self.update_preview_info,
-            set_widget_state_func=gui_f.set_widget_state
-        )
-
+        # update the content of the database BEFORE loading the data in the datatable
         if data_source_type == DataSourceType.SQLITE:
             # update the installed folder field in database from the installed_assets json file
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
-            db_handler = data_table.db_handler
+            db_handler = UEAssetDbHandler(database_name=data_source)
             if db_handler is not None:
                 for app_name, asset in installed_assets_json.items():
                     installed_folders = asset.get('installed_folders', None)
@@ -157,7 +148,17 @@ class UEVMGui(tk.Tk):
             for app_name, asset_data in installed_assets_db.items():
                 self.core.uevmlfs.set_installed_asset(app_name, asset_data)
 
-            data_table.get_data()
+        data_table = EditableTable(
+            container=frm_content,
+            data_source_type=data_source_type,
+            data_source=data_source,
+            rows_per_page=37,
+            show_statusbar=True,
+            update_page_numbers_func=self.update_controls_state,
+            update_preview_info_func=self.update_preview_info,
+            set_widget_state_func=gui_f.set_widget_state
+        )
+
         # get the data AFTER updating the installed folder field in database
         if data_table.get_data() is None:
             self.logger.error('No valid source to read data from. Application will be closed')

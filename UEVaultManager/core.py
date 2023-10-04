@@ -1122,7 +1122,7 @@ class AppCore:
         # save manifest with version name as well for testing/downgrading/etc.
         manifest_filename = self.uevmlfs.save_manifest(asset.app_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
 
-        # make sure donwload folder actually exists (but do not create asset folder)
+        # make sure donwnload folder actually exists (but do not create asset folder)
         if not check_and_create_folder(download_folder):
             self.log_info_and_gui_display(f'"{download_folder}" did not exist, it has been created.')
         if not os.access(download_folder, os.W_OK):
@@ -1134,9 +1134,10 @@ class AppCore:
             install_path = installed_asset.install_path
             egl_guid = installed_asset.egl_guid
         else:
+            # asset are always installed in the 'Content' sub folder
+            # NO we don't want to store "content" in the install path
             # install_path = path_join(install_folder, 'Content') if install_folder != '' else ''
-            version = ''  # TODO: how to get the version from the manifest ?
-            install_path = os.path.join(install_folder, asset.app_name, version, sub_folder)
+            install_path = install_folder
 
         # check for write access on the installation path or its parent directory if it doesn't exist yet
         if not check_and_create_folder(install_path):

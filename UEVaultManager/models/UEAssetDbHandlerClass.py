@@ -517,7 +517,9 @@ class UEAssetDbHandler:
                 tags_str = self.convert_tag_list_to_string(tags)
                 asset['tags'] = tags_str
                 installed_folders = asset.get('installed_folders', [])
-                asset['installed_folders'] = ','.join(installed_folders) if len(installed_folders) else None
+                asset['installed_folders'] = ','.join(installed_folders) if isinstance(
+                    installed_folders, list
+                ) and len(installed_folders) else installed_folders if isinstance(installed_folders, str) else None
 
                 self._insert_or_update_row('assets', asset)
         try:
