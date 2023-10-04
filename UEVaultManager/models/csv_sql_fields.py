@@ -284,6 +284,11 @@ csv_sql_fields = {
         'state': CSVFieldState.ASSET_ONLY,
         'field_type': CSVFieldType.STR
     },
+    'Release info': {
+        'sql_name': 'release_info',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.STR
+    },
 }
 
 

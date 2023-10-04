@@ -295,7 +295,9 @@ class UEAssetScraper:
 
             categories = asset_data.get('categories', None)
             release_info = asset_data.get('releaseInfo', {})
-            latest_release = release_info[0] if release_info else {}
+            # convert release_info to a json string
+            asset_data['release_info'] = json.dumps(release_info) if release_info else no_text_data
+            latest_release = release_info[-1] if release_info else {}
             price = 0
             discount_price = 0
             discount_percentage = 0

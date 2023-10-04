@@ -37,9 +37,7 @@ class GUISettings:
     config_file: str = ''  # config file path for cli part (cli). Set by the cli part
     csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
     epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
-    data_filetypes = (
-        ('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('SQlite file', '*.db')
-    )
+    data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('SQlite file', '*.db'))
 
     def __init__(self, config_file=None):
         self.config = AppConfig(comment_prefixes='/', allow_no_value=True)
@@ -519,7 +517,7 @@ class GUISettings:
             'hidden_column_names': {
                 'comment':
                 'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
-                'value': ['Uid']
+                'value': ['Uid', 'Release info']
             },
             # minimal score required when looking for an url file comparing to an asset name.
             # some comparison are more fuzzy than others, so we can set a different score for each comparison

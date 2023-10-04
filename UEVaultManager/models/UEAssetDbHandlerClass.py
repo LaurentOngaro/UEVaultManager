@@ -6,6 +6,7 @@ implementation for:
 import csv
 import datetime
 import inspect
+import json
 import logging
 import os
 import random
@@ -21,7 +22,7 @@ from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_na
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, path_from_relative_to_absolute
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, merge_lists_or_strings, path_from_relative_to_absolute
 from UEVaultManager.utils.cli import check_and_create_file
 
 
@@ -437,6 +438,9 @@ class UEAssetDbHandler:
             query = f"ALTER TABLE assets RENAME COLUMN {column} TO installed_folders;"
             self._run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V11
+        if upgrade_from_version == DbVersionNum.V11:
+            self._add_missing_columns('assets', required_columns={'release_info': 'TEXT'})
+            self.db_version = upgrade_from_version = DbVersionNum.V12
         if previous_version != self.db_version:
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)
@@ -773,28 +777,30 @@ class UEAssetDbHandler:
             result = row[0] if row else ''
             return result
 
-    def add_to_installed_folders(self, asset_id: str, folders: list = None) -> None:
+    def add_to_installed_folders(self, asset_id: str, folders_to_add: list = None) -> None:
         """
         Add a folder to the list of installed folders for the given asset.
         :param asset_id: the asset_id (i.e. app_name) of the asset to get.
-        :param folders: the folders list to add.
+        :param folders_to_add: the folders list to add.
         """
-        if self.connection is None or asset_id == '' or folders is None or len(folders) == 0:
+        if self.connection is None or asset_id == '' or folders_to_add is None or len(folders_to_add) == 0:
             return
-        data_str = self.get_installed_folders(asset_id)
-        if isinstance(data_str, str):
-            installed_folders = data_str.split(',') if data_str else []
+        installed_folders_db = self.get_installed_folders(asset_id)
+        if isinstance(installed_folders_db, str):
+            installed_folders = installed_folders_db.split(',') if installed_folders_db else []
         else:
-            installed_folders = data_str if data_str else []
-        cursor = self.connection.cursor()
-        for folder in folders:
-            if folder not in installed_folders:
-                installed_folders.append(folder)
-                data_str = ','.join(installed_folders)
-                query = f"UPDATE assets SET installed_folders = '{data_str}' WHERE asset_id = '{asset_id}'"
-                cursor.execute(query)
-        self.connection.commit()
-        cursor.close()
+            installed_folders = installed_folders_db if installed_folders_db else []
+        # remove all empty string in installed_folders
+        installed_folders = [folder for folder in installed_folders if str(folder).strip()]
+        folders_to_add = [folder for folder in folders_to_add if str(folder).strip()]
+        installed_folders = merge_lists_or_strings(installed_folders, folders_to_add)
+        installed_folders_db_updated = ','.join(installed_folders)
+        if installed_folders_db_updated != installed_folders_db:
+            cursor = self.connection.cursor()
+            query = f"UPDATE assets SET installed_folders = '{installed_folders_db_updated}' WHERE asset_id = '{asset_id}'"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
 
     def get_rows_with_installed_folders(self) -> dict:
         """
@@ -1095,56 +1101,56 @@ class UEAssetDbHandler:
             assets_id = fake.uuid4()
             print(f'creating test asset # {index} with id {assets_id}')
             ue_asset = UEAsset()
-            # the order of values must match the order of the fields in csv_data.py/csv_sql_fields dict
-            data_list = [
-                fake.uuid4(),  # asset_id
-                fake.sentence(),  # title
-                fake.word(),  # category
-                round(random.uniform(0, 5), 1),  # review
-                random.randint(0, 1000),  # review_count
-                fake.name(),  # author
-                fake.text(),  # description
-                fake.word(),  # status
-                round(random.uniform(1, 100), 2),  # discount_price
-                round(random.uniform(0, 100), 2),  # discount_percentage
-                random.choice([0, 1]),  # discounted
-                random.choice([0, 1]),  # is_new
-                random.choice([0, 1]),  # free
-                random.choice([0, 1]),  # can_purchase
-                random.choice([0, 1]),  # owned
-                random.choice([0, 1]),  # obsolete
-                fake.word(),  # supported_versions
-                fake.word(),  # grab_result
-                round(random.uniform(1, 100), 2),  # price
-                random.randint(0, 1000),  # old_price
-                fake.text(),  # comment
-                random.randint(1, 5),  # stars
-                random.choice([0, 1]),  # must_buy
-                fake.word(),  # test_result
-                fake.file_path(),  # installed_folders
-                fake.sentence(),  # alternative
-                fake.word(),  # origin
-                random.choice([0, 1]),  # added_manually
-                fake.sentence(),  # custom_attributes
-                fake.sentence(),  # page_title
-                fake.image_url(),  # thumbnail_url
-                fake.url(),  # asset_url
-                fake.date_time(),  # creation_date
-                fake.date_time(),  # update_date
-                fake.date_time(),  # date_added_in_db
-                assets_id,  # id
-                fake.word(),  # namespace
-                fake.uuid4(),  # catalog_item_id
-                fake.slug(),  # asset_slug
-                'USD',  # currency_code
-                fake.text(),  # technical_details
-                fake.text(),  # long_description
-                [fake.word(), fake.word(), fake.word()],  # tags
-                fake.uuid4(),  # comment_rating_id
-                fake.uuid4(),  # rating_id
-                random.choice([0, 1]),  # is_catalog_item
-            ]
-            ue_asset.init_from_list(data=data_list)
+            data = {
+                'id': assets_id,
+                'namespace': fake.word(),
+                'catalog_item_id': fake.uuid4(),
+                'title': fake.sentence(),
+                'category': fake.word(),
+                'author': fake.name(),
+                'thumbnail_url': fake.image_url(),
+                'asset_slug': fake.slug(),
+                'currency_code': 'USD',
+                'description': fake.text(),
+                'technical_details': fake.text(),
+                'long_description': fake.text(),
+                'tags': [fake.word(), fake.word(), fake.word()],
+                'comment_rating_id': fake.uuid4(),
+                'rating_id': fake.uuid4(),
+                'status': fake.word(),
+                'price': round(random.uniform(1, 100), 2),
+                'discount_price': round(random.uniform(1, 100), 2),
+                'discount_percentage': round(random.uniform(0, 100), 2),
+                'is_catalog_item': random.choice([0, 1]),
+                'is_new': random.choice([0, 1]),
+                'free': random.choice([0, 1]),
+                'discounted': random.choice([0, 1]),
+                'can_purchase': random.choice([0, 1]),
+                'owned': random.choice([0, 1]),
+                'review': round(random.uniform(0, 5), 1),
+                'review_count': random.randint(0, 1000),
+                'custom_attributes': fake.sentence(),
+                'asset_id': fake.uuid4(),
+                'asset_url': fake.url(),
+                'comment': fake.text(),
+                'stars': random.randint(1, 5),
+                'must_buy': random.choice([0, 1]),
+                'test_result': fake.word(),
+                'installed_folders': fake.file_path(),
+                'alternative': fake.sentence(),
+                'origin': fake.word(),
+                'added_manually': random.choice([0, 1]),
+                'page_title': fake.sentence(),
+                'obsolete': random.choice([0, 1]),
+                'supported_versions': fake.word(),
+                'creation_date': fake.date_time(),
+                'update_date': fake.date_time(),
+                'date_added_in_db': fake.date_time(),
+                'grab_result': fake.word(),
+                'old_price': random.randint(0, 1000),
+                'release_info': json.dumps(fake.pydict()),
+            }
+            ue_asset.init_from_dict(data=data)
             self.set_assets(assets=ue_asset.data)
             scraped_ids.append(assets_id)
         content = {
