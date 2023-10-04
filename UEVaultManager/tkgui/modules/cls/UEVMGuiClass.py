@@ -156,6 +156,7 @@ class UEVMGui(tk.Tk):
             installed_assets_db = db_handler.get_rows_with_installed_folders()
             for app_name, asset_data in installed_assets_db.items():
                 self.core.uevmlfs.set_installed_asset(app_name, asset_data)
+
             data_table.get_data()
         # get the data AFTER updating the installed folder field in database
         if data_table.get_data() is None:
@@ -1388,7 +1389,7 @@ class UEVMGui(tk.Tk):
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
 
-    def run_uevm_command(self, command_name='') -> None:
+    def run_uevm_command(self, command_name='') -> (int, str):
         """
         Execute a cli command and display the result in DisplayContentWindow.
         :param command_name: the name of the command to execute.
@@ -1446,6 +1447,8 @@ class UEVMGui(tk.Tk):
         function_to_call(gui_g.UEVM_cli_args)
         self._wait_for_window(gui_g.display_content_window_ref)  # a local variable won't work here
         # make_modal(display_window)
+        # usefull to tell the caller what row could have been updated
+        return row_index, app_name
 
     # noinspection PyUnusedLocal
     def open_asset_url(self, event=None) -> None:
@@ -1462,23 +1465,37 @@ class UEVMGui(tk.Tk):
         """
         self.editable_table.open_origin_folder()
 
+    def run_install(self):
+        """
+        Run the ""install_asset" command (Wrapper)
+        :return:
+        """
+        gui_g.UEVM_cli_args['yes'] = True
+        gui_g.UEVM_cli_args['no_resume'] = False
+        gui_g.UEVM_cli_args['order_opt'] = True
+        gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
+        row_index, asset_id = self.run_uevm_command('install_asset')
+        # update the content of the 'Installed folders' cell of the row that could have been changed by the install_asset command
+        data_table = self.editable_table
+        db_handler = data_table.db_handler
+        installed_folders = db_handler.get_installed_folders(asset_id)
+        col_index = data_table.get_col_index('Installed folders')
+        if data_table.update_cell(row_index, col_index, installed_folders):
+            data_table.update()  # because the "installed folder" field changed
+
     def download_asset(self) -> None:
         """
         Open the asset URL (Wrapper).
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'download'
-        gui_g.UEVM_cli_args['yes'] = True
-        gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
-        self.run_uevm_command('install_asset')
+        self.run_install()
 
     def install_asset(self) -> None:
         """
         Open the asset URL (Wrapper).
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'install'
-        gui_g.UEVM_cli_args['yes'] = True
-        gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
-        self.run_uevm_command('install_asset')
+        self.run_install()
 
     # noinspection PyUnusedLocal
     def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback
