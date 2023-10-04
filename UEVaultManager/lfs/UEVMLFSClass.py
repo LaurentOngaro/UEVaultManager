@@ -195,12 +195,8 @@ class UEVMLFS:
             self.save_config()
 
         # load existing installed assets
-        try:
-            with open(self.installed_asset_filename, 'r', encoding='utf-8') as file:
-                self._installed_assets = json.load(file)
-        except Exception as error:
-            self.log.debug(f'Loading installed assets failed: {error!r}')
-            self._installed_assets = None
+        self._installed_assets = None
+        self.load_installed_assets()
 
         # load asset sizes
         try:
@@ -588,12 +584,36 @@ class UEVMLFS:
         folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
         return self.delete_folder_content(folders, ['.log', '.bak'])
 
-    def get_installed_assets(self) -> dict:
+    def load_installed_assets(self) -> bool:
         """
         Get the installed asset data.
-        :return: the installed app data or None if not found.
+        :return: True if the asset data is loaded.
         """
-        return self._installed_assets
+        try:
+            with open(self.installed_asset_filename, 'r', encoding='utf-8') as file:
+                self._installed_assets = json.load(file)
+        except Exception as error:
+            self.log.debug(f'Failed to load installed asset data: {error!r}')
+            return False
+        has_changed = False
+        for asset in self._installed_assets.values():
+            installed_folders = asset.get('installed_folders', None)
+            if installed_folders is None:
+                asset['installed_folders'] = []
+            else:
+                # remove all empty string in installed_folders
+                asset['installed_folders'] = [folder for folder in asset['installed_folders'] if str(folder).strip()]
+            has_changed = has_changed or installed_folders != asset['installed_folders']
+
+        if has_changed:
+            self.save_installed_assets()
+
+    def save_installed_assets(self) -> None:
+        """
+        Save the installed asset data.
+        """
+        with open(self.installed_asset_filename, 'w', encoding='utf-8') as file:
+            json.dump(self._installed_assets, file, indent=2, sort_keys=True)
 
     def get_installed_asset(self, app_name: str) -> Optional[InstalledAsset]:
         """
@@ -604,12 +624,7 @@ class UEVMLFS:
         if not app_name:
             return None
         if self._installed_assets is None:
-            try:
-                with open(self.installed_asset_filename, 'r', encoding='utf-8') as file:
-                    self._installed_assets = json.load(file)
-            except Exception as error:
-                self.log.debug(f'Failed to load installed asset data: {error!r}')
-                return None
+            self.load_installed_assets()
         if json_data := self._installed_assets.get(app_name, None):
             asset = InstalledAsset.from_json(json_data)
             return asset
@@ -649,8 +664,14 @@ class UEVMLFS:
         else:
             return
         if has_changed:
-            with open(self.installed_asset_filename, 'w', encoding='utf-8') as file:
-                json.dump(self._installed_assets, file, indent=2, sort_keys=True)
+            self.save_installed_assets()
+
+    def get_installed_assets(self) -> dict:
+        """
+        Get the installed asset data.
+        :return: the installed asset data.
+        """
+        return self._installed_assets
 
     def get_asset_size(self, app_name: str) -> int:
         """
