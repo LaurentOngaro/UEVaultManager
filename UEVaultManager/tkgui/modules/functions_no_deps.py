@@ -422,3 +422,17 @@ def merge_lists_or_strings(list_to_merge, list_to_append) -> list:
     # return list_to_merge
     # shorter method
     return list(set(list_to_merge + list_to_append))  # no sorting here because the order could stay first In first Out
+
+
+def remove_last_suffix(string: str, separator: str = '_') -> str:
+    """
+    Remove the last suffix from a string.
+    :param string: String to remove the suffix from.
+    :param separator: The separator to use to split the string.
+    :return: The string without the last suffix.
+    """
+    parts = string.split(separator)
+    if len(parts) > 1:
+        parts.pop()
+        return separator.join(parts)
+    return string

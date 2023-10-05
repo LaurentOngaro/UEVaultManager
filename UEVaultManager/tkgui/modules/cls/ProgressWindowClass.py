@@ -13,6 +13,17 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
+class PW_Settings:
+    """
+    Settings for the class when running as main.
+    """
+    title = 'This is a progress window'
+    show_btn_start: bool = True,
+    show_btn_stop: bool = True,
+    show_progress: bool = True,
+    max_value: int = 100
+
+
 # noinspection PyProtectedMember
 class ProgressWindow(tk.Toplevel):
     """
@@ -370,3 +381,12 @@ class ProgressWindow(tk.Toplevel):
                 self.quit()
             else:
                 self.destroy()
+
+
+if __name__ == '__main__':
+    st = PW_Settings()
+    main = tk.Tk()
+    main.title('FAKE MAIN Window')
+    main.geometry('200x100')
+    ProgressWindow(title=st.title, show_progress=st.show_progress, show_btn_start=st.show_btn_start, show_btn_stop=st.show_btn_stop)
+    main.mainloop()

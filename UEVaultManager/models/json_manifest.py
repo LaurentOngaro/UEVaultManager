@@ -64,7 +64,8 @@ class JSONManifest(Manifest):
         _m.chunk_data_list = JSONCDL.read(_tmp, manifest_version=_m.version)
         _m.file_manifest_list = JSONFML.read(_tmp)
         _m.custom_fields = CustomFields()
-        _m.custom_fields._dict = _tmp.pop('CustomFields', dict())
+        # _m.custom_fields._dict = _tmp.pop('CustomFields', dict())
+        _m.custom_fields._dict = _m.meta.custom_fields
 
         if _tmp.keys():
             print(f'Did not read JSON keys: {_tmp.keys()}!')
@@ -113,6 +114,7 @@ class JSONManifestMeta(ManifestMeta):
 
     def __init__(self):
         super().__init__()
+        self.custom_fields = ''
 
     @classmethod
     def read(cls, json_data):
@@ -122,19 +124,19 @@ class JSONManifestMeta(ManifestMeta):
         :return: ManifestMeta object.
         """
         _meta = cls()
-
         _meta.feature_level = blob_to_num(json_data.pop('ManifestFileVersion', '013000000000'))
         _meta.is_file_data = json_data.pop('bIsFileData', False)
         _meta.app_id = blob_to_num(json_data.pop('AppID', '000000000000'))
+        # noinspection DuplicatedCode
         _meta.app_name = json_data.pop('AppNameString', '')
         _meta.build_version = json_data.pop('BuildVersionString', '')
         _meta.launch_exe = json_data.pop('LaunchExeString', '')
         _meta.launch_command = json_data.pop('LaunchCommand', '')
-        _meta.prereq_ids = json_data.pop('PrereqIds', list())
+        # not used anymore _meta.prereq_ids = json_data.pop('PrereqIds', list())
         _meta.prereq_name = json_data.pop('PrereqName', '')
         _meta.prereq_path = json_data.pop('PrereqPath', '')
         _meta.prereq_args = json_data.pop('PrereqArgs', '')
-
+        _meta.custom_fields = json_data.pop('CustomFields', '')
         return _meta
 
 

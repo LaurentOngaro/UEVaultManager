@@ -14,7 +14,6 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __codename__, __name__, __version__
 from UEVaultManager.lfs.utils import clean_filename, path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
-from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
 
 def log_info(msg: str) -> None:
@@ -64,19 +63,29 @@ class GUISettings:
 
         self.default_filename = 'assets'
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
-        self.ue_valid_file_content = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
+        self.ue_valid_file_ext = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder
-        self.ue_valid_folder_content = ('content', '')  # must be a tuple. MUST BE LOWERCASE for comparison
+        self.ue_valid_asset_subfolder = ('content', 'Content')  # must be a tuple.
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
-        self.ue_valid_manifest_content = ('data', '')  # must be a tuple. MUST BE LOWERCASE for comparison
-        # name of the column that will be used to store the index in datatables. It will be added by default to the hidden columns list
+        self.ue_valid_manifest_subfolder = ('data', 'Data')  # must be a tuple.
+        # subfolder to store an ASSET content for an installation or a download or a scan (same value)
+        self.ue_asset_content_subfolder = 'Content'
+        # subfolder to store a PLUGIN for a download in the vaultCache folder
+        self.ue_plugin_vaultcache_subfolder = 'data'
+        # subfolder to store a PLUGIN for a download in the vaultCache folder
+        self.ue_plugin_project_subfolder = 'Plugins'
+        # subfolder to store a PLUGIN for an installation in an ENGINE folder (relativelly to the base folder of the engine).
+        # USE '/' as separator ! important for path_join
+        self.ue_plugin_install_subfolder = 'Engine/Plugins/Marketplace'
+        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
+
         self.index_copy_col_name = 'Index copy'
         # if a folder is in this tuple, the folder won't be scanned to find ue folders
-        self.ue_invalid_folder_content = (
+        self.ue_invalid_content_subfolder = (
             'binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data'
         )  # must be a tuple. MUST BE LOWERCASE for comparison
         # if a folder is in this tuple, the folder could be a valid folder but with an incomplete structure
-        self.ue_possible_folder_content = ('blueprints', 'maps', 'textures', 'materials')  # must be a tuple. MUST BE LOWERCASE for comparison
+        self.ue_possible_asset_subfolder = ('blueprints', 'maps', 'textures', 'materials')  # must be a tuple. MUST BE LOWERCASE for comparison
 
         self.app_icon_filename: str = path_join(self.assets_folder, 'main.ico')
         self.default_image_filename: str = path_join(self.assets_folder, 'UEVM_200x200.png')
@@ -242,7 +251,6 @@ class GUISettings:
     def debug_mode(self, value):
         """ Setter for debug_mode """
         self.config_vars['debug_mode'] = value
-        update_loggers_level(debug_value=value)
 
     @property
     def never_update_data_files(self) -> bool:

@@ -1035,9 +1035,9 @@ class AppCore:
     def prepare_download(
         self,
         asset: Asset,
+        release_name: str,
         download_folder: str = '',
         install_folder: str = '',
-        sub_folder: str = 'Content',
         no_resume: bool = False,
         platform: str = 'Windows',
         max_shm: int = 0,
@@ -1058,9 +1058,9 @@ class AppCore:
         """
         Prepare a download.
         :param asset:asset to prepare the download for.
+        :param release_name: version ID to prepare the download for.
         :param download_folder: folder to download the asset to.
         :param install_folder: base folder to install the asset to.
-        :param sub_folder: sub folder to install the asset to (i.e. 'data' or 'Content')
         :param platform: platform to prepare the download for.
         :param no_resume: avoid to resume. Force a new download.
         :param max_shm: maximum amount of shared memory to use.
@@ -1114,13 +1114,13 @@ class AppCore:
             # overwrite base urls in metadata with current ones to avoid using old/dead CDNs
             asset.base_urls = base_urls
             # save base urls to game metadata
-            self.uevmlfs.set_item_meta(asset.app_name, asset)
+            self.uevmlfs.set_item_meta(release_name, asset)
 
         self.log_info_and_gui_display('Parsing game manifest...')
         manifest = self.load_manifest(new_manifest_data)
         self.log.debug(f'Base urls: {base_urls}')
         # save manifest with version name as well for testing/downgrading/etc.
-        manifest_filename = self.uevmlfs.save_manifest(asset.app_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
+        manifest_filename = self.uevmlfs.save_manifest(release_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
 
         # make sure donwnload folder actually exists (but do not create asset folder)
         if not check_and_create_folder(download_folder):
@@ -1129,13 +1129,13 @@ class AppCore:
             raise PermissionError(f'No write access to "{download_folder}"')
 
         # reuse existing installation's directory
-        installed_asset = self.get_installed_asset(asset.app_name)
+        installed_asset = self.get_installed_asset(release_name)
         if reuse_last_install and installed_asset:
             install_path = installed_asset.install_path
             egl_guid = installed_asset.egl_guid
         else:
             # asset are always installed in the 'Content' sub folder
-            # NO we don't want to store "content" in the install path
+            # NO we don't want to store "content" in the "install path"
             # install_path = path_join(install_folder, 'Content') if install_folder != '' else ''
             install_path = install_folder
 
@@ -1148,7 +1148,7 @@ class AppCore:
         self.log_info_and_gui_display(f'Install path: {install_path}')
 
         if not no_resume:
-            filename = clean_filename(f'{asset.app_name}.resume')
+            filename = clean_filename(f'{release_name}.resume')
             resume_file = path_join(self.uevmlfs.tmp_folder, filename)
         else:
             resume_file = None
@@ -1201,10 +1201,10 @@ class AppCore:
             timeout=self.timeout,
             trace_func=self.log_info_and_gui_display,
         )
-        installed_asset = self.get_installed_asset(asset.app_name)
+        installed_asset = self.get_installed_asset(release_name)
         if installed_asset is None:
             # create a new installed asset
-            installed_asset = InstalledAsset(app_name=asset.app_name, title=asset.app_title)
+            installed_asset = InstalledAsset(app_name=release_name, title=asset.app_title)
         # update the installed asset
         installed_asset.version = manifest.meta.build_version
         installed_asset.base_urls = base_urls

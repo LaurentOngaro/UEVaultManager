@@ -136,7 +136,6 @@ class EPCAPI:
     #
     # liste json des tags courants
     # https://www.unrealengine.com/marketplace/api/tags
-
     """ 
     le champ release_info contient l'ID des manifest à telecharger pour chaque version
     (voir app_id) 
@@ -182,6 +181,7 @@ class EPCAPI:
     https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}&cursor={}", include_metadata, c)
 
     """
+
     def __init__(self, lc='en', cc='US', timeout=(7, 7)):
         self.log = logging.getLogger('EPCAPI')
         self.notfound_logger = None  # will be setup when created in core.py

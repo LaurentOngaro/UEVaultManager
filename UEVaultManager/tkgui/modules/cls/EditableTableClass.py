@@ -1586,7 +1586,7 @@ class EditableTable(Table):
                 row_number = self.get_selected_row_fixed()
         else:
             row_number = self.get_selected_row_fixed()
-        if row_number is None:
+        if row_number is None or row_number >= len(self.model.df):  # model. df checked:
             return None
         title = 'Edit current row'
         width = 800
@@ -1726,7 +1726,8 @@ class EditableTable(Table):
         else:
             row_number = self.get_selected_row_fixed()
             col_index = self.getSelectedColumn()
-        if row_number is None or col_index is None:
+
+        if row_number is None or col_index is None or row_number >= len(self.model.df):  # model. df checked
             return None
         cell_value = self.get_cell(row_number, col_index)
         title = 'Edit current cell values'

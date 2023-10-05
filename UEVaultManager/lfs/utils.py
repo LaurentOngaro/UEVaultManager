@@ -48,16 +48,16 @@ def copy_folder(src_folder: str, dest_folder: str, check_copy_size=True) -> bool
     """
     try:
         os.makedirs(dest_folder, exist_ok=True)
-        dest_size = get_dir_size(dest_folder)
-        src_size = get_dir_size(src_folder)
+        dest_size = get_dir_size(dest_folder) if check_copy_size else 0
+        src_size = get_dir_size(src_folder) if check_copy_size else 0
         size_copied = 0
         for dirpath, dirnames, filenames in os.walk(src_folder):
             # Create corresponding directories in the destination folder
-            dest_dirpath = os.path.join(dest_folder, os.path.relpath(dirpath, src_folder))
+            dest_dirpath = path_join(dest_folder, os.path.relpath(dirpath, src_folder))
             os.makedirs(dest_dirpath, exist_ok=True)
             for filename in filenames:
-                src_file = os.path.join(dirpath, filename)
-                dest_file = os.path.join(dest_dirpath, filename)
+                src_file = path_join(dirpath, filename)
+                dest_file = path_join(dest_dirpath, filename)
                 shutil.copy2(src_file, dest_file)
                 if check_copy_size:
                     size_copied += os.path.getsize(dest_file)
