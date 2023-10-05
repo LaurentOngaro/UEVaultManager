@@ -54,9 +54,10 @@ class ChoiceFromListWindow(tk.Toplevel):
 
     def __init__(
         self,
-        window_title: str = 'Choose the value',
+        window_title: str = 'Choose a value',
         title: str = '',
-        width: int = 300,
+        sub_title: str = 'Please select a value in the list below',
+        width: int = 310,
         height: int = 300,
         icon=None,
         screen_index: int = 0,
@@ -73,6 +74,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         except Exception as error:
             gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
         self.main_title = title or window_title
+        self.sub_title = sub_title
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.choices: dict = choices
@@ -91,16 +93,16 @@ class ChoiceFromListWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             self.container = container
-            self.lbl_title = tk.Label(self, text=container.main_title, font=('Helvetica', 16, 'bold'))
+            self.lbl_title = tk.Label(self, text=container.main_title, font=('Helvetica', 14, 'bold'))
             self.lbl_title.pack(pady=10)
-            self.lbl_goal = tk.Label(self, text="Please select a value in the list below", wraplength=300, justify='center')
+            self.lbl_goal = tk.Label(self, text=container.sub_title, wraplength=300, justify='center')
             self.lbl_goal.pack(pady=5)
             var_choices = list(self.container.choices.keys())
 
             self.cb_choice = ttk.Combobox(self, values=var_choices, state='readonly')
             self.cb_choice.pack(fill=tk.X, padx=10, pady=1)
 
-            self.lbl_description = tk.Label(self, text='Description', fg='blue', font=('Helvetica', 12, 'bold'))
+            self.lbl_description = tk.Label(self, text='Description', fg='blue', font=('Helvetica', 11, 'bold'))
             self.lbl_description.pack(padx=1, pady=1, anchor=tk.CENTER)
             self.text_description = tk.Text(self, fg='blue', height=6, width=53, font=('Helvetica', 10))
             self.text_description.pack(padx=5, pady=5)
