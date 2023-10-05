@@ -424,7 +424,7 @@ def merge_lists_or_strings(list_to_merge, list_to_append) -> list:
     return list(set(list_to_merge + list_to_append))  # no sorting here because the order could stay first In first Out
 
 
-def remove_last_suffix(string: str, separator: str='_') -> str:
+def remove_last_suffix(string: str, separator: str = '_') -> str:
     """
     Remove the last suffix from a string.
     :param string: String to remove the suffix from.

@@ -3,11 +3,8 @@
 implementation for:
 - AssetBase: Asset base data
 - Asset: Combination of Asset, Asset metadata and Asset extra as stored on disk
-- VerifyResult: Result of a verification
-.
 """
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Dict, List
 
 from UEVaultManager.tkgui.modules.functions_no_deps import merge_lists_or_strings
@@ -70,7 +67,6 @@ class Asset:
     """
     app_name: str
     app_title: str
-
     asset_infos: Dict[str, AssetBase] = field(default_factory=dict)
     base_urls: List[str] = field(default_factory=list)
     metadata: Dict = field(default_factory=dict)
@@ -200,13 +196,3 @@ class InstalledAsset:
             Add the path to the installed_folders property.
         """
         self._add_to_installed_folders(path)
-
-
-class VerifyResult(Enum):
-    """
-    Result of a verification.
-    """
-    HASH_MATCH = 0
-    HASH_MISMATCH = 1
-    FILE_MISSING = 2
-    OTHER_ERROR = 3
