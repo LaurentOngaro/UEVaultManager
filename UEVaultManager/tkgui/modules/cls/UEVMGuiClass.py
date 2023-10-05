@@ -459,7 +459,7 @@ class UEVMGui(tk.Tk):
         :param tag: tag of the widget that triggered the event.
         """
         value, widget = self._check_and_get_widget_value(tag)
-        if widget and widget.row and widget.col:
+        if widget and widget.row >= 0 and widget.col >= 0:
             self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
@@ -721,7 +721,7 @@ class UEVMGui(tk.Tk):
         :param folder_list: the list of folders to scan. If empty, use the folders in the config file.
         """
 
-        def _fix_folder_structure(content_folder_name='Content'):
+        def _fix_folder_structure(content_folder_name: str = gui_g.s.ue_asset_content_subfolder):
             """
             Fix the folder structure by moving all the subfolders inside a "Content" subfolder.
             :param content_folder_name: the name of the subfolder to create.
@@ -791,8 +791,8 @@ class UEVMGui(tk.Tk):
                 if self.core.scan_assets_logger:
                     self.core.scan_assets_logger.info(msg)
 
-                folder_is_valid = folder_name_lower in gui_g.s.ue_valid_folder_content
-                parent_could_be_valid = folder_name_lower in gui_g.s.ue_invalid_folder_content or folder_name_lower in gui_g.s.ue_possible_folder_content
+                folder_is_valid = folder_name_lower in gui_g.s.ue_valid_asset_subfolder
+                parent_could_be_valid = folder_name_lower in gui_g.s.ue_invalid_content_subfolder or folder_name_lower in gui_g.s.ue_possible_asset_subfolder
 
                 if folder_is_valid:
                     folder_name = os.path.basename(parent_folder)
@@ -829,21 +829,21 @@ class UEVMGui(tk.Tk):
                     continue
                 elif parent_could_be_valid:
                     # the parent folder contains some UE folders but with a bad structure
-                    _fix_folder_structure('Content')
+                    _fix_folder_structure(gui_g.s.ue_asset_content_subfolder)
 
                 try:
                     for entry in os.scandir(full_folder):
-                        entry_is_valid = entry.name.lower() not in gui_g.s.ue_invalid_folder_content
+                        entry_is_valid = entry.name.lower() not in gui_g.s.ue_invalid_content_subfolder
                         comment = ''
                         if entry.is_file():
                             asset_type = UEAssetType.Asset
                             extension_lower = os.path.splitext(entry.name)[1].lower()
                             filename_lower = os.path.splitext(entry.name)[0].lower()
                             # check if full_folder contains a "data" sub folder
-                            if filename_lower == 'manifest' or extension_lower in gui_g.s.ue_valid_file_content:
+                            if filename_lower == 'manifest' or extension_lower in gui_g.s.ue_valid_file_ext:
                                 path = full_folder
                                 has_valid_folder_inside = any(
-                                    os.path.isdir(path_join(full_folder, folder_inside)) for folder_inside in gui_g.s.ue_valid_manifest_content
+                                    os.path.isdir(path_join(full_folder, folder_inside)) for folder_inside in gui_g.s.ue_valid_manifest_subfolder
                                 )
                                 if filename_lower == 'manifest':
                                     manifest_is_valid = False
@@ -896,7 +896,7 @@ class UEVMGui(tk.Tk):
                                     'grab_result': grab_result,
                                     'comment': comment
                                 }
-                                msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_content else f'-->Found {folder_name} containing a {asset_type.name}'
+                                msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_ext else f'-->Found {folder_name} containing a {asset_type.name}'
                                 self.logger.debug(msg)
                                 if self.core.scan_assets_logger:
                                     self.core.scan_assets_logger.info(msg)
@@ -1440,8 +1440,11 @@ class UEVMGui(tk.Tk):
         #     # we display the window only if it is not already displayed
         #     function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         #     function_to_call(gui_g.UEVM_cli_args)
-
-        display_window = DisplayContentWindow(title=f'UEVM: {command_name} display result')
+        display_name = command_name
+        subparser = gui_g.UEVM_cli_args.get('subparser', '')
+        if subparser:
+            display_name += ' - ' + gui_g.UEVM_cli_args['subparser']
+        display_window = DisplayContentWindow(title=f'UEVM: {display_name} display result')
         gui_g.display_content_window_ref = display_window
         display_window.display(f'Running command {command_name}...Please wait')
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)

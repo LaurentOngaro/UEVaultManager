@@ -35,13 +35,14 @@ from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
+from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, create_file_backup, custom_print, \
-    show_progress  # simplier way to use the custom_print function
+    make_modal, show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import check_and_create_file, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
@@ -141,6 +142,7 @@ class UEVaultManagerCLI:
     :param api_timeout: timeout for API requests.
     """
     is_gui = False  # class property to be accessible by static methods
+    release_index = -1  # the release id selected for an asset installation
 
     def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
@@ -1351,6 +1353,13 @@ class UEVaultManagerCLI:
         scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
         scraper.save(owned_assets_only=owned_assets_only)
 
+    def set_release_index(self, value):
+        """
+        Set the release id. Callback for the ChoiceFromListWindow
+        :param value: the value selected in the list
+        """
+        self.release_index = value
+
     def install_asset(self, args):
         """
         Installs an asset.
@@ -1379,6 +1388,7 @@ class UEVaultManagerCLI:
         # that is not available in the "new" method (i.e. new API way)
         # Anyway, we can only install asset we own, so the "old" method is enough
         asset = self.core.get_item(args.app_name, update_meta=args.force_refresh)
+        # asset_id = asset.metadata.get('appId', None)
         if not asset:
             self._log_and_gui_message(
                 self.logger.error,
@@ -1388,25 +1398,57 @@ class UEVaultManagerCLI:
             return False
         categories = asset.metadata.get('categories', None)
         category = categories[0]['path'] if categories else ''
-        is_plugin = category and 'plugin' in category.lower()
         release_info = asset.metadata.get('releaseInfo', None)
+        is_plugin = category and 'plugin' in category.lower()
+        installed_in_engine = False
         # get version list from release info
         releases = []
+        version_choice = {}
         if release_info is not None and len(release_info) > 0:
             # TODO: only keep releases that are compatible with the version of the selected project.
-            for item in release_info:
+            for index, item in enumerate(release_info):
                 asset_id = item.get('appId', None)
-                title = item.get('versionTitle', None)
-                compatible = item.get('compatibleApps', None)
-                if asset_id is not None and title is not None and compatible is not None:
+                title = item.get('versionTitle', '') or asset_id
+                compatible_list = item.get('compatibleApps', None)
+                date_added = item.get('dateAdded', '')
+                # Convert the string to a datetime object
+                datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
+                # Format the datetime object as "YYYY-MM-DD"
+                formatted_date = datetime_obj.strftime("%Y-%m-%d")
+                if asset_id is not None and title is not None and compatible_list is not None:
+                    # remove 'UE_' from items of the compatible_list
+                    compatible_list = [item.replace('UE_', '') for item in compatible_list]
                     data = {
                         'title': title,  #
                         'asset_id': asset_id,  #
-                        'compatible': compatible,  #
+                        'compatible': compatible_list,  #
                     }
+                    compatible_str = ','.join(compatible_list)
+                    desc = f'Release id: {asset_id}\nTitle: {title}\nRelease Date: {formatted_date}\nUE Versions: {compatible_str}'
+                    version_choice[title] = {'value': index, 'desc': desc}
                     releases.append(data)
         release_selected = releases[-1]  # by default, we take the lastest release
-        # TODO: create a widget to select the version
+        if uewm_gui_exists:
+            # create a windows to choose the release
+            sub_title = 'In the list below, Select the closest version that matches your project or engine version'
+            cw = ChoiceFromListWindow(
+                window_title='UEVM: select release',
+                title='Choose the release to download',
+                sub_title=sub_title,
+                choices=version_choice,
+                set_value_func=self.set_release_index,
+                default_value=''
+            )
+            make_modal(cw)
+            # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_index methode been called
+            if self.release_index >= 0:
+                try:
+                    release_selected = releases[self.release_index]
+                except IndexError:
+                    self._log_and_gui_display(
+                        self.logger.warning, 'The selected release could not be found. The latest one as been selected by default.\n'
+                    )
+
         release_name = release_selected['asset_id']
         title = release_selected['title']
         install_path_base = args.install_path if args.install_path is not None else ''
@@ -1416,10 +1458,37 @@ class UEVaultManagerCLI:
             if uewm_gui_exists:
                 if is_plugin and box_yesno('This asset is a plugin. Do you want to install it into an engine folder ?'):
                     install_path_base = filedialog.askdirectory(
-                        title='Select an Engine version to install the plugin into', initialdir=gui_g.s.last_opened_engine
+                        title='Select the BASE folder of the Engine version to install the plugin into', initialdir=gui_g.s.last_opened_engine
                     )
                     if install_path_base:
-                        gui_g.s.last_opened_engine = install_path_base
+                        # remove all existing subfolder in the selected part that is in the subpath 'Engine/Plugins/Marketplace'
+                        path_to_check = os.path.normpath(install_path_base)
+                        path_parts = gui_g.s.ue_plugin_install_subfolder.split('/')
+                        # get subfolder by reverse order (start by the latest)
+                        path_parts_temp = path_parts.copy()
+                        while len(path_parts_temp):
+                            last_part = path_parts_temp.pop()
+                            # remove the last part if it is the last part of the path
+                            if last_part.lower() == os.path.basename(path_to_check).lower():
+                                path_to_check = os.path.dirname(path_to_check)
+                        # the plugin contains all the subfolder, no need to ass them to the installation folder
+                        install_path_base = path_to_check
+                        # check if the "engine folder structure" is correct
+                        # here we have removed all the subfolder of the path, so we recreate and add the "valid" subpath
+                        subpath = os.path.join(*path_parts)  # NO path_join here because it will create an absolute path
+                        path_to_check = path_join(path_to_check, subpath)
+                        if not os.path.isdir(
+                            os.path.dirname(path_to_check)
+                        ):  # we remove the last part here (i.e. 'Marketplace') because it does not exist in a new installed engine
+                            self._log_and_gui_message(
+                                self.logger.error,
+                                f'You have selected a folder that seems to be invalid.\nThe {path_to_check} could not be found.\nCommand is aborted',
+                                quit_on_error=not uewm_gui_exists
+                            )
+                            return False
+                        else:
+                            installed_in_engine = True
+                            gui_g.s.last_opened_engine = install_path_base  # we save only the "base engine" path
                 else:
                     install_path_base = filedialog.askdirectory(
                         title='Select a project to install the asset into', initialdir=gui_g.s.last_opened_project
@@ -1427,36 +1496,40 @@ class UEVaultManagerCLI:
                     if install_path_base:
                         gui_g.s.last_opened_project = install_path_base
 
-        if not install_path_base and not args.no_install:
-            self._log_and_gui_message(
-                self.logger.error,
-                'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you.\nCommand is aborted',
-                quit_on_error=not uewm_gui_exists
-            )
-            return False
-
-        # remove the 'Content' at the end of the path if present
-        # to avoid copying the sub_folder folder inside the sub_folder
-        sub_folder = 'Content'
-        if os.path.basename(install_path_base).lower() == sub_folder.lower():  # MUST BE LOWERCASE for comparison
-            install_path_base = os.path.dirname(install_path_base)
-
-        folders_to_check.append(install_path_base)
+        if not install_path_base:
+            if not args.no_install:
+                self._log_and_gui_message(
+                    self.logger.error,
+                    'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you.\nCommand is aborted',
+                    quit_on_error=not uewm_gui_exists
+                )
+                return False
+        else:
+            # remove the 'Content' at the end of the path if present
+            # to avoid copying the sub_folder folder inside the sub_folder
+            sub_folder = gui_g.s.ue_asset_content_subfolder
+            if os.path.basename(install_path_base).lower() == sub_folder.lower():  # MUST BE LOWERCASE for comparison
+                install_path_base = os.path.dirname(install_path_base)
+            folders_to_check.append(install_path_base)
 
         if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, dw = init_display_window(self.logger)
+            dw.keep_existing = True  # because init_display_window will set it to False
+            dw.clean()
+            message = f'Starting Download of Release "{title}"' if args.no_install else f'Starting Installation of Release "{title}"'
+            dw.display(message)
 
         if args.vault_cache:
             args.clean_dowloaded_data = False
             # in the vaultCache, the data is in a subfolder named like the release of the Asset
-            sub_folder = 'data'
+            sub_folder = gui_g.s.ue_plugin_vaultcache_subfolder
             download_path = path_join(self.core.egl.vault_cache_folder, release_name, sub_folder)
             self._log_and_gui_display(
-                self.logger.info, 'Use the vault cache folder to store the downloaded asset.\nOther download options will be ignored'
+                self.logger.info, 'Use the vault cache folder to store the downloaded asset.\nOther download options will be ignored.\n'
             )
         else:
             # the downloaded data should always have a "Content" inside
-            sub_folder = 'Content'
+            sub_folder = gui_g.s.ue_asset_content_subfolder
             download_path = args.download_path
             # remove the sub_folder at the end of the path if present
             # to avoid copying the sub_folder folder inside the sub_folder
@@ -1547,21 +1620,35 @@ class UEVaultManagerCLI:
             message = ''
             if not args.no_install:
                 self._log_and_gui_display(self.logger.info, 'Start copying downloaded data to install folder...')
+                subfolder = gui_g.s.ue_plugin_vaultcache_subfolder if is_plugin else gui_g.s.ue_asset_content_subfolder
                 # copy the downloaded data to the installation folder
                 download_path_subfolder = os.path.basename(download_path).lower()
                 # the downloaded data should always have a "Content" inside
                 # so, we need to add it to the src_folder if it is not already there to avoid copying the content folder inside the content folder
-                if download_path_subfolder == 'content':  # MUST BE LOWERCASE for comparison
+                if download_path_subfolder == subfolder.lower():
                     src_folder = download_path
                 else:
-                    src_folder = path_join(download_path, 'Content')
-                install_path_subfolder = os.path.basename(installed_asset.install_path).lower()
-                if install_path_subfolder == 'content':  # MUST BE LOWERCASE for comparison
-                    dest_folder = installed_asset.install_path
+                    src_folder = path_join(download_path, subfolder)
+                if is_plugin:
+                    # note: the folder has already been checked when selected
+                    if installed_in_engine:
+                        dest_folder = install_path_base
+                    else:
+                        # if the plugin is not installed in an engine, we have to change the destination folder structure to install it IN the "Plugins" subfolder of the destination
+                        src_folder = path_join(src_folder, gui_g.s.ue_plugin_install_subfolder)  # add the plugin subpath to the source folder
+                        src_folder = os.path.dirname(src_folder)  # remove the last part (ie the "plugin name" subfolder) to get the "base" folder
+                        dest_folder = path_join(
+                            install_path_base, gui_g.s.ue_plugin_project_subfolder
+                        )  # add the plugin subpath for "projects" to the destination folder
                 else:
-                    dest_folder = path_join(installed_asset.install_path, 'Content')
-                if dest_folder and copy_folder(src_folder, dest_folder, check_copy_size=True):
-                    # ALREADY DONE installed_asset.install_path = dest_folder  # will also add it to existing installed_folders
+                    install_path_subfolder = os.path.basename(installed_asset.install_path).lower()
+                    if install_path_subfolder == gui_g.s.ue_asset_content_subfolder.lower():
+                        dest_folder = installed_asset.install_path
+                    else:
+                        dest_folder = path_join(installed_asset.install_path, gui_g.s.ue_asset_content_subfolder)
+                if dest_folder and copy_folder(
+                    src_folder, dest_folder, check_copy_size=not installed_in_engine
+                ):  # We DON'T check the size if the plugin is installed in an engine because it's too long
                     self.core.uevmlfs.set_installed_asset(release_name, installed_asset.__dict__)
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
@@ -1576,11 +1663,6 @@ class UEVaultManagerCLI:
                 # manifest_filename = path_join(parent_path, 'manifest.json')
                 manifest_filename = path_join(parent_path, 'manifest')
                 shutil.copy(installed_asset.manifest_path, manifest_filename)
-                # # delete data folder if it exists
-                # dest_folder = path_join(download_path, 'data')
-                # rmtree(dest_folder, ignore_errors=True)
-                # # rename the 'Content' subfolder to 'data' because that's what the vault cache folder expects
-                # shutil.move(path_join(download_path, 'Content'), dest_folder)
             elif args.clean_dowloaded_data:
                 message += '\nDownloaded data have been deleted.'
                 # delete the dlm.download_dir folder
