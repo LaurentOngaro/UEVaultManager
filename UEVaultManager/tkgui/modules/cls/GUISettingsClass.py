@@ -14,7 +14,6 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __codename__, __name__, __version__
 from UEVaultManager.lfs.utils import clean_filename, path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
-from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
 
 def log_info(msg: str) -> None:
@@ -242,7 +241,6 @@ class GUISettings:
     def debug_mode(self, value):
         """ Setter for debug_mode """
         self.config_vars['debug_mode'] = value
-        update_loggers_level(debug_value=value)
 
     @property
     def never_update_data_files(self) -> bool:

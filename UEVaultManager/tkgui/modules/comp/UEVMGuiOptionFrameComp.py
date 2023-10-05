@@ -9,6 +9,7 @@ from tkinter import filedialog
 import ttkbootstrap as ttk
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
 
 class UEVMGuiOptionFrame(ttk.Frame):
@@ -183,6 +184,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
             pass
         else:
             gui_g.s.debug_mode = value
+            update_loggers_level(debug_value=value)
 
         try:
             value = self.var_offline_mode.get()

@@ -15,7 +15,14 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText
 
 
-# class DisplayContentWindow(tk.Tk if tk._default_root is None else tk.Toplevel):
+class DCW_Settings:
+    """
+    Settings for the class when running as main.
+    """
+    title = 'Display a text'
+    text = 'This is a demonstration'
+
+
 class DisplayContentWindow(tk.Toplevel):
     """
     Window to display a text content.
@@ -35,6 +42,7 @@ class DisplayContentWindow(tk.Toplevel):
         icon=None,
         screen_index: int = 0,
         quit_on_close: bool = False,
+        text: str = '',
         result_filename: str = 'UEVM_output.txt'
     ):
         super().__init__()
@@ -43,11 +51,11 @@ class DisplayContentWindow(tk.Toplevel):
             # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         except Exception as error:
-            gui_f.log_warning(f'Error in EditCellWindowClass: {error!r}')
+            gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
-        self.keep_existing: bool = False  # whether to keep the existing content when adding a new one
+        self._keep_existing: bool = False  # whether to keep the existing content when adding a new one
         self.quit_on_close = quit_on_close
         self.result_filename = result_filename
         self.frm_content = self.ContentFrame(self)
@@ -61,9 +69,26 @@ class DisplayContentWindow(tk.Toplevel):
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
-
+        if text:
+            self.display(text)
         gui_g.display_content_window_ref = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+
+    @property
+    def keep_existing(self) -> bool:
+        """
+        Get wether to keep the existing content when adding a new one.
+        :return: True if keep_existing
+        """
+        return self._keep_existing
+
+    @keep_existing.setter
+    def keep_existing(self, value: bool):
+        """
+        Set wether to keep the existing content when adding a new one.
+        :param value: value to set
+        """
+        self._keep_existing = value
 
     @staticmethod
     def _focus_next_widget(event):
@@ -149,14 +174,14 @@ class DisplayContentWindow(tk.Toplevel):
         :param keep_mode: whether to keep the existing content when a new one is added.
         """
         try:
-            if self.keep_existing:
+            if self._keep_existing:
                 content += '\n'
                 self.frm_content.text_content.insert(tk.END, content)
             else:
                 self.frm_content.text_content.delete('1.0', tk.END)
                 self.frm_content.text_content.insert(tk.END, content)
             # set the mode at the end to allow using display() to be used to change the mode for the next call
-            self.keep_existing = keep_mode
+            self._keep_existing = keep_mode
             self.update()
             self.focus_set()
         except tk.TclError:
@@ -191,3 +216,12 @@ class DisplayContentWindow(tk.Toplevel):
         self.focus_set()
         self.grab_set()
         self.wait_window()
+
+
+if __name__ == '__main__':
+    st = DCW_Settings()
+    main = tk.Tk()
+    main.title('FAKE MAIN Window')
+    main.geometry('200x100')
+    DisplayContentWindow(title=st.title, text=st.text)
+    main.mainloop()

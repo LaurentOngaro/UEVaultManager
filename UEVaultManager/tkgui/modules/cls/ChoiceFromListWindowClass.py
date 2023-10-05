@@ -6,7 +6,11 @@ Implementation for:
 import tkinter as tk
 from tkinter import ttk
 
+from ttkbootstrap import INFO, WARNING
+
+import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
 class CFLW_Settings:
@@ -37,6 +41,7 @@ class CFLW_Settings:
 class ChoiceFromListWindow(tk.Toplevel):
     """
     Window to select a value in a list
+    :param window_title: the window title.
     :param title: the title.
     :param width: the width.
     :param height: the height.
@@ -49,9 +54,10 @@ class ChoiceFromListWindow(tk.Toplevel):
 
     def __init__(
         self,
-        title: str = 'Choose the value',
+        window_title: str = 'Choose the value',
+        title: str = '',
         width: int = 300,
-        height: int = 350,
+        height: int = 300,
         icon=None,
         screen_index: int = 0,
         choices: dict = None,
@@ -60,8 +66,13 @@ class ChoiceFromListWindow(tk.Toplevel):
     ):
 
         super().__init__()
-        self.title(title)
-        self.main_title = title
+        self.title(window_title)
+        try:
+            # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
+            self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+        except Exception as error:
+            gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
+        self.main_title = title or window_title
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.choices: dict = choices
@@ -89,16 +100,19 @@ class ChoiceFromListWindow(tk.Toplevel):
             self.cb_choice = ttk.Combobox(self, values=var_choices, state='readonly')
             self.cb_choice.pack(fill=tk.X, padx=10, pady=1)
 
-            self.lbl_description = tk.Label(self, text='Description', fg='lightblue')
+            self.lbl_description = tk.Label(self, text='Description', fg='blue', font=('Helvetica', 12, 'bold'))
             self.lbl_description.pack(padx=1, pady=1, anchor=tk.CENTER)
-            self.text_description = tk.Text(self, fg='blue', height=8, width=53, font=('Helvetica', 10))
+            self.text_description = tk.Text(self, fg='blue', height=6, width=53, font=('Helvetica', 10))
             self.text_description.pack(padx=5, pady=5)
 
             self.frm_inner = tk.Frame(self)
             self.frm_inner.pack(pady=5)
-            self.btn_close = ttk.Button(self.frm_inner, text='Close Window', command=self.close_window)
+            # noinspection PyArgumentList
+            # (bootstyle is not recognized by PyCharm)
+            self.btn_close = ttk.Button(self.frm_inner, text='Cancel and Close', bootstyle=WARNING, command=self.close_window)
             self.btn_close.pack(side=tk.LEFT, padx=5)
-            self.btn_import = ttk.Button(self.frm_inner, text='Valid and Close', command=self.validate)
+            # noinspection PyArgumentList
+            self.btn_import = ttk.Button(self.frm_inner, text='Valid and Close', bootstyle=INFO, command=self.validate)
             self.btn_import.pack(side=tk.LEFT, padx=5)
 
             self.cb_choice.bind("<<ComboboxSelected>>", self.set_description)
