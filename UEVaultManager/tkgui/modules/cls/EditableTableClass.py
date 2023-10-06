@@ -1693,13 +1693,20 @@ class EditableTable(Table):
         """
         row_number = self._edit_row_number
         for col_name, value in self.get_edited_row_values().items():
+            col_index = self.get_col_index(col_name)
+            old_value = self.get_cell(row_number, col_index)
+            typed_old_value = gui_t.get_typed_value(csv_field=col_name, value=old_value)
             typed_value = gui_t.get_typed_value(csv_field=col_name, value=value)
             try:
                 typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
             except AttributeError:
                 # no strip method
                 pass
-            col_index = self.get_col_index(col_name)
+            if col_name == 'Installed folders' and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+                if not gui_f.box_yesno(
+                    'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
+                ):
+                    continue
             if not self.update_cell(row_number, col_index, typed_value):
                 self.logger.warning(f'Failed to update the row #{row_number + 1}')
                 continue
@@ -1792,12 +1799,21 @@ class EditableTable(Table):
             value = self._edit_cell_widget.get_content()
             row_number = self._edit_cell_row_number
             col_index = self._edit_cell_col_index
+            old_value = self.get_cell(row_number, col_index)
+            typed_old_value = gui_t.get_typed_value(csv_field=tag, value=old_value)
             typed_value = gui_t.get_typed_value(csv_field=tag, value=value)
             try:
                 typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
             except AttributeError:
                 # no strip method
                 pass
+            col_installed_folders = self.get_col_index('Installed folders')
+            if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+                if not gui_f.box_yesno(
+                    'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
+                ):
+                    self._edit_cell_window.close_window()
+                    return
             if not self.update_cell(row_number, col_index, typed_value):
                 self.logger.warning(f'Failed to update the row #{row_number + 1}')
                 return
@@ -1860,7 +1876,6 @@ class EditableTable(Table):
         :param tag: the tag associated to the control where the value come from.
         """
         old_value = self.get_cell(row_number, col_index)
-
         typed_old_value = gui_t.get_typed_value(sql_field=tag, value=old_value)
         typed_value = gui_t.get_typed_value(sql_field=tag, value=value)
         try:
@@ -1870,6 +1885,13 @@ class EditableTable(Table):
             pass
         if row_number < 0 or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or col_index < 0 or typed_old_value == typed_value:
             return
+        col_installed_folders = self.get_col_index('Installed folders')
+        if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+            if not gui_f.box_yesno(
+                'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
+            ):
+                self.update_quick_edit(row_number)  # reset the value
+                return
         try:
             if not self.update_cell(row_number, col_index, typed_value):
                 self.logger.warning(f'Failed to update the row #{row_number + 1}')
