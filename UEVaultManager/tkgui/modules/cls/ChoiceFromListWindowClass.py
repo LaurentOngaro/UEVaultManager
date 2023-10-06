@@ -18,7 +18,8 @@ class CFLW_Settings:
     Settings for the class when running as main.
     """
     title = 'Choose the version'
-    show_delete_button = True
+    show_validate_button = True
+    show_delete_button = False
     choices = {
         'Label1': {
             'value': 'id1',
@@ -66,6 +67,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         screen_index: int = 0,
         choices: dict = None,
         default_value='',
+        show_validate_button: bool = True,
         show_delete_button: bool = False,
         set_value_func: callable = None,
         set_delete_func: callable = None,
@@ -83,6 +85,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.show_delete_button = show_delete_button
+        self.show_validate_button = show_validate_button
         self.set_value_func = set_value_func
         self.set_delete_func = set_delete_func
         self.choices: dict = choices
@@ -130,9 +133,11 @@ class ChoiceFromListWindow(tk.Toplevel):
             # (bootstyle is not recognized by PyCharm)
             self.btn_close = ttk.Button(self.frm_buttons, text='Cancel and Close', bootstyle=WARNING, command=self.close_window)
             self.btn_close.pack(side=tk.LEFT, padx=5)
-            # noinspection PyArgumentList
-            self.btn_import = ttk.Button(self.frm_buttons, text='Valid and Close', bootstyle=INFO, command=self.validate)
-            self.btn_import.pack(side=tk.LEFT, padx=5)
+            if container.show_validate_button:
+                # noinspection PyArgumentList
+                # (bootstyle is not recognized by PyCharm)
+                self.btn_import = ttk.Button(self.frm_buttons, text='Valid and Close', bootstyle=INFO, command=self.validate)
+                self.btn_import.pack(side=tk.LEFT, padx=5)
 
             self.cb_choice.bind("<<ComboboxSelected>>", self.set_description)
 
@@ -221,6 +226,7 @@ if __name__ == '__main__':
         title=st.title,
         choices=st.choices,
         default_value='',
+        show_validate_button=st.show_validate_button,
         show_delete_button=st.show_delete_button,
         set_value_func=set_choice,
         set_delete_func=delete_choice
