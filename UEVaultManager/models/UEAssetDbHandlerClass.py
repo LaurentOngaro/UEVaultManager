@@ -763,31 +763,37 @@ class UEAssetDbHandler:
             result = (row['averageRating'], row['total']) if row else result
         return result
 
-    def get_installed_folders(self, asset_id: str) -> str:
+    def get_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', ) -> str:
         """
         Get the list of installed folders for the given asset.
         :param asset_id: the asset_id (i.e. app_name) of the asset to get.
+        :param catalog_item_id: the catalog_item_id of the asset to get. If present, the asset_id is ignored.
         :return: a list of installed folders.
         """
-        if self.connection is None or asset_id == '':
+        if self.connection is None or (not asset_id and not catalog_item_id):
             return ''
         else:
+            if catalog_item_id:
+                query = f"SELECT installed_folders FROM assets WHERE catalog_item_id = '{catalog_item_id}'"
+            else:
+                query = f"SELECT installed_folders FROM assets WHERE asset_id = '{asset_id}'"
             cursor = self.connection.cursor()
-            cursor.execute("SELECT installed_folders from assets WHERE asset_id = ?", (asset_id, ))
+            cursor.execute(query)
             row = cursor.fetchone()
             cursor.close()
             result = row[0] if row else ''
             return result
 
-    def add_to_installed_folders(self, asset_id: str, folders_to_add: list = None) -> None:
+    def add_to_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', folders_to_add: list = None) -> None:
         """
         Add a folder to the list of installed folders for the given asset.
         :param asset_id: the asset_id (i.e. app_name) of the asset to get.
+        :param catalog_item_id: the catalog_item_id of the asset to get. If present, the asset_id is ignored.
         :param folders_to_add: the folders list to add.
         """
         if self.connection is None or asset_id == '' or folders_to_add is None or len(folders_to_add) == 0:
             return
-        installed_folders_db = self.get_installed_folders(asset_id)
+        installed_folders_db = self.get_installed_folders(asset_id, catalog_item_id)
         if isinstance(installed_folders_db, str):
             installed_folders = installed_folders_db.split(',') if installed_folders_db else []
         else:

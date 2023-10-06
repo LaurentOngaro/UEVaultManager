@@ -136,17 +136,24 @@ class UEVMGui(tk.Tk):
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
             db_handler = UEAssetDbHandler(database_name=data_source)
             if db_handler is not None:
+                merged_installed_folders = dict()
+                # get all installed folders for a given catalog_item_id
                 for app_name, asset in installed_assets_json.items():
                     installed_folders = asset.get('installed_folders', None)
                     if installed_folders is not None and len(installed_folders) > 0:
-                        db_handler.add_to_installed_folders(app_name, installed_folders)
+                        catalog_item_id = asset.get('catalog_item_id', None)
+                        merged_installed_folders[catalog_item_id] = installed_folders
                     else:
                         # the installed_folders field is empty for the installed_assets, we remove it from the json file
                         self.core.uevmlfs.set_installed_asset(app_name, for_deletion=True)
+                # update the database using catalog_item_id instead as asset_id to merge installed_folders for ALL the releases
+                for catalog_item_id, installed_folders in merged_installed_folders.items():
+                    db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=installed_folders)
             # update the installed_assets json file from the database info
-            installed_assets_db = db_handler.get_rows_with_installed_folders()
-            for app_name, asset_data in installed_assets_db.items():
-                self.core.uevmlfs.set_installed_asset(app_name, asset_data)
+            # NO TO DO because the in installed_folders have not the same content (for one asset in the json file, for all releases in the database)
+            # installed_assets_db = db_handler.get_rows_with_installed_folders()
+            # for app_name, asset_data in installed_assets_db.items():
+            #     self.core.uevmlfs.set_installed_asset(app_name, asset_data)
 
         data_table = EditableTable(
             container=frm_content,

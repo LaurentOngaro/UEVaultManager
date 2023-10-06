@@ -1211,6 +1211,7 @@ class AppCore:
         installed_asset.egl_guid = egl_guid
         installed_asset.manifest_path = override_manifest if override_manifest else manifest_filename
         installed_asset.platform = platform
+        installed_asset.catalog_item_id = asset.catalog_item_id
         already_installed = install_path and install_path in installed_asset.installed_folders
         analyse_res = download_manager.run_analysis(
             manifest=manifest,

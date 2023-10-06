@@ -1652,7 +1652,7 @@ class UEVaultManagerCLI:
                     self.core.uevmlfs.set_installed_asset(release_name, installed_asset.__dict__)
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
-                        db_handler.add_to_installed_folders(release_name, [installed_asset.install_path])
+                        db_handler.add_to_installed_folders(asset_id=release_name, folders_to_add=[installed_asset.install_path])
                     message += f'\nAsset have been installed in "{installed_asset.install_path}"'
                 else:
                     message += f'\nAsset could not be installed in "{installed_asset.install_path}"'

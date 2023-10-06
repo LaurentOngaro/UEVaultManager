@@ -195,7 +195,7 @@ class UEVMLFS:
             self.save_config()
 
         # load existing installed assets
-        self._installed_assets = None
+        self._installed_assets = {}
         self.load_installed_assets()
 
         # load asset sizes
@@ -623,7 +623,7 @@ class UEVMLFS:
         """
         if not app_name:
             return None
-        if self._installed_assets is None:
+        if self._installed_assets is None or len(self._installed_assets) <= 0:
             self.load_installed_assets()
         if json_data := self._installed_assets.get(app_name, None):
             asset = InstalledAsset.from_json(json_data)
@@ -639,7 +639,7 @@ class UEVMLFS:
         """
         if not app_name:
             return
-        if self._installed_assets is None:
+        if self._installed_assets is None or len(self._installed_assets) <= 0:
             self._installed_assets = dict()
         has_changed = True
         if for_deletion:

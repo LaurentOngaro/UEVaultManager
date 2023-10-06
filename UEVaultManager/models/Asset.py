@@ -115,7 +115,6 @@ class Asset:
         else:
             # Migrate old asset_info to new asset_infos
             tmp.asset_infos['Windows'] = AssetBase.from_json(asset_data.get('asset_info', dict()))
-
         tmp.base_urls = asset_data.get('base_urls', list())
         return tmp
 
@@ -132,6 +131,7 @@ class InstalledAsset:
     Local metadata for an installed asset
     """
     app_name: str
+    catalog_item_id: str = ''
     title: str = ''
     version: str = ''
     base_urls: List[str] = field(default_factory=list)
@@ -150,6 +150,7 @@ class InstalledAsset:
         """
         tmp = cls(
             app_name=asset_data.get('app_name', ''),
+            catalog_item_id=asset_data.get('catalog_item_id', ''),
             installed_folders=asset_data.get('installed_folders', []),
             title=asset_data.get('title', ''),
             version=asset_data.get('version', ''),
