@@ -931,7 +931,7 @@ class UEVaultManagerCLI:
                 pass
 
         # lists that will be printed or turned into JSON data
-        info_items = dict(assets=list(), manifest=list(), install=list())
+        info_items = dict(assets=[], manifest=[], install=[])
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
 
         update_meta = not args.offline and args.force_refresh
@@ -1162,7 +1162,7 @@ class UEVaultManagerCLI:
             if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
                 gui_g.UEVM_gui_ref.mainloop()
         else:
-            json_out = dict(asset=dict(), install=dict(), manifest=dict())
+            json_out = dict(asset={}, install={}, manifest={})
             if info_items.get('asset'):
                 for info_item in info_items['asset']:
                     json_out['asset'][info_item.json_name] = info_item.json_value

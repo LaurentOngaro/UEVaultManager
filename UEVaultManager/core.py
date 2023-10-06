@@ -431,7 +431,7 @@ class AppCore:
             if not self.egs.user:
                 return []
 
-            assets = self.uevmlfs.assets.copy() if self.uevmlfs.assets else dict()
+            assets = self.uevmlfs.assets.copy() if self.uevmlfs.assets else {}
 
             assets.update({platform: [AssetBase.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
 

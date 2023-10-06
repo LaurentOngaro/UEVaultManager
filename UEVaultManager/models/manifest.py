@@ -395,7 +395,7 @@ class CDL:
 
     def get_chunk_by_path(self, path):
         if not self._path_map:
-            self._path_map = dict()
+            self._path_map = {}
             for index, chunk in enumerate(self.elements):
                 self._path_map[chunk.path] = index
 
@@ -418,7 +418,7 @@ class CDL:
 
     def get_chunk_by_guid_str(self, guid):
         if not self._guid_map:
-            self._guid_map = dict()
+            self._guid_map = {}
             for index, chunk in enumerate(self.elements):
                 self._guid_map[chunk.guid_str] = index
 
@@ -429,7 +429,7 @@ class CDL:
 
     def get_chunk_by_guid_num(self, guid_int):
         if not self.guid_int_map:
-            self.guid_int_map = dict()
+            self.guid_int_map = {}
             for index, chunk in enumerate(self.elements):
                 self.guid_int_map[chunk.guid_num] = index
 
@@ -582,11 +582,11 @@ class FML:
         self.count = 0
         self.elements = []
 
-        self._path_map = dict()
+        self._path_map = {}
 
     def get_file_by_path(self, path):
         if not self._path_map:
-            self._path_map = dict()
+            self._path_map = {}
             for index, fm in enumerate(self.elements):
                 self._path_map[fm.filename] = index
 
@@ -810,7 +810,7 @@ class CustomFields:
         self.version = 0
         self.count = 0
 
-        self._dict = dict()
+        self._dict = {}
 
     def __getitem__(self, item):
         return self._dict.get(item, None)

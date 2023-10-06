@@ -41,9 +41,9 @@ class UEVMLFS:
         # EGS asset data
         self._assets = None
         # EGS metadata
-        self.assets_metadata = dict()
+        self.assets_metadata = {}
         # additional infos (price, review...)
-        self.assets_extra_data = dict()
+        self.assets_extra_data = {}
         # UEVaultManager update check info
         self._update_info = None
         # UE assets metadata cache data
@@ -227,7 +227,7 @@ class UEVMLFS:
 
         # not used anymore
         # load auto-aliases if enabled
-        # self.aliases = dict()
+        # self.aliases = {}
         # if not self.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False):
         #     try:
         #         _j = json.load(open(path_join(self.path, 'aliases.json')))
@@ -640,7 +640,7 @@ class UEVMLFS:
         if not app_name:
             return
         if self._installed_assets is None or len(self._installed_assets) <= 0:
-            self._installed_assets = dict()
+            self._installed_assets = {}
         has_changed = True
         if for_deletion:
             if app_name in self._installed_assets:

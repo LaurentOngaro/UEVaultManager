@@ -78,7 +78,7 @@ class DLManager(Process):
 
         # Resume file stuff
         self.resume_file = resume_file
-        self.hash_map = dict()
+        self.hash_map = {}
 
         # cross-thread runtime information
         self.running = True
@@ -501,7 +501,7 @@ class DLManager(Process):
         Download result handler that handles adding writer jobs to the queue.
         :param task_cond: task condition
         """
-        in_buffer = dict()
+        in_buffer = {}
 
         try:
             task = self.tasks.popleft()

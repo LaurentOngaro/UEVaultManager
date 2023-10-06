@@ -136,7 +136,7 @@ class UEVMGui(tk.Tk):
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
             db_handler = UEAssetDbHandler(database_name=data_source)
             if db_handler is not None:
-                merged_installed_folders = dict()
+                merged_installed_folders = {}
                 # get all installed folders for a given catalog_item_id
                 for app_name, asset in installed_assets_json.items():
                     installed_folders = asset.get('installed_folders', None)
