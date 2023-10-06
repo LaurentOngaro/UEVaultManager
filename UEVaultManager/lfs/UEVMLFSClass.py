@@ -617,7 +617,7 @@ class UEVMLFS:
 
     def get_installed_asset(self, app_name: str) -> Optional[InstalledAsset]:
         """
-        Get the installed asset data.
+        Get the installed asset data. If it's not currently loaded, it will be read from the json file
         :param app_name: the asset name.
         :return: the installed asset or None if not found.
         """
