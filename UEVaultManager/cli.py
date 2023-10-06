@@ -1399,6 +1399,7 @@ class UEVaultManagerCLI:
         categories = asset.metadata.get('categories', None)
         category = categories[0]['path'] if categories else ''
         release_info = asset.metadata.get('releaseInfo', None)
+        catalog_item_id = asset.catalog_item_id
         is_plugin = category and 'plugin' in category.lower()
         installed_in_engine = False
         # get version list from release info
@@ -1406,26 +1407,26 @@ class UEVaultManagerCLI:
         version_choice = {}
         if release_info is not None and len(release_info) > 0:
             # TODO: only keep releases that are compatible with the version of the selected project.
-            for index, item in enumerate(release_info):
+            for index, item in enumerate(reversed(release_info)):  # reversed to have the latest release first
                 asset_id = item.get('appId', None)
-                title = item.get('versionTitle', '') or asset_id
+                release_title = item.get('versionTitle', '') or asset_id
                 compatible_list = item.get('compatibleApps', None)
                 date_added = item.get('dateAdded', '')
                 # Convert the string to a datetime object
                 datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
                 # Format the datetime object as "YYYY-MM-DD"
                 formatted_date = datetime_obj.strftime("%Y-%m-%d")
-                if asset_id is not None and title is not None and compatible_list is not None:
+                if asset_id is not None and release_title is not None and compatible_list is not None:
                     # remove 'UE_' from items of the compatible_list
                     compatible_list = [item.replace('UE_', '') for item in compatible_list]
                     data = {
-                        'title': title,  #
+                        'title': release_title,  #
                         'asset_id': asset_id,  #
                         'compatible': compatible_list,  #
                     }
                     compatible_str = ','.join(compatible_list)
-                    desc = f'Release id: {asset_id}\nTitle: {title}\nRelease Date: {formatted_date}\nUE Versions: {compatible_str}'
-                    version_choice[title] = {'value': index, 'desc': desc}
+                    desc = f'Release id: {asset_id}\nTitle: {release_title}\nRelease Date: {formatted_date}\nUE Versions: {compatible_str}'
+                    version_choice[release_title] = {'value': index, 'desc': desc}
                     releases.append(data)
         release_selected = releases[-1]  # by default, we take the lastest release
         if uewm_gui_exists:
@@ -1450,7 +1451,7 @@ class UEVaultManagerCLI:
                     )
 
         release_name = release_selected['asset_id']
-        title = release_selected['title']
+        release_title = release_selected['title']
         install_path_base = args.install_path if args.install_path is not None else ''
 
         folders_to_check = []
@@ -1488,7 +1489,8 @@ class UEVaultManagerCLI:
                             return False
                         else:
                             installed_in_engine = True
-                            gui_g.s.last_opened_engine = install_path_base  # we save only the "base engine" path
+                            if install_path_base:
+                                gui_g.s.last_opened_engine = install_path_base  # we save only the "base engine" path
                 else:
                     install_path_base = filedialog.askdirectory(
                         title='Select a project to install the asset into', initialdir=gui_g.s.last_opened_project
@@ -1516,7 +1518,7 @@ class UEVaultManagerCLI:
             uewm_gui_exists, dw = init_display_window(self.logger)
             dw.keep_existing = True  # because init_display_window will set it to False
             dw.clean()
-            message = f'Starting Download of Release "{title}"' if args.no_install else f'Starting Installation of Release "{title}"'
+            message = f'Starting Download of Release "{release_title}"' if args.no_install else f'Starting Installation of Release "{release_title}"'
             dw.display(message)
 
         if args.vault_cache:
@@ -1541,10 +1543,11 @@ class UEVaultManagerCLI:
         download_path = os.path.normpath(download_path)
         install_path_base = os.path.normpath(install_path_base)
 
-        self._log_and_gui_display(self.logger.info, f'Preparing download for {title}...')
+        self._log_and_gui_display(self.logger.info, f'Preparing download for {release_title}...')
         dlm, analysis, installed_asset = self.core.prepare_download(
-            asset=asset,
+            base_asset=asset,  # contains generic info of the base asset for all releases, NOT the selected release
             release_name=release_name,
+            release_title=release_title,
             download_folder=download_path,
             install_folder=install_path_base,
             no_resume=args.no_resume,
@@ -1593,7 +1596,7 @@ class UEVaultManagerCLI:
             return False
 
         if not args.yes:
-            if not get_boolean_choice(f'Do you wish to install {title} ?'):  # todo: use a gui yes/no if gui is enabled
+            if not get_boolean_choice(f'Do you wish to install {release_title} ?'):  # todo: use a gui yes/no if gui is enabled
                 print('Aborting...')
                 # not in GUI self.core.clean_exit(0)
                 return False
@@ -1652,7 +1655,7 @@ class UEVaultManagerCLI:
                     self.core.uevmlfs.set_installed_asset(release_name, installed_asset.__dict__)
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
-                        db_handler.add_to_installed_folders(asset_id=release_name, folders_to_add=[installed_asset.install_path])
+                        db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=[installed_asset.install_path])
                     message += f'\nAsset have been installed in "{installed_asset.install_path}"'
                 else:
                     message += f'\nAsset could not be installed in "{installed_asset.install_path}"'

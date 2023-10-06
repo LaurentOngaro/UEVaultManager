@@ -791,7 +791,7 @@ class UEAssetDbHandler:
         :param catalog_item_id: the catalog_item_id of the asset to get. If present, the asset_id is ignored.
         :param folders_to_add: the folders list to add.
         """
-        if self.connection is None or asset_id == '' or folders_to_add is None or len(folders_to_add) == 0:
+        if self.connection is None or folders_to_add is None or len(folders_to_add) == 0 or (not asset_id and not catalog_item_id):
             return
         installed_folders_db = self.get_installed_folders(asset_id, catalog_item_id)
         if isinstance(installed_folders_db, str):
@@ -805,7 +805,10 @@ class UEAssetDbHandler:
         installed_folders_db_updated = ','.join(installed_folders)
         if installed_folders_db_updated != installed_folders_db:
             cursor = self.connection.cursor()
-            query = f"UPDATE assets SET installed_folders = '{installed_folders_db_updated}' WHERE asset_id = '{asset_id}'"
+            if catalog_item_id:
+                query = f"UPDATE assets SET installed_folders = '{installed_folders_db_updated}' WHERE catalog_item_id = '{catalog_item_id}'"
+            else:
+                query = f"UPDATE assets SET installed_folders = '{installed_folders_db_updated}' WHERE asset_id = '{asset_id}'"
             cursor.execute(query)
             self.connection.commit()
             cursor.close()

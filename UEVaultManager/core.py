@@ -1034,8 +1034,9 @@ class AppCore:
 
     def prepare_download(
         self,
-        asset: Asset,
+        base_asset: Asset, # contains generic info of the base asset for all releases, NOT the selected release
         release_name: str,
+        release_title: str,
         download_folder: str = '',
         install_folder: str = '',
         no_resume: bool = False,
@@ -1057,8 +1058,9 @@ class AppCore:
     ) -> (DLManager, AnalysisResult, InstalledAsset):
         """
         Prepare a download.
-        :param asset:asset to prepare the download for.
-        :param release_name: version ID to prepare the download for.
+        :param base_asset: the "base" asset to prepare the download for, not the selected release.
+        :param release_name: release name prepare the download for.
+        :param release_title: release title prepare the download for.
         :param download_folder: folder to download the asset to.
         :param install_folder: base folder to install the asset to.
         :param platform: platform to prepare the download for.
@@ -1087,17 +1089,16 @@ class AppCore:
             self.log.info(f'Overriding old manifest with "{override_old_manifest}"')
             old_bytes, _ = self.get_uri_manifest(override_old_manifest)
             old_manifest = self.load_manifest(old_bytes)
-        elif not disable_patching and not no_resume and self.is_installed(asset.app_name):
-            old_bytes, _base_urls = self.get_installed_manifest(asset.app_name)
-            if _base_urls and not asset.base_urls:
-                asset.base_urls = _base_urls
-
+        elif not disable_patching and not no_resume and self.is_installed(release_name):
+            old_bytes, _base_urls = self.get_installed_manifest(release_name)
+            if _base_urls and not base_asset.base_urls:
+                base_asset.base_urls = _base_urls
             if not old_bytes:
                 self.log.error(f'Could not load old manifest, patching will not work!')
             else:
                 old_manifest = self.load_manifest(old_bytes)
 
-        base_urls = asset.base_urls
+        base_urls = base_asset.base_urls
 
         # The EGS client uses plaintext HTTP by default for the purposes of enabling simple DNS based
         # CDN redirection to a (local) cache. In Legendary this will be a config option.
@@ -1110,11 +1111,11 @@ class AppCore:
             if _base_urls:
                 base_urls = _base_urls
         else:
-            new_manifest_data, base_urls, status_code = self.get_cdn_manifest(asset, platform, disable_https=disable_https)
+            new_manifest_data, base_urls, status_code = self.get_cdn_manifest(base_asset, platform, disable_https=disable_https)
             # overwrite base urls in metadata with current ones to avoid using old/dead CDNs
-            asset.base_urls = base_urls
+            base_asset.base_urls = base_urls
             # save base urls to game metadata
-            self.uevmlfs.set_item_meta(release_name, asset)
+            self.uevmlfs.set_item_meta(release_name, base_asset)
 
         self.log_info_and_gui_display('Parsing game manifest...')
         manifest = self.load_manifest(new_manifest_data)
@@ -1204,14 +1205,14 @@ class AppCore:
         installed_asset = self.get_installed_asset(release_name)
         if installed_asset is None:
             # create a new installed asset
-            installed_asset = InstalledAsset(app_name=release_name, title=asset.app_title)
+            installed_asset = InstalledAsset(app_name=release_name, title=release_title)
         # update the installed asset
         installed_asset.version = manifest.meta.build_version
         installed_asset.base_urls = base_urls
         installed_asset.egl_guid = egl_guid
         installed_asset.manifest_path = override_manifest if override_manifest else manifest_filename
         installed_asset.platform = platform
-        installed_asset.catalog_item_id = asset.catalog_item_id
+        installed_asset.catalog_item_id = base_asset.catalog_item_id
         already_installed = install_path and install_path in installed_asset.installed_folders
         analyse_res = download_manager.run_analysis(
             manifest=manifest,

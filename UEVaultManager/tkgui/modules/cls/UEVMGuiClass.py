@@ -142,7 +142,10 @@ class UEVMGui(tk.Tk):
                     installed_folders = asset.get('installed_folders', None)
                     if installed_folders is not None and len(installed_folders) > 0:
                         catalog_item_id = asset.get('catalog_item_id', None)
-                        merged_installed_folders[catalog_item_id] = installed_folders
+                        if merged_installed_folders.get(catalog_item_id, None) is None:
+                            merged_installed_folders[catalog_item_id] = installed_folders
+                        else:
+                            merged_installed_folders[catalog_item_id].extend(installed_folders)
                     else:
                         # the installed_folders field is empty for the installed_assets, we remove it from the json file
                         self.core.uevmlfs.set_installed_asset(app_name, for_deletion=True)
@@ -1499,6 +1502,7 @@ class UEVMGui(tk.Tk):
         Open the asset URL (Wrapper).
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'download'
+        gui_g.UEVM_cli_args['no_install'] = True  # !important
         self.run_install()
 
     def install_asset(self) -> None:
@@ -1506,6 +1510,7 @@ class UEVMGui(tk.Tk):
         Open the asset URL (Wrapper).
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'install'
+        gui_g.UEVM_cli_args['no_install'] = False
         self.run_install()
 
     # noinspection PyUnusedLocal

@@ -809,6 +809,7 @@ class DLManager(Process):
             message = f'Downloaded: {total_dl / 1024 / 1024:.02f} MiB  ({perc:.02f}%)'
             if not pw.update_and_continue(value=processed_chunks, text=message):
                 self.log.warning('User requested immediate exit!')
+                self.chunks_to_dl.clear()
                 break
             self.trace_func(f'= Progress: {perc:.02f}% ({processed_chunks}/{num_chunk_tasks})')
             self.trace_func(f'Running for {rt_hours:02d}:{rt_minutes:02d}:{rt_seconds:02d}')
