@@ -7,8 +7,6 @@ implementation for:
 from dataclasses import dataclass, field
 from typing import Dict, List
 
-from UEVaultManager.tkgui.modules.functions_no_deps import merge_lists_or_strings
-
 
 @dataclass
 class AssetBase:
@@ -162,17 +160,6 @@ class InstalledAsset:
         tmp.platform = asset_data.get('platform', 'Windows')
         return tmp
 
-    def _add_to_installed_folders(self, path: str):
-        """
-        Add path to installed_folders.
-        :param path: path to add.
-        """
-        path = path.strip()
-        if not path or len(path) == 0:
-            return
-        result = merge_lists_or_strings(self.installed_folders, path)
-        self.installed_folders = result
-
     @property
     def install_path(self) -> str:
         """
@@ -194,6 +181,9 @@ class InstalledAsset:
         :param path: install path.
 
         Notes:
-            Add the path to the installed_folders property.
+            Add the path at the end of the installed_folders proper ty.
         """
-        self._add_to_installed_folders(path)
+        path = path.strip()
+        if not path or len(path) == 0 or path in self.installed_folders:
+            return
+        self.installed_folders.append(path)

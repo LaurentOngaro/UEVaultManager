@@ -4,6 +4,7 @@ Implementation for:
 - UEVMGui: the main window of the application.
 """
 import filecmp
+import json
 import logging
 import os
 import re
@@ -22,10 +23,11 @@ from requests import ReadTimeout
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import EPCAPI, GrabResult
+from UEVaultManager.api.egs import EPCAPI, extract_version_from_releases, GrabResult
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
+from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
 from UEVaultManager.tkgui.modules.cls.DbFilesWindowClass import DbFilesWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
@@ -129,6 +131,7 @@ class UEVMGui(tk.Tk):
         frm_content = UEVMGuiContentFrame(self)
         self._frm_content = frm_content
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
+        self.releases_choice = {}
 
         # update the content of the database BEFORE loading the data in the datatable
         if data_source_type == DataSourceType.SQLITE:
@@ -1512,6 +1515,62 @@ class UEVMGui(tk.Tk):
         gui_g.UEVM_cli_args['subparser_name'] = 'install'
         gui_g.UEVM_cli_args['no_install'] = False
         self.run_install()
+
+    def remove_installed_release(self, release_index: int) -> bool:
+        """
+        Delete the release from the installed releases.
+        :param release_index: the index of the release to delete.
+        :return: True if the release has been deleted, False otherwise.
+        """
+        asset_id = ''
+        if release_index >= 0:
+            try:
+                release_selected = self.releases_choice[release_index]
+                asset_id = release_selected['id']
+            except IndexError:
+                return False
+        if not asset_id:
+            return False
+        if not self.core.is_installed(asset_id):
+            gui_f.box_message(f'The release {asset_id} is not installed. Nothing to remove here.')
+        elif gui_f.box_yesno(f'Are you sure you want to remove the release {asset_id} from the installed asset list ?'):
+            asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)
+            if asset_installed:
+                installed_folders = asset_installed.installed_folders
+                self.core.uevmlfs.set_installed_asset(asset_id, for_deletion=True)
+                db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
+                if db_handler is not None:
+                    # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
+                    catalog_item_id = asset_installed.catalog_item_id
+                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders_to_remove=installed_folders)
+                return True
+        else:
+            return False
+
+    def show_installed_releases(self) -> None:
+        """
+        Display the releases of the asset in a choice window.
+        """
+        release_info_json = self.editable_table.get_release_info()
+        if not release_info_json:
+            return
+        release_info = json.loads(release_info_json)
+        installed_folders = {}
+        installed_assets = self.core.uevmlfs.get_installed_assets()
+        for asset_id, installed_asset in installed_assets.items():
+            installed_folders[asset_id] = installed_asset['installed_folders']
+        self.releases_choice, version_choice = extract_version_from_releases(release_info, installed_folders)
+        cw = ChoiceFromListWindow(
+            window_title='UEVM: select release',
+            title='Select the release',
+            sub_title='In the list below, Select the release you want to see detail from or to remove from the installed releases',
+            choices=version_choice,
+            show_delete_button=True,
+            show_validate_button=False,
+            set_remove_func=self.remove_installed_release,
+            default_value=''
+        )
+        gui_f.make_modal(cw)
 
     # noinspection PyUnusedLocal
     def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback

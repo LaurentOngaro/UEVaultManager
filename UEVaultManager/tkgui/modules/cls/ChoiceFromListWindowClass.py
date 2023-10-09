@@ -5,6 +5,7 @@ Implementation for:
 """
 import tkinter as tk
 from tkinter import ttk
+from tkinter.scrolledtext import ScrolledText
 
 from ttkbootstrap import INFO, WARNING
 
@@ -53,7 +54,7 @@ class ChoiceFromListWindow(tk.Toplevel):
     :param default_value: the default value to return if no value is selected. If None, the set_value_func method will not be called on closed window.
     :param show_delete_button: if True, the delete button will be displayed.
     :param set_value_func: the function to call after the validate button is clicked and the window closed.
-    :param set_delete_func: the function to call after the delete button is clicked.
+    :param set_remove_func: the function to call after the delete button is clicked.
     """
 
     def __init__(
@@ -61,8 +62,8 @@ class ChoiceFromListWindow(tk.Toplevel):
         window_title: str = 'Choose a value',
         title: str = '',
         sub_title: str = 'Please select a value in the list below',
-        width: int = 310,
-        height: int = 300,
+        width: int = 320,
+        height: int = 320,
         icon=None,
         screen_index: int = 0,
         choices: dict = None,
@@ -70,7 +71,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         show_validate_button: bool = True,
         show_delete_button: bool = False,
         set_value_func: callable = None,
-        set_delete_func: callable = None,
+        set_remove_func: callable = None,
     ):
 
         super().__init__()
@@ -87,7 +88,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         self.show_delete_button = show_delete_button
         self.show_validate_button = show_validate_button
         self.set_value_func = set_value_func
-        self.set_delete_func = set_delete_func
+        self.set_remove_func = set_remove_func
         self.choices: dict = choices
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
@@ -115,7 +116,7 @@ class ChoiceFromListWindow(tk.Toplevel):
             if container.show_delete_button:
                 self.cb_choice = ttk.Combobox(self.frm_choice, values=var_choices, state='readonly', width=35)
                 self.cb_choice.grid(row=0, column=0, padx=5, pady=1)
-                self.btn_del = ttk.Button(self.frm_choice, text='Delete', command=self.delete)
+                self.btn_del = ttk.Button(self.frm_choice, text='Remove', command=self.remove)
                 self.btn_del.grid(row=0, column=1, padx=5, pady=1)
             else:
                 self.cb_choice = ttk.Combobox(self.frm_choice, values=var_choices, state='readonly', width=45)
@@ -124,14 +125,15 @@ class ChoiceFromListWindow(tk.Toplevel):
 
             self.lbl_description = tk.Label(self, text='Description', fg='blue', font=('Helvetica', 11, 'bold'))
             self.lbl_description.pack(padx=1, pady=1, anchor=tk.CENTER)
-            self.text_description = tk.Text(self, fg='blue', height=6, width=53, font=('Helvetica', 10))
+            self.text_description = ScrolledText(self, height=6, width=53, font=('Helvetica', 10))
+            # self.text_description = tk.Text(self, fg='blue', height=6, width=53, font=('Helvetica', 10))
             self.text_description.pack(padx=5, pady=5)
 
             self.frm_buttons = tk.Frame(self)
             self.frm_buttons.pack(pady=5)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
-            self.btn_close = ttk.Button(self.frm_buttons, text='Cancel and Close', bootstyle=WARNING, command=self.close_window)
+            self.btn_close = ttk.Button(self.frm_buttons, text='Close', bootstyle=WARNING, command=self.close_window)
             self.btn_close.pack(side=tk.LEFT, padx=5)
             if container.show_validate_button:
                 # noinspection PyArgumentList
@@ -160,7 +162,7 @@ class ChoiceFromListWindow(tk.Toplevel):
             """
             Close the window.
             """
-            if self.container.default_value is not None:
+            if self.container.default_value is not None and self.container.set_value_func is not None:
                 self.container.set_value_func(self.container.default_value)
             self.container.destroy()
 
@@ -173,27 +175,31 @@ class ChoiceFromListWindow(tk.Toplevel):
             if data is None:
                 return
             value = data.get('value', None)
-            self.container.set_value_func(value)
+            if self.container.set_value_func is not None:
+                self.container.set_value_func(value)
             self.container.destroy()
             return
 
-        def delete(self) -> None:
+        def remove(self) -> None:
             """
-            Delete the selected value
+            Remove the selected value
             """
+            check_if_deleted = True
             selected_value = self.cb_choice.get()
-            # clean the selected value
-            self.cb_choice.set('')
-            # clear the description
-            self.text_description.delete('1.0', tk.END)
-            # remove the value from the combobox
-            self.cb_choice['values'] = [x for x in self.cb_choice['values'] if x != selected_value]
-            # remove the value from the dict
-            data = self.container.choices.pop(selected_value, None)
+            data = self.container.choices[selected_value]
             if data is None:
                 return
             value = data.get('value', None)
-            self.container.set_delete_func(value)
+            if self.container.set_remove_func is not None:
+                check_if_deleted = self.container.set_remove_func(value)
+            if check_if_deleted:
+                self.container.choices.pop(selected_value, None)
+                # clean the selected value
+                self.cb_choice.set('')
+                # clear the description
+                self.text_description.delete('1.0', tk.END)
+                # remove the value from the combobox
+                self.cb_choice['values'] = [x for x in self.cb_choice['values'] if x != selected_value]
             return
 
 
@@ -229,6 +235,6 @@ if __name__ == '__main__':
         show_validate_button=st.show_validate_button,
         show_delete_button=st.show_delete_button,
         set_value_func=set_choice,
-        set_delete_func=delete_choice
+        set_remove_func=delete_choice
     )
     main.mainloop()

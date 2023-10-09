@@ -25,7 +25,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
 from UEVaultManager import __codename__ as UEVM_codename, __version__ as UEVM_version
-from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_asset_obsolete
+from UEVaultManager.api.egs import create_empty_assets_extra, extract_version_from_releases, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import copy_folder, path_join
@@ -1371,7 +1371,7 @@ class UEVaultManagerCLI:
         if args.clean_dowloaded_data and args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
-                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you.\nCommand is aborted',
+                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you.\nCommand is aborted.',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1379,7 +1379,7 @@ class UEVaultManagerCLI:
         if not self.core.login():
             self._log_and_gui_message(
                 self.logger.error,
-                'You are not connected or log in failed.\nYou should log first or check your credential.\nCommand is aborted',
+                'You are not connected or log in failed.\nYou should log first or check your credential.\nCommand is aborted.',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1392,7 +1392,7 @@ class UEVaultManagerCLI:
         if not asset:
             self._log_and_gui_message(
                 self.logger.error,
-                f'Metadata are not available for "{args.app_name}".\nYou can only install an asset you own.\nInstallation can not be done.\nCommand is aborted',
+                f'Metadata are not available for "{args.app_name}".\nYou can only install an asset you own.\nInstallation can not be done.\nCommand is aborted.',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1402,32 +1402,7 @@ class UEVaultManagerCLI:
         catalog_item_id = asset.catalog_item_id
         is_plugin = category and 'plugin' in category.lower()
         installed_in_engine = False
-        # get version list from release info
-        releases = []
-        version_choice = {}
-        if release_info is not None and len(release_info) > 0:
-            # TODO: only keep releases that are compatible with the version of the selected project.
-            for index, item in enumerate(reversed(release_info)):  # reversed to have the latest release first
-                asset_id = item.get('appId', None)
-                release_title = item.get('versionTitle', '') or asset_id
-                compatible_list = item.get('compatibleApps', None)
-                date_added = item.get('dateAdded', '')
-                # Convert the string to a datetime object
-                datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
-                # Format the datetime object as "YYYY-MM-DD"
-                formatted_date = datetime_obj.strftime("%Y-%m-%d")
-                if asset_id is not None and release_title is not None and compatible_list is not None:
-                    # remove 'UE_' from items of the compatible_list
-                    compatible_list = [item.replace('UE_', '') for item in compatible_list]
-                    data = {
-                        'title': release_title,  #
-                        'asset_id': asset_id,  #
-                        'compatible': compatible_list,  #
-                    }
-                    compatible_str = ','.join(compatible_list)
-                    desc = f'Release id: {asset_id}\nTitle: {release_title}\nRelease Date: {formatted_date}\nUE Versions: {compatible_str}'
-                    version_choice[release_title] = {'value': index, 'desc': desc}
-                    releases.append(data)
+        releases, version_choice = extract_version_from_releases(release_info)
         release_selected = releases[-1]  # by default, we take the lastest release
         if uewm_gui_exists:
             # create a windows to choose the release
@@ -1438,7 +1413,7 @@ class UEVaultManagerCLI:
                 sub_title=sub_title,
                 choices=version_choice,
                 set_value_func=self.set_release_index,
-                default_value=''
+                default_value=-1
             )
             make_modal(cw)
             # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_index methode been called
@@ -1447,10 +1422,15 @@ class UEVaultManagerCLI:
                     release_selected = releases[self.release_index]
                 except IndexError:
                     self._log_and_gui_display(
-                        self.logger.warning, 'The selected release could not be found. The latest one as been selected by default.\n'
+                        self.logger.warning, '\nThe selected release could not be found. The latest one as been selected by default.\n'
                     )
+            else:
+                self._log_and_gui_display(
+                    self.logger.warning, '\nNo release has been selected.\nSo, nothing can be done for you.\nCommand is aborted.'
+                )
+                return False
 
-        release_name = release_selected['asset_id']
+        release_name = release_selected['id']
         release_title = release_selected['title']
         install_path_base = args.install_path if args.install_path is not None else ''
 
@@ -1483,7 +1463,7 @@ class UEVaultManagerCLI:
                         ):  # we remove the last part here (i.e. 'Marketplace') because it does not exist in a new installed engine
                             self._log_and_gui_message(
                                 self.logger.error,
-                                f'You have selected a folder that seems to be invalid.\nThe {path_to_check} could not be found.\nCommand is aborted',
+                                f'You have selected a folder that seems to be invalid.\nThe {path_to_check} could not be found.\nCommand is aborted.',
                                 quit_on_error=not uewm_gui_exists
                             )
                             return False
@@ -1502,7 +1482,7 @@ class UEVaultManagerCLI:
             if not args.no_install:
                 self._log_and_gui_message(
                     self.logger.error,
-                    'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you.\nCommand is aborted',
+                    'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you.\nCommand is aborted.',
                     quit_on_error=not uewm_gui_exists
                 )
                 return False
@@ -1591,7 +1571,7 @@ class UEVaultManagerCLI:
             self._log_and_gui_display(self.logger.warning, '\n'.join(message_list))
 
         if res.failures:
-            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed.\nCommand is aborted', quit_on_error=not uewm_gui_exists)
+            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed.\nCommand is aborted.', quit_on_error=not uewm_gui_exists)
             # not in GUI self.core.clean_exit(1)  # previous line could not quit
             return False
 
@@ -1635,6 +1615,7 @@ class UEVaultManagerCLI:
                 if is_plugin:
                     # note: the folder has already been checked when selected
                     if installed_in_engine:
+                        # if installed in engine, NOTHING MORE TO DO
                         dest_folder = install_path_base
                     else:
                         # if the plugin is not installed in an engine, we have to change the destination folder structure to install it IN the "Plugins" subfolder of the destination

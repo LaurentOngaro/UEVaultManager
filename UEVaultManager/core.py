@@ -890,13 +890,13 @@ class AppCore:
                 return
             self.uevmlfs.set_item_extra(app_name=app_name, extra=eg_extra, update_global_dict=update_global_dict)
 
-    def get_installed_asset(self, app_name) -> InstalledAsset:
+    def is_installed(self, app_name: str) -> bool:
         """
-        Return an InstalledAsset object for the given asset name.
-        :param app_name: asset name to get.
-        :return: InstalledAsset object.
+        Return whether an asset is installed.
+        :param app_name: asset name to check.
+        :return: True if asset is installed, False otherwise.
         """
-        return self.uevmlfs.get_installed_asset(app_name)
+        return self.uevmlfs.get_installed_asset(app_name) is not None
 
     def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[Asset], Dict[str, List[Asset]]):
         """
@@ -930,21 +930,13 @@ class AppCore:
 
         return _ret
 
-    def is_installed(self, app_name: str) -> bool:
-        """
-        Return whether an asset is installed.
-        :param app_name: asset name to check.
-        :return: True if asset is installed, False otherwise.
-        """
-        return self.get_installed_asset(app_name) is not None
-
     def get_installed_manifest(self, app_name):
         """
         Get the installed manifest.
         :param app_name: asset name to get the installed manifest for.
         :return:
         """
-        installed_asset = self.get_installed_asset(app_name)
+        installed_asset = self.uevmlfs.get_installed_asset(app_name)
         old_bytes = self.uevmlfs.load_manifest(app_name, installed_asset.version, installed_asset.platform)
         return old_bytes, installed_asset.base_urls
 
@@ -1034,7 +1026,7 @@ class AppCore:
 
     def prepare_download(
         self,
-        base_asset: Asset, # contains generic info of the base asset for all releases, NOT the selected release
+        base_asset: Asset,  # contains generic info of the base asset for all releases, NOT the selected release
         release_name: str,
         release_title: str,
         download_folder: str = '',
@@ -1130,7 +1122,7 @@ class AppCore:
             raise PermissionError(f'No write access to "{download_folder}"')
 
         # reuse existing installation's directory
-        installed_asset = self.get_installed_asset(release_name)
+        installed_asset = self.uevmlfs.get_installed_asset(release_name)
         if reuse_last_install and installed_asset:
             install_path = installed_asset.install_path
             egl_guid = installed_asset.egl_guid
@@ -1202,7 +1194,7 @@ class AppCore:
             timeout=self.timeout,
             trace_func=self.log_info_and_gui_display,
         )
-        installed_asset = self.get_installed_asset(release_name)
+        installed_asset = self.uevmlfs.get_installed_asset(release_name)
         if installed_asset is None:
             # create a new installed asset
             installed_asset = InstalledAsset(app_name=release_name, title=release_title)

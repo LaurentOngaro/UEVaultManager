@@ -286,7 +286,7 @@ csv_sql_fields = {
     },
     'Release info': {
         'sql_name': 'release_info',
-        'state': CSVFieldState.SQL_ONLY,
+        'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.STR
     },
 }

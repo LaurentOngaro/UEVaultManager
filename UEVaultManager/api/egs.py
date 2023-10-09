@@ -9,6 +9,7 @@ Implementation for:
 import json
 import logging
 import re
+from datetime import datetime
 from enum import Enum
 
 import requests
@@ -79,6 +80,50 @@ def create_empty_assets_extra(asset_name: str) -> dict:
         'installed_folders': [],
         'grab_result': GrabResult.NO_ERROR.name,
     }
+
+
+def extract_version_from_releases(release_info: dict, all_installed_folders: dict = None) -> (list, dict):
+    """
+    Extract the version list and the release dict from the release info.
+    :param release_info: the release info (from the asset info).
+    :param all_installed_folders: the installed folders for all the releases. Will be added to the description if present.
+    :return: the version list and the release dict.
+
+    Notes:
+    The installed_folder is a dict with the following keys:
+    {asset_id: [installed_folders]}
+    """
+    releases = []
+    version_choice = {}
+    if release_info is not None and len(release_info) > 0:
+        # TODO: only keep releases that are compatible with the version of the selected project.
+        for index, item in enumerate(reversed(release_info)):  # reversed to have the latest release first
+            asset_id = item.get('appId', None)
+            release_title = item.get('versionTitle', '') or asset_id
+            compatible_list = item.get('compatibleApps', None)
+            date_added = item.get('dateAdded', '')
+            # Convert the string to a datetime object
+            datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
+            # Format the datetime object as "YYYY-MM-DD"
+            formatted_date = datetime_obj.strftime("%Y-%m-%d")
+            if asset_id is not None and release_title is not None and compatible_list is not None:
+                # remove 'UE_' from items of the compatible_list
+                compatible_list = [item.replace('UE_', '') for item in compatible_list]
+                data = {
+                    'title': release_title,  #
+                    'id': asset_id,  #
+                    'compatible': compatible_list,  #
+                }
+                compatible_str = ','.join(compatible_list)
+                desc = f'Release id: {asset_id}\nTitle: {release_title}\nRelease Date: {formatted_date}\nUE Versions: {compatible_str}'
+                if all_installed_folders is not None and all_installed_folders.get(asset_id, ''):
+                    data['installed_folders'] = all_installed_folders.get(asset_id, [])
+                    desc += f'\nInstalled in folders:\n'
+                    for folder in data['installed_folders']:
+                        desc += f' - {folder}\n'
+                version_choice[release_title] = {'value': index, 'desc': desc}
+                releases.append(data)
+    return releases, version_choice
 
 
 class EPCAPI:

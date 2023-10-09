@@ -612,8 +612,9 @@ class UEVMLFS:
         """
         Save the installed asset data.
         """
+        installed_assets = self._installed_assets
         with open(self.installed_asset_filename, 'w', encoding='utf-8') as file:
-            json.dump(self._installed_assets, file, indent=2, sort_keys=True)
+            json.dump(installed_assets, file, indent=2, sort_keys=True)
 
     def get_installed_asset(self, app_name: str) -> Optional[InstalledAsset]:
         """
