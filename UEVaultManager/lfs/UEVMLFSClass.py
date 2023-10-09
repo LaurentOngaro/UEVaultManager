@@ -667,6 +667,20 @@ class UEVMLFS:
         if has_changed:
             self.save_installed_assets()
 
+    def add_to_installed_assets(self, installed_asset: InstalledAsset) -> bool:
+        """
+        Add an installed asset to the list.
+        :param installed_asset: the installed asset to add.
+        :return: True if the asset was added.
+        """
+        if self._installed_assets is None or len(self._installed_assets) <= 0:
+            self._installed_assets = {}
+        app_name = installed_asset.app_name
+        if app_name not in self._installed_assets:
+            self._installed_assets[app_name] = installed_asset.__dict__
+            return True
+        return False
+
     def get_installed_assets(self) -> dict:
         """
         Get the installed asset data.

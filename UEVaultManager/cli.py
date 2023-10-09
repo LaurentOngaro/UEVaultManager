@@ -1633,7 +1633,8 @@ class UEVaultManagerCLI:
                 if dest_folder and copy_folder(
                     src_folder, dest_folder, check_copy_size=not installed_in_engine
                 ):  # We DON'T check the size if the plugin is installed in an engine because it's too long
-                    self.core.uevmlfs.set_installed_asset(release_name, installed_asset.__dict__)
+                    self.core.uevmlfs.add_to_installed_assets(installed_asset)
+                    self.core.uevmlfs.save_installed_assets()
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
                         db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=[installed_asset.install_path])

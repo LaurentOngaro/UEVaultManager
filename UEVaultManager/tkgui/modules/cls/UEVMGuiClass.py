@@ -142,7 +142,9 @@ class UEVMGui(tk.Tk):
                 merged_installed_folders = {}
                 # get all installed folders for a given catalog_item_id
                 for app_name, asset in installed_assets_json.items():
-                    installed_folders = asset.get('installed_folders', None)
+                    installed_folders_ori = asset.get('installed_folders', None)
+                    # WE USE A COPY to avoid modifying the original list and merging all the installation folders for all releases
+                    installed_folders = installed_folders_ori.copy() if installed_folders_ori is not None else None
                     if installed_folders is not None and len(installed_folders) > 0:
                         catalog_item_id = asset.get('catalog_item_id', None)
                         if merged_installed_folders.get(catalog_item_id, None) is None:
