@@ -75,4 +75,5 @@ class DbVersionNum(Enum):
     V10 = 10  # add an autoincrement id to the last_run table
     V11 = 11  # rename column installed_folder TO installed_folders
     V12 = 12  # add release_info columns to the assets table
-    V13 = 13  # future version
+    V13 = 13  # add downloaded_size columns to the assets table
+    V14 = 14  # future version

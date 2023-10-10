@@ -518,6 +518,19 @@ class UEVMGui(tk.Tk):
         # TODO: check if the column order has changed before enabling the widget
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         gui_f.enable_widgets_in_list(widget_list)
+        # update the column infos
+        columns = self.editable_table.model.df.columns  # df. model checked
+        old_columns_infos = gui_g.s.column_infos
+        # reorder column_infos using columns keys
+        new_columns_infos = {}
+        for i, col in enumerate(columns):
+            try:
+                new_columns_infos[col] = old_columns_infos[col]
+                new_columns_infos[col]['pos'] = i
+            except KeyError:
+                pass
+        gui_g.s.column_infos = new_columns_infos
+        gui_g.s.save_config_file()
 
     def on_close(self, _event=None) -> None:
         """

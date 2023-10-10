@@ -453,6 +453,9 @@ class UEAssetDbHandler:
         if upgrade_from_version == DbVersionNum.V11:
             self._add_missing_columns('assets', required_columns={'release_info': 'TEXT'})
             self.db_version = upgrade_from_version = DbVersionNum.V12
+        if upgrade_from_version == DbVersionNum.V12:
+            self._add_missing_columns('assets', required_columns={'downloaded_size': 'REAL'})
+            self.db_version = upgrade_from_version = DbVersionNum.V13
         if previous_version != self.db_version:
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)
