@@ -142,7 +142,7 @@ class UEVaultManagerCLI:
     :param api_timeout: timeout for API requests.
     """
     is_gui = False  # class property to be accessible by static methods
-    release_index = -1  # the release id selected for an asset installation
+    release_id = -1  # the release id selected for an asset installation
 
     def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
@@ -931,7 +931,7 @@ class UEVaultManagerCLI:
                 pass
 
         # lists that will be printed or turned into JSON data
-        info_items = dict(assets=list(), manifest=list(), install=list())
+        info_items = dict(assets=[], manifest=[], install=[])
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
 
         update_meta = not args.offline and args.force_refresh
@@ -1162,7 +1162,7 @@ class UEVaultManagerCLI:
             if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
                 gui_g.UEVM_gui_ref.mainloop()
         else:
-            json_out = dict(asset=dict(), install=dict(), manifest=dict())
+            json_out = dict(asset={}, install={}, manifest={})
             if info_items.get('asset'):
                 for info_item in info_items['asset']:
                     json_out['asset'][info_item.json_name] = info_item.json_value
@@ -1353,12 +1353,12 @@ class UEVaultManagerCLI:
         scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
         scraper.save(owned_assets_only=owned_assets_only)
 
-    def set_release_index(self, value):
+    def set_release_id(self, value):
         """
         Set the release id. Callback for the ChoiceFromListWindow
         :param value: the value selected in the list
         """
-        self.release_index = value
+        self.release_id = value
 
     def install_asset(self, args):
         """
@@ -1371,7 +1371,7 @@ class UEVaultManagerCLI:
         if args.clean_dowloaded_data and args.no_install:
             self._log_and_gui_message(
                 self.logger.error,
-                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you.\nCommand is aborted',
+                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you.\nCommand is aborted.',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1379,7 +1379,7 @@ class UEVaultManagerCLI:
         if not self.core.login():
             self._log_and_gui_message(
                 self.logger.error,
-                'You are not connected or log in failed.\nYou should log first or check your credential.\nCommand is aborted',
+                'You are not connected or log in failed.\nYou should log first or check your credential.\nCommand is aborted.',
                 quit_on_error=not uewm_gui_exists
             )
             return False
@@ -1392,65 +1392,46 @@ class UEVaultManagerCLI:
         if not asset:
             self._log_and_gui_message(
                 self.logger.error,
-                f'Metadata are not available for "{args.app_name}".\nYou can only install an asset you own.\nInstallation can not be done.\nCommand is aborted',
+                f'Metadata are not available for "{args.app_name}".\nYou can only install an asset you own.\nInstallation can not be done.\nCommand is aborted.',
                 quit_on_error=not uewm_gui_exists
             )
             return False
         categories = asset.metadata.get('categories', None)
         category = categories[0]['path'] if categories else ''
         release_info = asset.metadata.get('releaseInfo', None)
+        catalog_item_id = asset.catalog_item_id
         is_plugin = category and 'plugin' in category.lower()
         installed_in_engine = False
-        # get version list from release info
-        releases = []
-        version_choice = {}
-        if release_info is not None and len(release_info) > 0:
-            # TODO: only keep releases that are compatible with the version of the selected project.
-            for index, item in enumerate(release_info):
-                asset_id = item.get('appId', None)
-                title = item.get('versionTitle', '') or asset_id
-                compatible_list = item.get('compatibleApps', None)
-                date_added = item.get('dateAdded', '')
-                # Convert the string to a datetime object
-                datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
-                # Format the datetime object as "YYYY-MM-DD"
-                formatted_date = datetime_obj.strftime("%Y-%m-%d")
-                if asset_id is not None and title is not None and compatible_list is not None:
-                    # remove 'UE_' from items of the compatible_list
-                    compatible_list = [item.replace('UE_', '') for item in compatible_list]
-                    data = {
-                        'title': title,  #
-                        'asset_id': asset_id,  #
-                        'compatible': compatible_list,  #
-                    }
-                    compatible_str = ','.join(compatible_list)
-                    desc = f'Release id: {asset_id}\nTitle: {title}\nRelease Date: {formatted_date}\nUE Versions: {compatible_str}'
-                    version_choice[title] = {'value': index, 'desc': desc}
-                    releases.append(data)
-        release_selected = releases[-1]  # by default, we take the lastest release
+        releases, latest_id = self.core.uevmlfs.extract_version_from_releases(release_info)
+        release_selected = releases[latest_id]  # by default, we take the lastest release
         if uewm_gui_exists:
             # create a windows to choose the release
-            sub_title = 'In the list below, Select the closest version that matches your project or engine version'
+            sub_title = 'In the list below, select the closest version that matches your project or engine version'
             cw = ChoiceFromListWindow(
                 window_title='UEVM: select release',
                 title='Choose the release to download',
                 sub_title=sub_title,
-                choices=version_choice,
-                set_value_func=self.set_release_index,
-                default_value=''
+                json_data=releases,
+                set_value_func=self.set_release_id,
+                default_value=-1
             )
             make_modal(cw)
-            # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_index methode been called
-            if self.release_index >= 0:
+            # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
+            if self.release_id:
                 try:
-                    release_selected = releases[self.release_index]
+                    release_selected = releases[self.release_id]
                 except IndexError:
                     self._log_and_gui_display(
-                        self.logger.warning, 'The selected release could not be found. The latest one as been selected by default.\n'
+                        self.logger.warning, '\nThe selected release could not be found. The latest one as been selected by default.\n'
                     )
+            else:
+                self._log_and_gui_display(
+                    self.logger.warning, '\nNo release has been selected.\nSo, nothing can be done for you.\nCommand is aborted.'
+                )
+                return False
 
-        release_name = release_selected['asset_id']
-        title = release_selected['title']
+        release_name = self.release_id
+        release_title = release_selected['title']
         install_path_base = args.install_path if args.install_path is not None else ''
 
         folders_to_check = []
@@ -1482,13 +1463,14 @@ class UEVaultManagerCLI:
                         ):  # we remove the last part here (i.e. 'Marketplace') because it does not exist in a new installed engine
                             self._log_and_gui_message(
                                 self.logger.error,
-                                f'You have selected a folder that seems to be invalid.\nThe {path_to_check} could not be found.\nCommand is aborted',
+                                f'You have selected a folder that seems to be invalid.\nThe {path_to_check} could not be found.\nCommand is aborted.',
                                 quit_on_error=not uewm_gui_exists
                             )
                             return False
                         else:
                             installed_in_engine = True
-                            gui_g.s.last_opened_engine = install_path_base  # we save only the "base engine" path
+                            if install_path_base:
+                                gui_g.s.last_opened_engine = install_path_base  # we save only the "base engine" path
                 else:
                     install_path_base = filedialog.askdirectory(
                         title='Select a project to install the asset into', initialdir=gui_g.s.last_opened_project
@@ -1500,7 +1482,7 @@ class UEVaultManagerCLI:
             if not args.no_install:
                 self._log_and_gui_message(
                     self.logger.error,
-                    'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you.\nCommand is aborted',
+                    'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you.\nCommand is aborted.',
                     quit_on_error=not uewm_gui_exists
                 )
                 return False
@@ -1516,7 +1498,7 @@ class UEVaultManagerCLI:
             uewm_gui_exists, dw = init_display_window(self.logger)
             dw.keep_existing = True  # because init_display_window will set it to False
             dw.clean()
-            message = f'Starting Download of Release "{title}"' if args.no_install else f'Starting Installation of Release "{title}"'
+            message = f'Starting Download of Release "{release_title}"' if args.no_install else f'Starting Installation of Release "{release_title}"'
             dw.display(message)
 
         if args.vault_cache:
@@ -1541,10 +1523,11 @@ class UEVaultManagerCLI:
         download_path = os.path.normpath(download_path)
         install_path_base = os.path.normpath(install_path_base)
 
-        self._log_and_gui_display(self.logger.info, f'Preparing download for {title}...')
+        self._log_and_gui_display(self.logger.info, f'Preparing download for {release_title}...')
         dlm, analysis, installed_asset = self.core.prepare_download(
-            asset=asset,
+            base_asset=asset,  # contains generic info of the base asset for all releases, NOT the selected release
             release_name=release_name,
+            release_title=release_title,
             download_folder=download_path,
             install_folder=install_path_base,
             no_resume=args.no_resume,
@@ -1588,12 +1571,12 @@ class UEVaultManagerCLI:
             self._log_and_gui_display(self.logger.warning, '\n'.join(message_list))
 
         if res.failures:
-            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed.\nCommand is aborted', quit_on_error=not uewm_gui_exists)
+            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed.\nCommand is aborted.', quit_on_error=not uewm_gui_exists)
             # not in GUI self.core.clean_exit(1)  # previous line could not quit
             return False
 
         if not args.yes:
-            if not get_boolean_choice(f'Do you wish to install {title} ?'):  # todo: use a gui yes/no if gui is enabled
+            if not get_boolean_choice(f'Do you wish to install {release_title} ?'):  # todo: use a gui yes/no if gui is enabled
                 print('Aborting...')
                 # not in GUI self.core.clean_exit(0)
                 return False
@@ -1632,6 +1615,7 @@ class UEVaultManagerCLI:
                 if is_plugin:
                     # note: the folder has already been checked when selected
                     if installed_in_engine:
+                        # if installed in engine, NOTHING MORE TO DO
                         dest_folder = install_path_base
                     else:
                         # if the plugin is not installed in an engine, we have to change the destination folder structure to install it IN the "Plugins" subfolder of the destination
@@ -1649,10 +1633,11 @@ class UEVaultManagerCLI:
                 if dest_folder and copy_folder(
                     src_folder, dest_folder, check_copy_size=not installed_in_engine
                 ):  # We DON'T check the size if the plugin is installed in an engine because it's too long
-                    self.core.uevmlfs.set_installed_asset(release_name, installed_asset.__dict__)
+                    self.core.uevmlfs.add_to_installed_assets(installed_asset)
+                    self.core.uevmlfs.save_installed_assets()
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
-                        db_handler.add_to_installed_folders(release_name, [installed_asset.install_path])
+                        db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=[installed_asset.install_path])
                     message += f'\nAsset have been installed in "{installed_asset.install_path}"'
                 else:
                     message += f'\nAsset could not be installed in "{installed_asset.install_path}"'

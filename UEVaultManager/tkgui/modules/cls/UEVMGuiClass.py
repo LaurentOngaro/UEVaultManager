@@ -4,6 +4,7 @@ Implementation for:
 - UEVMGui: the main window of the application.
 """
 import filecmp
+import json
 import logging
 import os
 import re
@@ -26,6 +27,7 @@ from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
+from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
 from UEVaultManager.tkgui.modules.cls.DbFilesWindowClass import DbFilesWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
@@ -129,6 +131,7 @@ class UEVMGui(tk.Tk):
         frm_content = UEVMGuiContentFrame(self)
         self._frm_content = frm_content
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
+        self.releases_choice = {}
 
         # update the content of the database BEFORE loading the data in the datatable
         if data_source_type == DataSourceType.SQLITE:
@@ -136,17 +139,29 @@ class UEVMGui(tk.Tk):
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
             db_handler = UEAssetDbHandler(database_name=data_source)
             if db_handler is not None:
+                merged_installed_folders = {}
+                # get all installed folders for a given catalog_item_id
                 for app_name, asset in installed_assets_json.items():
-                    installed_folders = asset.get('installed_folders', None)
+                    installed_folders_ori = asset.get('installed_folders', None)
+                    # WE USE A COPY to avoid modifying the original list and merging all the installation folders for all releases
+                    installed_folders = installed_folders_ori.copy() if installed_folders_ori is not None else None
                     if installed_folders is not None and len(installed_folders) > 0:
-                        db_handler.add_to_installed_folders(app_name, installed_folders)
+                        catalog_item_id = asset.get('catalog_item_id', None)
+                        if merged_installed_folders.get(catalog_item_id, None) is None:
+                            merged_installed_folders[catalog_item_id] = installed_folders
+                        else:
+                            merged_installed_folders[catalog_item_id].extend(installed_folders)
                     else:
                         # the installed_folders field is empty for the installed_assets, we remove it from the json file
-                        self.core.uevmlfs.set_installed_asset(app_name, for_deletion=True)
+                        self.core.uevmlfs.remove_installed_asset(app_name)
+                # update the database using catalog_item_id instead as asset_id to merge installed_folders for ALL the releases
+                for catalog_item_id, installed_folders in merged_installed_folders.items():
+                    db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=installed_folders)
             # update the installed_assets json file from the database info
-            installed_assets_db = db_handler.get_rows_with_installed_folders()
-            for app_name, asset_data in installed_assets_db.items():
-                self.core.uevmlfs.set_installed_asset(app_name, asset_data)
+            # NO TO DO because the in installed_folders have not the same content (for one asset in the json file, for all releases in the database)
+            # installed_assets_db = db_handler.get_rows_with_installed_folders()
+            # for app_name, asset_data in installed_assets_db.items():
+            #     self.core.uevmlfs.update_installed_asset(app_name, asset_data)
 
         data_table = EditableTable(
             container=frm_content,
@@ -1492,6 +1507,7 @@ class UEVMGui(tk.Tk):
         Open the asset URL (Wrapper).
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'download'
+        gui_g.UEVM_cli_args['no_install'] = True  # !important
         self.run_install()
 
     def install_asset(self) -> None:
@@ -1499,7 +1515,110 @@ class UEVMGui(tk.Tk):
         Open the asset URL (Wrapper).
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'install'
+        gui_g.UEVM_cli_args['no_install'] = False
         self.run_install()
+
+    def remove_installed_release(self, release_index: int) -> bool:
+        """
+        Delete the release from the installed releases.
+        :param release_index: the index of the release to delete.
+        :return: True if the release has been deleted, False otherwise.
+        """
+        asset_id = ''
+        if release_index >= 0:
+            try:
+                release_selected = self.releases_choice[release_index]
+                asset_id = release_selected['id']
+            except IndexError:
+                return False
+        if not asset_id:
+            return False
+        if not self.core.is_installed(asset_id):
+            gui_f.box_message(f'The release {asset_id} is not installed. Nothing to remove here.')
+        elif gui_f.box_yesno(f'Are you sure you want to remove the release {asset_id} from the installed asset list ?'):
+            asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)
+            if asset_installed:
+                installed_folders = asset_installed.installed_folders
+                self.core.uevmlfs.remove_installed_asset(asset_id)
+                db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
+                if db_handler is not None:
+                    # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
+                    catalog_item_id = asset_installed.catalog_item_id
+                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders_to_remove=installed_folders)
+                return True
+        else:
+            return False
+
+    def show_installed_releases(self) -> None:
+        """
+        Display the releases of the asset in a choice window.
+        """
+        release_info_json = self.editable_table.get_release_info()
+        if not release_info_json:
+            return
+        release_info = json.loads(release_info_json)
+        self.releases_choice, _ = self.core.uevmlfs.extract_version_from_releases(release_info)
+        cw = ChoiceFromListWindow(
+            window_title='UEVM: select release',
+            title='Select the release',
+            sub_title='In the list below, Select the release you want to see detail from or to remove from the installed releases',
+            json_data=self.releases_choice,
+            default_value='',
+            show_validate_button=False,
+            show_delete_button=True,
+            list_remove_func=self.remove_installed_release,
+            show_content_list=True,
+            remove_from_content_func=self.remove_installed_folder,
+            show_delete_content_button=True,
+            no_content_text='This release has not been installed yet',
+        )
+        gui_f.make_modal(cw)
+
+    def remove_installed_folder(self, selected_ids: tuple) -> bool:
+        """
+        Remove an installed folder from an installed release.
+        :param selected_ids: tuple (the index of the release, index of the folder)
+        :return: True if the release has been deleted, False otherwise.
+        """
+        folder_selected = ''
+        release_selected = {}
+        asset_id, folder_id = selected_ids
+        if asset_id:
+            try:
+                release_selected = self.releases_choice[asset_id]
+            except IndexError:
+                return False
+        if folder_id:
+            content_data = release_selected.get('content', {})
+            try:
+                folder_selected = content_data[folder_id]
+                folder_selected = folder_selected.get('value', '')
+            except IndexError:
+                return False
+        if not folder_selected:
+            return False
+        if not self.core.is_installed(asset_id):
+            gui_f.box_message(f'The release {asset_id} is not installed. Nothing to remove here.')
+        elif gui_f.box_yesno(f'Are you sure you want to remove {folder_selected} from the release {asset_id} ?'):
+            asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)
+            if asset_installed:
+                installed_folders = asset_installed.installed_folders
+                installed_folders_cleaned = [folder for folder in installed_folders if folder.lower != folder_selected.lower]
+                asset_installed.installed_folders = installed_folders_cleaned
+                if len(installed_folders_cleaned) == 0:
+                    self.core.uevmlfs.remove_installed_asset(asset_id)
+                else:
+                    self.core.uevmlfs.set_installed_asset(asset_installed)  # will also set the installed folders without merging values
+                    self.core.uevmlfs.save_installed_assets()
+
+                db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
+                if db_handler is not None:
+                    # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
+                    catalog_item_id = asset_installed.catalog_item_id
+                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders_to_remove=[folder_selected])
+                return True
+        else:
+            return False
 
     # noinspection PyUnusedLocal
     def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback

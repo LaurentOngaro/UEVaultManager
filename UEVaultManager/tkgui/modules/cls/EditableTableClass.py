@@ -118,7 +118,7 @@ class EditableTable(Table):
         else:
             Table.__init__(self, container, dataframe=df_loaded, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
             # self.set_data(self.set_columns_type(df_loaded), df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
-            self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
+            self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)
             self.resize_columns()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
         gui_f.close_progress(self)
@@ -623,11 +623,17 @@ class EditableTable(Table):
         if num_cols <= 0:
             return
         if abs(num_cols - self.cols) > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
-
             gui_f.box_message(
                 f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({num_cols}).\nThis will be fixed automatically and a backup of the config file has been made on quit.'
             )
         try:
+            # add to column_infos all the colums in the datatable that are not in column_infos, at the end, with a width of 2
+            df = self.get_data(DataFrameUsed.UNFILTERED)
+            pos = len(column_infos)
+            for col in df.columns:
+                if col not in column_infos:
+                    column_infos[col] = {'width': 2, 'pos': pos}
+                    pos += 1
             # reordering columns
             first_value = next(iter(column_infos.values()))
             if first_value.get('pos', None) is None:
@@ -637,7 +643,7 @@ class EditableTable(Table):
                 sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
                 keys_ordered = sorted_cols_by_pos.keys()
             # reorder columns
-            df = self.get_data(DataFrameUsed.UNFILTERED).reindex(columns=keys_ordered, fill_value='')
+            df = df.reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.UNFILTERED)
             df = self.get_data(DataFrameUsed.MODEL).reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.MODEL)
@@ -1590,7 +1596,7 @@ class EditableTable(Table):
             return None
         title = 'Edit current row'
         width = 800
-        height = 950
+        height = 1020
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
@@ -1622,8 +1628,8 @@ class EditableTable(Table):
         row = 0
         for key, value in row_data.items():
             # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool})  # debug only
-            col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
-            if key in col_list:
+            hidden_col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
+            if key in hidden_col_list:
                 continue
             if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(
                 key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
@@ -1693,13 +1699,20 @@ class EditableTable(Table):
         """
         row_number = self._edit_row_number
         for col_name, value in self.get_edited_row_values().items():
+            col_index = self.get_col_index(col_name)
+            old_value = self.get_cell(row_number, col_index)
+            typed_old_value = gui_t.get_typed_value(csv_field=col_name, value=old_value)
             typed_value = gui_t.get_typed_value(csv_field=col_name, value=value)
             try:
                 typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
             except AttributeError:
                 # no strip method
                 pass
-            col_index = self.get_col_index(col_name)
+            if col_name == 'Installed folders' and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+                if not gui_f.box_yesno(
+                    'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
+                ):
+                    continue
             if not self.update_cell(row_number, col_index, typed_value):
                 self.logger.warning(f'Failed to update the row #{row_number + 1}')
                 continue
@@ -1792,12 +1805,21 @@ class EditableTable(Table):
             value = self._edit_cell_widget.get_content()
             row_number = self._edit_cell_row_number
             col_index = self._edit_cell_col_index
+            old_value = self.get_cell(row_number, col_index)
+            typed_old_value = gui_t.get_typed_value(csv_field=tag, value=old_value)
             typed_value = gui_t.get_typed_value(csv_field=tag, value=value)
             try:
                 typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
             except AttributeError:
-                # no strip method
+                # no strip method for the typed_value
                 pass
+            col_installed_folders = self.get_col_index('Installed folders')
+            if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+                if not gui_f.box_yesno(
+                    'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
+                ):
+                    self._edit_cell_window.close_window()
+                    return
             if not self.update_cell(row_number, col_index, typed_value):
                 self.logger.warning(f'Failed to update the row #{row_number + 1}')
                 return
@@ -1860,16 +1882,22 @@ class EditableTable(Table):
         :param tag: the tag associated to the control where the value come from.
         """
         old_value = self.get_cell(row_number, col_index)
-
         typed_old_value = gui_t.get_typed_value(sql_field=tag, value=old_value)
         typed_value = gui_t.get_typed_value(sql_field=tag, value=value)
         try:
             typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
         except AttributeError:
-            # no strip method
+            # no strip method for the typed_value
             pass
         if row_number < 0 or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or col_index < 0 or typed_old_value == typed_value:
             return
+        col_installed_folders = self.get_col_index('Installed folders')
+        if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+            if not gui_f.box_yesno(
+                'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
+            ):
+                self.update_quick_edit(row_number)  # reset the value
+                return
         try:
             if not self.update_cell(row_number, col_index, typed_value):
                 self.logger.warning(f'Failed to update the row #{row_number + 1}')
@@ -1922,6 +1950,21 @@ class EditableTable(Table):
                 gui_f.box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
         else:
             gui_f.box_message('Only possible with asset that have been mannualy added.', 'info')
+
+    def get_release_info(self, row_number: int = None) -> str:
+        """
+        Return the "Release info" field the selected row.
+        :param row_number: row number from a datatable. Will be converted into real row index.
+        :return: the "Release info" dict as a json string
+        """
+        row_number = row_number or self.get_selected_row_fixed()
+        if row_number is None or row_number < 0:
+            return ''
+        col_index = self.get_col_index('Release info')
+        if col_index < 0:
+            return ''
+        else:
+            return self.get_cell(row_number, col_index)
 
     def reset_style(self) -> None:
         """

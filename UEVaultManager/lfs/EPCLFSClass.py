@@ -16,7 +16,7 @@ class EPCLFS:
     data_keys = []
 
     def __init__(self):
-        self.manifests = dict()
+        self.manifests = {}
         self.is_windows = os.name == 'nt'
         if self.is_windows:
             self.userprofile_path = os.path.normpath(os.path.expandvars(r'$USERPROFILE'))

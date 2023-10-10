@@ -147,6 +147,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_open_url.pack(**pack_def_options, side=tk.LEFT)
         btn_open_folder = ttk.Button(frm_asset_action, text='Open Folder', command=self._container.open_asset_folder)
         btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
+        btn_show_installed_releases = ttk.Button(frm_asset_action, text='Releases', command=self._container.show_installed_releases)
+        btn_show_installed_releases.pack(**pack_def_options, side=tk.LEFT)
         btn_download_asset = ttk.Button(frm_asset_action, text='Download', command=self._container.download_asset)
         btn_download_asset.pack(**pack_def_options, side=tk.LEFT)
         btn_install_asset = ttk.Button(frm_asset_action, text='INSTALL', command=self._container.install_asset)
@@ -250,7 +252,10 @@ class UEVMGuiControlFrame(ttk.Frame):
         ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
         widget_list = gui_g.stated_widgets.get('row_is_selected', [])
-        append_no_duplicate(widget_list, [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], self.buttons['scrap_row']['widget']])
+        append_no_duplicate(
+            widget_list,
+            [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], self.buttons['scrap_row']['widget'], btn_show_installed_releases]
+        )
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
         widget_list = gui_g.stated_widgets.get('not_offline', [])

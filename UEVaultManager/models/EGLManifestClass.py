@@ -78,7 +78,7 @@ class EGLManifest:
         self.is_incomplete_install = None
         self.needs_validation = None
 
-        self.remainder = dict()
+        self.remainder = {}
 
     @classmethod
     def from_json(cls, json: dict) -> 'EGLManifest':
@@ -91,16 +91,16 @@ class EGLManifest:
         tmp = cls()
         tmp.app_name = json.pop('AppName')
         tmp.app_version_string = json.pop('AppVersionString', None)
-        tmp.base_urls = json.pop('BaseURLs', list())
         # noinspection DuplicatedCode
+        tmp.base_urls = json.pop('BaseURLs', [])
         tmp.build_label = json.pop('BuildLabel', '')
         tmp.catalog_item_id = json.pop('CatalogItemId', '')
         tmp.namespace = json.pop('CatalogNamespace', '')
         tmp.display_name = json.pop('DisplayName', '')
         tmp.install_location = json.pop('InstallLocation', '')
         tmp.install_size = json.pop('InstallSize', 0)
-        tmp.install_tags = json.pop('InstallTags', [])
         # noinspection DuplicatedCode
+        tmp.install_tags = json.pop('InstallTags', [])
         tmp.installation_guid = json.pop('InstallationGuid', '')
         tmp.launch_command = json.pop('LaunchCommand', '')
         tmp.executable = json.pop('LaunchExecutable', '')
