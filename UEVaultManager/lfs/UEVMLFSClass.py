@@ -696,8 +696,7 @@ class UEVMLFS:
         """
         if not app_name:
             return 0
-        if self._asset_sizes is not None:
-            return self._asset_sizes.get(app_name, -1)
+        return self._asset_sizes.get(app_name, -1)
 
     def set_asset_size(self, app_name: str, size: int) -> None:
         """
