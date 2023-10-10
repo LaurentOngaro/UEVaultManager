@@ -25,7 +25,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
 from UEVaultManager import __codename__ as UEVM_codename, __version__ as UEVM_version
-from UEVaultManager.api.egs import create_empty_assets_extra, extract_version_from_releases, GrabResult, is_asset_obsolete
+from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import copy_folder, path_join
@@ -142,7 +142,7 @@ class UEVaultManagerCLI:
     :param api_timeout: timeout for API requests.
     """
     is_gui = False  # class property to be accessible by static methods
-    release_index = -1  # the release id selected for an asset installation
+    release_id = -1  # the release id selected for an asset installation
 
     def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
@@ -1353,12 +1353,12 @@ class UEVaultManagerCLI:
         scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
         scraper.save(owned_assets_only=owned_assets_only)
 
-    def set_release_index(self, value):
+    def set_release_id(self, value):
         """
         Set the release id. Callback for the ChoiceFromListWindow
         :param value: the value selected in the list
         """
-        self.release_index = value
+        self.release_id = value
 
     def install_asset(self, args):
         """
@@ -1402,24 +1402,24 @@ class UEVaultManagerCLI:
         catalog_item_id = asset.catalog_item_id
         is_plugin = category and 'plugin' in category.lower()
         installed_in_engine = False
-        releases, version_choice = extract_version_from_releases(release_info)
-        release_selected = releases[-1]  # by default, we take the lastest release
+        releases, latest_id = self.core.uevmlfs.extract_version_from_releases(release_info)
+        release_selected = releases[latest_id]  # by default, we take the lastest release
         if uewm_gui_exists:
             # create a windows to choose the release
-            sub_title = 'In the list below, Select the closest version that matches your project or engine version'
+            sub_title = 'In the list below, select the closest version that matches your project or engine version'
             cw = ChoiceFromListWindow(
                 window_title='UEVM: select release',
                 title='Choose the release to download',
                 sub_title=sub_title,
-                choices=version_choice,
-                set_value_func=self.set_release_index,
+                json_data=releases,
+                set_value_func=self.set_release_id,
                 default_value=-1
             )
             make_modal(cw)
-            # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_index methode been called
-            if self.release_index >= 0:
+            # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
+            if self.release_id:
                 try:
-                    release_selected = releases[self.release_index]
+                    release_selected = releases[self.release_id]
                 except IndexError:
                     self._log_and_gui_display(
                         self.logger.warning, '\nThe selected release could not be found. The latest one as been selected by default.\n'
@@ -1430,7 +1430,7 @@ class UEVaultManagerCLI:
                 )
                 return False
 
-        release_name = release_selected['id']
+        release_name = self.release_id
         release_title = release_selected['title']
         install_path_base = args.install_path if args.install_path is not None else ''
 

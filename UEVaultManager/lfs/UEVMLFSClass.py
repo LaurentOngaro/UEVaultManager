@@ -7,11 +7,12 @@ import filecmp
 import json
 import logging
 import os
+from datetime import datetime
 from time import time
 from typing import Optional
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.lfs.utils import clean_filename
+from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import Asset, AssetBase, InstalledAsset
@@ -631,24 +632,28 @@ class UEVMLFS:
             return asset
         return None
 
-    def set_installed_asset(self, app_name: str, asset_data: dict = None, for_deletion: bool = False) -> None:
+    def remove_installed_asset(self, app_name: str) -> None:
         """
-        Set the installed asset data.
+        Remove an installed asset from the list.
+        :param app_name: the asset name.
+        :return:
+        """
+        if app_name and app_name in self._installed_assets:
+            del self._installed_assets[app_name]
+            self.save_installed_assets()
+
+    def update_installed_asset(self, app_name: str, asset_data: dict = None) -> None:
+        """
+        Update an installed asset data.
         :param app_name: the asset name.
         :param asset_data: the installed asset data.
-        :param for_deletion: True if the asset should be deleted.
         """
         if not app_name:
             return
         if self._installed_assets is None or len(self._installed_assets) <= 0:
             self._installed_assets = {}
         has_changed = True
-        if for_deletion:
-            if app_name in self._installed_assets:
-                del self._installed_assets[app_name]
-            else:
-                has_changed = False
-        elif asset_data is not None:
+        if asset_data is not None:
             if app_name in self._installed_assets:
                 asset_existing = self._installed_assets[app_name]
                 # merge the installed_folders fields
@@ -666,6 +671,16 @@ class UEVMLFS:
             return
         if has_changed:
             self.save_installed_assets()
+
+    def set_installed_asset(self, installed_asset: InstalledAsset) -> None:
+        """
+        Set the installed asset. Will not create the list if it doesn't exist. Use add_to_installed_assets() instead.
+        :param installed_asset: the installed asset to set.
+        """
+        app_name = installed_asset.app_name
+        if not app_name or app_name not in self._installed_assets:
+            return
+        self._installed_assets[app_name] = installed_asset.__dict__
 
     def add_to_installed_assets(self, installed_asset: InstalledAsset) -> bool:
         """
@@ -786,3 +801,64 @@ class UEVMLFS:
         self._assets_cache_info = dict(last_update=last_update, ue_assets_count=ue_assets_count)
         with open(self.assets_cache_info_filename, 'w', encoding='utf-8') as file:
             json.dump(self._assets_cache_info, file, indent=2, sort_keys=True)
+
+    def extract_version_from_releases(self, release_info: dict) -> (dict, str):
+        """
+        Extract the version list and the release dict from the release info.
+        :param release_info: the release info (from the asset info).
+        :return: (the release dict, the id of the latest release).
+        """
+        releases = {}
+        all_installed_folders = {}
+        installed_assets = self.get_installed_assets()
+        latest_id = ''
+        for asset_id, installed_asset in installed_assets.items():
+            all_installed_folders[asset_id] = installed_asset['installed_folders']
+        if release_info is not None and len(release_info) > 0:
+            # TODO: only keep releases that are compatible with the version of the selected project or engine.
+            for index, item in enumerate(reversed(release_info)):  # reversed to have the latest release first
+                asset_id = item.get('appId', None)
+                latest_id = asset_id if latest_id == '' else latest_id
+                release_title = item.get('versionTitle', '') or asset_id
+                compatible_list = item.get('compatibleApps', None)
+                date_added = item.get('dateAdded', '')
+                # Convert the string to a datetime object
+                datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
+                # Format the datetime object as "YYYY-MM-DD"
+                formatted_date = datetime_obj.strftime("%Y-%m-%d")
+                if asset_id is not None and release_title is not None and compatible_list is not None:
+                    # remove 'UE_' from items of the compatible_list
+                    compatible_list = [item.replace('UE_', '') for item in compatible_list]
+                    data = {
+                        # 'id': asset_id,  # duplicate with the dict key
+                        'title': release_title,  #
+                        'compatible': compatible_list,  #
+                    }
+                    compatible_str = ','.join(compatible_list)
+                    desc = f'Release id: {asset_id}\nTitle: {release_title}\nRelease Date: {formatted_date}\nUE Versions: {compatible_str}'
+                    folder_choice = {}
+                    if all_installed_folders.get(asset_id, ''):
+                        data['installed_folders'] = all_installed_folders.get(asset_id, [])
+                        desc += f'\nInstalled in folders:\n'
+                        # add each folder to the description
+                        for folder in data['installed_folders']:
+                            desc += f' - {folder}\n'
+                            # create a sublist of folders for the version choice list
+                            # generate a comprehensive label from the full path of a folder
+                            # (ex: C:\Program Files\Epic Games\UE_4.27\Engine\Plugins\Marketplace\MyAsset)
+                            # to be used in the version choice list
+                            # (ex: MyAsset (4.27))
+                            label = generate_label_from_path(folder)
+                            folder_choice.update(
+                                {
+                                    label: {
+                                        # 'id': label, # duplicate with the dict key
+                                        'value': folder,  #
+                                        'text': 'Select the installation folder to remove',  #
+                                    }
+                                }
+                            )
+                    data['desc'] = desc
+                    data['content'] = folder_choice
+                    releases[asset_id] = data
+        return releases, latest_id

@@ -5,6 +5,7 @@ utilities functions for LFS
 import filecmp
 import logging
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -100,7 +101,7 @@ def generate_label_from_path(path: str) -> str:
     NOTES:
     path = 'C:/Program Files/Epic Games/UE_4.27/Engine/Plugins/Marketplace/MyAsset'
     Output: MyAsset (4.27)
-    path = 'D:/MyFolder'
+    path = 'D:/MyFolder
     Output: MyFolder (D:)
     """
     folder_name = os.path.basename(path)
@@ -116,10 +117,15 @@ def get_version_from_path(path: str) -> str:
     :param path: the path to get the version from (ex : C:/UE_4.26)
     :return: the version (ex : 4.26)
     """
-    version = ''
     parts = path.split(os.sep)
+    patterns = [
+        r'UE_(\d[\d._]*)',  # any string starting with 'UE_' followed by one or more digits, dots or underscores ex: 'UE_4_26'
+        r'_UE(\d[\d._]*)',  # any string starting with '_UE' followed by one or more digits, dots or underscores ex: '_UE4_26'
+    ]
+    patterns = [re.compile(p) for p in patterns]
     for part in parts:
-        if part.startswith('UE_'):
-            version = part[3:]
-            break
-    return version
+        for pattern in patterns:
+            match = re.search(pattern, part)
+            if match:
+                return match.group(1)
+    return ''

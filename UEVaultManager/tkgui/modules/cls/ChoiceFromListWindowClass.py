@@ -25,40 +25,40 @@ class CFLW_Settings:
     show_delete_content_button = True
     show_content_list = True
     json_data = {
-        'Label1': {  # 'Label1' is the label to display in the first list
-            'id': 'id1',  # 'id' is the value of the list to return if selected and used as first id for the caller
-            'desc': 'this is Label1 description',  # 'desc' is the description to display in the description text bellow the first list
-            'content': {  # 'content' is used to fill the second list if show_content_list is True
-                'contentLabel1_1': {  # 'contentLabel1' is the label to display in the second list
-                    'id': 'id1_1',  # 'id' is the value of the second list to return if selected and used as second id for the caller
-                    'text': 'this is the id1_1 short label'  # 'text' is the text to display in the label above the second list
+        'Label1': {  # MANDATORY: 'Label1' is the label to display in the first list. WHEN VALIDATE,  THIS VALUE IS RETURNED TO THE CALLER as first id
+            'value': 'value 1',  # OPTIONAL: example of a value for an item of the list, it can be replaced by another field name. Other fields can also be added.
+            'desc': 'this is Label1 description',  # MANDATORY: 'desc' is the description to display in the description text bellow the first list
+            'content': {  # MANDATORY: 'content' is used to fill the second list if show_content_list is True
+                'contentLabel1_1': {  # MANDATORY: 'contentLabel1' is the label to display in the second list. WHEN VALIDATE, THIS VALUE IS RETURNED TO THE CALLER as second id
+                    'value': 'value 1_1',  # OPTIONAL: example of a value for an item of the list, it can be replaced by another field name. Other fields can also be added.
+                    'text': 'this is the id1_1 short label'  # MANDATORY: 'text' is the text to display in the label above the second list
                 }
             }
         },
         'Label2': {
-            'id': 'id2',
+            'value': 'value 2',
             'desc': 'this is Label2 description',
             'content': {
                 'contentLabel2_1': {
-                    'id': 'id2_1',
+                    'value': 'value 2_1',
                     'text': 'this is the id2_1 a short label'
                 },
                 'contentLabel2_2': {
-                    'id': 'id2_2',
+                    'value': 'value 2_2',
                     'text': 'this is the id2_2 b short label'
                 }
             }
         },
         'Label3': {
-            'id': 'id3',
+            'value': 'value 3',
             'desc': 'this is Label3 description'
         },
         'Label4': {
-            'id': 'id4',
+            'value': 'value 4',
             'desc': 'this is Label4 description',
             'content': {
                 'contentLabel4_1': {
-                    'id': 'id4_1',
+                    'value': 'value 4_1',
                     'text': 'this is the id4_1 short label'
                 }
             }
@@ -71,6 +71,7 @@ class ChoiceFromListWindow(tk.Toplevel):
     Window to select a value in a list
     :param window_title: the window title.
     :param title: the title.
+    :param sub_title: the subtitle.
     :param width: the width.
     :param height: the height.
     :param icon: the icon.
@@ -80,12 +81,12 @@ class ChoiceFromListWindow(tk.Toplevel):
     :param show_validate_button: if True, the validate button will be displayed.
     :param show_delete_button: if True, the delete button will be displayed.
     :param set_value_func: the function to call after the validate button is clicked and the window closed.
-    :param set_list_remove_func: the function to call after the delete button is clicked.
+    :param list_remove_func: the function to call after the delete button is clicked.
     :param show_content_list: if True, the content list will be displayed.
-    :param set_remove_from_content_func: the function to call after the delete button is clicked in the content list.
+    :param remove_from_content_func: the function to call after the delete button is clicked in the content list.
     :param show_delete_content_button: if True, the delete button for the content list will be displayed.
+
     """
-    no_content = 'No more content available for that choice'
 
     def __init__(
         self,
@@ -93,7 +94,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         title: str = '',
         sub_title: str = 'Please select a value in the list below',
         width: int = 320,
-        height: int = 320,
+        height: int = 330,
         icon=None,
         screen_index: int = 0,
         json_data: dict = None,
@@ -101,10 +102,11 @@ class ChoiceFromListWindow(tk.Toplevel):
         show_validate_button: bool = True,
         show_delete_button: bool = False,
         set_value_func: callable = None,
-        set_list_remove_func: callable = None,
+        list_remove_func: callable = None,
         show_content_list: bool = False,
-        set_remove_from_content_func: callable = None,
+        remove_from_content_func: callable = None,
         show_delete_content_button: bool = False,
+        no_content_text: str = 'No more content available for that choice',
     ):
 
         super().__init__()
@@ -122,12 +124,13 @@ class ChoiceFromListWindow(tk.Toplevel):
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.show_validate_button = show_validate_button
+        self.no_content_text = no_content_text
         self.json_data: dict = json_data.copy() if json_data else {}  # its content will be modified
         self.show_delete_button = show_delete_button
         self.set_value_func = set_value_func
-        self.set_list_remove_func = set_list_remove_func
+        self.list_remove_func = list_remove_func
         self.show_delete_content_button = show_delete_content_button
-        self.set_remove_from_content_func = set_remove_from_content_func
+        self.remove_from_content_func = remove_from_content_func
 
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
@@ -239,9 +242,8 @@ class ChoiceFromListWindow(tk.Toplevel):
             data = self.container.json_data[list_selected_value]
             if data is None:
                 return
-            value = data.get('id', None)
-            if self.container.set_list_remove_func is not None:
-                check_if_deleted = self.container.set_list_remove_func(value)
+            if self.container.list_remove_func is not None:
+                check_if_deleted = self.container.list_remove_func(list_selected_value)
             if check_if_deleted:
                 self.container.json_data.pop(list_selected_value, None)
                 # clean the selected value
@@ -260,16 +262,13 @@ class ChoiceFromListWindow(tk.Toplevel):
             list_data = self.container.json_data.get(list_selected_value, None)
             if list_data is None:
                 return
-            list_id = list_data.get('id', None)
-            return_value = list_id
+            return_value = list_selected_value
             if self.container.show_content_list:
                 content_data = list_data.get('content', None)
                 if content_data is None:
                     return
                 content_selected_value = self.cb_content_choices.get()
-                selected_content = content_data.get(content_selected_value, None)
-                content_id = selected_content.get('id', None)
-                return_value = (list_id, content_id)
+                return_value = (list_selected_value, content_selected_value)
             if self.container.set_value_func is not None:
                 self.container.set_value_func(return_value)
             self.container.destroy()
@@ -296,7 +295,7 @@ class ChoiceFromListWindow(tk.Toplevel):
             except (IndexError, KeyError, AttributeError):
                 self.cb_content_choices.config(state=tk.DISABLED)
                 self.btn_content_del.config(state=tk.DISABLED)
-                self.lbl_content_label['text'] = self.container.no_content
+                self.lbl_content_label['text'] = self.container.no_content_text
 
         def set_content_text(self, _event=None) -> None:
             """
@@ -313,7 +312,7 @@ class ChoiceFromListWindow(tk.Toplevel):
             content_selected_value = self.cb_content_choices.get()
             selected_content = content_data.get(content_selected_value, {})
 
-            text = selected_content.get('text', self.container.no_content)
+            text = selected_content.get('text', self.container.no_content_text)
             self.lbl_content_label['text'] = text
 
         def remove_from_content(self) -> None:
@@ -327,12 +326,9 @@ class ChoiceFromListWindow(tk.Toplevel):
             list_selected_value = self.cb_list_choices.get()
             list_data = self.container.json_data.get(list_selected_value, {})
             content_data = list_data.get('content', {})
-
             content_selected_value = self.cb_content_choices.get()
-            selected_content = content_data.get(content_selected_value, {})
-
-            value_tuple = (list_data.get('id'), selected_content.get('id'))
-            if self.container.set_remove_from_content_func and self.container.set_remove_from_content_func(value_tuple):
+            value_tuple = (list_selected_value, content_selected_value)
+            if self.container.remove_from_content_func and self.container.remove_from_content_func(value_tuple):
                 content_data.pop(content_selected_value, None)
                 self.cb_content_choices.set('')
                 self.cb_content_choices['values'] = [x for x in self.cb_content_choices['values'] if x != content_selected_value]
@@ -398,9 +394,9 @@ if __name__ == '__main__':
         show_validate_button=st.show_validate_button,
         show_delete_button=st.show_delete_button,
         set_value_func=set_choice,
-        set_list_remove_func=delete_list,
+        list_remove_func=delete_list,
         show_delete_content_button=st.show_delete_content_button,
         show_content_list=st.show_content_list,
-        set_remove_from_content_func=delete_content,
+        remove_from_content_func=delete_content,
     )
     main.mainloop()
