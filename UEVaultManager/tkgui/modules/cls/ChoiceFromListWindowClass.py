@@ -22,50 +22,47 @@ class CFLW_Settings:
     default = ''
     show_validate_button = True
     show_delete_button = False
-    show_sub_delete_button = True
-    choices = {
-        'Label1': {
-            'value': 'id1',
-            'desc': 'this is Label1 description'
-        },  #
-        'Label2': {
-            'value': 'id2',
-            'desc': 'this is Label2 description'
-        },  #
-        'Label3': {
-            'value': 'id3',
-            'desc': 'this is Label3 description'
-        },  #
-        'Label4': {
-            'value': 'id4',
-            'desc': 'this is Label4 description'
-        },  #
-    }
-    sub_choices = {
-        # each key is a label from the first list
-        'Label1': {
-            'SubLabel1': {
-                'value': 'sub_id1',
-                'desc': 'this is the Sublabel1 short label'
-            },  #
+    show_delete_content_button = True
+    show_content_list = True
+    json_data = {
+        'Label1': {  # 'Label1' is the label to display in the first list
+            'id': 'id1',  # 'id' is the value of the list to return if selected and used as first id for the caller
+            'desc': 'this is Label1 description',  # 'desc' is the description to display in the description text bellow the first list
+            'content': {  # 'content' is used to fill the second list if show_content_list is True
+                'contentLabel1_1': {  # 'contentLabel1' is the label to display in the second list
+                    'id': 'id1_1',  # 'id' is the value of the second list to return if selected and used as second id for the caller
+                    'text': 'this is the id1_1 short label'  # 'text' is the text to display in the label above the second list
+                }
+            }
         },
         'Label2': {
-            'SubLabel2a': {
-                'value': 'sub_id2a',
-                'desc': 'this is the Sublabel2 a short label'
-            },
-            'SubLabel2b': {
-                'value': 'sub_id2b',
-                'desc': 'this is the Sublabel2 b short label'
-            },
-        },  #
-        'Label3': {},  #
+            'id': 'id2',
+            'desc': 'this is Label2 description',
+            'content': {
+                'contentLabel2_1': {
+                    'id': 'id2_1',
+                    'text': 'this is the id2_1 a short label'
+                },
+                'contentLabel2_2': {
+                    'id': 'id2_2',
+                    'text': 'this is the id2_2 b short label'
+                }
+            }
+        },
+        'Label3': {
+            'id': 'id3',
+            'desc': 'this is Label3 description'
+        },
         'Label4': {
-            'SubLabel4': {
-                'value': 'sub_id4',
-                'desc': 'this is the Sublabel4 short label'
-            },  #
-        },  #
+            'id': 'id4',
+            'desc': 'this is Label4 description',
+            'content': {
+                'contentLabel4_1': {
+                    'id': 'id4_1',
+                    'text': 'this is the id4_1 short label'
+                }
+            }
+        },
     }
 
 
@@ -78,14 +75,17 @@ class ChoiceFromListWindow(tk.Toplevel):
     :param height: the height.
     :param icon: the icon.
     :param screen_index: the screen index.
-    :param choices: the dict for choices to display. Must be formatted as { 'Label1': { 'value': 'id1', 'desc': 'this is the description 1' }, }
+    :param json_data: the dict for choices to display. See the CFLW_Settings in this file for an example of format.
     :param default_value: the default value to return if no value is selected. If None, the set_value_func method will not be called on closed window.
+    :param show_validate_button: if True, the validate button will be displayed.
     :param show_delete_button: if True, the delete button will be displayed.
     :param set_value_func: the function to call after the validate button is clicked and the window closed.
-    :param set_remove_func: the function to call after the delete button is clicked.
-    :param sub_choices: the dict for choices in the second list to display. Must be formatted as { 'Label1': { 'Sublabel1: { 'value': 'subid1', 'desc': 'this is Sublabel1 description 1' }, } }
-    :param set_sub_remove_func: the function to call after the delete button is clicked in the second list.
+    :param set_list_remove_func: the function to call after the delete button is clicked.
+    :param show_content_list: if True, the content list will be displayed.
+    :param set_remove_from_content_func: the function to call after the delete button is clicked in the content list.
+    :param show_delete_content_button: if True, the delete button for the content list will be displayed.
     """
+    no_content = 'No more content available for that choice'
 
     def __init__(
         self,
@@ -96,15 +96,15 @@ class ChoiceFromListWindow(tk.Toplevel):
         height: int = 320,
         icon=None,
         screen_index: int = 0,
-        choices: dict = None,
+        json_data: dict = None,
         default_value='',
         show_validate_button: bool = True,
         show_delete_button: bool = False,
         set_value_func: callable = None,
-        set_remove_func: callable = None,
-        sub_choices: dict = None,
-        set_sub_remove_func: callable = None,
-        show_sub_delete_button: bool = False,
+        set_list_remove_func: callable = None,
+        show_content_list: bool = False,
+        set_remove_from_content_func: callable = None,
+        show_delete_content_button: bool = False,
     ):
 
         super().__init__()
@@ -116,24 +116,22 @@ class ChoiceFromListWindow(tk.Toplevel):
             gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
         self.main_title = title or window_title
         self.sub_title = sub_title
-        self.show_second_list = sub_choices is not None and len(sub_choices) > 0
-        if self.show_second_list:
+        self.show_content_list = show_content_list
+        if self.show_content_list:
             height += 30
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.show_validate_button = show_validate_button
-        self.choices: dict = choices.copy() if choices else {}  # its content will be modified
+        self.json_data: dict = json_data.copy() if json_data else {}  # its content will be modified
         self.show_delete_button = show_delete_button
         self.set_value_func = set_value_func
-        self.set_remove_func = set_remove_func
-        self.sub_choices: dict = sub_choices.copy() if sub_choices else {}  # its content will be modified
-        self.show_sub_delete_button = show_sub_delete_button
-        self.set_sub_remove_func = set_sub_remove_func
+        self.set_list_remove_func = set_list_remove_func
+        self.show_delete_content_button = show_delete_content_button
+        self.set_remove_from_content_func = set_remove_from_content_func
 
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
         self.default_value = default_value
-
         # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
 
     class ControlFrame(ttk.Frame):
@@ -149,19 +147,19 @@ class ChoiceFromListWindow(tk.Toplevel):
             self.lbl_title.pack(pady=10)
             self.lbl_goal = tk.Label(self, text=container.sub_title, wraplength=300, justify='center')
             self.lbl_goal.pack(pady=5)
-            var_choices = list(container.choices.keys())
+            var_choices = list(container.json_data.keys())
 
-            self.frm_choices = tk.Frame(self)
-            self.frm_choices.pack(pady=5)
+            self.frm_list_choices = tk.Frame(self)
+            self.frm_list_choices.pack(pady=5)
             if container.show_delete_button:
-                self.cb_choicess = ttk.Combobox(self.frm_choices, values=var_choices, state='readonly', width=35)
-                self.cb_choices.grid(row=0, column=0, padx=5, pady=1)
-                self.btn_del = ttk.Button(self.frm_choices, text='Remove', command=self.remove)
-                self.btn_del.grid(row=0, column=1, padx=5, pady=1)
+                self.cb_list_choices = ttk.Combobox(self.frm_list_choices, values=var_choices, state='readonly', width=35)
+                self.cb_list_choices.grid(row=0, column=0, padx=5, pady=1)
+                self.btn_list_del = ttk.Button(self.frm_list_choices, text='Remove', command=self.remove_from_list)
+                self.btn_list_del.grid(row=0, column=1, padx=5, pady=1)
             else:
-                self.cb_choices = ttk.Combobox(self.frm_choices, values=var_choices, state='readonly', width=45)
-                self.cb_choices.grid(row=0, column=0, padx=5, pady=1)
-            self.cb_choices.grid_columnconfigure(0, weight=3)
+                self.cb_list_choices = ttk.Combobox(self.frm_list_choices, values=var_choices, state='readonly', width=45)
+                self.cb_list_choices.grid(row=0, column=0, padx=5, pady=1)
+            self.cb_list_choices.grid_columnconfigure(0, weight=3)
 
             self.lbl_description = tk.Label(self, text='Description', fg='blue', font=('Helvetica', 11, 'bold'))
             self.lbl_description.pack(padx=1, pady=1, anchor=tk.CENTER)
@@ -169,25 +167,26 @@ class ChoiceFromListWindow(tk.Toplevel):
             # self.text_description = tk.Text(self, fg='blue', height=6, width=53, font=('Helvetica', 10))
             self.text_description.pack(padx=5, pady=2)
 
-            if container.show_second_list:
+            if container.show_content_list:
                 # we take the fist item of the first list to get the sub_choices
-                first_label = var_choices[0]
-                first_list = container.sub_choices[first_label]
-                var_sub_choices = list(first_list.keys())
-                self.frm_sub_choices = tk.Frame(self)
-                self.frm_sub_choices.pack(pady=2)
-                self.lbl_sub_label = tk.Label(self.frm_sub_choices, text='sub list label', wraplength=300, justify='center')
-                if container.show_sub_delete_button:
-                    self.lbl_sub_label.grid(row=0, column=0, columnspan=2, padx=5, pady=1)
-                    self.cb_sub_choices = ttk.Combobox(self.frm_sub_choices, values=var_sub_choices, state='readonly', width=35)
-                    self.cb_sub_choices.grid(row=1, column=0, padx=5, pady=1)
-                    self.btn_del = ttk.Button(self.frm_sub_choices, text='Remove', command=self.sub_remove)
-                    self.btn_del.grid(row=1, column=1, padx=5, pady=1)
+                list_selected_value = var_choices[0]
+                list_data = container.json_data.get(list_selected_value, None)
+                var_content_choices = list(list_data.keys())
+                self.frm_content_choices = tk.Frame(self)
+                self.frm_content_choices.pack(pady=2)
+                self.lbl_content_label = tk.Label(self.frm_content_choices, text='sub list label', wraplength=300, justify='center')
+                if container.show_delete_content_button:
+                    self.lbl_content_label.grid(row=0, column=0, columnspan=2, padx=5, pady=1)
+                    self.cb_content_choices = ttk.Combobox(self.frm_content_choices, values=var_content_choices, state='readonly', width=35)
+                    self.cb_content_choices.grid(row=1, column=0, padx=5, pady=1)
+                    self.btn_content_del = ttk.Button(self.frm_content_choices, text='Remove', command=self.remove_from_content)
+                    self.btn_content_del.grid(row=1, column=1, padx=5, pady=1)
                 else:
-                    self.lbl_sub_label.grid(row=0, column=0, padx=5, pady=1)
-                    self.cb_sub_choices = ttk.Combobox(self.frm_sub_choices, values=var_sub_choices, state='readonly', width=45)
-                    self.cb_sub_choices.grid(row=1, column=0, padx=5, pady=1)
-                self.cb_sub_choices.grid_columnconfigure(0, weight=3)
+                    self.lbl_content_label.grid(row=0, column=0, padx=5, pady=1)
+                    self.cb_content_choices = ttk.Combobox(self.frm_content_choices, values=var_content_choices, state='readonly', width=45)
+                    self.cb_content_choices.grid(row=1, column=0, padx=5, pady=1)
+                self.cb_content_choices.grid_columnconfigure(0, weight=3)
+                self.cb_content_choices.bind("<<ComboboxSelected>>", self.set_content_text)
 
             self.frm_buttons = tk.Frame(self)
             self.frm_buttons.pack(pady=5)
@@ -201,27 +200,10 @@ class ChoiceFromListWindow(tk.Toplevel):
                 self.btn_import = ttk.Button(self.frm_buttons, text='Valid and Close', bootstyle=INFO, command=self.validate)
                 self.btn_import.pack(side=tk.LEFT, padx=5)
 
-            self.cb_choices.bind("<<ComboboxSelected>>", self.set_description)
+            self.cb_list_choices.bind("<<ComboboxSelected>>", self.set_list_description)
 
-            self.cb_choices.set(var_choices[0])  # select the first value
-            self.set_description()
-
-        def set_description(self, _event=None) -> None:
-            """
-            Set the content of the description text.
-            """
-            first_list_selection = self.cb_choices.get()
-            first_list_data = self.container.choices.get(first_list_selection, None)
-            if first_list_data is None:
-                return
-            desc = first_list_data.get('desc', 'No description available for that choice')
-            try:
-                self.text_description.delete('1.0', tk.END)
-                self.text_description.insert('1.0', desc)
-            except (AttributeError, tk.TclError):
-                pass
-            if self.container.show_second_list:
-                self.set_sub_choices(first_list_selection)
+            self.cb_list_choices.set(var_choices[0])  # select the first value
+            self.set_list_description()
 
         def close_window(self) -> None:
             """
@@ -231,93 +213,130 @@ class ChoiceFromListWindow(tk.Toplevel):
                 self.container.set_value_func(self.container.default_value)
             self.container.destroy()
 
-        def validate(self) -> None:
+        def set_list_description(self, _event=None) -> None:
             """
-            Validate the selected values (in one list or both lists) and close the window.
+            Set the content of the description text.
             """
-            first_list_selection = self.cb_choices.get()
-            first_list_data = self.container.choices.get(first_list_selection, None)
-            if first_list_data is None:
+            list_selected_value = self.cb_list_choices.get()
+            list_data = self.container.json_data.get(list_selected_value, None)
+            if list_data is None:
                 return
-            value = first_list_data.get('value', None)
-            if self.container.show_second_list:
-                second_list_selection = self.cb_sub_choices.get()
-                second_list_data = self.container.sub_choices[first_list_selection].get(second_list_selection, None)
-                if second_list_data is None:
-                    return
-                value = value, second_list_data.get('value', None)
-            if self.container.set_value_func is not None:
-                self.container.set_value_func(value)
-            self.container.destroy()
-            return
+            desc = list_data.get('desc', 'No description available for that choice')
+            try:
+                self.text_description.delete('1.0', tk.END)
+                self.text_description.insert('1.0', desc)
+            except (AttributeError, tk.TclError):
+                pass
+            if self.container.show_content_list:
+                self.set_content_list(list_selected_value)
 
-        def remove(self) -> None:
+        def remove_from_list(self) -> None:
             """
             Remove the selected value from the first list
             """
             check_if_deleted = True
-            first_list_selection = self.cb_choices.get()
-            data = self.container.choices[first_list_selection]
+            list_selected_value = self.cb_list_choices.get()
+            data = self.container.json_data[list_selected_value]
             if data is None:
                 return
-            value = data.get('value', None)
-            if self.container.set_remove_func is not None:
-                check_if_deleted = self.container.set_remove_func(value)
+            value = data.get('id', None)
+            if self.container.set_list_remove_func is not None:
+                check_if_deleted = self.container.set_list_remove_func(value)
             if check_if_deleted:
-                self.container.choices.pop(first_list_selection, None)
+                self.container.json_data.pop(list_selected_value, None)
                 # clean the selected value
-                self.cb_choices.set('')
+                self.cb_list_choices.set('')
                 # clear the description
                 self.text_description.delete('1.0', tk.END)
                 # remove the value from the combobox
-                self.cb_choices['values'] = [x for x in self.cb_choices['values'] if x != first_list_selection]
+                self.cb_list_choices['values'] = [x for x in self.cb_list_choices['values'] if x != list_selected_value]
             return
 
-        def set_sub_choices(self, selected_key: str = '') -> None:
+        def validate(self) -> None:
+            """
+            Validate the selected values (in one list or both lists) and close the window.
+            """
+            list_selected_value = self.cb_list_choices.get()
+            list_data = self.container.json_data.get(list_selected_value, None)
+            if list_data is None:
+                return
+            list_id = list_data.get('id', None)
+            return_value = list_id
+            if self.container.show_content_list:
+                content_data = list_data.get('content', None)
+                if content_data is None:
+                    return
+                content_selected_value = self.cb_content_choices.get()
+                selected_content = content_data.get(content_selected_value, None)
+                content_id = selected_content.get('id', None)
+                return_value = (list_id, content_id)
+            if self.container.set_value_func is not None:
+                self.container.set_value_func(return_value)
+            self.container.destroy()
+            return
+
+        def set_content_list(self, list_selected_value: str = '') -> None:
             """
             Set the content of the sub choices.
             """
-            if not selected_key:
+            if not self.container.show_content_list or not list_selected_value:
                 return
-            sub_choices = self.container.sub_choices.get(selected_key, None)
-            if sub_choices is None:
-                return
-            var_sub_choices = list(sub_choices.keys())
-            self.cb_sub_choices['values'] = var_sub_choices
-            self.cb_sub_choices.set('')
-            try:
-                second_list_data = sub_choices.get(var_sub_choices[0], None)
-                text = second_list_data['desc']
-                self.cb_sub_choices.config(state=tk.NORMAL)
-                self.cb_sub_choices.set(var_sub_choices[0])  # select the first value
-            except (IndexError, KeyError):
-                text = 'No other choices available for that version'
-                # hide self.cb_sub_choices
-                self.cb_sub_choices.config(state=tk.DISABLED)
-            self.lbl_sub_label['text'] = text
-            return
 
-        def sub_remove(self) -> None:
+            list_data = self.container.json_data.get(list_selected_value, {})
+            content_data = list_data.get('content', {})
+
+            try:
+                self.cb_content_choices.set('')
+                var_content_choices = list(content_data.keys())
+                self.cb_content_choices['values'] = var_content_choices
+                self.cb_content_choices.config(state=tk.NORMAL)
+                self.btn_content_del.config(state=tk.NORMAL)
+                self.cb_content_choices.set(var_content_choices[0])  # select the first value
+                self.set_content_text()
+            except (IndexError, KeyError, AttributeError):
+                self.cb_content_choices.config(state=tk.DISABLED)
+                self.btn_content_del.config(state=tk.DISABLED)
+                self.lbl_content_label['text'] = self.container.no_content
+
+        def set_content_text(self, _event=None) -> None:
+            """
+            Set the text of the content label.
+            """
+            # noinspection DuplicatedCode
+            if not self.container.show_content_list:
+                return
+
+            list_selected_value = self.cb_list_choices.get()
+            list_data = self.container.json_data.get(list_selected_value, {})
+            content_data = list_data.get('content', {})
+
+            content_selected_value = self.cb_content_choices.get()
+            selected_content = content_data.get(content_selected_value, {})
+
+            text = selected_content.get('text', self.container.no_content)
+            self.lbl_content_label['text'] = text
+
+        def remove_from_content(self) -> None:
             """
             Remove the selected value from the second list
             """
-            first_list_selection = self.cb_choices.get()
-            second_list_selection = self.cb_sub_choices.get()
-            first_list_data = self.container.choices.get(first_list_selection)
-            if not first_list_data:
+            # noinspection DuplicatedCode
+            if not self.container.show_content_list:
                 return
-            second_list_data = self.container.sub_choices.get(first_list_selection, {}).get(second_list_selection)
-            if not second_list_data:
-                return
-            value_tuple = (first_list_data.get('value'), second_list_data.get('value'))
-            if self.container.set_sub_remove_func and self.container.set_sub_remove_func(value_tuple):
-                second_list_data = self.container.sub_choices.get(first_list_selection, None)
-                if second_list_data is None:
-                    return
-                second_list_data.pop(second_list_selection, None)
-                self.cb_sub_choices.set('')
-                self.cb_sub_choices['values'] = [x for x in self.cb_sub_choices['values'] if x != second_list_selection]
-                self.set_description()
+
+            list_selected_value = self.cb_list_choices.get()
+            list_data = self.container.json_data.get(list_selected_value, {})
+            content_data = list_data.get('content', {})
+
+            content_selected_value = self.cb_content_choices.get()
+            selected_content = content_data.get(content_selected_value, {})
+
+            value_tuple = (list_data.get('id'), selected_content.get('id'))
+            if self.container.set_remove_from_content_func and self.container.set_remove_from_content_func(value_tuple):
+                content_data.pop(content_selected_value, None)
+                self.cb_content_choices.set('')
+                self.cb_content_choices['values'] = [x for x in self.cb_content_choices['values'] if x != content_selected_value]
+                self.set_list_description()
 
 
 def set_choice(selection):
@@ -326,9 +345,9 @@ def set_choice(selection):
     """
     st_l = CFLW_Settings()
     if isinstance(selection, tuple):
-        first_list, second_list = selection
-        if first_list != st_l.default:
-            print(f'The values {first_list, second_list} have been SELECTED')
+        list_id, content_id = selection
+        if list_id != st_l.default:
+            print(f'The values {list_id, content_id} have been SELECTED')
             return True
     elif selection != st_l.default:
         print(f'The value {selection} has been SELECTED')
@@ -352,16 +371,16 @@ def delete_list(list_id) -> bool:
     return False
 
 
-def delete_sub_list(list_id_tuple: tuple) -> bool:
+def delete_content(id_tuple: tuple) -> bool:
     """
     Delete the id choosen in the second list.
-    :param list_id_tuple: tuple of (id in the first list, id in the second list)
+    :param id_tuple: tuple of (list_id, content_id)
     :return: True if the value has been deleted, False otherwise.
     """
     st_l = CFLW_Settings()
-    first_list, second_list = list_id_tuple
-    if first_list != st_l.default and second_list != st_l.default:
-        print(f'The value {first_list,second_list} has been DELETED')
+    list_id, content_id = id_tuple
+    if list_id != st_l.default and content_id != st_l.default:
+        print(f'The value {list_id, content_id} has been DELETED')
         return True
     print('No value has been selected')
     return False
@@ -374,14 +393,14 @@ if __name__ == '__main__':
     main.geometry('200x100')
     ChoiceFromListWindow(
         title=st.title,
-        choices=st.choices,
+        json_data=st.json_data,
         default_value=st.default,
         show_validate_button=st.show_validate_button,
         show_delete_button=st.show_delete_button,
         set_value_func=set_choice,
-        set_remove_func=delete_list,
-        sub_choices=st.sub_choices,
-        show_sub_delete_button=st.show_sub_delete_button,
-        set_sub_remove_func=delete_sub_list,
+        set_list_remove_func=delete_list,
+        show_delete_content_button=st.show_delete_content_button,
+        show_content_list=st.show_content_list,
+        set_remove_from_content_func=delete_content,
     )
     main.mainloop()
