@@ -292,7 +292,7 @@ csv_sql_fields = {
     'Downloaded size': {
         'sql_name': 'downloaded_size',
         'state': CSVFieldState.NOT_PRESERVED,
-        'field_type': CSVFieldType.FLOAT
+        'field_type': CSVFieldType.STR
     },
 }
 

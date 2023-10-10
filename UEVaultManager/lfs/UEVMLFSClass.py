@@ -862,3 +862,37 @@ class UEVMLFS:
                     data['content'] = folder_choice
                     releases[asset_id] = data
         return releases, latest_id
+
+    def get_downloaded_assets_data(self, vault_cache_folder: str, max_depth: int = 3) -> dict:
+        """
+        Get the list of the assets in the Vault cache folder. Get its size from the installed_asset file if it exists.
+        :param vault_cache_folder: the Vault cache folder.
+        :param max_depth: maximum depth of subfolders to include in the file list.
+        :return: dict {asset_id: {size, path}}
+
+        NOTES:
+        The scan of a Vault cache folder with lots of assets can take a long time.
+        This scan is done when the datatable is loaded.
+        So, increase the max_depth value with care to avoid long loading times.
+        """
+        vault_cache_folder = os.path.normpath(vault_cache_folder)
+        downloaded_assets = {}
+        # scan the vault_cache_folder for files. Proceed level by level until max_depth is reached.
+        for root, dirs, files in os.walk(vault_cache_folder):
+            # print(f'scanning root: {root}')
+            depth = root[len(vault_cache_folder) + len(os.path.sep):].count(os.path.sep)
+            if depth == max_depth:
+                # remove all subfolders from the list of folders to scan to speed up the process
+                del dirs[:]
+            for file in files:
+                filename, _ = os.path.splitext(file)
+                # print(f'root: {root}, file: {file}, filename: {filename}')
+                if filename.lower() == gui_g.s.ue_manifest_filename.lower():
+                    # print('==>found manifest file')
+                    parts = root.split(os.sep)
+                    asset_id = parts[-1]  # the folder name is the asset id
+                    installed_asset = self.get_installed_asset(asset_id)
+                    size = installed_asset.install_size if installed_asset else 1
+                    file_path = os.path.join(root, file)
+                    downloaded_assets[asset_id] = {'size': size, 'path': file_path}
+        return downloaded_assets
