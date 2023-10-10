@@ -77,7 +77,8 @@ class GUISettings:
         # subfolder to store a PLUGIN for an installation in an ENGINE folder (relativelly to the base folder of the engine).
         # USE '/' as separator ! important for path_join
         self.ue_plugin_install_subfolder = 'Engine/Plugins/Marketplace'
-        # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
+        # file name of a UE manifest file
+        self.ue_manifest_filename = 'manifest'
 
         self.index_copy_col_name = 'Index copy'
         # if a folder is in this tuple, the folder won't be scanned to find ue folders
@@ -108,6 +109,8 @@ class GUISettings:
         self.cell_is_empty_list = ['None', 'nan', 'NA', 'NaN', 'False', '0', '0.0']
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'dummy_row_'
+        self.unknown_size: str = 'yes'
+        self.format_size: str = '{:.02f} MiB'
         self.tag_prefix = 't_'
         self.expand_columns_factor: int = 20
         self.contract_columns_factor: int = 20

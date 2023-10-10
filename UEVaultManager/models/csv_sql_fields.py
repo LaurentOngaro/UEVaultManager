@@ -289,6 +289,11 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.STR
     },
+    'Downloaded size': {
+        'sql_name': 'downloaded_size',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
 }
 
 

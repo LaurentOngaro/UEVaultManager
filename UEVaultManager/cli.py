@@ -1443,7 +1443,8 @@ class UEVaultManagerCLI:
                     )
                     if install_path_base:
                         # remove all existing subfolder in the selected part that is in the subpath 'Engine/Plugins/Marketplace'
-                        path_to_check = os.path.normpath(install_path_base)
+                        install_path_base = os.path.normpath(install_path_base)
+                        path_to_check = install_path_base
                         path_parts = gui_g.s.ue_plugin_install_subfolder.split('/')
                         # get subfolder by reverse order (start by the latest)
                         path_parts_temp = path_parts.copy()
@@ -1646,7 +1647,7 @@ class UEVaultManagerCLI:
                 parent_path = os.path.dirname(download_path)
                 message += f'\nThe manifest file has been copied in {parent_path}.'
                 # manifest_filename = path_join(parent_path, 'manifest.json')
-                manifest_filename = path_join(parent_path, 'manifest')
+                manifest_filename = path_join(parent_path,  gui_g.s.ue_manifest_filename)
                 shutil.copy(installed_asset.manifest_path, manifest_filename)
             elif args.clean_dowloaded_data:
                 message += '\nDownloaded data have been deleted.'

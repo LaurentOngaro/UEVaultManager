@@ -134,6 +134,7 @@ class UEVMGui(tk.Tk):
         self.releases_choice = {}
 
         # update the content of the database BEFORE loading the data in the datatable
+        # as it, all the formatting and filtering could be done at start with good values
         if data_source_type == DataSourceType.SQLITE:
             # update the installed folder field in database from the installed_assets json file
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
@@ -181,6 +182,7 @@ class UEVMGui(tk.Tk):
             self.core.clean_exit(1)  # previous line could not quit
 
         self.editable_table = data_table
+
         data_table.set_preferences(gui_g.s.datatable_default_pref)
         data_table.show()
 
@@ -235,6 +237,20 @@ class UEVMGui(tk.Tk):
                 self.logger.error('This application could not run without a file to read data from')
                 self.close_window(True)
 
+        gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
+        downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
+        if downloaded_data is not None and len(downloaded_data) > 0:
+            df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+            # update the downloaded_size field in the datatable using asset_id as key
+            s_format = gui_g.s.format_size
+            s_yes = gui_g.s.unknown_size
+            for asset_id, asset_data in downloaded_data.items():
+                try:
+                    size = int(asset_data['size'])
+                    size = s_format.format(size / 1024 / 1024) if size > 1 else s_yes  # convert size to readable text
+                    df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
+                except KeyError:
+                    pass
         if gui_g.s.last_opened_filter != '':
             filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
             if filters is not None:
@@ -518,6 +534,19 @@ class UEVMGui(tk.Tk):
         # TODO: check if the column order has changed before enabling the widget
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         gui_f.enable_widgets_in_list(widget_list)
+        # update the column infos
+        columns = self.editable_table.model.df.columns  # df. model checked
+        old_columns_infos = gui_g.s.column_infos
+        # reorder column_infos using columns keys
+        new_columns_infos = {}
+        for i, col in enumerate(columns):
+            try:
+                new_columns_infos[col] = old_columns_infos[col]
+                new_columns_infos[col]['pos'] = i
+            except KeyError:
+                pass
+        gui_g.s.column_infos = new_columns_infos
+        gui_g.s.save_config_file()
 
     def on_close(self, _event=None) -> None:
         """
@@ -855,12 +884,12 @@ class UEVMGui(tk.Tk):
                             extension_lower = os.path.splitext(entry.name)[1].lower()
                             filename_lower = os.path.splitext(entry.name)[0].lower()
                             # check if full_folder contains a "data" sub folder
-                            if filename_lower == 'manifest' or extension_lower in gui_g.s.ue_valid_file_ext:
+                            if filename_lower == gui_g.s.ue_manifest_filename.lower() or extension_lower in gui_g.s.ue_valid_file_ext:
                                 path = full_folder
                                 has_valid_folder_inside = any(
                                     os.path.isdir(path_join(full_folder, folder_inside)) for folder_inside in gui_g.s.ue_valid_manifest_subfolder
                                 )
-                                if filename_lower == 'manifest':
+                                if filename_lower == gui_g.s.ue_manifest_filename.lower():
                                     manifest_is_valid = False
                                     app_name_from_manifest = ''
                                     if has_valid_folder_inside:
@@ -1730,6 +1759,7 @@ class UEVMGui(tk.Tk):
             'With comment': ['callable', self.filter_with_comment],  #
             'Free and not owned': ['callable', self.filter_free_and_not_owned],  #
             'Installed in folder': ['callable', self.filter_with_installed_folders],  #
+            'Downloaded': ['callable', self.filter_is_downloaded],  #
         }
 
     def filter_tags_with_number(self) -> pd.Series:
@@ -1739,15 +1769,6 @@ class UEVMGui(tk.Tk):
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix) for i in x))
-        return mask
-
-    def filter_with_comment(self) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty comment value.
-        :return: a mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Comment'].notnull() & df['Comment'].ne('') & df['Comment'].ne('None') & df['Comment'].ne('nan')  # not None and not empty string
         return mask
 
     def filter_free_and_not_owned(self) -> pd.Series:
@@ -1765,12 +1786,33 @@ class UEVMGui(tk.Tk):
         )
         return mask
 
+    def filter_not_empty(self, col_name: str) -> pd.Series:
+        """
+        Create a mask to filter the data with a non-empty value for a column.
+        :param col_name: the name of the column to check.
+        :return: a mask to filter the data.
+        """
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
+        return mask
+
+    def filter_with_comment(self) -> pd.Series:
+        """
+        Create a mask to filter the data with a non-empty comment value.
+        :return: a mask to filter the data.
+        """
+        return self.filter_not_empty('Comment')
+
     def filter_with_installed_folders(self) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty installed_folders value.
         :return: a mask to filter the data.
         """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Installed folders'].notnull() & df['Installed folders'].ne('') & df['Installed folders'].ne('Installed folders') & df[
-            'Comment'].ne('Installed folders')  # not None and not empty string
-        return mask
+        return self.filter_not_empty('Installed folders')
+
+    def filter_is_downloaded(self) -> pd.Series:
+        """
+        Create a mask to filter the data with a non-empty downloaded size.
+        :return: a mask to filter the data.
+        """
+        return self.filter_not_empty('Downloaded size')

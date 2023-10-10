@@ -311,6 +311,14 @@ class EditableTable(Table):
         self.delete('colrect')
         self._set_with_for_hidden_columns()
         self.redraw()
+        # save the new column width in the config file
+        new_columns_infos = gui_g.s.column_infos
+        try:
+            new_columns_infos[colname]['width'] = width
+            gui_g.s.column_infos = new_columns_infos
+            gui_g.s.save_config_file()
+        except KeyError:
+            pass
 
     # noinspection PyPep8Naming
     def sortTable(self, columnIndex=None, ascending=1, index=False):
@@ -641,6 +649,8 @@ class EditableTable(Table):
                 keys_ordered = column_infos.keys()
             else:
                 sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
+                # save the new column_infos in the config file
+                gui_g.s.column_infos = sorted_cols_by_pos
                 keys_ordered = sorted_cols_by_pos.keys()
             # reorder columns
             df = df.reindex(columns=keys_ordered, fill_value='')
