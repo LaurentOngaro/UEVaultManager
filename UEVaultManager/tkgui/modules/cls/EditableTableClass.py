@@ -627,6 +627,13 @@ class EditableTable(Table):
                 f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({num_cols}).\nThis will be fixed automatically and a backup of the config file has been made on quit.'
             )
         try:
+            # add to column_infos all the colums in the datatable that are not in column_infos, at the end, with a width of 2
+            df = self.get_data(DataFrameUsed.UNFILTERED)
+            pos = len(column_infos)
+            for col in df.columns:
+                if col not in column_infos:
+                    column_infos[col] = {'width': 2, 'pos': pos}
+                    pos += 1
             # reordering columns
             first_value = next(iter(column_infos.values()))
             if first_value.get('pos', None) is None:
@@ -636,7 +643,7 @@ class EditableTable(Table):
                 sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
                 keys_ordered = sorted_cols_by_pos.keys()
             # reorder columns
-            df = self.get_data(DataFrameUsed.UNFILTERED).reindex(columns=keys_ordered, fill_value='')
+            df = df.reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.UNFILTERED)
             df = self.get_data(DataFrameUsed.MODEL).reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.MODEL)
