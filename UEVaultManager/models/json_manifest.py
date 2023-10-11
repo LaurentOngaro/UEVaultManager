@@ -12,6 +12,8 @@ from copy import deepcopy
 
 from UEVaultManager.models.manifest import (CDL, ChunkInfo, ChunkPart, CustomFields, FileManifest, FML, Manifest, ManifestMeta)
 
+debug_mode = False  # set to True to print debug messages
+
 
 def blob_to_num(in_str):
     """
@@ -41,6 +43,15 @@ def guid_from_json(in_str):
     return struct.unpack('>IIII', bytes.fromhex(in_str))
 
 
+def log_debug(msg):
+    """
+    print a debug message
+    :param msg:
+    """
+    if debug_mode:
+        print(msg)
+
+
 class JSONManifest(Manifest):
     """
     Manifest-compatible reader for JSON based manifests.
@@ -68,7 +79,7 @@ class JSONManifest(Manifest):
         _m.custom_fields._dict = _m.meta.custom_fields
 
         if _tmp.keys():
-            print(f'Did not read JSON keys: {_tmp.keys()}!')
+            log_debug(f'Did not read JSON keys: {_tmp.keys()}!')
 
         # clear raw data after manifest has been loaded
         _m.data = b''
@@ -178,7 +189,7 @@ class JSONCDL(CDL):
 
         for _dc in (cfl, chl, csl, dgl):
             if _dc:
-                print(f'Non-consumed CDL stuff: {_dc}')
+                log_debug(f'Non-consumed CDL stuff: {_dc}')
 
         return _cdl
 
@@ -221,12 +232,12 @@ class JSONFML(FML):
                 _cp.file_offset = _offset
                 _fm.file_size += _cp.size
                 if _cpj:
-                    print(f'Non-read ChunkPart keys: {_cpj.keys()}')
+                    log_debug(f'Non-read ChunkPart keys: {_cpj.keys()}')
                 _fm.chunk_parts.append(_cp)
                 _offset += _cp.size
 
             if _fmj:
-                print(f'Non-read FileManifest keys: {_fmj.keys()}')
+                log_debug(f'Non-read FileManifest keys: {_fmj.keys()}')
 
             _fml.elements.append(_fm)
 
