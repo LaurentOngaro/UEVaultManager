@@ -535,7 +535,7 @@ class EditableTable(Table):
         :param add_page_offset: true to add the page offset to the row number, False otherwise.
         :return:
         """
-        if not row_number or row_number < 0:
+        if row_number < 0:
             return -1
         if add_page_offset:
             row_number = self.add_page_offset(row_number)
@@ -953,7 +953,7 @@ class EditableTable(Table):
                     pass
             # self.editable_table.set_data(df, df_type=DataFrameUsed.UNFILTERED)
 
-    def reload_data(self, downloaded_data: {}) -> bool:
+    def reload_data(self, downloaded_data: dict = None) -> bool:
         """
         Reload data from the CSV file and refreshes the table display.
         :param downloaded_data: the downloaded data from the Vault Cache folder content.
@@ -969,7 +969,7 @@ class EditableTable(Table):
         # mf.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
-    def rebuild_data(self, downloaded_data: {}) -> bool:
+    def rebuild_data(self, downloaded_data: dict = None) -> bool:
         """
          Rebuild the data in the table.
          :param downloaded_data: the downloaded data from the Vault Cache folder content.
