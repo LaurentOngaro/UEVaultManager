@@ -628,21 +628,31 @@ class EditableTable(Table):
         Resize and reorder the columns of the table.
         """
         column_infos = gui_g.s.column_infos
-        num_cols = len(column_infos)
-        if num_cols <= 0:
+        column_infos_len = len(column_infos)
+        df = self.get_data(DataFrameUsed.UNFILTERED)
+        column_len = len(df.columns)
+        diff_len = abs(column_infos_len - column_len)
+        if column_infos_len <= 0:
             return
-        if abs(num_cols - self.cols) > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
+        if diff_len > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
             gui_f.box_message(
-                f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({num_cols}).\nThis will be fixed automatically and a backup of the config file has been made on quit.'
+                f'The number of columns in data source ({column_len}) does not match the number of values in "column_infos" from the config file ({column_infos_len}).\nA backup of the current config file has been made.\nNormally, this will be fixed automatically on quit.\nIf not, please check the config file.'
             )
+            # just for debugging
+            for col in column_infos.keys():
+                if col not in df.columns and col != gui_g.s.index_copy_col_name:
+                    self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable.')
+            for col in df.columns:
+                if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
+                    self.logger.warning(f'Column "{col}" is in the datatable BUT not in column_infos.')
         try:
             # add to column_infos all the colums in the datatable that are not in column_infos, at the end, with a width of 2
-            df = self.get_data(DataFrameUsed.UNFILTERED)
-            pos = len(column_infos)
+            pos = column_infos_len
             for col in df.columns:
                 if col not in column_infos:
                     column_infos[col] = {'width': 2, 'pos': pos}
                     pos += 1
+
             # reordering columns
             first_value = next(iter(column_infos.values()))
             if first_value.get('pos', None) is None:
