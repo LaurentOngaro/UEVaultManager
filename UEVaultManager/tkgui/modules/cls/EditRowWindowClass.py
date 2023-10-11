@@ -57,7 +57,7 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
         self.bind('<Button-1>', self.on_left_click)
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.protocol('WM_DELETE_WINDOW', self.on_close)
 
         gui_g.edit_row_window_ref = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller

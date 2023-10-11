@@ -540,7 +540,7 @@ class UEAssetScraper:
                         count = int(url_vars['count'])
                         suffix = f'{start}-{start + count - 1}'
                     except Exception:
-                        suffix = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+                        suffix = datetime.now().strftime('%y-%m-%d_%H-%M-%S')
                     filename = f'assets_{suffix}.json'
                     self.save_to_file(filename=filename, data=json_data, is_global=True)
 

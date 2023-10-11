@@ -826,7 +826,7 @@ class UEVMLFS:
                 # Convert the string to a datetime object
                 datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
                 # Format the datetime object as "YYYY-MM-DD"
-                formatted_date = datetime_obj.strftime("%Y-%m-%d")
+                formatted_date = datetime_obj.strftime('%Y-%m-%d')
                 if asset_id is not None and release_title is not None and compatible_list is not None:
                     # remove 'UE_' from items of the compatible_list
                     compatible_list = [item.replace('UE_', '') for item in compatible_list]

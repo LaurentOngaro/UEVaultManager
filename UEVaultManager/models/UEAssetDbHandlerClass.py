@@ -1207,16 +1207,16 @@ if __name__ == "__main__":
     if st.read_data_only:
         # Read existing assets
         asset_list = asset_handler.get_assets_data()
-        print("Assets:", asset_list)
+        print('Assets:', asset_list)
     elif gui_g.s.testing_switch == 1:
         # Create fake assets
         rows_to_create = 300
         if not st.clean_data:
             rows_count = asset_handler.get_rows_count()
-            print(f"Rows count: {rows_count}")
+            print(f'Rows count: {rows_count}')
             rows_to_create -= rows_count
-        print(f"Creating {rows_to_create} rows")
+        print(f'Creating {rows_to_create} rows')
         asset_handler.generate_test_data(rows_to_create)
 
     rows_count = asset_handler.get_rows_count()
-    print(f"FINAL Rows count: {rows_count}")
+    print(f'FINAL Rows count: {rows_count}')

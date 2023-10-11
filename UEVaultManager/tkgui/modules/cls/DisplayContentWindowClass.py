@@ -68,7 +68,7 @@ class DisplayContentWindow(tk.Toplevel):
         self.bind('<Control-Tab>', self._focus_next_widget)
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.protocol('WM_DELETE_WINDOW', self.on_close)
         if text:
             self.display(text)
         gui_g.display_content_window_ref = self

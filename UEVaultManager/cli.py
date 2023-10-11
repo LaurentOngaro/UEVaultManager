@@ -872,9 +872,9 @@ class UEVaultManagerCLI:
         update_information = update_information.get('data', None)
         last_cache_update = cache_information.get('last_update', '')
         if last_update != '':
-            last_update = time.strftime("%x", time.localtime(last_update))
+            last_update = time.strftime('%x', time.localtime(last_update))
         if last_cache_update != '':
-            last_cache_update = time.strftime("%x", time.localtime(last_cache_update))
+            last_cache_update = time.strftime('%x', time.localtime(last_cache_update))
 
         json_content = {
             'Epic account': user_name,  #

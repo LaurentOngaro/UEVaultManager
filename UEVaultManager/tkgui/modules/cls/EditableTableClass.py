@@ -535,6 +535,7 @@ class EditableTable(Table):
         :param add_page_offset: true to add the page offset to the row number, False otherwise.
         :return:
         """
+        # OLD if row_number < 0 or row_number == '':
         if row_number < 0:
             return -1
         if add_page_offset:
@@ -1477,6 +1478,7 @@ class EditableTable(Table):
         :param ue_asset_data: the data to update the row with
         :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value
         """
+        # OLD if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
         if not ue_asset_data:
             return
         if isinstance(ue_asset_data, list):
