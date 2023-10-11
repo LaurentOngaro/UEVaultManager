@@ -138,7 +138,7 @@ class UEVMGuiControlFrame(ttk.Frame):
 
         # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
         # to get the widgets it needs. So they can't be changed freely
-        self.lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing')
+        self.lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing its USER FIELDS')
         self.lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
         data_table.set_frm_quick_edit(self.lbtf_quick_edit)
 
