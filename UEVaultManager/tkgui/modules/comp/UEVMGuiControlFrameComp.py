@@ -162,7 +162,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             widget_type=WidgetType.ENTRY,
             tag='Asset_id',
             state='readonly',
-            label='Asset id (click to copy)',
+            label='Latest release id (click to copy)',
             width=5,
             click_on_callback=self._container.copy_asset_id,
             textvariable=self.var_asset_id,
@@ -196,6 +196,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Installed folders',
+            label='Installed folders\n(all releases)',
             default_content='Installed in',
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
