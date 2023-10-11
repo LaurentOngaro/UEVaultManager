@@ -273,7 +273,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         Save the filters to a file (Wrapper)
         :param filters: the filters to save.
         """
-        if not filters or len(filters) == 0:
+        if not filters:
             return
         folder = gui_g.s.filters_folder if gui_g.s.filters_folder else gui_g.s.path
         folder = os.path.abspath(folder)
