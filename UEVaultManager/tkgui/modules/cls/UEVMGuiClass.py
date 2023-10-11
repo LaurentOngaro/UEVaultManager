@@ -693,7 +693,7 @@ class UEVMGui(tk.Tk):
             if folder:
                 gui_g.s.last_opened_folder = folder
                 add_new_row = False
-                self.scan_for_assets([folder])
+                self.scan_for_assets([folder], from_add_button=True)
                 # if row_data is None:
                 #     row_data = {}
                 # row_data['Origin'] = os.path.abspath(folder)
@@ -767,15 +767,20 @@ class UEVMGui(tk.Tk):
             found_url = read_urls[0]
         else:
             found_url = egs.get_marketplace_product_url(asset_slug=clean_ue_asset_name(folder))
-        if check_if_valid and egs is not None and not egs.is_valid_url(found_url):
+        try:
+            if check_if_valid and egs is not None and not egs.is_valid_url(found_url):
+                found_url = ''
+        except (Exception, ):  # trap all exceptions on connection
+            message = f'Request timeout when accessing {found_url}\n.Operation is stopped, check you internet connection or try again later.',
+            self.logger.warning(message)
             found_url = ''
-
         return found_url
 
-    def scan_for_assets(self, folder_list: list = None) -> None:
+    def scan_for_assets(self, folder_list: list = None, from_add_button: bool = False) -> None:
         """
         Scan the folders to find files that can be loaded.
         :param folder_list: the list of folders to scan. If empty, use the folders in the config file.
+        :param from_add_button: whether the call has been done from the "add" button or not.
         """
 
         def _fix_folder_structure(content_folder_name: str = gui_g.s.ue_asset_content_subfolder):
@@ -805,7 +810,8 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = folder_list if (folder_list is not None and len(folder_list) > 0) else gui_g.s.folders_to_scan
-        if gui_g.s.testing_switch == 1:
+        if not from_add_button and gui_g.s.testing_switch == 1:  # here, do_not_ask is used to detect if the caller is the "add" button and not the "scan" button
+            # noinspection GrazieInspection
             folder_to_scan = [
                 'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  #
                 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
@@ -826,8 +832,10 @@ class UEVMGui(tk.Tk):
             return
         if gui_g.s.check_asset_folders:
             self.clean_asset_folders()
-        if len(folder_to_scan) > 1 and not gui_f.box_yesno(
-            'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
+        if not from_add_button and (
+            len(folder_to_scan) > 1 and not gui_f.box_yesno(
+                'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
+            )
         ):
             return
 
@@ -869,7 +877,7 @@ class UEVMGui(tk.Tk):
                     if marketplace_url:
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
-                        except ReadTimeout as error:
+                        except (Exception, ) as error:  # trap all exceptions on connection
                             self.add_error(error)
                             gui_f.box_message(
                                 f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
@@ -944,7 +952,7 @@ class UEVMGui(tk.Tk):
                                         grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(
                                             marketplace_url
                                         ) else GrabResult.TIMEOUT.name
-                                    except ReadTimeout as error:
+                                    except (Exception, ) as error:  # trap all exceptions on connection
                                         self.add_error(error)
                                         gui_f.box_message(
                                             f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
@@ -1019,12 +1027,14 @@ class UEVMGui(tk.Tk):
                 row_indexes = rows_serie.index  # returns a list of indexes. It should contain only 1 value
                 if not row_indexes.empty:
                     row_index = row_indexes[0]
-                    text = f'Updating {name} at row {row_index}. Old name is {data.loc[row_index, "App name"]}'
+                    index_copy = data.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
+                    old_name = data.loc[index_copy, 'App name']
+                    text = f'Updating {name} at row {row_index}. Old name is {old_name}'
                     self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
                 self.add_error(error)
                 self.logger.warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
-                invalid_folders.append(content["path"])
+                invalid_folders.append(content['path'])
                 text = f'An Error occured when cheking {name}'
                 pw.set_text(text)
                 continue
@@ -1145,6 +1155,7 @@ class UEVMGui(tk.Tk):
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
         data_table = self.editable_table  # shortcut
+        data_table.save_data()  # save the data before scraping because we will update the row(s) and override non saved changes
         row_numbers = data_table.multiplerowlist
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
