@@ -51,6 +51,7 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
     :param name_to_clean: name to clean.
     :return: cleaned name.
     """
+    name_cleaned = name_to_clean
     # ONE: convert some unwanted strings to @. @ is used to identify the changes made
     patterns = [
         r'UE_[\d._]+',  # any string starting with 'UE_' followed by any digit, dot or underscore ex: 'UE_4_26'
@@ -63,20 +64,22 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
     ]
     patterns = [re.compile(p) for p in patterns]
     for pattern in patterns:
-        name_to_clean = pattern.sub('@', name_to_clean)
+        name_cleaned = pattern.sub('@', name_cleaned)
 
     # TWO: remove converted string with relicats
     patterns = [
+        r'v\d+[._\w\d]+',  # v followed by at least one digit followed by dot or underscore or space or digit ex: 'v1.0' or 'v1_0' or 'v1 '
+        r'v[@]+\d+',  # v followed by @ followed by at least one digit ex: 'v@1' or 'v@11'
         r'[@]+\d+',  # a @ followed by at least one digit ex: '@1' or '@11'
         # r'\d+[@]+',  # at least one digit followed by @ ex: '1@' or '1@@'
         r'[@]+',  # any @  ex: '@' or '@@'
     ]
     patterns = [re.compile(p) for p in patterns]
     for pattern in patterns:
-        name_to_clean = pattern.sub('', name_to_clean)
+        name_cleaned = pattern.sub('', name_cleaned)
 
-    name_to_clean = name_to_clean.replace('_', '-')
-    return name_to_clean.strip()  # Remove leading and trailing spaces
+    name_cleaned = name_cleaned.replace('_', '-')
+    return name_cleaned.strip()  # Remove leading and trailing spaces
 
 
 class UEVMGui(tk.Tk):
@@ -426,7 +429,7 @@ class UEVMGui(tk.Tk):
         canvas_image = self._frm_control.canvas_image
         try:
             row_number: int = self.editable_table.get_row_clicked(event)
-            if not row_number or row_number < 0:
+            if row_number < 0:
                 return
             self.update_preview_info(row_number)
             image_url = self.editable_table.get_image_url(row_number)
@@ -804,12 +807,13 @@ class UEVMGui(tk.Tk):
         folder_to_scan = folder_list if (folder_list is not None and len(folder_list) > 0) else gui_g.s.folders_to_scan
         if gui_g.s.testing_switch == 1:
             folder_to_scan = [
+                'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  #
                 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
                 'G:/Assets/pour UE/00 A trier/Warez/Battle Royale Island Pack',  #
                 'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature',  #
                 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
                 'G:/Assets/pour UE/02 Warez/Animations/Female Movement Animset Pro 4.26',  #
-                'G:/Assets/pour UE/02 Warez/Characters/Boths/Character Customizer v5.01 UE_4.25'  #
+                'G:/Assets/pour UE/02 Warez/Characters/Boths/Character Customizer v5.01 UE_4.25',  #
             ]
         if gui_g.s.offline_mode:
             gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
@@ -849,7 +853,8 @@ class UEVMGui(tk.Tk):
 
                 folder_is_valid = folder_name_lower in gui_g.s.ue_valid_asset_subfolder
                 parent_could_be_valid = folder_name_lower in gui_g.s.ue_invalid_content_subfolder or folder_name_lower in gui_g.s.ue_possible_asset_subfolder
-
+                version = get_version_from_path(full_folder)
+                supported_versions = 'UE_' + version if version else ''
                 if folder_is_valid:
                     folder_name = os.path.basename(parent_folder)
                     parent_folder = os.path.dirname(parent_folder)
@@ -861,7 +866,6 @@ class UEVMGui(tk.Tk):
                     marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                     grab_result = ''
                     comment = ''
-                    supported_versions = ''
                     if marketplace_url:
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
@@ -880,7 +884,8 @@ class UEVMGui(tk.Tk):
                         'marketplace_url': marketplace_url,
                         'grab_result': grab_result,
                         'comment': comment,
-                        'supported_versions': supported_versions
+                        'supported_versions': supported_versions,
+                        'downloaded_size': gui_g.s.unknown_size  # as it's local, it's downloaded, so we add a size
                     }
                     if self.core.scan_assets_logger:
                         self.core.scan_assets_logger.info(msg)
@@ -932,8 +937,6 @@ class UEVMGui(tk.Tk):
                                             comment += f'\nThe manifest file and the folder should be moved inside a folder named:\n{app_name_from_manifest}'
                                 else:
                                     asset_type = UEAssetType.Plugin if extension_lower == '.uplugin' else UEAssetType.Asset
-                                version = get_version_from_path(full_folder)
-                                supported_versions = 'UE_' + version if version else ''
                                 marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                                 grab_result = ''
                                 if marketplace_url:
@@ -955,6 +958,7 @@ class UEVMGui(tk.Tk):
                                     'grab_result': grab_result,
                                     'comment': comment,
                                     'supported_versions': supported_versions,
+                                    'downloaded_size': gui_g.s.unknown_size  # as it's local, it's downloaded, so we add a size
                                 }
                                 msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_ext else f'-->Found {folder_name} containing a {asset_type.name}'
                                 self.logger.debug(msg)
@@ -1000,10 +1004,11 @@ class UEVMGui(tk.Tk):
                     'Origin': content['path'],
                     'Url': content['marketplace_url'],
                     'Grab result': content['grab_result'],
-                    'Added manually': True,
                     'Category': content['asset_type'].category_name,
                     'Comment': content['comment'],
-                    'Supported Versions': content.get('supported_versions', ''),
+                    'Supported versions': content.get('supported_versions', ''),
+                    'Added manually': True,
+                    'Downloaded size': content['downloaded_size'],
                 }
             )
             row_index = -1
@@ -1039,7 +1044,8 @@ class UEVMGui(tk.Tk):
                 'added_manually': True,
                 'category': content['asset_type'].category_name,
                 'comment': content['comment'],
-                'supported_versions': content.get('supported_versions', ''),
+                'downloaded_size': content['downloaded_size']
+                # 'supported_versions': content.get('supported_versions', '', # we want to get the scraped data
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
