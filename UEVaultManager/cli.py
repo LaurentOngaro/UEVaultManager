@@ -142,7 +142,7 @@ class UEVaultManagerCLI:
     :param api_timeout: timeout for API requests.
     """
     is_gui = False  # class property to be accessible by static methods
-    release_id = -1  # the release id selected for an asset installation
+    release_id = None  # the release id selected for an asset installation
 
     def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
@@ -1417,10 +1417,10 @@ class UEVaultManagerCLI:
             )
             make_modal(cw)
             # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
-            if self.release_id:
+            if self.release_id is not None:
                 try:
                     release_selected = releases[self.release_id]
-                except IndexError:
+                except (IndexError, KeyError):
                     self._log_and_gui_display(
                         self.logger.warning, '\nThe selected release could not be found. The latest one as been selected by default.\n'
                     )
@@ -1638,7 +1638,7 @@ class UEVaultManagerCLI:
                     self.core.uevmlfs.save_installed_assets()
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
-                        db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=[installed_asset.install_path])
+                        db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=[installed_asset.install_path])
                     message += f'\nAsset have been installed in "{installed_asset.install_path}"'
                 else:
                     message += f'\nAsset could not be installed in "{installed_asset.install_path}"'
@@ -1647,7 +1647,7 @@ class UEVaultManagerCLI:
                 parent_path = os.path.dirname(download_path)
                 message += f'\nThe manifest file has been copied in {parent_path}.'
                 # manifest_filename = path_join(parent_path, 'manifest.json')
-                manifest_filename = path_join(parent_path,  gui_g.s.ue_manifest_filename)
+                manifest_filename = path_join(parent_path, gui_g.s.ue_manifest_filename)
                 shutil.copy(installed_asset.manifest_path, manifest_filename)
             elif args.clean_dowloaded_data:
                 message += '\nDownloaded data have been deleted.'

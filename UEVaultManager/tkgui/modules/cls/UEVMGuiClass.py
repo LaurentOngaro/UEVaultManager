@@ -24,7 +24,7 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult
-from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.lfs.utils import get_version_from_path, path_join
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
@@ -156,8 +156,8 @@ class UEVMGui(tk.Tk):
                         # the installed_folders field is empty for the installed_assets, we remove it from the json file
                         self.core.uevmlfs.remove_installed_asset(app_name)
                 # update the database using catalog_item_id instead as asset_id to merge installed_folders for ALL the releases
-                for catalog_item_id, installed_folders in merged_installed_folders.items():
-                    db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=installed_folders)
+                for catalog_item_id, folders_to_add in merged_installed_folders.items():
+                    db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_add)
             # update the installed_assets json file from the database info
             # NO TO DO because the in installed_folders have not the same content (for one asset in the json file, for all releases in the database)
             # installed_assets_db = db_handler.get_rows_with_installed_folders()
@@ -264,8 +264,6 @@ class UEVMGui(tk.Tk):
         else:
             gui_f.show_progress(self, text='Initializing Data Table...')
             data_table.update(update_format=True)
-        # Quick edit the first row
-        # self.editable_table.update_quick_edit(0)
         show_option_fist = False  # debug_only
         gui_f.close_progress(self)
         if show_option_fist:
@@ -373,6 +371,21 @@ class UEVMGui(tk.Tk):
         except tk.TclError as error:
             # the window has been closed so an error is raised
             self.add_error(error)
+
+    def _update_installed_folders(self, row_index: int, asset_id: str = '') -> None:
+        """
+        update the content of the 'Installed folders' cell of the row and the quick edit window.
+        :param row_index: the index of the row to update.
+        :param asset_id: the asset id to update.
+        """
+        asset_id = asset_id or self.get_asset_id()
+        data_table = self.editable_table
+        db_handler = data_table.db_handler
+        installed_folders = db_handler.get_installed_folders(asset_id)
+        col_index = data_table.get_col_index('Installed folders')
+        if data_table.update_cell(row_index, col_index, installed_folders):
+            data_table.update()  # because the "installed folder" field changed
+        data_table.update_quick_edit(data_table.get_selected_row_fixed())
 
     def on_key_press(self, event):
         """
@@ -918,7 +931,7 @@ class UEVMGui(tk.Tk):
                                             comment += f'\nThe manifest file and the folder should be moved inside a folder named:\n{app_name_from_manifest}'
                                 else:
                                     asset_type = UEAssetType.Plugin if extension_lower == '.uplugin' else UEAssetType.Asset
-
+                                supported_versions = 'UE_' + get_version_from_path(full_folder)
                                 marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                                 grab_result = ''
                                 if marketplace_url:
@@ -938,7 +951,8 @@ class UEVMGui(tk.Tk):
                                     'asset_type': asset_type,
                                     'marketplace_url': marketplace_url,
                                     'grab_result': grab_result,
-                                    'comment': comment
+                                    'comment': comment,
+                                    'Supported versions': supported_versions,
                                 }
                                 msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_ext else f'-->Found {folder_name} containing a {asset_type.name}'
                                 self.logger.debug(msg)
@@ -987,6 +1001,7 @@ class UEVMGui(tk.Tk):
                     'Added manually': True,
                     'Category': content['asset_type'].category_name,
                     'Comment': content['comment'],
+                    'Supported versions': content['Supported versions'],
                 }
             )
             row_index = -1
@@ -1022,6 +1037,7 @@ class UEVMGui(tk.Tk):
                 'added_manually': True,
                 'category': content['asset_type'].category_name,
                 'comment': content['comment'],
+                'Supported versions': content['Supported versions'],
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
@@ -1523,13 +1539,7 @@ class UEVMGui(tk.Tk):
         gui_g.UEVM_cli_args['order_opt'] = True
         gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
         row_index, asset_id = self.run_uevm_command('install_asset')
-        # update the content of the 'Installed folders' cell of the row that could have been changed by the install_asset command
-        data_table = self.editable_table
-        db_handler = data_table.db_handler
-        installed_folders = db_handler.get_installed_folders(asset_id)
-        col_index = data_table.get_col_index('Installed folders')
-        if data_table.update_cell(row_index, col_index, installed_folders):
-            data_table.update()  # because the "installed folder" field changed
+        self._update_installed_folders(row_index, asset_id)
 
     def download_asset(self) -> None:
         """
@@ -1567,13 +1577,13 @@ class UEVMGui(tk.Tk):
         elif gui_f.box_yesno(f'Are you sure you want to remove the release {asset_id} from the installed asset list ?'):
             asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)
             if asset_installed:
-                installed_folders = asset_installed.installed_folders
+                folders_to_remove = asset_installed.installed_folders
                 self.core.uevmlfs.remove_installed_asset(asset_id)
                 db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
                 if db_handler is not None:
                     # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
                     catalog_item_id = asset_installed.catalog_item_id
-                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders_to_remove=installed_folders)
+                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_remove)
                 return True
         else:
             return False
@@ -1582,7 +1592,8 @@ class UEVMGui(tk.Tk):
         """
         Display the releases of the asset in a choice window.
         """
-        release_info_json = self.editable_table.get_release_info()
+        data_table = self.editable_table  # shortcut
+        release_info_json = data_table.get_release_info()
         if not release_info_json:
             return
         release_info = json.loads(release_info_json)
@@ -1602,6 +1613,8 @@ class UEVMGui(tk.Tk):
             no_content_text='This release has not been installed yet',
         )
         gui_f.make_modal(cw)
+        row_index = data_table.get_selected_row_fixed()
+        self._update_installed_folders(row_index)
 
     def remove_installed_folder(self, selected_ids: tuple) -> bool:
         """
@@ -1644,30 +1657,39 @@ class UEVMGui(tk.Tk):
                 if db_handler is not None:
                     # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
                     catalog_item_id = asset_installed.catalog_item_id
-                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders_to_remove=[folder_selected])
+                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=[folder_selected])
                 return True
         else:
             return False
 
-    # noinspection PyUnusedLocal
-    def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback
+    def get_asset_id(self) -> str:
         """
-        Copy the asset id into the clipboard.
+        Get the asset id in the control frame.
         """
         frm_control: UEVMGuiControlFrame = self._frm_control
-        value = frm_control.var_asset_id.get()
-        if not value:
-            return
-        self.clipboard_clear()
-        self.clipboard_append(value)
-        self.logger.info(f'{value} copied to the clipboard.')
+        if not frm_control:
+            return ''
+        return frm_control.var_asset_id.get()
 
     def set_asset_id(self, value: str) -> None:
         """
         Set the asset id in the control frame.
         :param value: the value to set.
         """
-        self._frm_control.var_asset_id.set(value)
+        frm_control: UEVMGuiControlFrame = self._frm_control
+        if not frm_control:
+            return
+        frm_control.var_asset_id.set(value)
+
+    # noinspection PyUnusedLocal
+    def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback
+        """
+        Copy the asset id into the clipboard.
+        """
+        value = self.get_asset_id()
+        self.clipboard_clear()
+        self.clipboard_append(value)
+        self.logger.info(f'{value} copied to the clipboard.')
 
     def clean_asset_folders(self) -> int:
         """
