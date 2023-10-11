@@ -233,24 +233,12 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(msg, level='warning')
 
         if show_open_file_dialog:
-            if self.open_file() == '':
+            if not self.open_file():
                 self.logger.error('This application could not run without a file to read data from')
                 self.close_window(True)
 
-        gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-        downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-        if downloaded_data is not None and len(downloaded_data) > 0:
-            df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-            # update the downloaded_size field in the datatable using asset_id as key
-            s_format = gui_g.s.format_size
-            s_yes = gui_g.s.unknown_size
-            for asset_id, asset_data in downloaded_data.items():
-                try:
-                    size = int(asset_data['size'])
-                    size = s_format.format(size / 1024 / 1024) if size > 1 else s_yes  # convert size to readable text
-                    df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
-                except KeyError:
-                    pass
+        self._update_downloaded_size()
+
         if gui_g.s.last_opened_filter != '':
             filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
             if filters is not None:
@@ -269,6 +257,11 @@ class UEVMGui(tk.Tk):
         if show_option_fist:
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
+
+    def _update_downloaded_size(self) -> None:
+        gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
+        downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
+        self.editable_table.update_downloaded_size(downloaded_data)
 
     def mainloop(self, n=0):
         """
@@ -330,23 +323,27 @@ class UEVMGui(tk.Tk):
             )
         return filename
 
-    def _check_and_get_widget_value(self, tag: str):
+    def _check_and_get_widget_value(self, tag: str) -> tuple:
         """
         Check if the widget with the given tags exists and return its value and itself.
         :param tag: tag of the widget that triggered the event.
-        :return: value,widget.
+        :return: (value, widget) tuple.
         """
-        if tag == '':
+        if not tag:
             return None, None
+
         widget = self._frm_control.lbtf_quick_edit.get_child_by_tag(tag)
+
         if widget is None:
             self.logger.warning(f'Could not find a widget with tag {tag}')
             return None, None
-        col = widget.col
-        row = widget.row
+
+        col, row = widget.col, widget.row
+
         if col is None or row is None or col < 0 or row < 0:
             self.logger.debug(f'invalid values for row={row} and col={col}')
             return None, widget
+
         value = widget.get_content()
         return value, widget
 
@@ -355,7 +352,7 @@ class UEVMGui(tk.Tk):
         Wait for a window to be closed.
         :param window: the window to wait for.
         """
-        if window is None:
+        if not window:
             # the window could have been closed before this call
             return
         try:
@@ -429,7 +426,7 @@ class UEVMGui(tk.Tk):
         canvas_image = self._frm_control.canvas_image
         try:
             row_number: int = self.editable_table.get_row_clicked(event)
-            if row_number < 0 or row_number == '':
+            if not row_number or row_number < 0:
                 return
             self.update_preview_info(row_number)
             image_url = self.editable_table.get_image_url(row_number)
@@ -811,6 +808,8 @@ class UEVMGui(tk.Tk):
                 'G:/Assets/pour UE/00 A trier/Warez/Battle Royale Island Pack',  #
                 'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature',  #
                 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
+                'G:/Assets/pour UE/02 Warez/Animations/Female Movement Animset Pro 4.26',  #
+                'G:/Assets/pour UE/02 Warez/Characters/Boths/Character Customizer v5.01 UE_4.25'  #
             ]
         if gui_g.s.offline_mode:
             gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
@@ -862,6 +861,7 @@ class UEVMGui(tk.Tk):
                     marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                     grab_result = ''
                     comment = ''
+                    supported_versions = ''
                     if marketplace_url:
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
@@ -879,7 +879,8 @@ class UEVMGui(tk.Tk):
                         'asset_type': UEAssetType.Asset,
                         'marketplace_url': marketplace_url,
                         'grab_result': grab_result,
-                        'comment': comment
+                        'comment': comment,
+                        'supported_versions': supported_versions
                     }
                     if self.core.scan_assets_logger:
                         self.core.scan_assets_logger.info(msg)
@@ -931,7 +932,8 @@ class UEVMGui(tk.Tk):
                                             comment += f'\nThe manifest file and the folder should be moved inside a folder named:\n{app_name_from_manifest}'
                                 else:
                                     asset_type = UEAssetType.Plugin if extension_lower == '.uplugin' else UEAssetType.Asset
-                                supported_versions = 'UE_' + get_version_from_path(full_folder)
+                                version = get_version_from_path(full_folder)
+                                supported_versions = 'UE_' + version if version else ''
                                 marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                                 grab_result = ''
                                 if marketplace_url:
@@ -952,7 +954,7 @@ class UEVMGui(tk.Tk):
                                     'marketplace_url': marketplace_url,
                                     'grab_result': grab_result,
                                     'comment': comment,
-                                    'Supported versions': supported_versions,
+                                    'supported_versions': supported_versions,
                                 }
                                 msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_ext else f'-->Found {folder_name} containing a {asset_type.name}'
                                 self.logger.debug(msg)
@@ -1001,7 +1003,7 @@ class UEVMGui(tk.Tk):
                     'Added manually': True,
                     'Category': content['asset_type'].category_name,
                     'Comment': content['comment'],
-                    'Supported versions': content['Supported versions'],
+                    'Supported Versions': content.get('supported_versions', ''),
                 }
             )
             row_index = -1
@@ -1037,7 +1039,7 @@ class UEVMGui(tk.Tk):
                 'added_manually': True,
                 'category': content['asset_type'].category_name,
                 'comment': content['comment'],
-                'Supported versions': content['Supported versions'],
+                'supported_versions': content.get('supported_versions', ''),
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
@@ -1082,8 +1084,7 @@ class UEVMGui(tk.Tk):
         if ue_marketplace_url.lower() in marketplace_url.lower():
             # get the data from the marketplace marketplace_url
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
-            if asset_data is None or asset_data == [] or asset_data.get('grab_result',
-                                                                        None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
+            if not asset_data or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
                 msg = f'Failed to grab data from {marketplace_url}'
                 if show_message:
                     gui_f.box_message(msg, level='warning')
@@ -1429,7 +1430,9 @@ class UEVMGui(tk.Tk):
             data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             data_table.update_col_infos(apply_resize_cols=False)
-            if data_table.reload_data():
+            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
+            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
+            if data_table.reload_data(downloaded_data):
                 # self.update_page_numbers() done in reload_data
                 self.update_category_var()
                 gui_f.box_message(f'Data Reloaded from {data_table.data_source}')
@@ -1445,7 +1448,9 @@ class UEVMGui(tk.Tk):
             data_table.update_col_infos(apply_resize_cols=False)
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
-            if data_table.rebuild_data():
+            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
+            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
+            if data_table.rebuild_data(downloaded_data):
                 self.update_controls_state()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
@@ -1459,7 +1464,7 @@ class UEVMGui(tk.Tk):
             self.logger.info('A UEVM command is already running, please wait for it to finish.')
             gui_g.display_content_window_ref.set_focus()
             return
-        if command_name == '':
+        if not command_name:
             return
         if gui_g.UEVM_cli_ref is None:
             gui_f.from_cli_only_message()
