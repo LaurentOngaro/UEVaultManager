@@ -265,7 +265,7 @@ class UEAssetDbHandler:
             cursor.close()
 
     def _precheck_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', folders: list = None) -> (list, list):
-        if self.connection is None or folders is None or len(folders) == 0 or (not asset_id and not catalog_item_id):
+        if self.connection is None or not folders or (not asset_id and not catalog_item_id):
             return []
         installed_folders_existing = self.get_installed_folders(asset_id, catalog_item_id)
         if isinstance(installed_folders_existing, str):

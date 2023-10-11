@@ -156,7 +156,7 @@ class GUISettings:
         else:
             read_value = self.config_vars[var_name]
 
-        if read_value == '':
+        if not read_value:
             return default
         if isinstance(read_value, dict) or isinstance(read_value, list):
             if len(read_value) > 0:
@@ -179,7 +179,7 @@ class GUISettings:
         :param var_name: name of the config var to get
         :param values: list or Dict to serialize
         """
-        if values is None or values == {} or values == []:
+        if not values:
             json_str = ''
         else:
             json_str = json.dumps(values, skipkeys=True, allow_nan=True)

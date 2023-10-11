@@ -535,7 +535,7 @@ class EditableTable(Table):
         :param add_page_offset: true to add the page offset to the row number, False otherwise.
         :return:
         """
-        if row_number < 0 or row_number == '':
+        if not row_number or row_number < 0:
             return -1
         if add_page_offset:
             row_number = self.add_page_offset(row_number)
@@ -933,9 +933,30 @@ class EditableTable(Table):
         self.must_save = False
         self.update_page()
 
-    def reload_data(self) -> bool:
+    def update_downloaded_size(self, downloaded_data: {}) -> None:
+        """
+        Update the downloaded size for the assets in the table using the downloaded_data (from the Vault Cache folder content)
+        :param downloaded_data: the downloaded data from the Vault Cache folder content.
+        """
+        if downloaded_data:
+            df = self.get_data(df_type=DataFrameUsed.UNFILTERED)
+            # update the downloaded_size field in the datatable using asset_id as key
+            s_format = gui_g.s.format_size
+            s_yes = gui_g.s.unknown_size
+            for asset_id, asset_data in downloaded_data.items():
+                try:
+                    size = int(asset_data['size'])
+                    size = s_format.format(size / 1024 / 1024) if size > 1 else s_yes  # convert size to readable text
+                    df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
+                    # print(f'asset_id={asset_id} size={size}')
+                except KeyError:
+                    pass
+            # self.editable_table.set_data(df, df_type=DataFrameUsed.UNFILTERED)
+
+    def reload_data(self, downloaded_data: {}) -> bool:
         """
         Reload data from the CSV file and refreshes the table display.
+        :param downloaded_data: the downloaded data from the Vault Cache folder content.
         :return: True if the data has been loaded successfully, False otherwise.
         """
         gui_f.show_progress(self, text='Reloading Data from data source...')
@@ -943,13 +964,15 @@ class EditableTable(Table):
         if df_loaded is None:
             return False
         self.set_data(df_loaded)
+        self.update_downloaded_size(downloaded_data)
         self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
         # mf.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
-    def rebuild_data(self) -> bool:
+    def rebuild_data(self, downloaded_data: {}) -> bool:
         """
          Rebuild the data in the table.
+         :param downloaded_data: the downloaded data from the Vault Cache folder content.
          :return: True if the data was successfully rebuilt, False otherwise.
          """
         self.clear_rows_to_save()
@@ -1015,6 +1038,7 @@ class EditableTable(Table):
                 gui_f.close_progress(self)
                 return False
             self.set_data(df_loaded)
+            self.update_downloaded_size(downloaded_data)
             self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
             # mf.close_progress(self)  # done in data_table.update(update_format=True)
             return True
@@ -1453,7 +1477,7 @@ class EditableTable(Table):
         :param ue_asset_data: the data to update the row with
         :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value
         """
-        if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
+        if not ue_asset_data:
             return
         if isinstance(ue_asset_data, list):
             ue_asset_data = ue_asset_data[0]
@@ -1566,7 +1590,7 @@ class EditableTable(Table):
         Return the values of the selected row in the table.
         :return: a dictionary containing the column names and their corresponding values for the selected row.
         """
-        if self._edit_row_entries is None or self._edit_row_number < 0:
+        if not self._edit_row_entries or self._edit_row_number < 0:
             return {}
         entries_values = {}
         for key, entry in self._edit_row_entries.items():
@@ -1878,7 +1902,7 @@ class EditableTable(Table):
         """
         Reset the cell content preview.
         """
-        self._frm_quick_edit.config(text='Select a row for Quick Editing')
+        self._frm_quick_edit.config(text='Select a row for Quick Editing its USER FIELDS')
         column_names = gui_t.get_csv_field_name_list(filter_on_states=[gui_t.CSVFieldState.USER])
         for col_name in column_names:
             self._frm_quick_edit.set_default_content(col_name)
@@ -1939,7 +1963,7 @@ class EditableTable(Table):
         else:
             asset_url = url
         self.logger.info(f'calling open_asset_url={asset_url}')
-        if asset_url is None or asset_url == '' or asset_url == gui_g.s.empty_cell:
+        if not asset_url or asset_url == gui_g.s.empty_cell:
             self.logger.info('asset URL is empty for this asset')
             return
         webbrowser.open(asset_url)

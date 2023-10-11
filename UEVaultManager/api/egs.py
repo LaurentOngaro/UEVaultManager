@@ -49,7 +49,7 @@ def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=
         supported_versions_list = create_list_from_string(supported_versions_list)
         obsolete = True
         for _, version in enumerate(supported_versions_list):
-            if version == '':
+            if not version:
                 continue
             else:
                 if float(engine_version_for_obsolete_assets) <= float(version):
@@ -210,7 +210,7 @@ class EPCAPI:
         :param asset_name: the name of the asset (for display purpose only).
         :return: the price.
         """
-        if dom_elt is None or dom_elt == '':
+        if not dom_elt:
             self.log.debug(f'Price not found for {asset_name}')
             return 0.0
         price = 0.0
@@ -547,7 +547,7 @@ class EPCAPI:
         asset_url, asset_slug, error_code = self.search_for_asset_url(asset_title)
 
         # TODO: improve the following code to use the marketplace API instead of Scraping using beautifulsoup
-        if asset_url == '' or error_code != GrabResult.NO_ERROR.name:
+        if not asset_url or error_code != GrabResult.NO_ERROR.name:
             self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
             no_result['grab_result'] = error_code
             no_result['page_title'] = asset_slug

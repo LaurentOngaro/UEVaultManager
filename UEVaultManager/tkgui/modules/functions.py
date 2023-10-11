@@ -197,7 +197,7 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
         # could be usefull if connexion is slow
         show_default_image(canvas_image)
         return False
-    if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
+    if canvas_image is None or not image_url or str(image_url) in ('', 'None', 'nan'):
         return False
     try:
         # print(image_url)

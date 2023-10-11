@@ -131,10 +131,8 @@ class ExtendedWidget:
         default_font = nametofont("TkDefaultFont")
         style = self.get_style()
         if style is not None:
-            default_font = style.lookup("TEntry", "font")
-            if default_font == '':
-                # noinspection PyUnresolvedReferences
-                default_font = self.cget("font")
+            # noinspection PyUnresolvedReferences
+            default_font = style.lookup("TEntry", "font") or self.cget("font")
 
         return default_font
 
