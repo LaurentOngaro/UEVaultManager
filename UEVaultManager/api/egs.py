@@ -302,9 +302,9 @@ class EPCAPI:
             return result
         try:
             r = self.session.get(url, timeout=self.timeout)
-        except (requests.exceptions.Timeout, ConnectionError):
+        except (Exception,):
             self.log.warning(f'Timeout for {url}')
-            return result
+            raise ConnectionError()
         if r.status_code == 200:
             result = True
         return result
