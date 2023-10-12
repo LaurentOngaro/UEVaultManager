@@ -952,9 +952,10 @@ class UEVaultManagerCLI:
                 else:
                     json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs)
                     item = Asset.from_json(json_data_uevm)  # create an object from the asset class using the json data
-            except (Exception, ):
-                item = None
-        if not item :
+            except (Exception, ) as error:
+                self.logger.warning(f'Scrapped data for {app_name} are not available : {error!r}')
+                # item = None
+        if not item:
             self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
             args.offline = True
         manifest_data = None
