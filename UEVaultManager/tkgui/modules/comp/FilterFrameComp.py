@@ -256,13 +256,13 @@ class FilterFrame(ttk.LabelFrame):
         """
         Create a boolean mask for specified column based on filter value in a pandas DataFrame.
         """
-        # if filters is None or len(filters) == 0:
+        # if not filters:
         #     # load quick filter first
         #     filters = self.quick_filter(only_return_filter=True).items()
-        # if filters is None or len(filters) == 0:
+        # if not filters:
         #     filters = self._filters.items()
 
-        if filters is None or len(filters) == 0:
+        if not filters:
             quick_filters: dict = self.quick_filter(only_return_filter=True)
             filters: dict = self._filters.copy()
             filters.update(quick_filters)
@@ -310,7 +310,7 @@ class FilterFrame(ttk.LabelFrame):
         Set the filters used.
         :param filters: the filter dictionary containing the filter conditions.
         """
-        if filters is None or not isinstance(filters, dict) or len(filters) == 0:
+        if not filters or not isinstance(filters, dict):
             return
         self._filters = filters.copy()
         self._update_filter_widgets()

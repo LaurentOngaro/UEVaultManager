@@ -184,6 +184,6 @@ class InstalledAsset:
             Add the path at the end of the installed_folders proper ty.
         """
         path = path.strip()
-        if not path or len(path) == 0 or path in self.installed_folders:
+        if not path or path in self.installed_folders:
             return
         self.installed_folders.append(path)

@@ -189,7 +189,7 @@ class ChoiceFromListWindow(tk.Toplevel):
                     self.cb_content_choices = ttk.Combobox(self.frm_content_choices, values=var_content_choices, state='readonly', width=45)
                     self.cb_content_choices.grid(row=1, column=0, padx=5, pady=1)
                 self.cb_content_choices.grid_columnconfigure(0, weight=3)
-                self.cb_content_choices.bind("<<ComboboxSelected>>", self.set_content_text)
+                self.cb_content_choices.bind('<<ComboboxSelected>>', self.set_content_text)
 
             self.frm_buttons = tk.Frame(self)
             self.frm_buttons.pack(pady=5)
@@ -203,7 +203,7 @@ class ChoiceFromListWindow(tk.Toplevel):
                 self.btn_import = ttk.Button(self.frm_buttons, text='Valid and Close', bootstyle=INFO, command=self.validate)
                 self.btn_import.pack(side=tk.LEFT, padx=5)
 
-            self.cb_list_choices.bind("<<ComboboxSelected>>", self.set_list_description)
+            self.cb_list_choices.bind('<<ComboboxSelected>>', self.set_list_description)
 
             self.cb_list_choices.set(var_choices[0])  # select the first value
             self.set_list_description()

@@ -332,8 +332,7 @@ class UEVMLFS:
         Load the filters from a json file
         :return: the filters or {} if not found. Will return None on error
         """
-        if filename == '':
-            filename = gui_g.s.last_opened_filter
+        filename = filename or gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
         full_filename = path_join(folder, filename)
         if not os.path.isfile(full_filename):
@@ -350,8 +349,7 @@ class UEVMLFS:
         """
         Save the filters to a json file.
         """
-        if filename == '':
-            filename = gui_g.s.last_opened_filter
+        filename = filename or gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
         full_filename = path_join(folder, filename)
         if not full_filename:
@@ -381,7 +379,7 @@ class UEVMLFS:
         :param file_name_to_keep: the list of items to keep. Leave to Empty to delete all files.
         :return: the total size of deleted files.
         """
-        if folders is None or not folders:
+        if not folders:
             return 0
         if isinstance(folders, str):
             folders_to_clean = [folders]
@@ -625,11 +623,14 @@ class UEVMLFS:
         """
         if not app_name:
             return None
-        if self._installed_assets is None or len(self._installed_assets) <= 0:
+
+        if not self._installed_assets:
             self.load_installed_assets()
-        if json_data := self._installed_assets.get(app_name, None):
-            asset = InstalledAsset.from_json(json_data)
-            return asset
+
+        json_data = self._installed_assets.get(app_name)
+        if json_data:
+            return InstalledAsset.from_json(json_data)
+
         return None
 
     def remove_installed_asset(self, app_name: str) -> None:
@@ -650,7 +651,7 @@ class UEVMLFS:
         """
         if not app_name:
             return
-        if self._installed_assets is None or len(self._installed_assets) <= 0:
+        if not self._installed_assets:
             self._installed_assets = {}
         has_changed = True
         if asset_data is not None:
@@ -688,7 +689,7 @@ class UEVMLFS:
         :param installed_asset: the installed asset to add.
         :return: True if the asset was added.
         """
-        if self._installed_assets is None or len(self._installed_assets) <= 0:
+        if not self._installed_assets:
             self._installed_assets = {}
         app_name = installed_asset.app_name
         if app_name not in self._installed_assets:
@@ -818,14 +819,14 @@ class UEVMLFS:
             # TODO: only keep releases that are compatible with the version of the selected project or engine.
             for index, item in enumerate(reversed(release_info)):  # reversed to have the latest release first
                 asset_id = item.get('appId', None)
-                latest_id = asset_id if latest_id == '' else latest_id
+                latest_id = latest_id or asset_id
                 release_title = item.get('versionTitle', '') or asset_id
                 compatible_list = item.get('compatibleApps', None)
                 date_added = item.get('dateAdded', '')
                 # Convert the string to a datetime object
                 datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
                 # Format the datetime object as "YYYY-MM-DD"
-                formatted_date = datetime_obj.strftime("%Y-%m-%d")
+                formatted_date = datetime_obj.strftime('%Y-%m-%d')
                 if asset_id is not None and release_title is not None and compatible_list is not None:
                     # remove 'UE_' from items of the compatible_list
                     compatible_list = [item.replace('UE_', '') for item in compatible_list]

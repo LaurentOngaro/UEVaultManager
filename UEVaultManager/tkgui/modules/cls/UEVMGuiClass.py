@@ -24,7 +24,7 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult
-from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.lfs.utils import get_version_from_path, path_join
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
@@ -51,6 +51,7 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
     :param name_to_clean: name to clean.
     :return: cleaned name.
     """
+    name_cleaned = name_to_clean
     # ONE: convert some unwanted strings to @. @ is used to identify the changes made
     patterns = [
         r'UE_[\d._]+',  # any string starting with 'UE_' followed by any digit, dot or underscore ex: 'UE_4_26'
@@ -63,20 +64,22 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
     ]
     patterns = [re.compile(p) for p in patterns]
     for pattern in patterns:
-        name_to_clean = pattern.sub('@', name_to_clean)
+        name_cleaned = pattern.sub('@', name_cleaned)
 
     # TWO: remove converted string with relicats
     patterns = [
+        r'v\d+[._\w\d]+',  # v followed by at least one digit followed by dot or underscore or space or digit ex: 'v1.0' or 'v1_0' or 'v1 '
+        r'v[@]+\d+',  # v followed by @ followed by at least one digit ex: 'v@1' or 'v@11'
         r'[@]+\d+',  # a @ followed by at least one digit ex: '@1' or '@11'
         # r'\d+[@]+',  # at least one digit followed by @ ex: '1@' or '1@@'
         r'[@]+',  # any @  ex: '@' or '@@'
     ]
     patterns = [re.compile(p) for p in patterns]
     for pattern in patterns:
-        name_to_clean = pattern.sub('', name_to_clean)
+        name_cleaned = pattern.sub('', name_cleaned)
 
-    name_to_clean = name_to_clean.replace('_', '-')
-    return name_to_clean.strip()  # Remove leading and trailing spaces
+    name_cleaned = name_cleaned.replace('_', '-')
+    return name_cleaned.strip()  # Remove leading and trailing spaces
 
 
 class UEVMGui(tk.Tk):
@@ -156,8 +159,8 @@ class UEVMGui(tk.Tk):
                         # the installed_folders field is empty for the installed_assets, we remove it from the json file
                         self.core.uevmlfs.remove_installed_asset(app_name)
                 # update the database using catalog_item_id instead as asset_id to merge installed_folders for ALL the releases
-                for catalog_item_id, installed_folders in merged_installed_folders.items():
-                    db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=installed_folders)
+                for catalog_item_id, folders_to_add in merged_installed_folders.items():
+                    db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_add)
             # update the installed_assets json file from the database info
             # NO TO DO because the in installed_folders have not the same content (for one asset in the json file, for all releases in the database)
             # installed_assets_db = db_handler.get_rows_with_installed_folders()
@@ -170,7 +173,7 @@ class UEVMGui(tk.Tk):
             data_source=data_source,
             rows_per_page=37,
             show_statusbar=True,
-            update_page_numbers_func=self.update_controls_state,
+            update_controls_state_func=self.update_controls_state,
             update_preview_info_func=self.update_preview_info,
             set_widget_state_func=gui_f.set_widget_state
         )
@@ -233,24 +236,12 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(msg, level='warning')
 
         if show_open_file_dialog:
-            if self.open_file() == '':
+            if not self.open_file():
                 self.logger.error('This application could not run without a file to read data from')
                 self.close_window(True)
 
-        gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-        downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-        if downloaded_data is not None and len(downloaded_data) > 0:
-            df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-            # update the downloaded_size field in the datatable using asset_id as key
-            s_format = gui_g.s.format_size
-            s_yes = gui_g.s.unknown_size
-            for asset_id, asset_data in downloaded_data.items():
-                try:
-                    size = int(asset_data['size'])
-                    size = s_format.format(size / 1024 / 1024) if size > 1 else s_yes  # convert size to readable text
-                    df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
-                except KeyError:
-                    pass
+        self._update_downloaded_size()
+
         if gui_g.s.last_opened_filter != '':
             filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
             if filters is not None:
@@ -264,13 +255,16 @@ class UEVMGui(tk.Tk):
         else:
             gui_f.show_progress(self, text='Initializing Data Table...')
             data_table.update(update_format=True)
-        # Quick edit the first row
-        # self.editable_table.update_quick_edit(0)
         show_option_fist = False  # debug_only
         gui_f.close_progress(self)
         if show_option_fist:
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
+
+    def _update_downloaded_size(self) -> None:
+        gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
+        downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
+        self.editable_table.update_downloaded_size(downloaded_data)
 
     def mainloop(self, n=0):
         """
@@ -332,23 +326,27 @@ class UEVMGui(tk.Tk):
             )
         return filename
 
-    def _check_and_get_widget_value(self, tag: str):
+    def _check_and_get_widget_value(self, tag: str) -> tuple:
         """
         Check if the widget with the given tags exists and return its value and itself.
         :param tag: tag of the widget that triggered the event.
-        :return: value,widget.
+        :return: (value, widget) tuple.
         """
-        if tag == '':
+        if not tag:
             return None, None
+
         widget = self._frm_control.lbtf_quick_edit.get_child_by_tag(tag)
+
         if widget is None:
             self.logger.warning(f'Could not find a widget with tag {tag}')
             return None, None
-        col = widget.col
-        row = widget.row
+
+        col, row = widget.col, widget.row
+
         if col is None or row is None or col < 0 or row < 0:
             self.logger.debug(f'invalid values for row={row} and col={col}')
             return None, widget
+
         value = widget.get_content()
         return value, widget
 
@@ -357,7 +355,7 @@ class UEVMGui(tk.Tk):
         Wait for a window to be closed.
         :param window: the window to wait for.
         """
-        if window is None:
+        if not window:
             # the window could have been closed before this call
             return
         try:
@@ -373,6 +371,21 @@ class UEVMGui(tk.Tk):
         except tk.TclError as error:
             # the window has been closed so an error is raised
             self.add_error(error)
+
+    def _update_installed_folders(self, row_index: int, asset_id: str = '') -> None:
+        """
+        update the content of the 'Installed folders' cell of the row and the quick edit window.
+        :param row_index: the index of the row to update.
+        :param asset_id: the asset id to update.
+        """
+        asset_id = asset_id or self.get_asset_id()
+        data_table = self.editable_table
+        db_handler = data_table.db_handler
+        installed_folders = db_handler.get_installed_folders(asset_id)
+        col_index = data_table.get_col_index('Installed folders')
+        if data_table.update_cell(row_index, col_index, installed_folders):
+            data_table.update()  # because the "installed folder" field changed
+        data_table.update_quick_edit(data_table.get_selected_row_fixed())
 
     def on_key_press(self, event):
         """
@@ -416,7 +429,7 @@ class UEVMGui(tk.Tk):
         canvas_image = self._frm_control.canvas_image
         try:
             row_number: int = self.editable_table.get_row_clicked(event)
-            if row_number < 0 or row_number == '':
+            if row_number < 0:
                 return
             self.update_preview_info(row_number)
             image_url = self.editable_table.get_image_url(row_number)
@@ -680,7 +693,7 @@ class UEVMGui(tk.Tk):
             if folder:
                 gui_g.s.last_opened_folder = folder
                 add_new_row = False
-                self.scan_for_assets([folder])
+                self.scan_for_assets([folder], from_add_button=True)
                 # if row_data is None:
                 #     row_data = {}
                 # row_data['Origin'] = os.path.abspath(folder)
@@ -754,15 +767,20 @@ class UEVMGui(tk.Tk):
             found_url = read_urls[0]
         else:
             found_url = egs.get_marketplace_product_url(asset_slug=clean_ue_asset_name(folder))
-        if check_if_valid and egs is not None and not egs.is_valid_url(found_url):
+        try:
+            if check_if_valid and egs is not None and not egs.is_valid_url(found_url):
+                found_url = ''
+        except (Exception, ):  # trap all exceptions on connection
+            message = f'Request timeout when accessing {found_url}\n.Operation is stopped, check you internet connection or try again later.',
+            self.logger.warning(message)
             found_url = ''
-
         return found_url
 
-    def scan_for_assets(self, folder_list: list = None) -> None:
+    def scan_for_assets(self, folder_list: list = None, from_add_button: bool = False) -> None:
         """
         Scan the folders to find files that can be loaded.
         :param folder_list: the list of folders to scan. If empty, use the folders in the config file.
+        :param from_add_button: whether the call has been done from the "add" button or not.
         """
 
         def _fix_folder_structure(content_folder_name: str = gui_g.s.ue_asset_content_subfolder):
@@ -792,12 +810,15 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = folder_list if (folder_list is not None and len(folder_list) > 0) else gui_g.s.folders_to_scan
-        if gui_g.s.testing_switch == 1:
+        if not from_add_button and gui_g.s.testing_switch == 1:  # here, do_not_ask is used to detect if the caller is the "add" button and not the "scan" button
+            # noinspection GrazieInspection
             folder_to_scan = [
+                'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  #
                 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
                 'G:/Assets/pour UE/00 A trier/Warez/Battle Royale Island Pack',  #
                 'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature',  #
                 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
+                'G:/Assets/pour UE/02 Warez/Animations/Female Movement Animset Pro 4.26',  #
             ]
         if gui_g.s.offline_mode:
             gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
@@ -810,8 +831,10 @@ class UEVMGui(tk.Tk):
             return
         if gui_g.s.check_asset_folders:
             self.clean_asset_folders()
-        if len(folder_to_scan) > 1 and not gui_f.box_yesno(
-            'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
+        if not from_add_button and (
+            len(folder_to_scan) > 1 and not gui_f.box_yesno(
+                'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
+            )
         ):
             return
 
@@ -837,7 +860,8 @@ class UEVMGui(tk.Tk):
 
                 folder_is_valid = folder_name_lower in gui_g.s.ue_valid_asset_subfolder
                 parent_could_be_valid = folder_name_lower in gui_g.s.ue_invalid_content_subfolder or folder_name_lower in gui_g.s.ue_possible_asset_subfolder
-
+                version = get_version_from_path(full_folder)
+                supported_versions = 'UE_' + version if version else ''
                 if folder_is_valid:
                     folder_name = os.path.basename(parent_folder)
                     parent_folder = os.path.dirname(parent_folder)
@@ -852,7 +876,7 @@ class UEVMGui(tk.Tk):
                     if marketplace_url:
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
-                        except ReadTimeout as error:
+                        except (Exception, ) as error:  # trap all exceptions on connection
                             self.add_error(error)
                             gui_f.box_message(
                                 f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
@@ -866,7 +890,9 @@ class UEVMGui(tk.Tk):
                         'asset_type': UEAssetType.Asset,
                         'marketplace_url': marketplace_url,
                         'grab_result': grab_result,
-                        'comment': comment
+                        'comment': comment,
+                        'supported_versions': supported_versions,
+                        'downloaded_size': gui_g.s.unknown_size  # as it's local, it's downloaded, so we add a size
                     }
                     if self.core.scan_assets_logger:
                         self.core.scan_assets_logger.info(msg)
@@ -918,7 +944,6 @@ class UEVMGui(tk.Tk):
                                             comment += f'\nThe manifest file and the folder should be moved inside a folder named:\n{app_name_from_manifest}'
                                 else:
                                     asset_type = UEAssetType.Plugin if extension_lower == '.uplugin' else UEAssetType.Asset
-
                                 marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                                 grab_result = ''
                                 if marketplace_url:
@@ -926,7 +951,7 @@ class UEVMGui(tk.Tk):
                                         grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(
                                             marketplace_url
                                         ) else GrabResult.TIMEOUT.name
-                                    except ReadTimeout as error:
+                                    except (Exception, ) as error:  # trap all exceptions on connection
                                         self.add_error(error)
                                         gui_f.box_message(
                                             f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
@@ -938,7 +963,9 @@ class UEVMGui(tk.Tk):
                                     'asset_type': asset_type,
                                     'marketplace_url': marketplace_url,
                                     'grab_result': grab_result,
-                                    'comment': comment
+                                    'comment': comment,
+                                    'supported_versions': supported_versions,
+                                    'downloaded_size': gui_g.s.unknown_size  # as it's local, it's downloaded, so we add a size
                                 }
                                 msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_ext else f'-->Found {folder_name} containing a {asset_type.name}'
                                 self.logger.debug(msg)
@@ -984,36 +1011,47 @@ class UEVMGui(tk.Tk):
                     'Origin': content['path'],
                     'Url': content['marketplace_url'],
                     'Grab result': content['grab_result'],
-                    'Added manually': True,
                     'Category': content['asset_type'].category_name,
                     'Comment': content['comment'],
+                    'Supported versions': content.get('supported_versions', ''),
+                    'Added manually': True,
+                    'Downloaded size': content['downloaded_size'],
                 }
             )
             row_index = -1
             text = f'Checking {name}'
+            old_comment = ''
+            # check if the row already exists
             try:
-                # get the indexes if value already exists in column 'Origin' for a pandastable
+                # we try to get the indexes if value already exists in column 'Origin' for a pandastable
                 rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
                 row_indexes = rows_serie.index  # returns a list of indexes. It should contain only 1 value
                 if not row_indexes.empty:
+                    # FOUND, we update the row
                     row_index = row_indexes[0]
-                    text = f'Updating {name} at row {row_index}. Old name is {data.loc[row_index, "App name"]}'
+                    index_copy = data.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
+                    old_name = data.loc[index_copy, 'App name']
+                    old_comment = data.loc[index_copy, 'Comment']
+                    text = f'Updating {name} at row {row_index}. Old name is {old_name}'
                     self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
                 self.add_error(error)
                 self.logger.warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
-                invalid_folders.append(content["path"])
+                invalid_folders.append(content['path'])
                 text = f'An Error occured when cheking {name}'
                 pw.set_text(text)
                 continue
-            if row_index == -1:
-                # row_index = 0  # added at the start of the table. As it, the index is always known
+            is_adding = row_index == -1
+            if is_adding:
+                # NOT FOUND, we add a new row
                 _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
                 text = f'Adding {name} at row {row_index}'
                 self.logger.info(f"{text} with path {content['path']}")
                 row_added += 1
+
             if not pw.update_and_continue(increment=1, text=text):
                 break
+            # set the data the must be kept after the scraping
             forced_data = {
                 # 'category': content['asset_type'].category_name,
                 'origin': content['path'],
@@ -1021,13 +1059,20 @@ class UEVMGui(tk.Tk):
                 'grab_result': content['grab_result'],
                 'added_manually': True,
                 'category': content['asset_type'].category_name,
-                'comment': content['comment'],
+                'comment': content['comment'] if not old_comment else old_comment + '\n' + content['comment'],
+                'downloaded_size': content['downloaded_size']
+                # 'supported_versions': content.get('supported_versions', '', # we want to get the scraped data
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
                     self.scrap_row(
-                        marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
-                    )
+                        marketplace_url=marketplace_url,
+                        row_index=row_index,
+                        forced_data=forced_data,
+                        show_message=False,
+                        update_dataframe=False,
+                        check_unicity=is_adding
+                    )  # call update_row() inside
                 except ReadTimeout as error:
                     self.add_error(error)
                     gui_f.box_message(
@@ -1044,6 +1089,7 @@ class UEVMGui(tk.Tk):
         pw.update()
         data_table.is_scanning = False
         data_table.update(update_format=True, update_filters=True)
+        data_table.update_col_infos()
         gui_f.close_progress(self)
 
         if invalid_folders:
@@ -1058,7 +1104,7 @@ class UEVMGui(tk.Tk):
                 gui_f.make_modal(gui_g.display_content_window_ref)
             self.logger.warning(result)
 
-    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False):
+    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False) -> dict:
         is_ok = False
         asset_data = None
         # check if the marketplace_url is a marketplace marketplace_url
@@ -1066,14 +1112,13 @@ class UEVMGui(tk.Tk):
         if ue_marketplace_url.lower() in marketplace_url.lower():
             # get the data from the marketplace marketplace_url
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
-            if asset_data is None or asset_data == [] or asset_data.get('grab_result',
-                                                                        None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
+            if not asset_data or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
                 msg = f'Failed to grab data from {marketplace_url}'
                 if show_message:
                     gui_f.box_message(msg, level='warning')
                 else:
                     self.logger.warning(msg)
-                return None
+                return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
                 start=0,
@@ -1101,10 +1146,16 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(msg, level='warning')
             else:
                 self.logger.warning(msg)
-        return asset_data
+        return asset_data[0] if asset_data is not None else None
 
     def scrap_row(
-        self, marketplace_url: str = None, row_index: int = -1, forced_data: {} = None, show_message: bool = True, update_dataframe: bool = True
+        self,
+        marketplace_url: str = None,
+        row_index: int = -1,
+        forced_data: {} = None,
+        show_message: bool = True,
+        update_dataframe: bool = True,
+        check_unicity: bool = False
     ):
         """
         Scrap the data for the current row or a given marketplace_url.
@@ -1113,6 +1164,7 @@ class UEVMGui(tk.Tk):
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
         :param show_message: whether to show a message if the marketplace_url is not valid
         :param update_dataframe: whether to update the dataframe after scraping
+        :param check_unicity: whether to check if the data are unique and ask the user to update the row if not
         """
 
         if gui_g.s.offline_mode:
@@ -1121,7 +1173,9 @@ class UEVMGui(tk.Tk):
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
+        is_unique = not check_unicity  # by default, we consider that the data are unique
         data_table = self.editable_table  # shortcut
+        data_table.save_data()  # save the data before scraping because we will update the row(s) and override non saved changes
         row_numbers = data_table.multiplerowlist
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
@@ -1161,20 +1215,59 @@ class UEVMGui(tk.Tk):
                     gui_f.close_progress(self)
                     return
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-                if asset_data is not None:
-                    data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                    if show_message and row_count == 1:
-                        gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
+                if asset_data:
+                    if check_unicity:
+                        is_unique, asset_data = self._check_unicity(asset_data)
+                    if not is_unique and gui_f.box_yesno(
+                        f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                    ):
+                        data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+                        if show_message and row_count == 1:
+                            gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
 
             gui_f.close_progress(self)
             if show_message and row_count > 1:
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-            if asset_data is not None:
-                data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+            if asset_data:
+                if check_unicity:
+                    is_unique, asset_data = self._check_unicity(asset_data)
+                if not is_unique and gui_f.box_yesno(
+                    f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                ):
+                    data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
         if update_dataframe:
             data_table.update()
+
+    def _check_unicity(self, asset_data: {}) -> (bool, dict):
+        """
+        Check if the given asset_data is unique in the table. If not, will change the asset_id and/or the asset_slug to avoid issue.
+        :param asset_data: the asset data to check
+        :return: the asset_data with the updated asset_id and/or asset_slug
+        """
+        is_unique = True
+        data = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        asset_id = asset_data['asset_id']
+        asset_slug = asset_data['asset_slug']
+        rows_serie_for_id = data.loc[lambda x: x['Asset_id'] == asset_id]
+        rows_serie_for_slug = data.loc[lambda x: x['Asset slug'].str.lower() == asset_slug.lower()]
+        if not rows_serie_for_id.empty:
+            is_unique = False
+            new_asset_id = gui_g.s.empty_row_prefix + gui_fn.create_uid()
+            asset_data['asset_id'] = new_asset_id
+            gui_f.box_message(
+                f'A row with Asset_id={asset_id} already exists. To avoid issue, the Asset_id of the new row has been set to {new_asset_id}',
+                level='warning'
+            )
+        if not rows_serie_for_slug.empty:
+            is_unique = False
+            asset_data['asset_slug'] = ''
+            gui_f.box_message(
+                f'A row with "Asset slug"={asset_slug} already exists. To avoid issue, the "Asset slug" of the new row has been set to ""',
+                level='warning'
+            )
+        return is_unique, asset_data
 
     def toggle_pagination(self, forced_value: bool = None) -> None:
         """
@@ -1376,33 +1469,43 @@ class UEVMGui(tk.Tk):
         Set the text to display in the preview frame about the number of rows.
         :param row_number: row number from a datatable. Will be converted into real row index.
         """
+
+        def _add_text(text: str, tag: str = ''):
+            self._frm_control.txt_info.insert(tk.END, text, tag, '\n')
+
         if self._frm_control is None:
             return
+        text_box = self._frm_control.txt_info  # shortcut
+        # we use tags to color the text
+        text_box.tag_configure('blue', foreground='blue')
+        text_box.tag_configure('orange', foreground='orange')
+        text_box.delete('1.0', tk.END)
+
         data_table = self.editable_table  # shortcut
         df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         df_filtered = data_table.get_data(df_type=DataFrameUsed.FILTERED)
         row_count_filtered = len(df_filtered) if df_filtered is not None else 0
         row_count = len(df)
-        asset_info = []
         idx = data_table.get_real_index(row_number)
-        asset_info.append(f'Total rows: {row_count}')
-        if row_count_filtered != row_count:
-            asset_info.append(f'Filtered rows: {row_count_filtered} ')
         if idx >= 0:
             app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
-            asset_info.append(f'Asset id: {app_name}')
-            asset_info.append(f'Row Index: {idx}')
+            _add_text(f'Asset id: {app_name}')
             size = self.core.uevmlfs.get_asset_size(app_name)
             if size is not None and size > 0:
-                size_formatted = '{:.02f} GiB'.format(size / 1024 / 1024 /
-                                                      1024) if size > 1024 * 1024 * 1024 else '{:.02f} MiB'.format(size / 1024 / 1024)
-                asset_info.append(f'Asset size: {size_formatted}')
+                _add_text(f'Asset size: {gui_fn.format_size(size)}', 'blue')
             else:
-                asset_info.append(f'Asset size: Not Get Yet')
+                _add_text(f'Asset size: Clic on "Asset Info"', 'orange')
+            downloaded_size = data_table.get_cell(row_number, data_table.get_col_index('Downloaded size'))
+            if downloaded_size:
+                _add_text('in Vault Cache or Local Folder', 'blue')
+            else:
+                _add_text('Not downloaded yet')
+            _add_text(f'Row Index: {idx}')
         else:
-            asset_info.append('No Row selected')
-        self._frm_control.txt_info.delete('1.0', tk.END)
-        self._frm_control.txt_info.insert('1.0', '\n'.join(asset_info))
+            _add_text('Place the cursor on a row for detail', 'orange')
+        _add_text(f'Total rows: {row_count}')
+        if row_count_filtered != row_count:
+            _add_text(f'Filtered rows: {row_count_filtered} ')
 
     def reload_data(self) -> None:
         """
@@ -1413,7 +1516,9 @@ class UEVMGui(tk.Tk):
             data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             data_table.update_col_infos(apply_resize_cols=False)
-            if data_table.reload_data():
+            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
+            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
+            if data_table.reload_data(downloaded_data):
                 # self.update_page_numbers() done in reload_data
                 self.update_category_var()
                 gui_f.box_message(f'Data Reloaded from {data_table.data_source}')
@@ -1429,7 +1534,9 @@ class UEVMGui(tk.Tk):
             data_table.update_col_infos(apply_resize_cols=False)
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
-            if data_table.rebuild_data():
+            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
+            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
+            if data_table.rebuild_data(downloaded_data):
                 self.update_controls_state()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
@@ -1443,7 +1550,7 @@ class UEVMGui(tk.Tk):
             self.logger.info('A UEVM command is already running, please wait for it to finish.')
             gui_g.display_content_window_ref.set_focus()
             return
-        if command_name == '':
+        if not command_name:
             return
         if gui_g.UEVM_cli_ref is None:
             gui_f.from_cli_only_message()
@@ -1523,13 +1630,7 @@ class UEVMGui(tk.Tk):
         gui_g.UEVM_cli_args['order_opt'] = True
         gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
         row_index, asset_id = self.run_uevm_command('install_asset')
-        # update the content of the 'Installed folders' cell of the row that could have been changed by the install_asset command
-        data_table = self.editable_table
-        db_handler = data_table.db_handler
-        installed_folders = db_handler.get_installed_folders(asset_id)
-        col_index = data_table.get_col_index('Installed folders')
-        if data_table.update_cell(row_index, col_index, installed_folders):
-            data_table.update()  # because the "installed folder" field changed
+        self._update_installed_folders(row_index, asset_id)
 
     def download_asset(self) -> None:
         """
@@ -1567,13 +1668,13 @@ class UEVMGui(tk.Tk):
         elif gui_f.box_yesno(f'Are you sure you want to remove the release {asset_id} from the installed asset list ?'):
             asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)
             if asset_installed:
-                installed_folders = asset_installed.installed_folders
+                folders_to_remove = asset_installed.installed_folders
                 self.core.uevmlfs.remove_installed_asset(asset_id)
                 db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
                 if db_handler is not None:
                     # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
                     catalog_item_id = asset_installed.catalog_item_id
-                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders_to_remove=installed_folders)
+                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_remove)
                 return True
         else:
             return False
@@ -1582,7 +1683,8 @@ class UEVMGui(tk.Tk):
         """
         Display the releases of the asset in a choice window.
         """
-        release_info_json = self.editable_table.get_release_info()
+        data_table = self.editable_table  # shortcut
+        release_info_json = data_table.get_release_info()
         if not release_info_json:
             return
         release_info = json.loads(release_info_json)
@@ -1602,6 +1704,8 @@ class UEVMGui(tk.Tk):
             no_content_text='This release has not been installed yet',
         )
         gui_f.make_modal(cw)
+        row_index = data_table.get_selected_row_fixed()
+        self._update_installed_folders(row_index)
 
     def remove_installed_folder(self, selected_ids: tuple) -> bool:
         """
@@ -1644,30 +1748,39 @@ class UEVMGui(tk.Tk):
                 if db_handler is not None:
                     # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
                     catalog_item_id = asset_installed.catalog_item_id
-                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders_to_remove=[folder_selected])
+                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=[folder_selected])
                 return True
         else:
             return False
 
-    # noinspection PyUnusedLocal
-    def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback
+    def get_asset_id(self) -> str:
         """
-        Copy the asset id into the clipboard.
+        Get the asset id in the control frame.
         """
         frm_control: UEVMGuiControlFrame = self._frm_control
-        value = frm_control.var_asset_id.get()
-        if not value:
-            return
-        self.clipboard_clear()
-        self.clipboard_append(value)
-        self.logger.info(f'{value} copied to the clipboard.')
+        if not frm_control:
+            return ''
+        return frm_control.var_asset_id.get()
 
     def set_asset_id(self, value: str) -> None:
         """
         Set the asset id in the control frame.
         :param value: the value to set.
         """
-        self._frm_control.var_asset_id.set(value)
+        frm_control: UEVMGuiControlFrame = self._frm_control
+        if not frm_control:
+            return
+        frm_control.var_asset_id.set(value)
+
+    # noinspection PyUnusedLocal
+    def copy_asset_id(self, tag: str, event=None) -> None:  # we keep unused params to match the signature of the callback
+        """
+        Copy the asset id into the clipboard.
+        """
+        value = self.get_asset_id()
+        self.clipboard_clear()
+        self.clipboard_append(value)
+        self.logger.info(f'{value} copied to the clipboard.')
 
     def clean_asset_folders(self) -> int:
         """
@@ -1793,7 +1906,10 @@ class UEVMGui(tk.Tk):
         :return: a mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
+        # mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
+        mask = df[col_name].notnull()
+        for value in gui_g.s.cell_is_empty_list:
+            mask &= df[col_name].ne(value)
         return mask
 
     def filter_with_comment(self) -> pd.Series:

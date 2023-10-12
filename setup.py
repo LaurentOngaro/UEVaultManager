@@ -44,7 +44,7 @@ else:
     with open(Path.joinpath(current_folder, 'requirements.txt')) as fd:
         for req in requirements.parse(fd):
             if req.name:
-                name = req.name.replace("-", "_")
+                name = req.name.replace('-', '_')
                 full_line = name + "".join(["".join(list(spec)) for spec in req.specs])
                 requirements_from_file.append(full_line)
             else:

@@ -128,13 +128,11 @@ class ExtendedWidget:
         Get the default font for ttk widgets. If the default font is not found, use the TkDefaultFont.
         :return: the default font for ttk widgets.
         """
-        default_font = nametofont("TkDefaultFont")
+        default_font = nametofont('TkDefaultFont')
         style = self.get_style()
         if style is not None:
-            default_font = style.lookup("TEntry", "font")
-            if default_font == '':
-                # noinspection PyUnresolvedReferences
-                default_font = self.cget("font")
+            # noinspection PyUnresolvedReferences
+            default_font = style.lookup('TEntry', 'font') or self.cget('font')
 
         return default_font
 
@@ -296,7 +294,7 @@ class ExtendedCheckButton(ExtendedWidget):
         self.set_content(bool(self.default_content))
 
         if change_state_on_click:
-            self.bind("<Button-1>", self.switch_state)
+            self.bind('<Button-1>', self.switch_state)
 
     def _update_state(self) -> None:
         """

@@ -142,7 +142,7 @@ class UEVaultManagerCLI:
     :param api_timeout: timeout for API requests.
     """
     is_gui = False  # class property to be accessible by static methods
-    release_id = -1  # the release id selected for an asset installation
+    release_id = None  # the release id selected for an asset installation
 
     def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
@@ -445,7 +445,7 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
 
-        def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> []:
+        def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> list:
             """
             Updates the data of the asset with the data from the items in the file.
             :param _asset_id: id of the asset to update.
@@ -479,7 +479,7 @@ class UEVaultManagerCLI:
                             continue
 
                         # get rid of 'None' values in CSV file
-                        if value == gui_g.s.empty_cell:
+                        if value in gui_g.s.cell_is_empty_list:
                             _csv_record[index] = ''
                             continue
 
@@ -872,9 +872,9 @@ class UEVaultManagerCLI:
         update_information = update_information.get('data', None)
         last_cache_update = cache_information.get('last_update', '')
         if last_update != '':
-            last_update = time.strftime("%x", time.localtime(last_update))
+            last_update = time.strftime('%x', time.localtime(last_update))
         if last_cache_update != '':
-            last_cache_update = time.strftime("%x", time.localtime(last_cache_update))
+            last_cache_update = time.strftime('%x', time.localtime(last_cache_update))
 
         json_content = {
             'Epic account': user_name,  #
@@ -952,9 +952,10 @@ class UEVaultManagerCLI:
                 else:
                     json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs)
                     item = Asset.from_json(json_data_uevm)  # create an object from the asset class using the json data
-            except (Exception, ):
-                item = None
-        if not item or item is None:
+            except (Exception, ) as error:
+                self.logger.warning(f'Scrapped data for {app_name} are not available : {error!r}')
+                # item = None
+        if not item:
             self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
             args.offline = True
         manifest_data = None
@@ -1072,11 +1073,11 @@ class UEVaultManagerCLI:
             # total file size
             total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
             self.core.uevmlfs.set_asset_size(item.app_name, total_size)  # update the global list AND save it into a json file
-            file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+            file_size = gui_fn.format_size(total_size)
             manifest_info.append(InfoItem('Disk size (uncompressed)', 'disk_size', file_size, total_size))
             # total chunk size
             total_size = sum(c.file_size for c in manifest.chunk_data_list.elements)
-            chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+            chunk_size = gui_fn.format_size(total_size)
             manifest_info.append(InfoItem('Download size (compressed)', 'download_size', chunk_size, total_size))
 
             if show_all_info:
@@ -1095,7 +1096,7 @@ class UEVaultManagerCLI:
                         ]
                         tag_file_size = sum(fm.file_size for fm in tag_files)
                         tag_disk_size.append(dict(tag=tag, size=tag_file_size, count=len(tag_files)))
-                        tag_file_size_human = '{:.02f} GiB'.format(tag_file_size / 1024 / 1024 / 1024)
+                        tag_file_size_human = gui_fn.format_size(tag_file_size)
                         tag_disk_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_file_size_human} '
                                                    f'(Files: {len(tag_files)})')
                         # tag_disk_size_human.append(f'Size: {tag_file_size_human}, Files: {len(tag_files)}, Tag: "{tag}"')
@@ -1107,7 +1108,7 @@ class UEVaultManagerCLI:
 
                         tag_chunk_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in tag_chunk_guids)
                         tag_download_size.append(dict(tag=tag, size=tag_chunk_size, count=len(tag_chunk_guids)))
-                        tag_chunk_size_human = '{:.02f} GiB'.format(tag_chunk_size / 1024 / 1024 / 1024)
+                        tag_chunk_size_human = gui_fn.format_size(tag_chunk_size)
                         tag_download_size_human.append(
                             f'{human_tag.ljust(longest_tag)} - {tag_chunk_size_human} '
                             f'(Chunks: {len(tag_chunk_guids)})'
@@ -1417,10 +1418,10 @@ class UEVaultManagerCLI:
             )
             make_modal(cw)
             # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
-            if self.release_id:
+            if self.release_id is not None:
                 try:
                     release_selected = releases[self.release_id]
-                except IndexError:
+                except (IndexError, KeyError):
                     self._log_and_gui_display(
                         self.logger.warning, '\nThe selected release could not be found. The latest one as been selected by default.\n'
                     )
@@ -1638,7 +1639,7 @@ class UEVaultManagerCLI:
                     self.core.uevmlfs.save_installed_assets()
                     if args.database:
                         db_handler = UEAssetDbHandler(database_name=args.database)
-                        db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders_to_add=[installed_asset.install_path])
+                        db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=[installed_asset.install_path])
                     message += f'\nAsset have been installed in "{installed_asset.install_path}"'
                 else:
                     message += f'\nAsset could not be installed in "{installed_asset.install_path}"'
@@ -1647,7 +1648,7 @@ class UEVaultManagerCLI:
                 parent_path = os.path.dirname(download_path)
                 message += f'\nThe manifest file has been copied in {parent_path}.'
                 # manifest_filename = path_join(parent_path, 'manifest.json')
-                manifest_filename = path_join(parent_path,  gui_g.s.ue_manifest_filename)
+                manifest_filename = path_join(parent_path, gui_g.s.ue_manifest_filename)
                 shutil.copy(installed_asset.manifest_path, manifest_filename)
             elif args.clean_dowloaded_data:
                 message += '\nDownloaded data have been deleted.'

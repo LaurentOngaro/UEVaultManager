@@ -24,7 +24,7 @@ from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_explorer
+from UEVaultManager.tkgui.modules.functions_no_deps import format_size, open_folder_in_file_explorer
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
@@ -41,7 +41,7 @@ class EditableTable(Table):
     :param rows_per_page: the number of rows to show per page.
     :param show_toolbar: whether to show the toolbar.
     :param show_statusbar: whether to show the status bar.
-    :param update_page_numbers_func: a function that updates the page numbers.
+    :param update_controls_state_func: a function that updates the page numbers.
     :param update_preview_info_func: a function that updates previewed infos of the current asset.
     :param kwargs: additional arguments to pass to the pandastable.Table class.
     """
@@ -90,9 +90,8 @@ class EditableTable(Table):
         rows_per_page: int = 37,
         show_toolbar: bool = False,
         show_statusbar: bool = False,
-        update_page_numbers_func=None,
+        update_controls_state_func=None,
         update_preview_info_func=None,
-        set_control_state_func=None,
         **kwargs
     ):
         if container is None:
@@ -103,9 +102,8 @@ class EditableTable(Table):
         self.show_toolbar: bool = show_toolbar
         self.show_statusbar: bool = show_statusbar
         self.rows_per_page: int = rows_per_page
-        self.update_page_numbers_func = update_page_numbers_func
+        self.update_controls_state_func = update_controls_state_func
         self.update_preview_info_func = update_preview_info_func
-        self.set_control_state_func = set_control_state_func
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         gui_f.show_progress(container, text='Loading Data from data source...')
         if self.data_source_type == DataSourceType.SQLITE:
@@ -139,7 +137,7 @@ class EditableTable(Table):
         """
         self._old_page = self._current_page
         self._current_page = value
-        # self.update_page_numbers_func()
+        # self.update_controls_state_func()
         # self.update_preview_info_func()
 
     @property
@@ -535,7 +533,8 @@ class EditableTable(Table):
         :param add_page_offset: true to add the page offset to the row number, False otherwise.
         :return:
         """
-        if row_number < 0 or row_number == '':
+        # OLD if row_number < 0 or row_number == '':
+        if row_number < 0:
             return -1
         if add_page_offset:
             row_number = self.add_page_offset(row_number)
@@ -627,21 +626,31 @@ class EditableTable(Table):
         Resize and reorder the columns of the table.
         """
         column_infos = gui_g.s.column_infos
-        num_cols = len(column_infos)
-        if num_cols <= 0:
+        column_infos_len = len(column_infos)
+        df = self.get_data(DataFrameUsed.UNFILTERED)
+        column_len = len(df.columns)
+        diff_len = abs(column_infos_len - column_len)
+        if column_infos_len <= 0:
             return
-        if abs(num_cols - self.cols) > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
+        if diff_len > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
             gui_f.box_message(
-                f'The number of columns in data source ({self.cols}) does not match the number of values in "column_infos" from the config file ({num_cols}).\nThis will be fixed automatically and a backup of the config file has been made on quit.'
+                f'The number of columns in data source ({column_len}) does not match the number of values in "column_infos" from the config file ({column_infos_len}).\nA backup of the current config file has been made.\nNormally, this will be fixed automatically on quit.\nIf not, please check the config file.'
             )
+            # just for debugging
+            for col in column_infos.keys():
+                if col not in df.columns and col != gui_g.s.index_copy_col_name:
+                    self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable.')
+            for col in df.columns:
+                if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
+                    self.logger.warning(f'Column "{col}" is in the datatable BUT not in column_infos.')
         try:
             # add to column_infos all the colums in the datatable that are not in column_infos, at the end, with a width of 2
-            df = self.get_data(DataFrameUsed.UNFILTERED)
-            pos = len(column_infos)
+            pos = column_infos_len
             for col in df.columns:
                 if col not in column_infos:
-                    column_infos[col] = {'width': 2, 'pos': pos}
+                    column_infos[str(col)] = {'width': 2, 'pos': pos}
                     pos += 1
+
             # reordering columns
             first_value = next(iter(column_infos.values()))
             if first_value.get('pos', None) is None:
@@ -837,7 +846,7 @@ class EditableTable(Table):
             index_to_delete = []
             for row_number in row_numbers:
                 df = self.get_data()
-                asset_id = 'NA'
+                asset_id = gui_g.s.cell_is_empty_list[0]
                 idx = self.get_real_index(int(row_number), add_page_offset=True) if convert_to_index else row_number
                 if 0 <= idx <= len(df):
                     try:
@@ -933,9 +942,28 @@ class EditableTable(Table):
         self.must_save = False
         self.update_page()
 
-    def reload_data(self) -> bool:
+    def update_downloaded_size(self, downloaded_data: {}) -> None:
+        """
+        Update the downloaded size for the assets in the table using the downloaded_data (from the Vault Cache folder content)
+        :param downloaded_data: the downloaded data from the Vault Cache folder content.
+        """
+        if downloaded_data:
+            df = self.get_data(df_type=DataFrameUsed.UNFILTERED)
+            # update the downloaded_size field in the datatable using asset_id as key
+            for asset_id, asset_data in downloaded_data.items():
+                try:
+                    size = int(asset_data['size'])
+                    size = format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
+                    df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
+                    # print(f'asset_id={asset_id} size={size}')
+                except KeyError:
+                    pass
+            # self.editable_table.set_data(df, df_type=DataFrameUsed.UNFILTERED)
+
+    def reload_data(self, downloaded_data: dict = None) -> bool:
         """
         Reload data from the CSV file and refreshes the table display.
+        :param downloaded_data: the downloaded data from the Vault Cache folder content.
         :return: True if the data has been loaded successfully, False otherwise.
         """
         gui_f.show_progress(self, text='Reloading Data from data source...')
@@ -943,13 +971,15 @@ class EditableTable(Table):
         if df_loaded is None:
             return False
         self.set_data(df_loaded)
+        self.update_downloaded_size(downloaded_data)
         self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
         # mf.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
-    def rebuild_data(self) -> bool:
+    def rebuild_data(self, downloaded_data: dict = None) -> bool:
         """
          Rebuild the data in the table.
+         :param downloaded_data: the downloaded data from the Vault Cache folder content.
          :return: True if the data was successfully rebuilt, False otherwise.
          """
         self.clear_rows_to_save()
@@ -1015,6 +1045,7 @@ class EditableTable(Table):
                 gui_f.close_progress(self)
                 return False
             self.set_data(df_loaded)
+            self.update_downloaded_size(downloaded_data)
             self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
             # mf.close_progress(self)  # done in data_table.update(update_format=True)
             return True
@@ -1184,6 +1215,7 @@ class EditableTable(Table):
         self.color_cells_if_not(col_names=['Status'], color='darkgrey', value_to_check='ACTIVE')
         self.color_rows_if(col_name_to_check='Status', color='darkgrey', value_to_check='SUNSET')
         self.color_rows_if(col_name_to_check='Obsolete', color='dimgrey', value_to_check=True)
+        self.color_cells_if_not(col_names=['Downloaded size'], color='palegreen', value_to_check='')
         self.redraw()
 
     def handle_left_click(self, event) -> None:
@@ -1294,9 +1326,9 @@ class EditableTable(Table):
         if self._old_page != self.current_page:
             self.resetColors()
         self.set_colors()
-        if self.update_page_numbers_func is not None:
-            self.update_page_numbers_func()
-        if self.update_page_numbers_func is not None:
+        if self.update_controls_state_func is not None:
+            self.update_controls_state_func()
+        if self.update_preview_info_func is not None:
             self.update_preview_info_func()
 
     def move_to_row(self, row_index: int) -> None:
@@ -1453,13 +1485,14 @@ class EditableTable(Table):
         :param ue_asset_data: the data to update the row with
         :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value
         """
-        if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
+        # OLD if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
+        if not ue_asset_data:
             return
         if isinstance(ue_asset_data, list):
             ue_asset_data = ue_asset_data[0]
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
-        if asset_id in ('', 'None', 'nan'):
-            asset_id = ue_asset_data.get('asset_id', 'NA')
+        if asset_id in gui_g.s.cell_is_empty_list[1:]:  # exclude 'NA'
+            asset_id = ue_asset_data.get('asset_id', gui_g.s.cell_is_empty_list[0])
         text = f'row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
@@ -1543,7 +1576,7 @@ class EditableTable(Table):
         """
         if row_number < 0 or col_index < 0 or value is None:
             return False
-        value = gui_g.s.empty_cell if value in ('None', 'nan') else value  # convert 'None' values to ''
+        value = gui_g.s.empty_cell if value in gui_g.s.cell_is_empty_list else value  # convert 'None' values to ''
         try:
             idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
             df = self.get_data()  # always used the unfiltered because the real index is set from unfiltered dataframe
@@ -1566,7 +1599,7 @@ class EditableTable(Table):
         Return the values of the selected row in the table.
         :return: a dictionary containing the column names and their corresponding values for the selected row.
         """
-        if self._edit_row_entries is None or self._edit_row_number < 0:
+        if not self._edit_row_entries or self._edit_row_number < 0:
             return {}
         entries_values = {}
         for key, entry in self._edit_row_entries.items():
@@ -1765,7 +1798,7 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.get_col_name(col_index)
         ttk.Label(edit_cell_window.frm_content, text=col_name).pack(side=tk.LEFT)
-        cell_value_str = str(cell_value) if (cell_value not in ('None', 'nan', gui_g.s.empty_cell)) else ''
+        cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_empty_list) else ''
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)
@@ -1878,7 +1911,7 @@ class EditableTable(Table):
         """
         Reset the cell content preview.
         """
-        self._frm_quick_edit.config(text='Select a row for Quick Editing')
+        self._frm_quick_edit.config(text='Select a row for Quick Editing its USER FIELDS')
         column_names = gui_t.get_csv_field_name_list(filter_on_states=[gui_t.CSVFieldState.USER])
         for col_name in column_names:
             self._frm_quick_edit.set_default_content(col_name)
@@ -1939,7 +1972,7 @@ class EditableTable(Table):
         else:
             asset_url = url
         self.logger.info(f'calling open_asset_url={asset_url}')
-        if asset_url is None or asset_url == '' or asset_url == gui_g.s.empty_cell:
+        if not asset_url or asset_url == gui_g.s.empty_cell:
             self.logger.info('asset URL is empty for this asset')
             return
         webbrowser.open(asset_url)

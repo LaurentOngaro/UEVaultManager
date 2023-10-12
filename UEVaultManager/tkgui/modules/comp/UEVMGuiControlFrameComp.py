@@ -138,7 +138,7 @@ class UEVMGuiControlFrame(ttk.Frame):
 
         # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
         # to get the widgets it needs. So they can't be changed freely
-        self.lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing')
+        self.lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing its USER FIELDS')
         self.lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
         data_table.set_frm_quick_edit(self.lbtf_quick_edit)
 
@@ -162,7 +162,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             widget_type=WidgetType.ENTRY,
             tag='Asset_id',
             state='readonly',
-            label='Asset id (click to copy)',
+            label='Latest release id (click to copy)',
             width=5,
             click_on_callback=self._container.copy_asset_id,
             textvariable=self.var_asset_id,
@@ -196,6 +196,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
             tag='Installed folders',
+            label='Installed folders\n(all releases)',
             default_content='Installed in',
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
@@ -272,7 +273,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         Save the filters to a file (Wrapper)
         :param filters: the filters to save.
         """
-        if not filters or len(filters) == 0:
+        json_ext = '.json'
+        if not filters:
             return
         folder = gui_g.s.filters_folder if gui_g.s.filters_folder else gui_g.s.path
         folder = os.path.abspath(folder)
@@ -287,9 +289,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         filename = os.path.basename(filename)  # remove the folder from the filename
         filename, ext = os.path.splitext(filename)
         if not ext:
-            ext = '.json'
-            filename += ext
-        if ext != '.json':
+            filename += json_ext
+        elif ext.lower() != json_ext:
             messagebox.showwarning('Warning', f'Filters can only be save to a json file. Do not forget to add the extension to the filename.')
             return
         if folder != fd_folder:

@@ -121,6 +121,7 @@ def get_version_from_path(path: str) -> str:
     patterns = [
         r'UE_(\d[\d._]*)',  # any string starting with 'UE_' followed by one or more digits, dots or underscores ex: 'UE_4_26'
         r'_UE(\d[\d._]*)',  # any string starting with '_UE' followed by one or more digits, dots or underscores ex: '_UE4_26'
+        r'([4,5][\._]\d+)',  # 4 or 5 followed by a dot or underscore followed by one or more digits ex: '4.26' or '5.1'
     ]
     patterns = [re.compile(p) for p in patterns]
     for part in parts:

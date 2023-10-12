@@ -6,7 +6,7 @@ from datetime import datetime
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int, create_uid
+from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_float, convert_to_int, create_uid
 from UEVaultManager.tkgui.modules.types import GrabResult, UEAssetType
 
 # noinspection GrazieInspection
@@ -442,8 +442,9 @@ def get_converters(csv_field_name: str):
         return [convert_to_float, float]
     if field_type == CSVFieldType.BOOL:
         return [convert_to_bool, bool]
-    if field_type == CSVFieldType.DATETIME:
-        return [lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])]
+# not use full to convert date: Causes issue when loading a filter
+#    if field_type == CSVFieldType.DATETIME:
+#        return [lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])]
     else:
         return [str]
 

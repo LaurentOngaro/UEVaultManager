@@ -260,7 +260,7 @@ class UEAssetScraper:
         else:
             self.logger.error(message)
 
-    def _parse_data(self, json_data: dict = None, owned_assets_only=False) -> []:
+    def _parse_data(self, json_data: dict = None, owned_assets_only=False) -> list:
         """
         Parse on or more asset data from the response of an url query.
         :param json_data: a dictionary containing the data to parse.
@@ -285,7 +285,7 @@ class UEAssetScraper:
             if uid is None:
                 # this should never occur
                 self._log_warning(f'No id found for asset {asset_data}. Passing to next asset')
-                return ''
+                return []
             existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
             asset_existing_data = existing_data.get(uid, None)
             asset_data['asset_url'] = self.core.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
@@ -540,7 +540,7 @@ class UEAssetScraper:
                         count = int(url_vars['count'])
                         suffix = f'{start}-{start + count - 1}'
                     except Exception:
-                        suffix = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+                        suffix = datetime.now().strftime('%y-%m-%d_%H-%M-%S')
                     filename = f'assets_{suffix}.json'
                     self.save_to_file(filename=filename, data=json_data, is_global=True)
 
@@ -584,7 +584,7 @@ class UEAssetScraper:
             # self._log_info(message)
 
             start_time = time.time()
-            if self._urls is None or len(self._urls) == 0:
+            if not self._urls:
                 self.gather_all_assets_urls(owned_assets_only=owned_assets_only)
             self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=len(self._urls))
             url_count = len(self._urls)
@@ -637,7 +637,7 @@ class UEAssetScraper:
         if data is None:
             data = self._scraped_data
 
-        if data is None or len(data) == 0:
+        if not data:
             self._log_warning('No data to save')
             return False
 
@@ -645,24 +645,25 @@ class UEAssetScraper:
         folder = gui_g.s.assets_global_folder if is_global else folder
 
         _, folder = check_and_get_folder(folder)
+
         if filename is None:
             filename = prefix
             if self.start > 0:
-                filename += '_' + str(self.start)
-                filename += '_' + str(self.start + self.assets_per_page)
+                filename += f'_{self.start}_{self.start + self.assets_per_page}'
             filename += '.json'
+
         filename = path_join(folder, filename)
+
         try:
             with open(filename, 'w', encoding='utf-8') as file:
                 if is_json:
                     json.dump(data, file)
                 else:
-                    # write data as a list in the file
                     file.write('\n'.join(data))
             self._log_debug(f'Data saved into {filename}')
             return True
         except PermissionError as error:
-            self._log_warning(f'The following error occured when saving data into {filename}:{error!r}')
+            self._log_warning(f'The following error occurred when saving data into {filename}: {error!r}')
             return False
 
     def load_from_json_files(self, owned_assets_only=False) -> int:

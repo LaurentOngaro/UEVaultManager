@@ -39,6 +39,7 @@ from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
 from UEVaultManager.tkgui.modules.functions import box_message
+from UEVaultManager.tkgui.modules.functions_no_deps import format_size
 from UEVaultManager.utils.cli import check_and_create_file, check_and_create_folder, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
@@ -1279,12 +1280,12 @@ class AppCore:
         manifest_info['num_chunks'] = manifest.chunk_data_list.count
         # total file size
         total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
-        file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+        file_size = format_size(total_size)
         manifest_info['file_size'] = file_size
         manifest_info['disk_size'] = total_size
         # total chunk size
         total_size = sum(c.file_size for c in manifest.chunk_data_list.elements)
-        chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+        chunk_size = format_size(total_size)
         manifest_info['chunk_size'] = chunk_size
         manifest_info['download_size'] = total_size
         return manifest_info

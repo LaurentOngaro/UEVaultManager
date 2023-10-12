@@ -198,7 +198,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_value: the new value.
         """
         new_value = max(0, new_value)
-        self.frm_content.progress_bar["value"] = new_value
+        self.frm_content.progress_bar['value'] = new_value
 
     def set_max_value(self, new_max_value: int) -> None:
         """
@@ -206,7 +206,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_max_value: the new maximum value.
         """
         self.max_value = new_max_value
-        self.frm_content.progress_bar["maximum"] = new_max_value
+        self.frm_content.progress_bar['maximum'] = new_max_value
 
     def set_function(self, new_function) -> None:
         """
@@ -358,10 +358,10 @@ class ProgressWindow(tk.Toplevel):
             # sometimes the window is already destroyed
             progress_bar = self.frm_content.progress_bar
             if increment:
-                value = progress_bar["value"] + increment
+                value = progress_bar['value'] + increment
             if value > self.max_value:
                 value = self.max_value
-            progress_bar["value"] = value
+            progress_bar['value'] = value
             if text:
                 self.set_text(text)
         except tk.TclError as error:
