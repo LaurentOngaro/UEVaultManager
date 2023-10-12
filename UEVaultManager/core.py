@@ -543,13 +543,13 @@ class AppCore:
 
                 asset = Asset(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
                 self.uevmlfs.set_item_meta(asset.app_name, asset)
-                assets[name] = asset
+                fetched_assets[name] = asset
 
             if _process_extra:
                 # we use title because it's less ambiguous than a name when searching an asset
                 installed_asset = self.uevmlfs.get_installed_asset(name)
                 eg_extra = self.egs.grab_assets_extra(
-                    asset_name=name, asset_title=assets[name].app_title, verbose_mode=self.verbose_mode, installed_asset=installed_asset,
+                    asset_name=name, asset_title=fetched_assets[name].app_title, verbose_mode=self.verbose_mode, installed_asset=installed_asset,
                 )
 
                 # check for data consistency
@@ -563,7 +563,7 @@ class AppCore:
                 self.uevmlfs.set_item_extra(app_name=name, extra=eg_extra, update_global_dict=True)
 
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
-                if eg_extra['page_title'] != '' and eg_extra['page_title'] != assets[name].app_title:
+                if eg_extra['page_title'] != '' and eg_extra['page_title'] != fetched_assets[name].app_title:
                     self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
                     eg_extra['grab_result'] = GrabResult.INCONSISTANT_DATA.name
                     if self.bad_data_logger:
@@ -630,6 +630,7 @@ class AppCore:
 
         fetch_list = {}
         assets_bypassed = {}
+        fetched_assets = {}
         valid_items = []
         bypass_count = 0
         self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
@@ -701,7 +702,7 @@ class AppCore:
                     i += 1
                     continue
                 asset_updated = any(item_metadata.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
-                assets[app_name] = item_metadata
+                fetched_assets[app_name] = item_metadata
                 self.log.debug(f'{app_name} has been ADDED to the assets list with asset_updated={asset_updated}')
 
             # get extra data only in not filtered
@@ -783,7 +784,7 @@ class AppCore:
             if self.verbose_mode:
                 self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name]}. Still {len(filtered_items)} assets to check')
             try:
-                app_item = assets.get(app_name)
+                fetched_asset = fetched_assets.get(app_name)
             except (KeyError, IndexError):
                 self.log.debug(f'{app_name} has not been found int the asset list. Bypassing')
                 # item not found in asset, ignore and pass to next one
@@ -800,12 +801,12 @@ class AppCore:
                 continue
             try:
                 is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
-                is_a_mod = any(i['path'] == 'mods' for i in app_item.metadata.get('categories', []))
+                is_a_mod = any(i['path'] == 'mods' for i in fetched_asset.metadata.get('categories', []))
             except (KeyError, IndexError, AttributeError):
                 self.log.debug(f'{app_name} has no metadata. Adding to the fetch list (again)')
                 try:
                     fetch_list[app_name] = (app_name, item.namespace, item.catalog_item_id, True, True)
-                    _ret.append(app_item)
+                    _ret.append(fetched_asset)
                 except (KeyError, IndexError, AttributeError):
                     self.log.debug(f'{app_name} has an invalid format. Could not been added to the fetch list')
                 continue
@@ -820,7 +821,7 @@ class AppCore:
 
             # check if the asset will be added to the final list
             if not is_bypassed and not is_still_fetching and not is_a_mod and has_valid_platform:
-                _ret.append(app_item)
+                _ret.append(fetched_asset)
 
         self.log.info(f'A total of {len(_ret)} assets have been analysed and kept in phase 3')
 
