@@ -1431,17 +1431,19 @@ class UEVMGui(tk.Tk):
         if idx >= 0:
             app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
             _add_text(f'Asset id: {app_name}')
-            _add_text(f'Row Index: {idx}')
             size = self.core.uevmlfs.get_asset_size(app_name)
             if size is not None and size > 0:
-                _add_text(f'Asset size: {gui_fn.format_size(size)}', 'orange')
+                _add_text(f'Asset size: {gui_fn.format_size(size)}', 'blue')
             else:
-                _add_text(f'Asset size: Not Get Yet')
+                _add_text(f'Asset size: Clic on "Asset Info"', 'orange')
             downloaded_size = data_table.get_cell(row_number, data_table.get_col_index('Downloaded size'))
             if downloaded_size:
-                _add_text('in Vault Cache or Local asset', 'blue')
+                _add_text('in Vault Cache or Local Folder', 'blue')
+            else:
+                _add_text('Not downloaded yet')
+            _add_text(f'Row Index: {idx}')
         else:
-            _add_text('Place the cursor on a row for info', 'orange')
+            _add_text('Place the cursor on a row for detail', 'orange')
         _add_text(f'Total rows: {row_count}')
         if row_count_filtered != row_count:
             _add_text(f'Filtered rows: {row_count_filtered} ')
