@@ -819,7 +819,6 @@ class UEVMGui(tk.Tk):
                 'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature',  #
                 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
                 'G:/Assets/pour UE/02 Warez/Animations/Female Movement Animset Pro 4.26',  #
-                'G:/Assets/pour UE/02 Warez/Characters/Boths/Character Customizer v5.01 UE_4.25',  #
             ]
         if gui_g.s.offline_mode:
             gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
@@ -1021,6 +1020,7 @@ class UEVMGui(tk.Tk):
             )
             row_index = -1
             text = f'Checking {name}'
+            old_comment = ''
             # check if the row already exists
             try:
                 # we try to get the indexes if value already exists in column 'Origin' for a pandastable
@@ -1031,6 +1031,7 @@ class UEVMGui(tk.Tk):
                     row_index = row_indexes[0]
                     index_copy = data.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
                     old_name = data.loc[index_copy, 'App name']
+                    old_comment = data.loc[index_copy, 'Comment']
                     text = f'Updating {name} at row {row_index}. Old name is {old_name}'
                     self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
@@ -1040,7 +1041,8 @@ class UEVMGui(tk.Tk):
                 text = f'An Error occured when cheking {name}'
                 pw.set_text(text)
                 continue
-            if row_index == -1:
+            is_adding = row_index == -1
+            if is_adding:
                 # NOT FOUND, we add a new row
                 _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
                 text = f'Adding {name} at row {row_index}'
@@ -1057,14 +1059,19 @@ class UEVMGui(tk.Tk):
                 'grab_result': content['grab_result'],
                 'added_manually': True,
                 'category': content['asset_type'].category_name,
-                'comment': content['comment'],
+                'comment': content['comment'] if not old_comment else old_comment + '\n' + content['comment'],
                 'downloaded_size': content['downloaded_size']
                 # 'supported_versions': content.get('supported_versions', '', # we want to get the scraped data
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
                     self.scrap_row(
-                        marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
+                        marketplace_url=marketplace_url,
+                        row_index=row_index,
+                        forced_data=forced_data,
+                        show_message=False,
+                        update_dataframe=False,
+                        check_unicity=is_adding
                     )  # call update_row() inside
                 except ReadTimeout as error:
                     self.add_error(error)
@@ -1097,7 +1104,7 @@ class UEVMGui(tk.Tk):
                 gui_f.make_modal(gui_g.display_content_window_ref)
             self.logger.warning(result)
 
-    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False):
+    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False) -> dict:
         is_ok = False
         asset_data = None
         # check if the marketplace_url is a marketplace marketplace_url
@@ -1111,7 +1118,7 @@ class UEVMGui(tk.Tk):
                     gui_f.box_message(msg, level='warning')
                 else:
                     self.logger.warning(msg)
-                return None
+                return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
                 start=0,
@@ -1139,10 +1146,16 @@ class UEVMGui(tk.Tk):
                 gui_f.box_message(msg, level='warning')
             else:
                 self.logger.warning(msg)
-        return asset_data
+        return asset_data[0] if asset_data is not None else None
 
     def scrap_row(
-        self, marketplace_url: str = None, row_index: int = -1, forced_data: {} = None, show_message: bool = True, update_dataframe: bool = True
+        self,
+        marketplace_url: str = None,
+        row_index: int = -1,
+        forced_data: {} = None,
+        show_message: bool = True,
+        update_dataframe: bool = True,
+        check_unicity: bool = False
     ):
         """
         Scrap the data for the current row or a given marketplace_url.
@@ -1151,6 +1164,7 @@ class UEVMGui(tk.Tk):
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
         :param show_message: whether to show a message if the marketplace_url is not valid
         :param update_dataframe: whether to update the dataframe after scraping
+        :param check_unicity: whether to check if the data are unique and ask the user to update the row if not
         """
 
         if gui_g.s.offline_mode:
@@ -1159,6 +1173,7 @@ class UEVMGui(tk.Tk):
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
+        is_unique = not check_unicity  # by default, we consider that the data are unique
         data_table = self.editable_table  # shortcut
         data_table.save_data()  # save the data before scraping because we will update the row(s) and override non saved changes
         row_numbers = data_table.multiplerowlist
@@ -1200,21 +1215,59 @@ class UEVMGui(tk.Tk):
                     gui_f.close_progress(self)
                     return
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-                if asset_data is not None:
-                    # TODO: check for existing asset with the same id and slug
-                    data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                    if show_message and row_count == 1:
-                        gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
+                if asset_data:
+                    if check_unicity:
+                        is_unique, asset_data = self._check_unicity(asset_data)
+                    if not is_unique and gui_f.box_yesno(
+                        f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                    ):
+                        data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+                        if show_message and row_count == 1:
+                            gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
 
             gui_f.close_progress(self)
             if show_message and row_count > 1:
                 gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
-            if asset_data is not None:
-                data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+            if asset_data:
+                if check_unicity:
+                    is_unique, asset_data = self._check_unicity(asset_data)
+                if not is_unique and gui_f.box_yesno(
+                    f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                ):
+                    data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
         if update_dataframe:
             data_table.update()
+
+    def _check_unicity(self, asset_data: {}) -> (bool, dict):
+        """
+        Check if the given asset_data is unique in the table. If not, will change the asset_id and/or the asset_slug to avoid issue.
+        :param asset_data: the asset data to check
+        :return: the asset_data with the updated asset_id and/or asset_slug
+        """
+        is_unique = True
+        data = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        asset_id = asset_data['asset_id']
+        asset_slug = asset_data['asset_slug']
+        rows_serie_for_id = data.loc[lambda x: x['Asset_id'] == asset_id]
+        rows_serie_for_slug = data.loc[lambda x: x['Asset slug'].str.lower() == asset_slug.lower()]
+        if not rows_serie_for_id.empty:
+            is_unique = False
+            new_asset_id = gui_g.s.empty_row_prefix + gui_fn.create_uid()
+            asset_data['asset_id'] = new_asset_id
+            gui_f.box_message(
+                f'A row with Asset_id={asset_id} already exists. To avoid issue, the Asset_id of the new row has been set to {new_asset_id}',
+                level='warning'
+            )
+        if not rows_serie_for_slug.empty:
+            is_unique = False
+            asset_data['asset_slug'] = ''
+            gui_f.box_message(
+                f'A row with "Asset slug"={asset_slug} already exists. To avoid issue, the "Asset slug" of the new row has been set to ""',
+                level='warning'
+            )
+        return is_unique, asset_data
 
     def toggle_pagination(self, forced_value: bool = None) -> None:
         """
