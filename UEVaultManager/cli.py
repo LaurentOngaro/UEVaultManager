@@ -636,9 +636,10 @@ class UEVaultManagerCLI:
             #   app_name is unique because it includes the unreal version
             #   we use asset_id as key because we don't want to have several entries for the same asset
             #   some asset won't have asset_infos (mainly when using the -T option), in that case we use the app_title as asset_id
-            if item.asset_infos.get('Windows'):
+            try:
                 asset_id = item.asset_infos['Windows'].asset_id
-            else:
+            except TypeError:
+                # asset_infos is None or has no 'Windows' key
                 asset_id = item.app_title
 
             if assets_to_output.get(asset_id):

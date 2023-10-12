@@ -109,7 +109,10 @@ class Asset:
         tmp = cls(app_name=asset_data.get('app_name', ''), app_title=asset_data.get('app_title', ''), )  # call to the class constructor
         tmp.metadata = asset_data.get('metadata', {})
         if 'asset_infos' in asset_data:
-            tmp.asset_infos = {k: AssetBase.from_json(v) for k, v in asset_data['asset_infos'].items()}
+            try:
+                tmp.asset_infos = {k: AssetBase.from_json(v) for k, v in asset_data['asset_infos'].items()}
+            except AttributeError:
+                tmp.asset_infos = {}
         else:
             # Migrate old asset_info to new asset_infos
             tmp.asset_infos['Windows'] = AssetBase.from_json(asset_data.get('asset_info', {}))
@@ -119,7 +122,10 @@ class Asset:
     @property
     def __dict__(self):
         """This is just here so asset_infos gets turned into a dict as well"""
-        assets_dict = {k: v.__dict__ for k, v in self.asset_infos.items()}
+        try:
+            assets_dict = {k: v.__dict__ for k, v in self.asset_infos.items()}
+        except AttributeError:
+            assets_dict = {}
         return dict(metadata=self.metadata, asset_infos=assets_dict, app_name=self.app_name, app_title=self.app_title, base_urls=self.base_urls)
 
 
