@@ -43,7 +43,7 @@ extensions = [
     'sphinx.ext.viewcode',  #
     'sphinx.ext.extlinks',  #
     'sphinx.ext.napoleon',  #
-    'sphinx_rtd_theme',  #
+    # 'sphinx_rtd_theme',  #
 ]
 
 intersphinx_mapping = {

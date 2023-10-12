@@ -16,7 +16,7 @@ Config files
 ~~~~~~~~~~~~
 
 For the Cli Application settings
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 UEVaultManager supports some settings in its config file ``<config folder>/config.ini``:
 
@@ -50,7 +50,7 @@ This is an example of this file content and the settings you can change:
 
 
 For the GUI settings
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 Since version 1.6.0, UEVaultManager also supports some settings specific to the new GUI, in a config file ``<config folder>/config_gui.ini``:
 
