@@ -436,3 +436,18 @@ def remove_last_suffix(string: str, separator: str = '_') -> str:
         parts.pop()
         return separator.join(parts)
     return string
+
+
+def format_size(size: int, precision: int = 1) -> str:
+    """
+    Format a size in bytes to a human readable string.
+    :param size: the size to format.
+    :param precision: the number of digits after the decimal point.
+    :return: the formatted size.
+    """
+    suffixes = ['B', 'KB', 'MB', 'GB', 'TB']
+    suffix_index = 0
+    while size > 1024 and suffix_index < 4:
+        suffix_index += 1  # increment the index of the suffix
+        size /= 1024.0  # apply the division
+    return f'{size:.{precision}f}{suffixes[suffix_index]}'

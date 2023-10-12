@@ -273,6 +273,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         Save the filters to a file (Wrapper)
         :param filters: the filters to save.
         """
+        json_ext = '.json'
         if not filters:
             return
         folder = gui_g.s.filters_folder if gui_g.s.filters_folder else gui_g.s.path
@@ -288,9 +289,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         filename = os.path.basename(filename)  # remove the folder from the filename
         filename, ext = os.path.splitext(filename)
         if not ext:
-            ext = '.json'
-            filename += ext
-        if ext != '.json':
+            filename += json_ext
+        elif ext.lower() != json_ext:
             messagebox.showwarning('Warning', f'Filters can only be save to a json file. Do not forget to add the extension to the filename.')
             return
         if folder != fd_folder:

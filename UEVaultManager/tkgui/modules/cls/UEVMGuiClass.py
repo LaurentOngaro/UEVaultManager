@@ -173,7 +173,7 @@ class UEVMGui(tk.Tk):
             data_source=data_source,
             rows_per_page=37,
             show_statusbar=True,
-            update_page_numbers_func=self.update_controls_state,
+            update_controls_state_func=self.update_controls_state,
             update_preview_info_func=self.update_preview_info,
             set_widget_state_func=gui_f.set_widget_state
         )
@@ -1428,11 +1428,13 @@ class UEVMGui(tk.Tk):
             asset_info.append(f'Row Index: {idx}')
             size = self.core.uevmlfs.get_asset_size(app_name)
             if size is not None and size > 0:
-                size_formatted = '{:.02f} GiB'.format(size / 1024 / 1024 /
-                                                      1024) if size > 1024 * 1024 * 1024 else '{:.02f} MiB'.format(size / 1024 / 1024)
-                asset_info.append(f'Asset size: {size_formatted}')
+                asset_info.append(f'Asset size: {gui_fn.format_size(size)}')
             else:
                 asset_info.append(f'Asset size: Not Get Yet')
+            downloaded_size = data_table.get_cell(row_number, data_table.get_col_index('Downloaded size'))
+            if downloaded_size:
+                asset_info.append('IN VAULT CACHE')
+
         else:
             asset_info.append('No Row selected')
         self._frm_control.txt_info.delete('1.0', tk.END)
@@ -1837,7 +1839,10 @@ class UEVMGui(tk.Tk):
         :return: a mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
+        # mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
+        mask = df[col_name].notnull()
+        for value in gui_g.s.cell_is_empty_list:
+            mask &= df[col_name].ne(value)
         return mask
 
     def filter_with_comment(self) -> pd.Series:

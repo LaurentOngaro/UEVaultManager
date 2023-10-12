@@ -24,7 +24,7 @@ from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_explorer
+from UEVaultManager.tkgui.modules.functions_no_deps import format_size, open_folder_in_file_explorer
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
@@ -41,7 +41,7 @@ class EditableTable(Table):
     :param rows_per_page: the number of rows to show per page.
     :param show_toolbar: whether to show the toolbar.
     :param show_statusbar: whether to show the status bar.
-    :param update_page_numbers_func: a function that updates the page numbers.
+    :param update_controls_state_func: a function that updates the page numbers.
     :param update_preview_info_func: a function that updates previewed infos of the current asset.
     :param kwargs: additional arguments to pass to the pandastable.Table class.
     """
@@ -90,9 +90,8 @@ class EditableTable(Table):
         rows_per_page: int = 37,
         show_toolbar: bool = False,
         show_statusbar: bool = False,
-        update_page_numbers_func=None,
+        update_controls_state_func=None,
         update_preview_info_func=None,
-        set_control_state_func=None,
         **kwargs
     ):
         if container is None:
@@ -103,9 +102,8 @@ class EditableTable(Table):
         self.show_toolbar: bool = show_toolbar
         self.show_statusbar: bool = show_statusbar
         self.rows_per_page: int = rows_per_page
-        self.update_page_numbers_func = update_page_numbers_func
+        self.update_controls_state_func = update_controls_state_func
         self.update_preview_info_func = update_preview_info_func
-        self.set_control_state_func = set_control_state_func
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         gui_f.show_progress(container, text='Loading Data from data source...')
         if self.data_source_type == DataSourceType.SQLITE:
@@ -139,7 +137,7 @@ class EditableTable(Table):
         """
         self._old_page = self._current_page
         self._current_page = value
-        # self.update_page_numbers_func()
+        # self.update_controls_state_func()
         # self.update_preview_info_func()
 
     @property
@@ -848,7 +846,7 @@ class EditableTable(Table):
             index_to_delete = []
             for row_number in row_numbers:
                 df = self.get_data()
-                asset_id = 'NA'
+                asset_id = gui_g.s.cell_is_empty_list[0]
                 idx = self.get_real_index(int(row_number), add_page_offset=True) if convert_to_index else row_number
                 if 0 <= idx <= len(df):
                     try:
@@ -952,12 +950,10 @@ class EditableTable(Table):
         if downloaded_data:
             df = self.get_data(df_type=DataFrameUsed.UNFILTERED)
             # update the downloaded_size field in the datatable using asset_id as key
-            s_format = gui_g.s.format_size
-            s_yes = gui_g.s.unknown_size
             for asset_id, asset_data in downloaded_data.items():
                 try:
                     size = int(asset_data['size'])
-                    size = s_format.format(size / 1024 / 1024) if size > 1 else s_yes  # convert size to readable text
+                    size = format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
                     df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
                     # print(f'asset_id={asset_id} size={size}')
                 except KeyError:
@@ -1330,9 +1326,9 @@ class EditableTable(Table):
         if self._old_page != self.current_page:
             self.resetColors()
         self.set_colors()
-        if self.update_page_numbers_func is not None:
-            self.update_page_numbers_func()
-        if self.update_page_numbers_func is not None:
+        if self.update_controls_state_func is not None:
+            self.update_controls_state_func()
+        if self.update_preview_info_func is not None:
             self.update_preview_info_func()
 
     def move_to_row(self, row_index: int) -> None:
@@ -1495,8 +1491,8 @@ class EditableTable(Table):
         if isinstance(ue_asset_data, list):
             ue_asset_data = ue_asset_data[0]
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
-        if asset_id in ('', 'None', 'nan'):
-            asset_id = ue_asset_data.get('asset_id', 'NA')
+        if asset_id in gui_g.s.cell_is_empty_list[1:]:  # exclude 'NA'
+            asset_id = ue_asset_data.get('asset_id', gui_g.s.cell_is_empty_list[0])
         text = f'row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
@@ -1580,7 +1576,7 @@ class EditableTable(Table):
         """
         if row_number < 0 or col_index < 0 or value is None:
             return False
-        value = gui_g.s.empty_cell if value in ('None', 'nan') else value  # convert 'None' values to ''
+        value = gui_g.s.empty_cell if value in gui_g.s.cell_is_empty_list else value  # convert 'None' values to ''
         try:
             idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
             df = self.get_data()  # always used the unfiltered because the real index is set from unfiltered dataframe
@@ -1802,7 +1798,7 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.get_col_name(col_index)
         ttk.Label(edit_cell_window.frm_content, text=col_name).pack(side=tk.LEFT)
-        cell_value_str = str(cell_value) if (cell_value not in ('None', 'nan', gui_g.s.empty_cell)) else ''
+        cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_empty_list) else ''
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)

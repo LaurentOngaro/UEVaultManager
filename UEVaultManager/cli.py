@@ -479,7 +479,7 @@ class UEVaultManagerCLI:
                             continue
 
                         # get rid of 'None' values in CSV file
-                        if value == gui_g.s.empty_cell:
+                        if value in gui_g.s.cell_is_empty_list:
                             _csv_record[index] = ''
                             continue
 
@@ -1072,11 +1072,11 @@ class UEVaultManagerCLI:
             # total file size
             total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
             self.core.uevmlfs.set_asset_size(item.app_name, total_size)  # update the global list AND save it into a json file
-            file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+            file_size = gui_fn.format_size(total_size)
             manifest_info.append(InfoItem('Disk size (uncompressed)', 'disk_size', file_size, total_size))
             # total chunk size
             total_size = sum(c.file_size for c in manifest.chunk_data_list.elements)
-            chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+            chunk_size = gui_fn.format_size(total_size)
             manifest_info.append(InfoItem('Download size (compressed)', 'download_size', chunk_size, total_size))
 
             if show_all_info:
@@ -1095,7 +1095,7 @@ class UEVaultManagerCLI:
                         ]
                         tag_file_size = sum(fm.file_size for fm in tag_files)
                         tag_disk_size.append(dict(tag=tag, size=tag_file_size, count=len(tag_files)))
-                        tag_file_size_human = '{:.02f} GiB'.format(tag_file_size / 1024 / 1024 / 1024)
+                        tag_file_size_human = gui_fn.format_size(tag_file_size)
                         tag_disk_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_file_size_human} '
                                                    f'(Files: {len(tag_files)})')
                         # tag_disk_size_human.append(f'Size: {tag_file_size_human}, Files: {len(tag_files)}, Tag: "{tag}"')
@@ -1107,7 +1107,7 @@ class UEVaultManagerCLI:
 
                         tag_chunk_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in tag_chunk_guids)
                         tag_download_size.append(dict(tag=tag, size=tag_chunk_size, count=len(tag_chunk_guids)))
-                        tag_chunk_size_human = '{:.02f} GiB'.format(tag_chunk_size / 1024 / 1024 / 1024)
+                        tag_chunk_size_human = gui_fn.format_size(tag_chunk_size)
                         tag_download_size_human.append(
                             f'{human_tag.ljust(longest_tag)} - {tag_chunk_size_human} '
                             f'(Chunks: {len(tag_chunk_guids)})'

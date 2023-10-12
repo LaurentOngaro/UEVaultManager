@@ -106,11 +106,11 @@ class GUISettings:
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
         # self.empty_cell: str = 'None'
-        self.cell_is_empty_list = ['None', 'nan', 'NA', 'NaN', 'False', '0', '0.0']
+        self.cell_is_empty_list = ['NA', 'None', 'nan', 'NaN', 'False', '0', '0.0', '']  # keep 'NA' value at first position
+        self.cell_is_empty_and_zero_list = self.cell_is_empty_list + ['False', '0', '0.0', '']
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'dummy_row_'
         self.unknown_size: str = 'yes'
-        self.format_size: str = '{:.02f} MiB'
         self.tag_prefix = 't_'
         self.expand_columns_factor: int = 20
         self.contract_columns_factor: int = 20
