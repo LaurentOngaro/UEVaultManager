@@ -8,6 +8,7 @@ import csv
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -17,6 +18,8 @@ from datetime import datetime
 from logging.handlers import QueueListener
 from multiprocessing import freeze_support, Queue as MPQueue
 from platform import platform
+from shutil import rmtree
+from tkinter import filedialog
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
@@ -25,21 +28,25 @@ from UEVaultManager import __codename__ as UEVM_codename, __version__ as UEVM_ve
 from UEVaultManager.api.egs import create_empty_assets_extra, GrabResult, is_asset_obsolete
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
+from UEVaultManager.lfs.utils import copy_folder, path_join
+from UEVaultManager.models.Asset import Asset
 from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, get_csv_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
+from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.tkgui.modules.functions import box_message, create_file_backup, custom_print, \
-    show_progress  # simplier way to use the custom_print function
+from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, create_file_backup, custom_print, \
+    make_modal, show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
-from UEVaultManager.utils.cli import check_and_create_path, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
-from UEVaultManager.utils.custom_parser import HiddenAliasSubparsersAction
+from UEVaultManager.utils.cli import check_and_create_file, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
+from UEVaultManager.utils.HiddenAliasSubparsersActionClass import HiddenAliasSubparsersAction
 
 # add the parent folder to the sys.path list, to run the script from the command line without import module error
 # must be done before importing project module (ex: global.py)
@@ -70,9 +77,10 @@ def init_gui_args(args, additional_args=None) -> None:
     gui_g.UEVM_cli_args.copy_from(temp_dict)
 
 
-def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWindow):
+def init_progress_window(text: str, args, logger=None, callback: callable = None) -> (bool, ProgressWindow):
     """
     Initialize the progress window.
+    :param text: text to display in the progress window.
     :param args: args of the command line.
     :param logger: logger to use.
     :param callback: callback function to call while progress updating.
@@ -90,7 +98,7 @@ def init_progress_window(args, logger=None, callback=None) -> (bool, ProgressWin
     force_refresh = True if args.force_refresh else False
     pw = show_progress(
         parent=gui_g.UEVM_gui_ref,
-        text='Updating Assets List',
+        text=text,
         quit_on_close=not uewm_gui_exists,
         function=callback,
         function_parameters={
@@ -133,7 +141,8 @@ class UEVaultManagerCLI:
     :param override_config: path to a config file to use instead of the default one.
     :param api_timeout: timeout for API requests.
     """
-    is_gui = False
+    is_gui = False  # class property to be accessible by static methods
+    release_id = None  # the release id selected for an asset installation
 
     def __init__(self, override_config=None, api_timeout=(7, 7)):  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
         self.core = AppCore(override_config, timeout=api_timeout)
@@ -153,12 +162,19 @@ class UEVaultManagerCLI:
         Wrapper to log a message using a log function AND use a messagebox to display the message if the gui is active.
         :param log_function: function to use to log.
         :param message: message to log.
-        :param quit_on_error: Whether the app will quit the application.
+        :param quit_on_error: whether we quit the application.
         """
-        if not UEVaultManagerCLI.is_gui:
+        if UEVaultManagerCLI.is_gui:
+            if gui_g.display_content_window_ref is not None:
+                gui_g.display_content_window_ref.close_window()
+            box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the application to quit
+            # log_function() is called in box_message
+        else:
             log_function(message)
-            return
-        box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the app to quit
+            name = log_function.__name__
+            # check if name contains 'error' or 'critical' to quit the application
+            if quit_on_error and ('error' in name or 'critical' in name or 'fatal' in name):
+                sys.exit(1)
 
     @staticmethod
     def _log_and_gui_display(log_function: callable, message: str) -> None:
@@ -169,7 +185,35 @@ class UEVaultManagerCLI:
         """
         log_function(message)
         if UEVaultManagerCLI.is_gui and gui_g.display_content_window_ref is not None:
-            gui_g.display_content_window_ref.display(message + '\n')
+            gui_g.display_content_window_ref.display(message)
+
+    def _init_data_for_gui(self, args) -> (str, DataSourceType):
+        data_source_type = DataSourceType.FILE
+        use_database = False
+        use_input = False
+        try:
+            use_database = args.database
+            use_input = args.input
+        except AttributeError:
+            pass
+        if use_database:
+            data_source = args.database
+            data_source_type = DataSourceType.SQLITE
+            self.logger.info(f'The database {data_source} will be used to read data from')
+        elif use_input:
+            data_source = args.input
+            self.logger.info(f'The file {data_source} will be used to read data from')
+        else:
+            data_source = gui_g.s.csv_filename
+            self.logger.warning('The file to read data from has not been set by the --input command option. The default file name will be used.')
+
+        data_source = gui_fn.path_from_relative_to_absolute(data_source)
+        data_source = os.path.normpath(data_source)
+
+        gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
+        gui_g.UEVM_log_ref = self.logger
+        gui_g.UEVM_cli_ref = self
+        return data_source, data_source_type
 
     def setup_threaded_logging(self) -> QueueListener:
         """
@@ -206,6 +250,9 @@ class UEVaultManagerCLI:
         :param bool_true_data: bool (True) value to use if no bool data is found.
         :param bool_false_data: bool (False) value to use if no bool data is found.
         :return: (asset_id, dict containing all the data for an asset).
+
+        Notes:
+            This method is only used when getting OWNED assets data with the "old" method used by legendary
         """
         record = {}
         metadata = item.metadata
@@ -242,7 +289,7 @@ class UEVaultManagerCLI:
         # next fields are missing in some assets pages
         discount_percentage = extra_data.get('discount_percentage', no_int_data)
         discounted = extra_data.get('discounted', bool_false_data)
-        owned = extra_data.get('owned', bool_false_data)
+        owned = extra_data.get('owned', bool_true_data)
         obsolete = is_asset_obsolete(supported_versions, self.core.engine_version_for_obsolete_assets)
         try:
             values = (
@@ -269,7 +316,7 @@ class UEVaultManagerCLI:
                 , no_float_data  # 'Stars'
                 , bool_false_data  # 'Must buy'
                 , no_text_data  # 'Test result
-                , no_text_data  # 'Installed folder'
+                , no_text_data  # 'Installed folders'
                 , no_text_data  # 'Alternative'
                 , origin  # 'Origin
                 , bool_false_data  # 'Added manually'
@@ -302,11 +349,11 @@ class UEVaultManagerCLI:
 
         if args.auth_delete:
             if not self.core.uevmlfs.userdata:
-                self._log_and_gui_display(self.logger.info, "You are not logged in. You have to run the auth command to login.")
+                self._log_and_gui_display(self.logger.info, "You are not logged in. You have to run the auth command to log in.")
                 return
             else:
                 self.core.uevmlfs.invalidate_userdata()
-                self._log_and_gui_display(self.logger.info, "User data deleted. You'll have to run the auth command again to login.")
+                self._log_and_gui_display(self.logger.info, "User data deleted. You'll have to run the auth command again to log in.")
                 return
         try:
             self._log_and_gui_display(self.logger.info, 'Testing existing login data if present...')
@@ -334,21 +381,21 @@ class UEVaultManagerCLI:
                     self._log_and_gui_display(self.logger.info, f'Now logged in as user "{self.core.uevmlfs.userdata["displayName"]}"')
                     return
                 else:
-                    self.logger.warning('Login session from EGS seems to no longer be valid.')
+                    self._log_and_gui_display(self.logger.warning, 'Login session from EGS seems to no longer be valid.')
                     self.core.clean_exit(1)
             except Exception as error:
-                message = f'No EGS login session found, please login manually. (Exception: {error!r})'
+                message = f'No EGS login session found, please log in manually. (Exception: {error!r})'
                 self._log_and_gui_message(self.logger.critical, message)
 
         exchange_token = ''
         auth_code = ''
         if not args.auth_code and not args.session_id:
             # only import here since pywebview import is slow
-            from UEVaultManager.utils.webview_login import webview_available, do_webview_login
+            from UEVaultManager.utils.WebviewWindowClass import webview_available, do_webview_login
 
             if not webview_available or args.no_webview or self.core.webview_killswitch:
                 # unfortunately the captcha stuff makes a complete CLI login flow kinda impossible right now...
-                custom_print('Please login via the epic web login!')
+                custom_print('Please log in via the epic web login!')
                 url = 'https://legendary.gl/epiclogin'
                 webbrowser.open(url)
                 custom_print(f'If the web page did not open automatically, please manually open the following URL: {url}')
@@ -378,7 +425,7 @@ class UEVaultManagerCLI:
             exchange_token = args.ex_token
 
         if not exchange_token and not auth_code:
-            self.logger.fatal('No exchange token/authorization code, cannot login.')
+            self.logger.critical('No exchange token/authorization code, can not log in.')
             return
 
         if exchange_token and self.core.auth_ex_token(exchange_token):
@@ -398,7 +445,7 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
 
-        def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> []:
+        def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> list:
             """
             Updates the data of the asset with the data from the items in the file.
             :param _asset_id: id of the asset to update.
@@ -432,7 +479,7 @@ class UEVaultManagerCLI:
                             continue
 
                         # get rid of 'None' values in CSV file
-                        if value == gui_g.s.empty_cell:
+                        if value in gui_g.s.cell_is_empty_list:
                             _csv_record[index] = ''
                             continue
 
@@ -446,7 +493,10 @@ class UEVaultManagerCLI:
                             )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                         elif csv_field == 'Origin':
                             # all the folders when the asset came from are stored in a comma separated list
-                            folder_list = value.split(',')
+                            if isinstance(value, str):
+                                folder_list = value.split(',')
+                            else:
+                                folder_list = value if value else []
                             # add the new folder to the list without duplicates
                             if _csv_record[index] not in folder_list:
                                 folder_list.append(_csv_record[index])
@@ -514,18 +564,15 @@ class UEVaultManagerCLI:
         if args.output:
             file_src = args.output
             # test if the folder is writable
-            if not check_and_create_path(file_src):
-                message = f'Could not create folder for {file_src}. Quiting Application...'
-                self._log_and_gui_message(self.logger.critical, message)
-            # we try to open it for writing
-            if not os.access(file_src, os.W_OK):
+            if not check_and_create_file(file_src):
                 message = f'Could not create result file {file_src}. Quiting Application...'
                 self._log_and_gui_message(self.logger.critical, message)
 
-        self.logger.info('Logging in...')
+        self.logger.info('Login...')
         if not self.core.login(raise_error=False):
-            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n. Quiting Application...'
-            self._log_and_gui_message(self.logger.critical, message)
+            message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n.'
+            self._log_and_gui_message(self.logger.error, message)
+            return
 
         if args.force_refresh:
             self.logger.info(
@@ -539,18 +586,18 @@ class UEVaultManagerCLI:
             self.logger.info(f'The String "{args.filter_category}" will be search in Assets category')
 
         gui_g.progress_window_ref = None
-        progress_window = None
+        pw = None
         if UEVaultManagerCLI.is_gui:
-            uewm_gui_exists, progress_window = init_progress_window(args=args, logger=self.logger, callback=self.core.get_asset_list)
+            uewm_gui_exists, pw = init_progress_window(text='Updating Assets List', args=args, logger=self.logger, callback=self.core.get_asset_list)
             if uewm_gui_exists:
                 # if the main gui is running, we already have a tk.mainloop running
                 # we need to constantly update the progress bar
-                while not progress_window.must_end:
-                    progress_window.update()
+                while not pw.must_end:
+                    pw.update()
             else:
                 # if the main gui is not running, we need to start a tk.mainloop
-                progress_window.mainloop()
-            items = progress_window.get_result()
+                pw.mainloop()
+            items = pw.get_result()
         else:
             items = self.core.get_asset_list(platform='Windows', filter_category=args.filter_category, force_refresh=args.force_refresh)
 
@@ -579,7 +626,7 @@ class UEVaultManagerCLI:
         items = sorted(items, key=lambda x: x.app_name.lower(), reverse=True)
 
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging assets data...", new_max_value=cpt_max)
+            gui_g.progress_window_ref.reset(new_value=0, new_text="Merging asset's data...", new_max_value=cpt_max)
         for item in items:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -661,7 +708,6 @@ class UEVaultManagerCLI:
                 try:
                     with open(file_src, 'r', encoding='utf-8') as output:
                         assets_in_file = json.load(output)
-                        output.close()
                 except (FileExistsError, OSError, UnicodeDecodeError, StopIteration, json.decoder.JSONDecodeError):
                     self.logger.warning(f'Could not read Json record from the file {args.output}')
                 # reopen file for writing
@@ -710,33 +756,33 @@ class UEVaultManagerCLI:
                 # During the editabletable initial rebuild_data process, the window will not close
                 # So we try to close it several times
                 # max_tries = 3
-                # progress_window.quit_on_close = True  # gentle quit
+                # pw.quit_on_close = True  # gentle quit
                 # tries = 0
-                # while progress_window is not None and progress_window.winfo_viewable() and tries < max_tries:
-                #     progress_window.close_window()
+                # while progress_window is not None and pw.winfo_viewable() and tries < max_tries:
+                #     pw.close_window()
                 #     time.sleep(0.2)
                 #     tries += 1
-                # progress_window.quit_on_close = False  # force destroy the window
-                # progress_window.close_window()
-                progress_window.quit_on_close = False
-                progress_window.close_window(destroy_window=True)
+                # pw.quit_on_close = False  # force destroy the window
+                # pw.close_window()
+                pw.quit_on_close = False
+                pw.close_window(destroy_window=True)
             return
 
         # here, no other output has been done before, so we print the asset in a quick format to the console
         print('\nAvailable UE Assets:')
         for asset in items:
             version = asset.app_version('Windows')
-            print(f' * {asset.app_title.strip()} (App name: {asset.app_name} | Version: {version})')
+            print(f' * {asset.app_title.strip()} (Asset name: {asset.app_name} | Version: {version})')
         print(f'\nTotal: {len(items)}')
 
     def list_files(self, args):
         """
-        List files for a given app name or manifest url/path.
+        List files for a given asset name or manifest url/path.
         :param args: options passed to the command.
         :return:
         """
         if not args.override_manifest and not args.app_name:
-            print('You must provide either a manifest url/path or app name!')
+            print('You must provide either a manifest url/path or asset name!')
             return
 
         # check if we even need to log in
@@ -744,9 +790,9 @@ class UEVaultManagerCLI:
             self.logger.info(f'Loading manifest from "{args.override_manifest}"')
             manifest_data, _ = self.core.get_uri_manifest(args.override_manifest)
         else:
-            self.logger.info(f'Logging in and downloading manifest for {args.app_name}')
+            self.logger.info(f'Login and downloading manifest for {args.app_name}')
             if not self.core.login(raise_error=False):
-                message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\nCannot continue with download process.'
+                message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nCannot continue with download process.'
                 self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                 return
             update_meta = args.force_refresh
@@ -756,7 +802,7 @@ class UEVaultManagerCLI:
                 self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                 return
 
-            manifest_data, _ = self.core.get_cdn_manifest(item, platform='Windows')
+            manifest_data, _, status_code = self.core.get_cdn_manifest(item, platform='Windows')
 
         manifest = self.core.load_manifest(manifest_data)
         files = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
@@ -806,8 +852,8 @@ class UEVaultManagerCLI:
         if not args.offline:
             try:
                 if not self.core.login(raise_error=False):
-                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
-                    self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
+                    message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n'
+                    self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                     return
             except ValueError:
                 pass
@@ -821,14 +867,14 @@ class UEVaultManagerCLI:
             user_name = self.core.uevmlfs.userdata['displayName']
 
         cache_information = self.core.uevmlfs.get_assets_cache_info()
-        update_information = self.core.uevmlfs.get_cached_version()
+        update_information = self.core.uevmlfs.get_online_version_saved()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
         last_cache_update = cache_information.get('last_update', '')
         if last_update != '':
-            last_update = time.strftime("%x", time.localtime(last_update))
+            last_update = time.strftime('%x', time.localtime(last_update))
         if last_cache_update != '':
-            last_cache_update = time.strftime("%x", time.localtime(last_cache_update))
+            last_cache_update = time.strftime('%x', time.localtime(last_cache_update))
 
         json_content = {
             'Epic account': user_name,  #
@@ -865,10 +911,11 @@ class UEVaultManagerCLI:
 
     def info(self, args) -> None:
         """
-        Print information about a given app name or manifest url/path.
+        Print information about a given Asset name or manifest url/path.
         :param args: options passed to the command.
         """
         name_or_path = args.app_name_or_manifest or args.app_name
+        show_all_info = args.all
         app_name = manifest_uri = None
         if os.path.exists(name_or_path) or name_or_path.startswith('http'):
             manifest_uri = name_or_path
@@ -877,27 +924,43 @@ class UEVaultManagerCLI:
         if not args.offline and not manifest_uri:
             try:
                 if not self.core.login(raise_error=False):
-                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
-                    self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
+                    message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n'
+                    self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                     return
             except ValueError:
                 pass
 
         # lists that will be printed or turned into JSON data
-        info_items = dict(assets=list(), manifest=list(), install=list())
+        info_items = dict(assets=[], manifest=[], install=[])
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
 
         update_meta = not args.offline and args.force_refresh
 
+        # check the item using the UEVM method (old)
         item = self.core.get_item(app_name, update_meta=update_meta, platform='Windows')
+        message = f'Asset information for "{app_name}" is missing, this may be due to the asset not being available on the selected platform or currently logged-in account.'
         if item and not self.core.asset_available(item, platform='Windows'):
-            self.logger.warning(
-                f'Asset information for "{item.app_name}" is missing, this may be due to the asset '
-                f'not being available on the selected platform or currently logged-in account.'
-            )
+            self._log_and_gui_message(self.logger.warning, message)
             args.offline = True
-
+        else:
+            # check the item using the EGS method (new)
+            try:
+                json_data_egs, json_message = UEAssetScraper.read_json_file(app_name)
+                if json_message != '':
+                    self._log_and_gui_message(self.logger.warning, json_message, quit_on_error=False)
+                    item = None
+                else:
+                    json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs)
+                    item = Asset.from_json(json_data_uevm)  # create an object from the asset class using the json data
+            except (Exception, ) as error:
+                self.logger.warning(f'Scrapped data for {app_name} are not available : {error!r}')
+                # item = None
+        if not item:
+            self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
+            args.offline = True
         manifest_data = None
+        install_tags = {''}
+
         # entitlements = None
         # load installed manifest or URI
         if args.offline or manifest_uri:
@@ -906,23 +969,41 @@ class UEVaultManagerCLI:
                 r.raise_for_status()
                 manifest_data = r.content
             elif manifest_uri and os.path.exists(manifest_uri):
-                with open(manifest_uri, 'rb') as f:
-                    manifest_data = f.read()
+                with open(manifest_uri, 'rb') as file:
+                    manifest_data = file.read()
             else:
-                self.logger.info('Asset not installed and offline mode enabled, cannot load manifest.')
+                self.logger.info('Asset not installed and offline mode enabled, can not load manifest.')
         elif item:
             # entitlements = self.core.egs.get_user_entitlements()
-            egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
-            if status_code != 200:
-                self.logger.warning(f'Failed to fetch metadata for {item.app_name}: reponse code = {status_code}')
+            try:
+                egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
+                if status_code != 200:
+                    self._log_and_gui_display(
+                        self.logger.error,
+                        f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: reponse code = {status_code}'
+                    )
+                    return
+            except (Exception, ) as error:
+                self._log_and_gui_display(
+                    self.logger.error,
+                    f'\nYou can only get information about assets you own !\nFailed to fetch metadata for {item.app_name}: {error!r}'
+                )
+                return
             item.metadata = egl_meta
-            # Get manifest if asset exists for current platform
-            if 'Windows' in item.asset_infos:
-                manifest_data, _ = self.core.get_cdn_manifest(item, 'Windows')
-
+            try:
+                # Get manifest if asset exists for current platform
+                if 'Windows' in item.asset_infos:
+                    manifest_data, base_urls, status_code = self.core.get_cdn_manifest(item, 'Windows')
+            except (Exception, ) as error:
+                if error.response.status_code == 404:
+                    message = f'\nThe manifest data is not available for the assets {item.app_name}. You can try to install it using the Epic Game Launcher'
+                else:
+                    message = f'\nYou can only get information about assets you own!\nFailed to get manifest for the asset {item.app_name}'
+                self._log_and_gui_display(self.logger.error, message)
+                return
         if item:
             asset_infos = info_items['assets']
-            asset_infos.append(InfoItem('App name', 'app_name', item.app_name, item.app_name))
+            asset_infos.append(InfoItem('Asset name', 'app_name', item.app_name, item.app_name))
             asset_infos.append(InfoItem('Title', 'title', item.app_title, item.app_title))
             asset_infos.append(InfoItem('Latest version', 'version', item.app_version('Windows'), item.app_version('Windows')))
             all_versions = {k: v.build_version for k, v in item.asset_infos.items()}
@@ -938,95 +1019,105 @@ class UEVaultManagerCLI:
             manifest_info.append(InfoItem('Manifest type', 'type', manifest_type, manifest_type.lower()))
             manifest_info.append(InfoItem('Manifest version', 'version', manifest.version, manifest.version))
             manifest_info.append(InfoItem('Manifest feature level', 'feature_level', manifest.meta.feature_level, manifest.meta.feature_level))
-            manifest_info.append(InfoItem('Manifest app name', 'app_name', manifest.meta.app_name, manifest.meta.app_name))
-            manifest_info.append(InfoItem('Launch EXE', 'launch_exe', manifest.meta.launch_exe or 'N/A', manifest.meta.launch_exe))
-            manifest_info.append(InfoItem('Launch Command', 'launch_command', manifest.meta.launch_command or '(None)', manifest.meta.launch_command))
+            manifest_info.append(InfoItem('Manifest asset name', 'app_name', manifest.meta.app_name, manifest.meta.app_name))
             manifest_info.append(InfoItem('Build version', 'build_version', manifest.meta.build_version, manifest.meta.build_version))
             manifest_info.append(InfoItem('Build ID', 'build_id', manifest.meta.build_id, manifest.meta.build_id))
-            if manifest.meta.prereq_ids:
-                human_list = [
-                    f'Prerequisite IDs: {", ".join(manifest.meta.prereq_ids)}', f'Prerequisite name: {manifest.meta.prereq_name}',
-                    f'Prerequisite path: {manifest.meta.prereq_path}', f'Prerequisite args: {manifest.meta.prereq_args or "(None)"}',
-                ]
+            if show_all_info:
+                manifest_info.append(InfoItem('Launch EXE', 'launch_exe', manifest.meta.launch_exe or 'N/A', manifest.meta.launch_exe))
                 manifest_info.append(
-                    InfoItem(
-                        'Prerequisites', 'prerequisites', human_list,
-                        dict(
-                            ids=manifest.meta.prereq_ids,
-                            name=manifest.meta.prereq_name,
-                            path=manifest.meta.prereq_path,
-                            args=manifest.meta.prereq_args
+                    InfoItem('Launch Command', 'launch_command', manifest.meta.launch_command or '(None)', manifest.meta.launch_command)
+                )
+                if manifest.meta.prereq_ids:
+                    human_list = [
+                        f'Prerequisite IDs: {", ".join(manifest.meta.prereq_ids)}', f'Prerequisite name: {manifest.meta.prereq_name}',
+                        f'Prerequisite path: {manifest.meta.prereq_path}', f'Prerequisite args: {manifest.meta.prereq_args or "(None)"}',
+                    ]
+                    manifest_info.append(
+                        InfoItem(
+                            'Prerequisites', 'prerequisites', human_list,
+                            dict(
+                                ids=manifest.meta.prereq_ids,
+                                name=manifest.meta.prereq_name,
+                                path=manifest.meta.prereq_path,
+                                args=manifest.meta.prereq_args
+                            )
                         )
                     )
-                )
-            else:
-                manifest_info.append(InfoItem('Prerequisites', 'prerequisites', None, None))
+                else:
+                    manifest_info.append(InfoItem('Prerequisites', 'prerequisites', None, None))
 
-            if manifest.meta.uninstall_action_path:
-                human_list = [
-                    f'Uninstaller path: {manifest.meta.uninstall_action_path}',
-                    f'Uninstaller args: {manifest.meta.uninstall_action_args or "(None)"}',
-                ]
-                manifest_info.append(
-                    InfoItem(
-                        'Uninstaller', 'uninstaller', human_list,
-                        dict(path=manifest.meta.uninstall_action_path, args=manifest.meta.uninstall_action_args)
+                if manifest.meta.uninstall_action_path:
+                    human_list = [
+                        f'Uninstaller path: {manifest.meta.uninstall_action_path}',
+                        f'Uninstaller args: {manifest.meta.uninstall_action_args or "(None)"}',
+                    ]
+                    manifest_info.append(
+                        InfoItem(
+                            'Uninstaller', 'uninstaller', human_list,
+                            dict(path=manifest.meta.uninstall_action_path, args=manifest.meta.uninstall_action_args)
+                        )
                     )
-                )
-            else:
-                manifest_info.append(InfoItem('Uninstaller', 'uninstaller', None, None))
+                else:
+                    manifest_info.append(InfoItem('Uninstaller', 'uninstaller', None, None))
 
-            install_tags = {''}
-            for fm in manifest.file_manifest_list.elements:
-                for tag in fm.install_tags:
-                    install_tags.add(tag)
+                for fm in manifest.file_manifest_list.elements:
+                    for tag in fm.install_tags:
+                        install_tags.add(tag)
 
-            install_tags = sorted(install_tags)
-            install_tags_human = ', '.join(i if i else '(empty)' for i in install_tags)
-            manifest_info.append(InfoItem('Install tags', 'install_tags', install_tags_human, install_tags))
+                install_tags = sorted(install_tags)
+                install_tags_human = ', '.join(i if i else '(empty)' for i in install_tags)
+                manifest_info.append(InfoItem('Install tags', 'install_tags', install_tags_human, install_tags))
             # file and chunk count
             manifest_info.append(InfoItem('Files', 'num_files', manifest.file_manifest_list.count, manifest.file_manifest_list.count))
             manifest_info.append(InfoItem('Chunks', 'num_chunks', manifest.chunk_data_list.count, manifest.chunk_data_list.count))
             # total file size
             total_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
-            file_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+            self.core.uevmlfs.set_asset_size(item.app_name, total_size)  # update the global list AND save it into a json file
+            file_size = gui_fn.format_size(total_size)
             manifest_info.append(InfoItem('Disk size (uncompressed)', 'disk_size', file_size, total_size))
             # total chunk size
             total_size = sum(c.file_size for c in manifest.chunk_data_list.elements)
-            chunk_size = '{:.02f} GiB'.format(total_size / 1024 / 1024 / 1024)
+            chunk_size = gui_fn.format_size(total_size)
             manifest_info.append(InfoItem('Download size (compressed)', 'download_size', chunk_size, total_size))
 
-            # if there are install tags break downsize by tag
-            tag_disk_size = []
-            tag_disk_size_human = []
-            tag_download_size = []
-            tag_download_size_human = []
-            if len(install_tags) > 1:
-                longest_tag = max(max(len(t) for t in install_tags), len('(empty)'))
-                for tag in install_tags:
-                    # sum up all file sizes for the tag
-                    human_tag = tag or '(empty)'
-                    tag_files = [fm for fm in manifest.file_manifest_list.elements if (tag in fm.install_tags) or (not tag and not fm.install_tags)]
-                    tag_file_size = sum(fm.file_size for fm in tag_files)
-                    tag_disk_size.append(dict(tag=tag, size=tag_file_size, count=len(tag_files)))
-                    tag_file_size_human = '{:.02f} GiB'.format(tag_file_size / 1024 / 1024 / 1024)
-                    tag_disk_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_file_size_human} '
-                                               f'(Files: {len(tag_files)})')
-                    # tag_disk_size_human.append(f'Size: {tag_file_size_human}, Files: {len(tag_files)}, Tag: "{tag}"')
-                    # accumulate chunk guids used for this tag and count their size too
-                    tag_chunk_guids = set()
-                    for fm in tag_files:
-                        for cp in fm.chunk_parts:
-                            tag_chunk_guids.add(cp.guid_num)
+            if show_all_info:
+                # if there are install tags break downsize by tag
+                tag_disk_size = []
+                tag_disk_size_human = []
+                tag_download_size = []
+                tag_download_size_human = []
+                if len(install_tags) > 1:
+                    longest_tag = max(max(len(t) for t in install_tags), len('(empty)'))
+                    for tag in install_tags:
+                        # sum up all file sizes for the tag
+                        human_tag = tag or '(empty)'
+                        tag_files = [
+                            fm for fm in manifest.file_manifest_list.elements if (tag in fm.install_tags) or (not tag and not fm.install_tags)
+                        ]
+                        tag_file_size = sum(fm.file_size for fm in tag_files)
+                        tag_disk_size.append(dict(tag=tag, size=tag_file_size, count=len(tag_files)))
+                        tag_file_size_human = gui_fn.format_size(tag_file_size)
+                        tag_disk_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_file_size_human} '
+                                                   f'(Files: {len(tag_files)})')
+                        # tag_disk_size_human.append(f'Size: {tag_file_size_human}, Files: {len(tag_files)}, Tag: "{tag}"')
+                        # accumulate chunk guids used for this tag and count their size too
+                        tag_chunk_guids = set()
+                        for fm in tag_files:
+                            for cp in fm.chunk_parts:
+                                tag_chunk_guids.add(cp.guid_num)
 
-                    tag_chunk_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in tag_chunk_guids)
-                    tag_download_size.append(dict(tag=tag, size=tag_chunk_size, count=len(tag_chunk_guids)))
-                    tag_chunk_size_human = '{:.02f} GiB'.format(tag_chunk_size / 1024 / 1024 / 1024)
-                    tag_download_size_human.append(f'{human_tag.ljust(longest_tag)} - {tag_chunk_size_human} '
-                                                   f'(Chunks: {len(tag_chunk_guids)})')
+                        tag_chunk_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in tag_chunk_guids)
+                        tag_download_size.append(dict(tag=tag, size=tag_chunk_size, count=len(tag_chunk_guids)))
+                        tag_chunk_size_human = gui_fn.format_size(tag_chunk_size)
+                        tag_download_size_human.append(
+                            f'{human_tag.ljust(longest_tag)} - {tag_chunk_size_human} '
+                            f'(Chunks: {len(tag_chunk_guids)})'
+                        )
 
-            manifest_info.append(InfoItem('Disk size by install tag', 'tag_disk_size', tag_disk_size_human or 'N/A', tag_disk_size))
-            manifest_info.append(InfoItem('Download size by install tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size))
+                manifest_info.append(InfoItem('Disk size by install tag', 'tag_disk_size', tag_disk_size_human or 'N/A', tag_disk_size))
+                manifest_info.append(
+                    InfoItem('Download size by installation tag', 'tag_download_size', tag_download_size_human or 'N/A', tag_download_size)
+                )
 
         if not args.json:
 
@@ -1072,7 +1163,7 @@ class UEVaultManagerCLI:
             if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
                 gui_g.UEVM_gui_ref.mainloop()
         else:
-            json_out = dict(asset=dict(), install=dict(), manifest=dict())
+            json_out = dict(asset={}, install={}, manifest={})
             if info_items.get('asset'):
                 for info_item in info_items['asset']:
                     json_out['asset'][info_item.json_name] = info_item.json_value
@@ -1090,7 +1181,7 @@ class UEVaultManagerCLI:
 
     def cleanup(self, args) -> None:
         """
-        Cleans up the local assets data folders and logs.
+        Cleans up the local asset's data folders and logs.
         :param args: options passed to the command.
         """
         uewm_gui_exists = False
@@ -1123,15 +1214,15 @@ class UEVaultManagerCLI:
             deleted_size += self.core.uevmlfs.clean_scrapping()
 
         if args.delete_metadata:
-            message = 'Removing app metadata...'
+            message = 'Removing asset metadata...'
             custom_print(message)
-            deleted_size += self.core.uevmlfs.clean_metadata(app_names_to_keep=[])
+            deleted_size += self.core.uevmlfs.clean_metadata(names_to_keep=[])
 
         # delete extra data
         if args.delete_extra_data:
-            message = 'Removing app extra data...'
+            message = 'Removing asset extra data...'
             custom_print(message)
-            deleted_size += self.core.uevmlfs.clean_extra(app_names_to_keep=[])
+            deleted_size += self.core.uevmlfs.clean_extra(names_to_keep=[])
 
         message = f'Cleanup complete! Removed {deleted_size / 1024 / 1024:.02f} MiB.'
         self.logger.info(message)
@@ -1142,12 +1233,12 @@ class UEVaultManagerCLI:
 
     def get_token(self, args) -> None:
         """
-        Gets the access token for the current user.
+        Get the access token for the current user.
         :param args: options passed to the command.
         """
         if not self.core.login(force_refresh=args.bearer, raise_error=False):
-            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
-            self._log_and_gui_message(self.logger.critical, message, quit_on_error=False)
+            message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n'
+            self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
             return
 
         if args.bearer:
@@ -1170,42 +1261,19 @@ class UEVaultManagerCLI:
             return
         self.logger.info(f'Exchange code: {token["code"]}')
 
-    def edit_assets(self, args) -> None:
+    def edit(self, args) -> None:
         """
         Edit assets in the database using a GUI.
         :param args: options passed to the command.
         """
-        data_source_type = DataSourceType.FILE
-        use_database = False
-        use_input = False
-        try:
-            use_database = args.database
-            use_input = args.input
-        except AttributeError:
-            pass
-        if use_database:
-            data_source = args.database
-            data_source_type = DataSourceType.SQLITE
-            self.logger.info(f'The database {data_source} will be used to read data from')
-        elif use_input:
-            data_source = args.input
-            self.logger.info(f'The file {data_source} will be used to read data from')
-        else:
-            data_source = gui_g.s.csv_filename
-            self.logger.warning('The file to read data from has not been precised by the --input command option. The default file name will be used.')
 
-        data_source = gui_fn.path_from_relative_to_absolute(data_source)
-        data_source = os.path.normpath(data_source)
+        data_source, data_source_type = self._init_data_for_gui(args)
 
-        gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
-        gui_g.UEVM_log_ref = self.logger
-        gui_g.UEVM_cli_ref = self
-
-        # set output file name from the input one. Used by the "rebuild file content" button (or rebuild_data method)
+        # set output file name from the input one. Used by the "rebuild" button (or rebuild_data method)
         init_gui_args(args, additional_args={'output': data_source})
 
         if not self.core.login(raise_error=False):
-            message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\nSome functionalities could be disabled and data could be wrong.'
+            message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nSome functionalities could be disabled and data could be wrong.'
             self._log_and_gui_message(self.logger.warning, message, quit_on_error=False)
 
         rebuild = False
@@ -1237,13 +1305,14 @@ class UEVaultManagerCLI:
         Scrap assets from the Epic Games Store or from previously saved files.
         :param args: options passed to the command
 
-        Note: ! Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
+        Notes:
+            Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
         """
         if not args.offline:
             load_from_files = False
             try:
                 if not self.core.login(raise_error=False):
-                    message = 'You are not connected or Log in failed.\nYou should log first or check your credential.\n'
+                    message = 'You are not connected or log in failed.\nYou should log first or check your credential.\n'
                     self._log_and_gui_message(self.logger.error, message, quit_on_error=False)
                     return
             except ValueError:
@@ -1278,12 +1347,328 @@ class UEVaultManagerCLI:
             store_ids=False,  # useless for now
             load_from_files=load_from_files,
             engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
-            egs=self.core.egs,  # VERY IMPORTANT: pass the EGS object to the scraper to keep the same session
+            core=self.core,  # VERY IMPORTANT: pass the code object to the scraper to keep the same session
             cli_args=args
         )
 
         scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
         scraper.save(owned_assets_only=owned_assets_only)
+
+    def set_release_id(self, value):
+        """
+        Set the release id. Callback for the ChoiceFromListWindow
+        :param value: the value selected in the list
+        """
+        self.release_id = value
+
+    def install_asset(self, args):
+        """
+        Installs an asset.
+        :param args: options passed to the command.
+        """
+        uewm_gui_exists = gui_g.UEVM_gui_ref is not None
+        if args.subparser_name == 'download':
+            args.no_install = True
+        if args.clean_dowloaded_data and args.no_install:
+            self._log_and_gui_message(
+                self.logger.error,
+                'You have selected to not install the asset and to not keep the downloaded data.\nSo, nothing can be done for you.\nCommand is aborted.',
+                quit_on_error=not uewm_gui_exists
+            )
+            return False
+
+        if not self.core.login():
+            self._log_and_gui_message(
+                self.logger.error,
+                'You are not connected or log in failed.\nYou should log first or check your credential.\nCommand is aborted.',
+                quit_on_error=not uewm_gui_exists
+            )
+            return False
+
+        # we use the "old" method (i.e. legendary way) to get the Asset, because we need to access to the metadata and its "base_urls"
+        # that is not available in the "new" method (i.e. new API way)
+        # Anyway, we can only install asset we own, so the "old" method is enough
+        asset = self.core.get_item(args.app_name, update_meta=args.force_refresh)
+        # asset_id = asset.metadata.get('appId', None)
+        if not asset:
+            self._log_and_gui_message(
+                self.logger.error,
+                f'Metadata are not available for "{args.app_name}".\nYou can only install an asset you own.\nInstallation can not be done.\nCommand is aborted.',
+                quit_on_error=not uewm_gui_exists
+            )
+            return False
+        categories = asset.metadata.get('categories', None)
+        category = categories[0]['path'] if categories else ''
+        release_info = asset.metadata.get('releaseInfo', None)
+        catalog_item_id = asset.catalog_item_id
+        is_plugin = category and 'plugin' in category.lower()
+        installed_in_engine = False
+        releases, latest_id = self.core.uevmlfs.extract_version_from_releases(release_info)
+        release_selected = releases[latest_id]  # by default, we take the lastest release
+        if uewm_gui_exists:
+            # create a windows to choose the release
+            sub_title = 'In the list below, select the closest version that matches your project or engine version'
+            cw = ChoiceFromListWindow(
+                window_title='UEVM: select release',
+                title='Choose the release to download',
+                sub_title=sub_title,
+                json_data=releases,
+                set_value_func=self.set_release_id,
+                default_value=-1
+            )
+            make_modal(cw)
+            # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
+            if self.release_id is not None:
+                try:
+                    release_selected = releases[self.release_id]
+                except (IndexError, KeyError):
+                    self._log_and_gui_display(
+                        self.logger.warning, '\nThe selected release could not be found. The latest one as been selected by default.\n'
+                    )
+            else:
+                self._log_and_gui_display(
+                    self.logger.warning, '\nNo release has been selected.\nSo, nothing can be done for you.\nCommand is aborted.'
+                )
+                return False
+
+        release_name = self.release_id
+        release_title = release_selected['title']
+        install_path_base = args.install_path if args.install_path is not None else ''
+
+        folders_to_check = []
+        if not install_path_base and not args.no_install:
+            if uewm_gui_exists:
+                if is_plugin and box_yesno('This asset is a plugin. Do you want to install it into an engine folder ?'):
+                    install_path_base = filedialog.askdirectory(
+                        title='Select the BASE folder of the Engine version to install the plugin into', initialdir=gui_g.s.last_opened_engine
+                    )
+                    if install_path_base:
+                        # remove all existing subfolder in the selected part that is in the subpath 'Engine/Plugins/Marketplace'
+                        install_path_base = os.path.normpath(install_path_base)
+                        path_to_check = install_path_base
+                        path_parts = gui_g.s.ue_plugin_install_subfolder.split('/')
+                        # get subfolder by reverse order (start by the latest)
+                        path_parts_temp = path_parts.copy()
+                        while len(path_parts_temp):
+                            last_part = path_parts_temp.pop()
+                            # remove the last part if it is the last part of the path
+                            if last_part.lower() == os.path.basename(path_to_check).lower():
+                                path_to_check = os.path.dirname(path_to_check)
+                        # the plugin contains all the subfolder, no need to ass them to the installation folder
+                        install_path_base = path_to_check
+                        # check if the "engine folder structure" is correct
+                        # here we have removed all the subfolder of the path, so we recreate and add the "valid" subpath
+                        subpath = os.path.join(*path_parts)  # NO path_join here because it will create an absolute path
+                        path_to_check = path_join(path_to_check, subpath)
+                        if not os.path.isdir(
+                            os.path.dirname(path_to_check)
+                        ):  # we remove the last part here (i.e. 'Marketplace') because it does not exist in a new installed engine
+                            self._log_and_gui_message(
+                                self.logger.error,
+                                f'You have selected a folder that seems to be invalid.\nThe {path_to_check} could not be found.\nCommand is aborted.',
+                                quit_on_error=not uewm_gui_exists
+                            )
+                            return False
+                        else:
+                            installed_in_engine = True
+                            if install_path_base:
+                                gui_g.s.last_opened_engine = install_path_base  # we save only the "base engine" path
+                else:
+                    install_path_base = filedialog.askdirectory(
+                        title='Select a project to install the asset into', initialdir=gui_g.s.last_opened_project
+                    )
+                    if install_path_base:
+                        gui_g.s.last_opened_project = install_path_base
+
+        if not install_path_base:
+            if not args.no_install:
+                self._log_and_gui_message(
+                    self.logger.error,
+                    'You have selected to install the asset but no install path has been given.\nSo, nothing can be done for you.\nCommand is aborted.',
+                    quit_on_error=not uewm_gui_exists
+                )
+                return False
+        else:
+            # remove the 'Content' at the end of the path if present
+            # to avoid copying the sub_folder folder inside the sub_folder
+            sub_folder = gui_g.s.ue_asset_content_subfolder
+            if os.path.basename(install_path_base).lower() == sub_folder.lower():  # MUST BE LOWERCASE for comparison
+                install_path_base = os.path.dirname(install_path_base)
+            folders_to_check.append(install_path_base)
+
+        if UEVaultManagerCLI.is_gui:
+            uewm_gui_exists, dw = init_display_window(self.logger)
+            dw.keep_existing = True  # because init_display_window will set it to False
+            dw.clean()
+            message = f'Starting Download of Release "{release_title}"' if args.no_install else f'Starting Installation of Release "{release_title}"'
+            dw.display(message)
+
+        if args.vault_cache:
+            args.clean_dowloaded_data = False
+            # in the vaultCache, the data is in a subfolder named like the release of the Asset
+            sub_folder = gui_g.s.ue_plugin_vaultcache_subfolder
+            download_path = path_join(self.core.egl.vault_cache_folder, release_name, sub_folder)
+            self._log_and_gui_display(
+                self.logger.info, 'Use the vault cache folder to store the downloaded asset.\nOther download options will be ignored.\n'
+            )
+        else:
+            # the downloaded data should always have a "Content" inside
+            sub_folder = gui_g.s.ue_asset_content_subfolder
+            download_path = args.download_path
+            # remove the sub_folder at the end of the path if present
+            # to avoid copying the sub_folder folder inside the sub_folder
+            if os.path.basename(download_path).lower() == sub_folder.lower():  # MUST BE LOWERCASE for comparison
+                download_path = os.path.dirname(download_path)
+            download_path = path_join(download_path, sub_folder)
+
+        # normpath is usefull for future comparisons
+        download_path = os.path.normpath(download_path)
+        install_path_base = os.path.normpath(install_path_base)
+
+        self._log_and_gui_display(self.logger.info, f'Preparing download for {release_title}...')
+        dlm, analysis, installed_asset = self.core.prepare_download(
+            base_asset=asset,  # contains generic info of the base asset for all releases, NOT the selected release
+            release_name=release_name,
+            release_title=release_title,
+            download_folder=download_path,
+            install_folder=install_path_base,
+            no_resume=args.no_resume,
+            max_shm=args.shared_memory,
+            max_workers=args.max_workers,
+            reuse_last_install=args.reuse_last_install,
+            dl_optimizations=args.order_opt,
+            override_manifest=args.override_manifest,
+            override_base_url=args.override_base_url,
+            preferred_cdn=args.preferred_cdn,
+            disable_https=args.disable_https,
+        )
+        if install_path_base and not args.no_install and analysis.already_installed and not box_yesno(
+            f'The selected asset as already been installed in "{install_path_base}".\nDo you want to continue ?'
+        ):
+            self._log_and_gui_display(self.logger.info, f'Asset already installed.\nOperation aborted by user.')
+            return False
+
+        self._log_and_gui_display(self.logger.info, f'Install size: {analysis.install_size / 1024 / 1024:.02f} MiB')
+        compression = (1 - (analysis.dl_size / analysis.uncompressed_dl_size)) * 100 if analysis.uncompressed_dl_size else 0
+        self._log_and_gui_display(
+            self.logger.info, f'Download size: {analysis.dl_size / 1024 / 1024:.02f} MiB (Compression savings: {compression:.01f}%)'
+        )
+        self._log_and_gui_display(
+            self.logger.info,
+            f'Reusable size: {analysis.reuse_size / 1024 / 1024:.02f} MiB (chunks) / {analysis.unchanged / 1024 / 1024:.02f} MiB (unchanged / skipped)'
+        )
+        self._log_and_gui_display(
+            self.logger.info, 'Downloads are resumable, you can interrupt the download with CTRL-C and resume it using the same command later on.'
+        )
+        folders_to_check.append(download_path)
+        res = self.core.check_installation_conditions(analysis=analysis, folders=folders_to_check, ignore_space_req=args.ignore_free_space)
+        message_list = []
+
+        if res.warnings or res.failures:
+            message_list.append('\nInstallation requirements check returned the following results:')
+            for message in res.warnings:
+                message_list.append(' - Warning:' + message)
+            for message in res.failures:
+                message_list.append(' ! Failure:' + message)
+            self._log_and_gui_display(self.logger.warning, '\n'.join(message_list))
+
+        if res.failures:
+            self._log_and_gui_message(self.logger.critical, 'Installation can not proceed.\nCommand is aborted.', quit_on_error=not uewm_gui_exists)
+            # not in GUI self.core.clean_exit(1)  # previous line could not quit
+            return False
+
+        if not args.yes:
+            if not get_boolean_choice(f'Do you wish to install {release_title} ?'):  # todo: use a gui yes/no if gui is enabled
+                print('Aborting...')
+                # not in GUI self.core.clean_exit(0)
+                return False
+        start_t = time.time()
+        try:
+            # set up logging stuff (should be moved somewhere else later)
+            dlm.logging_queue = self.logging_queue
+            dlm.proc_debug = args.dlm_debug
+            dlm.start()
+            dlm.join()
+        except Exception as error:
+            end_t = time.time()
+            self._log_and_gui_display(self.logger.info, f'Installation failed after {end_t - start_t:.02f} seconds.')
+            self._log_and_gui_display(
+                self.logger.warning,
+                f'The following exception occurred while waiting for the downloader to finish: {error!r}.\nTry restarting the process.\nIf it continues to fail please open an issue on GitHub.'
+            )
+        else:
+            end_t = time.time()
+            download_path = dlm.download_dir  # it could have been changed by the dlm
+            message = f'Finished download process in {end_t - start_t:.02f} seconds.\nFiles has been downloaded in {dlm.download_dir}'
+            self._log_and_gui_display(self.logger.info, message)
+            start_t = time.time()
+            message = ''
+            if not args.no_install:
+                self._log_and_gui_display(self.logger.info, 'Start copying downloaded data to install folder...')
+                subfolder = gui_g.s.ue_plugin_vaultcache_subfolder if is_plugin else gui_g.s.ue_asset_content_subfolder
+                # copy the downloaded data to the installation folder
+                download_path_subfolder = os.path.basename(download_path).lower()
+                # the downloaded data should always have a "Content" inside
+                # so, we need to add it to the src_folder if it is not already there to avoid copying the content folder inside the content folder
+                if download_path_subfolder == subfolder.lower():
+                    src_folder = download_path
+                else:
+                    src_folder = path_join(download_path, subfolder)
+                if is_plugin:
+                    # note: the folder has already been checked when selected
+                    if installed_in_engine:
+                        # if installed in engine, NOTHING MORE TO DO
+                        dest_folder = install_path_base
+                    else:
+                        # if the plugin is not installed in an engine, we have to change the destination folder structure to install it IN the "Plugins" subfolder of the destination
+                        src_folder = path_join(src_folder, gui_g.s.ue_plugin_install_subfolder)  # add the plugin subpath to the source folder
+                        src_folder = os.path.dirname(src_folder)  # remove the last part (ie the "plugin name" subfolder) to get the "base" folder
+                        dest_folder = path_join(
+                            install_path_base, gui_g.s.ue_plugin_project_subfolder
+                        )  # add the plugin subpath for "projects" to the destination folder
+                else:
+                    install_path_subfolder = os.path.basename(installed_asset.install_path).lower()
+                    if install_path_subfolder == gui_g.s.ue_asset_content_subfolder.lower():
+                        dest_folder = installed_asset.install_path
+                    else:
+                        dest_folder = path_join(installed_asset.install_path, gui_g.s.ue_asset_content_subfolder)
+                if dest_folder and copy_folder(
+                    src_folder, dest_folder, check_copy_size=not installed_in_engine
+                ):  # We DON'T check the size if the plugin is installed in an engine because it's too long
+                    self.core.uevmlfs.add_to_installed_assets(installed_asset)
+                    self.core.uevmlfs.save_installed_assets()
+                    if args.database:
+                        db_handler = UEAssetDbHandler(database_name=args.database)
+                        db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=[installed_asset.install_path])
+                    message += f'\nAsset have been installed in "{installed_asset.install_path}"'
+                else:
+                    message += f'\nAsset could not be installed in "{installed_asset.install_path}"'
+            if args.vault_cache and installed_asset.manifest_path:
+                # copy the manifest file to the vault cache folder
+                parent_path = os.path.dirname(download_path)
+                message += f'\nThe manifest file has been copied in {parent_path}.'
+                # manifest_filename = path_join(parent_path, 'manifest.json')
+                manifest_filename = path_join(parent_path, gui_g.s.ue_manifest_filename)
+                shutil.copy(installed_asset.manifest_path, manifest_filename)
+            elif args.clean_dowloaded_data:
+                message += '\nDownloaded data have been deleted.'
+                # delete the dlm.download_dir folder
+                rmtree(download_path)
+                self.core.uevmlfs.clean_tmp_data()
+            end_t = time.time()
+            message += f'\n\nProcess finished in {end_t - start_t:.02f} seconds.'
+            self._log_and_gui_display(self.logger.info, message)
+        # if uewm_gui_exists:
+        #     dw.close_window()
+        return True
+
+    @staticmethod
+    def print_version():
+        """
+        Prints the version of UEVaultManager and exit.
+        """
+        print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
+        sys.exit(0)
 
     @staticmethod
     def print_help(args, parser=None, forced=False) -> None:
@@ -1291,7 +1676,7 @@ class UEVaultManagerCLI:
         Prints the help for the command.
         :param args:.
         :param parser: command line parser. If not provided, gui_g.UEVM_parser_ref will be used.
-        :param forced: Whether the help will be printed even if the --help option is not present.
+        :param forced: whether the help will be printed even if the --help option is not present.
         """
         if parser is None:
             parser = gui_g.UEVM_parser_ref
@@ -1335,7 +1720,7 @@ class UEVaultManagerCLI:
 
     def run_test(self, _args) -> None:
         """
-        Prints the version of UEVaultManager and exit.
+        Run a test command using a CLI prompt. Just for developpers.
         """
         print('UEVaultManager RUN TEST')
         print('"opening a manifest file from disk...')
@@ -1343,32 +1728,25 @@ class UEVaultManagerCLI:
         file_path = "G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_III/EliteLane90e1a8f98bbV1/manifest"
         json_print_key_val(self.core.open_manifest_file(file_path))
 
-    @staticmethod
-    def print_version():
-        """
-        Prints the version of UEVaultManager and exit.
-        """
-        print(f'UEVaultManager version "{UEVM_version}", codename "{UEVM_codename}"')
-        sys.exit(0)
-
 
 def main():
     """
     Main function.
     """
     # Set output encoding to UTF-8 if not outputting to a terminal
-    if not sys.stdout.isatty():
+    try:
         # noinspection PyUnresolvedReferences
         sys.stdout.reconfigure(encoding='utf-8')
-
+    except (Exception, ):
+        pass
     parser = argparse.ArgumentParser(description=f'UEVaultManager v{UEVM_version} - "{UEVM_codename}"')
     parser.register('action', 'parsers', HiddenAliasSubparsersAction)
 
     # general arguments
     parser.add_argument('-H', '--full-help', dest='full_help', action='store_true', help='Show full help (including individual command help)')
     parser.add_argument('-d', '--debug', dest='debug', action='store_true', help='Set loglevel to debug')
-    # noinspection DuplicatedCode
     parser.add_argument('-y', '--yes', dest='yes', action='store_true', help='Default to yes for all prompts')
+    # noinspection DuplicatedCode
     parser.add_argument('-V', '--version', dest='version', action='store_true', help='Print version and exit')
     parser.add_argument('-T', '--runtest', dest='runtest', action='store_true', help='Run a test command using a CLI prompt. Just for developpers')
     parser.add_argument(
@@ -1386,11 +1764,7 @@ def main():
         help='API HTTP request timeout (default: 10 seconds)'
     )  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
     parser.add_argument(
-        '-g',
-        '--gui',
-        dest='gui',
-        action='store_true',
-        help='Display additional informations using gui elements like dialog boxes or progress window'
+        '-g', '--gui', dest='gui', action='store_true', help='Display additional information using gui elements like dialog boxes or progress window'
     )
     gui_g.UEVM_parser_ref = parser
 
@@ -1398,21 +1772,23 @@ def main():
     subparsers = parser.add_subparsers(title='Commands', dest='subparser_name', metavar='<command>')
     auth_parser = subparsers.add_parser('auth', help='Authenticate with the Epic Games Store')
     clean_parser = subparsers.add_parser('cleanup', help='Remove old temporary, metadata, and manifest files')
-    info_parser = subparsers.add_parser('info', help='Prints info about specified app name or manifest')
+    info_parser = subparsers.add_parser('info', help='Prints info about specified asset or manifest')
     list_parser = subparsers.add_parser('list', aliases=('list-assets', ), help='List owned assets')
     list_files_parser = subparsers.add_parser('list-files', help='List files in manifest')
     status_parser = subparsers.add_parser('status', help='Show UEVaultManager status information')
     edit_parser = subparsers.add_parser('edit', aliases=('edit-assets', ), help='Edit the assets list file')
     scrap_parser = subparsers.add_parser('scrap', aliases=('scrap-assets', ), help='Scrap all the available assets on the marketplace')
-
+    install_parser = subparsers.add_parser('install', aliases=('download', ), help='Download or Install an asset')
     # hidden commands have no help text
     get_token_parser = subparsers.add_parser('get-token')
 
     # Positional arguments
-    list_files_parser.add_argument('app_name', nargs='?', metavar='<App Name>', help='Name of the app (optional)')
-    info_parser.add_argument('app_name_or_manifest', help='App name or manifest path/URI', metavar='<App Name/Manifest URI>')
+    install_parser.add_argument('app_name', nargs='?', metavar='<App Name>', help='Uid of the Asset to install')
+    list_files_parser.add_argument('app_name', nargs='?', metavar='<App Name>', help='Uid of the Asset to list files from')
+    info_parser.add_argument('app_name_or_manifest', help='Uid of the Asset to get info from or manifest path', metavar='<App Name/Manifest URI>')
 
-    # Flags
+    # Flags for parsers
+    #####
     auth_parser.add_argument(
         '--import', dest='import_egs_auth', action='store_true', help='Import Epic Games Launcher authentication data (logs out of EGL)'
     )
@@ -1436,70 +1812,7 @@ def main():
     auth_parser.add_argument('--delete', dest='auth_delete', action='store_true', help='Remove existing authentication (log out)')
     auth_parser.add_argument('--disable-webview', dest='no_webview', action='store_true', help='Do not use embedded browser for login')
 
-    list_parser.add_argument(
-        '-T', '--third-party', dest='include_non_asset', action='store_true', default=False, help='Include assets that are not installable.'
-    )
-    # noinspection DuplicatedCode
-    list_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in in CSV format')
-    list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in in TSV format')
-    list_parser.add_argument('--json', dest='json', action='store_true', help='Output in in JSON format')
-    list_parser.add_argument(
-        '-f',
-        '--force-refresh',
-        dest='force_refresh',
-        action='store_true',
-        help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
-    )
-    list_parser.add_argument(
-        '-fc',
-        '--filter-category',
-        dest='filter_category',
-        action='store',
-        help='Filter assets by category. Search against the asset category in the marketplace. Search is case insensitive and can be partial'
-    )
-    list_parser.add_argument(
-        '-o', '--output', dest='output', metavar='<path/name>', action='store', help='The file name (with path) where the list should be written'
-    )
-    list_parser.add_argument(
-        '-g',
-        '--gui',
-        dest='gui',
-        action='store_true',
-        help='Display additional informations using gui elements like dialog boxes or progress window'
-    )
-
-    list_files_parser.add_argument(
-        '--manifest', dest='override_manifest', action='store', metavar='<uri>', help='Manifest URL or path to use instead of the CDN one'
-    )
-    list_files_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in CSV format')
-    list_files_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in TSV format')
-    # noinspection DuplicatedCode
-    list_files_parser.add_argument('--json', dest='json', action='store_true', help='Output in JSON format')
-    list_files_parser.add_argument(
-        '--hashlist', dest='hashlist', action='store_true', help='Output file hash list in hashCheck/sha1sum -c compatible format'
-    )
-    list_files_parser.add_argument(
-        '-f',
-        '--force-refresh',
-        dest='force_refresh',
-        action='store_true',
-        help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
-    )
-    list_files_parser.add_argument(
-        '-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console'
-    )
-
-    status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not login')
-    status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
-    status_parser.add_argument(
-        '-f',
-        '--force-refresh',
-        dest='force_refresh',
-        action='store_true',
-        help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
-    )
-    status_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
-
+    ######
     clean_parser.add_argument(
         '-m,'
         '--delete-metadata', dest='delete_metadata', action='store_true', help='Also delete metadata files. They are kept by default'
@@ -1518,7 +1831,7 @@ def main():
     # noinspection DuplicatedCode
     clean_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
-    # noinspection DuplicatedCode
+    ######
     info_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print info available offline')
     info_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
     info_parser.add_argument(
@@ -1526,13 +1839,77 @@ def main():
         '--force-refresh',
         dest='force_refresh',
         action='store_true',
-        help='Force a refresh of all assets metadata. It could take some time ! If not forced, the cached data will be used'
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
     )
+    info_parser.add_argument('-a', '--all', dest='all', action='store_true', help='Display all the information even if non-relevant for an asset')
     info_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
-    get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
-    get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
+    #####
+    list_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in CSV format')
+    list_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in TSV format')
+    # noinspection DuplicatedCode
+    list_parser.add_argument('--json', dest='json', action='store_true', help='Output in JSON format')
+    list_parser.add_argument(
+        '-f',
+        '--force-refresh',
+        dest='force_refresh',
+        action='store_true',
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
+    )
+    list_parser.add_argument(
+        '-fc',
+        '--filter-category',
+        dest='filter_category',
+        action='store',
+        help='Filter assets by category. Search against the asset category in the marketplace. Search is case-insensitive and can be partial'
+    )
+    list_parser.add_argument(
+        '-o', '--output', dest='output', metavar='<path/name>', action='store', help='The file name (with path) where the list should be written'
+    )
+    list_parser.add_argument(
+        '-T', '--third-party', dest='include_non_asset', action='store_true', default=False, help='Also list assets that are not installable.'
+    )
+    list_parser.add_argument(
+        '-g', '--gui', dest='gui', action='store_true', help='Display additional information using gui elements like dialog boxes or progress window'
+    )
 
+    #####
+    # noinspection DuplicatedCode
+    list_files_parser.add_argument(
+        '--manifest', dest='override_manifest', action='store', metavar='<uri>', help='Manifest URL or path to use instead of the CDN one'
+    )
+    list_files_parser.add_argument('--csv', dest='csv', action='store_true', help='Output in CSV format')
+    list_files_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Output in TSV format')
+    list_files_parser.add_argument('--json', dest='json', action='store_true', help='Output in JSON format')
+    # noinspection DuplicatedCode
+    list_files_parser.add_argument(
+        '--hashlist', dest='hashlist', action='store_true', help='Output file hash list in hash Check/sha1 sum -c compatible format'
+    )
+    list_files_parser.add_argument(
+        '-f',
+        '--force-refresh',
+        dest='force_refresh',
+        action='store_true',
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
+    )
+    list_files_parser.add_argument(
+        '-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console'
+    )
+
+    #####
+    status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not log in')
+    # noinspection DuplicatedCode
+    status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
+    status_parser.add_argument(
+        '-f',
+        '--force-refresh',
+        dest='force_refresh',
+        action='store_true',
+        help="Force a refresh of all asset's metadata. It could take some time ! If not forced, the cached data will be used"
+    )
+    status_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
+
+    ######
     edit_parser.add_argument(
         '-i',
         '--input',
@@ -1549,27 +1926,136 @@ def main():
         action='store',
         help='The sqlite file name (with path) where the list should be read from (it exludes the --input option)'
     )
-
     # not use for now
     # edit_parser.add_argument('--csv', dest='csv', action='store_true', help='Input file is in CSV format')
     # edit_parser.add_argument('--tsv', dest='tsv', action='store_true', help='Input file is in TSV format')
     # edit_parser.add_argument('--json', dest='json', action='store_true', help='Input file is in JSON format')
-
-    # noinspection DuplicatedCode
+    ######
     scrap_parser.add_argument(
         '-f',
         '--force-refresh',
         dest='force_refresh',
         action='store_true',
-        help='Force a refresh of all assets data. It could take some time ! If not forced, the cached data will be used'
+        help="Force a refresh of all asset's data. It could take some time ! If not forced, the cached data will be used"
     )
+    # noinspection DuplicatedCode
     scrap_parser.add_argument(
         '--offline', dest='offline', action='store_true', help='Use previous saved data files (json) instead of grabing urls and scapping new data'
     )
     scrap_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
+    ######
+    install_parser.add_argument(
+        '-i', '--install-path', dest='install_path', action='store', metavar='<path>', help='Path where the Asset will be installed'
+    )
+    install_parser.add_argument(
+        '-dp',
+        '--download-path',
+        dest='download_path',
+        action='store',
+        metavar='<path>',
+        help='Path where the Asset will be downloaded. If empty, the Epic launcher Vault cache will be used.'
+    )
+    install_parser.add_argument(
+        '-f',
+        '--force-refresh',
+        dest='force_refresh',
+        action='store_true',
+        help="Force a refresh of all asset's data. It could take some time ! If not forced, the cached data will be used"
+    )
+    install_parser.add_argument(
+        '-vc',
+        '--vault-cache',
+        dest='vault_cache',
+        action='store_true',
+        help='Use the vault cache folder to store the downloaded asset. It uses Epic Game Launcher setting to get this value.'  #
+        + 'In that case, the download_path option will be ignored'
+    )
+    install_parser.add_argument(
+        '-c',
+        '--clean-dowloaded-data',
+        dest='clean_dowloaded_data',
+        action='store_true',
+        help='Delete the folder with dowloaded data. Keep the installed version if it has been installed.'
+    )
+    install_parser.add_argument(
+        '--max-shared-memory',
+        dest='shared_memory',
+        action='store',
+        metavar='<size>',
+        type=int,
+        help='Maximum amount of shared memory to use (in MiB), default: 1 GiB'
+    )
+    install_parser.add_argument(
+        '--max-workers',
+        dest='max_workers',
+        action='store',
+        metavar='<num>',
+        type=int,
+        help='Maximum amount of download workers, default: min(2 * CPUs, 16)'
+    )
+    install_parser.add_argument(
+        '--manifest',
+        dest='override_manifest',
+        action='store',
+        metavar='<uri>',
+        help='Manifest URL or path to use instead of the CDN one (e.g. for downgrading)'
+    )
+    install_parser.add_argument(
+        '--base-url',
+        dest='override_base_url',
+        action='store',
+        metavar='<url>',
+        help='Base URL to download from (e.g. to test or switch to a different CDNs)'
+    )
+    install_parser.add_argument('--no-resume', dest='no_resume', action='store_true', help='Force Download all files / ignore resume')
+    install_parser.add_argument('--download-only', '--no-install', dest='no_install', action='store_true', help='Do not install asset after download')
+    install_parser.add_argument(
+        '-r',
+        '--reuse-last-install',
+        dest='reuse_last_install',
+        action='store_true',
+        help='If the asset has been previouly installed, the installation folder will be reused. In that case, the install-path option will be ignored'
+    )
+    install_parser.add_argument(
+        '--dlm-debug', dest='dlm_debug', action='store_true', help='Set download manager and worker processes\' loglevel to debug'
+    )
+    install_parser.add_argument(
+        '--enable-reordering',
+        dest='order_opt',
+        action='store_true',
+        help='Enable reordering optimization to reduce RAM requirements '
+        'during download (may have adverse results for some titles)'
+    )
+    install_parser.add_argument(
+        '--timeout',
+        dest='timeout',
+        action='store',
+        metavar='<sec>',
+        type=int,
+        help='Connection and read timeout for downloader (default: 10 seconds)'
+    )
+    install_parser.add_argument(
+        '--ignore-free-space', dest='ignore_free_space', action='store_true', help='Do not abort if not enough free space is available'
+    )
+    install_parser.add_argument(
+        '--preferred-cdn',
+        dest='preferred_cdn',
+        action='store',
+        metavar='<hostname>',
+        help='Set the hostname of the preferred CDN to use when available'
+    )
+    install_parser.add_argument(
+        '--no-https', dest='disable_https', action='store_true', help='Download games via plaintext HTTP (like EGS), e.g. for use with a lan cache'
+    )
+
+    ######
+    get_token_parser.add_argument('--json', dest='json', action='store_true', help='Output information in JSON format')
+    get_token_parser.add_argument('--bearer', dest='bearer', action='store_true', help='Return fresh bearer token rather than an exchange code')
+
     # Note: this line prints the full help and quit if not other command is available
     args, extra = parser.parse_known_args()
+
     cli = UEVaultManagerCLI(override_config=args.config_file, api_timeout=args.api_timeout)
 
     if args.version:
@@ -1627,34 +2113,36 @@ def main():
     try:
         if args.subparser_name == 'auth':
             cli.auth(args)
+        elif args.subparser_name == 'cleanup':
+            cli.cleanup(args)
+        elif args.subparser_name == 'info':
+            cli.info(args)
         elif args.subparser_name in {'list', 'list-assets'}:
             cli.list_assets(args)
         elif args.subparser_name == 'list-files':
             cli.list_files(args)
         elif args.subparser_name == 'status':
             cli.status(args)
-        elif args.subparser_name == 'info':
-            cli.info(args)
-        elif args.subparser_name == 'cleanup':
-            cli.cleanup(args)
-        elif args.subparser_name == 'get-token':
-            cli.get_token(args)
         elif args.subparser_name in {'edit', 'edit-assets'}:
             if args.database and args.input:
                 remove_command_argument(edit_parser, 'input')
             args.gui = True
             UEVaultManagerCLI.is_gui = True
-            cli.edit_assets(args)
+            cli.edit(args)
         elif args.subparser_name in {'scrap', 'scrap-assets'}:
             args.gui = True
             UEVaultManagerCLI.is_gui = True
             cli.scrap_assets(args)
+        elif args.subparser_name in {'download', 'install'}:
+            cli.install_asset(args)
+        elif args.subparser_name == 'get-token':
+            cli.get_token(args)
         elif start_in_edit_mode:
             args.gui = True
             UEVaultManagerCLI.is_gui = True
             args.subparser_name = 'edit'
             args.input = init_gui(False)
-            cli.edit_assets(args)
+            cli.edit(args)
     except KeyboardInterrupt:
         cli.logger.info('Command was aborted via KeyboardInterrupt, cleaning up...')
 
@@ -1676,10 +2164,8 @@ def main():
             if update_info['severity'] == UpdateSeverity.HIGH.name:
                 print('! This update is recommended as it fixes major issues.')
                 print(f'\n- Release URL: {update_info["release_url"]}')
-
-    cli.core.clean_exit()
     ql.stop()
-    sys.exit(0)
+    cli.core.clean_exit(0)
 
 
 if __name__ == '__main__':

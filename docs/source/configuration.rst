@@ -15,7 +15,7 @@ The location is:
 Config files
 ~~~~~~~~~~~~
 
-For the Cli App settings
+For the Cli Application settings
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 UEVaultManager supports some settings in its config file ``<config folder>/config.ini``:
@@ -25,7 +25,7 @@ This is an example of this file content and the settings you can change:
 .. code:: ini
 
     [UEVaultManager]
-    ;Set to True to start the App in Edit mode (since v1.4.4) with the GUI
+    ;Set to True to start the Application in Edit mode (since v1.4.4) with the GUI
     start_in_edit_mode = False
     ;Set to True to disable the automatic update check
     disable_update_check = False
@@ -83,8 +83,8 @@ This is an example of this file content and the settings you can change:
   cache_folder = ../../../cache
   ;Folder (relative or absolute) to store result files to read and save data from
   results_folder = ../../../results
-  ;Filters to apply to the datatable. Stored in json format
-  data_filters = {"Grab result": "NO_ERROR"}
+  ;The last opened filter file name.Automatically saved when loading a filter.Leave empty to load no filter at start.Contains the file name only, not the path
+  last_opened_filter =
   ;Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value
   rows_per_page = 37
   ;Folder (relative or absolute) to store the scraped files for the assets in markeplace

@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- MockLauncher: mock launcher to handle the webview login
+- WebviewWindow: Window to handle the webview login.
 - do_webview_login() : launch the webview login.
 """
 import json
@@ -56,9 +56,9 @@ sid_req.send();
 '''
 
 
-class MockLauncher:
+class WebviewWindow:
     """
-    Mock launcher to handle the webview login.
+    WebviewWindow to handle EGS login using a webview.
     :param callback_sid: callback function to handle the SID login.
     :param callback_code: callback function to handle the exchange code.
     """
@@ -70,6 +70,14 @@ class MockLauncher:
         self.inject_js = True
         self.destroy_on_load = False
         self.callback_result = None
+
+    @staticmethod
+    def open_url_external(url: str) -> None:
+        """
+        Open the given url in the default browser.
+        :param url: url to open.
+        """
+        webbrowser.open(url)
 
     def on_loaded(self) -> None:
         """
@@ -101,14 +109,6 @@ class MockLauncher:
         """
         return
 
-    @staticmethod
-    def open_url_external(url: str) -> None:
-        """
-        Open the given url in the default browser.
-        :param url: url to open.
-        """
-        webbrowser.open(url)
-
     def set_exchange_code(self, exchange_code: str) -> None:
         """
         Callback function called when the exchange code is received.
@@ -128,7 +128,7 @@ class MockLauncher:
         except Exception as _error:
             logger.error(f'Logging in via exchange-code failed with {_error!r}')
         finally:
-            # We cannot destroy the browser from here,
+            # We can not destroy the browser from here,
             # so we'll load a small goodbye site first.
             self.window.load_url(goodbye_url)
 
@@ -145,7 +145,7 @@ class MockLauncher:
     def login_sid(self, sid_json: str) -> None:
         """
         Login with the given SID.
-        :param sid_json: SID json.
+        :param sid_json: sID json.
         """
         # Try SID login, then log out
         try:
@@ -156,7 +156,7 @@ class MockLauncher:
             if exchange_code:
                 self.callback_result = self.callback_code(exchange_code)
         except Exception as _error:
-            logger.error(f'SID login failed with {_error!r}')
+            logger.error(f'SID log in failed with {_error!r}')
         finally:
             logger.debug('Starting browser logout...')
             self.window.load_url(logout_url)
@@ -168,7 +168,7 @@ def do_webview_login(callback_sid=None, callback_code=None) -> None:
     :param callback_sid: callback function to handle the SID login.
     :param callback_code: callback function to handle the exchange code.
     """
-    api = MockLauncher(callback_sid=callback_sid, callback_code=callback_code)
+    api = WebviewWindow(callback_sid=callback_sid, callback_code=callback_code)
     url = login_url
 
     if os.name == 'nt':

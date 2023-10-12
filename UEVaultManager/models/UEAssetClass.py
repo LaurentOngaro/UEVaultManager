@@ -11,8 +11,9 @@ from UEVaultManager.utils.cli import init_dict_from_data
 class UEAsset:
     """
     A class to represent an Unreal Engine asset. With the EGS data and user data.
-    :param engine_version_for_obsolete_assets: The engine version to use to check if an asset is obsolete.
+    :param engine_version_for_obsolete_assets: the engine version to use to check if an asset is obsolete.
     """
+
     # unused logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     # unused update_loggers_level(logger)
 
@@ -27,7 +28,7 @@ class UEAsset:
     def __str__(self) -> str:
         """
         Return a string representation of the asset.
-        :return: A string representation of the asset.
+        :return: a string representation of the asset.
         """
         return ','.join(str(value) for value in self.data.values())
 
@@ -35,7 +36,8 @@ class UEAsset:
         """
         Initialize the EGS data dictionary.
 
-        Note: the keys of self.Data dict are initialized here.
+        Notes:
+            The keys of self.Data dict are initialized here.
         """
         data = {}
         for key in get_sql_field_name_list(include_asset_only=True):

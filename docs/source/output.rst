@@ -44,7 +44,7 @@ or set to '' the corresponding log feature will be disabled.
 The output file
 ~~~~~~~~~~~~~~~
 
-The result of the listing can be displayed on the console where the app
+The result of the listing can be displayed on the console where the application
 has been launched. This is done by default. But it can also be saved in
 a csv or a json file for a future use.
 
@@ -57,7 +57,7 @@ manually changed by the user in the output file between successive runs.
 As it, if the user manually change the content of some data in the file,
 by adding a comment for instance, this data WON'T be overwritten. Also
 Note that if `create_output_backup = true` is set in the config file,
-the app will create a backup of the output file suffixed by a timestamp
+the application will create a backup of the output file suffixed by a timestamp
 before overwriting the result file.
 
 These are the fields (or column headings) that will be written in that
@@ -204,8 +204,8 @@ file:
           'state': FieldState.USER,
           'field_type': FieldType.STR
       },
-      'Installed folder': {
-          'sql_name': 'installed_folder',
+      'Installed folders': {
+          'sql_name': 'installed_folders',
           'state': FieldState.USER,
           'field_type': FieldType.STR
       },

@@ -9,12 +9,13 @@ from tkinter import filedialog
 import ttkbootstrap as ttk
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.functions import update_loggers_level
 
 
 class UEVMGuiOptionFrame(ttk.Frame):
     """
     an options/settings frame for the UEVMGui Class.
-    :param _container: The parent container.
+    :param _container: the parent container.
     """
 
     def __init__(self, _container):
@@ -22,8 +23,6 @@ class UEVMGuiOptionFrame(ttk.Frame):
         self._container = _container
         self._folders_to_scan = gui_g.s.folders_to_scan if gui_g.s.folders_to_scan else []
         self._folders_to_scan = []
-        self._container = None
-        self._cb_folders_to_scan = None
 
         # pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
         lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'fill': tk.X}
@@ -35,7 +34,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         lblf_options.pack(side=tk.TOP, **{'ipadx': 1, 'ipady': 1, 'fill': tk.BOTH, 'expand': True})
 
         # Options for Commands frame
-        lblf_command_options = ttk.LabelFrame(lblf_options, text='Options for Commands')
+        lblf_command_options = ttk.LabelFrame(lblf_options, text='Options for CLI Commands')
         lblf_command_options.pack(side=tk.TOP, **lblf_def_options)
         cur_row = -1
         # new row
@@ -43,7 +42,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         cur_col = 0
         var_debug = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('debug', False))
         var_debug.trace_add('write', lambda name, index, mode: gui_g.set_args_debug(var_debug.get()))
-        ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode (CLI)', variable=var_debug)
+        ck_debug = ttk.Checkbutton(lblf_command_options, text='Debug mode (All)', variable=var_debug)
         ck_debug.grid(row=cur_row, column=cur_col, **grid_ew_options)
         # new row
         cur_row += 1
@@ -64,7 +63,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         cur_col = 0
         var_auth_delete = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('auth_delete', False))
         var_auth_delete.trace_add('write', lambda name, index, mode: gui_g.set_args_auth_delete(var_auth_delete.get()))
-        ck_auth_delete = ttk.Checkbutton(lblf_command_options, text='Delete auth (login)', variable=var_auth_delete)
+        ck_auth_delete = ttk.Checkbutton(lblf_command_options, text='Delete auth (auth/login)', variable=var_auth_delete)
         ck_auth_delete.grid(row=cur_row, column=cur_col, **grid_ew_options)
         # new row
         cur_row += 1
@@ -96,8 +95,8 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
-        lbl_testing_switch = ttk.Label(lblf_gui_settings, text='Testing switch value')
-        lbl_testing_switch.grid(row=cur_row, column=cur_col, **grid_e_options)
+        ttk_item = ttk.Label(lblf_gui_settings, text='Testing switch value')
+        ttk_item.grid(row=cur_row, column=cur_col, **grid_e_options)
         cur_col += 1
         self.var_testing_switch = tk.IntVar(value=gui_g.s.testing_switch)
         self.var_testing_switch.trace_add('write', lambda name, index, mode: self.update_gui_options())
@@ -117,6 +116,13 @@ class UEVMGuiOptionFrame(ttk.Frame):
         self.var_debug_gui.trace_add('write', lambda name, index, mode: self.update_gui_options())
         ck_debug_gui = ttk.Checkbutton(lblf_gui_settings, text='Debug mode (GUI)', variable=self.var_debug_gui)
         ck_debug_gui.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
+        # new row
+        cur_row += 1
+        cur_col = 0
+        self.var_offline_mode = tk.BooleanVar(value=gui_g.s.offline_mode)
+        self.var_offline_mode.trace_add('write', lambda name, index, mode: self.update_gui_options())
+        ck_offline_mode = ttk.Checkbutton(lblf_gui_settings, text='Offline mode (GUI and CLI)', variable=self.var_offline_mode)
+        ck_offline_mode.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
         # new row
         cur_row += 1
         cur_col = 0
@@ -153,11 +159,11 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
-        btn_add_folder = ttk.Button(lblf_folders_to_scan, text='Add Folder', command=self.add_folder_to_scan)
-        btn_add_folder.grid(row=cur_row, column=cur_col, **grid_ew_options)
+        ttk_item = ttk.Button(lblf_folders_to_scan, text='Add Folder', command=self.add_folder_to_scan)
+        ttk_item.grid(row=cur_row, column=cur_col, **grid_ew_options)
         cur_col += 1
-        btn_remove_folder = ttk.Button(lblf_folders_to_scan, text='Remove Folder', command=self.remove_folder_to_scan)
-        btn_remove_folder.grid(row=cur_row, column=cur_col, **grid_ew_options)
+        ttk_item = ttk.Button(lblf_folders_to_scan, text='Remove Folder', command=self.remove_folder_to_scan)
+        ttk_item.grid(row=cur_row, column=cur_col, **grid_ew_options)
 
     def update_gui_options(self):
         """
@@ -170,6 +176,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
             pass
         else:
             gui_g.s.testing_switch = value
+
         try:
             value = self.var_debug_gui.get()
             value = bool(value)
@@ -177,11 +184,22 @@ class UEVMGuiOptionFrame(ttk.Frame):
             pass
         else:
             gui_g.s.debug_mode = value
+            update_loggers_level(debug_value=value)
 
         try:
-            self._container.update_controls_and_redraw()  # will update the title of the window
-        except AttributeError:
-            # the container is not a UEVMGui instance,
+            value = self.var_offline_mode.get()
+            value = bool(value)
+        except (ValueError, tk.TclError):
+            pass
+        else:
+            gui_g.s.offline_mode = value
+            gui_g.UEVM_cli_args['offline'] = value
+
+        try:
+            self._container.update_controls_state(update_title=True)  # will update the title of the window
+        except AttributeError as error:
+            # the container is not a UEVMGui instance
+            self._container.logger.debug(f'An error occured in update_gui_options: {error!r}')
             pass
 
     def add_folder_to_scan(self):

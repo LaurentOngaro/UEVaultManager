@@ -1,9 +1,10 @@
 # coding: utf-8
 """
 Imlementations for:
-- UpdateSeverity: Enum for update severity.
 - UEVMAPI: Class for interacting with the UEVaultManager API.
-- extract_codename and extract_severity functions.
+- UpdateSeverity: Enum for update severity.
+- extract_codename(): Extract the codename from the PyPI description.
+- extract_severity(): Get the update severity of a new version.
 """
 import logging
 import re
@@ -30,10 +31,10 @@ class UpdateSeverity(Enum):
 def extract_codename(pypi_description: str) -> str:
     """
     Extract the codename from the PyPI description.
-    :param pypi_description: PyPI's description.
+    :param pypi_description: pyPI's description.
     :return: codename.
     """
-    pattern = r'## codename:(.*?)##'
+    pattern = r'## codename:(.*?)(##.*)?$'
     match = re.search(pattern, pypi_description, re.IGNORECASE | re.DOTALL)
     if match:
         return match.group(1).strip()
@@ -74,13 +75,13 @@ class UEVMAPI:
         self.log = logging.getLogger('UEVMAPI')
         self.session.headers['User-Agent'] = self._user_agent
 
-    def get_version_information(self) -> dict:
+    def get_online_version_information(self) -> dict:
         """
         Get the latest packagage version information from PyPI.
         :return: version information.
         """
         url = f'https://pypi.org/pypi/{self._package_name}/json'
-        r = self.session.get(url, timeout=10.0)
+        r = self.session.get(url, timeout=(7, 7))
         r.raise_for_status()
         data = r.json()
         pypi_version = '0.0.0'

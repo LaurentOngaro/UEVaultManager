@@ -16,7 +16,7 @@ from UEVaultManager.lfs.utils import path_join
 
 class JSPW_Settings:
     """
-    Settings for the app.
+    Settings for the class when running as main.
     """
     folder_for_tags_path = 'K:/UE/UEVM/scraping/assets/marketplace'
     folder_for_rating_path = 'K:/UE/UEVM/scraping/global'
@@ -117,7 +117,7 @@ class JsonProcessingWindow(tk.Toplevel):
             """
             Add text to the result label.
             :param text: text to add
-            :param set_status: True for setting the status label, False otherwise
+            :param set_status: true for setting the status label, False otherwise
             """
             if set_status:
                 self.set_status(text)
@@ -141,7 +141,7 @@ class JsonProcessingWindow(tk.Toplevel):
         def activate_processing(self, for_start=True):
             """
             Activate or deactivate processing.
-            :param for_start: True for enabling Start, False otherwise
+            :param for_start: true for enabling Start, False otherwise
             """
 
             if for_start:
@@ -223,9 +223,9 @@ class JsonProcessingWindow(tk.Toplevel):
                     break
                 self.frm_control.progress_bar['value'] = i
                 self.update()
-                with open(file_path, 'r') as json_file:
+                with open(file_path, 'r', encoding='utf-8') as file:
                     try:
-                        json_data = json.load(json_file)
+                        json_data = json.load(file)
                     except json.decoder.JSONDecodeError:
                         self.frm_control.add_result(f'{file_path} is invalid')
                     else:
@@ -237,9 +237,9 @@ class JsonProcessingWindow(tk.Toplevel):
             status_text = f'{data_type.title()} has been stored in the database. Updated: {self.updated}, Added: {self.added}'
             self.frm_control.add_result(status_text, True)
 
-        except sqlite3.Error as e:
+        except sqlite3.Error as error:
             conn.rollback()
-            self.frm_control.add_result(f'An error occurred: {e}')
+            self.frm_control.add_result(f'An error occurred: {error!r}')
 
         finally:
             conn.close()
@@ -249,7 +249,7 @@ class JsonProcessingWindow(tk.Toplevel):
         """
         Extract tags from JSON data and saves them in the database.
         :param cursor: database cursor
-        :param json_data: JSON data
+        :param json_data: jSON data
         """
         tags = json_data.get('tags', [])
         for tag in tags:
@@ -275,7 +275,7 @@ class JsonProcessingWindow(tk.Toplevel):
         """
         Extract ratings from JSON data and saves them in the database.
         :param cursor: database cursor
-        :param json_data: JSON data
+        :param json_data: jSON data
         """
         if 'data' in json_data and 'elements' in json_data['data']:
             for index, element in enumerate(json_data['data']['elements']):

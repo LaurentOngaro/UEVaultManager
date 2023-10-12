@@ -13,6 +13,17 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
+class PW_Settings:
+    """
+    Settings for the class when running as main.
+    """
+    title = 'This is a progress window'
+    show_btn_start: bool = True,
+    show_btn_stop: bool = True,
+    show_progress: bool = True,
+    max_value: int = 100
+
+
 # noinspection PyProtectedMember
 class ProgressWindow(tk.Toplevel):
     """
@@ -34,8 +45,8 @@ class ProgressWindow(tk.Toplevel):
 
     def __init__(
         self,
-        parent,
         title: str,
+        parent=None,
         width: int = 300,
         height: int = 150,
         icon=None,
@@ -108,7 +119,7 @@ class ProgressWindow(tk.Toplevel):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'padx': 5, 'pady': 5, 'fill': tk.X}
             if container.function is None:
-                lbl_function = ttk.Label(self, text='No callable function set Yet')
+                lbl_function = ttk.Label(self, text='Operation has started...')
             else:
                 lbl_function = ttk.Label(self, text='Running function: ' + container.function.__name__)
             lbl_function.pack(**pack_def_options)
@@ -167,6 +178,13 @@ class ProgressWindow(tk.Toplevel):
             self.function_return_value = self.result_queue.get()
             self.close_window(destroy_window=self.quit_on_close)  # the window is kept to allow further calls to the progress bar
 
+    def get_text(self) -> str:
+        """
+        Get the text of the label.
+        :return: the text.
+        """
+        return self.frm_content.lbl_function.cget("text")
+
     def set_text(self, new_text: str) -> None:
         """
         Set the text of the label.
@@ -180,7 +198,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_value: the new value.
         """
         new_value = max(0, new_value)
-        self.frm_content.progress_bar["value"] = new_value
+        self.frm_content.progress_bar['value'] = new_value
 
     def set_max_value(self, new_max_value: int) -> None:
         """
@@ -188,7 +206,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_max_value: the new maximum value.
         """
         self.max_value = new_max_value
-        self.frm_content.progress_bar["maximum"] = new_max_value
+        self.frm_content.progress_bar['maximum'] = new_max_value
 
     def set_function(self, new_function) -> None:
         """
@@ -340,10 +358,10 @@ class ProgressWindow(tk.Toplevel):
             # sometimes the window is already destroyed
             progress_bar = self.frm_content.progress_bar
             if increment:
-                value = progress_bar["value"] + increment
+                value = progress_bar['value'] + increment
             if value > self.max_value:
                 value = self.max_value
-            progress_bar["value"] = value
+            progress_bar['value'] = value
             if text:
                 self.set_text(text)
         except tk.TclError as error:
@@ -363,3 +381,12 @@ class ProgressWindow(tk.Toplevel):
                 self.quit()
             else:
                 self.destroy()
+
+
+if __name__ == '__main__':
+    st = PW_Settings()
+    main = tk.Tk()
+    main.title('FAKE MAIN Window')
+    main.geometry('200x100')
+    ProgressWindow(title=st.title, show_progress=st.show_progress, show_btn_start=st.show_btn_start, show_btn_stop=st.show_btn_stop)
+    main.mainloop()

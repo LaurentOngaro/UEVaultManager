@@ -9,18 +9,25 @@ from typing import Any, Callable, Dict, Tuple
 
 import pandas as pd
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.functions import box_message, log_info
+
+
+# not needed here
+# warnings.filterwarnings('ignore', category=FutureWarning)  # Avoid the FutureWarning when PANDAS use ser.astype(object).apply()
 
 
 class FilterFrame(ttk.LabelFrame):
     """
     A frame that contains widgets for filtering a DataFrame.
-    :param container: Container widget.
-    :param data_func: A function that returns the DataFrame to be filtered.
-    :param update_func: A function that updates the table.
-    :param save_filter_func: A function that save the filters.
-    :param title: The title of the frame.
-    :param value_for_all: The value to use for the 'All' option.
+    :param container: container widget.
+    :param data_func: a function that returns the DataFrame to be filtered.
+    :param update_func: a function that updates the table.
+    :param save_filter_func: a function that save the filters.
+    :param load_filter_func: a function that load the filters.
+    :param dynamic_filters_func: a function used to create dynamic filter added to the quick filter list.
+    :param title: the title of the frame.
+    :param value_for_all: the value to use for the 'All' option.
     """
 
     def __init__(
@@ -29,16 +36,17 @@ class FilterFrame(ttk.LabelFrame):
         data_func: Callable,
         update_func: Callable,
         save_filter_func: Callable,
+        load_filter_func: Callable,
         dynamic_filters_func: Callable = None,
         title: str = 'Define view filters for the data table',
         value_for_all: str = 'All',
     ):
         if container is None:
-            raise ValueError('container cannot be None')
+            raise ValueError('container can not be None')
         if data_func is None:
-            raise ValueError('data_func cannot be None')
+            raise ValueError('data_func can not be None')
         if update_func is None:
-            raise ValueError('update_func cannot be None')
+            raise ValueError('update_func can not be None')
 
         super().__init__(container, text=title)
         self._filters = {}
@@ -60,12 +68,13 @@ class FilterFrame(ttk.LabelFrame):
         self.container = container
         self.data_func = data_func
         self.save_filter_func = save_filter_func
+        self.load_filter_func = load_filter_func
         self.dynamic_filters_func = dynamic_filters_func
         if self.data_func is None:
-            raise ValueError('data_func cannot be None')
+            raise ValueError('data_func can not be None')
         self.update_func = update_func
         if self.update_func is None:
-            raise ValueError('update_func cannot be None')
+            raise ValueError('update_func can not be None')
         # call the dynamic filters function to add dynamic filters to the quick filters
         if self.dynamic_filters_func is not None:
             dynamic_filters = self.dynamic_filters_func()
@@ -99,14 +108,14 @@ class FilterFrame(ttk.LabelFrame):
         # new row
         cur_row = 0
         cur_col = 0
-        lbl_value = ttk.Label(self, text='Select filter')
-        lbl_value.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        ttk_item = ttk.Label(self, text='Select quick filter')
+        ttk_item.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        lbl_col_name = ttk.Label(self, text='Or Set a filter On')
-        lbl_col_name.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
+        ttk_item = ttk.Label(self, text='Or set a filter On')
+        ttk_item.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         cur_col += 3
-        lbl_value = ttk.Label(self, text='that contains ou equals')
-        lbl_value.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
+        ttk_item = ttk.Label(self, text='that is or contains')
+        ttk_item.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         # new row
         cur_row += 1
         cur_col = 0
@@ -124,7 +133,7 @@ class FilterFrame(ttk.LabelFrame):
         # widget dynamically created based on the dtype of the selected column in _update_filter_widgets()
         self.filter_widget = ttk.Entry(self.frm_widgets, state='disabled')
         self.filter_widget.pack(ipadx=1, ipady=1)
-        self.frm_widgets.grid(row=cur_row, column=cur_col, columnspan=2, **self.grid_def_options)
+        self.frm_widgets.grid(row=cur_row, column=cur_col, columnspan=3, **self.grid_def_options)
         # new row
         cur_row += 1
         cur_col = 0
@@ -132,22 +141,34 @@ class FilterFrame(ttk.LabelFrame):
         self.lbl_filters_count = ttk.Label(self, textvariable=self.var_filters_count)
         self.lbl_filters_count.grid(row=cur_row, column=cur_col, **{'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.E})
         cur_col += 1
-        self.btn_add_filters = ttk.Button(self, text="Add to", command=self._add_to_filters)
+        self.btn_add_filters = ttk.Button(self, text='Add to', command=self._add_to_filters)
         self.btn_add_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        self.btn_apply_filters = ttk.Button(self, text="Apply", command=self.apply_filters)
+        self.btn_apply_filters = ttk.Button(self, text='Apply', command=self.apply_filters)
         self.btn_apply_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        self.btn_view_filters = ttk.Button(self, text="View", command=self.view_filters)
+        self.btn_view_filters = ttk.Button(self, text='View', command=self.view_filters)
         self.btn_view_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        self.btn_clear_filters = ttk.Button(self, text="Clear All", command=self.reset_filters)
+        self.btn_clear_filters = ttk.Button(self, text='Clear', command=self.clear_filters)
         self.btn_clear_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         if self.save_filter_func is not None:
             cur_col += 1
-            self.btn_save_filters = ttk.Button(self, text="Save", command=lambda: self.save_filter_func(self._filters))
+            self.btn_save_filters = ttk.Button(self, text='Save', command=lambda: self.save_filter_func(self._filters))
             self.btn_save_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        if self.load_filter_func is not None:
+            cur_col += 1
+            self.btn_load_filters = ttk.Button(self, text='Load', command=self._load_filters)
+            self.btn_load_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         self._update_filter_widgets()
+
+    def _load_filters(self) -> None:
+        """
+        Load filters from a file.
+        """
+        filters = self.load_filter_func()
+        if filters is not None:
+            self.set_filters(filters)
 
     def _add_to_filters(self) -> None:
         """
@@ -207,7 +228,7 @@ class FilterFrame(ttk.LabelFrame):
     def _get_filter_value_and_type(self) -> Tuple[str, Any]:
         """
         Read current value from filter widgets and determines its type.
-        :return: A tuple containing the type (str) and value of the filter condition.
+        :return: a tuple containing the type (str) and value of the filter condition.
         """
         if not self.filter_widget:
             return 'str', ''
@@ -235,13 +256,13 @@ class FilterFrame(ttk.LabelFrame):
         """
         Create a boolean mask for specified column based on filter value in a pandas DataFrame.
         """
-        # if filters is None or len(filters) == 0:
+        # if not filters:
         #     # load quick filter first
         #     filters = self.quick_filter(only_return_filter=True).items()
-        # if filters is None or len(filters) == 0:
+        # if not filters:
         #     filters = self._filters.items()
 
-        if filters is None or len(filters) == 0:
+        if not filters:
             quick_filters: dict = self.quick_filter(only_return_filter=True)
             filters: dict = self._filters.copy()
             filters.update(quick_filters)
@@ -284,10 +305,24 @@ class FilterFrame(ttk.LabelFrame):
         """
         return self._filter_mask
 
+    def set_filters(self, filters: Dict[str, Tuple[type, Any]]) -> None:
+        """
+        Set the filters used.
+        :param filters: the filter dictionary containing the filter conditions.
+        """
+        if not filters or not isinstance(filters, dict):
+            return
+        self._filters = filters.copy()
+        self._update_filter_widgets()
+        self.update_func(reset_page=True, update_filters=True, update_format=True)
+
     def update_controls(self) -> None:
         """
         Update the state of the controls based on the current state of the filters.
         """
+        # Note:
+        # No need to use the global widgets list here beceause this frame is meant to be "standalone" and its widgets are not used elsewhere.
+
         cb_selection = self.cb_col_name.get()
         _, filter_value = self._get_filter_value_and_type()
         filter_count = len(self._filters)
@@ -308,6 +343,7 @@ class FilterFrame(ttk.LabelFrame):
         cond_3 = (filter_count > 0)
         state = tk.NORMAL if cond_3 else tk.DISABLED
         self.btn_view_filters['state'] = state
+        self.btn_save_filters['state'] = state
 
         state = tk.NORMAL if cond_2 or cond_3 else tk.DISABLED
         self.btn_apply_filters['state'] = state
@@ -319,12 +355,10 @@ class FilterFrame(ttk.LabelFrame):
         Applie the filters and updates the caller.
         """
         self._add_to_filters()
-        # self._update_filter_widgets()
         self.update_controls()
-        # self.create_mask(self._filters.items())
         self.update_func(reset_page=True, update_filters=True)
 
-    def reset_filters(self) -> None:
+    def clear_filters(self) -> None:
         """
         Reset all filter conditions and update the caller.
         """
@@ -336,6 +370,8 @@ class FilterFrame(ttk.LabelFrame):
             self.filter_widget.delete(0, 'end')
         self._filters = {}
         self._filter_mask = None
+        gui_g.s.last_opened_filter = ''
+        gui_g.s.save_config_file()
         self._update_filter_widgets()
         self.update_func(reset_page=True)
 
@@ -352,8 +388,8 @@ class FilterFrame(ttk.LabelFrame):
     def quick_filter(self, only_return_filter=False) -> dict:
         """
         Update the widgets that are used for filtering based on the selected column.
-        :param only_return_filter: If True, only return the filter string without applying it.
-        :return: The filter dict.
+        :param only_return_filter: if True, only return the filter string without applying it.
+        :return: the filter dict.
         """
         filter_dict = {}
         selected_filter = self.cb_quick_filter.get()
@@ -365,14 +401,3 @@ class FilterFrame(ttk.LabelFrame):
                 # self.create_mask(filter_dict.items())
                 self.update_func(reset_page=True, update_filters=True)
         return filter_dict
-
-    def load_filters(self, filters: Dict[str, Tuple[type, Any]]) -> None:
-        """
-        Load the filter dictionary.
-        :param filters: The filter dictionary containing the filter conditions.
-        """
-        if filters is None or not isinstance(filters, dict) or len(filters) == 0:
-            return
-        self._filters = filters.copy()
-        self._update_filter_widgets()
-        self.update_func(reset_page=True, update_filters=True, update_format=True)

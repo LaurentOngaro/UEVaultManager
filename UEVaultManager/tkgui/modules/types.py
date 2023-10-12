@@ -1,11 +1,28 @@
 # coding=utf-8
 """
 Definition for the types used in this module:
+- GrabResult: enum for the result of grabbing a page
 - UEAssetType: enum to represent the asset type
 - DataSourceType: an enum to represent the data source type
 - WidgetType: enum for the widget types.
 """
 from enum import Enum
+
+
+class GrabResult(Enum):
+    """
+    Enum for the result of grabbing a page.
+    """
+    NO_ERROR = 0
+    # next codes could occur only with beautifulsoup data grabbing (UEVM Version 1.X.X.X)
+    INCONSISTANT_DATA = 1
+    PAGE_NOT_FOUND = 2
+    CONTENT_NOT_FOUND = 3
+    TIMEOUT = 4
+    # next codes could occur only with API scraping only (UEVM version 2.X.X.X)
+    PARTIAL = 5  # when asset has been added when owned asset data only (less complete that "standard" asset data)
+    NO_APPID = 6  # no appid found in the data (will produce a file name like '_no_appId_asset_1e10acc0cca34d5c8ff7f0ab57e7f89f
+    NO_RESPONSE = 7  # the url does not return HTTP 200
 
 
 class DataFrameUsed(Enum):

@@ -18,24 +18,14 @@ class WebImage:
     """
 
     def __init__(self, url: str = None):
-        # if no URL is given, return
-        if url is None or url == '':
-            return
-        # initialize instance variables
-        self.__image_pil = None
-        self.__image_tk = None
-        self.request_timeout = (5, 5)  # timeout could be a float or a tuple  (connect timeout, read timeout) in s
-        self.url: str = url
-        try:
-            # use requests to get the image content as bytes
-            response = requests.get(url, timeout=self.request_timeout)
-            # create a PIL.Image object from the bytes
-            self.__image_pil = Image.open(BytesIO(response.content))
-            # create a PhotoImage object from the PIL.Image
-            self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
-        except Exception as error:
-            # log a warning if image cannot be downloaded or opened
-            log_warning(f'image could not be read from url {self.url}.\nError:{error!r}')
+        self.url = url
+        if url:
+            try:
+                response = requests.get(url, timeout=(4, 4))
+                self.__image_pil = Image.open(BytesIO(response.content))
+                self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
+            except Exception as error:
+                log_warning(f'image could not be read from url {url}.\nError:{error!r}')
 
     def get(self) -> ImageTk.PhotoImage:
         """
@@ -57,6 +47,6 @@ class WebImage:
             # create a PhotoImage object from the resized PIL.Image
             self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as error:
-            # log a warning if image cannot be resized
+            # log a warning if image can not be resized
             log_warning(f'Could not get resized image from url {self.url}.\nError:{error!r}')
         return self.__image_tk

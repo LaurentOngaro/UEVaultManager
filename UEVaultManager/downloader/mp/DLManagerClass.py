@@ -1,5 +1,8 @@
 # coding: utf-8
-
+"""
+Implementation for:
+- DLManager: Download manager process that handles all the download and writing tasks.
+"""
 # please don't look at this code too hard, it's a mess.
 
 import logging
@@ -12,44 +15,51 @@ from multiprocessing import cpu_count, Process, Queue as MPQueue
 from multiprocessing.shared_memory import SharedMemory
 from queue import Empty
 from threading import Condition, Thread
+from typing import Callable
 
 from UEVaultManager.downloader.mp.workers import DLWorker, FileWorker
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.downloading import AnalysisResult, ChunkTask, DownloaderTask, FileTask, SharedMemorySegment, TaskFlags, \
     TerminateWorkerTask, UIUpdate, WriterTask
 from UEVaultManager.models.manifest import Manifest, ManifestComparison
+from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
+from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 
 
 class DLManager(Process):
+    """
+    Download manager process that handles all the download and writing tasks.
+    """
 
     def __init__(
         self,
-        download_dir,
-        base_url,
-        cache_dir=None,
+        download_dir: str,
+        base_url: str,
+        cache_dir: str = '',
         status_q=None,
-        max_workers=0,
-        update_interval=1.0,
-        dl_timeout=10,
+        max_workers: int = 0,
+        update_interval: float = 1.0,
+        timeout: (float, float) = (7, 7),
         resume_file=None,
-        max_shared_memory=1024 * 1024 * 1024
+        max_shared_memory: int = 1024 * 1024 * 1024,
+        trace_func: Callable = None,
     ):
         super().__init__(name='DLManager')
         self.log = logging.getLogger('DLM')
         self.proc_debug = False
 
         self.base_url = base_url
-        self.dl_dir = download_dir
+        self.download_dir = download_dir
         self.cache_dir = cache_dir or path_join(download_dir, '.cache')
 
         # All the queues!
         self.logging_queue = None
-        self.dl_worker_queue = None
+        self.worker_queue = None
         self.writer_queue = None
-        self.dl_result_q = None
-        self.writer_result_q = None
+        self.result_queue = None
+        self.writer_result_queue = None
         self.max_workers = max_workers or min(cpu_count() * 2, 16)
-        self.dl_timeout = dl_timeout
+        self.timeout = timeout
 
         # Analysis stuff
         self.analysis = None
@@ -68,7 +78,7 @@ class DLManager(Process):
 
         # Resume file stuff
         self.resume_file = resume_file
-        self.hash_map = dict()
+        self.hash_map = {}
 
         # cross-thread runtime information
         self.running = True
@@ -86,32 +96,36 @@ class DLManager(Process):
         # chunks written since last report
         self.num_processed_since_last = 0
         self.num_tasks_processed_since_last = 0
+        self.trace_func = trace_func if trace_func is not None else self.log.info
 
     def run_analysis(
         self,
         manifest: Manifest,
         old_manifest: Manifest = None,
-        patch=True,
-        resume=True,
-        file_prefix_filter=None,
-        file_exclude_filter=None,
-        file_install_tag=None,
-        processing_optimization=False
+        patch: bool = True,
+        resume: bool = True,
+        file_prefix_filter: list = None,
+        file_exclude_filter: list = None,
+        file_install_tag: list = None,
+        processing_optimization: bool = False,
+        already_installed: bool = False
     ) -> AnalysisResult:
         """
         Run analysis on manifest and old manifest (if not None) and return a result
         with a summary resources required in order to install the provided manifest.
-        :param manifest: Manifest to install.
-        :param old_manifest: Old manifest to patch from (if applicable).
-        :param patch: Patch instead of redownloading the entire file.
-        :param resume: Continue based on resume file if it exists.
-        :param file_prefix_filter: Only download files that start with this prefix.
-        :param file_exclude_filter: Exclude files with this prefix from download.
-        :param file_install_tag: Only install files with the specified tag.
-        :param processing_optimization: Attempt to optimize processing order and RAM usage.
-        :return: AnalysisResult.
+        :param manifest: manifest to install.
+        :param old_manifest: old manifest to patch from (if applicable).
+        :param patch: patch instead of redownloading the entire file.
+        :param resume: continue based on resume file if it exists.
+        :param file_prefix_filter: only download files that start with this prefix.
+        :param file_exclude_filter: exclude files with this prefix from download.
+        :param file_install_tag: only install files with the specified tag.
+        :param processing_optimization: attempt to optimize processing order and RAM usage.
+        :param already_installed: True if the asset has already been installed into the installation folder. Note that this parem is TRAMSMITTED by the caller and stored as it in the "AnalysisResult".
+        :return: analysisResult.
         """
         analysis_res = AnalysisResult()
+        analysis_res.already_installed = already_installed
         analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements)
         analysis_res.biggest_chunk = max(c.window_size for c in manifest.chunk_data_list.elements)
         analysis_res.biggest_file_size = max(f.file_size for f in manifest.file_manifest_list.elements)
@@ -123,7 +137,7 @@ class DLManager(Process):
         analysis_res.manifest_comparison = mc
 
         if resume and self.resume_file and os.path.exists(self.resume_file):
-            self.log.info('Found previously interrupted download. Download will be resumed if possible.')
+            self.trace_func('Found previously interrupted download. Download will be resumed if possible.')
             try:
                 missing = 0
                 mismatch = 0
@@ -131,7 +145,7 @@ class DLManager(Process):
 
                 for line in open(self.resume_file, encoding='utf-8').readlines():
                     file_hash, _, filename = line.strip().partition(':')
-                    _p = path_join(self.dl_dir, filename)
+                    _p = path_join(self.download_dir, filename)
                     if not os.path.exists(_p):
                         self.log.debug(f'File does not exist but is in resume file: "{_p}"')
                         missing += 1
@@ -149,7 +163,7 @@ class DLManager(Process):
                 mc.added -= completed_files
                 mc.changed -= completed_files
                 mc.unchanged |= completed_files
-                self.log.info(f'Skipping {len(completed_files)} files based on resume data.')
+                self.trace_func(f'Skipping {len(completed_files)} files based on resume data.')
             except Exception as error:
                 self.log.warning(f'Reading resume file failed: {error!r}, continuing as normal...')
         elif resume:
@@ -161,11 +175,11 @@ class DLManager(Process):
                 if fm.filename in mc.added:
                     continue
 
-                local_path = os.path.join(self.dl_dir, fm.filename)
+                local_path = path_join(self.download_dir, fm.filename)
                 if not os.path.exists(local_path):
                     missing_files.add(fm.filename)
 
-            self.log.info(f'Found {len(missing_files)} missing files.')
+            self.trace_func(f'Found {len(missing_files)} missing files.')
             mc.added |= missing_files
             mc.changed -= missing_files
             mc.unchanged -= missing_files
@@ -181,7 +195,7 @@ class DLManager(Process):
                 for i in manifest.file_manifest_list.elements
                 if not any((fit in i.install_tags) or (not fit and not i.install_tags) for fit in file_install_tag)
             )
-            self.log.info(f'Found {len(files_to_skip)} files to skip based on install tag.')
+            self.trace_func(f'Found {len(files_to_skip)} files to skip based on install tag.')
             mc.added -= files_to_skip
             mc.changed -= files_to_skip
             mc.unchanged |= files_to_skip
@@ -197,7 +211,7 @@ class DLManager(Process):
             files_to_skip = set(
                 i.filename for i in manifest.file_manifest_list.elements if any(i.filename.lower().startswith(pfx) for pfx in file_exclude_filter)
             )
-            self.log.info(f'Found {len(files_to_skip)} files to skip based on exclude prefix.')
+            self.trace_func(f'Found {len(files_to_skip)} files to skip based on exclude prefix.')
             mc.added -= files_to_skip
             mc.changed -= files_to_skip
             mc.unchanged |= files_to_skip
@@ -210,13 +224,13 @@ class DLManager(Process):
             files_to_skip = set(
                 i.filename for i in manifest.file_manifest_list.elements if not any(i.filename.lower().startswith(pfx) for pfx in file_prefix_filter)
             )
-            self.log.info(f'Found {len(files_to_skip)} files to skip based on include prefix(es)')
+            self.trace_func(f'Found {len(files_to_skip)} files to skip based on include prefix(es)')
             mc.added -= files_to_skip
             mc.changed -= files_to_skip
             mc.unchanged |= files_to_skip
 
         if file_prefix_filter or file_exclude_filter or file_install_tag:
-            self.log.info(f'Remaining files after filtering: {len(mc.added) + len(mc.changed)}')
+            self.trace_func(f'Remaining files after filtering: {len(mc.added) + len(mc.changed)}')
             # correct instalation size after filtering
             analysis_res.install_size = sum(fm.file_size for fm in manifest.file_manifest_list.elements if fm.filename in mc.added)
 
@@ -237,7 +251,7 @@ class DLManager(Process):
             self.log.warning('Manifest contains too many files, processing optimizations will be disabled.')
             processing_optimization = False
         elif processing_optimization:
-            self.log.info('Processing order optimization is enabled, analysis may take a few seconds longer...')
+            self.trace_func('Processing order optimization is enabled, analysis may take a few seconds longer...')
 
         # count references to chunks for determining runtime cache size later
         references = Counter()
@@ -419,20 +433,16 @@ class DLManager(Process):
             shared_mib = f'{self.max_shared_memory / 1024 / 1024:.01f} MiB'
             required_mib = f'{analysis_res.min_memory / 1024 / 1024:.01f} MiB'
             suggested_mib = round(self.max_shared_memory / 1024 / 1024 + (analysis_res.min_memory - self.max_shared_memory) / 1024 / 1024 + 32)
-
             if processing_optimization:
                 message = f'Try running UEVaultManager with "--enable-reordering --max-shared-memory {suggested_mib:.0f}"'
             else:
-                message = 'Try running UEVaultManager with "--enable-reordering" to reduce memory usage, ' \
-                          f'or use "--max-shared-memory {suggested_mib:.0f}" to increase the limit.'
+                message = 'Try running UEVaultManager with "--enable-reordering" to reduce memory usage, or use "--max-shared-memory {suggested_mib:.0f}" to increase the limit.'
 
             raise MemoryError(f'Current shared memory cache is smaller than required: {shared_mib} < {required_mib}. ' + message)
 
         # calculate actual dl and patch write size.
-        analysis_res.dl_size = \
-            sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)
-        analysis_res.uncompressed_dl_size = \
-            sum(c.window_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)
+        analysis_res.dl_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)
+        analysis_res.uncompressed_dl_size = sum(c.window_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)
 
         # add jobs to remove files
         for fname in mc.removed:
@@ -446,6 +456,11 @@ class DLManager(Process):
         return analysis_res
 
     def download_job_manager(self, task_cond: Condition, shm_cond: Condition):
+        """
+        Download job manager that handles adding download jobs to the queue.
+        :param task_cond: task condition
+        :param shm_cond: shared memory condition
+        """
         while self.chunks_to_dl and self.running:
             while self.active_tasks < self.max_workers * 2 and self.chunks_to_dl:
                 try:
@@ -459,7 +474,7 @@ class DLManager(Process):
                 chunk = self.chunk_data_list.get_chunk_by_guid(c_guid)
                 self.log.debug(f'Adding {chunk.guid_num} (active: {self.active_tasks})')
                 try:
-                    self.dl_worker_queue.put(DownloaderTask(url=self.base_url + '/' + chunk.path, chunk_guid=c_guid, shm=sms), timeout=1.0)
+                    self.worker_queue.put(DownloaderTask(url=self.base_url + '/' + chunk.path, chunk_guid=c_guid, shm=sms), timeout=1.0)
                 except Exception as error:
                     self.log.warning(f'Failed to add to download queue: {error!r}')
                     self.chunks_to_dl.appendleft(c_guid)
@@ -469,7 +484,7 @@ class DLManager(Process):
             else:
                 # active tasks limit hit, wait for tasks to finish
                 with task_cond:
-                    self.log.debug('Waiting for download tasks to complete..')
+                    self.log.debug('Waiting for download tasks to complete...')
                     task_cond.wait(timeout=1.0)
                     continue
 
@@ -482,9 +497,16 @@ class DLManager(Process):
         self.log.debug('Download Job Manager quitting...')
 
     def dl_results_handler(self, task_cond: Condition):
-        in_buffer = dict()
+        """
+        Download result handler that handles adding writer jobs to the queue.
+        :param task_cond: task condition
+        """
+        in_buffer = {}
 
-        task = self.tasks.popleft()
+        try:
+            task = self.tasks.popleft()
+        except IndexError:  # finished
+            task = None
         current_file = ''
 
         while task and self.running:
@@ -539,7 +561,7 @@ class DLManager(Process):
                     break
             else:  # only enter blocking code if the loop did not break
                 try:
-                    res = self.dl_result_q.get(timeout=1)
+                    res = self.result_queue.get(timeout=1)
                     self.active_tasks -= 1
                     with task_cond:
                         task_cond.notify()
@@ -553,7 +575,7 @@ class DLManager(Process):
                         self.log.error(f'Download for {res.chunk_guid} failed, retrying...')
                         try:
                             # since the result is a subclass of the task we can simply resubmit the result object
-                            self.dl_worker_queue.put(res, timeout=1.0)
+                            self.worker_queue.put(res, timeout=1.0)
                             self.active_tasks += 1
                         except Exception as error:
                             self.log.warning(f'Failed adding retry task to queue! {error!r}')
@@ -567,9 +589,13 @@ class DLManager(Process):
         self.log.debug('Download result handler quitting...')
 
     def fw_results_handler(self, shm_cond: Condition):
+        """
+        Writer result handler that handles releasing shared memory and writing to the resume file.
+        :param shm_cond: shared memory condition
+        """
         while self.running:
             try:
-                res = self.writer_result_q.get(timeout=1.0)
+                res = self.writer_result_queue.get(timeout=1.0)
 
                 if isinstance(res, TerminateWorkerTask):
                     self.log.debug('Got termination command in FW result handler')
@@ -588,7 +614,7 @@ class DLManager(Process):
 
                 if not res.success:
                     # todo make this kill the installation process or at least skip the file and mark it as failed
-                    self.log.fatal(f'Writing for {res.filename} failed!')
+                    self.log.critical(f'Writing for {res.filename} failed!')
                 if res.flags & TaskFlags.RELEASE_MEMORY:
                     self.sms.appendleft(res.shared_memory)
                     with shm_cond:
@@ -608,6 +634,9 @@ class DLManager(Process):
         self.log.debug('Writer result handler quitting...')
 
     def run(self):
+        """
+        Run the download manager (wrapper)
+        """
         if not self.analysis:
             raise ValueError('Did not run analysis before trying to run download!')
 
@@ -619,7 +648,7 @@ class DLManager(Process):
             _root.addHandler(QueueHandler(self.logging_queue))
 
         self.log = logging.getLogger('DLManager')
-        self.log.info(f'Download Manager running with process-id: {os.getpid()}')
+        self.trace_func(f'Download Manager running with process-id: {os.getpid()}')
 
         try:
             self.run_real()
@@ -647,7 +676,7 @@ class DLManager(Process):
             # clean up all the queues, otherwise this process won't terminate properly
             for name, q in zip(
                 ('Download jobs', 'Writer jobs', 'Download results', 'Writer results'),
-                (self.dl_worker_queue, self.writer_queue, self.dl_result_q, self.writer_result_q)
+                (self.worker_queue, self.writer_queue, self.result_queue, self.writer_result_queue)
             ):
                 self.log.debug(f'Cleaning up queue "{name}"')
                 try:
@@ -658,6 +687,12 @@ class DLManager(Process):
                     q.join_thread()
 
     def run_real(self):
+        """
+        Run the download manager
+
+        Notes:
+            The DisplayContentWindow_ref is anavailable here. So the display windows will not be updated when calling trace_func.
+        """
         self.shared_memory = SharedMemory(create=True, size=self.max_shared_memory)
         self.log.debug(f'Created shared memory of size: {self.shared_memory.size / 1024 / 1024:.02f} MiB')
 
@@ -669,26 +704,33 @@ class DLManager(Process):
         self.log.debug(f'Created {len(self.sms)} shared memory segments.')
 
         # Create queues
-        self.dl_worker_queue = MPQueue(-1)
+        self.worker_queue = MPQueue(-1)
         self.writer_queue = MPQueue(-1)
-        self.dl_result_q = MPQueue(-1)
-        self.writer_result_q = MPQueue(-1)
+        self.result_queue = MPQueue(-1)
+        self.writer_result_queue = MPQueue(-1)
 
-        self.log.info(f'Starting download workers...')
+        # create a hiddenroot for the progress window because if not a tk window will be created and visible
+        fake_root = UEVMGuiHiddenRoot()
+        pw = ProgressWindow(parent=fake_root, title='Download in progress...', width=300, show_btn_stop=True, show_progress=True, quit_on_close=False)
+        pw.set_activation(False)
+
+        self.trace_func(f'Starting download workers...')
         for i in range(self.max_workers):
             w = DLWorker(
                 f'DLWorker {i + 1}',
-                self.dl_worker_queue,
-                self.dl_result_q,
+                self.worker_queue,
+                self.result_queue,
                 self.shared_memory.name,
                 logging_queue=self.logging_queue,
-                dl_timeout=self.dl_timeout
+                timeout=self.timeout
             )
             self.children.append(w)
             w.start()
 
-        self.log.info('Starting file writing worker...')
-        writer_p = FileWorker(self.writer_queue, self.writer_result_q, self.dl_dir, self.shared_memory.name, self.cache_dir, self.logging_queue)
+        self.trace_func('Starting file writing worker...')
+        writer_p = FileWorker(
+            self.writer_queue, self.writer_result_queue, self.download_dir, self.shared_memory.name, self.cache_dir, self.logging_queue
+        )
         self.children.append(writer_p)
         writer_p.start()
 
@@ -763,18 +805,19 @@ class DLManager(Process):
                 hours = minutes = seconds = 0
                 rt_hours = rt_minutes = rt_seconds = 0
 
-            self.log.info(
-                f'= Progress: {perc:.02f}% ({processed_chunks}/{num_chunk_tasks}), '
-                f'Running for {rt_hours:02d}:{rt_minutes:02d}:{rt_seconds:02d}, '
-                f'ETA: {hours:02d}:{minutes:02d}:{seconds:02d}'
-            )
-            self.log.info(f' - Downloaded: {total_dl / 1024 / 1024:.02f} MiB, '
-                          f'Written: {total_write / 1024 / 1024:.02f} MiB')
-            self.log.info(f' - Cache usage: {total_used:.02f} MiB, active tasks: {self.active_tasks}')
-            self.log.info(f' + Download\t- {dl_speed / 1024 / 1024:.02f} MiB/s (raw) '
-                          f'/ {dl_unc_speed / 1024 / 1024:.02f} MiB/s (decompressed)')
-            self.log.info(f' + Disk\t- {w_speed / 1024 / 1024:.02f} MiB/s (write) / '
-                          f'{r_speed / 1024 / 1024:.02f} MiB/s (read)')
+            pw.set_max_value(num_chunk_tasks)
+            message = f'Downloaded: {total_dl / 1024 / 1024:.02f} MiB  ({perc:.02f}%)'
+            if not pw.update_and_continue(value=processed_chunks, text=message):
+                self.log.warning('User requested immediate exit!')
+                self.chunks_to_dl.clear()
+                break
+            self.trace_func(f'= Progress: {perc:.02f}% ({processed_chunks}/{num_chunk_tasks})')
+            self.trace_func(f'Running for {rt_hours:02d}:{rt_minutes:02d}:{rt_seconds:02d}')
+            self.trace_func(f'ETA: {hours:02d}:{minutes:02d}:{seconds:02d}')
+            self.trace_func(f' - Downloaded: {total_dl / 1024 / 1024:.02f} MiB,Written: {total_write / 1024 / 1024:.02f} MiB')
+            self.trace_func(f' - Cache usage: {total_used:.02f} MiB, active tasks: {self.active_tasks}')
+            self.trace_func(f' + Download\t- {dl_speed / 1024 / 1024:.02f} MiB/s (raw) / {dl_unc_speed / 1024 / 1024:.02f} MiB/s (decompressed)')
+            self.trace_func(f' + Disk\t- {w_speed / 1024 / 1024:.02f} MiB/s (write) / {r_speed / 1024 / 1024:.02f} MiB/s (read)')
 
             # send status update to back to instantiator (if queue exists)
             if self.status_queue:
@@ -795,12 +838,12 @@ class DLManager(Process):
             time.sleep(self.update_interval)
 
         for i in range(self.max_workers):
-            self.dl_worker_queue.put_nowait(TerminateWorkerTask())
+            self.worker_queue.put_nowait(TerminateWorkerTask())
 
-        self.log.info('Waiting for installation to finish...')
+        self.trace_func('Waiting for installation to finish...')
         self.writer_queue.put_nowait(TerminateWorkerTask())
 
-        writer_p.join(timeout=10.0)
+        writer_p.join(timeout=7)
         if writer_p.exitcode is None:
             self.log.warning(f'Terminating writer process, no exit code!')
             writer_p.terminate()
@@ -827,7 +870,8 @@ class DLManager(Process):
         self.shared_memory.close()
         self.shared_memory.unlink()
         self.shared_memory = None
-
-        self.log.info('All done! Download manager quitting...')
+        # pw.close_window(destroy_window=True)
+        self.trace_func('All done! Download manager quitting...')
+        pw.close_window(destroy_window=True)
         # finally, exit the process.
         sys.exit(0)

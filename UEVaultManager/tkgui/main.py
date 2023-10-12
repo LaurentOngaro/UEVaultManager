@@ -16,9 +16,9 @@ from UEVaultManager.tkgui.modules.types import DataSourceType
 def init_gui(open_mainwindow=True, use_db=False) -> str:
     """
     Main function for the GUI.
-    :param open_mainwindow: Whether the main window will be opened (default mode).
+    :param open_mainwindow: whether the main window will be opened (default mode).
             Set to False for running the GUI initialization only, useful if called from cli.py.
-    :param use_db: Whether the database will be used instead of the csv file.
+    :param use_db: whether the database will be used instead of the csv file.
     :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script.
     """
     gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
@@ -27,7 +27,7 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
         data_source = gui_fn.path_from_relative_to_absolute(gui_g.s.sqlite_filename)
         data_source_type = DataSourceType.SQLITE
         if not os.path.isfile(data_source):
-            log_error(f'Database File {data_source} not found. Exiting...')
+            log_error(f'Database File {data_source} not found. Application will be closed')
             exit(1)
     else:
         data_source_type = DataSourceType.FILE

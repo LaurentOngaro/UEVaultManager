@@ -16,8 +16,8 @@ from setuptools import setup
 
 from UEVaultManager import __name__, __version__, __codename__, __license__, __author__, __author_email__, __description__, __url__
 
-if sys.version_info < (3, 9):
-    sys.exit('python 3.9 or higher is required for UEVaultManager')
+if sys.version_info < (3, 10):
+    sys.exit('python 3.10 or higher is required for UEVaultManager')
 
 current_folder = Path(__file__).parent
 
@@ -44,7 +44,7 @@ else:
     with open(Path.joinpath(current_folder, 'requirements.txt')) as fd:
         for req in requirements.parse(fd):
             if req.name:
-                name = req.name.replace("-", "_")
+                name = req.name.replace('-', '_')
                 full_line = name + "".join(["".join(list(spec)) for spec in req.specs])
                 requirements_from_file.append(full_line)
             else:

@@ -1,6 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
+- DbFilesWindowClass: the window to import/export data from/to CSV files.
 """
 import os
 import tkinter as tk
@@ -13,7 +14,7 @@ from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 
 class DBFW_Settings:
     """
-    Settings for the app.
+    Settings for the class when running as main.
     """
     folder_for_csv_files = 'K:/UE/UEVM/scraping/csv'
     db_path = 'K:/UE/UEVM/scraping/assets.db'
@@ -22,7 +23,7 @@ class DBFW_Settings:
 
 class DbFilesWindowClass(tk.Toplevel):
     """
-    This app processes JSON files and stores some data in a database.
+    Processes JSON files and stores some data in a database.
     :param title: the title.
     :param width: the width.
     :param height: the height.
@@ -123,7 +124,7 @@ class DbFilesWindowClass(tk.Toplevel):
             """
             Add text to the result label.
             :param text: text to add
-            :param set_status: True for setting the status label, False otherwise
+            :param set_status: true for setting the status label, False otherwise
             """
             if set_status:
                 self.set_status(text)
@@ -226,5 +227,5 @@ if __name__ == '__main__':
     main = tk.Tk()
     main.title('FAKE MAIN Window')
     main.geometry('200x100')
-    app = DbFilesWindowClass(title=st.title, db_path=st.db_path, folder_for_csv_files=st.folder_for_csv_files)
+    DbFilesWindowClass(title=st.title, db_path=st.db_path, folder_for_csv_files=st.folder_for_csv_files)
     main.mainloop()

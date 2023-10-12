@@ -189,9 +189,9 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
     if not os.path.exists(path):
         try:
             os.makedirs(path)
-        except (OSError, PermissionError) as e:
+        except (OSError, PermissionError) as error:
             is_valid = False
-            log(f'Error while creating the directory {path}: {e}')
+            log(f'Error while creating the directory {path}: {error!r}')
             if home_dir := os.environ.get('XDG_CONFIG_HOME'):
                 path = path_join(home_dir, 'UEVaultManager')
             else:
@@ -381,3 +381,73 @@ def open_folder_in_file_explorer(folder_path) -> bool:
             return False
     else:
         return False
+
+
+def append_no_duplicate(list_to_append: list, items: any, ok_if_exists: object = False) -> bool:
+    """
+    Append some items value to a list. Could raise an error if an object is already in the list.
+    :param list_to_append: the list to append to.
+    :param items: the items to append to the list. Could be a single object or a list of items.
+    :param ok_if_exists: if True, no error will be raised if an object is already in the list.
+    :return: True if all the items were appended, False if at least one was already in the list.
+    """
+    if not isinstance(items, list):
+        items = [items]
+    for item in items:
+        if item not in list_to_append:
+            list_to_append.append(item)
+        else:
+            if not ok_if_exists:
+                raise ValueError(f'append_no_duplicate method: Value {item} already in list {list_to_append}')
+            return False
+    return True
+
+
+def merge_lists_or_strings(list_to_merge, list_to_append) -> list:
+    """
+    Merge 2 lists (or strings) without duplicates.
+    :param list_to_merge: the list to merge. Could be a list or a string of values separated by commas.
+    :param list_to_append: the list to append Could be a list or a string of values separated by commas.
+    :return: the merged list.
+    """
+    if isinstance(list_to_merge, str):
+        list_to_merge = list_to_merge.split(',')
+    if isinstance(list_to_append, str):
+        list_to_append = list_to_append.split(',')
+    # merge the 2 lists without duplicates
+    # old method
+    # for folder in set(list_to_merge + list_to_append):
+    #     if folder not in list_to_merge:
+    #         list_to_merge.append(folder)
+    # return list_to_merge
+    # shorter method
+    return list(set(list_to_merge + list_to_append))  # no sorting here because the order could stay first In first Out
+
+
+def remove_last_suffix(string: str, separator: str = '_') -> str:
+    """
+    Remove the last suffix from a string.
+    :param string: String to remove the suffix from.
+    :param separator: The separator to use to split the string.
+    :return: The string without the last suffix.
+    """
+    parts = string.split(separator)
+    if len(parts) > 1:
+        parts.pop()
+        return separator.join(parts)
+    return string
+
+
+def format_size(size: int, precision: int = 1) -> str:
+    """
+    Format a size in bytes to a human readable string.
+    :param size: the size to format.
+    :param precision: the number of digits after the decimal point.
+    :return: the formatted size.
+    """
+    suffixes = ['B', 'KB', 'MB', 'GB', 'TB']
+    suffix_index = 0
+    while size > 1024 and suffix_index < 4:
+        suffix_index += 1  # increment the index of the suffix
+        size /= 1024.0  # apply the division
+    return f'{size:.{precision}f}{suffixes[suffix_index]}'

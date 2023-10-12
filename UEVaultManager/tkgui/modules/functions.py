@@ -12,6 +12,7 @@ import tkinter as tk
 from datetime import datetime
 from io import BytesIO
 from tkinter import messagebox
+from typing import Optional
 
 import requests
 from PIL import Image, ImageTk
@@ -83,9 +84,9 @@ def todo_message() -> None:
 
 def from_cli_only_message(content='This feature is only accessible') -> None:
     """
-    Display a message box with a message saying that the feature is only accessible when running the app using the UEVM cli command options.
+    Display a message box with a message saying that the feature is only accessible when running the application using the UEVM cli command options.
     """
-    msg = f'{content} when running these app using the UEVM cli command options. Once the UEVaultManager package installed, Type UEVaultManager -h for more help'
+    msg = f'{content} when running this application using the UEVM cli command options. Once the UEVaultManager package installed, Type UEVaultManager -h for more help'
     print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
     print(print_msg)
     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
@@ -96,7 +97,8 @@ def log_info(msg: str) -> None:
     Log an info message.
     :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
@@ -110,7 +112,7 @@ def log_debug(msg: str) -> None:
     Log a debug message.
     :param msg: the message to log.
 
-    Note:
+    Notes:
         It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
         This message will only be logged if the debug mode is enabled.
     """
@@ -133,7 +135,8 @@ def log_warning(msg: str) -> None:
     Log a warning message.
     :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
@@ -145,9 +148,11 @@ def log_warning(msg: str) -> None:
 def log_error(msg: str) -> None:
     """
     Log an error message.
-    :param msg: the message to log. Note that the app will exit after logging the message.
+    :param msg: the message to log.
 
-    Note: It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
+    Notes:
+        The application will (normally) exit after logging the message. Sometimes it doesn't work (check ?)
+        It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
     """
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.error(msg)
@@ -179,16 +184,21 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -
     canvas.image = tk_image
 
 
-def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> None:
+def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> bool:
     """
     Show the image of the given asset in the given canvas.
     :param image_url: the url of the image to display.
     :param canvas_image: the canvas to display the image in.
     :param scale: the scale to apply to the image.
-    :param timeout: the timeout in seconds to wait for the image to be downloaded.
+    :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
+    :return: True if the image has been displayed, False otherwise.
     """
-    if canvas_image is None or image_url is None or not image_url or str(image_url) in ('', 'None', 'nan'):
-        return
+    if gui_g.s.offline_mode:
+        # could be usefull if connexion is slow
+        show_default_image(canvas_image)
+        return False
+    if canvas_image is None or not image_url or str(image_url) in gui_g.s.cell_is_empty_list:
+        return False
     try:
         # print(image_url)
         # noinspection DuplicatedCode
@@ -202,12 +212,22 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
         else:
             response = requests.get(image_url, timeout=timeout)
             image = Image.open(BytesIO(response.content))
-
-            with open(image_filename, "wb") as f:
-                f.write(response.content)
+            with open(image_filename, "wb") as file:
+                file.write(response.content)
         resize_and_show_image(image, canvas_image, scale)
+        return True
     except Exception as error:
-        log_warning(f"Error showing image: {error!r}")
+        log_warning(f'Error showing image: {error!r}')
+        gui_g.timeout_error_count += 1
+        # check error timeout
+        if gui_g.timeout_error_count >= 5:
+            box_message(
+                f'The application had {gui_g.timeout_error_count} timeout errors when loading images.\nIt is going offline to avoid been too slow.\nTo fix that, check you internet connection.\nYou can disabled offline mode in the "Show options" panel, or by restarting the application.',
+                level='warning'
+            )
+            gui_g.timeout_error_count = 0
+            gui_g.s.offline_mode = True
+            return False
 
 
 def show_default_image(canvas_image=None) -> None:
@@ -224,17 +244,17 @@ def show_default_image(canvas_image=None) -> None:
             # noinspection PyTypeChecker
             resize_and_show_image(def_image, canvas_image)
     except Exception as error:
-        log_warning(f"Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error!r}")
+        log_warning(f'Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error!r}')
 
 
 def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=False) -> None:
     """
     Pretty prints a JSON object in a simple 'key: value' format.
     :param json_obj:  The JSON object to print.
-    :param indent: The number of spaces to indent each level.
-    :param print_result: Determines whether to print the result.
-    :param output_on_gui: Determines whether to print the result on the GUI.
-    :return: The pretty printed JSON object.
+    :param indent: the number of spaces to indent each level.
+    :param print_result: determines whether to print the result.
+    :param output_on_gui: determines whether to print the result on the GUI.
+    :return: the pretty printed JSON object.
     """
 
     def _process(obj, level=0):
@@ -272,21 +292,23 @@ def custom_print(text='', keep_mode=True) -> None:
     :param keep_mode: whether to keep the existing content when adding a new one.
     """
     if gui_g.display_content_window_ref is not None:
-        gui_g.display_content_window_ref.display(content=text + '\n', keep_mode=keep_mode)
+        gui_g.display_content_window_ref.display(content=text, keep_mode=keep_mode)
     else:
         print(text)
 
 
-def get_tk_root(container) -> tk.Tk:
+def get_tk_root(container) -> Optional[tk.Tk]:
     """
     Get the root window.
     :param container:  the container window or object
     :return: the root window
     """
+    if container is None:
+        return None
     root = None
     # get the root window to avoid creating multiple progress windows
     try:
-        # a tk window chid class
+        # a tk window child class
         root = container.winfo_toplevel()
     except (AttributeError, tk.TclError):
         # an editableTable class
@@ -298,7 +320,7 @@ def get_tk_root(container) -> tk.Tk:
 
 
 def show_progress(
-    parent,
+    parent=None,
     text='Working...Please wait',
     width=500,
     height=120,
@@ -306,26 +328,34 @@ def show_progress(
     show_progress_l=False,
     show_btn_stop_l=False,
     quit_on_close: bool = False,
+    keep_existing: bool = False,
     function: callable = None,
     function_parameters: dict = None
-) -> ProgressWindow:
+) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
-    :param parent: The parent window.
-    :param text: The text to display in the progress window.
-    :param width: The width of the progress window.
-    :param height: The height of the progress window.
-    :param max_value_l: The maximum value of the progress bar.
-    :param show_progress_l: Whether to show the progress bar.
-    :param show_btn_stop_l: Whether to show the stop button.
+    :param parent: the parent window. Could be None
+    :param text: the text to display in the progress window.
+    :param width: the width of the progress window.
+    :param height: the height of the progress window.
+    :param max_value_l: the maximum value of the progress bar.
+    :param show_progress_l: whether to show the progress bar.
+    :param show_btn_stop_l: whether to show the stop button.
+    :param quit_on_close: whether to quit the application when the window is closed.
+    :param keep_existing: whether to keep the existing content when adding a new one.
     :param function: the function to execute.
     :param function_parameters: the parameters of the function.
-    :param quit_on_close: whether to quit the application when the window is closed.
-    :return: The progress window.
+    :return: the progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
     root = get_tk_root(parent)
-    if root and root.progress_window is None:
+    if not root:
+        return None
+    try:
+        # check if a progress window already exists
+        pw = root.progress_window
+        pw.set_activation(False)  # test if the window is still active
+    except (tk.TclError, AttributeError):
         pw = ProgressWindow(
             title=gui_g.s.app_title,
             parent=parent,
@@ -340,18 +370,19 @@ def show_progress(
             function_parameters=function_parameters
         )
         root.progress_window = pw
-    else:
-        pw = root.progress_window
-    pw.set_text(text)
-    pw.set_activation(False)
-    pw.update()
+    if pw:
+        pw.set_activation(False)
+        if keep_existing:
+            text = pw.get_text() + '\n' + text
+        pw.set_text(text)
+        pw.update()
     return pw
 
 
 def close_progress(parent) -> None:
     """
     Close the progress window.
-    :param parent: The parent window.
+    :param parent: the parent window.
     It accesses to the parent.progress_window property
     """
     root = get_tk_root(parent)
@@ -391,7 +422,7 @@ def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> Non
     :param logger: the logger
     :param debug_value: the value to set. If None, it will use the value of gui_g.s.debug_mode
 
-    Note:
+    Notes:
         Will also update all the loggers level of the UEVM classes.
         Call this function when the debug mode is changed.
     """
@@ -415,3 +446,83 @@ def make_modal(window: tk.Toplevel = None, wait_for_close=True) -> None:
     if wait_for_close:
         # Note: this will block the main window
         window.wait_window()
+
+
+def set_widget_state(widget: tk.Widget, is_enabled: bool, text_swap: {} = None) -> None:
+    """
+    Enable or disable a widget.
+    :param widget: widget to update.
+    :param is_enabled: whether to enable the widget, if False, disable it.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    if widget is not None:
+        state = tk.NORMAL if is_enabled else tk.DISABLED
+        state_inversed = tk.NORMAL if not is_enabled else tk.DISABLED
+        try:
+            # noinspection PyUnresolvedReferences
+            widget.config(state=state)
+            current_text = widget.cget('text')
+            if text_swap is not None and text_swap.get(state, '') == current_text:
+                swapped_text = text_swap.get(state_inversed, '')
+                if swapped_text:
+                    # noinspection PyUnresolvedReferences
+                    widget.config(text=swapped_text)
+        except tk.TclError:
+            pass
+
+
+def enable_widget(widget) -> None:
+    """
+    Enable a widget.
+    :param widget: widget to update.
+    """
+    set_widget_state(widget, True)
+
+
+def disable_widget(widget) -> None:
+    """
+    Disable a widget.
+    :param widget: widget to update.
+    """
+    set_widget_state(widget, False)
+
+
+def set_widget_state_in_list(list_of_widget: [], is_enabled: bool, text_swap: {} = None) -> None:
+    """
+    Enable or disable a widget.
+     :param list_of_widget: the list of widgets to update.
+    :param is_enabled: whether to enable the widget, if False, disable it.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    for widget in list_of_widget:
+        set_widget_state(widget, is_enabled, text_swap)
+
+
+def enable_widgets_in_list(list_of_widget: []) -> None:
+    """
+    Enable a list of widgets.
+    :param list_of_widget: the list of widgets to enable.
+    """
+    for widget in list_of_widget:
+        enable_widget(widget)
+
+
+def disable_widgets_in_list(list_of_widget: []) -> None:
+    """
+    Disable a list of widgets.
+    :param list_of_widget: the list of widgets to disable.
+    :return:
+    """
+    for widget in list_of_widget:
+        disable_widget(widget)
+
+
+def update_widgets_in_list(is_enabled: bool, list_name: str, text_swap=None) -> None:
+    """
+    Update the state of a list of widgets.
+    :param is_enabled: true to enable the widgets, False to disable them.
+    :param list_name: the name of the list of widgets to update.
+    :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
+    """
+    widget_list = gui_g.stated_widgets.get(list_name, [])
+    set_widget_state_in_list(widget_list, is_enabled=is_enabled, text_swap=text_swap)

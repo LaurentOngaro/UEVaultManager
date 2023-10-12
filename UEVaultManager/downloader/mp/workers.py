@@ -1,5 +1,9 @@
 # coding: utf-8
-
+"""
+Implementation for:
+- DLWorker: Downloads chunks from the internet and writes them to the shared memory segment.
+- FileWorker: Writes chunks to files.
+"""
 import logging
 import os
 import time
@@ -11,13 +15,23 @@ from queue import Empty
 import requests
 
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.chunk import Chunk
+from UEVaultManager.models.ChunkClass import Chunk
 from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, TaskFlags, TerminateWorkerTask, WriterTask, WriterTaskResult)
 
 
 class DLWorker(Process):
+    """
+    Worker process that downloads chunks from the internet and writes them to the shared memory segment.
+    :param name: name of the process
+    :param queue: queue to get jobs from
+    :param out_queue: queue to put results in
+    :param shm: name of the shared memory segment to write to
+    :param max_retries: maximum number of retries for a chunk
+    :param logging_queue: queue to send log messages to
+    :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
+    """
 
-    def __init__(self, name, queue, out_queue, shm, max_retries=7, logging_queue=None, dl_timeout=10):
+    def __init__(self, name, queue, out_queue, shm, max_retries=7, logging_queue=None, timeout=(7, 7)):
         super().__init__(name=name)
         self.q = queue
         self.o_q = out_queue
@@ -27,9 +41,12 @@ class DLWorker(Process):
         self.shm = SharedMemory(name=shm)
         self.log_level = logging.getLogger().level
         self.logging_queue = logging_queue
-        self.dl_timeout = float(dl_timeout) if dl_timeout else 10.0
+        self.timeout = timeout
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Main loop of the worker process.
+        """
         # we have to fix up the logger before we can start
         _root = logging.getLogger()
         _root.handlers = []
@@ -42,7 +59,7 @@ class DLWorker(Process):
         empty = False
         while True:
             try:
-                job: DownloaderTask = self.q.get(timeout=10.0)
+                job: DownloaderTask = self.q.get(timeout=7)
                 empty = False
             except Empty:
                 if not empty:
@@ -70,7 +87,7 @@ class DLWorker(Process):
                     logger.debug(f'Downloading {job.url}')
 
                     try:
-                        r = self.session.get(job.url, timeout=self.dl_timeout)
+                        r = self.session.get(job.url, timeout=self.timeout)
                         r.raise_for_status()
                     except Exception as error:
                         logger.warning(f'Chunk download for {job.chunk_guid} failed: ({error!r}), retrying...')
@@ -102,7 +119,7 @@ class DLWorker(Process):
             try:
                 size = len(chunk.data)
                 if size > job.shm.size:
-                    logger.fatal('Downloaded chunk is longer than SharedMemorySegment!')
+                    logger.critical('Downloaded chunk is longer than SharedMemorySegment!')
 
                 self.shm.buf[job.shm.offset:job.shm.offset + size] = bytes(chunk.data)
                 del chunk
@@ -119,6 +136,15 @@ class DLWorker(Process):
 
 
 class FileWorker(Process):
+    """
+    Worker process that writes chunks to files.
+    :param queue: queue to get jobs from
+    :param out_queue: queue to put results in
+    :param base_path: base path to write files to
+    :param shm: name of the shared memory segment to read from
+    :param cache_path: path to the cache directory
+    :param logging_queue: queue to send log messages to
+    """
 
     def __init__(self, queue, out_queue, base_path, shm, cache_path=None, logging_queue=None):
         super().__init__(name='FileWorker')
@@ -130,7 +156,10 @@ class FileWorker(Process):
         self.log_level = logging.getLogger().level
         self.logging_queue = logging_queue
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Main loop of the worker process.
+        """
         # we have to fix up the logger before we can start
         _root = logging.getLogger()
         _root.handlers = []
@@ -147,9 +176,9 @@ class FileWorker(Process):
         while True:
             try:
                 try:
-                    j: WriterTask = self.q.get(timeout=10.0)
+                    j: WriterTask = self.q.get(timeout=7)  # no tuple here !
                 except Empty:
-                    logger.warning('Writer queue empty!')
+                    logger.warning('Writer queue empty')
                     continue
 
                 if isinstance(j, TerminateWorkerTask):
@@ -248,15 +277,15 @@ class FileWorker(Process):
                         shm_end = shm_offset + j.chunk_size
                         current_file.write(self.shm.buf[shm_offset:shm_end].tobytes())
                     elif j.cache_file:
-                        with open(path_join(self.cache_path, j.cache_file), 'rb') as f:
+                        with open(path_join(self.cache_path, j.cache_file), 'rb') as file:
                             if j.chunk_offset:
-                                f.seek(j.chunk_offset)
-                            current_file.write(f.read(j.chunk_size))
+                                file.seek(j.chunk_offset)
+                            current_file.write(file.read(j.chunk_size))
                     elif j.old_file:
-                        with open(path_join(self.base_path, j.old_file), 'rb') as f:
+                        with open(path_join(self.base_path, j.old_file), 'rb') as file:
                             if j.chunk_offset:
-                                f.seek(j.chunk_offset)
-                            current_file.write(f.read(j.chunk_size))
+                                file.seek(j.chunk_offset)
+                            current_file.write(file.read(j.chunk_size))
                 except Exception as error:
                     logger.warning(f'Something in writing a file failed: {error!r}')
                     self.o_q.put(WriterTaskResult(success=False, size=j.chunk_size, **j.__dict__))
