@@ -472,7 +472,7 @@ class EPCAPI:
 
         return records
 
-    def search_for_asset_url(self, asset_name: str) -> []:
+    def search_for_asset_url(self, asset_name: str) -> list:
         """
         Find the asset url from the asset name by searching the asset name in the unreal engine marketplace.
         :param asset_name: asset name to search.

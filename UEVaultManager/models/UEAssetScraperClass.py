@@ -260,7 +260,7 @@ class UEAssetScraper:
         else:
             self.logger.error(message)
 
-    def _parse_data(self, json_data: dict = None, owned_assets_only=False) -> []:
+    def _parse_data(self, json_data: dict = None, owned_assets_only=False) -> list:
         """
         Parse on or more asset data from the response of an url query.
         :param json_data: a dictionary containing the data to parse.
@@ -285,7 +285,7 @@ class UEAssetScraper:
             if uid is None:
                 # this should never occur
                 self._log_warning(f'No id found for asset {asset_data}. Passing to next asset')
-                return ''
+                return []
             existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
             asset_existing_data = existing_data.get(uid, None)
             asset_data['asset_url'] = self.core.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))

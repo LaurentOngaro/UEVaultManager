@@ -445,7 +445,7 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
 
-        def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> []:
+        def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> list:
             """
             Updates the data of the asset with the data from the items in the file.
             :param _asset_id: id of the asset to update.
