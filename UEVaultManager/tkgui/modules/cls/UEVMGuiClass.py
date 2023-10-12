@@ -1410,35 +1410,41 @@ class UEVMGui(tk.Tk):
         Set the text to display in the preview frame about the number of rows.
         :param row_number: row number from a datatable. Will be converted into real row index.
         """
+
+        def _add_text(text: str, tag: str = ''):
+            self._frm_control.txt_info.insert(tk.END, text, tag, '\n')
+
         if self._frm_control is None:
             return
+        text_box = self._frm_control.txt_info  # shortcut
+        # we use tags to color the text
+        text_box.tag_configure('blue', foreground='blue')
+        text_box.tag_configure('orange', foreground='orange')
+        text_box.delete('1.0', tk.END)
+
         data_table = self.editable_table  # shortcut
         df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         df_filtered = data_table.get_data(df_type=DataFrameUsed.FILTERED)
         row_count_filtered = len(df_filtered) if df_filtered is not None else 0
         row_count = len(df)
-        asset_info = []
         idx = data_table.get_real_index(row_number)
-        asset_info.append(f'Total rows: {row_count}')
+        _add_text(f'Total rows: {row_count}')
         if row_count_filtered != row_count:
-            asset_info.append(f'Filtered rows: {row_count_filtered} ')
+            _add_text(f'Filtered rows: {row_count_filtered} ')
         if idx >= 0:
             app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
-            asset_info.append(f'Asset id: {app_name}')
-            asset_info.append(f'Row Index: {idx}')
+            _add_text(f'Asset id: {app_name}')
+            _add_text(f'Row Index: {idx}')
             size = self.core.uevmlfs.get_asset_size(app_name)
             if size is not None and size > 0:
-                asset_info.append(f'Asset size: {gui_fn.format_size(size)}')
+                _add_text(f'Asset size: {gui_fn.format_size(size)}', 'orange')
             else:
-                asset_info.append(f'Asset size: Not Get Yet')
+                _add_text(f'Asset size: Not Get Yet')
             downloaded_size = data_table.get_cell(row_number, data_table.get_col_index('Downloaded size'))
             if downloaded_size:
-                asset_info.append('IN VAULT CACHE')
-
+                _add_text('in Vault Cache or Local asset', 'blue')
         else:
-            asset_info.append('No Row selected')
-        self._frm_control.txt_info.delete('1.0', tk.END)
-        self._frm_control.txt_info.insert('1.0', '\n'.join(asset_info))
+            _add_text('No Row selected', 'orange')
 
     def reload_data(self) -> None:
         """
