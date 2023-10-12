@@ -650,7 +650,7 @@ class EditableTable(Table):
             pos = column_infos_len
             for col in df.columns:
                 if col not in column_infos:
-                    column_infos[col] = {'width': 2, 'pos': pos}
+                    column_infos[str(col)] = {'width': 2, 'pos': pos}
                     pos += 1
 
             # reordering columns
@@ -1219,6 +1219,7 @@ class EditableTable(Table):
         self.color_cells_if_not(col_names=['Status'], color='darkgrey', value_to_check='ACTIVE')
         self.color_rows_if(col_name_to_check='Status', color='darkgrey', value_to_check='SUNSET')
         self.color_rows_if(col_name_to_check='Obsolete', color='dimgrey', value_to_check=True)
+        self.color_cells_if_not(col_names=['Downloaded size'], color='palegreen', value_to_check='')
         self.redraw()
 
     def handle_left_click(self, event) -> None:
