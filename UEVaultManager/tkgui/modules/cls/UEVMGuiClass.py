@@ -1078,6 +1078,7 @@ class UEVMGui(tk.Tk):
         pw.update()
         data_table.is_scanning = False
         data_table.update(update_format=True, update_filters=True)
+        data_table.update_col_infos()
         gui_f.close_progress(self)
 
         if invalid_folders:
