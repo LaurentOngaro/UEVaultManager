@@ -1021,11 +1021,13 @@ class UEVMGui(tk.Tk):
             )
             row_index = -1
             text = f'Checking {name}'
+            # check if the row already exists
             try:
-                # get the indexes if value already exists in column 'Origin' for a pandastable
+                # we try to get the indexes if value already exists in column 'Origin' for a pandastable
                 rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
                 row_indexes = rows_serie.index  # returns a list of indexes. It should contain only 1 value
                 if not row_indexes.empty:
+                    # FOUND, we update the row
                     row_index = row_indexes[0]
                     index_copy = data.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
                     old_name = data.loc[index_copy, 'App name']
@@ -1039,13 +1041,15 @@ class UEVMGui(tk.Tk):
                 pw.set_text(text)
                 continue
             if row_index == -1:
-                # row_index = 0  # added at the start of the table. As it, the index is always known
+                # NOT FOUND, we add a new row
                 _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
                 text = f'Adding {name} at row {row_index}'
                 self.logger.info(f"{text} with path {content['path']}")
                 row_added += 1
+
             if not pw.update_and_continue(increment=1, text=text):
                 break
+            # set the data the must be kept after the scraping
             forced_data = {
                 # 'category': content['asset_type'].category_name,
                 'origin': content['path'],
@@ -1061,7 +1065,7 @@ class UEVMGui(tk.Tk):
                 try:
                     self.scrap_row(
                         marketplace_url=marketplace_url, row_index=row_index, forced_data=forced_data, show_message=False, update_dataframe=False
-                    )
+                    )  # call update_row() inside
                 except ReadTimeout as error:
                     self.add_error(error)
                     gui_f.box_message(
@@ -1197,6 +1201,7 @@ class UEVMGui(tk.Tk):
                     return
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data is not None:
+                    # TODO: check for existing asset with the same id and slug
                     data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                     if show_message and row_count == 1:
                         gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
