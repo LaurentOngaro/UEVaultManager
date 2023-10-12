@@ -1428,9 +1428,6 @@ class UEVMGui(tk.Tk):
         row_count_filtered = len(df_filtered) if df_filtered is not None else 0
         row_count = len(df)
         idx = data_table.get_real_index(row_number)
-        _add_text(f'Total rows: {row_count}')
-        if row_count_filtered != row_count:
-            _add_text(f'Filtered rows: {row_count_filtered} ')
         if idx >= 0:
             app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
             _add_text(f'Asset id: {app_name}')
@@ -1444,7 +1441,10 @@ class UEVMGui(tk.Tk):
             if downloaded_size:
                 _add_text('in Vault Cache or Local asset', 'blue')
         else:
-            _add_text('No Row selected', 'orange')
+            _add_text('Place the cursor on a row for info', 'orange')
+        _add_text(f'Total rows: {row_count}')
+        if row_count_filtered != row_count:
+            _add_text(f'Filtered rows: {row_count_filtered} ')
 
     def reload_data(self) -> None:
         """
