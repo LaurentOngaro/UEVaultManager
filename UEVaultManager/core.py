@@ -630,14 +630,12 @@ class AppCore:
 
         fetch_list = {}
         assets_bypassed = {}
-        assets = {}
-
-        # loop through assets items to check for if they are for ue or not
         valid_items = []
         bypass_count = 0
         self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
         if gui_g.progress_window_ref is not None:
             gui_g.progress_window_ref.reset(new_value=0, new_text="Indexing assets...", new_max_value=len(assets.items()))
+        # loop through assets items to check for if they are for ue or not
         # Note: we sort by reverse, as it the most recent version of an asset will be listed first
         for app_name, app_assets in sorted(assets.items(), reverse=True):
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):

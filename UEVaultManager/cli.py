@@ -1414,11 +1414,11 @@ class UEVaultManagerCLI:
                 sub_title=sub_title,
                 json_data=releases,
                 set_value_func=self.set_release_id,
-                default_value=-1
+                default_value=''
             )
             make_modal(cw)
             # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
-            if self.release_id is not None:
+            if self.release_id:
                 try:
                     release_selected = releases[self.release_id]
                 except (IndexError, KeyError):

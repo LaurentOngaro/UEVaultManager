@@ -141,8 +141,8 @@ class UEVMGui(tk.Tk):
         if data_source_type == DataSourceType.SQLITE:
             # update the installed folder field in database from the installed_assets json file
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
-            db_handler = UEAssetDbHandler(database_name=data_source)
-            if db_handler is not None:
+            db_handler = UEAssetDbHandler(database_name=data_source)  # we need it BEFORE CREATING the editable_table and use its db_handler property
+            if db_handler:
                 merged_installed_folders = {}
                 # get all installed folders for a given catalog_item_id
                 for app_name, asset in installed_assets_json.items():
@@ -381,11 +381,12 @@ class UEVMGui(tk.Tk):
         asset_id = asset_id or self.get_asset_id()
         data_table = self.editable_table
         db_handler = data_table.db_handler
-        installed_folders = db_handler.get_installed_folders(asset_id)
-        col_index = data_table.get_col_index('Installed folders')
-        if data_table.update_cell(row_index, col_index, installed_folders):
-            data_table.update()  # because the "installed folder" field changed
-        data_table.update_quick_edit(data_table.get_selected_row_fixed())
+        if db_handler:
+            installed_folders = db_handler.get_installed_folders(asset_id)
+            col_index = data_table.get_col_index('Installed folders')
+            if data_table.update_cell(row_index, col_index, installed_folders):
+                data_table.update()  # because the "installed folder" field changed
+            data_table.update_quick_edit(data_table.get_selected_row_fixed())
 
     def on_key_press(self, event):
         """
@@ -1670,8 +1671,9 @@ class UEVMGui(tk.Tk):
             if asset_installed:
                 folders_to_remove = asset_installed.installed_folders
                 self.core.uevmlfs.remove_installed_asset(asset_id)
-                db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
-                if db_handler is not None:
+                # db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source) # do not create one if the editable table is not a database
+                db_handler = self.editable_table.db_handler
+                if db_handler:
                     # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
                     catalog_item_id = asset_installed.catalog_item_id
                     db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_remove)
@@ -1743,9 +1745,9 @@ class UEVMGui(tk.Tk):
                 else:
                     self.core.uevmlfs.set_installed_asset(asset_installed)  # will also set the installed folders without merging values
                     self.core.uevmlfs.save_installed_assets()
-
-                db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
-                if db_handler is not None:
+                # db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source) # do not create one if the editable table is not a database
+                db_handler = self.editable_table.db_handler
+                if db_handler:
                     # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
                     catalog_item_id = asset_installed.catalog_item_id
                     db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=[folder_selected])
