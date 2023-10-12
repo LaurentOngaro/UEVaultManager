@@ -55,7 +55,7 @@ Usage
 
 
   Command: cleanup
-    usage: legendary cleanup [-h] [--delete-metadata] [--delete-extra-data] [--delete-scraping-data]
+    usage: UEVaultManager cleanup [-h] [--delete-metadata] [--delete-extra-data] [--delete-scraping-data]
 
     optional arguments:
       -h, --help                  Show this help message and exit

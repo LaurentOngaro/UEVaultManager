@@ -1094,7 +1094,7 @@ class AppCore:
         base_urls = base_asset.base_urls
 
         # The EGS client uses plaintext HTTP by default for the purposes of enabling simple DNS based
-        # CDN redirection to a (local) cache. In Legendary this will be a config option.
+        # CDN redirection to a (local) cache.
         disable_https = disable_https or self.uevmlfs.config.getboolean('UEVaultManager', 'disable_https', fallback=False)
 
         if override_manifest:

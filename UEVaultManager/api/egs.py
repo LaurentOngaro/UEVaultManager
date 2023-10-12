@@ -568,7 +568,7 @@ class EPCAPI:
         discount_price = not_found_price
         search_for_price = True
         # owned = False
-        owned = True  # all the assets get with the legendary method are owned. No need to check. Could create incoherent info if parsing fails
+        owned = True  # all the assets get with the "old" (not the EPG API) method are owned. No need to check. Could create incoherent info if parsing fails
         owned_elt = soup_logged.find('div', class_='purchase')
         if owned_elt is not None:
             if 'Free' in owned_elt.getText():

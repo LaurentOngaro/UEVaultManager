@@ -177,7 +177,7 @@ class UEAssetScraper:
     @staticmethod
     def json_data_mapping(data_from_egs_format: dict) -> dict:
         """
-        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary
+        Convert json data from EGS format (NEW) to UEVM format (OLD , ie not using the EGS API)
         :param data_from_egs_format: json data from EGS format (NEW)
         :return: json data in UEVM format (OLD)
         """

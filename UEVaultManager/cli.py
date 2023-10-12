@@ -252,7 +252,7 @@ class UEVaultManagerCLI:
         :return: (asset_id, dict containing all the data for an asset).
 
         Notes:
-            This method is only used when getting OWNED assets data with the "old" method used by legendary
+            This method is only used when getting OWNED assets data with the "OLD" method (not using EGS API)
         """
         record = {}
         metadata = item.metadata
@@ -1385,7 +1385,7 @@ class UEVaultManagerCLI:
             )
             return False
 
-        # we use the "old" method (i.e. legendary way) to get the Asset, because we need to access to the metadata and its "base_urls"
+        # we use the "OLD" method (not using EGS API) to get the Asset, because we need to access to the metadata and its "base_urls"
         # that is not available in the "new" method (i.e. new API way)
         # Anyway, we can only install asset we own, so the "old" method is enough
         asset = self.core.get_item(args.app_name, update_meta=args.force_refresh)
