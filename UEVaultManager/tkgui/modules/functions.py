@@ -330,7 +330,8 @@ def show_progress(
     quit_on_close: bool = False,
     keep_existing: bool = False,
     function: callable = None,
-    function_parameters: dict = None
+    function_parameters: dict = None,
+    force_new_window: bool = False
 ) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
@@ -345,17 +346,26 @@ def show_progress(
     :param keep_existing: whether to keep the existing content when adding a new one.
     :param function: the function to execute.
     :param function_parameters: the parameters of the function.
+    :param force_new_window: whether to force the creation of a new progress window.
     :return: the progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
+    pw = None
     root = get_tk_root(parent)
+    create_a_new_progress_window = force_new_window
     if not root:
         return None
     try:
         # check if a progress window already exists
         pw = root.progress_window
-        pw.set_activation(False)  # test if the window is still active
+        if force_new_window:
+            pw.close_window(True)
+        else:
+            pw.update()  # a call to test if the window is still active
     except (tk.TclError, AttributeError):
+        create_a_new_progress_window = True
+
+    if create_a_new_progress_window:
         pw = ProgressWindow(
             title=gui_g.s.app_title,
             parent=parent,
@@ -370,12 +380,16 @@ def show_progress(
             function_parameters=function_parameters
         )
         root.progress_window = pw
-    if pw:
+    try:
+        # here the pw could have already been close if it was modal or using thhreads
         pw.set_activation(False)
         if keep_existing:
             text = pw.get_text() + '\n' + text
         pw.set_text(text)
         pw.update()
+    except (tk.TclError, AttributeError):
+        pw = None
+        gui_g.progress_window_ref = None
     return pw
 
 

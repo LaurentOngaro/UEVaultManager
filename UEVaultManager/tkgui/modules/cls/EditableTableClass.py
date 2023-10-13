@@ -1008,7 +1008,7 @@ class EditableTable(Table):
                 gui_f.from_cli_only_message()
                 return False
             else:
-                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
+                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args, downloaded_data)
                 self.current_page = 1
                 gui_f.show_progress(self, 'Rebuilding Data from file...')
                 df_loaded = self.read_data()
@@ -1101,7 +1101,7 @@ class EditableTable(Table):
                 clrs = pd.Series(clrs, index=df.index)
                 rc = self.rowcolors
                 rc[col_name] = clrs
-            except (KeyError, ValueError) as error:
+            except (KeyError, ValueError, TypeError) as error:
                 self.add_error(error)
                 self.logger.debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
                 continue

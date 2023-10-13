@@ -77,13 +77,14 @@ def init_gui_args(args, additional_args=None) -> None:
     gui_g.UEVM_cli_args.copy_from(temp_dict)
 
 
-def init_progress_window(text: str, args, logger=None, callback: callable = None) -> (bool, ProgressWindow):
+def init_progress_window(text: str, args, logger=None, callback: callable = None,force_new_window=False) -> (bool, ProgressWindow):
     """
     Initialize the progress window.
     :param text: text to display in the progress window.
     :param args: args of the command line.
     :param logger: logger to use.
     :param callback: callback function to call while progress updating.
+    :param force_new_window: whether we force the creation of a new window.
     :return: (True if the UEVMGui window already existed | False, ProgressWindow).
     """
     gui_g.UEVM_log_ref = logger
@@ -104,7 +105,8 @@ def init_progress_window(text: str, args, logger=None, callback: callable = None
         function_parameters={
             'filter_category': gui_g.UEVM_filter_category,
             'force_refresh': force_refresh,
-        }
+        },
+        force_new_window=force_new_window
     )
     return uewm_gui_exists, pw
 
@@ -258,9 +260,10 @@ class UEVaultManagerCLI:
         metadata = item.metadata
         uid = metadata['id']
         category = metadata['categories'][0]['path']
+        release_info = metadata['releaseInfo']
         separator = ','
         try:
-            tmp_list = [separator.join(item.get('compatibleApps')) for item in metadata['releaseInfo']]
+            tmp_list = [separator.join(item.get('compatibleApps')) for item in release_info]
             compatible_versions = separator.join(tmp_list)
         except TypeError as error:
             self.logger.warning(f'Error getting compatibleApps {item.app_name} : {error!r}')
@@ -279,7 +282,12 @@ class UEVaultManagerCLI:
         if extra_data is None:
             extra_data = create_empty_assets_extra(item.app_name)
         origin = 'Marketplace'  # by default the asset are from the "MarketPlace"
-        asset_url = extra_data.get('asset_url', no_text_data)
+        asset_url = extra_data.get('asset_url', '')
+        if asset_url:
+            url_slug = asset_url.split('/')[-1]
+        else:
+            asset_url = no_text_data
+            url_slug = no_text_data
         review = extra_data.get('review', no_int_data)
         price = extra_data.get('price', no_float_data)
         discount_price = extra_data.get('discount_price', no_float_data)
@@ -293,7 +301,7 @@ class UEVaultManagerCLI:
         obsolete = is_asset_obsolete(supported_versions, self.core.engine_version_for_obsolete_assets)
         try:
             values = (
-                # be ins the same order as csv_sql_fields keys, with explufind the SQL_ONLY fields
+                # be in the same order as csv_sql_fields keys, with excludind the SQL_ONLY and ASSET_ONLY fields
                 asset_id  # 'asset_id'
                 , item.app_name  # 'App name'
                 , item.app_title  # 'App title'
@@ -330,6 +338,9 @@ class UEVaultManagerCLI:
                 , metadata['lastModifiedDate']  # 'Update date'
                 , item.app_version('Windows')  # 'UE version'
                 , uid  # 'Uid'
+                , url_slug  # 'urlSlug'
+                , release_info  # 'Release info'
+                , item.size  # 'Downloaded size'
             )
             record = dict(zip(get_csv_field_name_list(), values))
         except TypeError:
@@ -439,10 +450,11 @@ class UEVaultManagerCLI:
         if not uewm_gui_exists:
             gui_g.UEVM_gui_ref.mainloop()
 
-    def list_assets(self, args) -> None:
+    def list_assets(self, args, downloaded_data: dict = None) -> None:
         """
         List assets in the vault.
         :param args: options passed to the command.
+        :param downloaded_data: the downloaded data from the Vault Cache folder content.
         """
 
         def update_and_merge_csv_record_data(_asset_id: str, _asset_data: {}, _items_in_file, _no_data_value) -> list:
@@ -588,12 +600,15 @@ class UEVaultManagerCLI:
         gui_g.progress_window_ref = None
         pw = None
         if UEVaultManagerCLI.is_gui:
-            uewm_gui_exists, pw = init_progress_window(text='Updating Assets List', args=args, logger=self.logger, callback=self.core.get_asset_list)
+            uewm_gui_exists, pw = init_progress_window(text='Updating Assets List', args=args, logger=self.logger, callback=self.core.get_asset_list,force_new_window=True)
+            # pw.start_execution()
             if uewm_gui_exists:
                 # if the main gui is running, we already have a tk.mainloop running
-                # we need to constantly update the progress bar
+                # create an infinite loop to wait foor the end of the pw calling the callback (self.core.get_asset_list)
                 while not pw.must_end:
+                    # we need to constantly update the progress bar
                     pw.update()
+                pass
             else:
                 # if the main gui is not running, we need to start a tk.mainloop
                 pw.mainloop()
@@ -642,6 +657,14 @@ class UEVaultManagerCLI:
                 # asset_infos is None or has no 'Windows' key
                 asset_id = item.app_title
 
+                # Update the downloaded size for the assets in the table using the downloaded_data (from the Vault Cache folder content)
+                if downloaded_data:
+                    asset_data = downloaded_data.get(asset_id, {})
+                    try:
+                        size = int(asset_data['size'])
+                        item.size = gui_fn.format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
+                    except KeyError:
+                        pass
             if assets_to_output.get(asset_id):
                 self.logger.debug(f'Asset {asset_id} already present in the list (usually with another ue version)')
             else:
@@ -1832,7 +1855,10 @@ def main():
     )
     clean_parser.add_argument(
         '-cc,'
-        '--delete-cache-data', dest='delete_cache_data', action='store_true', help='Also delete image asset previews. They are usefull and should be kept. They are kept by default'
+        '--delete-cache-data',
+        dest='delete_cache_data',
+        action='store_true',
+        help='Also delete image asset previews. They are usefull and should be kept. They are kept by default'
     )
     # noinspection DuplicatedCode
     clean_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')

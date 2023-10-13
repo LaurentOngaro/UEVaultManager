@@ -68,6 +68,7 @@ class Asset:
     asset_infos: Dict[str, AssetBase] = field(default_factory=dict)
     base_urls: List[str] = field(default_factory=list)
     metadata: Dict = field(default_factory=dict)
+    size: str = ''  # only used when asset when scanning for asset in File Mode. Will only be set when the cli.list_assets() method is called.
 
     def app_version(self, platform: str = 'Windows'):
         """
