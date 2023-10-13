@@ -121,12 +121,12 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.FLOAT
     },
-    # ## User Fields
     'Old price': {
         'sql_name': 'old_price',
         'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.FLOAT
     },
+    # ## User Fields
     'Comment': {
         'sql_name': 'comment',
         'state': CSVFieldState.USER,
