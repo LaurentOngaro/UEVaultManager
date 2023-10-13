@@ -644,23 +644,40 @@ class EditableTable(Table):
             if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
                 self.logger.info(f'Column "{col}" is in the datatable BUT not in column_infos.')
         try:
-            # add to column_infos all the colums in the datatable that are not in column_infos, at the end, with a width of 2
+            # Add columns to column_infos that are not already present, with a width of 2
             pos = column_infos_len
             for col in df.columns:
                 if col not in column_infos:
                     column_infos[str(col)] = {'width': 2, 'pos': pos}
                     pos += 1
 
-            # reordering columns
-            first_value = next(iter(column_infos.values()))
-            if first_value.get('pos', None) is None:
-                # old format without the 'p' key (as position
+            # Update positions and handle hidden columns
+            max_pos = column_infos_len
+            for col, info in column_infos.items():
+                pos = info['pos']
+                width = info['width']
+                if pos > max_pos:
+                    max_pos = pos
+                elif pos < 0 or width == 2:
+                    max_pos += 1
+                    info['pos'] = max_pos
+
+            # Reorder columns based on position
+            if 'pos' not in column_infos[next(iter(column_infos))]:
+                # Old format without the 'pos' key
                 keys_ordered = column_infos.keys()
             else:
+                # Sort by position
                 sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
-                # save the new column_infos in the config file
+                # Set new positions
+                for i, (col, info) in enumerate(sorted_cols_by_pos.items()):
+                    info['pos'] = i
+                # Save the new column_infos in the config file
                 gui_g.s.column_infos = sorted_cols_by_pos
                 keys_ordered = sorted_cols_by_pos.keys()
+
+            # Reorder columns
+
             # reorder columns
             df = df.reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.UNFILTERED)
