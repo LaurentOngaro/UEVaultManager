@@ -589,7 +589,6 @@ class UEVaultManagerCLI:
         pw = None
         if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, pw = init_progress_window(text='Updating Assets List', args=args, logger=self.logger, callback=self.core.get_asset_list)
-            # TODO : issue here no progress bar and stop button
             if uewm_gui_exists:
                 # if the main gui is running, we already have a tk.mainloop running
                 # we need to constantly update the progress bar

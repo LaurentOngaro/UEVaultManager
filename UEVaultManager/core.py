@@ -607,7 +607,15 @@ class AppCore:
         platforms = {'Windows'}
         platforms |= {platform}
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching platforms...", new_max_value=len(platforms))
+            try:
+                gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching platforms...", new_max_value=len(platforms))
+            except (Exception, ) as error:
+                # TODO: - (WTF ?) SOMETIMES, when the command "cli.py list --gui --csv --output K:\UE\UEVM\results\list.csv" is launched by the IDE in DEBUG MODE (F5),
+                #  an exception with message "main thread is not in main loop" is raised. DOES NOT OCCUR when run normally (CTRL+F5)
+                # to avoid future errors, we close the progress window and continue
+                gui_g.progress_window_ref.close_window()
+                gui_g.progress_window_ref = None
+                self.log.info(f'An error occured when trying to reset the progress window.\nIt has been closed and will not be used anymore in that function.\nThis issue occurs when launched with debugging only.\nError message: {error!r}')
         for _platform in platforms:
             self.get_assets(update_assets=update_assets, platform=_platform)
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
