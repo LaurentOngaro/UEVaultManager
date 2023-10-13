@@ -1589,7 +1589,7 @@ class UEVMGui(tk.Tk):
         gui_g.UEVM_cli_args['delete_extra_data'] = choice
         gui_g.UEVM_cli_args['delete_metadata'] = choice
         gui_g.UEVM_cli_args['delete_scraping_data'] = choice
-        gui_g.UEVM_cli_args['delete-cache-data'] = choice
+        gui_g.UEVM_cli_args['delete_cache_data'] = choice
 
         # arguments for help command
         gui_g.UEVM_cli_args['full_help'] = True
