@@ -589,6 +589,7 @@ class UEVaultManagerCLI:
         pw = None
         if UEVaultManagerCLI.is_gui:
             uewm_gui_exists, pw = init_progress_window(text='Updating Assets List', args=args, logger=self.logger, callback=self.core.get_asset_list)
+            # TODO : issue here no progress bar and stop button
             if uewm_gui_exists:
                 # if the main gui is running, we already have a tk.mainloop running
                 # we need to constantly update the progress bar
@@ -1204,9 +1205,10 @@ class UEVaultManagerCLI:
         custom_print(message)
         deleted_size += self.core.uevmlfs.clean_tmp_data()
 
-        message = 'Removing cache data...'
-        custom_print(message)
-        deleted_size += self.core.uevmlfs.clean_cache_data()
+        if args.delete_cache_data:
+            message = 'Removing cache data...'
+            custom_print(message)
+            deleted_size += self.core.uevmlfs.clean_cache_data()
 
         # delete metadata
         if args.delete_scraping_data:
@@ -1815,19 +1817,23 @@ def main():
 
     ######
     clean_parser.add_argument(
-        '-m,'
+        '-cm,'
         '--delete-metadata', dest='delete_metadata', action='store_true', help='Also delete metadata files. They are kept by default'
     )
     clean_parser.add_argument(
-        '-e,'
+        '-ce,'
         '--delete-extra-data', dest='delete_extra_data', action='store_true', help='Also delete extra data files. They are kept by default'
     )
     clean_parser.add_argument(
-        '-s,'
+        '-cs,'
         '--delete-scraping-data',
         dest='delete_scraping_data',
         action='store_true',
         help='Also delete scraping data files. They are kept by default'
+    )
+    clean_parser.add_argument(
+        '-cc,'
+        '--delete-cache-data', dest='delete_cache_data', action='store_true', help='Also delete image asset previews. They are usefull and should be kept. They are kept by default'
     )
     # noinspection DuplicatedCode
     clean_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
