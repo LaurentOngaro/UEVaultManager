@@ -71,7 +71,7 @@ class UEVMLFS:
         self.metadata_folder: str = path_join(self.path, 'metadata')
         self.tmp_folder: str = path_join(self.path, 'tmp')
         self.extra_folder: str = path_join(self.path, 'extra')
-        self.json_files_folder: str = path_join(self.path, 'data')  # folder for json files other than metadata, extra and manifests
+        self.json_files_folder: str = path_join(self.path, 'json')  # folder for json files other than metadata, extra and manifests
 
         # filename for storing the user data (filled by the 'auth' command).
         self.user_data_filename: str = path_join(self.json_files_folder, 'user_data.json')
