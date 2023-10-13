@@ -24,6 +24,7 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult
+from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import get_version_from_path, path_join
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -133,8 +134,12 @@ class UEVMGui(tk.Tk):
 
         frm_content = UEVMGuiContentFrame(self)
         self._frm_content = frm_content
-        self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
         self.releases_choice = {}
+        # get the core instance from the cli application if it exists
+        self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
+        # if the core instance is not set, create a new one
+        if not self.core:
+            self.core = AppCore()
 
         # update the content of the database BEFORE loading the data in the datatable
         # as it, all the formatting and filtering could be done at start with good values
@@ -1201,7 +1206,7 @@ class UEVMGui(tk.Tk):
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 asset_slug_from_row = row_data['Asset slug']
-                if asset_slug_from_url != asset_slug_from_row:
+                if asset_slug_from_row and asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
@@ -1430,6 +1435,8 @@ class UEVMGui(tk.Tk):
         gui_f.update_widgets_in_list(is_owned, 'asset_is_owned')
         gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
+        gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
+        gui_f.update_widgets_in_list(data_table.data_source_type == DataSourceType.SQLITE, 'db_is_available')
 
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)
@@ -1575,10 +1582,14 @@ class UEVMGui(tk.Tk):
         # gui_g.UEVM_cli_args['auth_delete'] = True
 
         # arguments for cleanup command
-        # now set in command options
-        # gui_g.UEVM_cli_args['delete_extra_data'] = True
-        # gui_g.UEVM_cli_args['delete_metadata'] = True
-        # gui_g.UEVM_cli_args['delete_scraping_data'] = True
+        choice = (
+            command_name == 'cleanup' and
+            gui_f.box_yesno('Do you want to delete all the data including metadata, extra data, scraping data and image cache ?')
+        )
+        gui_g.UEVM_cli_args['delete_extra_data'] = choice
+        gui_g.UEVM_cli_args['delete_metadata'] = choice
+        gui_g.UEVM_cli_args['delete_scraping_data'] = choice
+        gui_g.UEVM_cli_args['delete-cache-data'] = choice
 
         # arguments for help command
         gui_g.UEVM_cli_args['full_help'] = True

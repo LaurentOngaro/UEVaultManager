@@ -65,6 +65,10 @@ stated_widgets = {
     'asset_has_url': [],
     # a row is selected and the asset is local
     'asset_added_mannually': [],
+    # the cli object is available
+    'cli_is_available': [],
+    # the database is available
+    'db_is_available': [],
 }
 # incremented each time an image generate a request timeout
 timeout_error_count = 0
