@@ -84,9 +84,9 @@ def todo_message() -> None:
 
 def from_cli_only_message(content='This feature is only accessible') -> None:
     """
-    Display a message box with a message saying that the feature is only accessible when running the application using the UEVM cli command options.
+    Display a message box with a message saying that the feature is only accessible when running the application is launched using the cli.
     """
-    msg = f'{content} when running this application using the UEVM cli command options. Once the UEVaultManager package installed, Type UEVaultManager -h for more help'
+    msg = f'{content} when this application is launched using the UEVM cli edit command.'
     print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
     print(print_msg)
     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
