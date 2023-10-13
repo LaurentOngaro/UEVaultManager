@@ -632,7 +632,7 @@ class EditableTable(Table):
         df = self.get_data(DataFrameUsed.UNFILTERED)
         column_len = len(df.columns)
         diff_len = column_infos_len - column_len
-        if diff_len < 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
+        if diff_len > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
             gui_f.box_message(
                 f'The number of columns in data source ({column_len}) does not match the number of values in "column_infos" from the config file ({column_infos_len}).\nA backup of the current config file has been made.\nNormally, this will be fixed automatically on quit.\nIf not, please check the config file.'
             )
