@@ -1701,7 +1701,7 @@ class UEVMGui(tk.Tk):
         release_info_json = data_table.get_release_info()
         if not release_info_json:
             return
-        release_info = json.loads(release_info_json)
+        release_info = json.dumps(release_info_json)
         self.releases_choice, _ = self.core.uevmlfs.extract_version_from_releases(release_info)
         cw = ChoiceFromListWindow(
             window_title='UEVM: select release',

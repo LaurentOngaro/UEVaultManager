@@ -260,7 +260,7 @@ class UEVaultManagerCLI:
         metadata = item.metadata
         uid = metadata['id']
         category = metadata['categories'][0]['path']
-        release_info = metadata['releaseInfo']
+        release_info = metadata.get('releaseInfo', {})
         separator = ','
         try:
             tmp_list = [separator.join(item.get('compatibleApps')) for item in release_info]
@@ -268,6 +268,7 @@ class UEVaultManagerCLI:
         except TypeError as error:
             self.logger.warning(f'Error getting compatibleApps {item.app_name} : {error!r}')
             compatible_versions = no_text_data
+        release_info = json.dumps(release_info) if release_info else no_text_data
         thumbnail_url = ''
         try:
             thumbnail_url = metadata['keyImages'][2]['url']  # 'Image' with 488 height
