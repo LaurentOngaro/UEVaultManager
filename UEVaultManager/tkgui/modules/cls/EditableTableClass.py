@@ -310,10 +310,10 @@ class EditableTable(Table):
         self._set_with_for_hidden_columns()
         self.redraw()
         # save the new column width in the config file
-        new_columns_infos = gui_g.s.column_infos
+        new_columns_infos = gui_g.s.get_column_infos(self.data_source_type)
         try:
             new_columns_infos[colname]['width'] = width
-            gui_g.s.column_infos = new_columns_infos
+            gui_g.s.set_column_infos(new_columns_infos, self.data_source_type)
             gui_g.s.save_config_file()
         except KeyError:
             pass
@@ -521,7 +521,7 @@ class EditableTable(Table):
         """
         if updated_info is None:
             updated_info = self.get_col_infos()
-        gui_g.s.column_infos = updated_info
+        gui_g.s.set_column_infos(updated_info, self.data_source_type)
         if apply_resize_cols:
             self.resize_columns()
 
@@ -625,7 +625,7 @@ class EditableTable(Table):
         """
         Resize and reorder the columns of the table.
         """
-        column_infos = gui_g.s.column_infos
+        column_infos = gui_g.s.get_column_infos(self.data_source_type)
         column_infos_len = len(column_infos)
         if column_infos_len <= 0:
             return
@@ -651,16 +651,17 @@ class EditableTable(Table):
                     column_infos[str(col)] = {'width': 2, 'pos': pos}
                     pos += 1
 
-            # Update positions and handle hidden columns
+            # Update position for an unordered and hidden columns
             max_pos = column_infos_len
             for col, info in column_infos.items():
                 pos = info['pos']
                 width = info['width']
                 if pos > max_pos:
                     max_pos = pos
-                elif pos < 0 or width == 2:
+                elif pos < 0 or width == 2:  # hidden column
                     max_pos += 1
-                    info['pos'] = max_pos
+                    column_infos[col]['pos'] = max_pos
+            column_infos[gui_g.s.index_copy_col_name] = {'pos': max_pos+1, 'width': 2}  # always put 'Index copy' col at the end
 
             # Reorder columns based on position
             if 'pos' not in column_infos[next(iter(column_infos))]:
@@ -673,10 +674,9 @@ class EditableTable(Table):
                 for i, (col, info) in enumerate(sorted_cols_by_pos.items()):
                     info['pos'] = i
                 # Save the new column_infos in the config file
-                gui_g.s.column_infos = sorted_cols_by_pos
+                gui_g.s.set_column_infos(sorted_cols_by_pos, self.data_source_type)
+                gui_g.s.save_config_file()
                 keys_ordered = sorted_cols_by_pos.keys()
-
-            # Reorder columns
 
             # reorder columns
             df = df.reindex(columns=keys_ordered, fill_value='')

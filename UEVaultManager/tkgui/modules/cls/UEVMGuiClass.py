@@ -556,7 +556,7 @@ class UEVMGui(tk.Tk):
         gui_f.enable_widgets_in_list(widget_list)
         # update the column infos
         columns = self.editable_table.model.df.columns  # df. model checked
-        old_columns_infos = gui_g.s.column_infos
+        old_columns_infos = gui_g.s.get_column_infos(self.data_source_type)
         # reorder column_infos using columns keys
         new_columns_infos = {}
         for i, col in enumerate(columns):
@@ -565,7 +565,7 @@ class UEVMGui(tk.Tk):
                 new_columns_infos[col]['pos'] = i
             except KeyError:
                 pass
-        gui_g.s.column_infos = new_columns_infos
+        gui_g.s.set_column_infos(new_columns_infos, self.data_source_type)
         gui_g.s.save_config_file()
 
     def on_close(self, _event=None) -> None:
@@ -1357,12 +1357,12 @@ class UEVMGui(tk.Tk):
             force_showing = not self._frm_control.winfo_ismapped()
         if force_showing:
             self._frm_control.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self._frm_toolbar.btn_toggle_controls.config(text='Hide Actions')
-            self._frm_toolbar.btn_toggle_options.config(state=tk.DISABLED)
+            self._frm_toolbar.btn_toggle_controls.config(text=' Hide Actions')
+            # self._frm_toolbar.btn_toggle_options.config(state=tk.DISABLED)
         else:
             self._frm_control.pack_forget()
             self._frm_toolbar.btn_toggle_controls.config(text='Show Actions')
-            self._frm_toolbar.btn_toggle_options.config(state=tk.NORMAL)
+            # self._frm_toolbar.btn_toggle_options.config(state=tk.NORMAL)
 
     # noinspection DuplicatedCode
     def toggle_options_panel(self, force_showing: bool = None) -> None:
@@ -1375,12 +1375,12 @@ class UEVMGui(tk.Tk):
             force_showing = not self._frm_option.winfo_ismapped()
         if force_showing:
             self._frm_option.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self._frm_toolbar.btn_toggle_options.config(text='Hide Options')
-            self._frm_toolbar.btn_toggle_controls.config(state=tk.DISABLED)
+            self._frm_toolbar.btn_toggle_options.config(text=' Hide Options')
+            # self._frm_toolbar.btn_toggle_controls.config(state=tk.DISABLED)
         else:
             self._frm_option.pack_forget()
             self._frm_toolbar.btn_toggle_options.config(text='Show Options')
-            self._frm_toolbar.btn_toggle_controls.config(state=tk.NORMAL)
+            # self._frm_toolbar.btn_toggle_controls.config(state=tk.NORMAL)
 
     def update_controls_state(self, update_title=False) -> None:
         """

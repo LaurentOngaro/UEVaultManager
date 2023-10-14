@@ -14,6 +14,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __codename__, __name__, __version__
 from UEVaultManager.lfs.utils import clean_filename, path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
+from UEVaultManager.tkgui.modules.types import DataSourceType
 
 
 def log_info(msg: str) -> None:
@@ -327,16 +328,6 @@ class GUISettings:
         self._set_serialized('minimal_fuzzy_score_by_name', values)
 
     @property
-    def column_infos(self) -> dict:
-        """ Getter for columns infos """
-        return self._get_serialized('column_infos')
-
-    @column_infos.setter
-    def column_infos(self, values: dict):
-        """ Setter for columns infos """
-        self._set_serialized('column_infos', values)
-
-    @property
     def use_threads(self) -> bool:
         """ Getter for use_threads """
         return gui_fn.convert_to_bool(self.config_vars['use_threads'])
@@ -435,6 +426,29 @@ class GUISettings:
     def last_opened_filter(self, value):
         """ Setter for last_opened_filter """
         self.config_vars['last_opened_filter'] = value
+
+    def get_column_infos(self, source_type: DataSourceType = DataSourceType.SQLITE) -> dict:
+        """
+        Get columns infos depending on the datasource type
+        :param source_type:  the data source type
+
+        NOTE:
+        We don't use a @property for this because we need to be able to choose the source_type
+        """
+        var_name = 'column_infos_sqlite' if source_type == DataSourceType.SQLITE else 'column_infos_file'
+        return self._get_serialized(var_name)
+
+    def set_column_infos(self, values: dict, source_type: DataSourceType = DataSourceType.SQLITE):
+        """
+        Set columns infos depending on the datasource type
+        :param values:  the data source type
+        :param source_type:  the data source type
+
+        NOTE:
+        We don't use a @property for this because we need to be able to choose the source_type
+        """
+        var_name = 'column_infos_sqlite' if source_type == DataSourceType.SQLITE else 'column_infos_file'
+        self._set_serialized(var_name, values)
 
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
@@ -547,8 +561,12 @@ class GUISettings:
                 'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
                 'value': 'True'
             },
-            'column_infos': {
-                'comment': 'Infos about columns of the table. Automatically saved on quit. Leave empty for default',
+            'column_infos_sqlite': {
+                'comment': 'Infos about columns of the table in SQLITE mode. Automatically saved on quit. Leave empty for default',
+                'value': ''
+            },
+            'column_infos_file': {
+                'comment': 'Infos about columns of the table in FILE mode. Automatically saved on quit. Leave empty for default',
                 'value': ''
             },
             'testing_switch': {
@@ -625,7 +643,8 @@ class GUISettings:
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
-            'column_infos': self.config.get('UEVaultManager', 'column_infos'),
+            'column_infos_sqlite': self.config.get('UEVaultManager', 'column_infos_sqlite'),
+            'column_infos_file': self.config.get('UEVaultManager', 'column_infos_file'),
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
             'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
             'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),

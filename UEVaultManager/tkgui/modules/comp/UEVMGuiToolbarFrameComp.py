@@ -94,9 +94,10 @@ class UEVMGuiToolbarFrame(ttk.Frame):
 
         lblf_actions = ttk.LabelFrame(self, text='Actions')
         lblf_actions.pack(side=tk.RIGHT, **lblf_def_options)
-        self.btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_panel, state=tk.DISABLED)
+        # self.btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_panel, state=tk.DISABLED)
+        self.btn_toggle_options = ttk.Button(lblf_actions, text='Show Options', command=container.toggle_options_panel)
         self.btn_toggle_options.pack(**pack_def_options, side=tk.LEFT)
-        self.btn_toggle_controls = ttk.Button(lblf_actions, text='Hide Actions', command=container.toggle_actions_panel)
+        self.btn_toggle_controls = ttk.Button(lblf_actions, text=' Hide Actions', command=container.toggle_actions_panel)
         self.btn_toggle_controls.pack(**pack_def_options, side=tk.LEFT)
         # noinspection PyArgumentList
         # (bootstyle is not recognized by PyCharm)
