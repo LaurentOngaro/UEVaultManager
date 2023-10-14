@@ -589,9 +589,9 @@ class UEAssetDbHandler:
                 query += f" WHERE {where_clause}"
             if not gui_g.s.assets_order_col:
                 gui_g.s.assets_order_col = 'date_added_in_db'
-            query += f' ORDER by {gui_g.s.assets_order_col} DESC'
+            query += f" ORDER by {gui_g.s.assets_order_col} DESC"
             if gui_g.s.testing_switch == 1:
-                query += ' LIMIT 3000'
+                query += f" LIMIT {gui_g.s.testing_assets_limit}"
             try:
                 cursor.execute(query)
                 rows = cursor.fetchall()
@@ -1210,7 +1210,7 @@ if __name__ == "__main__":
         print('Assets:', asset_list)
     elif gui_g.s.testing_switch == 1:
         # Create fake assets
-        rows_to_create = 300
+        rows_to_create = gui_g.s.testing_assets_limit
         if not st.clean_data:
             rows_count = asset_handler.get_rows_count()
             print(f'Rows count: {rows_count}')

@@ -99,6 +99,7 @@ class GUISettings:
         self.sqlite_filename: str = path_join(self.scraping_folder, self.default_filename + '.db')
 
         self.app_monitor: int = 1
+        self.testing_assets_limit = 3000  # when testing (ie testing_switch==1) , limit the number of assets to process to this value
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
         self.preview_max_width: int = 150

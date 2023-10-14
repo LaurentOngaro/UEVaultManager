@@ -39,7 +39,7 @@ class UEAS_Settings:
         # disabling threading is used for debugging (fewer exceptions are raised if threads are used)
         threads = 0  # set to 0 to disable threading
         start_row = 15000
-        stop_row = 15000 + ue_asset_per_page
+        stop_row = 15000 + gui_g.s.testing_assets_limit
         clean_db = False
         load_data_from_files = False
     else:
@@ -603,6 +603,10 @@ class UEAssetScraper:
 
                 with concurrent.futures.ThreadPoolExecutor():
                     for future in concurrent.futures.as_completed(futures.values()):
+                        if gui_g.s.testing_switch == 1 and len(self._scraped_data) >= gui_g.s.testing_assets_limit:
+                            # stop the scraping after 3000 assets when testing
+                            stop_executor(futures)
+                            break
                         try:
                             _ = future.result()
                             # print("Result: ", result)
@@ -698,7 +702,7 @@ class UEAssetScraper:
                 self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
                     return self._files_count
-                if gui_g.s.testing_switch == 1 and self._files_count >= 100:
+                if gui_g.s.testing_switch == 1 and self._files_count >= int(gui_g.s.testing_assets_limit/300):
                     break
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self._files_count} files'
         self._log_info(message)

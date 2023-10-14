@@ -435,7 +435,9 @@ class AppCore:
             assets = self.uevmlfs.assets.copy() if self.uevmlfs.assets else {}
 
             assets.update({platform: [AssetBase.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
-
+            if gui_g.s.testing_switch == 1:
+                # get only the first 3000 assets
+                assets[platform] = assets[platform][:gui_g.s.testing_assets_limit]
             # only save (and write to disk) if there were changes
             if self.uevmlfs.assets != assets:
                 self.uevmlfs.assets = assets
@@ -615,7 +617,9 @@ class AppCore:
                 # to avoid future errors, we close the progress window and continue
                 gui_g.progress_window_ref.close_window()
                 gui_g.progress_window_ref = None
-                self.log.info(f'An error occured when trying to reset the progress window.\nIt has been closed and will not be used anymore in that function.\nThis issue occurs when launched with debugging only.\nError message: {error!r}')
+                self.log.info(
+                    f'An error occured when trying to reset the progress window.\nIt has been closed and will not be used anymore in that function.\nThis issue occurs when launched with debugging only.\nError message: {error!r}'
+                )
         for _platform in platforms:
             self.get_assets(update_assets=update_assets, platform=_platform)
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
