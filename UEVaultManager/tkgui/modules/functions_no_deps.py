@@ -440,7 +440,7 @@ def remove_last_suffix(string: str, separator: str = '_') -> str:
 
 def format_size(size: int, precision: int = 1) -> str:
     """
-    Format a size in bytes to a human readable string.
+    Format a size in bytes to a human-readable string.
     :param size: the size to format.
     :param precision: the number of digits after the decimal point.
     :return: the formatted size.

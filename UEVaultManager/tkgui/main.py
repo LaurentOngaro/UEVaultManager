@@ -13,10 +13,10 @@ from UEVaultManager.tkgui.modules.functions import log_error
 from UEVaultManager.tkgui.modules.types import DataSourceType
 
 
-def init_gui(open_mainwindow=True, use_db=False) -> str:
+def init_gui(open_gui_window=True, use_db=False) -> str:
     """
     Main function for the GUI.
-    :param open_mainwindow: whether the main window will be opened (default mode).
+    :param open_gui_window: whether the main window will be opened (default mode).
             Set to False for running the GUI initialization only, useful if called from cli.py.
     :param use_db: whether the database will be used instead of the csv file.
     :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script.
@@ -35,19 +35,19 @@ def init_gui(open_mainwindow=True, use_db=False) -> str:
         if not os.path.isfile(data_source):
             _, data_source = gui_fn.create_empty_file(data_source)
             rebuild = True
-    if open_mainwindow:
-        main_window = UEVMGui(
+    if open_gui_window:
+        gui_windows = UEVMGui(
             title=gui_g.s.app_title_long,
             icon=gui_g.s.app_icon_filename,
             screen_index=0,
             data_source_type=data_source_type,
             data_source=data_source,
-            rebuild_data=rebuild
         )
-        main_window.mainloop()
+        gui_windows.setup(rebuild_data=rebuild)
+        gui_windows.mainloop()
 
     return data_source
 
 
 if __name__ == '__main__':
-    init_gui(open_mainwindow=True, use_db=gui_g.s.testing_switch <= 0)
+    init_gui(open_gui_window=True, use_db=gui_g.s.testing_switch <= 0)

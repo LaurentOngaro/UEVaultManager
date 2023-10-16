@@ -72,267 +72,292 @@ file:
 
 .. code:: python
 
-  csv_sql_fields = {
-      # fields mapping from csv to sql
-      # key: csv field name, value: {sql name, state }
-      # some field are intentionnaly duplicated because
-      #   several CSV fields could come from a same database field
-      #   a csv field with this name must exist to get the value
-      'Asset_id': {
-          'sql_name': 'asset_id',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'App name': {
-          'sql_name': 'title',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'App title': {  # intentionnaly duplicated
-          'sql_name': 'title',
-          'state': FieldState.CSV_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Category': {
-          'sql_name': 'category',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Review': {
-          'sql_name': 'review',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.FLOAT
-      },
-      'Review count': {  # not in "standard/result" csv file
-          'sql_name': 'review_count',
-          'state': FieldState.SQL_ONLY,
-          'field_type': FieldType.INT
-      },
-      'Developer': {
-          'sql_name': 'author',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Description': {
-          'sql_name': 'description',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.TEXT
-      },
-      'Status': {
-          'sql_name': 'status',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Discount price': {
-          'sql_name': 'discount_price',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.FLOAT
-      },
-      'Discount percentage': {
-          'sql_name': 'discount_percentage',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.INT
-      },
-      'Discounted': {
-          'sql_name': 'discounted',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.BOOL
-      },
-      'Is new': {  # not in "standard/result" csv file
-          'sql_name': 'is_new',
-          'state': FieldState.SQL_ONLY,
-          'field_type': FieldType.BOOL
-      },
-      'Free': {  # not in "standard/result" csv file
-          'sql_name': 'free',
-          'state': FieldState.SQL_ONLY,
-          'field_type': FieldType.BOOL
-      },
-      'Can purchase': {  # not in "standard/result" csv file
-          'sql_name': 'can_purchase',
-          'state': FieldState.SQL_ONLY,
-          'field_type': FieldType.BOOL
-      },
-      'Owned': {
-          'sql_name': 'owned',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.BOOL
-      },
-      'Obsolete': {
-          'sql_name': 'obsolete',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.BOOL
-      },
-      'Supported versions': {
-          'sql_name': 'supported_versions',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Grab result': {
-          'sql_name': 'grab_result',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Price': {
-          'sql_name': 'price',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.FLOAT
-      },
-      # ## User Fields
-      'Old price': {
-          'sql_name': 'old_price',
-          'state': FieldState.CHANGED,
-          'field_type': FieldType.FLOAT
-      },
-      'Comment': {
-          'sql_name': 'comment',
-          'state': FieldState.USER,
-          'field_type': FieldType.TEXT
-      },
-      'Stars': {
-          'sql_name': 'stars',
-          'state': FieldState.USER,
-          'field_type': FieldType.INT
-      },
-      'Must buy': {
-          'sql_name': 'must_buy',
-          'state': FieldState.USER,
-          'field_type': FieldType.BOOL
-      },
-      'Test result': {
-          'sql_name': 'test_result',
-          'state': FieldState.USER,
-          'field_type': FieldType.STR
-      },
-      'Installed folders': {
-          'sql_name': 'installed_folders',
-          'state': FieldState.USER,
-          'field_type': FieldType.STR
-      },
-      'Alternative': {
-          'sql_name': 'alternative',
-          'state': FieldState.USER,
-          'field_type': FieldType.STR
-      },
-      'Origin': {
-          'sql_name': 'origin',
-          'state': FieldState.USER,
-          'field_type': FieldType.STR
-      },
-      # ## less important fields
-      'Custom attributes':
-      {  # not in "standard/result" csv file
-          'sql_name': 'custom_attributes',
-          'state': FieldState.SQL_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Page title': {
-          'sql_name': 'page_title',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Image': {
-          'sql_name': 'thumbnail_url',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Url': {
-          'sql_name': 'asset_url',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Compatible versions': {  # not in database
-          'sql_name': None,
-          'state': FieldState.CSV_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Date added': {
-          'sql_name': 'creation_date',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Creation date': {
-          'sql_name': 'update_date',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'Update date': {
-          'sql_name': 'date_added_in_db',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      'UE version': {  # not in database
-          'sql_name': None,
-          'state': FieldState.CSV_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Uid': {
-          'sql_name': 'id',
-          'state': FieldState.NOT_PRESERVED,
-          'field_type': FieldType.STR
-      },
-      # ## UE asset class field only
-      'Namespace': {
-          'sql_name': 'namespace',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Catalog itemid': {
-          'sql_name': 'catalog_item_id',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Asset slug': {
-          'sql_name': 'asset_slug',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'urlSlug': {  # intentionnaly duplicated
-          'sql_name': 'asset_slug',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Currency code': {
-          'sql_name': 'currency_code',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Technical details': {
-          'sql_name': 'technical_details',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Long description': {
-          'sql_name': 'long_description',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.TEXT
-      },
-      'Tags': {
-          'sql_name': 'tags',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Comment rating id': {
-          'sql_name': 'comment_rating_id',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Rating id': {
-          'sql_name': 'rating_id',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-      'Is catalog item': {
-          'sql_name': 'is_catalog_item',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.BOOL
-      },
-      'Thumbnail': {  # intentionnaly duplicated
-          'sql_name': 'thumbnail_url',
-          'state': FieldState.ASSET_ONLY,
-          'field_type': FieldType.STR
-      },
-  }
+ # noinspection GrazieInspection
+csv_sql_fields = {
+    # fields mapping from csv to sql
+    # key: csv field name, value: {sql name, state }
+    # some field are intentionnaly duplicated because
+    #   several CSV fields could come from a same database field
+    #   a csv field with this name must exist to get the value
+    'Asset_id': {
+        'sql_name': 'asset_id',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    'App name': {
+        'sql_name': 'title',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    'App title': {
+        # intentionnaly duplicated
+        'sql_name': 'title',
+        'state': CSVFieldState.CSV_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Category': {
+        'sql_name': 'category',
+        'state': CSVFieldState.CHANGED,
+        'field_type': CSVFieldType.LIST
+    },
+    'Review': {
+        'sql_name': 'review',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.FLOAT
+    },
+    'Review count': {
+        # not in "standard/result" csv file
+        'sql_name': 'review_count',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.INT
+    },
+    'Developer': {
+        'sql_name': 'author',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    'Description': {
+        'sql_name': 'description',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.TEXT
+    },
+    'Status': {
+        'sql_name': 'status',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    'Discount price': {
+        'sql_name': 'discount_price',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.FLOAT
+    },
+    'Discount percentage': {
+        'sql_name': 'discount_percentage',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.INT
+    },
+    'Discounted': {
+        'sql_name': 'discounted',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.BOOL
+    },
+    'Is new': {
+        # not in "standard/result" csv file
+        'sql_name': 'is_new',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.BOOL
+    },
+    'Free': {
+        # not in "standard/result" csv file
+        'sql_name': 'free',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.BOOL
+    },
+    'Can purchase': {
+        # not in "standard/result" csv file
+        'sql_name': 'can_purchase',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.BOOL
+    },
+    'Owned': {
+        'sql_name': 'owned',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.BOOL
+    },
+    'Obsolete': {
+        'sql_name': 'obsolete',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.BOOL
+    },
+    'Supported versions': {
+        'sql_name': 'supported_versions',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    'Grab result': {
+        'sql_name': 'grab_result',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.LIST
+    },
+    'Price': {
+        'sql_name': 'price',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.FLOAT
+    },
+    'Old price': {
+        'sql_name': 'old_price',
+        'state': CSVFieldState.CHANGED,
+        'field_type': CSVFieldType.FLOAT
+    },
+    # ## User Fields
+    'Comment': {
+        'sql_name': 'comment',
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.TEXT
+    },
+    'Stars': {
+        'sql_name': 'stars',
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.INT
+    },
+    'Must buy': {
+        'sql_name': 'must_buy',
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.BOOL
+    },
+    'Test result': {
+        'sql_name': 'test_result',
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.STR
+    },
+    'Installed folders': {
+        'sql_name': 'installed_folders',
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.STR
+    },
+    'Alternative': {
+        'sql_name': 'alternative',
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.STR
+    },
+    'Origin': {
+        'sql_name': 'origin',
+        'state': CSVFieldState.CHANGED,
+        'field_type': CSVFieldType.STR
+    },
+    'Added manually': {
+        'sql_name': 'added_manually',
+        'state': CSVFieldState.USER,
+        'field_type': CSVFieldType.BOOL
+    },
+    # ## less important fields
+    'Custom attributes': {
+        # not in "standard/result" csv file
+        'sql_name': 'custom_attributes',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Page title': {
+        'sql_name': 'page_title',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    'Image': {
+        'sql_name': 'thumbnail_url',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    'Url': {
+        'sql_name': 'asset_url',
+        'state': CSVFieldState.CHANGED,
+        'field_type': CSVFieldType.STR
+    },
+    'Compatible versions': {
+        # not in database
+        'sql_name': None,
+        'state': CSVFieldState.CSV_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Date added': {
+        'sql_name': 'date_added',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.DATETIME
+    },
+    'Creation date': {
+        'sql_name': 'creation_date',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.DATETIME
+    },
+    'Update date': {
+        'sql_name': 'update_date',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.DATETIME
+    },
+    'UE version': {
+        # not in database
+        'sql_name': None,
+        'state': CSVFieldState.CSV_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Uid': {
+        'sql_name': 'id',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    # ## UE asset class field only
+    'Namespace': {
+        'sql_name': 'namespace',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Catalog itemid': {
+        'sql_name': 'catalog_item_id',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Asset slug': {
+        'sql_name': 'asset_slug',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'urlSlug': {
+        # intentionnaly duplicated
+        'sql_name': 'asset_slug',
+        'state': CSVFieldState.CHANGED,
+        'field_type': CSVFieldType.STR
+    },
+    'Currency code': {
+        'sql_name': 'currency_code',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Technical details': {
+        'sql_name': 'technical_details',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Long description': {
+        'sql_name': 'long_description',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.TEXT
+    },
+    'Tags': {
+        'sql_name': 'tags',
+        'state': CSVFieldState.SQL_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Comment rating id': {
+        'sql_name': 'comment_rating_id',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Rating id': {
+        'sql_name': 'rating_id',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Is catalog item': {
+        'sql_name': 'is_catalog_item',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.BOOL
+    },
+    'Thumbnail': {
+        # intentionnaly duplicated
+        'sql_name': 'thumbnail_url',
+        'state': CSVFieldState.ASSET_ONLY,
+        'field_type': CSVFieldType.STR
+    },
+    'Release info': {
+        'sql_name': 'release_info',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+    'Downloaded size': {
+        'sql_name': 'downloaded_size',
+        'state': CSVFieldState.NOT_PRESERVED,
+        'field_type': CSVFieldType.STR
+    },
+}
 
 
 The individual json files
