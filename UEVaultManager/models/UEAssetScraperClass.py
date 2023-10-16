@@ -131,7 +131,7 @@ class UEAssetScraper:
 
         if (assets_per_page > 100) or (assets_per_page < 1):
             self.assets_per_page = 100
-            self._log_error(f'assets_per_page must be between 1 and 100. Set to 100')
+            self._log(f'assets_per_page must be between 1 and 100. Set to 100', 'error')
 
         message = f'UEAssetScraper initialized with max_threads= {max_threads}, start= {start}, stop= {stop}, assets_per_page= {assets_per_page}, sort_by= {sort_by}, sort_order= {sort_order}'
         message += f'\nData will be load from files in {gui_g.s.assets_data_folder}' if self.load_from_files else ''
@@ -139,7 +139,7 @@ class UEAssetScraper:
         message += f'\nOwned Asset Data will be saved in files in {gui_g.s.owned_assets_data_folder}' if self.store_in_files else ''
         message += f'\nData will be saved in database in {self._db_name}' if self.store_in_db else ''
         message += f'\nAsset Ids will be saved in {self._last_run_filename} or in database' if self.store_ids else ''
-        self._log_info(message)
+        self._log(message)
 
     @staticmethod
     def read_json_file(app_name: str, owned_assets_only=False) -> (dict, str):
@@ -217,37 +217,35 @@ class UEAssetScraper:
         }
         return data_to_uevm_format
 
-    def _log_debug(self, message):
-        """ a simple wrapper to use when cli is not initialized"""
-        if gui_g.UEVM_cli_ref is None and self.cli_args.debug:
-            print(f'DEBUG {message}')
-        else:
-            if gui_g.s.testing_switch >= 1:
-                # force printing debug messages when testing
-                self.logger.info(message)
+    def _log(self, message, level: str = 'info'):
+        if level == 'debug':
+            """ a simple wrapper to use when cli is not initialized"""
+            if gui_g.UEVM_cli_ref is None and self.cli_args.debug:
+                print(f'DEBUG {message}')
             else:
-                self.logger.debug(message)
-
-    def _log_info(self, message):
-        """ a simple wrapper to use when cli is not initialized"""
-        if gui_g.UEVM_cli_ref is None:
-            print(f'INFO {message}')
-        else:
-            self.logger.info(message)
-
-    def _log_warning(self, message):
-        """ a simple wrapper to use when cli is not initialized"""
-        if gui_g.UEVM_cli_ref is None:
-            print(f'WARNING {message}')
-        else:
-            self.logger.warning(message)
-
-    def _log_error(self, message):
-        """ a simple wrapper to use when cli is not initialized"""
-        if gui_g.UEVM_cli_ref is None:
-            print(f'ERROR {message}')
-        else:
-            self.logger.error(message)
+                if gui_g.s.testing_switch >= 1:
+                    # force printing debug messages when testing
+                    self.logger.info(message)
+                else:
+                    self.logger.debug(message)
+        elif level == 'info':
+            """ a simple wrapper to use when cli is not initialized"""
+            if gui_g.UEVM_cli_ref is None:
+                print(f'INFO {message}')
+            else:
+                self.logger.info(message)
+        elif level == 'warning':
+            """ a simple wrapper to use when cli is not initialized"""
+            if gui_g.UEVM_cli_ref is None:
+                print(f'WARNING {message}')
+            else:
+                self.logger.warning(message)
+        elif level == 'error':
+            """ a simple wrapper to use when cli is not initialized"""
+            if gui_g.UEVM_cli_ref is None:
+                print(f'ERROR {message}')
+            else:
+                self.logger.error(message)
 
     def _parse_data(self, json_data: dict = None, owned_assets_only=False) -> list:
         """
@@ -269,17 +267,21 @@ class UEAssetScraper:
             assets_data_list = [json_data]
 
         for asset_data in assets_data_list:
+            downloaded_size = gui_g.s.unknown_size  # size will be set later
+
             # -----
             # start similar part as in cli.create_asset_from_data
             # -----
             uid = asset_data.get('id', '')
             if not uid:
                 # this should never occur
-                self._log_warning(f'No id found for current asset. Passing to next asset')
+                self._log('_warning', f'No id found for current asset. Passing to next asset')
                 continue  # DIFF HERE
             # get existing data for this asset
-            existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
-            asset_existing_data = existing_data.get(uid, None)
+            asset_existing_data = {}  # when getting data the "OLD" method, no existing data , because the CSV will be compared after
+            if hasattr(self, 'asset_db_handler'):
+                existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
+                asset_existing_data = existing_data.get(uid, None)
             asset_data['asset_url'] = self.core.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
             categories = asset_data.get('categories', None)
             release_info = asset_data.get('releaseInfo', {})
@@ -309,7 +311,7 @@ class UEAssetScraper:
                             asset_data['thumbnail_url'] = image['url']
                             break
                 except IndexError:
-                    self._log_debug(f'asset {app_name} has no image')
+                    self._log(f'asset {app_name} has no image', 'debug')
             if categories:
                 asset_data['category'] = categories[0].get('name', '') or categories[0].get('path', '') or ''
             seller = asset_data.get('seller', None)
@@ -340,25 +342,30 @@ class UEAssetScraper:
             asset_data['discount_percentage'] = discount_percentage
 
             # set rating
-            try:
-                average_rating = asset_data['rating']['averageRating']
-                rating_total = asset_data['rating']['total']
-            except KeyError:
-                self._log_debug(f'No rating for {asset_data["title"]}')
-                average_rating, rating_total = self.asset_db_handler.get_rating_by_id(uid)
-            asset_data['review'] = average_rating if average_rating else gui_g.no_int_data
-            asset_data['review_count'] = rating_total if rating_total else gui_g.no_int_data  # DIFF HERE
+            average_rating = gui_g.no_int_data
+            rating_total = gui_g.no_int_data
+            if asset_data.get('rating', ''):
+                try:
+                    average_rating = asset_data['rating']['averageRating']
+                    rating_total = asset_data['rating']['total']
+                except KeyError:
+                    self._log(f'No rating for {asset_data["title"]}', 'debug')
+                    # check if self has asset_db_handler
+                    if hasattr(self, 'asset_db_handler'):
+                        average_rating, rating_total = self.asset_db_handler.get_rating_by_id(uid)
+            asset_data['review'] = average_rating
+            asset_data['review_count'] = rating_total
 
             # custom attributes
             asset_data['custom_attributes'] = ''
             try:
-                custom_attributes = asset_data['customAttributes']
-                if custom_attributes != {}:
+                custom_attributes = asset_data.get('customAttributes', '')
+                if isinstance(custom_attributes, dict):
                     # check for "has an external link"
                     custom_attributes = 'external_link:' + custom_attributes['BuyLink']['value'] if custom_attributes.get('BuyLink', '') else ''
                     asset_data['custom_attributes'] = custom_attributes
             except (KeyError, AttributeError):
-                asset_data['custom_attributes'] = ''
+                asset_data['custom_attributes'] = gui_g.no_text_data
 
             # set various fields
             asset_data['page_title'] = asset_data['title']
@@ -366,12 +373,11 @@ class UEAssetScraper:
                 tmp_list = [','.join(item.get('compatibleApps')) for item in release_info]
                 supported_versions = ','.join(tmp_list)
             except TypeError as error:
-                self._log_debug(f'Error getting compatibleApps for asset with uid={uid}: {error!r}')
+                self._log(f'Error getting compatibleApps for asset with uid={uid}: {error!r}', 'debug')
             asset_data['supported_versions'] = supported_versions
             asset_data['origin'] = origin
-            #
             asset_data['update_date'] = date_now
-            # asset_data['creation_date'] = asset_data['creationDate']  # does not exist in when scrapping from marketplace
+            # asset_data['creation_date'] = asset_data['creationDate']  # does not exist when scrapping from marketplace
             # we use the first realase date instead as it exist in both cases
             tmp_date = first_release.get('dateAdded', gui_g.no_text_data) if first_release else gui_g.no_text_data
             tmp_date = convert_to_datetime(tmp_date, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])
@@ -390,8 +396,7 @@ class UEAssetScraper:
             asset_data['old_price'] = old_price if old_price else older_price
             # note: asset_data['tags'] will be converted in ue_asset.init_from_dict(asset_data)
 
-            # the current parsing process does not produce as many error as the previous one
-            # mainly, there is no error during the process
+            # old_grab_result
             old_grab_result = asset_existing_data.get('grab_result', GrabResult.NO_ERROR.name) if asset_existing_data else GrabResult.NO_ERROR.name
             if owned_assets_only and old_grab_result == GrabResult.NO_ERROR.name:
                 # if no error occurs and if we only parse owned assets, the parsed data ARE less complete than the "normal" one
@@ -399,19 +404,19 @@ class UEAssetScraper:
                 grab_result = GrabResult.PARTIAL.name
             asset_data['grab_result'] = grab_result
             # we use copy data for user_fields to preserve user data
-            if asset_existing_data:
+            if asset_existing_data and hasattr(self, 'asset_db_handler'):
                 for field in self.asset_db_handler.user_fields:
                     old_value = asset_existing_data.get(field, None)
                     if old_value:
                         asset_data[field] = old_value
             # installed_folders
-            installed_folders = asset_data.get('installed_folders', '')  # DIFF HERE
+            installed_folders = asset_data.get('installed_folders', '')
             asset_installed = self.core.uevmlfs.get_installed_asset(asset_data['asset_id'])  # from current existing install
             if asset_installed:
                 asset_installed_folders = asset_installed.installed_folders
                 installed_folders = merge_lists_or_strings(installed_folders, asset_installed_folders)
             asset_data['installed_folders'] = installed_folders
-            asset_data['downloaded_size'] = gui_g.s.unknown_size  # size will be set later DIFF HERE
+            asset_data['downloaded_size'] = downloaded_size
 
             # -----
             # end similar part as in cli.create_asset_from_data
@@ -425,12 +430,12 @@ class UEAssetScraper:
             ue_asset.data['tags'] = tags_str
             content.append(ue_asset.data)
             message = f'Asset with uid={uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}'
-            self._log_debug(message)
+            self._log(message, 'debug')
             if self.store_ids:
                 try:
                     self._scraped_ids.append(uid)
                 except (AttributeError, TypeError) as error:
-                    self._log_debug(f'Error when adding uid to self.scraped_ids: {error!r}')
+                    self._log(f'Error when adding uid to self.scraped_ids: {error!r}', 'debug')
         # end for asset_data in json_data['data']['elements']:
         return content
 
@@ -462,7 +467,7 @@ class UEAssetScraper:
             app_id = asset_data['releaseInfo'][0]['appId']
             filename = f'{app_id}.json'
         except (KeyError, IndexError) as error:
-            self._log_warning(f'Error getting appId for asset with id {asset_data["id"]}: {error!r}')
+            self._log(f'Error getting appId for asset with id {asset_data["id"]}: {error!r}', 'warning')
             slug = asset_data.get('urlSlug', None)
             if slug is None:
                 slug = asset_data.get('catalogItemId', create_uid())
@@ -495,7 +500,7 @@ class UEAssetScraper:
             else:
                 url = self.core.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
             self._urls.append(url)
-        self._log_info(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
+        self._log(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
         if save_result:
             self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=owned_assets_only)
 
@@ -509,7 +514,7 @@ class UEAssetScraper:
             return
 
         if not url:
-            self._log_error('No url given to get_data_from_url()')
+            self._log('No url given to get_data_from_url()', 'error')
             return
 
         thread_data = ''
@@ -520,19 +525,19 @@ class UEAssetScraper:
                 thread = current_thread()
                 thread_data = f' ==> By Thread name={thread.name}'
 
-            self._log_info(f'--- START scraping data from {url}{thread_data}')
+            self._log(f'--- START scraping data from {url}{thread_data}')
 
             json_data = self.core.egs.get_json_data_from_url(url)
             if json_data.get('errorCode', '') != '':
-                self._log_error(f'Error getting data from url {url}: {json_data["errorCode"]}')
+                self._log(f'Error getting data from url {url}: {json_data["errorCode"]}', 'error')
                 return
             try:
                 # when multiple assets are returned, the data is in the 'elements' key
                 count = len(json_data['data']['elements'])
-                self._log_info(f'==> parsed url {url}: got a list of {count} assets')
+                self._log(f'==> parsed url {url}: got a list of {count} assets')
             except KeyError:
                 # when only one asset is returned, the data is in the 'data' key
-                self._log_info(f'==> parsed url {url} for one asset')
+                self._log(f'==> parsed url {url} for one asset')
                 json_data['data']['elements'] = [json_data['data']['data']]
 
             if json_data:
@@ -557,7 +562,7 @@ class UEAssetScraper:
                 content = self._parse_data(json_data)
                 self._scraped_data.append(content)
         except Exception as error:
-            self._log_warning(f'Error getting data from url {url}: {error!r}')
+            self._log(f'Error getting data from url {url}: {error!r}', 'warning')
 
     def get_scraped_data(self, owned_assets_only=False) -> None:
         """
@@ -586,7 +591,7 @@ class UEAssetScraper:
             # start_time = time.time()
             # self.get_owned_asset_ids()
             # message = f'It took {(time.time() - start_time):.3f} seconds to get {len(self.owned_asset_ids)} owned asset ids'
-            # self._log_info(message)
+            # self._log(message)
 
             start_time = time.time()
             if not self._urls:
@@ -616,9 +621,9 @@ class UEAssetScraper:
                             _ = future.result()
                             # print("Result: ", result)
                         except Exception as error:
-                            self._log_warning(f'The following error occurs in threading: {error!r}')
+                            self._log(f'The following error occurs in threading: {error!r}', 'warning')
                         if not self.progress_window.update_and_continue(increment=1):
-                            # self._log_info(f'User stop has been pressed. Stopping running threads....')   # will flood console
+                            # self._log(f'User stop has been pressed. Stopping running threads....')   # will flood console
                             stop_executor(futures)
                 self._thread_executor.shutdown(wait=False)
             else:
@@ -628,7 +633,7 @@ class UEAssetScraper:
                 message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self._urls)} urls and store the data in {self._files_count} files'
             else:
                 message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self._urls)} urls'
-            self._log_info(message)
+            self._log(message)
             # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
             self._scraped_data = list(chain.from_iterable(self._scraped_data))
 
@@ -647,7 +652,7 @@ class UEAssetScraper:
             data = self._scraped_data
 
         if not data:
-            self._log_warning('No data to save')
+            self._log('No data to save', 'warning')
             return False
 
         folder = gui_g.s.owned_assets_data_folder if is_owned else gui_g.s.assets_data_folder
@@ -669,10 +674,10 @@ class UEAssetScraper:
                     json.dump(data, file)
                 else:
                     file.write('\n'.join(data))
-            self._log_debug(f'Data saved into {filename}')
+            self._log(f'Data saved into {filename}', 'debug')
             return True
         except PermissionError as error:
-            self._log_warning(f'The following error occurred when saving data into {filename}: {error!r}')
+            self._log(f'The following error occurred when saving data into {filename}: {error!r}', 'warning')
             return False
 
     def load_from_json_files(self, owned_assets_only=False) -> int:
@@ -690,16 +695,16 @@ class UEAssetScraper:
         files = os.listdir(folder)
         files_count = len(files)
         # Note: this data have the same structure as the table last_run inside the method UEAsset.create_tables()
-        self._log_info(f'Loading {files_count} files from {folder}')
+        self._log(f'Loading {files_count} files from {folder}')
         self.progress_window.reset(new_value=0, new_text='Loading asset data from json files', new_max_value=files_count)
         for filename in files:
             if filename.endswith('.json') and filename != self._last_run_filename:
-                # self._log_debug(f'Loading {filename}')
+                # self._log(f'Loading {filename}','debug')
                 with open(path_join(folder, filename), 'r', encoding='utf-8') as file:
                     try:
                         json_data = json.load(file)
                     except json.decoder.JSONDecodeError as error:
-                        self._log_warning(f'The following error occured when loading data from {filename}:{error!r}')
+                        self._log('_warning', f'The following error occured when loading data from {filename}:{error!r}')
                         continue
                     assets_data = self._parse_data(json_data)  # self._parse_data returns a list of assets
                     for asset_data in assets_data:
@@ -710,7 +715,7 @@ class UEAssetScraper:
                 if gui_g.s.testing_switch == 1 and self._files_count >= max(int(gui_g.s.testing_assets_limit / 300), 100):
                     break
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self._files_count} files'
-        self._log_info(message)
+        self._log(message)
 
         # save results in the last_run file
         content = {
@@ -735,7 +740,7 @@ class UEAssetScraper:
         :param save_last_run_file: whether the last_run file is saved.
         """
         if owned_assets_only:
-            self._log_info('Only Owned Assets will be scraped')
+            self._log('Only Owned Assets will be scraped')
 
         self.get_scraped_data(owned_assets_only=owned_assets_only)
         if not self.progress_window.continue_execution:
@@ -762,7 +767,7 @@ class UEAssetScraper:
                 if not self.progress_window.update_and_continue(increment=1):
                     return
             message = f'It took {(time.time() - start_time):.3f} seconds to save the data in {self._files_count} files'
-            self._log_info(message)
+            self._log(message)
 
         # save results in the last_run file
         content['files_count'] = self._files_count
@@ -775,7 +780,7 @@ class UEAssetScraper:
 
         self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=None)
         self._save_in_db(last_run_content=content)
-        self._log_info('data saved')
+        self._log('data saved')
 
     def pop_last_scrapped_data(self) -> []:
         """
