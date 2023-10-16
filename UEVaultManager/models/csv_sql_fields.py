@@ -196,7 +196,7 @@ csv_sql_fields = {
         'field_type': CSVFieldType.STR
     },
     'Date added': {
-        'sql_name': 'date_added_in_db',
+        'sql_name': 'date_added',
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.DATETIME
     },
@@ -442,6 +442,8 @@ def get_converters(csv_field_name: str):
         return [convert_to_float, float]
     if field_type == CSVFieldType.BOOL:
         return [convert_to_bool, bool]
+
+
 # not use full to convert date: Causes issue when loading a filter
 #    if field_type == CSVFieldType.DATETIME:
 #        return [lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])]
@@ -518,19 +520,29 @@ def get_csv_field_name(sql_field_name: str) -> str:
     return result
 
 
-def set_default_values(data: dict) -> dict:
+def set_default_values(data: dict, for_sql: bool = False) -> dict:
     """
     Set default values to a new row.
     :param data: data to set default values to.
+    :param for_sql: flag indicating if the data is for SQL.
     :return: data with default values set.
     """
     uid = create_uid()
-    data['Asset_id'] = gui_g.s.empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
-    data['Image'] = gui_g.s.empty_cell  # avoid displaying image warning on mouse over
-    data['Added Manually'] = True
-    data['Uid'] = uid
-    data['Category'] = UEAssetType.Unknown.category_name
-    data['Grab result'] = GrabResult.INCONSISTANT_DATA.name
+    new_data = {
+        'Asset_id': gui_g.s.empty_row_prefix + uid,
+        'Image': gui_g.s.empty_cell,
+        'Added manually': True,
+        'Uid': uid,
+        'Category': UEAssetType.Unknown.category_name,
+        'Grab result': GrabResult.INCONSISTANT_DATA.name
+    }
+    if for_sql:
+        # replace CSV field names by SQL field names
+        for key, value in new_data.items():
+            sql_key = get_sql_field_name(key)
+            data[sql_key] = value
+    else:
+        data.update(new_data)
     return data
 
 

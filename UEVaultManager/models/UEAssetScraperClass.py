@@ -67,7 +67,6 @@ class UEAssetScraper:
     :param store_ids: a boolean indicating whether to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
     :param use_raw_format: a boolean indicating whether to store the data in a raw format (as returned by the API) or after data have been parsed. Defaults to True.
     :param clean_database: a boolean indicating whether to clean the database before saving the data. Defaults to False.
-    :param engine_version_for_obsolete_assets: a string representing the engine version to use to check if an asset is obsolete.
     :param core: an AppCore object. Defaults to None. If None, a new AppCore object will be created.
     :param progress_window: a ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
     :param cli_args: a CliArgs object. Defaults to None. If None, a new CliArgs object will be created.
@@ -91,7 +90,6 @@ class UEAssetScraper:
         use_raw_format: bool = True,
         load_from_files: bool = False,
         clean_database: bool = False,
-        engine_version_for_obsolete_assets=None,
         core: AppCore = None,
         progress_window=None,  # don't use a typed annotation here to avoid import
         cli_args=None,
@@ -119,15 +117,6 @@ class UEAssetScraper:
         self.use_raw_format: bool = use_raw_format
         self.clean_database: bool = clean_database
         self.cli_args = cli_args
-        # test several ways to get the following value depending on the context
-        # noinspection PyBroadException
-        try:
-            self.engine_version_for_obsolete_assets = (
-                engine_version_for_obsolete_assets or gui_g.UEVM_cli_ref.core.engine_version_for_obsolete_assets or
-                gui_g.s.engine_version_for_obsolete_assets
-            )
-        except Exception:
-            self.engine_version_for_obsolete_assets = None
 
         self.core = AppCore(timeout=timeout) if core is None else core
         self.asset_db_handler = UEAssetDbHandler(self._db_name)
@@ -142,7 +131,7 @@ class UEAssetScraper:
 
         if (assets_per_page > 100) or (assets_per_page < 1):
             self.assets_per_page = 100
-            self.logger.error(f'assets_per_page must be between 1 and 100. Set to 100')
+            self._log_error(f'assets_per_page must be between 1 and 100. Set to 100')
 
         message = f'UEAssetScraper initialized with max_threads= {max_threads}, start= {start}, stop= {stop}, assets_per_page= {assets_per_page}, sort_by= {sort_by}, sort_order= {sort_order}'
         message += f'\nData will be load from files in {gui_g.s.assets_data_folder}' if self.load_from_files else ''
@@ -205,7 +194,7 @@ class UEAssetScraper:
             'base_urls': [],
             'metadata': {
                 'categories': categorie,
-                'creationDate': data_from_egs_format['effectiveDate'],
+                # 'creationDate': data_from_egs_format['effectiveDate'], # use first release instead
                 'description': data_from_egs_format['description'],
                 'developer': data_from_egs_format['seller']['name'],
                 'developerId': data_from_egs_format['seller']['id'],
@@ -216,7 +205,7 @@ class UEAssetScraper:
                 'id': data_from_egs_format['catalogItemId'],
                 # 'itemType': 'DURABLE',
                 'keyImages': data_from_egs_format['keyImages'],
-                'lastModifiedDate': data_from_egs_format['effectiveDate'],
+                # 'lastModifiedDate': data_from_egs_format['effectiveDate'], # use last release instead
                 'longDescription': data_from_egs_format['longDescription'],
                 'namespace': data_from_egs_format['namespace'],
                 'releaseInfo': data_from_egs_format['releaseInfo'],
@@ -269,7 +258,6 @@ class UEAssetScraper:
         """
 
         content = []
-        no_text_data = ''
         if json_data is None:
             return content
         try:
@@ -281,27 +269,29 @@ class UEAssetScraper:
             assets_data_list = [json_data]
 
         for asset_data in assets_data_list:
-            uid = asset_data.get('id', None)
-            if uid is None:
+            # -----
+            # start similar part as in cli.create_asset_from_data
+            # -----
+            uid = asset_data.get('id', '')
+            if not uid:
                 # this should never occur
-                self._log_warning(f'No id found for asset {asset_data}. Passing to next asset')
-                return []
+                self._log_warning(f'No id found for current asset. Passing to next asset')
+                continue  # DIFF HERE
+            # get existing data for this asset
             existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
             asset_existing_data = existing_data.get(uid, None)
             asset_data['asset_url'] = self.core.egs.get_marketplace_product_url(asset_data.get('urlSlug', None))
-            if not uid:
-                continue
-            # self._log_debug(f"uid='{uid}'")  # debug only ex:'c77526fd4365450c9810e198450d2b91'
-
             categories = asset_data.get('categories', None)
             release_info = asset_data.get('releaseInfo', {})
             # convert release_info to a json string
-            asset_data['release_info'] = json.dumps(release_info) if release_info else no_text_data
+            asset_data['release_info'] = json.dumps(release_info) if release_info else gui_g.no_text_data
             latest_release = release_info[-1] if release_info else {}
-            price = 0
-            discount_price = 0
-            discount_percentage = 0
-            supported_versions = no_text_data
+            first_release = release_info[0] if release_info else {}
+            app_name = first_release.get('versionTitle', '')
+            price = gui_g.no_float_data
+            discount_price = gui_g.no_float_data
+            discount_percentage = gui_g.no_int_data
+            supported_versions = gui_g.no_text_data
             origin = 'Marketplace'  # by default when scraped from marketplace
             date_now = datetime.now().strftime(default_datetime_format)
             grab_result = GrabResult.NO_ERROR.name
@@ -309,11 +299,24 @@ class UEAssetScraper:
             # make some calculation with the "raw" data
             # ------------
             # set simple fields
-            asset_data['thumbnail_url'] = asset_data['thumbnail']
-            asset_data['category'] = categories[0]['name'] if categories else ''
-            asset_data['author'] = asset_data['seller']['name']
+            asset_data['thumbnail_url'] = asset_data.get('thumbnail', '')
+            if not asset_data['thumbnail_url']:
+                try:
+                    key_images = asset_data['keyImages']
+                    # search for the image with the key 'Thumbnail'
+                    for image in key_images:
+                        if image['type'] == 'Thumbnail':
+                            asset_data['thumbnail_url'] = image['url']
+                            break
+                except IndexError:
+                    self._log_debug(f'asset {app_name} has no image')
+            if categories:
+                asset_data['category'] = categories[0].get('name', '') or categories[0].get('path', '') or ''
+            seller = asset_data.get('seller', None)
+            author = seller.get('name', '') if seller else asset_data.get('developer', '')
+            asset_data['author'] = author
             try:
-                asset_data['asset_id'] = latest_release['appId']  # latest release
+                asset_data['asset_id'] = latest_release['appId']
             except (KeyError, AttributeError, IndexError):
                 grab_result = GrabResult.NO_APPID.name
                 asset_data['asset_id'] = uid  # that's not the REAL asset_id, we use the uid instead
@@ -330,7 +333,7 @@ class UEAssetScraper:
                 discount_percentage = 100 - int(asset_data['discountPercentage'])
                 # discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int((price-discount_price) / price * 100.0)
 
-            if discount_price == 0:
+            if discount_price == gui_g.no_int_data:
                 discount_price = price
             asset_data['price'] = price
             asset_data['discount_price'] = discount_price
@@ -341,18 +344,17 @@ class UEAssetScraper:
                 average_rating = asset_data['rating']['averageRating']
                 rating_total = asset_data['rating']['total']
             except KeyError:
-                self.logger.debug(f'No rating for {asset_data["title"]}')
+                self._log_debug(f'No rating for {asset_data["title"]}')
                 average_rating, rating_total = self.asset_db_handler.get_rating_by_id(uid)
-            asset_data['review'] = average_rating if average_rating else 0
-            asset_data['review_count'] = rating_total if rating_total else 0
+            asset_data['review'] = average_rating if average_rating else gui_g.no_int_data
+            asset_data['review_count'] = rating_total if rating_total else gui_g.no_int_data  # DIFF HERE
 
             # custom attributes
             asset_data['custom_attributes'] = ''
             try:
                 custom_attributes = asset_data['customAttributes']
                 if custom_attributes != {}:
-                    self._log_debug(f'asset {uid}:custom_attributes= {custom_attributes}')
-                    # has an external link
+                    # check for "has an external link"
                     custom_attributes = 'external_link:' + custom_attributes['BuyLink']['value'] if custom_attributes.get('BuyLink', '') else ''
                     asset_data['custom_attributes'] = custom_attributes
             except (KeyError, AttributeError):
@@ -367,18 +369,24 @@ class UEAssetScraper:
                 self._log_debug(f'Error getting compatibleApps for asset with uid={uid}: {error!r}')
             asset_data['supported_versions'] = supported_versions
             asset_data['origin'] = origin
-
+            #
             asset_data['update_date'] = date_now
-            tmp_date = latest_release.get('dateAdded', no_text_data) if latest_release else no_text_data
+            # asset_data['creation_date'] = asset_data['creationDate']  # does not exist in when scrapping from marketplace
+            # we use the first realase date instead as it exist in both cases
+            tmp_date = first_release.get('dateAdded', gui_g.no_text_data) if first_release else gui_g.no_text_data
             tmp_date = convert_to_datetime(tmp_date, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])
             tmp_date = convert_to_str_datetime(tmp_date, gui_g.s.csv_datetime_format)
             asset_data['creation_date'] = tmp_date
-            tmp_date = asset_existing_data.get('date_added_in_db', None) if asset_existing_data else date_now
-            asset_data['date_added_in_db'] = tmp_date
-
-            asset_data['obsolete'] = is_asset_obsolete(supported_versions, self.engine_version_for_obsolete_assets)
-            old_price = asset_existing_data.get('price', None) if asset_existing_data else 0
-            older_price = asset_existing_data.get('old_price', None) if asset_existing_data else 0
+            asset_data['date_added'] = asset_existing_data.get('date_added', date_now) if asset_existing_data else date_now
+            try:
+                engine_version_for_obsolete_assets = (
+                    gui_g.UEVM_cli_ref.core.engine_version_for_obsolete_assets or gui_g.s.engine_version_for_obsolete_assets
+                )
+            except (Exception, ):
+                engine_version_for_obsolete_assets = None
+            asset_data['obsolete'] = is_asset_obsolete(supported_versions, engine_version_for_obsolete_assets)
+            old_price = asset_existing_data.get('price', gui_g.no_float_data) if asset_existing_data else gui_g.no_float_data
+            older_price = asset_existing_data.get('old_price', gui_g.no_float_data) if asset_existing_data else gui_g.no_float_data
             asset_data['old_price'] = old_price if old_price else older_price
             # note: asset_data['tags'] will be converted in ue_asset.init_from_dict(asset_data)
 
@@ -390,13 +398,6 @@ class UEAssetScraper:
                 # so, we set the grab result to PARTIAL
                 grab_result = GrabResult.PARTIAL.name
             asset_data['grab_result'] = grab_result
-            # not pertinent, kept for compatibility with CSV format. Could be removed later after checking usage
-            # asset_data['app_name'] = asset_data['asset_id']
-            # asset_data['developer'] = asset_data['author']
-            # asset_data['compatible_versions'] = no_text_data
-            # asset_data['ue_version'] = no_text_data
-            # asset_data['uid'] = no_text_data
-
             # we use copy data for user_fields to preserve user data
             if asset_existing_data:
                 for field in self.asset_db_handler.user_fields:
@@ -404,13 +405,17 @@ class UEAssetScraper:
                     if old_value:
                         asset_data[field] = old_value
             # installed_folders
-            installed_folders = asset_data.get('installed_folders', '')  # asset_existing_data
-            asset_installed = self.core.uevmlfs.get_installed_asset(asset_data.get('asset_id', ''))
+            installed_folders = asset_data.get('installed_folders', '')  # DIFF HERE
+            asset_installed = self.core.uevmlfs.get_installed_asset(asset_data['asset_id'])  # from current existing install
             if asset_installed:
                 asset_installed_folders = asset_installed.installed_folders
                 installed_folders = merge_lists_or_strings(installed_folders, asset_installed_folders)
-            # asset_data['installed_folders'] = sorted(installed_folders)  # no sort to keep order of installations
             asset_data['installed_folders'] = installed_folders
+            asset_data['downloaded_size'] = gui_g.s.unknown_size  # size will be set later DIFF HERE
+
+            # -----
+            # end similar part as in cli.create_asset_from_data
+            # -----
 
             # we use an UEAsset object to store the data and create a valid dict from it
             ue_asset = UEAsset()
@@ -457,7 +462,7 @@ class UEAssetScraper:
             app_id = asset_data['releaseInfo'][0]['appId']
             filename = f'{app_id}.json'
         except (KeyError, IndexError) as error:
-            self.logger.warning(f'Error getting appId for asset with id {asset_data["id"]}: {error!r}')
+            self._log_warning(f'Error getting appId for asset with id {asset_data["id"]}: {error!r}')
             slug = asset_data.get('urlSlug', None)
             if slug is None:
                 slug = asset_data.get('catalogItemId', create_uid())
@@ -702,7 +707,7 @@ class UEAssetScraper:
                 self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):
                     return self._files_count
-                if gui_g.s.testing_switch == 1 and self._files_count >= int(gui_g.s.testing_assets_limit/300):
+                if gui_g.s.testing_switch == 1 and self._files_count >= max(int(gui_g.s.testing_assets_limit / 300), 100):
                     break
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self._files_count} files'
         self._log_info(message)

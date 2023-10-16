@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import shutil
-import sys
 import time
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
@@ -38,7 +37,7 @@ from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResu
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
-from UEVaultManager.tkgui.modules.functions import box_message
+from UEVaultManager.tkgui.modules.functions import box_message, exit_and_clean_windows
 from UEVaultManager.tkgui.modules.functions_no_deps import format_size
 from UEVaultManager.utils.cli import check_and_create_file, check_and_create_folder, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
@@ -431,17 +430,14 @@ class AppCore:
             # if not logged in, return empty list
             if not self.egs.user:
                 return []
-
             assets = self.uevmlfs.assets.copy() if self.uevmlfs.assets else {}
-
             assets.update({platform: [AssetBase.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
             if gui_g.s.testing_switch == 1:
-                # get only the first 3000 assets
-                assets[platform] = assets[platform][:gui_g.s.testing_assets_limit]
+                # get only the last assets, bypassing the first because they are not ue asset but "others item"
+                assets[platform] = assets[platform][-gui_g.s.testing_assets_limit:]
             # only save (and write to disk) if there were changes
             if self.uevmlfs.assets != assets:
                 self.uevmlfs.assets = assets
-
         assets = self.uevmlfs.assets.get(platform, None)
         return assets
 
@@ -615,13 +611,23 @@ class AppCore:
                 # TODO: - (WTF ?) SOMETIMES, when the command "cli.py list --gui --csv --output K:\UE\UEVM\results\list.csv" is launched by the IDE in DEBUG MODE (F5),
                 #  an exception with message "main thread is not in main loop" is raised. DOES NOT OCCUR when run normally (CTRL+F5)
                 # to avoid future errors, we close the progress window and continue
-                gui_g.progress_window_ref.close_window()
-                gui_g.progress_window_ref = None
                 self.log.info(
-                    f'An error occured when trying to reset the progress window.\nIt has been closed and will not be used anymore in that function.\nThis issue occurs when launched with debugging only.\nError message: {error!r}'
+                    f'An error occured when trying to reset the progress window.\nIt will not be used anymore in that function.\nThis issue occurs when launched with debugging only.\nError message: {error!r}'
                 )
+                if 'main thread is not in main loop' not in str(error):
+                    # will produce the same exception twice, so we check for the message to avoid it
+                    gui_g.progress_window_ref.close_window()
+                else:
+                    gui_g.progress_window_ref.quit()
+                gui_g.progress_window_ref = None
         for _platform in platforms:
-            self.get_assets(update_assets=update_assets, platform=_platform)
+            try:
+                # getting the user assets fron EGS
+                self.get_assets(update_assets=update_assets, platform=_platform)
+            except (Exception,) as error:
+                # could raide a timeout error
+                self.log.warning(f'Fetching assets for {_platform} failed: {error!r}')
+                return []
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return []
 
@@ -1268,7 +1274,7 @@ class AppCore:
         """
         self.uevmlfs.save_config()
         logging.shutdown()
-        sys.exit(code)
+        exit_and_clean_windows(code)
 
     def open_manifest_file(self, file_path: str) -> dict:
         """

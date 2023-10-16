@@ -421,7 +421,7 @@ class UEAssetDbHandler:
                     'supported_versions': 'TEXT',
                     'creation_date': 'DATETIME',
                     'update_date': 'DATETIME',
-                    'date_added_in_db': 'DATETIME',
+                    'date_added': 'DATETIME',
                     'grab_result': 'TEXT',
                     'old_price': 'REAL'
                 }
@@ -533,10 +533,10 @@ class UEAssetDbHandler:
             for asset in assets:
                 # make some conversion before saving the asset
                 asset['update_date'] = str_today
-                asset['creation_date'] = convert_to_str_datetime(value=asset['creation_date'], date_format=default_datetime_format)
-                asset['date_added_in_db'] = convert_to_str_datetime(
-                    value=asset['date_added_in_db'], date_format=default_datetime_format, default=str_today
-                )
+                asset['creation_date'] = convert_to_str_datetime(
+                    value=asset['creation_date'], date_format=default_datetime_format
+                ) if 'creation_date' in assets else str_today
+                asset['date_added'] = convert_to_str_datetime(value=asset['date_added'], date_format=default_datetime_format) if 'date_added' in assets else str_today
                 # converting lists to strings
                 tags = asset.get('tags', [])
                 tags_str = self.convert_tag_list_to_string(tags)
@@ -588,7 +588,7 @@ class UEAssetDbHandler:
             if where_clause:
                 query += f" WHERE {where_clause}"
             if not gui_g.s.assets_order_col:
-                gui_g.s.assets_order_col = 'date_added_in_db'
+                gui_g.s.assets_order_col = 'date_added'
             query += f" ORDER by {gui_g.s.assets_order_col} DESC"
             if gui_g.s.testing_switch == 1:
                 query += f" LIMIT {gui_g.s.testing_assets_limit}"
@@ -610,7 +610,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             # generate column names for the CSV file using AS to rename the columns
             fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
-            query = f"SELECT {fields} FROM assets ORDER BY date_added_in_db DESC LIMIT 1"
+            query = f"SELECT {fields} FROM assets ORDER BY date_added DESC LIMIT 1"
             try:
                 cursor.execute(query)
                 csv_column_names = [
@@ -641,7 +641,7 @@ class UEAssetDbHandler:
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
-            ue_asset.data = set_default_values(ue_asset.data)
+            ue_asset.data = set_default_values(ue_asset.data, for_sql=True)
 
             if not do_not_save:
                 self.save_ue_asset(ue_asset)
@@ -773,7 +773,7 @@ class UEAssetDbHandler:
             self.connection.commit()
             cursor.close()
 
-    def get_rating_by_id(self, uid: int) -> ():
+    def get_rating_by_id(self, uid: str) -> ():
         """
         Read a rating using its id from the 'ratings' table.
         :param uid: the ID of the ratings to get.
@@ -1180,7 +1180,7 @@ class UEAssetDbHandler:
                 'supported_versions': fake.word(),
                 'creation_date': fake.date_time(),
                 'update_date': fake.date_time(),
-                'date_added_in_db': fake.date_time(),
+                'date_added': fake.date_time(),
                 'grab_result': fake.word(),
                 'old_price': random.randint(0, 1000),
                 'release_info': json.dumps(fake.pydict()),

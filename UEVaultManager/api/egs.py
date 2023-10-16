@@ -75,7 +75,7 @@ def create_empty_assets_extra(asset_name: str) -> dict:
         'discounted': False,
         'asset_url': '',
         'page_title': '',
-        'supported_versions': '',
+        # 'supported_versions': '',
         'installed_folders': [],
         'grab_result': GrabResult.NO_ERROR.name,
     }
@@ -302,7 +302,7 @@ class EPCAPI:
             return result
         try:
             r = self.session.get(url, timeout=self.timeout)
-        except (Exception,):
+        except (Exception, ):
             self.log.warning(f'Timeout for {url}')
             raise ConnectionError()
         if r.status_code == 200:
@@ -539,7 +539,6 @@ class EPCAPI:
         """
         not_found_price = 0.0
         not_found_review = 0.0
-        supported_versions = ''
         page_title = ''
         no_result = create_empty_assets_extra(asset_name=asset_name)
 
@@ -638,17 +637,6 @@ class EPCAPI:
             self.log.debug(f'reviews not found for {asset_name}')
             review = not_found_review
 
-        # get Supported Engine Versions
-        title_elt = soup_logged.find('span', class_='ue-version')
-        if title_elt is not None:
-            try:
-                supported_versions = title_elt.text
-            except Exception as error:
-                self.log.warning(f'Can not find the Supported Engine Versions for {asset_name}:{error!r}')
-        else:
-            self.log.debug(f'Can not find the Supported Engine Versions for {asset_name}')
-            review = not_found_review
-
         # get page title
         title_elt = soup_logged.find('h1', class_='post-title')
         if title_elt is not None:
@@ -667,7 +655,7 @@ class EPCAPI:
         # get Installed_Folders
         installed_folders = installed_asset.installed_folders if installed_asset else []
         self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')
-        return {
+        record = {
             'asset_name': asset_name,
             'asset_slug': asset_slug,
             'price': price,
@@ -678,10 +666,11 @@ class EPCAPI:
             'discounted': discounted,
             'asset_url': asset_url,
             'page_title': page_title,
-            'supported_versions': supported_versions,
+            # 'supported_versions': supported_versions,
             'installed_folders': installed_folders,
             'grab_result': error_code,
         }
+        return record
 
     def get_asset_data_from_marketplace(self, url: str) -> dict:
         """

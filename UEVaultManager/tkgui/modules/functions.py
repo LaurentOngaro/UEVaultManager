@@ -159,9 +159,7 @@ def log_error(msg: str) -> None:
     else:
         print_msg = log_format_message(gui_g.s.app_title, 'Error', colored(msg, 'red', 'bold'))
         print(print_msg)
-    if gui_g.UEVM_gui_ref is not None:
-        gui_g.UEVM_gui_ref.quit()
-    sys.exit(1)
+        exit_and_clean_windows()
 
 
 def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -> None:
@@ -362,7 +360,7 @@ def show_progress(
             pw.close_window(True)
         else:
             pw.update()  # a call to test if the window is still active
-    except (tk.TclError, AttributeError):
+    except (tk.TclError, AttributeError, RuntimeError):
         create_a_new_progress_window = True
 
     if create_a_new_progress_window:
@@ -540,3 +538,18 @@ def update_widgets_in_list(is_enabled: bool, list_name: str, text_swap=None) -> 
     """
     widget_list = gui_g.stated_widgets.get(list_name, [])
     set_widget_state_in_list(widget_list, is_enabled=is_enabled, text_swap=text_swap)
+
+
+def exit_and_clean_windows(code: int = 1):
+    """
+    Exit the application and clean all the windows before.
+    :return:
+    """
+    gui_g.windows_ref = [
+        gui_g.edit_cell_window_ref, gui_g.edit_row_window_ref, gui_g.display_content_window_ref, gui_g.progress_window_ref, gui_g.tool_window_ref
+    ]
+    for windows in gui_g.windows_ref:
+        if windows is not None:
+            windows.quit()
+            windows.destroy()
+    sys.exit(code)

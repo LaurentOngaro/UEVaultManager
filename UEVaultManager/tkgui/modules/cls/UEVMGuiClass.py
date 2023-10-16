@@ -9,7 +9,6 @@ import logging
 import os
 import re
 import shutil
-import sys
 import tkinter as tk
 from datetime import datetime
 from time import sleep
@@ -90,22 +89,13 @@ class UEVMGui(tk.Tk):
     :param icon: the icon.
     :param screen_index: the screen index where the window will be displayed.
     :param data_source: the source where the data is stored or read from.
-    :param data_source_type: the type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
-    :param show_open_file_dialog: whether the open file dialog will be shown at startup.
     """
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
     _errors: [Exception] = []
 
     def __init__(
-        self,
-        title: str = 'UVMEGUI',
-        icon='',
-        screen_index: int = 0,
-        data_source_type: DataSourceType = DataSourceType.FILE,
-        data_source=None,
-        show_open_file_dialog: bool = False,
-        rebuild_data: bool = False,
+        self, title: str = 'UVMEGUI', icon='', screen_index: int = 0, data_source_type: DataSourceType = DataSourceType.FILE, data_source=None,
     ):
         self._frm_toolbar: Optional[UEVMGuiToolbarFrame] = None
         self._frm_control: Optional[UEVMGuiControlFrame] = None
@@ -117,8 +107,7 @@ class UEVMGui(tk.Tk):
         self.egs: Optional[EPCAPI] = None
         super().__init__()
         self.data_source_type = data_source_type
-        if data_source_type == DataSourceType.SQLITE:
-            show_open_file_dialog = False
+
         self.title(title)
         self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         width: int = gui_g.s.width
@@ -223,15 +212,25 @@ class UEVMGui(tk.Tk):
 
         self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
+        gui_g.UEVM_gui_ref = self
 
+    def setup(self, show_open_file_dialog: bool = False, rebuild_data: bool = False) -> None:
+        """
+        Set up the application. Called after the window is created.
+        :param show_open_file_dialog: whether the open file dialog will be shown at startup.
+        :param rebuild_data: whether the data will be rebuilt at startup.
+        """
+        data_table = self.editable_table  # shortcut
+        if data_table.data_source_type == DataSourceType.SQLITE:
+            show_open_file_dialog = False
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
                 downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-                if data_table.rebuild_data(downloaded_data):
+                if not data_table.rebuild_data(downloaded_data):
                     self.logger.error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
-            elif data_source_type == DataSourceType.FILE and gui_f.box_yesno(
+            elif data_table.data_source_type == DataSourceType.FILE and gui_f.box_yesno(
                 'So, do you want to load another file ? If not, the application will be closed'
             ):
                 show_open_file_dialog = True
@@ -585,7 +584,7 @@ class UEVMGui(tk.Tk):
         self.save_settings()
         self.quit()
         if force_quit:
-            sys.exit(0)
+            gui_f.exit_and_clean_windows(0)
 
     def add_error(self, error: Exception) -> None:
         """
@@ -1135,7 +1134,6 @@ class UEVMGui(tk.Tk):
                 store_in_files=True,
                 store_ids=False,  # useless for now
                 load_from_files=False,
-                engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
                 core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
             )
             scraper.get_data_from_url(api_product_url)
@@ -1206,7 +1204,7 @@ class UEVMGui(tk.Tk):
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
-                asset_slug_from_row = row_data['Asset slug']
+                asset_slug_from_row = row_data.get('Asset slug', '') or row_data.get('urlSlug', '')
                 if asset_slug_from_row and asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
@@ -1701,7 +1699,8 @@ class UEVMGui(tk.Tk):
         release_info_json = data_table.get_release_info()
         if not release_info_json:
             return
-        release_info = json.dumps(release_info_json)
+        # BAD release_info = json.dumps(release_info_json)
+        release_info = json.loads(release_info_json)
         self.releases_choice, _ = self.core.uevmlfs.extract_version_from_releases(release_info)
         cw = ChoiceFromListWindow(
             window_title='UEVM: select release',

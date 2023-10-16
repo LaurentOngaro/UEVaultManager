@@ -1047,7 +1047,6 @@ class EditableTable(Table):
                 store_ids=False,  # useless for now
                 load_from_files=load_from_files,
                 clean_database=False,
-                engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
                 core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
                 progress_window=pw
             )

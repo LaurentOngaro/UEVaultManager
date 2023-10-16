@@ -100,7 +100,7 @@ class GUISettings:
         self.sqlite_filename: str = path_join(self.scraping_folder, self.default_filename + '.db')
 
         self.app_monitor: int = 1
-        self.testing_assets_limit = 3000  # when testing (ie testing_switch==1) , limit the number of assets to process to this value
+        self.testing_assets_limit = 300  # when testing (ie testing_switch==1) , limit the number of assets to process to this value
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
         self.preview_max_width: int = 150
@@ -576,7 +576,7 @@ class GUISettings:
             },
             'assets_order_col': {
                 'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column used to order the assets list from the database.',
-                'value': 'date_added_in_db'
+                'value': 'date_added'
             },
             'check_asset_folders': {
                 'comment': 'Set to True to check and clean invalid asset folders when scraping or rebuilding data for UE assets',
