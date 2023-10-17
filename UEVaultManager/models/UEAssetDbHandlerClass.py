@@ -749,7 +749,7 @@ class UEAssetDbHandler:
             cursor.execute("SELECT name from tags WHERE id = ?", (uid, ))
             row = cursor.fetchone()
             cursor.close()
-            result = row['name'] if row else result
+            result = row[0] if row else result
         return result
 
     # noinspection DuplicatedCode
