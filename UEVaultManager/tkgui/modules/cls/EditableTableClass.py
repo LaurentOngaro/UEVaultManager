@@ -661,7 +661,7 @@ class EditableTable(Table):
                 elif pos < 0 or width == 2:  # hidden column
                     max_pos += 1
                     column_infos[col]['pos'] = max_pos
-            column_infos[gui_g.s.index_copy_col_name] = {'pos': max_pos+1, 'width': 2}  # always put 'Index copy' col at the end
+            column_infos[gui_g.s.index_copy_col_name] = {'pos': max_pos + 1, 'width': 2}  # always put 'Index copy' col at the end
 
             # Reorder columns based on position
             if 'pos' not in column_infos[next(iter(column_infos))]:
@@ -936,11 +936,11 @@ class EditableTable(Table):
                 try:
                     ue_asset.init_from_dict(asset_data)
                     # update the row in the database
-                    tags = ue_asset.data.get('tags', [])
+                    tags = ue_asset.get('tags', [])
                     tags_str = self._db_handler.convert_tag_list_to_string(tags)
-                    ue_asset.data['tags'] = tags_str
+                    ue_asset.set('tags', tags_str)
                     self._db_handler.save_ue_asset(ue_asset)
-                    asset_id = ue_asset.data.get('asset_id', '')
+                    asset_id = ue_asset.get('asset_id', '')
                     self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
                     self.add_error(error)

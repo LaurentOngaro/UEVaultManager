@@ -25,6 +25,7 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import get_version_from_path, path_join
+from UEVaultManager.models.csv_sql_fields import debug_parsed_data
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
@@ -1067,7 +1068,6 @@ class UEVMGui(tk.Tk):
                 'category': content['asset_type'].category_name,
                 'comment': content['comment'] if not old_comment else old_comment + '\n' + content['comment'],
                 'downloaded_size': content['downloaded_size']
-                # 'supported_versions': content.get('supported_versions', '', # we want to get the scraped data
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
@@ -1221,6 +1221,8 @@ class UEVMGui(tk.Tk):
                     return
                 asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
                 if asset_data:
+                    if self.core.verbose_mode or gui_g.s.debug_mode:
+                        debug_parsed_data(asset_data, self.editable_table.data_source_type)
                     if check_unicity:
                         is_unique, asset_data = self._check_unicity(asset_data)
                     if not is_unique and gui_f.box_yesno(
@@ -1236,6 +1238,8 @@ class UEVMGui(tk.Tk):
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             if asset_data:
+                if self.core.verbose_mode or gui_g.s.debug_mode:
+                    debug_parsed_data(asset_data, self.editable_table.data_source_type)
                 if check_unicity:
                     is_unique, asset_data = self._check_unicity(asset_data)
                 if not is_unique and gui_f.box_yesno(
