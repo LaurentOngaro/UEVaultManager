@@ -43,7 +43,8 @@ def init_gui(open_gui_window=True, use_db=False) -> str:
             data_source_type=data_source_type,
             data_source=data_source,
         )
-        gui_windows.setup(rebuild_data=rebuild)
+        # we delay the setup method because it could create a progressWindow, and it MUST be created AFTER the mainloop to avoid a "main thread is not in main loop" message
+        gui_windows.after(500, lambda : gui_windows.setup(rebuild_data=rebuild))
         gui_windows.mainloop()
 
     return data_source

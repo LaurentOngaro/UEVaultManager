@@ -1459,9 +1459,8 @@ class UEVaultManagerCLI:
             data_source_type=data_source_type,
             data_source=data_source,
         )
+        # we delay the setup method because it could create a progressWindow, and it MUST be created AFTER the mainloop to avoid a "main thread is not in main loop" message
         gui_windows.after(500, lambda : gui_windows.setup(rebuild_data=rebuild))
-
-
         gui_windows.mainloop()
         # print('Exiting...')  #
         # gui_g.UEVM_gui_ref.quit()
