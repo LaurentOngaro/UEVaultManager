@@ -17,12 +17,14 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager.api.egs import GrabResult, is_asset_obsolete
 from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.models.csv_sql_fields import debug_parsed_data
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions import box_yesno, update_loggers_level
+from UEVaultManager.tkgui.modules.functions import box_yesno, check_and_convert_list_to_str, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_get_folder, convert_to_datetime, convert_to_str_datetime, create_uid, \
     extract_variables_from_url, merge_lists_or_strings
+from UEVaultManager.tkgui.modules.types import DataSourceType
 
 
 class UEAS_Settings:
@@ -255,16 +257,16 @@ class UEAssetScraper:
         :return: a list containing the parsed data.
         """
 
-        content = []
+        all_assets = []
         if json_data is None:
-            return content
+            return all_assets
         try:
             # get the list of assets after a "scraping" of the json data using URL
             assets_data_list = json_data['data']['elements']
         except KeyError:
             # this exception is raised when data come from a json file. Not an issue
             # create a list of one asset when data come from a json file
-            assets_data_list = [json_data]
+            assets_data_list = [json_data.copy()]
 
         for asset_data in assets_data_list:
             downloaded_size = gui_g.s.unknown_size  # size will be set later
@@ -293,7 +295,6 @@ class UEAssetScraper:
             price = gui_g.no_float_data
             discount_price = gui_g.no_float_data
             discount_percentage = gui_g.no_int_data
-            supported_versions = gui_g.no_text_data
             origin = 'Marketplace'  # by default when scraped from marketplace
             date_now = datetime.now().strftime(default_datetime_format)
             grab_result = GrabResult.NO_ERROR.name
@@ -342,7 +343,7 @@ class UEAssetScraper:
             asset_data['discount_percentage'] = discount_percentage
 
             # set rating
-            average_rating = gui_g.no_int_data
+            average_rating = asset_data.get('review', gui_g.no_int_data)
             rating_total = gui_g.no_int_data
             if asset_data.get('rating', ''):
                 try:
@@ -368,15 +369,17 @@ class UEAssetScraper:
                 asset_data['custom_attributes'] = gui_g.no_text_data
 
             # set various fields
-            asset_data['page_title'] = asset_data['title']
+            supported_versions = asset_data.get('supported_versions', gui_g.no_text_data)  # data can come from the extra_data
             try:
                 tmp_list = [','.join(item.get('compatibleApps')) for item in release_info]
-                supported_versions = ','.join(tmp_list)
+                supported_versions = ','.join(tmp_list) or supported_versions
             except TypeError as error:
-                self._log(f'Error getting compatibleApps for asset with uid={uid}: {error!r}', 'debug')
+                self._log(f'Error getting compatibleApps for asset with uid={uid}: {error!r}', level='debug')
             asset_data['supported_versions'] = supported_versions
+            asset_data['page_title'] = asset_data['title']
             asset_data['origin'] = origin
             asset_data['update_date'] = date_now
+            asset_data['downloaded_size'] = downloaded_size
             # asset_data['creation_date'] = asset_data['creationDate']  # does not exist when scrapping from marketplace
             # we use the first realase date instead as it exist in both cases
             tmp_date = first_release.get('dateAdded', gui_g.no_text_data) if first_release else gui_g.no_text_data
@@ -409,27 +412,34 @@ class UEAssetScraper:
                     old_value = asset_existing_data.get(field, None)
                     if old_value:
                         asset_data[field] = old_value
-            # installed_folders
-            installed_folders = asset_data.get('installed_folders', '')
+
+            # installed_folders and tags
+            installed_folders_str = asset_data.get('installed_folders', '')
             asset_installed = self.core.uevmlfs.get_installed_asset(asset_data['asset_id'])  # from current existing install
             if asset_installed:
                 asset_installed_folders = asset_installed.installed_folders
-                installed_folders = merge_lists_or_strings(installed_folders, asset_installed_folders)
-            asset_data['installed_folders'] = installed_folders
-            asset_data['downloaded_size'] = downloaded_size
-
-            # -----
-            # end similar part as in cli.create_asset_from_data
-            # -----
+                installed_folders_str = merge_lists_or_strings(installed_folders_str, asset_installed_folders)
+            tags = asset_data.get('tags', [])
+            if hasattr(self, 'asset_db_handler'):
+                # get tag name from tag id and convert the list into a comma separated string
+                tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
+                asset_data['installed_folders'] = installed_folders_str
+            else:
+                # just convert the list of ids into a comma separated string
+                tags_str = check_and_convert_list_to_str(asset_data.get('tags', []))
+                # we need to convert list to string if we are in FILE Mode because it's done when saving the asset in database in the "SQLITE" mode
+                installed_folders_str = check_and_convert_list_to_str(asset_data.get('installed_folders', []))
+            asset_data['installed_folders'] = installed_folders_str
+            asset_data['tags'] = tags_str
 
             # we use an UEAsset object to store the data and create a valid dict from it
             ue_asset = UEAsset()
             ue_asset.init_from_dict(asset_data)
-            tags = ue_asset.data.get('tags', [])
-            tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
-            ue_asset.data['tags'] = tags_str
-            content.append(ue_asset.data)
-            message = f'Asset with uid={uid} added to content ue_asset.data: owned={ue_asset.data["owned"]} creation_date={ue_asset.data["creation_date"]}'
+            # -----
+            # end similar part as in cli.create_asset_from_data
+            # -----
+            all_assets.append(ue_asset.get_data())
+            message = f'Asset with uid={uid} added to content ue_asset.data: owned={ue_asset.get("owned")} creation_date={ue_asset.get("creation_date")}'
             self._log(message, 'debug')
             if self.store_ids:
                 try:
@@ -437,7 +447,7 @@ class UEAssetScraper:
                 except (AttributeError, TypeError) as error:
                     self._log(f'Error when adding uid to self.scraped_ids: {error!r}', 'debug')
         # end for asset_data in json_data['data']['elements']:
-        return content
+        return all_assets
 
     def _save_in_db(self, last_run_content: dict) -> None:
         """
@@ -636,6 +646,9 @@ class UEAssetScraper:
             self._log(message)
             # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
             self._scraped_data = list(chain.from_iterable(self._scraped_data))
+            # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
+            if self.core.verbose_mode or gui_g.s.debug_mode:
+                debug_parsed_data(self._scraped_data[-1], DataSourceType.SQLITE)
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
         """
@@ -716,6 +729,10 @@ class UEAssetScraper:
                     break
         message = f'It took {(time.time() - start_time):.3f} seconds to load the data from {self._files_count} files'
         self._log(message)
+
+        # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
+        if self.core.verbose_mode or gui_g.s.debug_mode:
+            debug_parsed_data(self._scraped_data[-1], DataSourceType.SQLITE)
 
         # save results in the last_run file
         content = {
