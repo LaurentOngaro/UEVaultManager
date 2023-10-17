@@ -1225,8 +1225,8 @@ class UEVMGui(tk.Tk):
                         debug_parsed_data(asset_data, self.editable_table.data_source_type)
                     if check_unicity:
                         is_unique, asset_data = self._check_unicity(asset_data)
-                    if not is_unique and gui_f.box_yesno(
-                        f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                    if is_unique or gui_f.box_yesno(
+                            f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                         if show_message and row_count == 1:
@@ -1242,7 +1242,7 @@ class UEVMGui(tk.Tk):
                     debug_parsed_data(asset_data, self.editable_table.data_source_type)
                 if check_unicity:
                     is_unique, asset_data = self._check_unicity(asset_data)
-                if not is_unique and gui_f.box_yesno(
+                if is_unique or gui_f.box_yesno(
                     f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                 ):
                     data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
