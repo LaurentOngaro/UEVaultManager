@@ -850,13 +850,13 @@ class AppCore:
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata files...", new_max_value=len(_ret))
-            self.log.info(f'Updating metadata files...Could take a some time')
+            self.log.info(f'Updating metadata json files...Could take a some time')
             self._prune_metadata()
             self._save_metadata(_ret)
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extra data files...", new_max_value=len(_ret))
-            self.log.info(f'Updating extra data files...Could take a some time')
+            self.log.info(f'Updating extra data json files...Could take a some time')
             self._prune_extra_data(update_global_dict=False)
             self._save_extra_data(self.uevmlfs.assets_extra_data, update_global_dict=False)
         return _ret
@@ -892,7 +892,7 @@ class AppCore:
         Save the metadata for the given assets.
         :param assets:  List of assets to save.
         """
-        self.log.info('Saving metadata in files... could take some time')
+        self.log.info('Saving metadata in json files... could take some time')
         for asset in assets:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -904,7 +904,7 @@ class AppCore:
         :param extra: dict of extra data to save.
         :param update_global_dict: whether to update the global dict.
         """
-        self.log.info('Saving extra data in files... could take some time')
+        self.log.info('Saving extra data in json files... could take some time')
         for app_name, eg_extra in extra.items():
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
