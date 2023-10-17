@@ -30,9 +30,10 @@ from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore, default_datetime_format
 from UEVaultManager.lfs.utils import copy_folder, path_join
 from UEVaultManager.models.Asset import Asset
-from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, get_csv_field_name, get_csv_field_name_list, get_sql_field_name_list, \
+from UEVaultManager.models.csv_sql_fields import csv_sql_fields, CSVFieldState, debug_parsed_data, get_csv_field_name_list, get_sql_field_name, \
     is_on_state, is_preserved
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
@@ -42,8 +43,8 @@ from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
-from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, create_file_backup, custom_print, exit_and_clean_windows, make_modal, \
-    show_progress  # simplier way to use the custom_print function
+from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, check_and_convert_list_to_str, create_file_backup, custom_print, \
+    exit_and_clean_windows, make_modal, show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import check_and_create_file, get_boolean_choice, get_max_threads, remove_command_argument, str_is_bool, str_to_bool
@@ -271,20 +272,20 @@ class UEVaultManagerCLI:
         create_file_backup(self.core.scan_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
 
     # noinspection PyUnusedLocal
-    def create_asset_from_data(self, item, asset_id: str) -> (str, dict):
+    def create_asset_from_data(self, item, asset_id_to_keep: str = '') -> (str, dict):
         """
         Create a dict containing all the data for an asset.
         :param item: item to get data from.
-        :param asset_id: id of the asset.
+        :param asset_id_to_keep: asset id to keep when getting data from the database.
         :return: (asset_id, dict containing all the data for an asset).
 
         Notes:
             This method is only used when getting OWNED assets data with the "old" method used by legendary
         """
         owned_assets_only = True  # when getting data the "OLD" method, we only get owned assets
-        record = {}
+        one_asset = {}
         extra_data = None
-        asset_data = item.metadata
+        asset_data = item.metadata.copy()
         try:
             extra_data = self.core.uevmlfs.get_item_extra(item.app_name)
         except AttributeError as error:
@@ -292,7 +293,7 @@ class UEVaultManagerCLI:
         if extra_data is None:
             extra_data = create_empty_assets_extra(item.app_name)
         # add extra data to the item
-        asset_data.update(extra_data)
+        asset_data.update(extra_data.copy())
         thumbnail_url = ''
         asset_data['urlSlug'] = asset_data.get('asset_slug', '')
         # if asset_url_grabbed:
@@ -309,7 +310,7 @@ class UEVaultManagerCLI:
         if not uid:
             # this should never occur
             self._log(f'No id found for current asset. Passing to next asset', level='warning')
-            return '', record  # DIFF HERE
+            return '', one_asset  # DIFF HERE
         asset_existing_data = {}  # when getting data the "OLD" method, no existing data , because the CSV will be compared after
         if hasattr(self, 'asset_db_handler'):
             existing_data = self.asset_db_handler.get_assets_data(fields=self.asset_db_handler.preserved_data_fields, uid=uid)
@@ -325,7 +326,6 @@ class UEVaultManagerCLI:
         price = gui_g.no_float_data
         discount_price = gui_g.no_float_data
         discount_percentage = gui_g.no_int_data
-        supported_versions = gui_g.no_text_data
         origin = 'Marketplace'  # by default when scraped from marketplace
         date_now = datetime.now().strftime(default_datetime_format)
         grab_result = GrabResult.NO_ERROR.name
@@ -350,7 +350,7 @@ class UEVaultManagerCLI:
         author = seller.get('name', '') if seller else asset_data.get('developer', '')
         asset_data['author'] = author
         try:
-            asset_data['asset_id'] = latest_release['appId']
+            asset_data['asset_id'] = asset_id_to_keep or latest_release['appId']
         except (KeyError, AttributeError, IndexError):
             grab_result = GrabResult.NO_APPID.name
             asset_data['asset_id'] = uid  # that's not the REAL asset_id, we use the uid instead
@@ -376,7 +376,7 @@ class UEVaultManagerCLI:
         asset_data['discount_percentage'] = discount_percentage
 
         # set rating
-        average_rating = gui_g.no_int_data
+        average_rating = asset_data.get('review', gui_g.no_int_data)
         rating_total = gui_g.no_int_data
         if asset_data.get('rating', ''):
             try:
@@ -402,15 +402,17 @@ class UEVaultManagerCLI:
             asset_data['custom_attributes'] = gui_g.no_text_data
 
         # set various fields
-        asset_data['page_title'] = asset_data['title']
+        supported_versions = asset_data.get('supported_versions', gui_g.no_text_data)  # data can come from the extra_data
         try:
             tmp_list = [','.join(item.get('compatibleApps')) for item in release_info]
-            supported_versions = ','.join(tmp_list)
+            supported_versions = ','.join(tmp_list) or supported_versions
         except TypeError as error:
             self._log(f'Error getting compatibleApps for asset with uid={uid}: {error!r}', level='debug')
         asset_data['supported_versions'] = supported_versions
+        asset_data['page_title'] = asset_data['title']
         asset_data['origin'] = origin
         asset_data['update_date'] = date_now
+        asset_data['downloaded_size'] = downloaded_size
         # asset_data['creation_date'] = asset_data['creationDate']  # does not exist in when scrapping from marketplace
         # we use the first realase date instead as it exist in both cases
         tmp_date = first_release.get('dateAdded', gui_g.no_text_data) if first_release else gui_g.no_text_data
@@ -429,7 +431,6 @@ class UEVaultManagerCLI:
         old_price = asset_existing_data.get('price', gui_g.no_float_data) if asset_existing_data else gui_g.no_float_data
         older_price = asset_existing_data.get('old_price', gui_g.no_float_data) if asset_existing_data else gui_g.no_float_data
         asset_data['old_price'] = old_price if old_price else older_price
-        # note: asset_data['tags'] will be converted in ue_asset.init_from_dict(asset_data)
 
         # old_grab_result
         old_grab_result = asset_existing_data.get('grab_result', GrabResult.NO_ERROR.name) if asset_existing_data else GrabResult.NO_ERROR.name
@@ -445,25 +446,34 @@ class UEVaultManagerCLI:
                 if old_value:
                     asset_data[field] = old_value
 
-        # installed_folders
-        # installed_folders
-        installed_folders = asset_data.get('installed_folders', '')
+        # installed_folders and tags
+        installed_folders_str = asset_data.get('installed_folders', '')
         asset_installed = self.core.uevmlfs.get_installed_asset(asset_data['asset_id'])  # from current existing install
         if asset_installed:
             asset_installed_folders = asset_installed.installed_folders
-            installed_folders = gui_fn.merge_lists_or_strings(installed_folders, asset_installed_folders)
-        asset_data['installed_folders'] = installed_folders
-        asset_data['downloaded_size'] = downloaded_size
+            installed_folders_str = gui_fn.merge_lists_or_strings(installed_folders_str, asset_installed_folders)
+        tags = asset_data.get('tags', [])
+        if hasattr(self, 'asset_db_handler'):
+            # get tag name from tag id and convert the list into a comma separated string
+            tags_str = self.asset_db_handler.convert_tag_list_to_string(tags)
+            asset_data['installed_folders'] = installed_folders_str
+        else:
+            # just convert the list of ids into a comma separated string
+            tags_str = check_and_convert_list_to_str(asset_data.get('tags', []))
+            # we need to convert list to string if we are in FILE Mode because it's done when saving the asset in database in the "SQLITE" mode
+            installed_folders_str = check_and_convert_list_to_str(asset_data.get('installed_folders', []))
+        asset_data['installed_folders'] = installed_folders_str
+        asset_data['tags'] = tags_str
+
+        # we use an UEAsset object to store the data and create a valid dict from it
+        ue_asset = UEAsset()
+        ue_asset.init_from_dict(asset_data)
 
         # -----
         # end similar part as in UEAssetScrappedClass._parse_data
         # -----
 
-        # copy asset_data to record by converting the "sql" field names to "csv" field names
-        sql_field_names = get_sql_field_name_list()
-        csv_field_names = {key: get_csv_field_name(key) for key in sql_field_names}
-        record = {csv_field_names[key]: value for key, value in asset_data.items() if key in sql_field_names and value is not None}
-        return asset_id, record
+        return ue_asset
 
     def auth(self, args) -> None:
         """
@@ -767,23 +777,34 @@ class UEVaultManagerCLI:
             except TypeError:
                 # asset_infos is None or has no 'Windows' key
                 asset_id = item.app_title
-
-                # Update the downloaded size for the assets in the table using the downloaded_data (from the Vault Cache folder content)
-                if downloaded_data:
-                    asset_data = downloaded_data.get(asset_id, {})
-                    try:
-                        size = int(asset_data['size'])
-                        item.size = gui_fn.format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
-                    except KeyError:
-                        pass
-            if assets_to_output.get(asset_id):
+            # Update the downloaded size for the assets in the table using the downloaded_data (from the Vault Cache folder content)
+            if downloaded_data:
+                asset_data = downloaded_data.get(asset_id, {})
+                try:
+                    size = int(asset_data['size'])
+                    item.size = gui_fn.format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
+                except KeyError:
+                    pass
+            if asset_id in assets_to_output:
                 self._log(f'Asset {asset_id} already present in the list (usually with another ue version)', level='debug')
             else:
-                asset_id, asset = self.create_asset_from_data(item, asset_id)  # asset is a dict
-                assets_to_output[asset_id] = asset
+                # asset_id_to_keep is used to avoid duplicates when the asset_id is not unique (see above)
+                ue_asset = self.create_asset_from_data(item, asset_id_to_keep=asset_id)  # ue_asset is a UE_Asset
+                # if we get the asset_id here, it's the AppId from the latest release
+                # as it's different from the asset_id in the asset_infos, we will have duplicates if we use it as key
+                # asset_id = ue_asset.get('asset_id')
+                assets_to_output[asset_id] = ue_asset.get_data_as_csv()
+                if self.core.verbose_mode or gui_g.s.debug_mode:
+                    self._log(f'Asset id={asset_id} has been created from data. Done {cpt}/{cpt_max} items')
+        # end for item in items:
 
-            if self.core.verbose_mode:
-                self._log(f'Asset id={asset_id} has been created from data. Done {cpt}/{cpt_max} items')
+        # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
+        if self.core.verbose_mode or gui_g.s.debug_mode:
+            # get the latest asset from the dictionnary assets_to_output
+            latest_asset = assets_to_output[list(assets_to_output.keys())[-1]]
+            # convert the keys to the csv field names
+            asset_data = {get_sql_field_name(key): value for key, value in latest_asset.items()}
+            debug_parsed_data(asset_data, DataSourceType.FILE)
 
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
@@ -1438,7 +1459,9 @@ class UEVaultManagerCLI:
             data_source_type=data_source_type,
             data_source=data_source,
         )
-        gui_windows.setup(rebuild_data=rebuild)
+        gui_windows.after(500, lambda : gui_windows.setup(rebuild_data=rebuild))
+
+
         gui_windows.mainloop()
         # print('Exiting...')  #
         # gui_g.UEVM_gui_ref.quit()

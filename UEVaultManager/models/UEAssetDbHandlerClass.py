@@ -21,7 +21,7 @@ from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list, set_default_values
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
-from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
+from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str, create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, merge_lists_or_strings, path_from_relative_to_absolute
 from UEVaultManager.utils.cli import check_and_create_file
 
@@ -536,16 +536,13 @@ class UEAssetDbHandler:
                 asset['creation_date'] = convert_to_str_datetime(
                     value=asset['creation_date'], date_format=default_datetime_format
                 ) if 'creation_date' in assets else str_today
-                asset['date_added'] = convert_to_str_datetime(value=asset['date_added'], date_format=default_datetime_format) if 'date_added' in assets else str_today
+                asset['date_added'] = convert_to_str_datetime(
+                    value=asset['date_added'], date_format=default_datetime_format
+                ) if 'date_added' in assets else str_today
                 # converting lists to strings
                 tags = asset.get('tags', [])
-                tags_str = self.convert_tag_list_to_string(tags)
-                asset['tags'] = tags_str
-                installed_folders = asset.get('installed_folders', [])
-                asset['installed_folders'] = ','.join(installed_folders) if isinstance(
-                    installed_folders, list
-                ) and len(installed_folders) else installed_folders if isinstance(installed_folders, str) else None
-
+                asset['tags'] = self.convert_tag_list_to_string(tags)  # will search the tags table for ids
+                asset['installed_folders'] = check_and_convert_list_to_str(asset.get('installed_folders', []))
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
@@ -641,7 +638,7 @@ class UEAssetDbHandler:
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
-            ue_asset.data = set_default_values(ue_asset.data, for_sql=True)
+            ue_asset.set_data(set_default_values(ue_asset.get_data(), for_sql=True))
 
             if not do_not_save:
                 self.save_ue_asset(ue_asset)
@@ -673,7 +670,7 @@ class UEAssetDbHandler:
         Save an UEAsset object to the 'assets' table.
         :param ue_asset: uEAsset object to save.
         """
-        self.set_assets([ue_asset.data])
+        self.set_assets([ue_asset.get_data()])
 
     def delete_asset(self, uid: str = '', asset_id: str = '') -> None:
         """
@@ -1186,7 +1183,7 @@ class UEAssetDbHandler:
                 'release_info': json.dumps(fake.pydict()),
             }
             ue_asset.init_from_dict(data=data)
-            self.set_assets(assets=ue_asset.data)
+            self.set_assets(ue_asset.get_data())
             scraped_ids.append(assets_id)
         content = {
             'date': datetime.datetime.now().strftime(default_datetime_format),
