@@ -203,21 +203,20 @@ class EPCAPI:
 
         self.timeout = timeout
 
-    def _extract_price_from_elt(self, dom_elt=None, asset_name='NO NAME') -> float:
+    def extract_price(self, price_text=None, asset_name='NO NAME') -> float:
         """
-        Extracts the price from a BeautifulSoup element.
-        :param dom_elt: the BeautifulSoup element.
+        Extracts the price from a string.
+        :param price_text: the string to extract the price from.
         :param asset_name: the name of the asset (for display purpose only).
         :return: the price.
         """
-        if not dom_elt:
+        if not price_text:
             self.log.debug(f'Price not found for {asset_name}')
             return 0.0
         price = 0.0
         try:
             # asset base price when logged
-            price = dom_elt.text.strip('$')
-            price = price.strip('€')
+            price = price_text.strip('$€')
             price = float(price)
         except Exception as error:
             self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
@@ -608,9 +607,9 @@ class EPCAPI:
                 #       price is 'base-price'
                 #       discount-price is 'save-discount'
                 elt = owned_elt.find('span', class_='save-discount')
-                current_price = self._extract_price_from_elt(elt, asset_name)
+                current_price = self.extract_price(elt.text, asset_name)
                 elt = owned_elt.find('span', class_='base-price')
-                base_price = self._extract_price_from_elt(elt, asset_name)
+                base_price = self.extract_price(elt.text, asset_name)
                 if elt is not None:
                     # discounted
                     price = base_price
