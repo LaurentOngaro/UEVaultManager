@@ -7,7 +7,7 @@ from datetime import datetime
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_float, convert_to_int, create_uid
-from UEVaultManager.tkgui.modules.types import GrabResult, UEAssetType
+from UEVaultManager.tkgui.modules.types import DataSourceType, GrabResult, UEAssetType
 
 # noinspection GrazieInspection
 csv_sql_fields = {
@@ -573,3 +573,68 @@ def convert_csv_row_to_sql_row(csv_row: dict) -> dict:
         if sql_field:
             sql_row[sql_field] = value
     return sql_row
+
+
+def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
+    """
+    Debug the parsed data to see missing or empty keys.
+    :param asset_data: an instance of asset used to fille the datatable (could be from SQLITE or FILE mode)
+    :param mode: the mode of the application (SQLITE or FILE)
+    """
+    if gui_g.UEVM_log_ref:
+        debug_func = gui_g.UEVM_log_ref.info  # info and debug here because we want to see even if debug mode is disabled in CLI (but enabled in GUI)
+    else:
+        debug_func = print
+
+    # NOTES:
+    # all the field names in the genuine data (via old or new method) are in pascalCase
+    # all the field names in asset data are in snake_case
+    # the CSV header (in datatable or CSV file) are the keys of csv_sql_fields and fierrent of the previous both
+
+    # all the fields that are present in data grabed with the "old" method (ie file/csv mode)
+    old_csv_data_keys = [
+        'categories', 'creationDate', 'description', 'developer', 'developerId', 'endOfSupport', 'entitlementName', 'entitlementType', 'id',
+        'itemType', 'keyImages', 'lastModifiedDate', 'longDescription', 'namespace', 'releaseInfo', 'requiresSecureAccount', 'status',
+        'technicalDetails', 'title', 'unsearchable'
+    ]
+    # all the fields that are present in data scraped with the "new" method (ie database mode)
+    new_data_keys = [
+        'id', 'catalogItemId', 'namespace', 'title', 'recurrence', 'currencyCode', 'priceValue', 'discountPriceValue', 'voucherDiscount',
+        'discountPercentage', 'keyImages', 'effectiveDate', 'seller', 'description', 'technicalDetails', 'longDescription', 'isFeatured',
+        'isCatalogItem', 'categories', 'bundle', 'releaseInfo', 'platforms', 'compatibleApps', 'urlSlug', 'purchaseLimit', 'tax', 'tags',
+        'commentRatingId', 'ratingId', 'klass', 'isNew', 'free', 'discounted', 'featured', 'thumbnail', 'learnThumbnail', 'headerImage', 'status',
+        'price', 'discount', 'discountPrice', 'ownedCount', 'canPurchase', 'owned', 'isDownloadable', 'isSunset', 'isBuyAble', 'distributionMethod',
+        'legacyCommentCount'
+    ]
+
+    # fields used in asset data when the application is in FILE mode
+    file_field_names = get_csv_field_name_list(include_asset_only=True)
+    # we need to convert the field names to ie snake_case to compare with the asset data
+    file_field_names = [get_sql_field_name(field_name) for field_name in file_field_names]
+    # fields used in asset data when the application is in DB mode
+    db_field_names = get_sql_field_name_list(include_asset_only=True)
+
+    debug_func('keys in old_data_keys that are not in new_data_keys.\nThese data will be LOST when switching from FILE to db mode')
+    key_lost_from_file = [key for key in old_csv_data_keys if key not in new_data_keys]
+    debug_func(key_lost_from_file)
+
+    debug_func('keys in new_data_keys that are not in old_data_keys.\nThese data will be LOST when switching from DB to file mode')
+    key_lost_from_db = [key for key in new_data_keys if key not in old_csv_data_keys]
+    debug_func(key_lost_from_db)
+
+    if mode == DataSourceType.FILE:
+        # not pertinent because keys are different
+        # debug_func('keys in file_field_names that are not in old_data_keys.\nThese data will always be empty in FILE mode')
+        # key_empty_in_file = [key for key in file_field_names if key not in old_csv_data_keys]
+        # debug_func(key_empty_in_file)
+        debug_func('keys in file_field_names that are not in the asset data.\nThese data have not been copied from existing data in FILE mode.\nThis could be a data loss')
+        key_csv_not_in_asset = [key for key in file_field_names if key not in asset_data]
+        debug_func(key_csv_not_in_asset)
+    elif mode == DataSourceType.SQLITE:
+        # not pertinent because keys are different
+        # debug_func('keys in db_field_names that are not in new_data_keys.\nThese data will always be empty in SQLITE mode')
+        # key_empty_in_db = [key for key in db_field_names if key not in asset_data.keys()]
+        # debug_func(key_empty_in_db)
+        debug_func('keys in db_field_names that are not in the asset data.\nThese data have not been copied from existing data in SQLITE mode.\nThis could be a data loss.\nTHIS SHOULD BE EMPTY')
+        key_csv_not_in_asset = [key for key in db_field_names if key not in asset_data.keys()]
+        debug_func(key_csv_not_in_asset)
