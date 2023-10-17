@@ -553,3 +553,13 @@ def exit_and_clean_windows(code: int = 1):
             windows.quit()
             windows.destroy()
     sys.exit(code)
+
+
+def check_and_convert_list_to_str(str_or_list) -> str:
+    """
+    Check if the given parameter is a list and convert it to a string, else return the given parameter.
+    :param str_or_list: the string or list to convert.
+    :return: the converted string or the given parameter.
+    """
+    result = ','.join(str_or_list) if isinstance(str_or_list, list) and len(str_or_list) else str_or_list if isinstance(str_or_list, str) else None
+    return result
