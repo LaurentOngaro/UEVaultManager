@@ -595,7 +595,6 @@ class AppCore:
                 f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
             )
             return True
-
         # end of fetch_asset_meta
 
         _ret = []

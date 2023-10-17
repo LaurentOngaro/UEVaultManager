@@ -19,7 +19,7 @@ no_bool_true_data = True
 no_bool_false_data = False
 
 # references to global objects
-windows_ref = [] # will replace all the reference bellow in future versions
+windows_ref = []  # will replace all the reference bellow in future versions
 edit_cell_window_ref: EditCellWindow = None
 edit_row_window_ref: EditRowWindow = None
 # circular import error
