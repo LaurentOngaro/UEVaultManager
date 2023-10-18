@@ -4,7 +4,7 @@ implementation for:
 - UEAsset:  A class to represent an Unreal Engine asset.
 """
 
-from UEVaultManager.models.csv_sql_fields import get_csv_field_name, get_csv_field_name_list, get_default_value, get_sql_field_name_list
+from UEVaultManager.models.csv_sql_fields import get_default_value, get_sql_field_name_list
 from UEVaultManager.utils.cli import init_dict_from_data
 
 
@@ -79,18 +79,6 @@ class UEAsset:
         :param data: the asset data.
         """
         self._data = data
-
-    def get_data_as_csv(self) -> dict:
-        """
-        Return the asset data as a dictionary with the csv field names.
-        :return: the asset data
-        """
-        # return asset_data to record by converting the "sql" field names to "csv" field names
-        csv_field_names = get_csv_field_name_list()
-        asset_data = {
-            get_csv_field_name(key): value for key, value in self._data.items() if get_csv_field_name(key) in csv_field_names and value is not None
-        }
-        return asset_data
 
     def get(self, key: str, default=None):
         """
