@@ -1130,7 +1130,7 @@ class UEVMGui(tk.Tk):
                 start=0,
                 assets_per_page=1,
                 max_threads=1,
-                store_in_db=True,
+                use_database=True,
                 store_in_files=True,
                 store_ids=False,  # useless for now
                 load_from_files=False,

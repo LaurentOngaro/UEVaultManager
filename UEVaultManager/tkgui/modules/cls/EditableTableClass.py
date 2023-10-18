@@ -1002,7 +1002,7 @@ class EditableTable(Table):
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
-        if self.data_source_type == DataSourceType.FILE:
+        if False and self.data_source_type == DataSourceType.FILE:
             # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
             if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
                 gui_f.from_cli_only_message()
@@ -1018,7 +1018,7 @@ class EditableTable(Table):
                 self.update()  # this call will copy the changes to model. df AND to self.filtered_df
                 gui_f.close_progress(self)
                 return True
-        elif self.data_source_type == DataSourceType.SQLITE:
+        elif True and self.data_source_type == DataSourceType.SQLITE:
             pw = gui_f.show_progress(self, 'Rebuilding Data from database...')
             # we create the progress window here to avoid lots of imports in UEAssetScraper class
             max_threads = get_max_threads()
@@ -1042,7 +1042,7 @@ class EditableTable(Table):
                 stop=stop_row,
                 assets_per_page=db_asset_per_page,
                 max_threads=max_threads,
-                store_in_db=True,
+                use_database=True,
                 store_in_files=True,
                 store_ids=False,  # useless for now
                 load_from_files=load_from_files,
@@ -1050,6 +1050,7 @@ class EditableTable(Table):
                 core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
                 progress_window=pw
             )
+            # no db here
             scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
             if not pw.continue_execution:
                 gui_f.close_progress(self)
