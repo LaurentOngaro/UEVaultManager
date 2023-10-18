@@ -310,10 +310,10 @@ class EditableTable(Table):
         self._set_with_for_hidden_columns()
         self.redraw()
         # save the new column width in the config file
-        new_columns_infos = gui_g.s.column_infos
+        new_columns_infos = gui_g.s.get_column_infos(self.data_source_type)
         try:
             new_columns_infos[colname]['width'] = width
-            gui_g.s.column_infos = new_columns_infos
+            gui_g.s.set_column_infos(new_columns_infos, self.data_source_type)
             gui_g.s.save_config_file()
         except KeyError:
             pass
@@ -521,7 +521,7 @@ class EditableTable(Table):
         """
         if updated_info is None:
             updated_info = self.get_col_infos()
-        gui_g.s.column_infos = updated_info
+        gui_g.s.set_column_infos(updated_info, self.data_source_type)
         if apply_resize_cols:
             self.resize_columns()
 
@@ -625,42 +625,59 @@ class EditableTable(Table):
         """
         Resize and reorder the columns of the table.
         """
-        column_infos = gui_g.s.column_infos
+        column_infos = gui_g.s.get_column_infos(self.data_source_type)
         column_infos_len = len(column_infos)
-        df = self.get_data(DataFrameUsed.UNFILTERED)
-        column_len = len(df.columns)
-        diff_len = abs(column_infos_len - column_len)
         if column_infos_len <= 0:
             return
+        df = self.get_data(DataFrameUsed.UNFILTERED)
+        column_len = len(df.columns)
+        diff_len = column_infos_len - column_len
         if diff_len > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
             gui_f.box_message(
                 f'The number of columns in data source ({column_len}) does not match the number of values in "column_infos" from the config file ({column_infos_len}).\nA backup of the current config file has been made.\nNormally, this will be fixed automatically on quit.\nIf not, please check the config file.'
             )
-            # just for debugging
-            for col in column_infos.keys():
-                if col not in df.columns and col != gui_g.s.index_copy_col_name:
-                    self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable.')
-            for col in df.columns:
-                if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
-                    self.logger.warning(f'Column "{col}" is in the datatable BUT not in column_infos.')
+        # just for debugging
+        for col in column_infos.keys():
+            if col not in df.columns and col != gui_g.s.index_copy_col_name:
+                self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable.')
+        for col in df.columns:
+            if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
+                self.logger.info(f'Column "{col}" is in the datatable BUT not in column_infos.')
         try:
-            # add to column_infos all the colums in the datatable that are not in column_infos, at the end, with a width of 2
+            # Add columns to column_infos that are not already present, with a width of 2
             pos = column_infos_len
             for col in df.columns:
                 if col not in column_infos:
                     column_infos[str(col)] = {'width': 2, 'pos': pos}
                     pos += 1
 
-            # reordering columns
-            first_value = next(iter(column_infos.values()))
-            if first_value.get('pos', None) is None:
-                # old format without the 'p' key (as position
+            # Update position for an unordered and hidden columns
+            max_pos = column_infos_len
+            for col, info in column_infos.items():
+                pos = info['pos']
+                width = info['width']
+                if pos > max_pos:
+                    max_pos = pos
+                elif pos < 0 or width == 2:  # hidden column
+                    max_pos += 1
+                    column_infos[col]['pos'] = max_pos
+            column_infos[gui_g.s.index_copy_col_name] = {'pos': max_pos + 1, 'width': 2}  # always put 'Index copy' col at the end
+
+            # Reorder columns based on position
+            if 'pos' not in column_infos[next(iter(column_infos))]:
+                # Old format without the 'pos' key
                 keys_ordered = column_infos.keys()
             else:
+                # Sort by position
                 sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
-                # save the new column_infos in the config file
-                gui_g.s.column_infos = sorted_cols_by_pos
+                # Set new positions
+                for i, (col, info) in enumerate(sorted_cols_by_pos.items()):
+                    info['pos'] = i
+                # Save the new column_infos in the config file
+                gui_g.s.set_column_infos(sorted_cols_by_pos, self.data_source_type)
+                gui_g.s.save_config_file()
                 keys_ordered = sorted_cols_by_pos.keys()
+
             # reorder columns
             df = df.reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.UNFILTERED)
@@ -919,11 +936,11 @@ class EditableTable(Table):
                 try:
                     ue_asset.init_from_dict(asset_data)
                     # update the row in the database
-                    tags = ue_asset.data.get('tags', [])
+                    tags = ue_asset.get('tags', [])
                     tags_str = self._db_handler.convert_tag_list_to_string(tags)
-                    ue_asset.data['tags'] = tags_str
+                    ue_asset.set('tags', tags_str)
                     self._db_handler.save_ue_asset(ue_asset)
-                    asset_id = ue_asset.data.get('asset_id', '')
+                    asset_id = ue_asset.get('asset_id', '')
                     self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
                     self.add_error(error)
@@ -985,13 +1002,13 @@ class EditableTable(Table):
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
-        if self.data_source_type == DataSourceType.FILE:
+        if False and self.data_source_type == DataSourceType.FILE:
             # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
             if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
                 gui_f.from_cli_only_message()
                 return False
             else:
-                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
+                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args, downloaded_data)
                 self.current_page = 1
                 gui_f.show_progress(self, 'Rebuilding Data from file...')
                 df_loaded = self.read_data()
@@ -1001,7 +1018,7 @@ class EditableTable(Table):
                 self.update()  # this call will copy the changes to model. df AND to self.filtered_df
                 gui_f.close_progress(self)
                 return True
-        elif self.data_source_type == DataSourceType.SQLITE:
+        elif True and self.data_source_type == DataSourceType.SQLITE:
             pw = gui_f.show_progress(self, 'Rebuilding Data from database...')
             # we create the progress window here to avoid lots of imports in UEAssetScraper class
             max_threads = get_max_threads()
@@ -1025,15 +1042,15 @@ class EditableTable(Table):
                 stop=stop_row,
                 assets_per_page=db_asset_per_page,
                 max_threads=max_threads,
-                store_in_db=True,
+                use_database=True,
                 store_in_files=True,
                 store_ids=False,  # useless for now
                 load_from_files=load_from_files,
                 clean_database=False,
-                engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
                 core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
                 progress_window=pw
             )
+            # no db here
             scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
             if not pw.continue_execution:
                 gui_f.close_progress(self)
@@ -1084,7 +1101,7 @@ class EditableTable(Table):
                 clrs = pd.Series(clrs, index=df.index)
                 rc = self.rowcolors
                 rc[col_name] = clrs
-            except (KeyError, ValueError) as error:
+            except (KeyError, ValueError, TypeError) as error:
                 self.add_error(error)
                 self.logger.debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
                 continue

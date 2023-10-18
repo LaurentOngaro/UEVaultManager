@@ -10,7 +10,16 @@ from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 
+# global variables that are not settings
+timeout_error_count = 0  # incremented each time an image generate a request timeout
+no_int_data = 0
+no_float_data = 0.0
+no_text_data = ''
+no_bool_true_data = True
+no_bool_false_data = False
+
 # references to global objects
+windows_ref = []  # will replace all the reference bellow in future versions
 edit_cell_window_ref: EditCellWindow = None
 edit_row_window_ref: EditRowWindow = None
 # circular import error
@@ -19,6 +28,7 @@ display_content_window_ref = None
 # noinspection PyTypeChecker
 progress_window_ref: ProgressWindow = None
 tool_window_ref = None
+
 # reference to the cli object of the UEVM main application (the main one, it gives all access to all the features)
 # if empty, direct access to its features from this script won't be available and a message will be displayed instead
 # noinspection PyTypeChecker
@@ -65,9 +75,11 @@ stated_widgets = {
     'asset_has_url': [],
     # a row is selected and the asset is local
     'asset_added_mannually': [],
+    # the cli object is available
+    'cli_is_available': [],
+    # the database is available
+    'db_is_available': [],
 }
-# incremented each time an image generate a request timeout
-timeout_error_count = 0
 
 
 # options that can be changed in the GUI

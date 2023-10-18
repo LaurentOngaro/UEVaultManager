@@ -64,7 +64,7 @@ class ProgressWindow(tk.Toplevel):
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self._thread_check_delay: int = 100
-        self.must_end: bool = False
+        self.is_closing: bool = False
         self.quit_on_close: bool = quit_on_close
         self.max_value: int = max_value
         self.continue_execution: bool = True
@@ -285,7 +285,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_text: the new text.
         :param new_max_value: the new maximum value.
         """
-        self.must_end = False
+        self.is_closing = False
         try:
             # sometimes the window is already destroyed
             if new_title is not None:
@@ -375,7 +375,7 @@ class ProgressWindow(tk.Toplevel):
         :param destroy_window: whether to destroy the window or just hide it.
         :param _event: the event that triggered the close.
         """
-        self.must_end = True
+        self.is_closing = True
         if destroy_window:
             if self.quit_on_close:
                 self.quit()

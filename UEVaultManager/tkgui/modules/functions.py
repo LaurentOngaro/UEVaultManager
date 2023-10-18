@@ -84,9 +84,9 @@ def todo_message() -> None:
 
 def from_cli_only_message(content='This feature is only accessible') -> None:
     """
-    Display a message box with a message saying that the feature is only accessible when running the application using the UEVM cli command options.
+    Display a message box with a message saying that the feature is only accessible when running the application is launched using the cli.
     """
-    msg = f'{content} when running this application using the UEVM cli command options. Once the UEVaultManager package installed, Type UEVaultManager -h for more help'
+    msg = f'{content} when this application is launched using the UEVM cli edit command.'
     print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
     print(print_msg)
     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
@@ -159,9 +159,7 @@ def log_error(msg: str) -> None:
     else:
         print_msg = log_format_message(gui_g.s.app_title, 'Error', colored(msg, 'red', 'bold'))
         print(print_msg)
-    if gui_g.UEVM_gui_ref is not None:
-        gui_g.UEVM_gui_ref.quit()
-    sys.exit(1)
+        exit_and_clean_windows()
 
 
 def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -> None:
@@ -330,7 +328,8 @@ def show_progress(
     quit_on_close: bool = False,
     keep_existing: bool = False,
     function: callable = None,
-    function_parameters: dict = None
+    function_parameters: dict = None,
+    force_new_window: bool = False
 ) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
@@ -345,17 +344,26 @@ def show_progress(
     :param keep_existing: whether to keep the existing content when adding a new one.
     :param function: the function to execute.
     :param function_parameters: the parameters of the function.
+    :param force_new_window: whether to force the creation of a new progress window.
     :return: the progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
+    pw = None
     root = get_tk_root(parent)
+    create_a_new_progress_window = force_new_window
     if not root:
         return None
     try:
         # check if a progress window already exists
         pw = root.progress_window
-        pw.set_activation(False)  # test if the window is still active
-    except (tk.TclError, AttributeError):
+        if force_new_window:
+            pw.close_window(True)
+        else:
+            pw.update()  # a call to test if the window is still active
+    except (tk.TclError, AttributeError, RuntimeError):
+        create_a_new_progress_window = True
+
+    if create_a_new_progress_window:
         pw = ProgressWindow(
             title=gui_g.s.app_title,
             parent=parent,
@@ -370,12 +378,16 @@ def show_progress(
             function_parameters=function_parameters
         )
         root.progress_window = pw
-    if pw:
+    try:
+        # here the pw could have already been close if it was modal or using thhreads
         pw.set_activation(False)
         if keep_existing:
             text = pw.get_text() + '\n' + text
         pw.set_text(text)
         pw.update()
+    except (tk.TclError, AttributeError):
+        pw = None
+        gui_g.progress_window_ref = None
     return pw
 
 
@@ -526,3 +538,28 @@ def update_widgets_in_list(is_enabled: bool, list_name: str, text_swap=None) -> 
     """
     widget_list = gui_g.stated_widgets.get(list_name, [])
     set_widget_state_in_list(widget_list, is_enabled=is_enabled, text_swap=text_swap)
+
+
+def exit_and_clean_windows(code: int = 1):
+    """
+    Exit the application and clean all the windows before.
+    :return:
+    """
+    gui_g.windows_ref = [
+        gui_g.edit_cell_window_ref, gui_g.edit_row_window_ref, gui_g.display_content_window_ref, gui_g.progress_window_ref, gui_g.tool_window_ref
+    ]
+    for windows in gui_g.windows_ref:
+        if windows is not None:
+            windows.quit()
+            windows.destroy()
+    sys.exit(code)
+
+
+def check_and_convert_list_to_str(str_or_list) -> str:
+    """
+    Check if the given parameter is a list and convert it to a string, else return the given parameter.
+    :param str_or_list: the string or list to convert.
+    :return: the converted string or the given parameter.
+    """
+    result = ','.join(str_or_list) if isinstance(str_or_list, list) and len(str_or_list) else str_or_list if isinstance(str_or_list, str) else None
+    return result

@@ -12,7 +12,7 @@ class FakeProgressWindow:
     Usefull to avoid importing the ProgressWindow class and all its dependencies (all the tkinter stuff).
     """
     _thread_check_delay: int = -1
-    must_end: bool = False
+    is_closing: bool = False
     quit_on_close: bool = False
     max_value: int = -1
     continue_execution: bool = False

@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import shutil
-import sys
 import time
 from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
@@ -38,7 +37,7 @@ from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResu
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
-from UEVaultManager.tkgui.modules.functions import box_message
+from UEVaultManager.tkgui.modules.functions import box_message, exit_and_clean_windows
 from UEVaultManager.tkgui.modules.functions_no_deps import format_size
 from UEVaultManager.utils.cli import check_and_create_file, check_and_create_folder, get_max_threads
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
@@ -431,15 +430,14 @@ class AppCore:
             # if not logged in, return empty list
             if not self.egs.user:
                 return []
-
             assets = self.uevmlfs.assets.copy() if self.uevmlfs.assets else {}
-
             assets.update({platform: [AssetBase.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
-
+            if gui_g.s.testing_switch == 1:
+                # get only the last assets, bypassing the first because they are not ue asset but "others item"
+                assets[platform] = assets[platform][-gui_g.s.testing_assets_limit:]
             # only save (and write to disk) if there were changes
             if self.uevmlfs.assets != assets:
                 self.uevmlfs.assets = assets
-
         assets = self.uevmlfs.assets.get(platform, None)
         return assets
 
@@ -517,7 +515,11 @@ class AppCore:
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
 
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
+            if gui_g.progress_window_ref is not None and (
+                not gui_g.progress_window_ref.update_and_continue(increment=1) or gui_g.progress_window_ref.is_closing
+            ):
+                gui_g.progress_window_ref.is_closing = True
+                fetch_list.clear()
                 return False
 
             thread_data = ''
@@ -543,13 +545,13 @@ class AppCore:
 
                 asset = Asset(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
                 self.uevmlfs.set_item_meta(asset.app_name, asset)
-                assets[name] = asset
+                fetched_assets[name] = asset
 
             if _process_extra:
                 # we use title because it's less ambiguous than a name when searching an asset
                 installed_asset = self.uevmlfs.get_installed_asset(name)
                 eg_extra = self.egs.grab_assets_extra(
-                    asset_name=name, asset_title=assets[name].app_title, verbose_mode=self.verbose_mode, installed_asset=installed_asset,
+                    asset_name=name, asset_title=fetched_assets[name].app_title, verbose_mode=self.verbose_mode, installed_asset=installed_asset,
                 )
 
                 # check for data consistency
@@ -563,7 +565,9 @@ class AppCore:
                 self.uevmlfs.set_item_extra(app_name=name, extra=eg_extra, update_global_dict=True)
 
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
-                if eg_extra['page_title'] != '' and eg_extra['page_title'] != assets[name].app_title:
+                title_extra = eg_extra['page_title']
+                title_fetched = fetched_assets[name].app_title
+                if title_extra != '' and title_extra != title_fetched:
                     self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
                     eg_extra['grab_result'] = GrabResult.INCONSISTANT_DATA.name
                     if self.bad_data_logger:
@@ -607,9 +611,32 @@ class AppCore:
         platforms = {'Windows'}
         platforms |= {platform}
         if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching platforms...", new_max_value=len(platforms))
+            try:
+                gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching platforms...", new_max_value=len(platforms))
+            except (Exception, ) as error:
+                # NOTE: !important
+                #   An exception with "main thread is not in main loop" message can be raised if the progressWindow is displayed BEFORE the mainloop
+                #   has started for the main window (ie UEVMGui). This can happen when the --list command is used.
+                #   To avoid future errors:
+                #       - use the after method to delay the method that can open the progress window after the mainloop has started
+                #       - if not possible, we close the progress window here and continue the execution
+                self.log.info(
+                    f'An error occured when trying to reset the progress window.\nIt will not be used anymore in that function.\nThis issue occurs when launched with debugging only.\nError message: {error!r}'
+                )
+                if 'main thread is not in main loop' not in str(error):
+                    # will produce the same exception twice, so we check for the message to avoid it
+                    gui_g.progress_window_ref.close_window()
+                else:
+                    gui_g.progress_window_ref.quit()
+                gui_g.progress_window_ref = None
         for _platform in platforms:
-            self.get_assets(update_assets=update_assets, platform=_platform)
+            try:
+                # getting the user assets fron EGS
+                self.get_assets(update_assets=update_assets, platform=_platform)
+            except (Exception, ) as error:
+                # could raide a timeout error
+                self.log.warning(f'Fetching assets for {_platform} failed: {error!r}')
+                return []
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return []
 
@@ -630,14 +657,13 @@ class AppCore:
 
         fetch_list = {}
         assets_bypassed = {}
-        assets = {}
-
-        # loop through assets items to check for if they are for ue or not
+        fetched_assets = {}
         valid_items = []
         bypass_count = 0
         self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
         if gui_g.progress_window_ref is not None:
             gui_g.progress_window_ref.reset(new_value=0, new_text="Indexing assets...", new_max_value=len(assets.items()))
+        # loop through assets items to check for if they are for ue or not
         # Note: we sort by reverse, as it the most recent version of an asset will be listed first
         for app_name, app_assets in sorted(assets.items(), reverse=True):
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
@@ -703,7 +729,7 @@ class AppCore:
                     i += 1
                     continue
                 asset_updated = any(item_metadata.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
-                assets[app_name] = item_metadata
+                fetched_assets[app_name] = item_metadata
                 self.log.debug(f'{app_name} has been ADDED to the assets list with asset_updated={asset_updated}')
 
             # get extra data only in not filtered
@@ -731,12 +757,15 @@ class AppCore:
         if fetch_list:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(
-                    new_value=0, new_text="Fetching missing metadata...\nIt could take some time. Be patient.", new_max_value=len(fetch_list)
+                    new_value=0, new_text="Fetching missing metadata...It could take some time. Be patient.", new_max_value=len(fetch_list)
                 )
                 # gui_g.progress_window_ref.hide_progress_bar()
                 # gui_g.progress_window_ref.hide_btn_stop()
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} asset(s).')
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
+                gui_g.progress_window_ref.is_closing = True
+                return []
             if self.use_threads:
                 # Note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
 
@@ -756,11 +785,22 @@ class AppCore:
                             _ = future.result()
                             # print("Result: ", result)
                         except Exception as error:
-                            self.log.warning(f'The following error occurs in threading: {error!r}')
+                            if error.__class__.__name__ == 'CancelledError':
+                                # user abort
+                                stop_executor(futures)
+                                self.thread_executor.shutdown(wait=False)  # force shutdown
+                                return []
+                            else:
+                                self.log.warning(f'The following error occurs in threading: {error!r}')
                         if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
                             # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
                             stop_executor(futures)
+                            # gui_g.progress_window_ref.close_window()
+                            gui_g.progress_window_ref.is_closing = True
+                            break
                 self.thread_executor.shutdown(wait=False)
+            # end if self.use_threads:
+        # end if fetch_list:
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
@@ -785,7 +825,7 @@ class AppCore:
             if self.verbose_mode:
                 self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name]}. Still {len(filtered_items)} assets to check')
             try:
-                app_item = assets.get(app_name)
+                fetched_asset = fetched_assets.get(app_name)
             except (KeyError, IndexError):
                 self.log.debug(f'{app_name} has not been found int the asset list. Bypassing')
                 # item not found in asset, ignore and pass to next one
@@ -795,19 +835,20 @@ class AppCore:
                 self.log.info(f'Fetching metadata for {app_name} is still no done, retrying')
                 if currently_fetching.get(app_name):
                     del currently_fetching[app_name]
-                fetch_asset_meta(app_name)
+                if not fetch_asset_meta(app_name):
+                    return []
 
             if fetch_try_count[app_name] > fetch_try_limit:
                 self.log.error(f'Fetching metadata for {app_name} has failed {fetch_try_limit} times. Skipping')
                 continue
             try:
                 is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
-                is_a_mod = any(i['path'] == 'mods' for i in app_item.metadata.get('categories', []))
+                is_a_mod = any(i['path'] == 'mods' for i in fetched_asset.metadata.get('categories', []))
             except (KeyError, IndexError, AttributeError):
                 self.log.debug(f'{app_name} has no metadata. Adding to the fetch list (again)')
                 try:
                     fetch_list[app_name] = (app_name, item.namespace, item.catalog_item_id, True, True)
-                    _ret.append(app_item)
+                    _ret.append(fetched_asset)
                 except (KeyError, IndexError, AttributeError):
                     self.log.debug(f'{app_name} has an invalid format. Could not been added to the fetch list')
                 continue
@@ -822,7 +863,7 @@ class AppCore:
 
             # check if the asset will be added to the final list
             if not is_bypassed and not is_still_fetching and not is_a_mod and has_valid_platform:
-                _ret.append(app_item)
+                _ret.append(fetched_asset)
 
         self.log.info(f'A total of {len(_ret)} assets have been analysed and kept in phase 3')
 
@@ -831,13 +872,13 @@ class AppCore:
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata files...", new_max_value=len(_ret))
-            self.log.info(f'Updating metadata files...Could take a some time')
+            self.log.info(f'Updating metadata json files...Could take a some time')
             self._prune_metadata()
             self._save_metadata(_ret)
         if meta_updated:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extra data files...", new_max_value=len(_ret))
-            self.log.info(f'Updating extra data files...Could take a some time')
+            self.log.info(f'Updating extra data json files...Could take a some time')
             self._prune_extra_data(update_global_dict=False)
             self._save_extra_data(self.uevmlfs.assets_extra_data, update_global_dict=False)
         return _ret
@@ -873,7 +914,7 @@ class AppCore:
         Save the metadata for the given assets.
         :param assets:  List of assets to save.
         """
-        self.log.info('Saving metadata in files... could take some time')
+        self.log.info('Saving metadata in json files... could take some time')
         for asset in assets:
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -885,7 +926,7 @@ class AppCore:
         :param extra: dict of extra data to save.
         :param update_global_dict: whether to update the global dict.
         """
-        self.log.info('Saving extra data in files... could take some time')
+        self.log.info('Saving extra data in json files... could take some time')
         for app_name, eg_extra in extra.items():
             if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
                 return
@@ -1257,7 +1298,7 @@ class AppCore:
         """
         self.uevmlfs.save_config()
         logging.shutdown()
-        sys.exit(code)
+        exit_and_clean_windows(code)
 
     def open_manifest_file(self, file_path: str) -> dict:
         """

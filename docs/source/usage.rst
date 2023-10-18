@@ -55,14 +55,15 @@ Usage
 
 
   Command: cleanup
-    usage: legendary cleanup [-h] [--delete-metadata] [--delete-extra-data] [--delete-scraping-data]
+    usage: UEVaultManager cleanup [-h] [--delete-metadata] [--delete-extra-data] [--delete-scraping-data]
 
     optional arguments:
-      -h, --help                  Show this help message and exit
-      -m, --delete-metadata       Also delete metadata files. They are kept by default
-      -e, --delete-extra-data     Also delete extra data files. They are kept by default'
-      -s, --delete-scraping-data  Also delete scraping data files. They are kept by default'
-      -g, --gui                   Display the output in a windows instead of using the console
+      -h,  --help                  Show this help message and exit
+      -cm, --delete-metadata       Also delete metadata files. They are kept by default
+      -ce, --delete-extra-data     Also delete extra data files. They are kept by default
+      -cs, --delete-scraping-data  Also delete scraping data files. They are kept by default
+      -cc, --delete-cache-data     Also delete image asset previews. They are usefull and should be kept. They are kept by default
+      -g,  --gui                   Display the output in a windows instead of using the console
 
 
   Command: info

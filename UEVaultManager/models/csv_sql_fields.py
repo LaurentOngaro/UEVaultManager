@@ -7,7 +7,7 @@ from datetime import datetime
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_float, convert_to_int, create_uid
-from UEVaultManager.tkgui.modules.types import GrabResult, UEAssetType
+from UEVaultManager.tkgui.modules.types import DataSourceType, GrabResult, UEAssetType
 
 # noinspection GrazieInspection
 csv_sql_fields = {
@@ -121,12 +121,12 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.FLOAT
     },
-    # ## User Fields
     'Old price': {
         'sql_name': 'old_price',
         'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.FLOAT
     },
+    # ## User Fields
     'Comment': {
         'sql_name': 'comment',
         'state': CSVFieldState.USER,
@@ -196,7 +196,7 @@ csv_sql_fields = {
         'field_type': CSVFieldType.STR
     },
     'Date added': {
-        'sql_name': 'date_added_in_db',
+        'sql_name': 'date_added',
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.DATETIME
     },
@@ -308,13 +308,16 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
     """
     result = []
     for csv_field, value in csv_sql_fields.items():
+        if csv_field == gui_g.s.index_copy_col_name:
+            continue
         if exclude_sql_only and value['state'] == CSVFieldState.SQL_ONLY:
             continue
         if not include_asset_only and value['state'] == CSVFieldState.ASSET_ONLY:
             continue
         if filter_on_states and value['state'] not in filter_on_states:
             continue
-        result.append(csv_field)
+        if csv_field and csv_field not in result:  # some sql fields could be NONE or duplicate
+            result.append(csv_field)
     if return_as_string:
         result = ','.join(result)
     return result
@@ -442,6 +445,8 @@ def get_converters(csv_field_name: str):
         return [convert_to_float, float]
     if field_type == CSVFieldType.BOOL:
         return [convert_to_bool, bool]
+
+
 # not use full to convert date: Causes issue when loading a filter
 #    if field_type == CSVFieldType.DATETIME:
 #        return [lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])]
@@ -518,19 +523,29 @@ def get_csv_field_name(sql_field_name: str) -> str:
     return result
 
 
-def set_default_values(data: dict) -> dict:
+def set_default_values(data: dict, for_sql: bool = False) -> dict:
     """
     Set default values to a new row.
     :param data: data to set default values to.
+    :param for_sql: flag indicating if the data is for SQL.
     :return: data with default values set.
     """
     uid = create_uid()
-    data['Asset_id'] = gui_g.s.empty_row_prefix + uid  # dummy unique Asset_id to avoid issue
-    data['Image'] = gui_g.s.empty_cell  # avoid displaying image warning on mouse over
-    data['Added Manually'] = True
-    data['Uid'] = uid
-    data['Category'] = UEAssetType.Unknown.category_name
-    data['Grab result'] = GrabResult.INCONSISTANT_DATA.name
+    new_data = {
+        'Asset_id': gui_g.s.empty_row_prefix + uid,
+        'Image': gui_g.s.empty_cell,
+        'Added manually': True,
+        'Uid': uid,
+        'Category': UEAssetType.Unknown.category_name,
+        'Grab result': GrabResult.INCONSISTANT_DATA.name
+    }
+    if for_sql:
+        # replace CSV field names by SQL field names
+        for key, value in new_data.items():
+            sql_key = get_sql_field_name(key)
+            data[sql_key] = value
+    else:
+        data.update(new_data)
     return data
 
 
@@ -561,3 +576,86 @@ def convert_csv_row_to_sql_row(csv_row: dict) -> dict:
         if sql_field:
             sql_row[sql_field] = value
     return sql_row
+
+
+def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
+    """
+    Debug the parsed data to see missing or empty keys.
+    :param asset_data: an instance of asset used to fille the datatable (could be from SQLITE or FILE mode)
+    :param mode: the mode of the application (SQLITE or FILE)
+    """
+    if gui_g.UEVM_log_ref:
+        debug_func = gui_g.UEVM_log_ref.info  # info and debug here because we want to see even if debug mode is disabled in CLI (but enabled in GUI)
+    else:
+        debug_func = print
+
+    # NOTES:
+    # all the field names in the genuine data (via old or new method) are in pascalCase
+    # all the field names in asset data are in snake_case
+    # the CSV header (in datatable or CSV file) are the keys of csv_sql_fields and fierrent of the previous both
+
+    # all the fields that are present in data grabed with the "old" method (ie file/csv mode)
+    old_csv_data_keys = [
+        'categories', 'creationDate', 'description', 'developer', 'developerId', 'endOfSupport', 'entitlementName', 'entitlementType', 'id',
+        'itemType', 'keyImages', 'lastModifiedDate', 'longDescription', 'namespace', 'releaseInfo', 'requiresSecureAccount', 'status',
+        'technicalDetails', 'title', 'unsearchable'
+    ]
+    # all the fields that are present in data scraped with the "new" method (ie database mode)
+    new_data_keys = [
+        'id', 'catalogItemId', 'namespace', 'title', 'recurrence', 'currencyCode', 'priceValue', 'discountPriceValue', 'voucherDiscount',
+        'discountPercentage', 'keyImages', 'effectiveDate', 'seller', 'description', 'technicalDetails', 'longDescription', 'isFeatured',
+        'isCatalogItem', 'categories', 'bundle', 'releaseInfo', 'platforms', 'compatibleApps', 'urlSlug', 'purchaseLimit', 'tax', 'tags',
+        'commentRatingId', 'ratingId', 'klass', 'isNew', 'free', 'discounted', 'featured', 'thumbnail', 'learnThumbnail', 'headerImage', 'status',
+        'price', 'discount', 'discountPrice', 'ownedCount', 'canPurchase', 'owned', 'isDownloadable', 'isSunset', 'isBuyAble', 'distributionMethod',
+        'legacyCommentCount'
+    ]
+
+    # fields used in asset data when the application is in FILE mode
+    file_field_names = get_csv_field_name_list(include_asset_only=True)
+    # we need to convert the field names to ie snake_case to compare with the asset data
+    file_field_names = [get_sql_field_name(field_name) for field_name in file_field_names]
+    # fields used in asset data when the application is in DB mode
+    db_field_names = get_sql_field_name_list(include_asset_only=True)
+
+    debug_func('keys in old_data_keys that are not in new_data_keys.\nThese data will be LOST when switching from FILE to db mode')
+    key_lost_from_file = [key for key in old_csv_data_keys if key not in new_data_keys]
+    debug_func(key_lost_from_file)
+
+    debug_func('keys in new_data_keys that are not in old_data_keys.\nThese data will be LOST when switching from DB to file mode')
+    key_lost_from_db = [key for key in new_data_keys if key not in old_csv_data_keys]
+    debug_func(key_lost_from_db)
+
+    if mode == DataSourceType.FILE:
+        # not pertinent because keys are different
+        # debug_func('keys in file_field_names that are not in old_data_keys.\nThese data will always be empty in FILE mode')
+        # key_empty_in_file = [key for key in file_field_names if key not in old_csv_data_keys]
+        # debug_func(key_empty_in_file)
+        debug_func(
+            'keys in file_field_names that are not in the asset data.\nThese data have not been copied from existing data in FILE mode.\nThis could be a data loss'
+        )
+        key_csv_not_in_asset = [key for key in file_field_names if key not in asset_data]
+        debug_func(key_csv_not_in_asset)
+    elif mode == DataSourceType.SQLITE:
+        # not pertinent because keys are different
+        # debug_func('keys in db_field_names that are not in new_data_keys.\nThese data will always be empty in SQLITE mode')
+        # key_empty_in_db = [key for key in db_field_names if key not in asset_data.keys()]
+        # debug_func(key_empty_in_db)
+        debug_func(
+            'keys in db_field_names that are not in the asset data.\nThese data have not been copied from existing data in SQLITE mode.\nThis could be a data loss.\nTHIS SHOULD BE EMPTY'
+        )
+        key_csv_not_in_asset = [key for key in db_field_names if key not in asset_data.keys()]
+        debug_func(key_csv_not_in_asset)
+
+
+def convert_data_to_csv(sql_asset_data: dict) -> dict:
+    """
+    Return the asset data as a dictionary with the csv field names.
+    :param sql_asset_data: the asset data with keys in sql format
+    :return: the asset data with keys in csv format
+    """
+    # return asset_data to record by converting the "sql" field names to "csv" field names
+    csv_field_names = get_csv_field_name_list()
+    asset_data = {
+        get_csv_field_name(key): value for key, value in sql_asset_data.items() if get_csv_field_name(key) in csv_field_names and value is not None
+    }
+    return asset_data

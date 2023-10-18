@@ -21,7 +21,7 @@ from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list, set_default_values
 from UEVaultManager.models.types import DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
-from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
+from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str, create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, merge_lists_or_strings, path_from_relative_to_absolute
 from UEVaultManager.utils.cli import check_and_create_file
 
@@ -421,7 +421,7 @@ class UEAssetDbHandler:
                     'supported_versions': 'TEXT',
                     'creation_date': 'DATETIME',
                     'update_date': 'DATETIME',
-                    'date_added_in_db': 'DATETIME',
+                    'date_added': 'DATETIME',
                     'grab_result': 'TEXT',
                     'old_price': 'REAL'
                 }
@@ -533,19 +533,16 @@ class UEAssetDbHandler:
             for asset in assets:
                 # make some conversion before saving the asset
                 asset['update_date'] = str_today
-                asset['creation_date'] = convert_to_str_datetime(value=asset['creation_date'], date_format=default_datetime_format)
-                asset['date_added_in_db'] = convert_to_str_datetime(
-                    value=asset['date_added_in_db'], date_format=default_datetime_format, default=str_today
-                )
+                asset['creation_date'] = convert_to_str_datetime(
+                    value=asset['creation_date'], date_format=default_datetime_format
+                ) if 'creation_date' in assets else str_today
+                asset['date_added'] = convert_to_str_datetime(
+                    value=asset['date_added'], date_format=default_datetime_format
+                ) if 'date_added' in assets else str_today
                 # converting lists to strings
                 tags = asset.get('tags', [])
-                tags_str = self.convert_tag_list_to_string(tags)
-                asset['tags'] = tags_str
-                installed_folders = asset.get('installed_folders', [])
-                asset['installed_folders'] = ','.join(installed_folders) if isinstance(
-                    installed_folders, list
-                ) and len(installed_folders) else installed_folders if isinstance(installed_folders, str) else None
-
+                asset['tags'] = self.convert_tag_list_to_string(tags)  # will search the tags table for ids
+                asset['installed_folders'] = check_and_convert_list_to_str(asset.get('installed_folders', []))
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
@@ -588,10 +585,10 @@ class UEAssetDbHandler:
             if where_clause:
                 query += f" WHERE {where_clause}"
             if not gui_g.s.assets_order_col:
-                gui_g.s.assets_order_col = 'date_added_in_db'
-            query += f' ORDER by {gui_g.s.assets_order_col} DESC'
+                gui_g.s.assets_order_col = 'date_added'
+            query += f" ORDER by {gui_g.s.assets_order_col} DESC"
             if gui_g.s.testing_switch == 1:
-                query += ' LIMIT 3000'
+                query += f" LIMIT {gui_g.s.testing_assets_limit}"
             try:
                 cursor.execute(query)
                 rows = cursor.fetchall()
@@ -610,7 +607,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             # generate column names for the CSV file using AS to rename the columns
             fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
-            query = f"SELECT {fields} FROM assets ORDER BY date_added_in_db DESC LIMIT 1"
+            query = f"SELECT {fields} FROM assets ORDER BY date_added DESC LIMIT 1"
             try:
                 cursor.execute(query)
                 csv_column_names = [
@@ -641,7 +638,7 @@ class UEAssetDbHandler:
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
-            ue_asset.data = set_default_values(ue_asset.data)
+            ue_asset.set_data(set_default_values(ue_asset.get_data(), for_sql=True))
 
             if not do_not_save:
                 self.save_ue_asset(ue_asset)
@@ -673,7 +670,7 @@ class UEAssetDbHandler:
         Save an UEAsset object to the 'assets' table.
         :param ue_asset: uEAsset object to save.
         """
-        self.set_assets([ue_asset.data])
+        self.set_assets([ue_asset.get_data()])
 
     def delete_asset(self, uid: str = '', asset_id: str = '') -> None:
         """
@@ -752,7 +749,7 @@ class UEAssetDbHandler:
             cursor.execute("SELECT name from tags WHERE id = ?", (uid, ))
             row = cursor.fetchone()
             cursor.close()
-            result = row['name'] if row else result
+            result = row[0] if row else result
         return result
 
     # noinspection DuplicatedCode
@@ -773,7 +770,7 @@ class UEAssetDbHandler:
             self.connection.commit()
             cursor.close()
 
-    def get_rating_by_id(self, uid: int) -> ():
+    def get_rating_by_id(self, uid: str) -> ():
         """
         Read a rating using its id from the 'ratings' table.
         :param uid: the ID of the ratings to get.
@@ -1180,13 +1177,13 @@ class UEAssetDbHandler:
                 'supported_versions': fake.word(),
                 'creation_date': fake.date_time(),
                 'update_date': fake.date_time(),
-                'date_added_in_db': fake.date_time(),
+                'date_added': fake.date_time(),
                 'grab_result': fake.word(),
                 'old_price': random.randint(0, 1000),
                 'release_info': json.dumps(fake.pydict()),
             }
             ue_asset.init_from_dict(data=data)
-            self.set_assets(assets=ue_asset.data)
+            self.set_assets(ue_asset.get_data())
             scraped_ids.append(assets_id)
         content = {
             'date': datetime.datetime.now().strftime(default_datetime_format),
@@ -1210,7 +1207,7 @@ if __name__ == "__main__":
         print('Assets:', asset_list)
     elif gui_g.s.testing_switch == 1:
         # Create fake assets
-        rows_to_create = 300
+        rows_to_create = gui_g.s.testing_assets_limit
         if not st.clean_data:
             rows_count = asset_handler.get_rows_count()
             print(f'Rows count: {rows_count}')

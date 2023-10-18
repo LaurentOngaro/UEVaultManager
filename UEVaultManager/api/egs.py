@@ -16,6 +16,7 @@ import requests.adapters
 from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.utils.cli import create_list_from_string
 
@@ -75,7 +76,7 @@ def create_empty_assets_extra(asset_name: str) -> dict:
         'discounted': False,
         'asset_url': '',
         'page_title': '',
-        'supported_versions': '',
+        # 'supported_versions': '',
         'installed_folders': [],
         'grab_result': GrabResult.NO_ERROR.name,
     }
@@ -203,21 +204,20 @@ class EPCAPI:
 
         self.timeout = timeout
 
-    def _extract_price_from_elt(self, dom_elt=None, asset_name='NO NAME') -> float:
+    def extract_price(self, price_text=None, asset_name='NO NAME') -> float:
         """
-        Extracts the price from a BeautifulSoup element.
-        :param dom_elt: the BeautifulSoup element.
+        Extracts the price from a string.
+        :param price_text: the string to extract the price from.
         :param asset_name: the name of the asset (for display purpose only).
         :return: the price.
         """
-        if not dom_elt:
+        if not price_text:
             self.log.debug(f'Price not found for {asset_name}')
             return 0.0
         price = 0.0
         try:
             # asset base price when logged
-            price = dom_elt.text.strip('$')
-            price = price.strip('€')
+            price = price_text.strip('$€')
             price = float(price)
         except Exception as error:
             self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
@@ -302,7 +302,7 @@ class EPCAPI:
             return result
         try:
             r = self.session.get(url, timeout=self.timeout)
-        except (Exception,):
+        except (Exception, ):
             self.log.warning(f'Timeout for {url}')
             raise ConnectionError()
         if r.status_code == 200:
@@ -537,10 +537,7 @@ class EPCAPI:
         :param installed_asset: installed asset of the same name if any.
         :return: a dict with the extra data.
         """
-        not_found_price = 0.0
-        not_found_review = 0.0
-        supported_versions = ''
-        page_title = ''
+        page_title = gui_g.no_text_data
         no_result = create_empty_assets_extra(asset_name=asset_name)
 
         # try to find the url of the asset by doing a search in the marketplace
@@ -564,11 +561,11 @@ class EPCAPI:
             return no_result
 
         soup_logged = BeautifulSoup(response.text, 'html.parser')
-        price = not_found_price
-        discount_price = not_found_price
+        price = gui_g.no_float_data
+        discount_price = gui_g.no_float_data
         search_for_price = True
-        # owned = False
-        owned = True  # all the assets get with the legendary method are owned. No need to check. Could create incoherent info if parsing fails
+
+        owned = False
         owned_elt = soup_logged.find('div', class_='purchase')
         if owned_elt is not None:
             if 'Free' in owned_elt.getText():
@@ -578,10 +575,11 @@ class EPCAPI:
                 if verbose_mode:
                     self.log.info(f'{asset_name} is free (check 1)')
             elif 'Open in Launcher' in owned_elt.getText():
-                # owned asset
-                # owned = True
-                # if verbose_mode:
-                #     self.log.info(f'{asset_name} is already owned')
+                # owned asset.
+                # TODO: The method used seems to be not totally reliable. Check if a better one is possible
+                owned = True
+                if verbose_mode:
+                    self.log.info(f'{asset_name} is already owned')
 
                 # grab the price on a non logged soup (price will be available on that page only)
                 try:
@@ -609,9 +607,9 @@ class EPCAPI:
                 #       price is 'base-price'
                 #       discount-price is 'save-discount'
                 elt = owned_elt.find('span', class_='save-discount')
-                current_price = self._extract_price_from_elt(elt, asset_name)
+                current_price = self.extract_price(elt.text, asset_name) if elt else gui_g.no_float_data
                 elt = owned_elt.find('span', class_='base-price')
-                base_price = self._extract_price_from_elt(elt, asset_name)
+                base_price = self.extract_price(elt.text, asset_name) if elt else gui_g.no_float_data
                 if elt is not None:
                     # discounted
                     price = base_price
@@ -633,21 +631,10 @@ class EPCAPI:
                 review = float(content[0:pos])
             except Exception as error:
                 self.log.warning(f'Can not find the review for {asset_name}:{error!r}')
-                review = not_found_review
+                review = gui_g.no_float_data
         else:
             self.log.debug(f'reviews not found for {asset_name}')
-            review = not_found_review
-
-        # get Supported Engine Versions
-        title_elt = soup_logged.find('span', class_='ue-version')
-        if title_elt is not None:
-            try:
-                supported_versions = title_elt.text
-            except Exception as error:
-                self.log.warning(f'Can not find the Supported Engine Versions for {asset_name}:{error!r}')
-        else:
-            self.log.debug(f'Can not find the Supported Engine Versions for {asset_name}')
-            review = not_found_review
+            review = gui_g.no_float_data
 
         # get page title
         title_elt = soup_logged.find('h1', class_='post-title')
@@ -658,7 +645,7 @@ class EPCAPI:
                 self.log.warning(f'Can not find the Page title for {asset_name}:{error!r}')
         else:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
-            review = not_found_review
+            review = gui_g.no_float_data
         discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int(
             (price - discount_price) / price * 100.0
         )
@@ -667,7 +654,7 @@ class EPCAPI:
         # get Installed_Folders
         installed_folders = installed_asset.installed_folders if installed_asset else []
         self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')
-        return {
+        record = {
             'asset_name': asset_name,
             'asset_slug': asset_slug,
             'price': price,
@@ -678,10 +665,11 @@ class EPCAPI:
             'discounted': discounted,
             'asset_url': asset_url,
             'page_title': page_title,
-            'supported_versions': supported_versions,
+            # 'supported_versions': supported_versions,
             'installed_folders': installed_folders,
             'grab_result': error_code,
         }
+        return record
 
     def get_asset_data_from_marketplace(self, url: str) -> dict:
         """
