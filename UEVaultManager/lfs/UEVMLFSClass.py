@@ -12,6 +12,7 @@ from time import time
 from typing import Optional
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.api.egs import GrabResult
 from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
@@ -483,7 +484,7 @@ class UEVMLFS:
         if os.path.exists(meta_file):
             os.remove(meta_file)
 
-    def get_item_extra(self, app_name: str) -> dict:
+    def get_item_extra(self, app_name: str) -> Optional[dict]:
         """
         Get the extra data for an Asset.
         :param app_name: the Asset name.
@@ -496,14 +497,17 @@ class UEVMLFS:
                 with open(extra_file, 'r', encoding='utf-8') as file:
                     extra = json.load(file)
                     self.assets_extra_data[extra['asset_name']] = extra
+                    has_error = extra['grab_result'] != GrabResult.NO_ERROR.name  # as it, it will be tried again
             except json.decoder.JSONDecodeError:
-                self.log.warning(f'Failed to load extra data for {app_name}!. Deleting file...')
+                has_error = True
+            if has_error:
+                self.log.debug(f'Failed to load extra data for {app_name} or Grab Result had errors!. Deleting file...')
                 # delete the file
                 try:
                     os.remove(extra_file)
                 except Exception as error:
                     self.log.error(f'Failed to delete extra file {extra_file}: {error!r}')
-                return {}
+                return None
         return extra
 
     def set_item_extra(self, app_name: str, extra: dict, update_global_dict: True) -> None:

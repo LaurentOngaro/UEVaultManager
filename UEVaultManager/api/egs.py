@@ -16,6 +16,7 @@ import requests.adapters
 from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.utils.cli import create_list_from_string
 
@@ -536,9 +537,7 @@ class EPCAPI:
         :param installed_asset: installed asset of the same name if any.
         :return: a dict with the extra data.
         """
-        not_found_price = 0.0
-        not_found_review = 0.0
-        page_title = ''
+        page_title = gui_g.no_text_data
         no_result = create_empty_assets_extra(asset_name=asset_name)
 
         # try to find the url of the asset by doing a search in the marketplace
@@ -562,11 +561,11 @@ class EPCAPI:
             return no_result
 
         soup_logged = BeautifulSoup(response.text, 'html.parser')
-        price = not_found_price
-        discount_price = not_found_price
+        price = gui_g.no_float_data
+        discount_price = gui_g.no_float_data
         search_for_price = True
-        # owned = False
-        owned = True  # all the assets get with the legendary method are owned. No need to check. Could create incoherent info if parsing fails
+
+        owned = False
         owned_elt = soup_logged.find('div', class_='purchase')
         if owned_elt is not None:
             if 'Free' in owned_elt.getText():
@@ -576,10 +575,11 @@ class EPCAPI:
                 if verbose_mode:
                     self.log.info(f'{asset_name} is free (check 1)')
             elif 'Open in Launcher' in owned_elt.getText():
-                # owned asset
-                # owned = True
-                # if verbose_mode:
-                #     self.log.info(f'{asset_name} is already owned')
+                # owned asset.
+                # TODO: The method used seems to be not totally reliable. Check if a better one is possible
+                owned = True
+                if verbose_mode:
+                    self.log.info(f'{asset_name} is already owned')
 
                 # grab the price on a non logged soup (price will be available on that page only)
                 try:
@@ -607,9 +607,9 @@ class EPCAPI:
                 #       price is 'base-price'
                 #       discount-price is 'save-discount'
                 elt = owned_elt.find('span', class_='save-discount')
-                current_price = self.extract_price(elt.text, asset_name)
+                current_price = self.extract_price(elt.text, asset_name) if elt else gui_g.no_float_data
                 elt = owned_elt.find('span', class_='base-price')
-                base_price = self.extract_price(elt.text, asset_name)
+                base_price = self.extract_price(elt.text, asset_name) if elt else gui_g.no_float_data
                 if elt is not None:
                     # discounted
                     price = base_price
@@ -631,10 +631,10 @@ class EPCAPI:
                 review = float(content[0:pos])
             except Exception as error:
                 self.log.warning(f'Can not find the review for {asset_name}:{error!r}')
-                review = not_found_review
+                review = gui_g.no_float_data
         else:
             self.log.debug(f'reviews not found for {asset_name}')
-            review = not_found_review
+            review = gui_g.no_float_data
 
         # get page title
         title_elt = soup_logged.find('h1', class_='post-title')
@@ -645,7 +645,7 @@ class EPCAPI:
                 self.log.warning(f'Can not find the Page title for {asset_name}:{error!r}')
         else:
             self.log.debug(f'Can not find the Page title not found for {asset_name}')
-            review = not_found_review
+            review = gui_g.no_float_data
         discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int(
             (price - discount_price) / price * 100.0
         )

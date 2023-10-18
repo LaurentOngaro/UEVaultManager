@@ -308,13 +308,16 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
     """
     result = []
     for csv_field, value in csv_sql_fields.items():
+        if csv_field == gui_g.s.index_copy_col_name:
+            continue
         if exclude_sql_only and value['state'] == CSVFieldState.SQL_ONLY:
             continue
         if not include_asset_only and value['state'] == CSVFieldState.ASSET_ONLY:
             continue
         if filter_on_states and value['state'] not in filter_on_states:
             continue
-        result.append(csv_field)
+        if csv_field and csv_field not in result:  # some sql fields could be NONE or duplicate
+            result.append(csv_field)
     if return_as_string:
         result = ','.join(result)
     return result
@@ -627,7 +630,9 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
         # debug_func('keys in file_field_names that are not in old_data_keys.\nThese data will always be empty in FILE mode')
         # key_empty_in_file = [key for key in file_field_names if key not in old_csv_data_keys]
         # debug_func(key_empty_in_file)
-        debug_func('keys in file_field_names that are not in the asset data.\nThese data have not been copied from existing data in FILE mode.\nThis could be a data loss')
+        debug_func(
+            'keys in file_field_names that are not in the asset data.\nThese data have not been copied from existing data in FILE mode.\nThis could be a data loss'
+        )
         key_csv_not_in_asset = [key for key in file_field_names if key not in asset_data]
         debug_func(key_csv_not_in_asset)
     elif mode == DataSourceType.SQLITE:
@@ -635,6 +640,8 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
         # debug_func('keys in db_field_names that are not in new_data_keys.\nThese data will always be empty in SQLITE mode')
         # key_empty_in_db = [key for key in db_field_names if key not in asset_data.keys()]
         # debug_func(key_empty_in_db)
-        debug_func('keys in db_field_names that are not in the asset data.\nThese data have not been copied from existing data in SQLITE mode.\nThis could be a data loss.\nTHIS SHOULD BE EMPTY')
+        debug_func(
+            'keys in db_field_names that are not in the asset data.\nThese data have not been copied from existing data in SQLITE mode.\nThis could be a data loss.\nTHIS SHOULD BE EMPTY'
+        )
         key_csv_not_in_asset = [key for key in db_field_names if key not in asset_data.keys()]
         debug_func(key_csv_not_in_asset)

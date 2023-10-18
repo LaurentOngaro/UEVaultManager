@@ -515,7 +515,11 @@ class AppCore:
             if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
                 return False
 
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
+            if gui_g.progress_window_ref is not None and (
+                not gui_g.progress_window_ref.update_and_continue(increment=1) or gui_g.progress_window_ref.is_closing
+            ):
+                gui_g.progress_window_ref.is_closing = True
+                fetch_list.clear()
                 return False
 
             thread_data = ''
@@ -561,7 +565,9 @@ class AppCore:
                 self.uevmlfs.set_item_extra(app_name=name, extra=eg_extra, update_global_dict=True)
 
                 # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
-                if eg_extra['page_title'] != '' and eg_extra['page_title'] != fetched_assets[name].app_title:
+                title_extra = eg_extra['page_title']
+                title_fetched = fetched_assets[name].app_title
+                if title_extra != '' and title_extra != title_fetched:
                     self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
                     eg_extra['grab_result'] = GrabResult.INCONSISTANT_DATA.name
                     if self.bad_data_logger:
@@ -595,6 +601,7 @@ class AppCore:
                 f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
             )
             return True
+
         # end of fetch_asset_meta
 
         _ret = []
@@ -626,7 +633,7 @@ class AppCore:
             try:
                 # getting the user assets fron EGS
                 self.get_assets(update_assets=update_assets, platform=_platform)
-            except (Exception,) as error:
+            except (Exception, ) as error:
                 # could raide a timeout error
                 self.log.warning(f'Fetching assets for {_platform} failed: {error!r}')
                 return []
@@ -750,12 +757,15 @@ class AppCore:
         if fetch_list:
             if gui_g.progress_window_ref is not None:
                 gui_g.progress_window_ref.reset(
-                    new_value=0, new_text="Fetching missing metadata...\nIt could take some time. Be patient.", new_max_value=len(fetch_list)
+                    new_value=0, new_text="Fetching missing metadata...It could take some time. Be patient.", new_max_value=len(fetch_list)
                 )
                 # gui_g.progress_window_ref.hide_progress_bar()
                 # gui_g.progress_window_ref.hide_btn_stop()
 
             self.log.info(f'Fetching metadata for {len(fetch_list)} asset(s).')
+            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
+                gui_g.progress_window_ref.is_closing = True
+                return []
             if self.use_threads:
                 # Note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
 
@@ -775,11 +785,22 @@ class AppCore:
                             _ = future.result()
                             # print("Result: ", result)
                         except Exception as error:
-                            self.log.warning(f'The following error occurs in threading: {error!r}')
+                            if error.__class__.__name__ == 'CancelledError':
+                                # user abort
+                                stop_executor(futures)
+                                self.thread_executor.shutdown(wait=False)  # force shutdown
+                                return []
+                            else:
+                                self.log.warning(f'The following error occurs in threading: {error!r}')
                         if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
                             # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
                             stop_executor(futures)
+                            # gui_g.progress_window_ref.close_window()
+                            gui_g.progress_window_ref.is_closing = True
+                            break
                 self.thread_executor.shutdown(wait=False)
+            # end if self.use_threads:
+        # end if fetch_list:
 
         self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
         self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
@@ -814,7 +835,8 @@ class AppCore:
                 self.log.info(f'Fetching metadata for {app_name} is still no done, retrying')
                 if currently_fetching.get(app_name):
                     del currently_fetching[app_name]
-                fetch_asset_meta(app_name)
+                if not fetch_asset_meta(app_name):
+                    return []
 
             if fetch_try_count[app_name] > fetch_try_limit:
                 self.log.error(f'Fetching metadata for {app_name} has failed {fetch_try_limit} times. Skipping')

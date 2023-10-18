@@ -297,7 +297,7 @@ class UEVaultManagerCLI:
 
         # values that only exists in create_asset_from_data
         owned_assets_only = True  # when getting data the "OLD" method, we only get owned assets
-        downloaded_size = item.size or gui_g.s.unknown_size
+        downloaded_size = item.size or gui_g.s.empty_cell
         asset_url_grabbed = extra_data.get('asset_url', '')
 
         # values that only exists in _parse_data
@@ -614,7 +614,10 @@ class UEVaultManagerCLI:
             csv_fields_count = len(get_csv_field_name_list())
             if _assets_in_file.get(_asset_id):
                 item_in_file = _assets_in_file.get(_asset_id)
-                if len(item_in_file.keys()) != csv_fields_count:
+                keys_check = item_in_file.keys()
+                if gui_g.s.index_copy_col_name in keys_check:
+                    csv_fields_count += 1
+                if len(keys_check) != csv_fields_count:
                     self._log(
                         f'In the existing file, asset {_asset_id} has not the same number of keys as the CSV headings. This asset is ignored and its values will be overwritten',
                         'error'
@@ -749,7 +752,7 @@ class UEVaultManagerCLI:
             if uewm_gui_exists:
                 # if the main gui is running, we already have a tk.mainloop running
                 # create an infinite loop to wait foor the end of the pw calling the callback (self.core.get_asset_list)
-                while not pw.must_end:
+                while not pw.is_closing:
                     # we need to constantly update the progress bar
                     pw.update()
                 pass
