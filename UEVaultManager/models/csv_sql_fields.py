@@ -645,3 +645,17 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
         )
         key_csv_not_in_asset = [key for key in db_field_names if key not in asset_data.keys()]
         debug_func(key_csv_not_in_asset)
+
+
+def convert_data_to_csv(sql_asset_data: dict) -> dict:
+    """
+    Return the asset data as a dictionary with the csv field names.
+    :param sql_asset_data: the asset data with keys in sql format
+    :return: the asset data with keys in csv format
+    """
+    # return asset_data to record by converting the "sql" field names to "csv" field names
+    csv_field_names = get_csv_field_name_list()
+    asset_data = {
+        get_csv_field_name(key): value for key, value in sql_asset_data.items() if get_csv_field_name(key) in csv_field_names and value is not None
+    }
+    return asset_data
