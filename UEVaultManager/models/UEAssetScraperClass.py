@@ -128,7 +128,7 @@ class UEAssetScraper:
 
         if self.load_from_files:
             self.store_in_files = False
-            self.use_database = True
+            # self.use_database = True
 
         if (assets_per_page > 100) or (assets_per_page < 1):
             self.assets_per_page = 100
@@ -267,6 +267,8 @@ class UEAssetScraper:
             # create a list of one asset when data come from a json file
             assets_data_list = [json_data.copy()]
 
+        asset_db_handler = self.asset_db_handler
+        use_database = self.use_database and asset_db_handler
         for asset_data in assets_data_list:
             uid = asset_data.get('id', '')
             if not uid:
@@ -412,12 +414,14 @@ class UEAssetScraper:
                     engine_version_for_obsolete_assets = None
                 asset_data['obsolete'] = is_asset_obsolete(supported_versions, engine_version_for_obsolete_assets)
 
-                # old_grab_result
-                old_grab_result = asset_existing_data.get('grab_result', GrabResult.NO_ERROR.name) if asset_existing_data else GrabResult.NO_ERROR.name
-                if owned_assets_only and old_grab_result == GrabResult.NO_ERROR.name:
-                    # if no error occurs and if we only parse owned assets, the parsed data ARE less complete than the "normal" one
-                    # so, we set the grab result to PARTIAL
-                    grab_result = GrabResult.PARTIAL.name
+                # grab_result and old_grab_result
+                # old_grab_result = asset_existing_data.get(
+                #     'grab_result', GrabResult.NO_ERROR.name
+                # ) if asset_existing_data else GrabResult.NO_ERROR.name
+                # if owned_assets_only and old_grab_result == GrabResult.NO_ERROR.name:
+                #     # if no error occurs and if we only parse owned assets, the parsed data ARE less complete than the "normal" one
+                #     # so, we set the grab result to PARTIAL
+                #     grab_result = GrabResult.PARTIAL.name
                 asset_data['grab_result'] = grab_result
 
                 # we use copy data for user_fields to preserve user data
@@ -440,7 +444,7 @@ class UEAssetScraper:
                     # asset_data['installed_folders'] = installed_folders_str
                 else:
                     # just convert the list of ids into a comma separated string
-                    tags_str = check_and_convert_list_to_str(asset_data.get('tags', []))
+                    tags_str = check_and_convert_list_to_str(tags)
                     # we need to convert list to string if we are in FILE Mode because it's done when saving the asset in database in the "SQLITE" mode
                     installed_folders_str = check_and_convert_list_to_str(asset_data.get('installed_folders', []))
                 asset_data['installed_folders'] = installed_folders_str
@@ -559,9 +563,14 @@ class UEAssetScraper:
             self._log(f'--- START scraping data from {url}{thread_data}')
 
             json_data = self.core.egs.get_json_data_from_url(url)
-            if json_data.get('errorCode', '') != '':
-                self._log(f'Error getting data from url {url}: {json_data["errorCode"]}', 'error')
-                return
+            no_error = json_data.get('status', '') == 'OK'
+            if not no_error:
+                self._log(f'Error getting data from url {url}. Making another try....')
+                json_data = self.core.egs.get_json_data_from_url(url)
+                no_error = json_data.get('status', '') == 'OK'
+                if not no_error:
+                    self._log(f'Error getting data from url {url}: {json_data["errorCode"]}', 'error')
+                    return
             try:
                 # when multiple assets are returned, the data is in the 'elements' key
                 count = len(json_data['data']['elements'])
@@ -668,7 +677,7 @@ class UEAssetScraper:
             # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
             self._scraped_data = list(chain.from_iterable(self._scraped_data))
             # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
-            if self.core.verbose_mode or gui_g.s.debug_mode:
+            if (self.core.verbose_mode or gui_g.s.debug_mode) and self._scraped_data:
                 debug_parsed_data(self._scraped_data[-1], DataSourceType.SQLITE)
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
@@ -752,7 +761,7 @@ class UEAssetScraper:
         self._log(message)
 
         # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
-        if self.core.verbose_mode or gui_g.s.debug_mode:
+        if (self.core.verbose_mode or gui_g.s.debug_mode) and self._scraped_data:
             debug_parsed_data(self._scraped_data[-1], DataSourceType.SQLITE)
 
         # save results in the last_run file

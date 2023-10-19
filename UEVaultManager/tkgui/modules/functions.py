@@ -561,5 +561,8 @@ def check_and_convert_list_to_str(str_or_list) -> str:
     :param str_or_list: the string or list to convert.
     :return: the converted string or the given parameter.
     """
-    result = ','.join(str_or_list) if isinstance(str_or_list, list) and len(str_or_list) else str_or_list if isinstance(str_or_list, str) else None
+    result = str_or_list
+    if isinstance(str_or_list, list) and str_or_list:
+        # if the list does not conatins only strings, it will raise an error. So we use map to convert all the values to string
+        result = ','.join(map(str,str_or_list))
     return result

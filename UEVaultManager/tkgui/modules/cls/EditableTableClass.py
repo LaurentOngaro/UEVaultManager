@@ -1002,72 +1002,54 @@ class EditableTable(Table):
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
-        if False and self.data_source_type == DataSourceType.FILE:
-            # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
-            if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
-                gui_f.from_cli_only_message()
-                return False
-            else:
-                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args, downloaded_data)
-                self.current_page = 1
-                gui_f.show_progress(self, 'Rebuilding Data from file...')
-                df_loaded = self.read_data()
-                if df_loaded is None:
-                    return False
-                self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)
-                self.update()  # this call will copy the changes to model. df AND to self.filtered_df
-                gui_f.close_progress(self)
-                return True
-        elif True and self.data_source_type == DataSourceType.SQLITE:
-            pw = gui_f.show_progress(self, 'Rebuilding Data from database...')
-            # we create the progress window here to avoid lots of imports in UEAssetScraper class
-            max_threads = get_max_threads()
-            owned_assets_only = False
-            db_asset_per_page = 100  # a bigger value will be refused by UE API
-            if gui_g.s.testing_switch == 1:
-                start_row = 15000
-                stop_row = 15000 + db_asset_per_page
-            else:
-                start_row = 0
-                stop_row = 0
-            if gui_g.s.offline_mode:
-                load_from_files = True
-            else:
-                if gui_g.UEVM_cli_args and gui_g.UEVM_cli_args.get('force_refresh', False):
-                    load_from_files = False
-                else:
-                    load_from_files = gui_g.UEVM_cli_args.get('offline', True)
-            scraper = UEAssetScraper(
-                start=start_row,
-                stop=stop_row,
-                assets_per_page=db_asset_per_page,
-                max_threads=max_threads,
-                use_database=True,
-                store_in_files=True,
-                store_ids=False,  # useless for now
-                load_from_files=load_from_files,
-                clean_database=False,
-                core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
-                progress_window=pw
-            )
-            # no db here
-            scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
-            if not pw.continue_execution:
-                gui_f.close_progress(self)
-                return False
-            scraper.save(owned_assets_only=owned_assets_only)
-            self.current_page = 1
-            df_loaded = self.read_data()
-            if df_loaded is None:
-                gui_f.close_progress(self)
-                return False
-            self.set_data(df_loaded)
-            self.update_downloaded_size(downloaded_data)
-            self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
-            # mf.close_progress(self)  # done in data_table.update(update_format=True)
-            return True
+        use_database = self.data_source_type == DataSourceType.SQLITE
+        message = 'Rebuilding Data For database...' if use_database else 'Rebuilding Data For CSV file...'
+        pw = gui_f.show_progress(self, message)
+        # we create the progress window here to avoid lots of imports in UEAssetScraper class
+        max_threads = get_max_threads()
+        owned_assets_only = False
+        db_asset_per_page = 100  # a bigger value will be refused by UE API
+        if gui_g.s.testing_switch == 1:
+            start_row = 15000
+            stop_row = 15000 + db_asset_per_page
         else:
+            start_row = 0
+            stop_row = 0
+        if gui_g.s.offline_mode:
+            load_from_files = True
+        else:
+            if gui_g.UEVM_cli_args and gui_g.UEVM_cli_args.get('force_refresh', False):
+                load_from_files = False
+            else:
+                load_from_files = gui_g.UEVM_cli_args.get('offline', True)
+        scraper = UEAssetScraper(
+            start=start_row,
+            stop=stop_row,
+            assets_per_page=db_asset_per_page,
+            max_threads=max_threads,
+            use_database=use_database,
+            store_in_files=True,
+            store_ids=False,  # useless for now
+            load_from_files=load_from_files,
+            clean_database=False,
+            core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
+            progress_window=pw
+        )
+        scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
+        if not pw.continue_execution:
+            gui_f.close_progress(self)
             return False
+        scraper.save(owned_assets_only=owned_assets_only)
+        self.current_page = 1
+        df_loaded = self.read_data()
+        if df_loaded is None:
+            gui_f.close_progress(self)
+            return False
+        self.set_data(df_loaded)
+        self.update_downloaded_size(asset_sizes)
+        self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
+        # mf.close_progress(self)  # done in data_table.update(update_format=True)
+        return True
 
     def gradient_color_cells(
         self, col_names: [] = None, cmap: str = 'blues', alpha: float = 1, min_val=None, max_val=None, is_reversed: bool = False
