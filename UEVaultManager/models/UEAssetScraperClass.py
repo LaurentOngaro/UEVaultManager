@@ -390,8 +390,8 @@ class UEAssetScraper:
                 # supported_versions
                 supported_versions = asset_data.get('supported_versions', gui_g.no_text_data)  # data can come from the extra_data
                 try:
-                    tmp_list = [','.join(item.get('compatibleApps')) for item in release_info]
-                    supported_versions = ','.join(tmp_list) or supported_versions
+                    tmp_list = [check_and_convert_list_to_str(item.get('compatibleApps')) for item in release_info]
+                    supported_versions = check_and_convert_list_to_str(tmp_list) or supported_versions
                 except TypeError as error:
                     self._log(f'Error getting compatibleApps for asset with uid={uid}: {error!r}', level='debug')
                 asset_data['supported_versions'] = supported_versions
@@ -477,7 +477,7 @@ class UEAssetScraper:
         if not self.use_database:
             return
         # convert the list of ids to a string for the database only
-        last_run_content['scraped_ids'] = ','.join(self._scraped_ids) if self.store_ids else ''
+        last_run_content['scraped_ids'] = check_and_convert_list_to_str(self._scraped_ids) if self.store_ids else ''
 
         if self.clean_database:
             # next line will delete all assets in the database

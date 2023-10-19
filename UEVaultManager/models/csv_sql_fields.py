@@ -6,6 +6,7 @@ from datetime import datetime
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType
+from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_float, convert_to_int, create_uid
 from UEVaultManager.tkgui.modules.types import DataSourceType, GrabResult, UEAssetType
 
@@ -319,7 +320,7 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
         if csv_field and csv_field not in result:  # some sql fields could be NONE or duplicate
             result.append(csv_field)
     if return_as_string:
-        result = ','.join(result)
+        result = ','.join(result)  # keep join() here to raise an error if installed_folders is not a list of strings
     return result
 
 
@@ -349,9 +350,8 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
                 result.append(f"{sql_name} AS '{csv_field}'")
         else:
             result.append(sql_name)
-
     if return_as_string:
-        result = ','.join(result)
+        result = ','.join(result)  # keep join() here to raise an error if installed_folders is not a list of strings
     return result
 
 
@@ -557,10 +557,9 @@ def create_empty_csv_row(return_as_string=False):
     data = {}
     for key in get_csv_field_name_list():
         data[key] = get_default_value(csv_field_name=key)
-
     data = set_default_values(data)
     if return_as_string:
-        data = ','.join(str(value) for value in data.values())
+        data = check_and_convert_list_to_str(data.values())
     return data
 
 

@@ -253,7 +253,7 @@ class UEAssetDbHandler:
             return False
 
     def _set_installed_folders(self, asset_id: str, catalog_item_id: str, installed_folders_existing: str, installed_folders: list) -> None:
-        installed_folders_updated = ','.join(installed_folders)
+        installed_folders_updated = ','.join(installed_folders)  # keep join() here to raise an error if installed_folders is not a list of strings
         if installed_folders_updated != installed_folders_existing:
             cursor = self.connection.cursor()
             if catalog_item_id:
@@ -917,7 +917,7 @@ class UEAssetDbHandler:
                         name = str(item).title()  # convert to string and capitalize
                     if name and name not in names:
                         names.append(name)
-                tags_str = ','.join(names)
+                tags_str = check_and_convert_list_to_str(names)
         return tags_str
 
     def drop_tables(self) -> None:
@@ -1190,7 +1190,7 @@ class UEAssetDbHandler:
             'mode': 'save',
             'files_count': 0,
             'items_count': number_of_rows,
-            'scraped_ids': ','.join(scraped_ids)
+            'scraped_ids': check_and_convert_list_to_str(scraped_ids)
         }
         self.save_last_run(content)
 

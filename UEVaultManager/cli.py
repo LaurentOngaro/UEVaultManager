@@ -431,7 +431,9 @@ class UEVaultManagerCLI:
                             if _csv_record[index] not in folder_list:
                                 folder_list.append(_csv_record[index])
                             # update the list in the CSV record
-                            _csv_record[index] = ','.join(folder_list)
+                            _csv_record[index] = ','.join(
+                                folder_list
+                            )  # keep join() here to raise an error if installed_folders is not a list of strings
 
                         if preserved_value_in_file:
                             _csv_record[index] = str_to_bool(value) if str_is_bool(value) else value

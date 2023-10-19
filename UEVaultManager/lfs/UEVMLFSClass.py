@@ -16,7 +16,7 @@ from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import InstalledAsset
-from UEVaultManager.tkgui.modules.functions import create_file_backup
+from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str, create_file_backup
 from UEVaultManager.tkgui.modules.functions_no_deps import create_uid, merge_lists_or_strings
 from UEVaultManager.utils.cli import check_and_create_file
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
@@ -705,7 +705,7 @@ class UEVMLFS:
                         'title': release_title,  #
                         'compatible': compatible_list,  #
                     }
-                    compatible_str = ','.join(compatible_list)
+                    compatible_str = check_and_convert_list_to_str(compatible_list)
                     desc = f'Release id: {asset_id}\nTitle: {release_title}\nRelease Date: {formatted_date}\nUE Versions: {compatible_str}'
                     folder_choice = {}
                     if all_installed_folders.get(asset_id, ''):

@@ -205,7 +205,9 @@ class DbFilesWindowClass(tk.Toplevel):
             files = self.container.db_handler.export_to_csv(self.container.folder_for_csv_files, table_name, backup_existing=backup_on_export)
 
             if self.var_user_fields.get():
-                fields = ','.join(self.container.db_handler.user_fields)
+                fields = ','.join(
+                    self.container.db_handler.user_fields
+                )  # keep join() here to raise an error if installed_folders is not a list of strings
                 files += self.container.db_handler.export_to_csv(
                     self.container.folder_for_csv_files,
                     'assets',
