@@ -268,18 +268,6 @@ class UEAssetScraper:
             assets_data_list = [json_data.copy()]
 
         for asset_data in assets_data_list:
-            # meaningfull values in create_asset_from_data ONLY
-            asset_id_to_keep = None
-            downloaded_size = gui_g.s.unknown_size  # size will be set later
-            asset_url_grabbed = ''
-
-            # meaningfull values in _parse_data ONLY
-            asset_db_handler = self.asset_db_handler
-            use_database = self.use_database and asset_db_handler
-
-            # -----
-            # start similar part as in UEAssetScrappedClass._parse_data
-            # -----
             uid = asset_data.get('id', '')
             if not uid:
                 # this should never occur
@@ -309,7 +297,9 @@ class UEAssetScraper:
                 asset_data['page_title'] = asset_data['title']
                 asset_data['origin'] = origin
                 asset_data['update_date'] = date_now
-                asset_data['downloaded_size'] = downloaded_size
+                asset_data['downloaded_size'] = self.core.uevmlfs.get_asset_size(
+                    app_name, gui_g.no_text_data
+                )  # '' because we want the cell to be empty if no size
 
                 # thumbnail_url
                 asset_data['thumbnail_url'] = asset_data.get('thumbnail', '')
@@ -328,7 +318,7 @@ class UEAssetScraper:
 
                 # asset_id
                 try:
-                    asset_id = asset_id_to_keep or latest_release['appId']
+                    asset_id = latest_release['appId']
                 except (KeyError, AttributeError, IndexError):
                     grab_result = GrabResult.NO_APPID.name
                     asset_id = uid  # that's not the REAL asset_id, we use the uid instead
@@ -336,8 +326,6 @@ class UEAssetScraper:
 
                 # asset slug and asset url
                 asset_slug = asset_data.get('urlSlug', gui_g.no_text_data) or asset_data.get('asset_slug', gui_g.no_text_data)
-                if asset_url_grabbed:
-                    asset_slug = asset_url_grabbed.split('/')[-1]
                 if asset_slug == gui_g.no_text_data:
                     asset_url = gui_g.no_text_data
                     self._log(f'No asset_slug found for asset id={uid}. Its asset_url will be empty', level='warning')
@@ -500,18 +488,22 @@ class UEAssetScraper:
         """
         Return the filename to use to save the asset data.
         :param asset_data: the asset data.
-        :return:  the filename to use to save the asset data.
+        :return: the filename to use to save the asset data.
         """
         try:
-            app_id = asset_data['releaseInfo'][0]['appId']
+            app_id = asset_data['releaseInfo'][-1]['appId']  # latest release
             filename = f'{app_id}.json'
         except (KeyError, IndexError) as error:
             self._log(f'Error getting appId for asset with id {asset_data["id"]}: {error!r}', 'warning')
-            slug = asset_data.get('urlSlug', None)
-            if slug is None:
-                slug = asset_data.get('catalogItemId', gui_fn.create_uid())
-            filename = f'_no_appId_{slug}.json'
+            app_id = asset_data.get('urlSlug', None)
+            if app_id is None:
+                app_id = asset_data.get('catalogItemId', gui_fn.create_uid())
+            filename = f'_no_appId_{app_id}.json'
         return filename
+
+    def get_scrapped_data(self) -> list:
+        """ Return the scraped data. """
+        return self._scraped_data
 
     def gather_all_assets_urls(self, empty_list_before=False, save_result=True, owned_assets_only=False) -> None:
         """
@@ -603,9 +595,9 @@ class UEAssetScraper:
         except Exception as error:
             self._log(f'Error getting data from url {url}: {error!r}', 'warning')
 
-    def get_scraped_data(self, owned_assets_only=False) -> None:
+    def execute(self, owned_assets_only=False) -> None:
         """
-        Load from files or downloads the items from the URLs and stores them in the scraped_data property.
+        Execute the scrapper. Load from files or downloads the items from the URLs and stores them in the scraped_data property.
         The execution is done in parallel using threads.
         :param owned_assets_only: whether only the owned assets are scraped
 
@@ -788,7 +780,7 @@ class UEAssetScraper:
         if owned_assets_only:
             self._log('Only Owned Assets will be scraped')
 
-        self.get_scraped_data(owned_assets_only=owned_assets_only)
+        self.execute(owned_assets_only=owned_assets_only)
         if not self.progress_window.continue_execution:
             return
 
@@ -824,9 +816,10 @@ class UEAssetScraper:
             with open(filename, 'w', encoding='utf-8') as file:
                 json.dump(content, file)
 
-        self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=None)
-        self._save_in_db(last_run_content=content)
-        self._log('data saved')
+        if self.use_database:
+            self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=None)
+            self._save_in_db(last_run_content=content)
+            self._log('data saved')
 
     def pop_last_scrapped_data(self) -> []:
         """

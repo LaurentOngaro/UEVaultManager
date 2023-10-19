@@ -68,20 +68,6 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
-        var_delete_metadata = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_metadata', False))
-        var_delete_metadata.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_metadata(var_delete_metadata.get()))
-        ck_delete_metadata = ttk.Checkbutton(lblf_command_options, text='Delete metadata (cleanup)', variable=var_delete_metadata)
-        ck_delete_metadata.grid(row=cur_row, column=cur_col, **grid_ew_options)
-        # new row
-        cur_row += 1
-        cur_col = 0
-        var_delete_extra_data = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extra_data', False))
-        var_delete_extra_data.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extra_data(var_delete_extra_data.get()))
-        ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete extra data (cleanup)', variable=var_delete_extra_data)
-        ck_delete_extra_data.grid(row=cur_row, column=cur_col, **grid_ew_options)
-        # new row
-        cur_row += 1
-        cur_col = 0
         var_delete_scraping_data = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_scraping_data', False))
         var_delete_scraping_data.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_scraping_data(var_delete_scraping_data.get()))
         ck_delete_scraping_data = ttk.Checkbutton(lblf_command_options, text='Delete scraping data (cleanup)', variable=var_delete_scraping_data)

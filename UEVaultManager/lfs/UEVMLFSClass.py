@@ -12,13 +12,12 @@ from time import time
 from typing import Optional
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import GrabResult
 from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
-from UEVaultManager.models.Asset import Asset, AssetBase, InstalledAsset
+from UEVaultManager.models.Asset import InstalledAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup
-from UEVaultManager.tkgui.modules.functions_no_deps import merge_lists_or_strings
+from UEVaultManager.tkgui.modules.functions_no_deps import create_uid, merge_lists_or_strings
 from UEVaultManager.utils.cli import check_and_create_file
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
@@ -40,12 +39,8 @@ class UEVMLFS:
         self._user_data = None
         # EGS entitlements
         self._entitlements = None
-        # EGS asset data
-        self._assets = None
-        # EGS metadata
-        self.assets_metadata = {}
-        # additional infos (price, review...)
-        self.assets_extra_data = {}
+        # dict of json asset data
+        # TOOBIG self.assets_data = {}
         # UEVaultManager update check info
         self._update_info = None
         # UE assets metadata cache data
@@ -68,11 +63,10 @@ class UEVMLFS:
             self.config_file = path_join(self.path, 'config.ini')
 
         # Folders used by the application
-        self.manifests_folder: str = path_join(self.path, 'manifests')
-        self.metadata_folder: str = path_join(self.path, 'metadata')
-        self.tmp_folder: str = path_join(self.path, 'tmp')
-        self.extra_folder: str = path_join(self.path, 'extra')
         self.json_files_folder: str = path_join(self.path, 'json')  # folder for json files other than metadata, extra and manifests
+        # self.metadata_folder: str = path_join(self.json_files_folder, 'metadata')
+        self.manifests_folder: str = path_join(self.json_files_folder, 'manifests')
+        self.tmp_folder: str = path_join(self.path, 'tmp')
 
         # filename for storing the user data (filled by the 'auth' command).
         self.user_data_filename: str = path_join(self.json_files_folder, 'user_data.json')
@@ -80,20 +74,17 @@ class UEVMLFS:
         self.online_version_filename: str = path_join(self.json_files_folder, 'online_version.json')
         # filename for storing cache data for asset's metadata updating
         self.assets_cache_info_filename: str = path_join(self.json_files_folder, 'assets_cache_info.json')
-        # filename for storing 'basic' data of assets.
-        self.assets_data_filename: str = path_join(self.json_files_folder, 'assets.json')
         # filename for the installed assets list
         self.installed_asset_filename: str = path_join(self.json_files_folder, 'installed_assets.json')
         # filename for storing the size of asset (filled by the 'info' command).
         self.asset_sizes_filename: str = path_join(self.json_files_folder, 'asset_sizes.json')
 
         # ensure folders exist.
-        for f in ['', self.manifests_folder, self.metadata_folder, self.tmp_folder, self.extra_folder, self.json_files_folder]:
+        for f in ['', self.manifests_folder, self.tmp_folder, self.json_files_folder]:
             if not os.path.exists(path_join(self.path, f)):
                 os.makedirs(path_join(self.path, f))
 
         # check and create some empty files (to avoid file not found errors in debug)
-        check_and_create_file(self.assets_data_filename, create_file=False)  # keep the file content as 'None'
         check_and_create_file(self.asset_sizes_filename, content='{}')
         check_and_create_file(self.installed_asset_filename, content='{}')
 
@@ -200,6 +191,18 @@ class UEVMLFS:
         self._installed_assets = {}
         self.load_installed_assets()
 
+        # TOOBIG
+        # load existing assets metadata
+        # data_folder = gui_g.s.assets_data_folder
+        # for gm_file in os.listdir(path_join(data_folder)):
+        #     try:
+        #         with open(path_join(data_folder, gm_file), 'r', encoding='utf-8') as file:
+        #             json_data = json.load(file)
+        #             app_name = self.get_app_name_from_asset_data(json_data)
+        #             self.assets_data[app_name] = json_data
+        #     except Exception as error:
+        #         self.log.debug(f'Loading asset data file "{gm_file}" failed: {error!r}')
+
         # load asset sizes
         try:
             with open(self.asset_sizes_filename, 'r', encoding='utf-8') as file:
@@ -207,37 +210,6 @@ class UEVMLFS:
         except Exception as error:
             self.log.debug(f'Loading assets sizes failed: {error!r}')
             self._asset_sizes = None
-
-        # load existing assets metadata
-        _meta = None
-        for gm_file in os.listdir(path_join(self.metadata_folder)):
-            try:
-                with open(path_join(self.metadata_folder, gm_file), 'r', encoding='utf-8') as file:
-                    _meta = json.load(file)
-                    self.assets_metadata[_meta['app_name']] = _meta
-            except Exception as error:
-                self.log.debug(f'Loading asset meta file "{gm_file}" failed: {error!r}')
-
-        # done when asset metadata is parsed to allow filtering
-        # load existing Asset extra data
-        # for gm_file in os.listdir(self.extra_folder):
-        #    try:
-        #        _extra = json.load(open(path_join(self.extra_folder, gm_file)))
-        #        self._assets_extra_data[_extra['asset_name']] = _extra
-        #    except Exception as error:
-        #        self.log.debug(f'Loading asset extra file "{gm_file}" failed: {error!r}')
-
-        # not used anymore
-        # load auto-aliases if enabled
-        # self.aliases = {}
-        # if not self.config.getboolean('UEVaultManager', 'disable_auto_aliasing', fallback=False):
-        #     try:
-        #         _j = json.load(open(path_join(self.path, 'aliases.json')))
-        #         for app_name, aliases in _j.items():
-        #             for alias in aliases:
-        #                 self.aliases[alias] = app_name
-        #     except Exception as error:
-        #         self.log.debug(f"Loading aliases failed with {error!r}")
 
     @property
     def userdata(self):
@@ -277,33 +249,6 @@ class UEVMLFS:
             os.remove(self.user_data_filename)
 
     @property
-    def assets(self):
-        """
-        Return the asset's data as a dict. If not loaded, load it from the json file.
-        :return: asset's data.
-        """
-        if self._assets is None:
-            try:
-                with open(self.assets_data_filename, 'r', encoding='utf-8') as file:
-                    tmp = json.load(file)
-                    self._assets = {k: [AssetBase.from_json(j) for j in v] for k, v in tmp.items()}
-            except Exception as error:
-                self.log.debug(f"Failed to load asset's data: {error!r}")
-        return self._assets
-
-    @assets.setter
-    def assets(self, assets) -> None:
-        """
-        Set the asset data and saved it to a json file.
-        :param assets: assets.
-        """
-        if assets is None:
-            raise ValueError('No Assets data!')
-        self._assets = assets
-        with open(self.assets_data_filename, 'w', encoding='utf-8') as file:
-            json.dump({platform: [a.__dict__ for a in assets] for platform, assets in self._assets.items()}, file, indent=2, sort_keys=True)
-
-    @property
     def asset_sizes(self):
         """
         Return the asset's sizes as a dict. If not loaded, load it from the json file.
@@ -326,6 +271,20 @@ class UEVMLFS:
         self._asset_sizes = asset_sizes
         with open(self.asset_sizes_filename, 'w', encoding='utf-8') as file:
             json.dump(self._asset_sizes, file, indent=2, sort_keys=True)
+
+    def _get_manifest_filename(self, app_name: str, version: str, platform: str = None) -> str:
+        """
+        Get the manifest filename.
+        :param app_name: Asset name.
+        :param version: version of the manifest.
+        :param platform: platform of the manifest.
+        :return: the manifest filename.
+        """
+        if platform:
+            fname = clean_filename(f'{app_name}_{platform}_{version}')
+        else:
+            fname = clean_filename(f'{app_name}_{version}')
+        return path_join(self.manifests_folder, f'{fname}.manifest')
 
     @staticmethod
     def load_filter_list(filename: str = '') -> Optional[dict]:
@@ -358,19 +317,36 @@ class UEVMLFS:
         with open(full_filename, 'w', encoding='utf-8') as file:
             json.dump(filters, file, indent=2, sort_keys=True)
 
-    def _get_manifest_filename(self, app_name: str, version: str, platform: str = None) -> str:
+    @staticmethod
+    def get_app_name_from_asset_data(asset_data: dict) -> str:
         """
-        Get the manifest filename.
-        :param app_name: Asset name.
-        :param version: version of the manifest.
-        :param platform: platform of the manifest.
-        :return: the manifest filename.
+        Return the app_name to use to get the asset data.
+        :param asset_data: the asset data.
+        :return: app_name (ie asset_id)
         """
-        if platform:
-            fname = clean_filename(f'{app_name}_{platform}_{version}')
-        else:
-            fname = clean_filename(f'{app_name}_{version}')
-        return path_join(self.manifests_folder, f'{fname}.manifest')
+        try:
+            app_id = asset_data['releaseInfo'][-1]['appId']  # latest release
+        except (KeyError, IndexError):
+            app_id = asset_data.get('urlSlug', None)
+            if app_id is None:
+                app_id = asset_data.get('catalogItemId', create_uid())
+        return app_id
+
+    def get_asset(self, app_name: str) -> dict:
+        """
+        Get an asset data.
+        :param app_name: the asset name.
+        :return: the asset data.
+        """
+        asset_data = {}
+        data_folder = gui_g.s.assets_data_folder
+        filename = app_name + '.json'
+        try:
+            with open(path_join(data_folder, filename), 'r', encoding='utf-8') as file:
+                asset_data = json.load(file)
+        except Exception as error:
+            self.log.debug(f'Loading asset data file "{filename}" failed: {error!r}')
+        return asset_data
 
     def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:
         """
@@ -448,101 +424,6 @@ class UEVMLFS:
             file.write(manifest_data)
         return filename
 
-    def get_item_meta(self, app_name: str) -> Optional[Asset]:
-        """
-        Get the metadata for an item.
-        :param app_name: the name of the item.
-        :return: an Asset object.
-        """
-        # Note: self._assets_metadata is filled at the start of the list command by reading all the json files in the metadata folder
-        if _meta := self.assets_metadata.get(app_name, None):
-            return Asset.from_json(_meta)  # create an object from the Asset class using the json data
-        return None
-
-    def set_item_meta(self, app_name: str, meta) -> None:
-        """
-        Set the metadata for an item.
-        :param app_name: the name of the item.
-        :param meta: the metadata object.
-        """
-        json_meta = meta.__dict__
-        self.assets_metadata[app_name] = json_meta
-        meta_file = path_join(self.metadata_folder, f'{app_name}.json')
-        with open(meta_file, 'w', encoding='utf-8') as file:
-            json.dump(json_meta, file, indent=2, sort_keys=True)
-
-    def delete_item_meta(self, app_name: str) -> None:
-        """
-        Delete the metadata for an item.
-        :param app_name: the name of the item.
-        """
-        if app_name not in self.assets_metadata:
-            raise ValueError(f'Item {app_name} does not exist in metadata DB!')
-
-        del self.assets_metadata[app_name]
-        meta_file = path_join(self.metadata_folder, f'{app_name}.json')
-        if os.path.exists(meta_file):
-            os.remove(meta_file)
-
-    def get_item_extra(self, app_name: str) -> Optional[dict]:
-        """
-        Get the extra data for an Asset.
-        :param app_name: the Asset name.
-        :return: the extra data.
-        """
-        extra = self.assets_extra_data.get(app_name, None)
-        extra_file = path_join(self.extra_folder, f'{app_name}.json')
-        if extra is None and os.path.exists(extra_file):
-            try:
-                with open(extra_file, 'r', encoding='utf-8') as file:
-                    extra = json.load(file)
-                    self.assets_extra_data[extra['asset_name']] = extra
-                    has_error = extra['grab_result'] != GrabResult.NO_ERROR.name  # as it, it will be tried again
-            except json.decoder.JSONDecodeError:
-                has_error = True
-            if has_error:
-                self.log.debug(f'Failed to load extra data for {app_name} or Grab Result had errors!. Deleting file...')
-                # delete the file
-                try:
-                    os.remove(extra_file)
-                except Exception as error:
-                    self.log.error(f'Failed to delete extra file {extra_file}: {error!r}')
-                return None
-        return extra
-
-    def set_item_extra(self, app_name: str, extra: dict, update_global_dict: True) -> None:
-        """
-        Save the extra data for an Asset.
-        :param app_name: the Asset name.
-        :param extra: the extra data.
-        :param update_global_dict: update the global dict with the new data.
-        """
-        extra_file = path_join(self.extra_folder, f'{app_name}.json')
-        self.log.debug(f'--- SAVING {len(extra)} extra data for {app_name} in {extra_file}')
-        with open(extra_file, 'w', encoding='utf-8') as file:
-            json.dump(extra, file, indent=2, sort_keys=True)
-        if update_global_dict:
-            self.assets_extra_data[app_name] = extra
-
-    def delete_item_extra(self, app_name: str, update_global_dict: True) -> None:
-        """
-        Delete the extra data for an Asset.
-        :param app_name: the Asset name.
-        :param update_global_dict: update the global dict with the new data.
-        """
-        if update_global_dict and self.assets_extra_data.get(app_name):
-            del self.assets_extra_data[app_name]
-        extra_file = path_join(self.extra_folder, f'{app_name}.json')
-        if os.path.exists(extra_file):
-            os.remove(extra_file)
-
-    def get_item_app_names(self) -> list:
-        """
-        Get the list of Asset names.
-        :return: the list of Asset names.
-        """
-        return sorted(self.assets_metadata.keys())
-
     def clean_tmp_data(self) -> int:
         """
         Delete all the files in the tmp folder.
@@ -556,22 +437,6 @@ class UEVMLFS:
         :return: the size of the deleted files.
         """
         return self.delete_folder_content(gui_g.s.cache_folder)
-
-    def clean_metadata(self, names_to_keep: list) -> int:
-        """
-        Delete all the metadata files that are not in the names_to_keep list.
-        :param names_to_keep: the list of asset names to keep.
-        :return: the size of the deleted files.
-        """
-        return self.delete_folder_content(self.metadata_folder, file_name_to_keep=names_to_keep)
-
-    def clean_extra(self, names_to_keep: list) -> int:
-        """
-        Delete all the metadata files that are not in the names_to_keep list.
-        :param names_to_keep: the list of asset names to keep.
-        :return: the size of the deleted files.
-        """
-        return self.delete_folder_content(self.extra_folder, file_name_to_keep=names_to_keep)
 
     def clean_manifests(self) -> int:
         """
@@ -708,15 +573,16 @@ class UEVMLFS:
         """
         return self._installed_assets
 
-    def get_asset_size(self, app_name: str) -> int:
+    def get_asset_size(self, app_name: str, default=0) -> int:
         """
         Get the size of an asset.
         :param app_name: the asset name.
-        :return: the size of the asset. -1 if not found.
+        :param default: the default value to return if the asset is not found.
+        :return: the size of the asset, default if not found.
         """
         if not app_name:
-            return 0
-        return self._asset_sizes.get(app_name, -1)
+            return default
+        return self._asset_sizes.get(app_name, default)
 
     def set_asset_size(self, app_name: str, size: int) -> None:
         """

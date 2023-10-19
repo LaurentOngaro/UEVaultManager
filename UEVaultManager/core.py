@@ -3,21 +3,17 @@
 Implementation for:
 - AppCore: handle most of the lower level interaction with the downloader, lfs, and api components to make writing CLI/GUI code easier and cleaner and avoid duplication.
 """
-import concurrent
 import json
 import logging
 import os
 import shutil
-import time
 from base64 import b64decode
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import datetime
 from hashlib import sha1
 from locale import getlocale, LC_CTYPE
 from multiprocessing import Queue
 from platform import system
-from threading import current_thread, enumerate as thread_enumerate
-from typing import Dict, List
+from typing import List, Optional
 from urllib.parse import urlparse
 
 from requests import session
@@ -26,7 +22,7 @@ from requests.exceptions import ConnectionError, HTTPError
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 # noinspection PyPep8Naming
 from UEVaultManager import __version__ as UEVM_version
-from UEVaultManager.api.egs import EPCAPI, GrabResult
+from UEVaultManager.api.egs import EPCAPI
 from UEVaultManager.api.uevm import UEVMAPI
 from UEVaultManager.downloader.mp.DLManagerClass import DLManager
 from UEVaultManager.lfs.EPCLFSClass import EPCLFS
@@ -37,9 +33,9 @@ from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResu
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
-from UEVaultManager.tkgui.modules.functions import box_message, exit_and_clean_windows
+from UEVaultManager.tkgui.modules.functions import exit_and_clean_windows
 from UEVaultManager.tkgui.modules.functions_no_deps import format_size
-from UEVaultManager.utils.cli import check_and_create_file, check_and_create_folder, get_max_threads
+from UEVaultManager.utils.cli import check_and_create_file, check_and_create_folder
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
@@ -418,519 +414,26 @@ class AppCore:
         """
         return self.uevmlfs.get_online_version_saved()['data']
 
-    def get_assets(self, update_assets=False, platform='Windows') -> List[AssetBase]:
+    def get_assets(self, update_assets=False) -> List[AssetBase]:
         """
-        Return a list of assets for the given platform.
+        Return a list of assets.
         :param update_assets: whether to always fetches a new list of assets from the server.
-        :param platform: platform to fetch assets for.
         :return: list of AssetBase objects.
         """
+        # TODO: adapt this code using the scraped json files
         # do not save and always fetch list when platform is overridden
-        if not self.uevmlfs.assets or update_assets or platform not in self.uevmlfs.assets:
+        if not self.uevmlfs.asset_list or update_assets:
             # if not logged in, return empty list
             if not self.egs.user:
                 return []
-            assets = self.uevmlfs.assets.copy() if self.uevmlfs.assets else {}
-            assets.update({platform: [AssetBase.from_egs_json(a) for a in self.egs.get_item_assets(platform=platform)]})
-            if gui_g.s.testing_switch == 1:
-                # get only the last assets, bypassing the first because they are not ue asset but "others item"
-                assets[platform] = assets[platform][-gui_g.s.testing_assets_limit:]
+            assets = self.uevmlfs.asset_list.copy() if self.uevmlfs.asset_list else {}
+            # TODO : scrap asset here
+
             # only save (and write to disk) if there were changes
-            if self.uevmlfs.assets != assets:
-                self.uevmlfs.assets = assets
-        assets = self.uevmlfs.assets.get(platform, None)
+            if self.uevmlfs.asset_list != assets:
+                self.uevmlfs.asset_list = assets  # this also save the list in json file
+        assets = self.uevmlfs.asset_list
         return assets
-
-    def get_asset(self, app_name: str, platform='Windows', update=False) -> AssetBase:
-        """
-        Return an AssetBase object for the given asset name and platform.
-        :param app_name: asset name to get.
-        :param platform: platform to get asset for.
-        :param update: force update of asset list.
-        :return: appAsset object.
-        """
-        if update or platform not in self.uevmlfs.assets:
-            self.get_assets(update_assets=True, platform=platform)
-
-        try:
-            return next(i for i in self.uevmlfs.assets[platform] if i.app_name == app_name)
-        except StopIteration:
-            raise ValueError
-
-    def asset_available(self, item: Asset, platform='Windows') -> bool:
-        """
-        Return whether an asset is available for the given item and platform.
-        :param item: item to check.
-        :param platform:.
-        :return: True if asset is available, False otherwise.
-        """
-        try:
-            asset = self.get_asset(item.app_name, platform=platform)
-            return asset is not None
-        except ValueError:
-            return False
-
-    def get_item(self, app_name, update_meta=False, platform='Windows') -> Asset:
-        """
-        Return an Asset object.
-        :param app_name: name to get.
-        :param update_meta: force update of metadata.
-        :param platform: platform to get asset for.
-        :return: Asset object.
-        """
-        if update_meta:
-            self.get_asset_list(True, platform=platform)
-        return self.uevmlfs.get_item_meta(app_name)
-
-    def get_asset_list(self,
-                       update_assets=True,
-                       platform='Windows',
-                       filter_category='',
-                       force_refresh=False) -> (List[Asset], Dict[str, List[Asset]]):
-        """
-        Returns a list of all available assets for the given platform.
-        :param update_assets: force update of asset list.
-        :param platform: platform to get assets for.
-        :param filter_category: filter by category.
-        :param force_refresh: force refresh of asset list.
-        :return: assets list.
-        """
-
-        # Cancel all outstanding tasks and shut down the executor
-        def stop_executor(tasks) -> None:
-            """
-            Cancel all outstanding tasks and shut down the executor.
-            :param tasks: tasks to cancel.
-            """
-            for _, task in tasks.items():
-                task.cancel()
-            self.thread_executor.shutdown(wait=False)
-
-        def fetch_asset_meta(name: str) -> bool:
-            """
-            Fetch metadata for the given asset.
-            :param name: asset name.
-            :return: True if metadata was fetched, False otherwise.
-            """
-            if (name in currently_fetching or not fetch_list.get(name)) and ('Asset_Fetcher' in thread_enumerate()) or self.thread_executor_must_stop:
-                return False
-
-            if gui_g.progress_window_ref is not None and (
-                not gui_g.progress_window_ref.update_and_continue(increment=1) or gui_g.progress_window_ref.is_closing
-            ):
-                gui_g.progress_window_ref.is_closing = True
-                fetch_list.clear()
-                return False
-
-            thread_data = ''
-            if self.use_threads:
-                thread = current_thread()
-                thread_data = f' ==> By Thread name={thread.name}'
-
-            self.log.debug(f'--- START fetching data {name}{thread_data}')
-
-            currently_fetching[name] = True
-            start_time = datetime.now()
-            name, namespace, catalog_item_id, _process_meta, _process_extra = fetch_list[name]
-
-            if _process_meta:
-                try:
-                    eg_meta, status_code = self.egs.get_item_info(namespace, catalog_item_id)
-                except HTTPError as error_l:
-                    self.log.warning(f'Failed to fetch metadata for {name}: {error_l!r}')
-                    return False
-                if status_code != 200:
-                    self.log.warning(f'Failed to fetch metadata for {name}: reponse code = {status_code}')
-                    return False
-
-                asset = Asset(app_name=name, app_title=eg_meta['title'], metadata=eg_meta, asset_infos=assets[name])
-                self.uevmlfs.set_item_meta(asset.app_name, asset)
-                fetched_assets[name] = asset
-
-            if _process_extra:
-                # we use title because it's less ambiguous than a name when searching an asset
-                installed_asset = self.uevmlfs.get_installed_asset(name)
-                eg_extra = self.egs.grab_assets_extra(
-                    asset_name=name, asset_title=fetched_assets[name].app_title, verbose_mode=self.verbose_mode, installed_asset=installed_asset,
-                )
-
-                # check for data consistency
-                if 'stomt' in app_name.lower() or 'terrainmagic' in app_name.lower():
-                    if eg_extra.get('grab_result', '') != GrabResult.NO_ERROR.name or not eg_extra.get('owned', False):
-                        box_message(
-                            msg=f'Some results in extra data are inconsistants for {app_name}. Please check the data and try again. Exiting...',
-                            level='error'
-                        )
-
-                self.uevmlfs.set_item_extra(app_name=name, extra=eg_extra, update_global_dict=True)
-
-                # log the asset if the title in metadata and the title in the marketplace grabbed page are not identical
-                title_extra = eg_extra['page_title']
-                title_fetched = fetched_assets[name].app_title
-                if title_extra != '' and title_extra != title_fetched:
-                    self.log.warning(f'{name} has incoherent data. It has been added to the bad_data_logger file')
-                    eg_extra['grab_result'] = GrabResult.INCONSISTANT_DATA.name
-                    if self.bad_data_logger:
-                        self.bad_data_logger.info(name)
-            else:
-                # if we don't process extra, we still need to add the asset to the log corresponding to their grab_result
-                eg_extra = self.uevmlfs.assets_extra_data[app_name]
-                if eg_extra['grab_result'] == GrabResult.INCONSISTANT_DATA.name and self.bad_data_logger:
-                    self.bad_data_logger.info(name)
-                if eg_extra['grab_result'] == GrabResult.CONTENT_NOT_FOUND.name and self.notfound_logger:
-                    self.notfound_logger.info(name)
-            # compute process time and average in s
-            end_time = datetime.now()
-            process_time = (end_time - start_time).total_seconds()
-            self.process_time_average['time'] += process_time
-            self.process_time_average['count'] += 1
-
-            if fetch_list.get(name):
-                del fetch_list[name]
-                if self.verbose_mode:
-                    self.log.info(f'Removed {name} from the metadata update')
-
-            if currently_fetching.get(name):
-                del currently_fetching[name]
-
-            if not self.use_threads:
-                process_average = self.process_time_average['time'] / self.process_time_average['count']
-                self.log.info(f'===Time Average={process_average:.3f} s # ({(len(fetch_list) * process_average):.3f} s time left)')
-
-            self.log.info(
-                f'--- END fetching data in {name}{thread_data}. Time For Processing={process_time:.3f}s # Still {len(fetch_list)} assets to process'
-            )
-            return True
-
-        # end of fetch_asset_meta
-
-        _ret = []
-        meta_updated = False
-
-        # fetch asset information for Windows, all installed platforms, and the specified one
-        platforms = {'Windows'}
-        platforms |= {platform}
-        if gui_g.progress_window_ref is not None:
-            try:
-                gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching platforms...", new_max_value=len(platforms))
-            except (Exception, ) as error:
-                # NOTE: !important
-                #   An exception with "main thread is not in main loop" message can be raised if the progressWindow is displayed BEFORE the mainloop
-                #   has started for the main window (ie UEVMGui). This can happen when the --list command is used.
-                #   To avoid future errors:
-                #       - use the after method to delay the method that can open the progress window after the mainloop has started
-                #       - if not possible, we close the progress window here and continue the execution
-                self.log.info(
-                    f'An error occured when trying to reset the progress window.\nIt will not be used anymore in that function.\nThis issue occurs when launched with debugging only.\nError message: {error!r}'
-                )
-                if 'main thread is not in main loop' not in str(error):
-                    # will produce the same exception twice, so we check for the message to avoid it
-                    gui_g.progress_window_ref.close_window()
-                else:
-                    gui_g.progress_window_ref.quit()
-                gui_g.progress_window_ref = None
-        for _platform in platforms:
-            try:
-                # getting the user assets fron EGS
-                self.get_assets(update_assets=update_assets, platform=_platform)
-            except (Exception, ) as error:
-                # could raide a timeout error
-                self.log.warning(f'Fetching assets for {_platform} failed: {error!r}')
-                return []
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                return []
-
-        if not self.uevmlfs.assets:
-            return _ret
-
-        assets = {}
-        if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Fetching assets...", new_max_value=len(self.uevmlfs.assets.items()))
-        for _platform, _assets in self.uevmlfs.assets.items():
-            for _asset in _assets:
-                if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                    return []
-                if _asset.app_name in assets:
-                    assets[_asset.app_name][_platform] = _asset
-                else:
-                    assets[_asset.app_name] = {_platform: _asset}
-
-        fetch_list = {}
-        assets_bypassed = {}
-        fetched_assets = {}
-        valid_items = []
-        bypass_count = 0
-        self.log.info(f'======\nSTARTING phase 1: asset indexing (ue or not)\n')
-        if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Indexing assets...", new_max_value=len(assets.items()))
-        # loop through assets items to check for if they are for ue or not
-        # Note: we sort by reverse, as it the most recent version of an asset will be listed first
-        for app_name, app_assets in sorted(assets.items(), reverse=True):
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                return []
-            # Note:
-            #   asset_id is not unique because somme assets can have the same asset_id but with several UE versions
-            #   app_name is unique because it includes the unreal version
-            # asset_id = app_assets['Windows'].asset_id
-            assets_bypassed[app_name] = False
-            if app_assets['Windows'].namespace != 'ue':
-                self.log.debug(f'{app_name} has been bypassed (namespace != "ue") in phase 1')
-                bypass_count += 1
-                assets_bypassed[app_name] = True
-                continue
-
-            item = {'name': app_name, 'asset': app_assets}
-            valid_items.append(item)
-
-        self.ue_assets_count = len(valid_items)
-
-        self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 1')
-
-        # check if we must refresh ue asset metadata cache
-        self.check_for_ue_assets_updates(self.ue_assets_count, force_refresh)
-        force_refresh = self.cache_is_invalidate
-        if force_refresh:
-            self.log.info(f'!! Assets metadata will be updated !!\n')
-        else:
-            self.log.info(f"Asset metadata won't be updated\n")
-
-        self.log.info(f'======\nSTARTING phase 2:asset filtering and metadata updating\n')
-        if gui_g.progress_window_ref is not None:
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata...", new_max_value=len(valid_items))
-        # loop through valid items to check for update and filtering
-        bypass_count = 0
-        filtered_items = []
-        currently_fetching = {}
-        i = 0
-        while i < len(valid_items):
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                return []
-            item = valid_items[i]
-            app_name = item['name']
-            app_assets = item['asset']
-            if self.verbose_mode:
-                self.log.info(f'Checking {app_name}....')
-
-            item_metadata = self.uevmlfs.get_item_meta(app_name)
-            asset_updated = False
-
-            if not item_metadata:
-                self.log.info(f'Metadata for {app_name} are missing. It Will be ADDED to the FETCH list')
-            else:
-                category_lower = str(item_metadata.metadata['categories'][0]['path']).lower()
-                if filter_category and filter_category.lower() not in category_lower:
-                    self.log.info(
-                        f'{app_name} has been FILTERED by category ("{filter_category}" text not found in "{category_lower}").It has been added to the ignored_logger file'
-                    )
-                    if self.ignored_logger:
-                        self.ignored_logger.info(app_name)
-                    assets_bypassed[app_name] = True
-                    bypass_count += 1
-                    i += 1
-                    continue
-                asset_updated = any(item_metadata.app_version(_p) != app_assets[_p].build_version for _p in app_assets.keys())
-                fetched_assets[app_name] = item_metadata
-                self.log.debug(f'{app_name} has been ADDED to the assets list with asset_updated={asset_updated}')
-
-            # get extra data only in not filtered
-            if force_refresh or asset_updated:
-                process_extra = True
-            else:
-                # will read the extra data from file if necessary and put in the global dict
-                process_extra = self.uevmlfs.get_item_extra(app_name) is None
-
-            process_meta = not item_metadata or force_refresh or asset_updated
-
-            if update_assets and (process_extra or process_meta):
-                self.log.debug(f'Scheduling metadata and extra update for {app_name}')
-                # namespace/catalog item are the same for all platforms, so we can just use the first one
-                _ga = next(iter(app_assets.values()))
-                fetch_list[app_name] = (app_name, _ga.namespace, _ga.catalog_item_id, process_meta, process_extra)
-                meta_updated = True
-            i += 1
-            filtered_items.append(item)
-        # end while i < len(valid_items):
-
-        # setup and teardown of thread pool takes some time, so only do it when it makes sense.
-        self.use_threads = len(fetch_list) > 5
-        # self.use_threads = False  # Debug only
-        if fetch_list:
-            if gui_g.progress_window_ref is not None:
-                gui_g.progress_window_ref.reset(
-                    new_value=0, new_text="Fetching missing metadata...It could take some time. Be patient.", new_max_value=len(fetch_list)
-                )
-                # gui_g.progress_window_ref.hide_progress_bar()
-                # gui_g.progress_window_ref.hide_btn_stop()
-
-            self.log.info(f'Fetching metadata for {len(fetch_list)} asset(s).')
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
-                gui_g.progress_window_ref.is_closing = True
-                return []
-            if self.use_threads:
-                # Note:  unreal engine API limits the number of connection to 16. So no more than 15 threads to avoid connection refused
-
-                # with ThreadPoolExecutor(max_workers=min(16, os.cpu_count() - 2), thread_name_prefix="Asset_Fetcher") as executor:
-                #    executor.map(fetch_asset_meta, fetch_list.keys(), timeout=30.0)
-                self.thread_executor = ThreadPoolExecutor(max_workers=get_max_threads(), thread_name_prefix="Asset_Fetcher")
-                # Dictionary that maps each key to its corresponding Future object
-                futures = {}
-                for key in fetch_list.keys():
-                    # Submit the task and add its Future to the dictionary
-                    future = self.thread_executor.submit(fetch_asset_meta, key)
-                    futures[key] = future
-
-                with concurrent.futures.ThreadPoolExecutor():
-                    for future in concurrent.futures.as_completed(futures.values()):
-                        try:
-                            _ = future.result()
-                            # print("Result: ", result)
-                        except Exception as error:
-                            if error.__class__.__name__ == 'CancelledError':
-                                # user abort
-                                stop_executor(futures)
-                                self.thread_executor.shutdown(wait=False)  # force shutdown
-                                return []
-                            else:
-                                self.log.warning(f'The following error occurs in threading: {error!r}')
-                        if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.continue_execution:
-                            # self.log.info(f'User stop has been pressed. Stopping running threads....')  # will flood console
-                            stop_executor(futures)
-                            # gui_g.progress_window_ref.close_window()
-                            gui_g.progress_window_ref.is_closing = True
-                            break
-                self.thread_executor.shutdown(wait=False)
-            # end if self.use_threads:
-        # end if fetch_list:
-
-        self.log.info(f'A total of {bypass_count} on {len(valid_items)} assets have been bypassed in phase 2')
-        self.log.info(f'======\nSTARTING phase 3: emptying the List of assets to be fetched \n')
-        if gui_g.progress_window_ref is not None:
-            # gui_g.progress_window_ref.show_progress_bar()  # show progress bar, must be before reset
-            gui_g.progress_window_ref.show_btn_stop()
-            gui_g.progress_window_ref.reset(new_value=0, new_text="Checking and Fetching asset's data...", new_max_value=len(filtered_items))
-        # loop through valid and filtered items
-        meta_updated = (bypass_count == 0) and meta_updated  # to avoid deleting metadata files or assets that have been filtered
-        fetch_try_count = {}
-        fetch_try_limit = 3
-        while len(filtered_items) > 0:
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                return []
-            item = filtered_items.pop()
-            app_name = item['name']
-            app_assets = item['asset']
-            if fetch_try_count.get(app_name):
-                fetch_try_count[app_name] += 1
-            else:
-                fetch_try_count[app_name] = 1
-            if self.verbose_mode:
-                self.log.info(f'Checking {app_name} Try number = {fetch_try_count[app_name]}. Still {len(filtered_items)} assets to check')
-            try:
-                fetched_asset = fetched_assets.get(app_name)
-            except (KeyError, IndexError):
-                self.log.debug(f'{app_name} has not been found int the asset list. Bypassing')
-                # item not found in asset, ignore and pass to next one
-                continue
-            # retry if the asset is still in fetch list (with active fetcher treads)
-            if fetch_list.get(app_name) and (not currently_fetching.get(app_name) or 'Asset_Fetcher' not in thread_enumerate()):
-                self.log.info(f'Fetching metadata for {app_name} is still no done, retrying')
-                if currently_fetching.get(app_name):
-                    del currently_fetching[app_name]
-                if not fetch_asset_meta(app_name):
-                    return []
-
-            if fetch_try_count[app_name] > fetch_try_limit:
-                self.log.error(f'Fetching metadata for {app_name} has failed {fetch_try_limit} times. Skipping')
-                continue
-            try:
-                is_bypassed = (app_name in assets_bypassed) and (assets_bypassed[app_name])
-                is_a_mod = any(i['path'] == 'mods' for i in fetched_asset.metadata.get('categories', []))
-            except (KeyError, IndexError, AttributeError):
-                self.log.debug(f'{app_name} has no metadata. Adding to the fetch list (again)')
-                try:
-                    fetch_list[app_name] = (app_name, item.namespace, item.catalog_item_id, True, True)
-                    _ret.append(fetched_asset)
-                except (KeyError, IndexError, AttributeError):
-                    self.log.debug(f'{app_name} has an invalid format. Could not been added to the fetch list')
-                continue
-
-            has_valid_platform = platform in app_assets
-            is_still_fetching = (app_name in fetch_list) or (app_name in currently_fetching)
-
-            if is_still_fetching:
-                # put again the asset in the list waiting when it will be fetched
-                filtered_items.append(item)
-                time.sleep(3)  # Sleep for 3 seconds to let the fetch process progress or end
-
-            # check if the asset will be added to the final list
-            if not is_bypassed and not is_still_fetching and not is_a_mod and has_valid_platform:
-                _ret.append(fetched_asset)
-
-        self.log.info(f'A total of {len(_ret)} assets have been analysed and kept in phase 3')
-
-        if gui_g.s.never_update_data_files:
-            meta_updated = False
-        if meta_updated:
-            if gui_g.progress_window_ref is not None:
-                gui_g.progress_window_ref.reset(new_value=0, new_text="Updating metadata files...", new_max_value=len(_ret))
-            self.log.info(f'Updating metadata json files...Could take a some time')
-            self._prune_metadata()
-            self._save_metadata(_ret)
-        if meta_updated:
-            if gui_g.progress_window_ref is not None:
-                gui_g.progress_window_ref.reset(new_value=0, new_text="Updating extra data files...", new_max_value=len(_ret))
-            self.log.info(f'Updating extra data json files...Could take a some time')
-            self._prune_extra_data(update_global_dict=False)
-            self._save_extra_data(self.uevmlfs.assets_extra_data, update_global_dict=False)
-        return _ret
-
-    # end def get_asset_list(self, update_assets=True, platform='Windows', filter_category='') -> (List[asset], Dict[str, List[asset]]):
-
-    def _prune_metadata(self) -> None:
-        """
-        Compile a list of assets without assets, then delete their metadata.
-        """
-        # compile list of assets without assets, then delete their metadata
-        owned_assets = set()
-        owned_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
-
-        for app_name in self.uevmlfs.get_item_app_names():
-            self.log.debug(f'Removing old/unused metadata for "{app_name}"')
-            self.uevmlfs.delete_item_meta(app_name)
-
-    def _prune_extra_data(self, update_global_dict: True) -> None:
-        """
-        Compile a list of assets without assets, then delete their extra data.
-        :param update_global_dict:  if True, update the global dict.
-        """
-        owned_assets = set()
-        owned_assets |= {i.app_name for i in self.get_assets(platform='Windows')}
-
-        for app_name in self.uevmlfs.get_item_app_names():
-            self.log.debug(f'Removing old/unused extra data for "{app_name}"')
-            self.uevmlfs.delete_item_extra(app_name, update_global_dict=update_global_dict)
-
-    def _save_metadata(self, assets) -> None:
-        """
-        Save the metadata for the given assets.
-        :param assets:  List of assets to save.
-        """
-        self.log.info('Saving metadata in json files... could take some time')
-        for asset in assets:
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                return
-            self.uevmlfs.set_item_meta(asset.app_name, asset)
-
-    def _save_extra_data(self, extra: dict, update_global_dict: True) -> None:
-        """
-        Save the extra data for the given assets.
-        :param extra: dict of extra data to save.
-        :param update_global_dict: whether to update the global dict.
-        """
-        self.log.info('Saving extra data in json files... could take some time')
-        for app_name, eg_extra in extra.items():
-            if gui_g.progress_window_ref is not None and not gui_g.progress_window_ref.update_and_continue(increment=1):
-                return
-            self.uevmlfs.set_item_extra(app_name=app_name, extra=eg_extra, update_global_dict=update_global_dict)
 
     def is_installed(self, app_name: str) -> bool:
         """
@@ -939,38 +442,6 @@ class AppCore:
         :return: True if asset is installed, False otherwise.
         """
         return self.uevmlfs.get_installed_asset(app_name) is not None
-
-    def get_non_asset_library_items(self, force_refresh=False, skip_ue=True) -> (List[Asset], Dict[str, List[Asset]]):
-        """
-        Gets a list of Items without assets for installation, for instance Items delivered via
-        third-party stores that do not have assets for installation.
-        :param force_refresh: force a metadata refresh.
-        :param skip_ue: ignore Unreal Marketplace entries.
-        :return: list of Items that do not have assets.
-        """
-        _ret = []
-        # get all the asset names we have to ignore
-        ignore = set(i.app_name for i in self.get_assets())
-
-        for lib_item in self.egs.get_library_items():
-            if lib_item['namespace'] == 'ue' and skip_ue:
-                continue
-            if lib_item['appName'] in ignore:
-                continue
-
-            item = self.uevmlfs.get_item_meta(lib_item['appName'])
-            if not item or force_refresh:
-                eg_meta, status_code = self.egs.get_item_info(lib_item['namespace'], lib_item['catalogItemId'])
-                if status_code != 200:
-                    self.log.warning(f'Failed to fetch metadata for {lib_item["appName"]}: reponse code = {status_code}')
-                    continue
-                item = Asset(app_name=lib_item['appName'], app_title=eg_meta['title'], metadata=eg_meta)
-                self.uevmlfs.set_item_meta(item.app_name, item)
-
-            if not any(i['path'] == 'mods' for i in item.metadata.get('categories', [])):
-                _ret.append(item)
-
-        return _ret
 
     def get_installed_manifest(self, app_name):
         """
@@ -982,7 +453,17 @@ class AppCore:
         old_bytes = self.uevmlfs.load_manifest(app_name, installed_asset.version, installed_asset.platform)
         return old_bytes, installed_asset.base_urls
 
-    def get_cdn_urls(self, item, platform='Windows'):
+    def get_asset_obj(self, app_name: str) -> Optional[Asset]:
+        """
+        return an "item" like for compatibilty with "old" methods .
+        :param app_name:
+        :return:
+        """
+        if _meta := self.uevmlfs.get_asset(app_name):
+            return Asset.from_json(_meta)  # create an object from the Asset class using the json data
+        return None
+
+    def get_cdn_urls(self, item, platform: str = 'Windows'):
         """
         Get the CDN URLs.
         :param item: item to get the CDN URLs for.
@@ -1011,7 +492,7 @@ class AppCore:
 
         return manifest_urls, base_urls, manifest_hash
 
-    def get_cdn_manifest(self, item, platform='Windows', disable_https=False):
+    def get_cdn_manifest(self, item, platform: str = 'Windows', disable_https=False):
         """
         Get the CDN manifest.
         :param item: item to get the CDN manifest for.
@@ -1148,8 +629,6 @@ class AppCore:
             new_manifest_data, base_urls, status_code = self.get_cdn_manifest(base_asset, platform, disable_https=disable_https)
             # overwrite base urls in metadata with current ones to avoid using old/dead CDNs
             base_asset.base_urls = base_urls
-            # save base urls to game metadata
-            self.uevmlfs.set_item_meta(release_name, base_asset)
 
         self.log_info_and_gui_display('Parsing game manifest...')
         manifest = self.load_manifest(new_manifest_data)
@@ -1264,32 +743,6 @@ class AppCore:
             installed_asset.install_path = install_path
         installed_asset.install_size = analyse_res.install_size
         return download_manager, analyse_res, installed_asset
-
-    # Check if the UE assets metadata cache must be updated
-    def check_for_ue_assets_updates(self, assets_count: int, force_refresh=False) -> None:
-        """
-        Check if the UE assets metadata cache must be updated.
-        :param assets_count: assets count from the API.
-        :param force_refresh: force the refresh of the cache.
-        """
-        self.cache_is_invalidate = False
-        cached = self.uevmlfs.get_assets_cache_info()
-        cached_assets_count = cached['ue_assets_count']
-
-        date_now = datetime.now().timestamp()
-        date_diff = date_now - cached['last_update']
-
-        if not cached_assets_count or cached_assets_count != assets_count:
-            self.log.info(f'New assets are available. {assets_count} available VS {cached_assets_count} in cache')
-            self.uevmlfs.set_assets_cache_info(last_update=cached['last_update'], ue_assets_count=assets_count)
-
-        if force_refresh or date_diff > self.ue_assets_max_cache_duration:
-            self.cache_is_invalidate = True
-            self.uevmlfs.set_assets_cache_info(last_update=date_now, ue_assets_count=assets_count)
-            if not force_refresh:
-                self.log.info(f'Data cache is outdated. Cache age is {date_diff:.1f} s OR {str(timedelta(seconds=date_diff))}')
-        else:
-            self.log.info(f'Data cache is still valid. Cache age is {str(timedelta(seconds=date_diff))}')
 
     def clean_exit(self, code=0) -> None:
         """

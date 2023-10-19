@@ -226,8 +226,7 @@ class UEVMGui(tk.Tk):
             show_open_file_dialog = False
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
-                downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-                if not data_table.rebuild_data(downloaded_data):
+                if not data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
                     self.logger.error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
@@ -246,7 +245,7 @@ class UEVMGui(tk.Tk):
                 self.logger.error('This application could not run without a file to read data from')
                 self.close_window(True)
 
-        self._update_downloaded_size()
+        data_table.update_downloaded_size(self.core.uevmlfs.asset_sizes)
 
         if gui_g.s.last_opened_filter != '':
             filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
@@ -266,11 +265,6 @@ class UEVMGui(tk.Tk):
         if show_option_fist:
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
-
-    def _update_downloaded_size(self) -> None:
-        gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-        downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-        self.editable_table.update_downloaded_size(downloaded_data)
 
     def mainloop(self, n=0):
         """
@@ -1502,7 +1496,7 @@ class UEVMGui(tk.Tk):
             app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
             _add_text(f'Asset id: {app_name}')
             size = self.core.uevmlfs.get_asset_size(app_name)
-            if size is not None and size > 0:
+            if size and size > 0:
                 _add_text(f'Asset size: {gui_fn.format_size(size)}', 'blue')
             else:
                 _add_text(f'Asset size: Clic on "Asset Info"', 'orange')
@@ -1527,9 +1521,8 @@ class UEVMGui(tk.Tk):
             data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             data_table.update_col_infos(apply_resize_cols=False)
-            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-            if data_table.reload_data(downloaded_data):
+            gui_f.show_progress(self, text=f'Reloading assets data...')
+            if data_table.reload_data(self.core.uevmlfs.asset_sizes):
                 # self.update_page_numbers() done in reload_data
                 self.update_category_var()
                 gui_f.box_message(f'Data Reloaded from {data_table.data_source}')
@@ -1545,9 +1538,8 @@ class UEVMGui(tk.Tk):
             data_table.update_col_infos(apply_resize_cols=False)
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
-            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-            if data_table.rebuild_data(downloaded_data):
+            gui_f.show_progress(self, text=f'Rebuilding Asset data...')
+            if data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
                 self.update_controls_state()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
@@ -1587,10 +1579,8 @@ class UEVMGui(tk.Tk):
         # arguments for cleanup command
         choice = (
             command_name == 'cleanup' and
-            gui_f.box_yesno('Do you want to delete all the data including metadata, extra data, scraping data and image cache ?')
+            gui_f.box_yesno('Do you want to delete all the data including scraping data and image cache ?')
         )
-        gui_g.UEVM_cli_args['delete_extra_data'] = choice
-        gui_g.UEVM_cli_args['delete_metadata'] = choice
         gui_g.UEVM_cli_args['delete_scraping_data'] = choice
         gui_g.UEVM_cli_args['delete_cache_data'] = choice
 

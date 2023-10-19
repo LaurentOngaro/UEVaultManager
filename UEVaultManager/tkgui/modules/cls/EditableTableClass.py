@@ -959,17 +959,17 @@ class EditableTable(Table):
         self.must_save = False
         self.update_page()
 
-    def update_downloaded_size(self, downloaded_data: {}) -> None:
+    def update_downloaded_size(self, asset_sizes: dict) -> None:
         """
-        Update the downloaded size for the assets in the table using the downloaded_data (from the Vault Cache folder content)
-        :param downloaded_data: the downloaded data from the Vault Cache folder content.
+        Update the downloaded size for the assets in the table using the asset_sizes dictionnary (filled at start up)
+        :param asset_sizes: the asset_sizes
         """
-        if downloaded_data:
+        if asset_sizes:
             df = self.get_data(df_type=DataFrameUsed.UNFILTERED)
             # update the downloaded_size field in the datatable using asset_id as key
-            for asset_id, asset_data in downloaded_data.items():
+            for asset_id, size in asset_sizes.items():
                 try:
-                    size = int(asset_data['size'])
+                    size = int(size)
                     size = format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
                     df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
                     # print(f'asset_id={asset_id} size={size}')
@@ -977,10 +977,10 @@ class EditableTable(Table):
                     pass
             # self.editable_table.set_data(df, df_type=DataFrameUsed.UNFILTERED)
 
-    def reload_data(self, downloaded_data: dict = None) -> bool:
+    def reload_data(self, asset_sizes: dict) -> bool:
         """
         Reload data from the CSV file and refreshes the table display.
-        :param downloaded_data: the downloaded data from the Vault Cache folder content.
+        :param asset_sizes: the asset_sizes
         :return: True if the data has been loaded successfully, False otherwise.
         """
         gui_f.show_progress(self, text='Reloading Data from data source...')
@@ -988,17 +988,17 @@ class EditableTable(Table):
         if df_loaded is None:
             return False
         self.set_data(df_loaded)
-        self.update_downloaded_size(downloaded_data)
+        self.update_downloaded_size(asset_sizes)
         self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
         # mf.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
-    def rebuild_data(self, downloaded_data: dict = None) -> bool:
+    def rebuild_data(self, asset_sizes: dict) -> bool:
         """
-         Rebuild the data in the table.
-         :param downloaded_data: the downloaded data from the Vault Cache folder content.
-         :return: True if the data was successfully rebuilt, False otherwise.
-         """
+        Rebuild the data in the table.
+        :param asset_sizes: the asset_sizes
+        :return: True if the data was successfully rebuilt, False otherwise.
+        """
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False

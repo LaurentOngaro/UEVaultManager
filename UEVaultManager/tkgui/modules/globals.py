@@ -115,22 +115,6 @@ def set_args_auth_delete(value: bool) -> None:
     UEVM_cli_args['auth_delete'] = value
 
 
-def set_args_delete_metadata(value: bool) -> None:
-    """
-    Set the value of the argument delete_metadata. Mandadory fot the associated ttk.ckbutton to work.
-    :param value:  True or False.
-    """
-    UEVM_cli_args['delete_metadata'] = value
-
-
-def set_args_delete_extra_data(value: bool) -> None:
-    """
-    Set the value of the argument delete_extra_data. Mandadory fot the associated ttk.ckbutton to work.
-    :param value:  True or False.
-    """
-    UEVM_cli_args['delete_extra_data'] = value
-
-
 def set_args_delete_scraping_data(value: bool) -> None:
     """
     Set the value of the argument delete_scraping_data. Mandadory fot the associated ttk.ckbutton to work.
