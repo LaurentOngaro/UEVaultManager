@@ -119,15 +119,15 @@ class ProgressWindow(tk.Toplevel):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3, 'padx': 5, 'pady': 5, 'fill': tk.X}
             if container.function is None:
-                lbl_function = ttk.Label(self, text='Operation has started...')
+                lbl_text = ttk.Label(self, text='Operation has started...')
             else:
-                lbl_function = ttk.Label(self, text='Running function: ' + container.function.__name__)
-            lbl_function.pack(**pack_def_options)
+                lbl_text = ttk.Label(self, text='Running function: ' + container.function.__name__)
+            lbl_text.pack(**pack_def_options)
             progress_bar = ttk.Progressbar(self, orient="horizontal", mode="determinate", maximum=container.max_value)
             progress_bar.pack(**pack_def_options)
             self.pack_def_options = pack_def_options
             self.progress_bar = progress_bar
-            self.lbl_function = lbl_function
+            self.lbl_text = lbl_text
 
     class ControlFrame(ttk.Frame):
         """
@@ -183,14 +183,14 @@ class ProgressWindow(tk.Toplevel):
         Get the text of the label.
         :return: the text.
         """
-        return self.frm_content.lbl_function.cget("text")
+        return self.frm_content.lbl_text.cget('text')
 
     def set_text(self, new_text: str) -> None:
         """
         Set the text of the label.
         :param new_text: the new text.
         """
-        self.frm_content.lbl_function.config(text=new_text)
+        self.frm_content.lbl_text.config(text=new_text)
 
     def set_value(self, new_value: int) -> None:
         """
