@@ -17,6 +17,7 @@ from pandastable import config, Table, TableModel
 import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -531,7 +532,7 @@ class EditableTable(Table):
         :param row_number: row number from a datatable. Will be converted into real row index.
         :param df_type: the dataframe type to get. See DataFrameUsed type description for more details
         :param add_page_offset: true to add the page offset to the row number, False otherwise.
-        :return:
+        :return: the real row index or -1 if not found.
         """
         # OLD if row_number < 0 or row_number == '':
         if row_number < 0:
@@ -920,7 +921,7 @@ class EditableTable(Table):
         self.updateModel(TableModel(df))  # needed to restore all the data and not only the current page
         # noinspection GrazieInspection
         if source_type == DataSourceType.FILE:
-            df.to_csv(self.data_source, index=False, na_rep='', date_format=gui_g.s.csv_datetime_format)
+            df.to_csv(self.data_source, index=False, na_rep='', date_format=DateFormat.csv)
         else:
             for row_number in self._changed_rows:
                 row_data = self.get_row(row_number, return_as_dict=True)
@@ -1004,7 +1005,7 @@ class EditableTable(Table):
         self.must_save = False
         use_database = self.data_source_type == DataSourceType.SQLITE
         message = 'Rebuilding Data For database...' if use_database else 'Rebuilding Data For CSV file...'
-        pw = gui_f.show_progress(self, message)
+        pw = gui_f.show_progress(self, message, force_new_window=True)
         # we create the progress window here to avoid lots of imports in UEAssetScraper class
         max_threads = get_max_threads()
         owned_assets_only = False
@@ -1023,32 +1024,35 @@ class EditableTable(Table):
             else:
                 load_from_files = gui_g.UEVM_cli_args.get('offline', True)
         scraper = UEAssetScraper(
+            datasource_filename=self.data_source,
+            use_database=use_database,
             start=start_row,
             stop=stop_row,
             assets_per_page=db_asset_per_page,
             max_threads=max_threads,
-            use_database=use_database,
-            store_in_files=True,
-            store_ids=False,  # useless for now
+            save_to_files=True,
             load_from_files=load_from_files,
+            store_ids=False,  # useless for now
             clean_database=False,
+            progress_window=pw,
             core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
-            progress_window=pw
         )
-        scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
-        if not pw.continue_execution:
+        result_count = 0
+        if not load_from_files:
+            result_count = scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
+        if result_count == -1:
             gui_f.close_progress(self)
             return False
-        scraper.save(owned_assets_only=owned_assets_only)
-        self.current_page = 1
-        df_loaded = self.read_data()
-        if df_loaded is None:
-            gui_f.close_progress(self)
-            return False
-        self.set_data(df_loaded)
-        self.update_downloaded_size(asset_sizes)
+        if scraper.save(owned_assets_only=owned_assets_only):
+            self.current_page = 1
+            df_loaded = self.read_data()
+            if df_loaded is None:
+                gui_f.close_progress(self)
+                return False
+            self.set_data(df_loaded)
+            self.update_downloaded_size(asset_sizes)
         self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
-        # mf.close_progress(self)  # done in data_table.update(update_format=True)
+        # gui_f.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
     def gradient_color_cells(
@@ -1530,7 +1534,7 @@ class EditableTable(Table):
         """
         Return the index of the column with the specified name.
         :param col_name: column name.
-        :return: the index of the column with the specified name.
+        :return: the index of the column with the specified name or -1 if the column name is not found.
         """
         try:
             return self.get_data().columns.get_loc(col_name)  # Use Unfiltered here to be sure to have all the columns

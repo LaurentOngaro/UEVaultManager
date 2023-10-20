@@ -26,6 +26,7 @@ from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import get_version_from_path, path_join
 from UEVaultManager.models.csv_sql_fields import debug_parsed_data
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
@@ -91,6 +92,7 @@ class UEVMGui(tk.Tk):
     :param screen_index: the screen index where the window will be displayed.
     :param data_source: the source where the data is stored or read from.
     """
+    is_fake = False
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
     _errors: [Exception] = []
@@ -992,7 +994,7 @@ class UEVMGui(tk.Tk):
         self.logger.info(msg)
         if self.core.scan_assets_logger:
             self.core.scan_assets_logger.info(msg)
-        date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
+        date_added = datetime.now().strftime(DateFormat.csv)
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         data = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         count = len(valid_folders.items())
@@ -1121,13 +1123,14 @@ class UEVMGui(tk.Tk):
                 return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
+                datasource_filename=self.editable_table.data_source,
+                use_database=self.editable_table.data_source_type == DataSourceType.SQLITE,
                 start=0,
                 assets_per_page=1,
                 max_threads=1,
-                use_database=True,
-                store_in_files=True,
-                store_ids=False,  # useless for now
+                save_to_files=True,
                 load_from_files=False,
+                store_ids=False,  # useless for now
                 core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
             )
             scraper.get_data_from_url(api_product_url)
@@ -1220,7 +1223,7 @@ class UEVMGui(tk.Tk):
                     if check_unicity:
                         is_unique, asset_data = self._check_unicity(asset_data)
                     if is_unique or gui_f.box_yesno(
-                            f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                        f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                         if show_message and row_count == 1:
@@ -1577,10 +1580,7 @@ class UEVMGui(tk.Tk):
         # gui_g.UEVM_cli_args['auth_delete'] = True
 
         # arguments for cleanup command
-        choice = (
-            command_name == 'cleanup' and
-            gui_f.box_yesno('Do you want to delete all the data including scraping data and image cache ?')
-        )
+        choice = (command_name == 'cleanup' and gui_f.box_yesno('Do you want to delete all the data including scraping data and image cache ?'))
         gui_g.UEVM_cli_args['delete_scraping_data'] = choice
         gui_g.UEVM_cli_args['delete_cache_data'] = choice
 

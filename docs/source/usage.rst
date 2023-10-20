@@ -72,13 +72,13 @@ Usage
 
     optional arguments:
       -h, --help              Show this help message and exit
-      --offline               Only print info available offline
+      --offline               Only print info available offline. It will use files saved previously, do not log in
       --json                  Output information in JSON format
       -a, --all               Display all the information even if non-relevant for an asset
       -g, --gui               Display the output in a windows instead of using the console
 
   Command: list
-    usage: UEVaultManager list [-h] [--csv] [--tsv] [--json] [-f]
+    usage: UEVaultManager list [-h] [--csv] [--tsv] [--json] [-f] [--offline]
                           [-fc <text_to_search>] [-o <file_name_with_path>]
                           [-g]
 
@@ -88,6 +88,7 @@ Usage
       --tsv                   List assets in TSV format
       --json                  List assets in JSON format
       -f,  --force-refresh    Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data will be used
+      --offline               Only print info available offline. It will use files saved previously, do not log in
       -fc, --filter-category  Filter assets by category. Search against the asset category in the marketplace. Search is case-insensitive
                                 and can be partial
       -o,  --output <file>    The file name (with path) where the list should be written to
@@ -135,7 +136,7 @@ Usage
     optional arguments:
       -h, --help            Show this help message and exit
       -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data in json files will be used
-      --offline             Use previous saved data files (json) instead of grabing urls and scapping new data
+      --offline             Use previous saved data files (json) instead of scapping and new data, do not log in
       -g, --gui             Display the output in a windows instead of using the console
 
   Command: install

@@ -216,6 +216,7 @@ class EPCAPI:
         try:
             # asset base price when logged
             price = price_text.strip('$€')
+            price = price.replace(',', '')
             price = float(price)
         except Exception as error:
             self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
@@ -270,7 +271,7 @@ class EPCAPI:
         url = f'https://{self._url_asset}/{uid}'
         return url
 
-    def get_scraped_asset_count(self, owned_assets_only=False) -> int:
+    def get_available_assets_count(self, owned_assets_only=False) -> int:
         """
         Return the number of assets in the marketplace.
         :param owned_assets_only: whether to only the owned assets are counted.

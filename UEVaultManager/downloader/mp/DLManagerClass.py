@@ -22,8 +22,8 @@ from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.downloading import AnalysisResult, ChunkTask, DownloaderTask, FileTask, SharedMemorySegment, TaskFlags, \
     TerminateWorkerTask, UIUpdate, WriterTask
 from UEVaultManager.models.manifest import Manifest, ManifestComparison
+from UEVaultManager.tkgui.modules.cls.FakeUEVMGuiClass import FakeUEVMGuiClass
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
-from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 
 
 class DLManager(Process):
@@ -710,7 +710,7 @@ class DLManager(Process):
         self.writer_result_queue = MPQueue(-1)
 
         # create a hiddenroot for the progress window because if not a tk window will be created and visible
-        fake_root = UEVMGuiHiddenRoot()
+        fake_root = FakeUEVMGuiClass()
         pw = ProgressWindow(parent=fake_root, title='Download in progress...', width=300, show_btn_stop=True, show_progress=True, quit_on_close=False)
         pw.set_activation(False)
 

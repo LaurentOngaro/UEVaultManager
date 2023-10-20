@@ -5,7 +5,7 @@ CSV and SQL fields mapping and utility functions.
 from datetime import datetime
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.models.types import CSVFieldState, CSVFieldType
+from UEVaultManager.models.types import CSVFieldState, CSVFieldType, DateFormat
 from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_float, convert_to_int, create_uid
 from UEVaultManager.tkgui.modules.types import DataSourceType, GrabResult, UEAssetType
@@ -449,7 +449,7 @@ def get_converters(csv_field_name: str):
 
 # not use full to convert date: Causes issue when loading a filter
 #    if field_type == CSVFieldType.DATETIME:
-#        return [lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])]
+#        return [lambda x: convert_to_datetime(x, formats_to_use=[DateFormat.epic, DateFormat.csv])]
     else:
         return [str]
 
@@ -471,7 +471,7 @@ def get_default_value(csv_field_name: str = '', sql_field_name: str = ''):
         CSVFieldType.INT: 0,
         CSVFieldType.FLOAT: 0.0,
         CSVFieldType.BOOL: False,
-        CSVFieldType.DATETIME: datetime.now().strftime(gui_g.s.csv_datetime_format),
+        CSVFieldType.DATETIME: datetime.now().strftime(DateFormat.csv),
     }
     return default_values.get(field_type, 'None')
 
@@ -559,7 +559,7 @@ def create_empty_csv_row(return_as_string=False):
         data[key] = get_default_value(csv_field_name=key)
     data = set_default_values(data)
     if return_as_string:
-        data = check_and_convert_list_to_str(data.values())
+        return check_and_convert_list_to_str(data.values())
     return data
 
 

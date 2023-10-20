@@ -42,6 +42,7 @@ class ProgressWindow(tk.Toplevel):
     :param function_parameters: the parameters of the function.
     :param quit_on_close: whether to quit the application when the window is closed.
     """
+    is_fake = False
 
     def __init__(
         self,
@@ -191,6 +192,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_text: the new text.
         """
         self.frm_content.lbl_text.config(text=new_text)
+        self.update()
 
     def set_value(self, new_value: int) -> None:
         """
@@ -199,6 +201,7 @@ class ProgressWindow(tk.Toplevel):
         """
         new_value = max(0, new_value)
         self.frm_content.progress_bar['value'] = new_value
+        self.update()
 
     def set_max_value(self, new_max_value: int) -> None:
         """
@@ -207,6 +210,7 @@ class ProgressWindow(tk.Toplevel):
         """
         self.max_value = new_max_value
         self.frm_content.progress_bar['maximum'] = new_max_value
+        self.update()
 
     def set_function(self, new_function) -> None:
         """
@@ -231,6 +235,7 @@ class ProgressWindow(tk.Toplevel):
         Hide the progress bar.
         """
         self.frm_content.progress_bar.pack_forget()
+        self.update()
 
     def show_progress_bar(self) -> None:
         """
@@ -238,6 +243,7 @@ class ProgressWindow(tk.Toplevel):
         """
         self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         self.frm_content.progress_bar.pack(**self.frm_content.pack_def_options)
+        self.update()
 
     def hide_btn_start(self) -> None:
         """
@@ -245,6 +251,7 @@ class ProgressWindow(tk.Toplevel):
         """
         try:
             self.frm_control.btn_start.pack_forget()
+            self.update()
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
 
@@ -255,6 +262,7 @@ class ProgressWindow(tk.Toplevel):
         try:
             self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
             self.frm_control.btn_start.pack(**self.frm_control.pack_def_options, side=tk.LEFT)
+            self.update()
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
 
@@ -264,6 +272,7 @@ class ProgressWindow(tk.Toplevel):
         """
         try:
             self.frm_control.btn_stop.pack_forget()
+            self.update()
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
 
