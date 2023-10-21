@@ -270,7 +270,7 @@ class UEVMGui(tk.Tk):
 
     def is_using_database(self) -> bool:
         """ Check if the table is using a database as data source. """
-        return self.data_source_type==DataSourceType.DATABASE
+        return self.data_source_type == DataSourceType.DATABASE
 
     def mainloop(self, n=0):
         """

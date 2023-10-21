@@ -58,7 +58,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.var_entry_data_source_type = tk.StringVar(value=data_table.data_source_type.name)
         # noinspection PyArgumentList
         # (bootstyle is not recognized by PyCharm)
-        entry_data_type = ttk.Entry(lblf_content, textvariable=self.var_entry_data_source_type, state='readonly', width=6, bootstyle=WARNING)
+        entry_data_type = ttk.Entry(lblf_content, textvariable=self.var_entry_data_source_type, state='readonly', width=10, bootstyle=WARNING)
         entry_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.W)
         # new row
         cur_row += 1
