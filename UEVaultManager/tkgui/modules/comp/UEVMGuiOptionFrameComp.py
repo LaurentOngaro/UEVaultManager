@@ -22,7 +22,6 @@ class UEVMGuiOptionFrame(ttk.Frame):
         super().__init__()
         self._container = _container
         self._folders_to_scan = gui_g.s.folders_to_scan if gui_g.s.folders_to_scan else []
-        self._folders_to_scan = []
 
         # pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
         lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'fill': tk.X}

@@ -654,10 +654,11 @@ class UEVMGui(tk.Tk):
             if filename:
                 data_table.save_data()
                 self.update_data_source()
+                gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
         else:
             data_table.save_data()
             filename = ''
-        gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
+            gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
         return filename
 
     def export_selection(self) -> None:

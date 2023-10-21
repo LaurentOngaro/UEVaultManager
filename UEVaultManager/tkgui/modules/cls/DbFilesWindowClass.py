@@ -10,6 +10,7 @@ from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
 
 class DBFW_Settings:
@@ -58,6 +59,14 @@ class DbFilesWindowClass(tk.Toplevel):
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
         # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+
+    @staticmethod
+    def _log(message):
+        """ a simple wrapper to use when cli is not initialized"""
+        if UEVM_log_ref is None:
+            print(f'DEBUG {message}')
+        else:
+            UEVM_log_ref.debug(message)
 
     class ControlFrame(ttk.Frame):
         """
@@ -159,7 +168,7 @@ class DbFilesWindowClass(tk.Toplevel):
             table_name = self.cb_table.get()
             if table_name == self.container.value_for_all:
                 table_name = ''
-            files_u= []
+            files_u = []
             files, must_reload = self.container.db_handler.import_from_csv(
                 self.container.folder_for_csv_files,
                 table_name,
@@ -179,7 +188,9 @@ class DbFilesWindowClass(tk.Toplevel):
                 files += files_u
                 must_reload = must_reload or must_reload_u
             if not files and not files_u:
-                self.add_result('No file to load have been found.', set_status=True)
+                message = 'No file to load have been found.'
+                self.add_result(message, set_status=True)
+                self.container._log(message)
                 self.processing = False
                 return
             self.add_result('Data imported from files:')

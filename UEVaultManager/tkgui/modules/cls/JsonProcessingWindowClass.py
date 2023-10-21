@@ -12,6 +12,7 @@ from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
 
 class JSPW_Settings:
@@ -62,6 +63,14 @@ class JsonProcessingWindow(tk.Toplevel):
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
         # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+
+    @staticmethod
+    def _log(message):
+        """ a simple wrapper to use when cli is not initialized"""
+        if UEVM_log_ref is None:
+            print(f'DEBUG {message}')
+        else:
+            UEVM_log_ref.debug(message)
 
     class ControlFrame(ttk.Frame):
         """
@@ -223,6 +232,7 @@ class JsonProcessingWindow(tk.Toplevel):
                     break
                 self.frm_control.progress_bar['value'] = i
                 self.update()
+                self._log(f'Processing file {i} of {total_files}: {file_path}')
                 with open(file_path, 'r', encoding='utf-8') as file:
                     try:
                         json_data = json.load(file)
@@ -255,7 +265,7 @@ class JsonProcessingWindow(tk.Toplevel):
         for tag in tags:
             if isinstance(tag, dict):
                 uid = tag.get('id')
-                tag_name = tag.get('name')
+                tag_name = tag.get('name').title()
                 is_existing = cursor.execute('SELECT id FROM tags WHERE id = ?', (uid, )).fetchone()
                 if is_existing:
                     self.updated += 1
