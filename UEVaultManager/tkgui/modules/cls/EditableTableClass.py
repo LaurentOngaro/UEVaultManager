@@ -37,7 +37,7 @@ class EditableTable(Table):
     A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
     :param container: the parent frame for the table.
-    :param data_source_type: the type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
+    :param data_source_type: the type of data source (DataSourceType.FILE or DataSourceType.DATABASE).
     :param data_source: the path to the source that contains the table data.
     :param rows_per_page: the number of rows to show per page.
     :param show_toolbar: whether to show the toolbar.
@@ -107,7 +107,7 @@ class EditableTable(Table):
         self.update_preview_info_func = update_preview_info_func
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         gui_f.show_progress(container, text='Loading Data from data source...')
-        if self.data_source_type == DataSourceType.SQLITE:
+        if self.is_using_database():
             self._db_handler = UEAssetDbHandler(database_name=self.data_source)
         df_loaded = self.read_data()
         if df_loaded is None:
@@ -450,6 +450,10 @@ class EditableTable(Table):
             return True
         return False
 
+    def is_using_database(self) -> bool:
+        """ Check if the table is using a database as data source. """
+        return self.data_source_type == DataSourceType.DATABASE
+
     def set_frm_filter(self, frm_filter=None) -> None:
         """
         Set the filter frame.
@@ -730,7 +734,7 @@ class EditableTable(Table):
         """
         file, ext = os.path.splitext(filename)
         stored_type = self.data_source_type
-        self.data_source_type = DataSourceType.SQLITE if ext == '.db' else DataSourceType.FILE
+        self.data_source_type = DataSourceType.DATABASE if ext == '.db' else DataSourceType.FILE
         go_on = True
         if stored_type != self.data_source_type:
             go_on = gui_f.box_yesno(
@@ -754,7 +758,7 @@ class EditableTable(Table):
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
-            elif self.data_source_type == DataSourceType.SQLITE:
+            elif self.is_using_database():
                 if self._db_handler is None:
                     # could occur after a call to self.valid_source_type()
                     self._db_handler = UEAssetDbHandler(database_name=self.data_source)
@@ -807,7 +811,7 @@ class EditableTable(Table):
             col_data = gui_t.get_csv_field_name_list(return_as_string=True)  # column names
             str_data = col_data + '\n' + gui_t.create_empty_csv_row(return_as_string=True)  # dummy row
             table_row = pd.read_csv(io.StringIO(str_data), usecols=col_data.split(','), nrows=1, **gui_g.s.csv_options)
-        elif self.data_source_type == DataSourceType.SQLITE:
+        elif self.is_using_database():
             # create an empty row (in the database) with the correct columns
             data = self._db_handler.create_empty_row(return_as_string=False, do_not_save=do_not_save)  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
@@ -1003,7 +1007,7 @@ class EditableTable(Table):
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
-        use_database = self.data_source_type == DataSourceType.SQLITE
+        use_database = self.is_using_database()
         message = 'Rebuilding Data For database...' if use_database else 'Rebuilding Data For CSV file...'
         pw = gui_f.show_progress(self, message, force_new_window=True)
         # we create the progress window here to avoid lots of imports in UEAssetScraper class
@@ -1039,7 +1043,9 @@ class EditableTable(Table):
         )
         result_count = 0
         if not load_from_files:
-            result_count = scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
+            result_count = scraper.gather_all_assets_urls(
+                empty_list_before=True, owned_assets_only=owned_assets_only
+            )  # return -1 if interrupted or error
         if result_count == -1:
             gui_f.close_progress(self)
             return False
@@ -1507,9 +1513,7 @@ class EditableTable(Table):
                 key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
             ):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(
-                key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
-            ):
+            if self.is_using_database() and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
             if col_index >= 0:
@@ -1681,9 +1685,7 @@ class EditableTable(Table):
                 key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
             ):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(
-                key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
-            ):
+            if self.is_using_database() and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             label = key.replace('_', ' ').title()
             key_lower = key.lower()

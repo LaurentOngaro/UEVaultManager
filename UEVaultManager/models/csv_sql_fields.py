@@ -580,8 +580,8 @@ def convert_csv_row_to_sql_row(csv_row: dict) -> dict:
 def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     """
     Debug the parsed data to see missing or empty keys.
-    :param asset_data: an instance of asset used to fille the datatable (could be from SQLITE or FILE mode)
-    :param mode: the mode of the application (SQLITE or FILE)
+    :param asset_data: an instance of asset used to fill the datatable
+    :param mode: the mode of the application (could be from DataSourceType. DATABASE or DataSourceType. FILE)
     """
     if gui_g.UEVM_log_ref:
         debug_func = gui_g.UEVM_log_ref.info  # info and debug here because we want to see even if debug mode is disabled in CLI (but enabled in GUI)
@@ -636,13 +636,13 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
         )
         key_csv_not_in_asset = [key for key in file_field_names if key not in asset_data]
         debug_func(key_csv_not_in_asset)
-    elif mode == DataSourceType.SQLITE:
+    elif mode == DataSourceType.DATABASE:
         # not pertinent because keys are different
-        # debug_func('keys in db_field_names that are not in new_data_keys.\nThese data will always be empty in SQLITE mode')
+        # debug_func('keys in db_field_names that are not in new_data_keys.\nThese data will always be empty in ESQLITE mode')
         # key_empty_in_db = [key for key in db_field_names if key not in asset_data.keys()]
         # debug_func(key_empty_in_db)
         debug_func(
-            'keys in db_field_names that are not in the asset data.\nThese data have not been copied from existing data in SQLITE mode.\nThis could be a data loss.\nTHIS SHOULD BE EMPTY'
+            'keys in db_field_names that are not in the asset data.\nThese data have not been copied from existing data in when using the DataSourceType.DATABASE type.\nThis could be a data loss.\nTHIS SHOULD BE EMPTY'
         )
         key_csv_not_in_asset = [key for key in db_field_names if key not in asset_data.keys()]
         debug_func(key_csv_not_in_asset)

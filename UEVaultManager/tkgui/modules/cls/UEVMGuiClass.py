@@ -135,7 +135,7 @@ class UEVMGui(tk.Tk):
 
         # update the content of the database BEFORE loading the data in the datatable
         # as it, all the formatting and filtering could be done at start with good values
-        if data_source_type == DataSourceType.SQLITE:
+        if self.is_using_database():
             # update the installed folder field in database from the installed_assets json file
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
             db_handler = UEAssetDbHandler(database_name=data_source)  # we need it BEFORE CREATING the editable_table and use its db_handler property
@@ -224,7 +224,7 @@ class UEVMGui(tk.Tk):
         :param rebuild_data: whether the data will be rebuilt at startup.
         """
         data_table = self.editable_table  # shortcut
-        if data_table.data_source_type == DataSourceType.SQLITE:
+        if data_table.is_using_database():
             show_open_file_dialog = False
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
@@ -267,6 +267,10 @@ class UEVMGui(tk.Tk):
         if show_option_fist:
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
+
+    def is_using_database(self) -> bool:
+        """ Check if the table is using a database as data source. """
+        return self.is_using_database()
 
     def mainloop(self, n=0):
         """
@@ -1125,7 +1129,7 @@ class UEVMGui(tk.Tk):
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
                 datasource_filename=self.editable_table.data_source,
-                use_database=self.editable_table.data_source_type == DataSourceType.SQLITE,
+                use_database=self.editable_table.is_using_database(),
                 start=0,
                 assets_per_page=1,
                 max_threads=1,
@@ -1438,7 +1442,7 @@ class UEVMGui(tk.Tk):
         gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
         gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
-        gui_f.update_widgets_in_list(data_table.data_source_type == DataSourceType.SQLITE, 'db_is_available')
+        gui_f.update_widgets_in_list(data_table.is_using_database(), 'db_is_available')
 
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)
@@ -1653,7 +1657,11 @@ class UEVMGui(tk.Tk):
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'install'
         gui_g.UEVM_cli_args['no_install'] = False
-        self.run_install()
+
+        if self.editable_table.data_source_type != DataSourceType.FILE or gui_f.box_yesno(
+            'To install an asset, using a database is a better option to avoid incoherent data in the "installed folder" field of the asset.\nThe current datasource type is "FILE", not "DATABASE".\nYou can switch the mode by using the "cli edit --database" instead of "cli edit --input" command.\nAre you sure you want to continue the operation in the current mode ?',
+        ):
+            self.run_install()
 
     def remove_installed_release(self, release_index: int) -> bool:
         """
@@ -1819,7 +1827,7 @@ class UEVMGui(tk.Tk):
         """
         Run the window to update missing data in database from json files.
         """
-        if self.editable_table.data_source_type != DataSourceType.SQLITE:
+        if not self.editable_table.is_using_database():
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
         tool_window = JsonProcessingWindow(
@@ -1837,7 +1845,7 @@ class UEVMGui(tk.Tk):
         """
         Run the window to import/export database to csv files.
         """
-        if self.editable_table.data_source_type != DataSourceType.SQLITE:
+        if not self.editable_table.is_using_database():
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
         tool_window = DbFilesWindowClass(

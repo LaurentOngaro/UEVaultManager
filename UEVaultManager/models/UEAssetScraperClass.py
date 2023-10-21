@@ -407,7 +407,7 @@ class UEAssetScraper:
                 else:
                     # just convert the list of ids into a comma separated string
                     tags_str = check_and_convert_list_to_str(tags)
-                    # we need to convert list to string if we are in FILE Mode because it's done when saving the asset in database in the "SQLITE" mode
+                    # we need to convert list to string if we are in FILE Mode because it's done when saving the asset in database in the DATABASE mode
                     installed_folders_str = check_and_convert_list_to_str(asset_data.get('installed_folders', []))
                 asset_data['installed_folders'] = installed_folders_str
                 asset_data['tags'] = tags_str
@@ -870,7 +870,7 @@ class UEAssetScraper:
             self._scraped_data = list(chain.from_iterable(self._scraped_data))
             # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
             if (self.core.verbose_mode or gui_g.s.debug_mode) and self._scraped_data:
-                debug_parsed_data(self._scraped_data[-1], DataSourceType.SQLITE)
+                debug_parsed_data(self._scraped_data[-1], DataSourceType.DATABASE)
         elif asset_loaded <= egs_available_assets_count:
             # some asset are missing in json files
             message = f'{asset_loaded} assets have been loaded from json files, {egs_available_assets_count} available on the marketplace.\nYou should do a rebuild with the force_refresh option enabled to get ²the new ones.'
@@ -961,7 +961,7 @@ class UEAssetScraper:
 
         # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
         if (self.core.verbose_mode or gui_g.s.debug_mode) and self._scraped_data:
-            debug_parsed_data(self._scraped_data[-1], DataSourceType.SQLITE)
+            debug_parsed_data(self._scraped_data[-1], DataSourceType.DATABASE)
 
         # save results in the last_run file
         content = {

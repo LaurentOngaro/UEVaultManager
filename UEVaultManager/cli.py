@@ -28,7 +28,6 @@ from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import copy_folder, path_join
 from UEVaultManager.models.exceptions import InvalidCredentialsError
-from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.main import init_gui
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
@@ -224,7 +223,7 @@ class UEVaultManagerCLI:
             pass
         if use_database:
             data_source = args.database
-            data_source_type = DataSourceType.SQLITE
+            data_source_type = DataSourceType.DATABASE
             self._log(f'The database {data_source} will be used to read data from')
         elif use_input:
             data_source = args.input
@@ -953,7 +952,9 @@ class UEVaultManagerCLI:
         scrapped_data = []
         result_count = 0
         if not load_from_files:
-            result_count = scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
+            result_count = scraper.gather_all_assets_urls(
+                empty_list_before=True, owned_assets_only=owned_assets_only
+            )  # return -1 if interrupted or error
         if result_count != -1:
             if scraper.save(owned_assets_only=owned_assets_only, save_to_format=save_to_format):
                 scrapped_data = scraper.get_scrapped_data()
@@ -978,6 +979,14 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
         uewm_gui_exists = gui_g.UEVM_gui_ref is not None
+        try:
+            db_handler = gui_g.UEVM_gui_ref.editable_table.db_handler
+            # use_database = gui_g.UEVM_gui_ref.editable_table.data_source_type == DataSourceType.DATABASE
+            # database_name = gui_g.UEVM_gui_ref.editable_table.data_source
+        except AttributeError:
+            db_handler = None
+            # use_database = False
+            # database_name = ''
         if args.subparser_name == 'download':
             args.no_install = True
         if args.clean_dowloaded_data and args.no_install:
@@ -1241,8 +1250,7 @@ class UEVaultManagerCLI:
                 ):  # We DON'T check the size if the plugin is installed in an engine because it's too long
                     self.core.uevmlfs.add_to_installed_assets(installed_asset)
                     self.core.uevmlfs.save_installed_assets()
-                    if args.database:
-                        db_handler = UEAssetDbHandler(database_name=args.database)
+                    if db_handler is not None:
                         db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=[installed_asset.install_path])
                     message += f'\nAsset have been installed in "{installed_asset.install_path}"'
                 else:

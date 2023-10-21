@@ -56,7 +56,7 @@ class UEAssetType(Enum):
 class DataSourceType(Enum):
     """ Enum to represent the data source type """
     FILE = 1
-    SQLITE = 2
+    DATABASE = 2
 
 
 class WidgetType(Enum):

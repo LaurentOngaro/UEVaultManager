@@ -433,7 +433,7 @@ class GUISettings:
         """ Setter for last_opened_filter """
         self.config_vars['last_opened_filter'] = value
 
-    def get_column_infos(self, source_type: DataSourceType = DataSourceType.SQLITE) -> dict:
+    def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
         """
         Get columns infos depending on the datasource type
         :param source_type:  the data source type
@@ -441,10 +441,10 @@ class GUISettings:
         NOTE:
         We don't use a @property for this because we need to be able to choose the source_type
         """
-        var_name = 'column_infos_sqlite' if source_type == DataSourceType.SQLITE else 'column_infos_file'
+        var_name = 'column_infos_sqlite' if source_type == DataSourceType.DATABASE else 'column_infos_file'
         return self._get_serialized(var_name)
 
-    def set_column_infos(self, values: dict, source_type: DataSourceType = DataSourceType.SQLITE):
+    def set_column_infos(self, values: dict, source_type: DataSourceType = DataSourceType.DATABASE):
         """
         Set columns infos depending on the datasource type
         :param values:  the data source type
@@ -453,7 +453,7 @@ class GUISettings:
         NOTE:
         We don't use a @property for this because we need to be able to choose the source_type
         """
-        var_name = 'column_infos_sqlite' if source_type == DataSourceType.SQLITE else 'column_infos_file'
+        var_name = 'column_infos_sqlite' if source_type == DataSourceType.DATABASE else 'column_infos_file'
         self._set_serialized(var_name, values)
 
     # noinspection PyPep8
@@ -593,7 +593,7 @@ class GUISettings:
                 'value': ['Uid', 'Release info']
             },
             'column_infos_sqlite': {
-                'comment': 'Infos about columns width and pos in SQLITE mode. Automatically saved on quit. Leave empty for default',
+                'comment': 'Infos about columns width and pos in DATABASE mode. Automatically saved on quit. Leave empty for default',
                 'value': ''
             },
             'column_infos_file': {
