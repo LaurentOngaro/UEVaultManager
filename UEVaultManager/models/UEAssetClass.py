@@ -5,6 +5,7 @@ implementation for:
 """
 
 from UEVaultManager.models.csv_sql_fields import get_default_value, get_sql_field_name_list
+from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str
 from UEVaultManager.utils.cli import init_dict_from_data
 
 
@@ -30,7 +31,7 @@ class UEAsset:
         Return a string representation of the asset.
         :return: a string representation of the asset.
         """
-        return ','.join(str(value) for value in self._data.values())
+        return check_and_convert_list_to_str(str(value) for value in self._data.values())
 
     def init_data(self) -> None:
         """

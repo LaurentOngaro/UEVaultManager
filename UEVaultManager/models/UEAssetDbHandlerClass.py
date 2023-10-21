@@ -64,7 +64,7 @@ class UEAssetDbHandler:
         asset_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.ASSET_ONLY])
         self.preserved_data_fields.extend(asset_fields)
         self.database_name: str = database_name
-        self._init_connection()
+        self.init_connection()
         if reset_database:
             self.drop_tables()
 
@@ -78,15 +78,15 @@ class UEAssetDbHandler:
 
         def __init__(self, database_name: str):
             self.database_name: str = database_name
-            self.conn = sqlite3.connect(self.database_name, check_same_thread=False)
+            self.sqlite_conn = sqlite3.connect(self.database_name, check_same_thread=False)
 
         def __enter__(self):
             """
             Open the database connection.
             :return: the sqlite3.Connection object.
             """
-            self.conn = sqlite3.connect(self.database_name, check_same_thread=False)
-            return self.conn
+            self.sqlite_conn = sqlite3.connect(self.database_name, check_same_thread=False)
+            return self.sqlite_conn
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             """
@@ -95,41 +95,34 @@ class UEAssetDbHandler:
             :param exc_val: exception value.
             :param exc_tb: exception traceback.
             """
-            self.conn.close()
-            self.conn = None
+            self.sqlite_conn.close()
+            self.sqlite_conn = None
 
     def __del__(self):
         # log could alrready be destroyed before here
         # self.logger.debug('Deleting UEAssetDbHandler and closing connection')
         print('Deleting UEAssetDbHandler and closing connection')
-        self._close_connection()
+        self.close_connection()
 
-    def _close_connection(self) -> None:
+    @property
+    def is_connected(self):
+        """ Get if connection is open. """
+        try:
+            self.connection.cursor()
+            return True
+        except (Exception, ):
+            return False
+
+    def close_connection(self) -> None:
         """
         Close the database connection.
         """
-        if self.connection is not None:
+        if self.is_connected:
             try:
                 self.connection.close()
             except sqlite3.Error as error:
                 print(f'Error while closing sqlite connection: {error!r}')
         self.connection = None
-
-    def _init_connection(self) -> sqlite3.Connection:
-        """
-        Initialize the database connection.
-        :return: the sqlite3.Connection object.
-
-        Notes:
-            It will also set self.Connection property.
-        """
-        self._close_connection()  # close the connection IF IT WAS ALREADY OPENED
-        try:
-            self.connection = self.DatabaseConnection(self.database_name).conn
-        except sqlite3.Error as error:
-            print(f'Error while connecting to sqlite: {error!r}')
-
-        return self.connection
 
     def _get_db_version(self) -> DbVersionNum:
         """
@@ -253,7 +246,7 @@ class UEAssetDbHandler:
             return False
 
     def _set_installed_folders(self, asset_id: str, catalog_item_id: str, installed_folders_existing: str, installed_folders: list) -> None:
-        installed_folders_updated = ','.join(installed_folders)
+        installed_folders_updated = ','.join(installed_folders)  # keep join() here to raise an error if installed_folders is not a list of strings
         if installed_folders_updated != installed_folders_existing:
             cursor = self.connection.cursor()
             if catalog_item_id:
@@ -273,6 +266,21 @@ class UEAssetDbHandler:
         else:
             installed_folders = installed_folders_existing if installed_folders_existing else []
         return installed_folders, installed_folders_existing
+
+    def init_connection(self) -> sqlite3.Connection:
+        """
+        Initialize the database connection.
+        :return: the sqlite3.Connection object.
+
+        Notes:
+            It will also set self.Connection property.
+        """
+        self.close_connection()  # close the connection IF IT WAS ALREADY OPENED
+        try:
+            self.connection = self.DatabaseConnection(self.database_name).sqlite_conn
+        except sqlite3.Error as error:
+            print(f'Error while connecting to sqlite: {error!r}')
+        return self.connection
 
     def db_exists(self) -> bool:
         """
@@ -514,17 +522,18 @@ class UEAssetDbHandler:
             cursor.close()
             self.connection.commit()
 
-    def set_assets(self, assets) -> None:
+    def set_assets(self, assets) -> bool:
         """
         Insert or update assets into the 'assets' table.
         :param assets: a dictionary or a list of dictionaries representing assets.
+        :return: True if the assets were inserted or updated, otherwise False.
 
         Notes:
             The (existing) user fields data should have already been added or merged the asset dictionary.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
-            return
+            return False
         if self.connection is not None:
             if not isinstance(assets, list):
                 assets = [assets]
@@ -548,6 +557,8 @@ class UEAssetDbHandler:
             self.connection.commit()
         except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
             self.logger.warning(f'Error when committing the database changes: {error!r}')
+            return False
+        return True
 
     def get_assets_data(self, fields='*', uid=None) -> dict:
         """
@@ -917,7 +928,7 @@ class UEAssetDbHandler:
                         name = str(item).title()  # convert to string and capitalize
                     if name and name not in names:
                         names.append(name)
-                tags_str = ','.join(names)
+                tags_str = check_and_convert_list_to_str(names)
         return tags_str
 
     def drop_tables(self) -> None:
@@ -1190,7 +1201,7 @@ class UEAssetDbHandler:
             'mode': 'save',
             'files_count': 0,
             'items_count': number_of_rows,
-            'scraped_ids': ','.join(scraped_ids)
+            'scraped_ids': check_and_convert_list_to_str(scraped_ids)
         }
         self.save_last_run(content)
 

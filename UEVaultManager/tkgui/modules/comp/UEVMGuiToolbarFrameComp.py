@@ -85,7 +85,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         btn_asset_info = ttk.Button(lblf_cli_commands, text='Asset Info', command=lambda: container.run_uevm_command('info'))
         btn_asset_info.pack(**pack_def_options, side=tk.LEFT)
 
-        lblf_db_commands = ttk.LabelFrame(self, text='SQLITE mode only commands')
+        lblf_db_commands = ttk.LabelFrame(self, text='DATABASE mode only commands')
         lblf_db_commands.pack(side=tk.LEFT, **lblf_def_options)
         btn_json_data = ttk.Button(lblf_db_commands, text='Get Json Data', command=lambda: container.json_processing())
         btn_json_data.pack(**pack_def_options, side=tk.LEFT)

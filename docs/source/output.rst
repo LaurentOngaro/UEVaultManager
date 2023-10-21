@@ -300,12 +300,6 @@ csv_sql_fields = {
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.STR
     },
-    'urlSlug': {
-        # intentionnaly duplicated
-        'sql_name': 'asset_slug',
-        'state': CSVFieldState.CHANGED,
-        'field_type': CSVFieldType.STR
-    },
     'Currency code': {
         'sql_name': 'currency_code',
         'state': CSVFieldState.ASSET_ONLY,

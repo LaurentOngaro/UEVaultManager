@@ -10,6 +10,7 @@ from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
 
 class DBFW_Settings:
@@ -58,6 +59,14 @@ class DbFilesWindowClass(tk.Toplevel):
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
         # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+
+    @staticmethod
+    def _log(message):
+        """ a simple wrapper to use when cli is not initialized"""
+        if UEVM_log_ref is None:
+            print(f'DEBUG {message}')
+        else:
+            UEVM_log_ref.debug(message)
 
     class ControlFrame(ttk.Frame):
         """
@@ -153,13 +162,13 @@ class DbFilesWindowClass(tk.Toplevel):
                 messagebox.showinfo('Info', 'Processing is already running.')
                 return
             self.processing = True
-            self.set_status('Processing...')
-            self.add_result('Processing...')
+            self.add_result('Processing...', set_status=True)
             self.update()
             delete_content = self.var_delete_content.get()
             table_name = self.cb_table.get()
             if table_name == self.container.value_for_all:
                 table_name = ''
+            files_u = []
             files, must_reload = self.container.db_handler.import_from_csv(
                 self.container.folder_for_csv_files,
                 table_name,
@@ -178,12 +187,16 @@ class DbFilesWindowClass(tk.Toplevel):
                 )
                 files += files_u
                 must_reload = must_reload or must_reload_u
-
+            if not files and not files_u:
+                message = 'No file to load have been found.'
+                self.add_result(message, set_status=True)
+                self.container._log(message)
+                self.processing = False
+                return
             self.add_result('Data imported from files:')
             for file in files:
                 self.add_result(file)
-            self.add_result('Import finished.')
-            self.set_status('Import finished.')
+            self.add_result('Import finished.', set_status=True)
             self.container.must_reload = must_reload
             self.processing = False
 
@@ -195,8 +208,7 @@ class DbFilesWindowClass(tk.Toplevel):
                 messagebox.showinfo('Info', 'Processing is already running.')
                 return
             self.processing = True
-            self.set_status('Processing...')
-            self.add_result('Processing...')
+            self.add_result('Processing...', set_status=True)
             self.update()
             table_name = self.cb_table.get()
             if table_name == self.container.value_for_all:
@@ -205,7 +217,9 @@ class DbFilesWindowClass(tk.Toplevel):
             files = self.container.db_handler.export_to_csv(self.container.folder_for_csv_files, table_name, backup_existing=backup_on_export)
 
             if self.var_user_fields.get():
-                fields = ','.join(self.container.db_handler.user_fields)
+                fields = ','.join(
+                    self.container.db_handler.user_fields
+                )  # keep join() here to raise an error if installed_folders is not a list of strings
                 files += self.container.db_handler.export_to_csv(
                     self.container.folder_for_csv_files,
                     'assets',
@@ -217,8 +231,7 @@ class DbFilesWindowClass(tk.Toplevel):
             self.add_result('Data exported to files:')
             for file in files:
                 self.add_result(file)
-            self.add_result('Export finished.')
-            self.set_status('Export finished.')
+            self.add_result('Export finished.', set_status=True)
             self.processing = False
 
 

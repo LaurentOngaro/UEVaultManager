@@ -8,7 +8,6 @@ Implementation for:
 """
 import json
 import logging
-import re
 from enum import Enum
 
 import requests
@@ -16,7 +15,6 @@ import requests.adapters
 from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 
-import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.utils.cli import create_list_from_string
 
@@ -218,6 +216,7 @@ class EPCAPI:
         try:
             # asset base price when logged
             price = price_text.strip('$€')
+            price = price.replace(',', '')
             price = float(price)
         except Exception as error:
             self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
@@ -272,7 +271,7 @@ class EPCAPI:
         url = f'https://{self._url_asset}/{uid}'
         return url
 
-    def get_scraped_asset_count(self, owned_assets_only=False) -> int:
+    def get_available_assets_count(self, owned_assets_only=False) -> int:
         """
         Return the number of assets in the marketplace.
         :param owned_assets_only: whether to only the owned assets are counted.
@@ -404,18 +403,6 @@ class EPCAPI:
         r.raise_for_status()
         return r.json()
 
-    def get_item_assets(self, platform='Windows', label='Live'):
-        """
-        Get the item assets.
-        :param platform: platform to get assets for.
-        :param label: label of the assets.
-        :return: the item assets using json format.
-        """
-        url = f'https://{self._launcher_host}/launcher/api/public/assets/{platform}'
-        r = self.session.get(url, params=dict(label=label), timeout=self.timeout)
-        r.raise_for_status()
-        return r.json()
-
     def get_item_manifest(self, namespace, catalog_item_id, app_name, platform='Windows', label='Live') -> dict:
         """
         Get the item manifest.
@@ -448,228 +435,6 @@ class EPCAPI:
         )
         r.raise_for_status()
         return r.json().get(catalog_item_id, None), r.status_code
-
-    def get_library_items(self, include_metadata=True) -> list:
-        """
-        Get the library items.
-        :param include_metadata: whether to include metadata.
-        :return: the library items.
-        """
-        records = []
-        url = f'https://{self._library_host}/library/api/public/items'
-        r = self.session.get(url, params=dict(includeMetadata=include_metadata), timeout=self.timeout)
-        r.raise_for_status()
-        j = r.json()
-        records.extend(j['records'])
-
-        # Fetch remaining library entries as long as there is a cursor
-        url = f'https://{self._library_host}/library/api/public/items'
-        while cursor := j['responseMetadata'].get('nextCursor', None):
-            r = self.session.get(url, params=dict(includeMetadata=include_metadata, cursor=cursor), timeout=self.timeout)
-            r.raise_for_status()
-            j = r.json()
-            records.extend(j['records'])
-
-        return records
-
-    def search_for_asset_url(self, asset_name: str) -> list:
-        """
-        Find the asset url from the asset name by searching the asset name in the unreal engine marketplace.
-        :param asset_name: asset name to search.
-        :return: (The asset url, the asset name (converted or found), the grab result code).
-        """
-        # remove the suffix _EngineVersion (ex _4.27) at the end of the name to have a valid search value
-        regex = r"_[4|5]\.\d{1,2}$"
-        converted_name = re.sub(regex, '', asset_name, 0)
-        # Replace ' ' by '%20'
-        converted_name = converted_name.replace(' ', '%20')
-        # SnakeCase
-        # converted_name = inflection.underscore(converted_name)
-        # Lower case
-        converted_name_lower = converted_name.lower()
-        # Replace '_' by '-'
-        # converted_name_lower = converted_name_lower.replace('_', '-')
-
-        # remove some not alphanumeric cars (NOT ALL, keep %)
-        entry_list = [':', ',', '.', ';', '=', '?', '!', '#', "/", "$", "€"]
-        for entry in entry_list:
-            converted_name_lower = converted_name_lower.replace(entry, '')
-
-        url = ''
-        asset_slug = converted_name_lower
-        # TODO: improve the following code to use the marketplace API instead of the website using beautifulsoup
-        search_url_root = f'https://{self._search_url}/assets?keywords='
-        search_url_full = search_url_root + converted_name_lower
-        try:
-            r = self.session.get(search_url_full, timeout=self.timeout)
-        except requests.exceptions.Timeout:
-            self.log.warning(f'Timeout for {asset_name}')
-            return [url, asset_slug, GrabResult.TIMEOUT.name]
-        if not r.ok:
-            self.log.warning(f'Can not find the url for {asset_name}:{r.reason}')
-            return [url, asset_slug, GrabResult.PAGE_NOT_FOUND.name]
-
-        soup = BeautifulSoup(r.content, 'html.parser')
-        links = []
-        group_elt = soup.find('div', attrs={'class': 'asset-list-group'})
-
-        if "No content found" in group_elt.getText():
-            self.log.info(f'{asset_name} has not been not found in marketplace.It has been added to the notfound_logger file')
-            if self.notfound_logger:
-                self.notfound_logger.info(asset_name)
-            return [url, asset_slug, GrabResult.CONTENT_NOT_FOUND.name]
-
-        # find all links to assets that correspond to the search
-        for link in group_elt.findAll('a', attrs={'class': 'mock-ellipsis-item mock-ellipsis-item-helper ellipsis-text'}):
-            links.append(link.get('href'))
-
-        # return the first one (probably the best choice)
-        asset_slug = links[0].replace('/marketplace/en-US/product/', '')
-        url = 'https://www.unrealengine.com' + links[0]
-        return [url, asset_slug, GrabResult.NO_ERROR.name]
-
-    def grab_assets_extra(self, asset_name: str, asset_title: str, verbose_mode=False, installed_asset=None) -> dict:
-        """
-        Grab the extra data of an asset (price, review...) using BeautifulSoup from the marketplace.
-        :param asset_name: name of the asset.
-        :param asset_title: title of the asset.
-        :param verbose_mode: verbose mode.
-        :param installed_asset: installed asset of the same name if any.
-        :return: a dict with the extra data.
-        """
-        page_title = gui_g.no_text_data
-        no_result = create_empty_assets_extra(asset_name=asset_name)
-
-        # try to find the url of the asset by doing a search in the marketplace
-        asset_url, asset_slug, error_code = self.search_for_asset_url(asset_title)
-
-        # TODO: improve the following code to use the marketplace API instead of Scraping using beautifulsoup
-        if not asset_url or error_code != GrabResult.NO_ERROR.name:
-            self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
-            no_result['grab_result'] = error_code
-            no_result['page_title'] = asset_slug
-            return no_result
-        try:
-            response = self.session.get(asset_url)  # when using session, we are already logged in Epic game
-            response.raise_for_status()
-            self.log.info(f'Grabbing extra data for {asset_name}')
-        except requests.exceptions.RequestException as error:
-            self.log.warning(f'Can not get extra data for {asset_name}:{error!r}')
-            self.log.info('No result found for grabbing data.\nThe asset name that has been searched for has been stored in the "Page title" Field')
-            no_result['grab_result'] = error_code
-            no_result['page_title'] = asset_slug
-            return no_result
-
-        soup_logged = BeautifulSoup(response.text, 'html.parser')
-        price = gui_g.no_float_data
-        discount_price = gui_g.no_float_data
-        search_for_price = True
-
-        owned = False
-        owned_elt = soup_logged.find('div', class_='purchase')
-        if owned_elt is not None:
-            if 'Free' in owned_elt.getText():
-                # free price when logged
-                price = 0.0
-                search_for_price = False
-                if verbose_mode:
-                    self.log.info(f'{asset_name} is free (check 1)')
-            elif 'Open in Launcher' in owned_elt.getText():
-                # owned asset.
-                # TODO: The method used seems to be not totally reliable. Check if a better one is possible
-                owned = True
-                if verbose_mode:
-                    self.log.info(f'{asset_name} is already owned')
-
-                # grab the price on a non logged soup (price will be available on that page only)
-                try:
-                    response = requests.get(asset_url, timeout=self.timeout)  # not using session, so not logged in Epic game
-                    response.raise_for_status()
-                    soup_not_logged = BeautifulSoup(response.text, 'html.parser')
-                    owned_elt = soup_not_logged.find('div', class_='purchase')
-                except requests.exceptions.RequestException:
-                    pass
-
-        if search_for_price and owned_elt is not None:
-            if 'Sign in to Download' in owned_elt.getText():
-                # free price when logged or not
-                price = 0.0
-                if verbose_mode:
-                    self.log.info(f'{asset_name} is free (check 2)')
-            else:
-                # get price using the logged or the not logged soup
-                # Note:
-                #   when not discounted
-                #       base-price is not available
-                #       price is 'save-discount'
-                #       discount-price is 0.0
-                #   when discounted
-                #       price is 'base-price'
-                #       discount-price is 'save-discount'
-                elt = owned_elt.find('span', class_='save-discount')
-                current_price = self.extract_price(elt.text, asset_name) if elt else gui_g.no_float_data
-                elt = owned_elt.find('span', class_='base-price')
-                base_price = self.extract_price(elt.text, asset_name) if elt else gui_g.no_float_data
-                if elt is not None:
-                    # discounted
-                    price = base_price
-                    discount_price = current_price
-                else:
-                    # not discounted
-                    price = current_price
-                    discount_price = current_price
-
-        # get review
-        reviews_elt = soup_logged.find('div', class_='asset-detail-rating')
-        if reviews_elt is not None:
-            reviews_elt = reviews_elt.find('div', class_='rating-board__pop__title')
-        if reviews_elt is not None:
-            try:
-                inner_span_elt = reviews_elt.find('span')
-                content = inner_span_elt.text
-                pos = content.index(' out of ')
-                review = float(content[0:pos])
-            except Exception as error:
-                self.log.warning(f'Can not find the review for {asset_name}:{error!r}')
-                review = gui_g.no_float_data
-        else:
-            self.log.debug(f'reviews not found for {asset_name}')
-            review = gui_g.no_float_data
-
-        # get page title
-        title_elt = soup_logged.find('h1', class_='post-title')
-        if title_elt is not None:
-            try:
-                page_title = title_elt.text
-            except Exception as error:
-                self.log.warning(f'Can not find the Page title for {asset_name}:{error!r}')
-        else:
-            self.log.debug(f'Can not find the Page title not found for {asset_name}')
-            review = gui_g.no_float_data
-        discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int(
-            (price - discount_price) / price * 100.0
-        )
-        discounted = (discount_price < price) or discount_percentage > 0.0
-
-        # get Installed_Folders
-        installed_folders = installed_asset.installed_folders if installed_asset else []
-        self.log.info(f'GRAB results: asset_slug={asset_slug} discounted={discounted} owned={owned} price={price} review={review}')
-        record = {
-            'asset_name': asset_name,
-            'asset_slug': asset_slug,
-            'price': price,
-            'discount_price': discount_price,
-            'review': review,
-            'owned': owned,
-            'discount_percentage': discount_percentage,
-            'discounted': discounted,
-            'asset_url': asset_url,
-            'page_title': page_title,
-            # 'supported_versions': supported_versions,
-            'installed_folders': installed_folders,
-            'grab_result': error_code,
-        }
-        return record
 
     def get_asset_data_from_marketplace(self, url: str) -> dict:
         """
@@ -719,35 +484,6 @@ class EPCAPI:
 
             # Convert to Python dictionary
             json_dict = json.loads(json_text)
-            # exemple of json_dict
-            # {
-            #     "@context"   : "https://schema.org",
-            #     "@type"      : "Product",
-            #     "sku"        : "d27cf128fdc24e328cf950b019563bc5",
-            #     "productID"  : "d27cf128fdc24e328cf950b019563bc5",
-            #     "name"       : "Volcrate",
-            #     "category"   : "Characters",
-            #     "image"      : [
-            #         "https://cdn1.epicgames.com/ue/item/Volcrate_FeaturedNew-894x488-ad93ea4be7589802d9dc289a4af3a751.png"
-            #     ],
-            #     "description": "Here is a Volcrate, this race is a crossing between a bird and a human. They mostly behave as barbarians with their impressive musculature, performing powerful devastating attacks.",
-            #     "releaseDate": "2016-12-21T00:00:00.000Z",
-            #     "brand"      : {
-            #         "@type": "Brand",
-            #         "name" : "Unreal Engine",
-            #         "logo" : {
-            #             "@type": "ImageObject",
-            #             "url"  : "https://cdn2.unrealengine.com/Unreal+Engine%2Flogos%2FUnreal_Engine_Black-1125x1280-cfa228c80703d4ffbd1cc05eabd5ed380818da45.png"
-            #         }
-            #     },
-            #     "offers"     : {
-            #         "@type"        : "Offer",
-            #         "price"        : "€32.01",
-            #         "availability" : "http://schema.org/InStock",
-            #         "priceCurrency": "EUR",
-            #         "url"          : "https://www.unrealengine.com/marketplace/en-US/product/volcrate"
-            #     }
-            # }
 
             # check if the script describes a product
             if json_dict['@type'] == 'Product':

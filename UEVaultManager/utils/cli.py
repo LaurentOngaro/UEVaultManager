@@ -7,6 +7,7 @@ import os
 import re
 
 from UEVaultManager.models.csv_sql_fields import get_sql_field_name
+from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str
 
 
 def get_boolean_choice(prompt: str, default=True) -> bool:
@@ -176,7 +177,7 @@ def create_list_from_string(string: str) -> list:
     for item in items:
         if '-' in item:
             float_values = convert_string_to_float_list(item)
-            float_string = ','.join(map(str, float_values))
+            float_string = check_and_convert_list_to_str(float_values)
             result_str += float_string + ','
         else:
             result_str += item.strip() + ','

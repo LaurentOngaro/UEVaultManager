@@ -12,10 +12,11 @@ class FakeProgressWindow:
     Usefull to avoid importing the ProgressWindow class and all its dependencies (all the tkinter stuff).
     """
     _thread_check_delay: int = -1
+    is_fake = True
     is_closing: bool = False
     quit_on_close: bool = False
     max_value: int = -1
-    continue_execution: bool = False
+    continue_execution: bool = True
     function = None
     function_params = None
     function_return_value = None
@@ -27,9 +28,9 @@ class FakeProgressWindow:
         """ FAKE METHOD"""
         pass
 
-    def _check_for_end(self, t) -> None:
+    def get_text(self) -> str:
         """ FAKE METHOD"""
-        pass
+        return ''
 
     def set_text(self, new_text: str) -> None:
         """ FAKE METHOD"""
@@ -89,7 +90,7 @@ class FakeProgressWindow:
 
     def get_result(self):
         """ FAKE METHOD"""
-        pass
+        return None
 
     def set_activation(self, activate: bool) -> None:
         """ FAKE METHOD"""

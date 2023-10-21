@@ -5,7 +5,8 @@ CSV and SQL fields mapping and utility functions.
 from datetime import datetime
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.models.types import CSVFieldState, CSVFieldType
+from UEVaultManager.models.types import CSVFieldState, CSVFieldType, DateFormat
+from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_float, convert_to_int, create_uid
 from UEVaultManager.tkgui.modules.types import DataSourceType, GrabResult, UEAssetType
 
@@ -237,12 +238,12 @@ csv_sql_fields = {
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.STR
     },
-    'urlSlug': {
-        # intentionnaly duplicated
-        'sql_name': 'asset_slug',
-        'state': CSVFieldState.CHANGED,
-        'field_type': CSVFieldType.STR
-    },
+    # 'urlSlug': {
+    #     # intentionnaly duplicated
+    #     'sql_name': 'asset_slug',
+    #     'state': CSVFieldState.CHANGED,
+    #     'field_type': CSVFieldType.STR
+    # },
     'Currency code': {
         'sql_name': 'currency_code',
         'state': CSVFieldState.ASSET_ONLY,
@@ -319,7 +320,7 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
         if csv_field and csv_field not in result:  # some sql fields could be NONE or duplicate
             result.append(csv_field)
     if return_as_string:
-        result = ','.join(result)
+        result = ','.join(result)  # keep join() here to raise an error if installed_folders is not a list of strings
     return result
 
 
@@ -349,9 +350,8 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
                 result.append(f"{sql_name} AS '{csv_field}'")
         else:
             result.append(sql_name)
-
     if return_as_string:
-        result = ','.join(result)
+        result = ','.join(result)  # keep join() here to raise an error if installed_folders is not a list of strings
     return result
 
 
@@ -449,7 +449,7 @@ def get_converters(csv_field_name: str):
 
 # not use full to convert date: Causes issue when loading a filter
 #    if field_type == CSVFieldType.DATETIME:
-#        return [lambda x: convert_to_datetime(x, formats_to_use=[gui_g.s.epic_datetime_format, gui_g.s.csv_datetime_format])]
+#        return [lambda x: convert_to_datetime(x, formats_to_use=[DateFormat.epic, DateFormat.csv])]
     else:
         return [str]
 
@@ -471,7 +471,7 @@ def get_default_value(csv_field_name: str = '', sql_field_name: str = ''):
         CSVFieldType.INT: 0,
         CSVFieldType.FLOAT: 0.0,
         CSVFieldType.BOOL: False,
-        CSVFieldType.DATETIME: datetime.now().strftime(gui_g.s.csv_datetime_format),
+        CSVFieldType.DATETIME: datetime.now().strftime(DateFormat.csv),
     }
     return default_values.get(field_type, 'None')
 
@@ -557,10 +557,9 @@ def create_empty_csv_row(return_as_string=False):
     data = {}
     for key in get_csv_field_name_list():
         data[key] = get_default_value(csv_field_name=key)
-
     data = set_default_values(data)
     if return_as_string:
-        data = ','.join(str(value) for value in data.values())
+        return check_and_convert_list_to_str(data.values())
     return data
 
 
@@ -581,8 +580,8 @@ def convert_csv_row_to_sql_row(csv_row: dict) -> dict:
 def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     """
     Debug the parsed data to see missing or empty keys.
-    :param asset_data: an instance of asset used to fille the datatable (could be from SQLITE or FILE mode)
-    :param mode: the mode of the application (SQLITE or FILE)
+    :param asset_data: an instance of asset used to fill the datatable
+    :param mode: the mode of the application (could be from DataSourceType. DATABASE or DataSourceType. FILE)
     """
     if gui_g.UEVM_log_ref:
         debug_func = gui_g.UEVM_log_ref.info  # info and debug here because we want to see even if debug mode is disabled in CLI (but enabled in GUI)
@@ -604,7 +603,9 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     new_data_keys = [
         'id', 'catalogItemId', 'namespace', 'title', 'recurrence', 'currencyCode', 'priceValue', 'discountPriceValue', 'voucherDiscount',
         'discountPercentage', 'keyImages', 'effectiveDate', 'seller', 'description', 'technicalDetails', 'longDescription', 'isFeatured',
-        'isCatalogItem', 'categories', 'bundle', 'releaseInfo', 'platforms', 'compatibleApps', 'urlSlug', 'purchaseLimit', 'tax', 'tags',
+        'isCatalogItem', 'categories', 'bundle', 'releaseInfo', 'platforms', 'compatibleApps',
+        # 'urlSlug',
+        'purchaseLimit', 'tax', 'tags',
         'commentRatingId', 'ratingId', 'klass', 'isNew', 'free', 'discounted', 'featured', 'thumbnail', 'learnThumbnail', 'headerImage', 'status',
         'price', 'discount', 'discountPrice', 'ownedCount', 'canPurchase', 'owned', 'isDownloadable', 'isSunset', 'isBuyAble', 'distributionMethod',
         'legacyCommentCount'
@@ -635,13 +636,13 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
         )
         key_csv_not_in_asset = [key for key in file_field_names if key not in asset_data]
         debug_func(key_csv_not_in_asset)
-    elif mode == DataSourceType.SQLITE:
+    elif mode == DataSourceType.DATABASE:
         # not pertinent because keys are different
-        # debug_func('keys in db_field_names that are not in new_data_keys.\nThese data will always be empty in SQLITE mode')
+        # debug_func('keys in db_field_names that are not in new_data_keys.\nThese data will always be empty in ESQLITE mode')
         # key_empty_in_db = [key for key in db_field_names if key not in asset_data.keys()]
         # debug_func(key_empty_in_db)
         debug_func(
-            'keys in db_field_names that are not in the asset data.\nThese data have not been copied from existing data in SQLITE mode.\nThis could be a data loss.\nTHIS SHOULD BE EMPTY'
+            'keys in db_field_names that are not in the asset data.\nThese data have not been copied from existing data in when using the DataSourceType.DATABASE type.\nThis could be a data loss.\nTHIS SHOULD BE EMPTY'
         )
         key_csv_not_in_asset = [key for key in db_field_names if key not in asset_data.keys()]
         debug_func(key_csv_not_in_asset)

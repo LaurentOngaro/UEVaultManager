@@ -26,6 +26,7 @@ from UEVaultManager.api.egs import EPCAPI, GrabResult
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import get_version_from_path, path_join
 from UEVaultManager.models.csv_sql_fields import debug_parsed_data
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
@@ -91,6 +92,7 @@ class UEVMGui(tk.Tk):
     :param screen_index: the screen index where the window will be displayed.
     :param data_source: the source where the data is stored or read from.
     """
+    is_fake = False
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
     _errors: [Exception] = []
@@ -133,7 +135,7 @@ class UEVMGui(tk.Tk):
 
         # update the content of the database BEFORE loading the data in the datatable
         # as it, all the formatting and filtering could be done at start with good values
-        if data_source_type == DataSourceType.SQLITE:
+        if self.is_using_database():
             # update the installed folder field in database from the installed_assets json file
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
             db_handler = UEAssetDbHandler(database_name=data_source)  # we need it BEFORE CREATING the editable_table and use its db_handler property
@@ -222,12 +224,11 @@ class UEVMGui(tk.Tk):
         :param rebuild_data: whether the data will be rebuilt at startup.
         """
         data_table = self.editable_table  # shortcut
-        if data_table.data_source_type == DataSourceType.SQLITE:
+        if data_table.is_using_database():
             show_open_file_dialog = False
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
-                downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-                if not data_table.rebuild_data(downloaded_data):
+                if not data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
                     self.logger.error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
@@ -246,7 +247,7 @@ class UEVMGui(tk.Tk):
                 self.logger.error('This application could not run without a file to read data from')
                 self.close_window(True)
 
-        self._update_downloaded_size()
+        data_table.update_downloaded_size(self.core.uevmlfs.asset_sizes)
 
         if gui_g.s.last_opened_filter != '':
             filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
@@ -267,10 +268,9 @@ class UEVMGui(tk.Tk):
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
 
-    def _update_downloaded_size(self) -> None:
-        gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-        downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-        self.editable_table.update_downloaded_size(downloaded_data)
+    def is_using_database(self) -> bool:
+        """ Check if the table is using a database as data source. """
+        return self.is_using_database()
 
     def mainloop(self, n=0):
         """
@@ -658,10 +658,11 @@ class UEVMGui(tk.Tk):
             if filename:
                 data_table.save_data()
                 self.update_data_source()
+                gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
         else:
             data_table.save_data()
             filename = ''
-        gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
+            gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
         return filename
 
     def export_selection(self) -> None:
@@ -998,7 +999,7 @@ class UEVMGui(tk.Tk):
         self.logger.info(msg)
         if self.core.scan_assets_logger:
             self.core.scan_assets_logger.info(msg)
-        date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
+        date_added = datetime.now().strftime(DateFormat.csv)
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         data = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         count = len(valid_folders.items())
@@ -1127,13 +1128,14 @@ class UEVMGui(tk.Tk):
                 return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
+                datasource_filename=self.editable_table.data_source,
+                use_database=self.editable_table.is_using_database(),
                 start=0,
                 assets_per_page=1,
                 max_threads=1,
-                use_database=True,
-                store_in_files=True,
-                store_ids=False,  # useless for now
+                save_to_files=True,
                 load_from_files=False,
+                store_ids=False,  # useless for now
                 core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
             )
             scraper.get_data_from_url(api_product_url)
@@ -1204,8 +1206,9 @@ class UEVMGui(tk.Tk):
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
+                # we keep UrlSlug here because it can arise from the scrapped data
                 asset_slug_from_row = row_data.get('Asset slug', '') or row_data.get('urlSlug', '')
-                if asset_slug_from_row and asset_slug_from_url != asset_slug_from_row:
+                if asset_slug_from_row and asset_slug_from_url and asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
@@ -1226,7 +1229,7 @@ class UEVMGui(tk.Tk):
                     if check_unicity:
                         is_unique, asset_data = self._check_unicity(asset_data)
                     if is_unique or gui_f.box_yesno(
-                            f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                        f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                         if show_message and row_count == 1:
@@ -1439,7 +1442,7 @@ class UEVMGui(tk.Tk):
         gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
         gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
-        gui_f.update_widgets_in_list(data_table.data_source_type == DataSourceType.SQLITE, 'db_is_available')
+        gui_f.update_widgets_in_list(data_table.is_using_database(), 'db_is_available')
 
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)
@@ -1502,7 +1505,7 @@ class UEVMGui(tk.Tk):
             app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
             _add_text(f'Asset id: {app_name}')
             size = self.core.uevmlfs.get_asset_size(app_name)
-            if size is not None and size > 0:
+            if size and size > 0:
                 _add_text(f'Asset size: {gui_fn.format_size(size)}', 'blue')
             else:
                 _add_text(f'Asset size: Clic on "Asset Info"', 'orange')
@@ -1527,9 +1530,8 @@ class UEVMGui(tk.Tk):
             data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             data_table.update_col_infos(apply_resize_cols=False)
-            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-            if data_table.reload_data(downloaded_data):
+            gui_f.show_progress(self, text=f'Reloading assets data...')
+            if data_table.reload_data(self.core.uevmlfs.asset_sizes):
                 # self.update_page_numbers() done in reload_data
                 self.update_category_var()
                 gui_f.box_message(f'Data Reloaded from {data_table.data_source}')
@@ -1545,9 +1547,8 @@ class UEVMGui(tk.Tk):
             data_table.update_col_infos(apply_resize_cols=False)
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
-            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-            if data_table.rebuild_data(downloaded_data):
+            gui_f.show_progress(self, text=f'Rebuilding Asset data...')
+            if data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
                 self.update_controls_state()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
@@ -1585,12 +1586,7 @@ class UEVMGui(tk.Tk):
         # gui_g.UEVM_cli_args['auth_delete'] = True
 
         # arguments for cleanup command
-        choice = (
-            command_name == 'cleanup' and
-            gui_f.box_yesno('Do you want to delete all the data including metadata, extra data, scraping data and image cache ?')
-        )
-        gui_g.UEVM_cli_args['delete_extra_data'] = choice
-        gui_g.UEVM_cli_args['delete_metadata'] = choice
+        choice = (command_name == 'cleanup' and gui_f.box_yesno('Do you want to delete all the data including scraping data and image cache ?'))
         gui_g.UEVM_cli_args['delete_scraping_data'] = choice
         gui_g.UEVM_cli_args['delete_cache_data'] = choice
 
@@ -1661,7 +1657,11 @@ class UEVMGui(tk.Tk):
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'install'
         gui_g.UEVM_cli_args['no_install'] = False
-        self.run_install()
+
+        if self.editable_table.data_source_type != DataSourceType.FILE or gui_f.box_yesno(
+            'To install an asset, using a database is a better option to avoid incoherent data in the "installed folder" field of the asset.\nThe current datasource type is "FILE", not "DATABASE".\nYou can switch the mode by using the "cli edit --database" instead of "cli edit --input" command.\nAre you sure you want to continue the operation in the current mode ?',
+        ):
+            self.run_install()
 
     def remove_installed_release(self, release_index: int) -> bool:
         """
@@ -1827,7 +1827,7 @@ class UEVMGui(tk.Tk):
         """
         Run the window to update missing data in database from json files.
         """
-        if self.editable_table.data_source_type != DataSourceType.SQLITE:
+        if not self.editable_table.is_using_database():
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
         tool_window = JsonProcessingWindow(
@@ -1845,7 +1845,7 @@ class UEVMGui(tk.Tk):
         """
         Run the window to import/export database to csv files.
         """
-        if self.editable_table.data_source_type != DataSourceType.SQLITE:
+        if not self.editable_table.is_using_database():
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
         tool_window = DbFilesWindowClass(
