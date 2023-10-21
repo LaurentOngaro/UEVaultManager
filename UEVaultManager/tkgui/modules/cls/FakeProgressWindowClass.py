@@ -16,7 +16,7 @@ class FakeProgressWindow:
     is_closing: bool = False
     quit_on_close: bool = False
     max_value: int = -1
-    continue_execution: bool = False
+    continue_execution: bool = True
     function = None
     function_params = None
     function_return_value = None
@@ -25,10 +25,6 @@ class FakeProgressWindow:
     frm_control = None
 
     def _function_result_wrapper(self, function, *args, **kwargs) -> None:
-        """ FAKE METHOD"""
-        pass
-
-    def _check_for_end(self, t) -> None:
         """ FAKE METHOD"""
         pass
 

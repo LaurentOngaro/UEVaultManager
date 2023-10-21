@@ -318,35 +318,108 @@ class UEVMLFS:
             json.dump(filters, file, indent=2, sort_keys=True)
 
     @staticmethod
-    def get_app_name_from_asset_data(asset_data: dict) -> str:
+    def get_app_name_from_asset_data(asset_data: dict) -> (str, bool):
         """
         Return the app_name to use to get the asset data.
         :param asset_data: the asset data.
-        :return: app_name (ie asset_id)
+        :return: (app_name (ie asset_id), and a True if the app_id has been found)
         """
+        found = True
         try:
             app_id = asset_data['releaseInfo'][-1]['appId']  # latest release
         except (KeyError, IndexError):
-            app_id = asset_data.get('urlSlug', None)
+            # we keep UrlSlug here because it can arise from the scrapped data
+            app_id = asset_data.get('urlSlug', None) or asset_data.get('asset_slug', None)
             if app_id is None:
                 app_id = asset_data.get('catalogItemId', create_uid())
-        return app_id
+                found = False
+        return app_id, found
 
-    def get_asset(self, app_name: str) -> dict:
+    @staticmethod
+    def get_filename_from_asset_data(asset_data: dict) -> (str, str):
         """
-        Get an asset data.
-        :param app_name: the asset name.
-        :return: the asset data.
+        Return the filename and the app_name to use to save the asset data.
+        :param asset_data: the asset data.
+        :return: (the filename, the app_id)
         """
-        asset_data = {}
-        data_folder = gui_g.s.assets_data_folder
+        app_name, found = UEVMLFS.get_app_name_from_asset_data(asset_data)
+        return f'{app_name}.json' if found else f'_no_appId_{app_name}.json', app_name
+
+    @staticmethod
+    def json_data_mapping(data_from_egs_format: dict) -> dict:
+        """
+        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary
+        :param data_from_egs_format: json data from EGS format (NEW)
+        :return: json data in UEVM format (OLD)
+        """
+        app_name = data_from_egs_format['appName']
+        category = data_from_egs_format['categories'][0]['path']
+
+        if category == 'assets/codeplugins':
+            category = 'plugins/engine'
+        category_1 = category.split('/')[0]
+        categorie = [{'path': category}, {'path': category_1}]
+        data_to_uevm_format = {
+            'app_name': app_name,
+            'app_title': data_from_egs_format['title'],
+            'asset_infos': {
+                'Windows': {
+                    'app_name': app_name,
+                    # 'asset_id': data_from_egs_format['id'], # no common value between EGS and UEVM
+                    # 'build_version': app_name,  # no common value between EGS and UEVM
+                    'catalog_item_id': data_from_egs_format['catalogItemId'],
+                    # 'label_name': 'Live-Windows',
+                    'metadata': {},
+                    'namespace': data_from_egs_format['namespace']
+                }
+            },
+            'base_urls': [],
+            'metadata': {
+                'categories': categorie,
+                # 'creationDate': data_from_egs_format['effectiveDate'], # use first release instead
+                'description': data_from_egs_format['description'],
+                'developer': data_from_egs_format['seller']['name'],
+                'developerId': data_from_egs_format['seller']['id'],
+                # 'endOfSupport': False,
+                'entitlementName': data_from_egs_format['catalogItemId'],
+                # 'entitlementType' : 'EXECUTABLE',
+                # 'eulaIds': [],
+                'id': data_from_egs_format['catalogItemId'],
+                # 'itemType': 'DURABLE',
+                'keyImages': data_from_egs_format['keyImages'],
+                # 'lastModifiedDate': data_from_egs_format['effectiveDate'], # use last release instead
+                'longDescription': data_from_egs_format['longDescription'],
+                'namespace': data_from_egs_format['namespace'],
+                'releaseInfo': data_from_egs_format['releaseInfo'],
+                'status': data_from_egs_format['status'],
+                'technicalDetails': data_from_egs_format['technicalDetails'],
+                'title': data_from_egs_format['title'],
+                # 'unsearchable': False
+            }
+        }
+        return data_to_uevm_format
+
+    def get_asset(self, app_name: str, owned_assets_only=False) -> (dict, str):
+        """
+        Load JSON data from a file.
+        :param app_name: the name of the asset to load the data from.
+        :param owned_assets_only: whether only the owned assets are scraped.
+        :return: a dictionary containing the loaded data.
+        """
+        folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
         filename = app_name + '.json'
-        try:
-            with open(path_join(data_folder, filename), 'r', encoding='utf-8') as file:
-                asset_data = json.load(file)
-        except Exception as error:
-            self.log.debug(f'Loading asset data file "{filename}" failed: {error!r}')
-        return asset_data
+        json_data = {}
+        message = ''
+        with open(path_join(folder, filename), 'r', encoding='utf-8') as file:
+            try:
+                json_data = json.load(file)
+            except json.decoder.JSONDecodeError as error:
+                message = f'The following error occured when loading data from {filename}:{error!r}'
+            # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
+            # it needed by the json_data_mapping() method
+            json_data['appName'] = app_name
+            json_data_uevm = self.json_data_mapping(json_data)
+        return json_data_uevm, message
 
     def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:
         """

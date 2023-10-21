@@ -453,14 +453,15 @@ class AppCore:
         old_bytes = self.uevmlfs.load_manifest(app_name, installed_asset.version, installed_asset.platform)
         return old_bytes, installed_asset.base_urls
 
-    def get_asset_obj(self, app_name: str) -> Optional[Asset]:
+    def asset_obj_from_json(self, app_name: str) -> Optional[Asset]:
         """
         return an "item" like for compatibilty with "old" methods .
         :param app_name:
-        :return:
+        :return: Asset object.
         """
-        if _meta := self.uevmlfs.get_asset(app_name):
-            return Asset.from_json(_meta)  # create an object from the Asset class using the json data
+        asset_data, _ = self.uevmlfs.get_asset(app_name)
+        if asset_data:
+            return Asset.from_json(asset_data)  # create an object from the Asset class using the json data
         return None
 
     def get_cdn_urls(self, item, platform: str = 'Windows'):

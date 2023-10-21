@@ -385,6 +385,7 @@ class ProgressWindow(tk.Toplevel):
         :param _event: the event that triggered the close.
         """
         self.is_closing = True
+        self.continue_execution = True
         if destroy_window:
             if self.quit_on_close:
                 self.quit()

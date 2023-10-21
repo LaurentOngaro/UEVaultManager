@@ -174,82 +174,6 @@ class UEAssetScraper:
             else:
                 self.asset_db_handler = UEAssetDbHandler(self._datasource_filename)
 
-    @staticmethod
-    def read_json_file(app_name: str, owned_assets_only=False) -> (dict, str):
-        """
-        Load JSON data from a file.
-        :param app_name: the name of the asset to load the data from.
-        :param owned_assets_only: whether only the owned assets are scraped.
-        :return: a dictionary containing the loaded data.
-        """
-        folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
-        filename = app_name + '.json'
-        json_data = {}
-        message = ''
-        with open(path_join(folder, filename), 'r', encoding='utf-8') as file:
-            try:
-                json_data = json.load(file)
-            except json.decoder.JSONDecodeError as error:
-                message = f'The following error occured when loading data from {filename}:{error!r}'
-            # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
-            # it needed by the json_data_mapping() method
-            json_data['appName'] = app_name
-        return json_data, message
-
-    @staticmethod
-    def json_data_mapping(data_from_egs_format: dict) -> dict:
-        """
-        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary
-        :param data_from_egs_format: json data from EGS format (NEW)
-        :return: json data in UEVM format (OLD)
-        """
-        app_name = data_from_egs_format['appName']
-        category = data_from_egs_format['categories'][0]['path']
-
-        if category == 'assets/codeplugins':
-            category = 'plugins/engine'
-        category_1 = category.split('/')[0]
-        categorie = [{'path': category}, {'path': category_1}]
-        data_to_uevm_format = {
-            'app_name': app_name,
-            'app_title': data_from_egs_format['title'],
-            'asset_infos': {
-                'Windows': {
-                    'app_name': app_name,
-                    # 'asset_id': data_from_egs_format['id'], # no common value between EGS and UEVM
-                    # 'build_version': app_name,  # no common value between EGS and UEVM
-                    'catalog_item_id': data_from_egs_format['catalogItemId'],
-                    # 'label_name': 'Live-Windows',
-                    'metadata': {},
-                    'namespace': data_from_egs_format['namespace']
-                }
-            },
-            'base_urls': [],
-            'metadata': {
-                'categories': categorie,
-                # 'creationDate': data_from_egs_format['effectiveDate'], # use first release instead
-                'description': data_from_egs_format['description'],
-                'developer': data_from_egs_format['seller']['name'],
-                'developerId': data_from_egs_format['seller']['id'],
-                # 'endOfSupport': False,
-                'entitlementName': data_from_egs_format['catalogItemId'],
-                # 'entitlementType' : 'EXECUTABLE',
-                # 'eulaIds': [],
-                'id': data_from_egs_format['catalogItemId'],
-                # 'itemType': 'DURABLE',
-                'keyImages': data_from_egs_format['keyImages'],
-                # 'lastModifiedDate': data_from_egs_format['effectiveDate'], # use last release instead
-                'longDescription': data_from_egs_format['longDescription'],
-                'namespace': data_from_egs_format['namespace'],
-                'releaseInfo': data_from_egs_format['releaseInfo'],
-                'status': data_from_egs_format['status'],
-                'technicalDetails': data_from_egs_format['technicalDetails'],
-                'title': data_from_egs_format['title'],
-                # 'unsearchable': False
-            }
-        }
-        return data_to_uevm_format
-
     def _log(self, message, level: str = 'info'):
         if level == 'debug':
             """ a simple wrapper to use when cli is not initialized"""
@@ -317,6 +241,11 @@ class UEAssetScraper:
                 latest_release = release_info[-1] if release_info else {}
                 first_release = release_info[0] if release_info else {}
                 app_name = asset_data.get('app_name', '')
+                if not app_name:
+                    app_name, found = self.core.uevmlfs.get_app_name_from_asset_data(asset_data)
+                    asset_data['app_name'] = app_name
+                    if not found:
+                        self._log(f'No app_name found for asset with id={uid}.The dummy value {app_name} has be used instead', level='warning')
                 origin = 'Marketplace'  # by default when scraped from marketplace
                 date_now = datetime.now().strftime(default_datetime_format)
                 grab_result = GrabResult.NO_ERROR.name
@@ -358,6 +287,7 @@ class UEAssetScraper:
                 asset_data['asset_id'] = asset_id
 
                 # asset slug and asset url
+                # we keep UrlSlug here because it can arise from the scrapped data
                 asset_slug = asset_data.get('urlSlug', gui_g.no_text_data) or asset_data.get('asset_slug', gui_g.no_text_data)
                 if asset_slug == gui_g.no_text_data:
                     asset_url = gui_g.no_text_data
@@ -366,6 +296,7 @@ class UEAssetScraper:
                     asset_url = self.core.egs.get_marketplace_product_url(asset_slug)
                 asset_data['asset_slug'] = asset_slug
                 asset_data['asset_url'] = asset_url
+                asset_data['urlSlug'] = None  # we remove the duplicate field to avoid future mistakes
 
                 # prices and discount
                 price = self.core.egs.extract_price(asset_data.get('price', gui_g.no_float_data))
@@ -400,7 +331,7 @@ class UEAssetScraper:
                         average_rating = asset_data['rating']['averageRating']
                         rating_total = asset_data['rating']['total']
                     except KeyError:
-                        self._log('_debug', f'No rating for {asset_data["title"]}')
+                        self._log(f'No rating for {asset_data["title"]}', 'debug')
                         # check if self has asset_db_handler
                         if use_database:
                             average_rating, rating_total = asset_db_handler.get_rating_by_id(uid)
@@ -500,23 +431,6 @@ class UEAssetScraper:
             # end else if uid:
         # end for asset_data in json_data['data']['elements']:
         return all_assets
-
-    def _get_filename_from_asset_data(self, asset_data) -> str:
-        """
-        Return the filename to use to save the asset data.
-        :param asset_data: the asset data.
-        :return: the filename to use to save the asset data.
-        """
-        try:
-            app_id = asset_data['releaseInfo'][-1]['appId']  # latest release
-            filename = f'{app_id}.json'
-        except (KeyError, IndexError) as error:
-            self._log(f'Error getting appId for asset with id {asset_data["id"]}: {error!r}', 'warning')
-            app_id = asset_data.get('urlSlug', None)
-            if app_id is None:
-                app_id = asset_data.get('catalogItemId', gui_fn.create_uid())
-            filename = f'_no_appId_{app_id}.json'
-        return filename
 
     def get_scrapped_data(self) -> list:
         """ Return the scraped data. """
@@ -859,7 +773,8 @@ class UEAssetScraper:
                     count = len(json_data['data']['elements'])
                     for index, asset_data in enumerate(json_data['data']['elements']):
                         self.progress_window.set_text(f'Saving data to json files ({index}/{count})')
-                        filename = self._get_filename_from_asset_data(asset_data)
+                        filename, app_name = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
+                        asset_data['app_name'] = app_name
                         self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                         self._files_count += 1
                     self.progress_window.set_text(saved_text)
@@ -958,7 +873,7 @@ class UEAssetScraper:
                 debug_parsed_data(self._scraped_data[-1], DataSourceType.SQLITE)
         elif asset_loaded <= egs_available_assets_count:
             # some asset are missing in json files
-            message = f'{asset_loaded} assets have been loaded from json files but {egs_available_assets_count} are available on the marketplace.\nYou should do a rebuild with the force_refresh option enabled to get the new ones.'
+            message = f'{asset_loaded} assets have been loaded from json files, {egs_available_assets_count} available on the marketplace.\nYou should do a rebuild with the force_refresh option enabled to get ²the new ones.'
             if self.progress_window.is_fake:
                 # use a box message only if the progress window is fake, ie whe are not in GUI mode
                 box_message(message)
@@ -979,24 +894,19 @@ class UEAssetScraper:
         """
         if data is None:
             data = self._scraped_data
-
         if not data:
             self._log('No data to save', 'warning')
             return False
 
         folder = gui_g.s.owned_assets_data_folder if is_owned else gui_g.s.assets_data_folder
         folder = gui_g.s.assets_global_folder if is_global else folder
-
         _, folder = gui_fn.check_and_get_folder(folder)
-
         if filename is None:
             filename = prefix
             if self.start > 0:
                 filename += f'_{self.start}_{self.start + self.assets_per_page}'
             filename += '.json'
-
         filename = path_join(folder, filename)
-
         try:
             with open(filename, 'w', encoding='utf-8') as file:
                 if is_json:
@@ -1016,11 +926,11 @@ class UEAssetScraper:
         :return: the number of files loaded or -1 if the process has been interrupted.
         """
         start_time = time.time()
+        old_text = self.progress_window.get_text()
         self._files_count = 0
         self._scraped_ids = []
         self._scraped_data = []
         folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
-        old_text = self.progress_window.get_text()
         files = os.listdir(folder)
         files_count = len(files)
         # Note: this data have the same structure as the table last_run inside the method UEAsset.create_tables()
@@ -1033,7 +943,7 @@ class UEAssetScraper:
                     try:
                         json_data = json.load(file)
                     except json.decoder.JSONDecodeError as error:
-                        self._log('_warning', f'The following error occured when loading data from {filename}:{error!r}')
+                        self._log(f'The following error occured when loading data from {filename}:{error!r}', 'warning')
                         continue
                     assets_data = self._parse_data(json_data)  # self._parse_data returns a list of assets
                     for asset_data in assets_data:
@@ -1097,7 +1007,7 @@ class UEAssetScraper:
             # store the data in a AFTER parsing it
             self._files_count = 0
             for asset_data in self._scraped_data:
-                filename = self._get_filename_from_asset_data(asset_data)
+                filename, _ = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
                 self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                 self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1):

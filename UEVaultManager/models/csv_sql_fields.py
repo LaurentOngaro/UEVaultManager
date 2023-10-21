@@ -238,12 +238,12 @@ csv_sql_fields = {
         'state': CSVFieldState.SQL_ONLY,
         'field_type': CSVFieldType.STR
     },
-    'urlSlug': {
-        # intentionnaly duplicated
-        'sql_name': 'asset_slug',
-        'state': CSVFieldState.CHANGED,
-        'field_type': CSVFieldType.STR
-    },
+    # 'urlSlug': {
+    #     # intentionnaly duplicated
+    #     'sql_name': 'asset_slug',
+    #     'state': CSVFieldState.CHANGED,
+    #     'field_type': CSVFieldType.STR
+    # },
     'Currency code': {
         'sql_name': 'currency_code',
         'state': CSVFieldState.ASSET_ONLY,
@@ -603,7 +603,9 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     new_data_keys = [
         'id', 'catalogItemId', 'namespace', 'title', 'recurrence', 'currencyCode', 'priceValue', 'discountPriceValue', 'voucherDiscount',
         'discountPercentage', 'keyImages', 'effectiveDate', 'seller', 'description', 'technicalDetails', 'longDescription', 'isFeatured',
-        'isCatalogItem', 'categories', 'bundle', 'releaseInfo', 'platforms', 'compatibleApps', 'urlSlug', 'purchaseLimit', 'tax', 'tags',
+        'isCatalogItem', 'categories', 'bundle', 'releaseInfo', 'platforms', 'compatibleApps',
+        # 'urlSlug',
+        'purchaseLimit', 'tax', 'tags',
         'commentRatingId', 'ratingId', 'klass', 'isNew', 'free', 'discounted', 'featured', 'thumbnail', 'learnThumbnail', 'headerImage', 'status',
         'price', 'discount', 'discountPrice', 'ownedCount', 'canPurchase', 'owned', 'isDownloadable', 'isSunset', 'isBuyAble', 'distributionMethod',
         'legacyCommentCount'

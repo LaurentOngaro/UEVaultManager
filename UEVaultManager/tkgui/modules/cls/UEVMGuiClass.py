@@ -1201,8 +1201,9 @@ class UEVMGui(tk.Tk):
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
+                # we keep UrlSlug here because it can arise from the scrapped data
                 asset_slug_from_row = row_data.get('Asset slug', '') or row_data.get('urlSlug', '')
-                if asset_slug_from_row and asset_slug_from_url != asset_slug_from_row:
+                if asset_slug_from_row and asset_slug_from_url and asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user

@@ -153,13 +153,13 @@ class DbFilesWindowClass(tk.Toplevel):
                 messagebox.showinfo('Info', 'Processing is already running.')
                 return
             self.processing = True
-            self.set_status('Processing...')
-            self.add_result('Processing...')
+            self.add_result('Processing...', set_status=True)
             self.update()
             delete_content = self.var_delete_content.get()
             table_name = self.cb_table.get()
             if table_name == self.container.value_for_all:
                 table_name = ''
+            files_u= []
             files, must_reload = self.container.db_handler.import_from_csv(
                 self.container.folder_for_csv_files,
                 table_name,
@@ -178,12 +178,14 @@ class DbFilesWindowClass(tk.Toplevel):
                 )
                 files += files_u
                 must_reload = must_reload or must_reload_u
-
+            if not files and not files_u:
+                self.add_result('No file to load have been found.', set_status=True)
+                self.processing = False
+                return
             self.add_result('Data imported from files:')
             for file in files:
                 self.add_result(file)
-            self.add_result('Import finished.')
-            self.set_status('Import finished.')
+            self.add_result('Import finished.', set_status=True)
             self.container.must_reload = must_reload
             self.processing = False
 
@@ -195,8 +197,7 @@ class DbFilesWindowClass(tk.Toplevel):
                 messagebox.showinfo('Info', 'Processing is already running.')
                 return
             self.processing = True
-            self.set_status('Processing...')
-            self.add_result('Processing...')
+            self.add_result('Processing...', set_status=True)
             self.update()
             table_name = self.cb_table.get()
             if table_name == self.container.value_for_all:
@@ -219,8 +220,7 @@ class DbFilesWindowClass(tk.Toplevel):
             self.add_result('Data exported to files:')
             for file in files:
                 self.add_result(file)
-            self.add_result('Export finished.')
-            self.set_status('Export finished.')
+            self.add_result('Export finished.', set_status=True)
             self.processing = False
 
 

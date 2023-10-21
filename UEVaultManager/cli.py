@@ -27,7 +27,6 @@ from UEVaultManager import __codename__ as UEVM_codename, __version__ as UEVM_ve
 from UEVaultManager.api.uevm import UpdateSeverity
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import copy_folder, path_join
-from UEVaultManager.models.Asset import Asset
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -439,7 +438,7 @@ class UEVaultManagerCLI:
                 message = 'You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n'
                 self._log_and_gui_message(message, quit_on_error=False, level='error')
                 return
-            item = self.core.get_asset_obj(args.app_name)
+            item = self.core.asset_obj_from_json(args.app_name)
             if not item:
                 message = f'Could not fetch metadata for "{args.app_name}" (check spelling/account ownership)'
                 self._log_and_gui_message(message, quit_on_error=False, level='error')
@@ -568,44 +567,22 @@ class UEVaultManagerCLI:
         info_items = dict(assets=[], manifest=[], install=[])
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
         # check the item using the UEVM method (old)
-        item = self.core.get_asset_obj(app_name)
+        item = self.core.asset_obj_from_json(app_name)
         message = f'Asset information for "{app_name}" is missing, this may be due to the asset not being available on the selected platform or currently logged-in account.'
-        if item and not self.core.uevmlfs.get_asset(item.app_name):
-            self._log_and_gui_message(message, level='warning')
-            args.offline = True
-        else:
-            # check the item using the EGS method (new)
-            try:
-                json_data_egs, json_message = UEAssetScraper.read_json_file(app_name)
-                if json_message != '':
-                    self._log_and_gui_message(json_message, level='warning')
-                    item = None
-                else:
-                    json_data_uevm = UEAssetScraper.json_data_mapping(json_data_egs)
-                    item = Asset.from_json(json_data_uevm)  # create an object from the asset class using the json data
-            except (Exception, ) as error:
-                self._log(f'Scrapped data for {app_name} are not available : {error!r}', level='warning')
-                # item = None
         if not item:
             self._log_and_gui_message(message, level='warning')
             args.offline = True
         manifest_data = None
         install_tags = {''}
 
-        # entitlements = None
         # load installed manifest or URI
-        if args.offline or manifest_uri:
-            if manifest_uri and manifest_uri.startswith('http'):
-                r = self.core.egs.unauth_session.get(manifest_uri)
-                r.raise_for_status()
-                manifest_data = r.content
-            elif manifest_uri and os.path.exists(manifest_uri):
+        if args.offline:
+            if manifest_uri and os.path.exists(manifest_uri):
                 with open(manifest_uri, 'rb') as file:
                     manifest_data = file.read()
             else:
-                self._log('Asset not installed and offline mode enabled, can not load manifest.')
+                self._log('Local Manifest file not found and offline mode enabled, can not load manifest.')
         elif item:
-            # entitlements = self.core.egs.get_user_entitlements()
             try:
                 egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
                 if status_code != 200:
@@ -774,9 +751,9 @@ class UEVaultManagerCLI:
                 uewm_gui_exists, _ = init_display_window(self.logger)
             else:
                 uewm_gui_exists = False
-            if info_items.get('asset'):
+            if info_items.get('assets'):
                 custom_print('Asset Information:')
-                for info_item in info_items['asset']:
+                for info_item in info_items['assets']:
                     print_info_item(info_item)
             if info_items.get('install'):
                 custom_print('Installation information:')
@@ -1022,7 +999,7 @@ class UEVaultManagerCLI:
         # we use the "old" method (i.e. legendary way) to get the Asset, because we need to access to the metadata and its "base_urls"
         # that is not available in the "new" method (i.e. new API way)
         # Anyway, we can only install asset we own, so the "old" method is enough
-        asset = self.core.get_asset_obj(args.app_name)
+        asset = self.core.asset_obj_from_json(args.app_name)
         # asset_id = asset.metadata.get('appId', None)
         if not asset:
             self._log_and_gui_message(
