@@ -171,8 +171,8 @@ class AppCore:
         :param message: message to log.
         """
         self.log.info(message)
-        if gui_g.display_content_window_ref is not None:
-            gui_g.display_content_window_ref.display(message)
+        if gui_g.WindowsRef.display_content is not None:
+            gui_g.WindowsRef.display_content.display(message)
 
     def setup_assets_loggers(self) -> None:
         """

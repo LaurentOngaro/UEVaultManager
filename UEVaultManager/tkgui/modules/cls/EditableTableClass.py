@@ -37,7 +37,7 @@ class EditableTable(Table):
     A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
     :param container: the parent frame for the table.
-    :param data_source_type: the type of data source (DataSourceType.FILE or DataSourceType.DATABASE).
+    :param data_source_type: the type of data source (DataSourceType. FILE or DataSourceType. DATABASE).
     :param data_source: the path to the source that contains the table data.
     :param rows_per_page: the number of rows to show per page.
     :param show_toolbar: whether to show the toolbar.
@@ -1631,8 +1631,8 @@ class EditableTable(Table):
         Create the edit row window for the selected row in the table.
         :param event: the event that triggered the function call.
         """
-        if gui_g.edit_row_window_ref is not None and gui_g.edit_row_window_ref.winfo_viewable():
-            gui_g.edit_row_window_ref.focus_set()
+        if gui_g.WindowsRef.edit_row is not None and gui_g.WindowsRef.edit_row.winfo_viewable():
+            gui_g.WindowsRef.edit_row.focus_set()
             return
 
         if event is not None:
@@ -1664,7 +1664,7 @@ class EditableTable(Table):
         Edit the values of the specified row in the table.
         :param row_number: row number from a datatable. Will be converted into real row index.
         """
-        edit_row_window = gui_g.edit_row_window_ref
+        edit_row_window = gui_g.WindowsRef.edit_row
         if row_number is None or edit_row_window is None:
             return
         idx = self.get_real_index(row_number)
@@ -1777,8 +1777,8 @@ class EditableTable(Table):
         Create the edit cell window for the selected cell in the table.
         :param event: the event that triggered the creation of the edit cell window.
         """
-        if gui_g.edit_cell_window_ref is not None and gui_g.edit_cell_window_ref.winfo_viewable():
-            gui_g.edit_cell_window_ref.focus_set()
+        if gui_g.WindowsRef.edit_cell is not None and gui_g.WindowsRef.edit_cell.winfo_viewable():
+            gui_g.WindowsRef.edit_cell.focus_set()
             return
 
         if event.type != tk.EventType.KeyPress:

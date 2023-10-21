@@ -122,14 +122,14 @@ def init_display_window(logger=None, _message: str = 'Starting command...') -> (
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
-    if gui_g.display_content_window_ref is not None:
-        gui_g.display_content_window_ref.close_window()
+    if gui_g.WindowsRef.display_content is not None:
+        gui_g.WindowsRef.display_content.close_window()
 
-    gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM command output', quit_on_close=not uewm_gui_exists)
-    gui_g.display_content_window_ref.display(_message, False)
-    # make_modal(gui_g.display_content_window_ref) # no modal here, will prevent display update by the function
+    gui_g.WindowsRef.display_content = DisplayContentWindow(title='UEVM command output', quit_on_close=not uewm_gui_exists)
+    gui_g.WindowsRef.display_content.display(_message, False)
+    # make_modal(gui_g.WindowsRef.display_content) # no modal here, will prevent display update by the function
 
-    return uewm_gui_exists, gui_g.display_content_window_ref
+    return uewm_gui_exists, gui_g.WindowsRef.display_content
 
 
 class UEVaultManagerCLI:
@@ -192,8 +192,8 @@ class UEVaultManagerCLI:
         """
         quit_on_error = quit_on_error and not (level in ('info', 'debug'))
         if UEVaultManagerCLI.is_gui:
-            if gui_g.display_content_window_ref is not None:
-                gui_g.display_content_window_ref.close_window()
+            if gui_g.WindowsRef.display_content is not None:
+                gui_g.WindowsRef.display_content.close_window()
             box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the application to quit
             # log_function() is called in box_message
         else:
@@ -209,8 +209,8 @@ class UEVaultManagerCLI:
         :param level: level of message. Will determnie the function to use to log.
         """
         self._log(message, level)
-        if UEVaultManagerCLI.is_gui and gui_g.display_content_window_ref is not None:
-            gui_g.display_content_window_ref.display(message)
+        if UEVaultManagerCLI.is_gui and gui_g.WindowsRef.display_content is not None:
+            gui_g.WindowsRef.display_content.display(message)
 
     def _init_data_for_gui(self, args) -> (str, DataSourceType):
         data_source_type = DataSourceType.FILE

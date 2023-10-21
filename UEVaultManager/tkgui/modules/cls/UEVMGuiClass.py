@@ -1,6 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
+_ clean_ue_asset_name: clean a name to remove unwanted characters.
 - UEVMGui: the main window of the application.
 """
 import filecmp
@@ -30,11 +31,11 @@ from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
-from UEVaultManager.tkgui.modules.cls.DbFilesWindowClass import DbFilesWindowClass
+from UEVaultManager.tkgui.modules.cls.DbToolWindowClass import DbToolWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.cls.JsonProcessingWindowClass import JsonProcessingWindow
+from UEVaultManager.tkgui.modules.cls.JsonToolWindowClass import JsonToolWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
@@ -280,7 +281,7 @@ class UEVMGui(tk.Tk):
         self.logger.info(f'starting mainloop in {__name__}')
         self.tk.mainloop(n)
         # check is a child window is still open
-        # child_windows = self.progress_window or gui_g.edit_cell_window_ref or gui_g.edit_row_window_ref
+        # child_windows = self.progress_window or gui_g.WindowsRef.edit_cell or gui_g.WindowsRef.edit_row
         # print('root loop')
         # if child_windows:
         #     self._wait_for_window(child_windows)
@@ -406,12 +407,12 @@ class UEVMGui(tk.Tk):
         # 4th keys of (FRENCH) keyboard: ampersand eacute quotedbl apostrophe
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
-            if gui_g.edit_cell_window_ref:
-                gui_g.edit_cell_window_ref.on_close()
-                gui_g.edit_cell_window_ref = None
-            elif gui_g.edit_row_window_ref:
-                gui_g.edit_row_window_ref.on_close()
-                gui_g.edit_row_window_ref = None
+            if gui_g.WindowsRef.edit_cell:
+                gui_g.WindowsRef.edit_cell.on_close()
+                gui_g.WindowsRef.edit_cell = None
+            elif gui_g.WindowsRef.edit_row:
+                gui_g.WindowsRef.edit_row.on_close()
+                gui_g.WindowsRef.edit_row = None
             else:
                 self.on_close()
         elif control_pressed and (event.keysym == 's' or event.keysym == 'S'):
@@ -1102,13 +1103,13 @@ class UEVMGui(tk.Tk):
         if invalid_folders:
             result = '\n'.join(invalid_folders)
             result = f'The following folders have produce invalid results during the scan:\n{result}'
-            if gui_g.display_content_window_ref is None:
+            if gui_g.WindowsRef.display_content is None:
                 file_name = f'scan_folder_results_{datetime.now().strftime("%y-%m-%d")}.txt'
-                gui_g.display_content_window_ref = DisplayContentWindow(
+                gui_g.WindowsRef.display_content = DisplayContentWindow(
                     title='UEVM: status command output', quit_on_close=False, result_filename=file_name
                 )
-                gui_g.display_content_window_ref.display(result)
-                gui_f.make_modal(gui_g.display_content_window_ref)
+                gui_g.WindowsRef.display_content.display(result)
+                gui_f.make_modal(gui_g.WindowsRef.display_content)
             self.logger.warning(result)
 
     def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False) -> dict:
@@ -1558,9 +1559,9 @@ class UEVMGui(tk.Tk):
         Execute a cli command and display the result in DisplayContentWindow.
         :param command_name: the name of the command to execute.
         """
-        if gui_g.display_content_window_ref is not None:
+        if gui_g.WindowsRef.display_content is not None:
             self.logger.info('A UEVM command is already running, please wait for it to finish.')
-            gui_g.display_content_window_ref.set_focus()
+            gui_g.WindowsRef.display_content.set_focus()
             return
         if not command_name:
             return
@@ -1593,10 +1594,10 @@ class UEVMGui(tk.Tk):
         # arguments for help command
         gui_g.UEVM_cli_args['full_help'] = True
 
-        # already_displayed = gui_g.display_content_window_ref is not None
+        # already_displayed = gui_g.WindowsRef.display_content is not None
         # if already_displayed:
-        #     # Note: next line will raise an exption if gui_g.display_content_window_ref is None
-        #     already_displayed = not gui_g.display_content_window_ref.winfo_viewable()
+        #     # Note: next line will raise an exption if gui_g.WindowsRef.display_content is None
+        #     already_displayed = not gui_g.WindowsRef.display_content.winfo_viewable()
         #
         # if not already_displayed:
         #     # we display the window only if it is not already displayed
@@ -1607,11 +1608,11 @@ class UEVMGui(tk.Tk):
         if subparser:
             display_name += ' - ' + gui_g.UEVM_cli_args['subparser']
         display_window = DisplayContentWindow(title=f'UEVM: {display_name} display result')
-        gui_g.display_content_window_ref = display_window
+        gui_g.WindowsRef.display_content = display_window
         display_window.display(f'Running command {command_name}...Please wait')
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         function_to_call(gui_g.UEVM_cli_args)
-        self._wait_for_window(gui_g.display_content_window_ref)  # a local variable won't work here
+        self._wait_for_window(gui_g.WindowsRef.display_content)  # a local variable won't work here
         # make_modal(display_window)
         # usefull to tell the caller what row could have been updated
         return row_index, app_name
@@ -1830,14 +1831,14 @@ class UEVMGui(tk.Tk):
         if not self.editable_table.is_using_database():
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
-        tool_window = JsonProcessingWindow(
+        tool_window = JsonToolWindow(
             title='Json Files Data Processing',
             icon=gui_g.s.app_icon_filename,
             db_path=self.editable_table.data_source,
             folder_for_tags_path=gui_g.s.assets_data_folder,
             folder_for_rating_path=gui_g.s.assets_csv_files_folder
         )
-        gui_g.tool_window_ref = tool_window
+        gui_g.WindowsRef.tool = tool_window
         # self._wait_for_window(tool_window)
         gui_f.make_modal(tool_window)
 
@@ -1848,13 +1849,13 @@ class UEVMGui(tk.Tk):
         if not self.editable_table.is_using_database():
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
-        tool_window = DbFilesWindowClass(
+        tool_window = DbToolWindowClass(
             title='Database Import/Export Window',
             icon=gui_g.s.app_icon_filename,
             db_path=self.editable_table.data_source,
             folder_for_csv_files=gui_g.s.assets_csv_files_folder
         )
-        gui_g.tool_window_ref = tool_window
+        gui_g.WindowsRef.tool = tool_window
         # self._wait_for_window(tool_window)
         gui_f.make_modal(tool_window)
         if tool_window.must_reload and gui_f.box_yesno('Some data has been imported into the database. Do you want to reload the data ?'):

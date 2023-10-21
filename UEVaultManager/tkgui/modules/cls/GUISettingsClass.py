@@ -18,20 +18,10 @@ from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import check_and_create_folder
 
 
-def log_info(msg: str) -> None:
-    """
-    Print a message to the console.
-    :param msg: the message to log_info.
-    """
-    msg = colored(msg, 'orange')
-    print(msg)
-
-
 class GUISettings:
     """
     A class that contains all the settings for the GUI.
     :param config_file: path to config file to use instead of default
-.
     """
     path: str = ''
     config_file_gui: str = ''  # config file path for gui part (tkgui)
@@ -149,6 +139,12 @@ class GUISettings:
         self.app_title: str = __name__
         self.offline_mode: bool = False
 
+    @staticmethod
+    def _log(message):
+        """ print a colored message."""
+        msg = colored(message, 'orange')
+        print(msg)
+
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
         Getter for a serialized config vars
@@ -176,7 +172,7 @@ class GUISettings:
         try:
             values = json.loads(read_value)
         except json.decoder.JSONDecodeError:
-            log_info(f'Failed to decode json string for {var_name} in config file. Using default value')
+            self._log(f'Failed to decode json string for {var_name} in config file. Using default value')
             values = default
         self._config_vars_deserialized[var_name] = values
         return values
@@ -473,7 +469,7 @@ class GUISettings:
                 self.config_file_gui = os.path.abspath(config_file)
             else:
                 self.config_file_gui = path_join(self.path, clean_filename(config_file))
-            log_info(f'UEVMGui is using non-default config file "{self.config_file_gui}"')
+            self._log(f'UEVMGui is using non-default config file "{self.config_file_gui}"')
         else:
             self.config_file_gui = path_join(self.path, 'config_gui.ini')
 
@@ -481,8 +477,8 @@ class GUISettings:
         try:
             self.config.read(self.config_file_gui)
         except Exception as error:
-            log_info(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
-            log_info('Continuing with blank config in safe-mode...')
+            self._log(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
+            self._log('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {
             'folders_to_scan': {
@@ -688,7 +684,7 @@ class GUISettings:
         if os.path.exists(self.config_file_gui):
             if (mod_time := int(os.stat(self.config_file_gui).st_mtime)) != self.config.mod_time:
                 new_filename = f'config.{mod_time}.ini.BAK'
-                log_info(
+                self._log(
                     f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
                 )
                 os.rename(self.config_file_gui, path_join(os.path.dirname(self.config_file_gui), new_filename))

@@ -277,8 +277,8 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
     result = '\n'.join(_process(json_obj))
 
     if print_result:
-        if output_on_gui and gui_g.display_content_window_ref is not None:
-            gui_g.display_content_window_ref.display(result)
+        if output_on_gui and gui_g.WindowsRef.display_content is not None:
+            gui_g.WindowsRef.display_content.display(result)
         else:
             print(result)
 
@@ -289,8 +289,8 @@ def custom_print(text='', keep_mode=True) -> None:
     :param text: the text to print.
     :param keep_mode: whether to keep the existing content when adding a new one.
     """
-    if gui_g.display_content_window_ref is not None:
-        gui_g.display_content_window_ref.display(content=text, keep_mode=keep_mode)
+    if gui_g.WindowsRef.display_content is not None:
+        gui_g.WindowsRef.display_content.display(content=text, keep_mode=keep_mode)
     else:
         print(text)
 
@@ -545,13 +545,11 @@ def exit_and_clean_windows(code: int = 1):
     Exit the application and clean all the windows before.
     :return:
     """
-    gui_g.windows_ref = [
-        gui_g.edit_cell_window_ref, gui_g.edit_row_window_ref, gui_g.display_content_window_ref, gui_g.progress_window_ref, gui_g.tool_window_ref
-    ]
-    for windows in gui_g.windows_ref:
-        if windows is not None:
-            windows.quit()
-            windows.destroy()
+    window_list = gui_g.WindowsRef.get_properties()
+    for window in window_list:
+        if window is not None:
+            window.quit()
+            window.destroy()
     sys.exit(code)
 
 

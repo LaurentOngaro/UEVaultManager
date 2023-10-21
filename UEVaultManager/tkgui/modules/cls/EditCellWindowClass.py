@@ -53,7 +53,7 @@ class EditCellWindow(tk.Toplevel):
         self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
-        gui_g.edit_cell_window_ref = self
+        gui_g.WindowsRef.edit_cell = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
         self.update_controls_state()
 
@@ -149,7 +149,7 @@ class EditCellWindow(tk.Toplevel):
         """
         Close the window.
         """
-        gui_g.edit_cell_window_ref = None
+        gui_g.WindowsRef.edit_cell = None
         self.editable_table.reset_style()
         self.destroy()
 
