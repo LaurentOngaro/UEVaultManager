@@ -1167,7 +1167,7 @@ class UEVMGui(tk.Tk):
             )
             if end is not None:
                 all_row_numbers = list(range(start, end))
-                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False)
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False)
 
     def scrap_asset(
         self,
@@ -1189,13 +1189,12 @@ class UEVMGui(tk.Tk):
         :param update_dataframe: whether to update the dataframe after scraping
         :param check_unicity: whether to check if the data are unique and ask the user to update the row if not
         """
-        if show_message:
-            if gui_g.s.offline_mode:
-                gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
-                return
-            if self.core is None:
-                gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
-                return
+        if gui_g.s.offline_mode:
+            gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
+            return
+        if self.core is None:
+            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
+            return
 
         is_unique = not check_unicity  # by default, we consider that the data are unique
         data_table = self.editable_table  # shortcut
