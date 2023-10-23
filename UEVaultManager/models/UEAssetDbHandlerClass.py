@@ -245,7 +245,7 @@ class UEAssetDbHandler:
             self.logger.warning(f"Error while inserting/updating row with id '{uid}': {error!r}")
             return False
 
-    def _set_installed_folders(self, asset_id: str, catalog_item_id: str, installed_folders_existing: str, installed_folders: list) -> None:
+    def _set_installed_folders(self, asset_id: str, catalog_item_id: str, installed_folders_existing: str, installed_folders: list) -> str:
         installed_folders_updated = ','.join(installed_folders)  # keep join() here to raise an error if installed_folders is not a list of strings
         if installed_folders_updated != installed_folders_existing:
             cursor = self.connection.cursor()
@@ -256,6 +256,7 @@ class UEAssetDbHandler:
             cursor.execute(query)
             self.connection.commit()
             cursor.close()
+        return installed_folders_updated
 
     def _precheck_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', folders: list = None) -> (list, list):
         if self.connection is None or not folders or (not asset_id and not catalog_item_id):
@@ -833,17 +834,19 @@ class UEAssetDbHandler:
         )  # sorted, because if not, the same values could be saved in a different order
         self._set_installed_folders(asset_id, catalog_item_id, installed_folders_existing, installed_folders_updated)
 
-    def remove_from_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', folders: list = None) -> None:
+    def remove_from_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', folders: list = None) -> str:
         """
         Remove folders from the list of installed folders for the given asset.
         :param asset_id: the asset_id (i.e. app_name) of the asset to get.
         :param catalog_item_id: the catalog_item_id of the asset to get. If present, the asset_id is ignored.
         :param folders: the folders list to remove.
+        :return: the new list of installed folders.
         """
         installed_folders_updated, installed_folders_existing = self._precheck_installed_folders(asset_id, catalog_item_id, folders)
         # remove the folders to remove from the installed_folders list
         installed_folders_updated = [folder for folder in installed_folders_updated if str(folder).strip() and folder not in folders]
-        self._set_installed_folders(asset_id, catalog_item_id, installed_folders_existing, installed_folders_updated)
+        new_value = self._set_installed_folders(asset_id, catalog_item_id, installed_folders_existing, installed_folders_updated)
+        return new_value
 
     def get_rows_with_installed_folders(self) -> dict:
         """
