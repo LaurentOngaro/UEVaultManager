@@ -83,9 +83,9 @@ class UEVMGuiControlFrame(ttk.Frame):
                 'text': 'Edit',  # if empty, the key of the dict will be used
                 'command': self._container.edit_row
             },  #
-            'scrap_all': {
-                'text': 'Scrap All',  # if empty, the key of the dict will be used
-                'command': self._container.scrap_all_assets
+            'scrap_range': {
+                'text': 'Scrap range',  # if empty, the key of the dict will be used
+                'command': self._container.scrap_range
             },  #
             'scan_for_assets': {
                 'text': 'Scan Assets',  # if empty, the key of the dict will be used
@@ -268,7 +268,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
         widget_list = gui_g.stated_widgets.get('not_offline', [])
-        append_no_duplicate(widget_list, [self.buttons['scrap_all']['widget'], self.buttons['scan_for_assets']['widget']])
+        append_no_duplicate(widget_list, [self.buttons['scrap_range']['widget'], self.buttons['scan_for_assets']['widget']])
         widget_list = gui_g.stated_widgets.get('asset_is_owned_and_not_offline', [])
         append_no_duplicate(widget_list, [btn_download_asset, btn_install_asset])
         widget_list = gui_g.stated_widgets.get('asset_has_url', [])
