@@ -889,5 +889,5 @@ class UEVMLFS:
             if installed_folders:
                 # here we use app_name because catalog_item_id does not exsist in CSV
                 app_name = asset.get('app_name', None)
-                installed_folders_str= check_and_convert_list_to_str(installed_folders)
+                installed_folders_str = check_and_convert_list_to_str(installed_folders)
                 df.loc[df['Asset_id'] == app_name, 'Installed folders'] = installed_folders_str

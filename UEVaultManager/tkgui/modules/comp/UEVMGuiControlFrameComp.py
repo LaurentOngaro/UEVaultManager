@@ -83,9 +83,9 @@ class UEVMGuiControlFrame(ttk.Frame):
                 'text': 'Edit',  # if empty, the key of the dict will be used
                 'command': self._container.edit_row
             },  #
-            'scrap_row': {
-                'text': 'Scrap',  # if empty, the key of the dict will be used
-                'command': self._container.scrap_row
+            'scrap_range': {
+                'text': 'Scrap range',  # if empty, the key of the dict will be used
+                'command': self._container.scrap_range
             },  #
             'scan_for_assets': {
                 'text': 'Scan Assets',  # if empty, the key of the dict will be used
@@ -154,6 +154,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_download_asset.pack(**pack_def_options, side=tk.LEFT)
         btn_install_asset = ttk.Button(frm_asset_action, text='INSTALL', command=self._container.install_asset)
         btn_install_asset.pack(**pack_def_options, side=tk.LEFT)
+        btn_scrap_asset = ttk.Button(frm_asset_action, text='Scrap', command=self._container.scrap_asset)
+        btn_scrap_asset.pack(**pack_def_options, side=tk.LEFT)
         frm_asset_action.pack(**lblf_fw_options)
 
         ttk_item = ttk.Label(self.lbtf_quick_edit, text='The selected row values are updated when focus changes', foreground='#158CBA')
@@ -262,20 +264,19 @@ class UEVMGuiControlFrame(ttk.Frame):
         ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
         widget_list = gui_g.stated_widgets.get('row_is_selected', [])
-        append_no_duplicate(
-            widget_list,
-            [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], self.buttons['scrap_row']['widget'], btn_show_installed_releases]
-        )
+        append_no_duplicate(widget_list, [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], btn_show_installed_releases])
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
         widget_list = gui_g.stated_widgets.get('not_offline', [])
-        append_no_duplicate(widget_list, [self.buttons['scrap_row']['widget'], self.buttons['scan_for_assets']['widget']])
-        widget_list = gui_g.stated_widgets.get('asset_is_owned', [])
+        append_no_duplicate(widget_list, [self.buttons['scrap_range']['widget'], self.buttons['scan_for_assets']['widget']])
+        widget_list = gui_g.stated_widgets.get('asset_is_owned_and_not_offline', [])
         append_no_duplicate(widget_list, [btn_download_asset, btn_install_asset])
         widget_list = gui_g.stated_widgets.get('asset_has_url', [])
         append_no_duplicate(widget_list, [btn_open_url])
         widget_list = gui_g.stated_widgets.get('asset_added_mannually', [])
         append_no_duplicate(widget_list, [btn_open_folder])
+        widget_list = gui_g.stated_widgets.get('row_is_selected_and_not_offline', [])
+        append_no_duplicate(widget_list, [btn_scrap_asset])
 
     def save_filters(self, filters: dict) -> None:
         """

@@ -381,11 +381,11 @@ def show_progress(
         root.progress_window = pw
     try:
         # here the pw could have already been close if it was modal or using thhreads
+        pw.set_value(0)  # reset the progress bar, needed if the progress window is reused
         pw.set_activation(False)
         if keep_existing:
             text = pw.get_text() + '\n' + text
         pw.set_text(text)
-        pw.update()
     except (tk.TclError, AttributeError):
         pw = None
         gui_g.progress_window_ref = None

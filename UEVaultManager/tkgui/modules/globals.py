@@ -92,7 +92,7 @@ stated_widgets = {
     'not_first_page': [],
     # selected page is not the last one
     'not_last_page': [],
-    # not in offline_mode
+    # not in offline
     'not_offline': [],
     # a row is selected and the asset is owned
     'asset_is_owned': [],
@@ -104,6 +104,10 @@ stated_widgets = {
     'cli_is_available': [],
     # the database is available
     'db_is_available': [],
+    # at least a row must be selected and not in offline
+    'row_is_selected_and_not_offline': [],
+    # a row is selected and the asset is owned and not in offline
+    'asset_is_owned_and_not_offline': [],
 }
 
 

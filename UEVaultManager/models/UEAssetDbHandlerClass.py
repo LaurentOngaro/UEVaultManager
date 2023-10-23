@@ -523,10 +523,11 @@ class UEAssetDbHandler:
             cursor.close()
             self.connection.commit()
 
-    def set_assets(self, assets) -> bool:
+    def set_assets(self, assets, update_progress=True) -> bool:
         """
         Insert or update assets into the 'assets' table.
         :param assets: a dictionary or a list of dictionaries representing assets.
+        :param update_progress: True to update the progress window, otherwise False.
         :return: True if the assets were inserted or updated, otherwise False.
 
         Notes:
@@ -539,8 +540,11 @@ class UEAssetDbHandler:
             if not isinstance(assets, list):
                 assets = [assets]
             str_today = datetime.datetime.now().strftime(DateFormat.csv)
-            # Note: the order of columns and value must match the order of the fields in UEAsset.init_data() method
-            for asset in assets:
+            if update_progress and gui_g.WindowsRef.progress:
+                gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(assets))
+            for index, asset in enumerate(assets):
+                if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
+                    return False
                 # make some conversion before saving the asset
                 asset['update_date'] = str_today
                 asset['creation_date'] = convert_to_str_datetime(

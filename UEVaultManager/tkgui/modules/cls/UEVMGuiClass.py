@@ -13,7 +13,7 @@ import shutil
 import tkinter as tk
 from datetime import datetime
 from time import sleep
-from tkinter import filedialog as fd
+from tkinter import filedialog as fd, simpledialog
 from typing import Optional
 
 import pandas as pd
@@ -403,7 +403,7 @@ class UEVMGui(tk.Tk):
         elif control_pressed and (event.keysym == '2' or event.keysym == 'eacute'):
             self.editable_table.create_edit_row_window(event)
         elif control_pressed and (event.keysym == '3' or event.keysym == 'quotedbl'):
-            self.scrap_row()
+            self.scrap_asset()
         return 'break'
 
         # return 'break'  # stop event propagation
@@ -857,7 +857,6 @@ class UEVMGui(tk.Tk):
                     parent_folder = os.path.dirname(parent_folder)
                     path = os.path.dirname(full_folder)
                     pw.set_text(f'{folder_name} as a valid folder.\nChecking asset url...')
-                    pw.update()
                     msg = f'-->Found {folder_name} as a valid project'
                     self.logger.info(msg)
                     marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
@@ -986,8 +985,6 @@ class UEVMGui(tk.Tk):
         df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         count = len(valid_folders.items())
         pw.reset(new_text='Scraping data and updating assets', new_max_value=count)
-        pw.show_progress_bar()
-        pw.update()
         row_added = 0
         data_table.is_scanning = True
         # copy_col_index = data_table.get_col_index(gui_g.s.index_copy_col_name)
@@ -1054,7 +1051,7 @@ class UEVMGui(tk.Tk):
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
-                    self.scrap_row(
+                    self.scrap_asset(
                         marketplace_url=marketplace_url,
                         row_index=row_index,
                         forced_data=forced_data,
@@ -1075,7 +1072,6 @@ class UEVMGui(tk.Tk):
         pw.hide_progress_bar()
         pw.hide_btn_stop()
         pw.set_text('Updating the table. Could take a while...')
-        pw.update()
         data_table.is_scanning = False
         data_table.update(update_format=True, update_filters=True)
         data_table.update_col_infos()
@@ -1093,7 +1089,7 @@ class UEVMGui(tk.Tk):
                 gui_f.make_modal(gui_g.WindowsRef.display_content)
             self.logger.warning(result)
 
-    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False) -> dict:
+    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False, update_progress=True) -> dict:
         is_ok = False
         asset_data = None
         # check if the marketplace_url is a marketplace marketplace_url
@@ -1126,7 +1122,7 @@ class UEVMGui(tk.Tk):
                 if forced_data is not None:
                     for key, value in forced_data.items():
                         asset_data[0][key] = value
-                scraper.asset_db_handler.set_assets(asset_data)
+                scraper.asset_db_handler.set_assets(asset_data, update_progress=update_progress)
                 is_ok = True
         if not is_ok:
             asset_data = None
@@ -1137,42 +1133,84 @@ class UEVMGui(tk.Tk):
                 self.logger.warning(msg)
         return asset_data[0] if asset_data is not None else None
 
-    def scrap_row(
+    def scrap_range(self) -> None:
+        """
+        Scrap a range of assets in the table.
+        :return:
+        """
+        # current_value = tk.StringVar(value=0)
+        # spin_box = ttk.Spinbox(
+        #     container,
+        #     from_=0,
+        #     to=30,
+        #     textvariable=current_value,
+        #     wrap=True)
+        #
+        data_table = self.editable_table  # shortcut
+        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        min_val = 0
+        max_val = len(df) - 1
+        start = simpledialog.askinteger(
+            parent=self,  #
+            title='Select the starting row',  #
+            prompt=f'Start index (between {min_val} and {max_val-1})',  #
+            minvalue=min_val,  #
+            maxvalue=max_val - 1
+        )
+        if start is not None:
+            end = simpledialog.askinteger(
+                parent=self,
+                title='Select the ending row',  #
+                prompt=f'Stop index (between {start+1} and {max_val})',  #
+                minvalue=start + 1,  #
+                maxvalue=max_val
+            )
+            if end is not None:
+                all_row_numbers = list(range(start, end))
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False)
+
+    def scrap_asset(
         self,
         marketplace_url: str = None,
         row_index: int = -1,
+        row_numbers: list = None,
         forced_data: {} = None,
         show_message: bool = True,
         update_dataframe: bool = True,
-        check_unicity: bool = False
-    ):
+        check_unicity: bool = False,
+    ) -> None:
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param row_index: the (real) index of the row to scrap.
+        :param row_numbers: a list a row numbers to scrap. If None, will use the selected rows.
+        :param row_index: the (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
         :param show_message: whether to show a message if the marketplace_url is not valid
         :param update_dataframe: whether to update the dataframe after scraping
         :param check_unicity: whether to check if the data are unique and ask the user to update the row if not
         """
+        if show_message:
+            if gui_g.s.offline_mode:
+                gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
+                return
+            if self.core is None:
+                gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
+                return
 
-        if gui_g.s.offline_mode:
-            gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
-            return
-        if self.core is None:
-            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
-            return
         is_unique = not check_unicity  # by default, we consider that the data are unique
         data_table = self.editable_table  # shortcut
         data_table.save_data()  # save the data before scraping because we will update the row(s) and override non saved changes
-        row_numbers = data_table.multiplerowlist
+        if not row_numbers:
+            row_numbers = data_table.multiplerowlist
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
                 gui_f.box_message('You must select a row first', level='warning')
             return
+        use_range = True
         if row_index >= 0:
             # a row index has been given, we scrap only this row
             row_indexes = [row_index]
+            use_range = False
         else:
             # convert row numbers to row indexes
             row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
@@ -1184,7 +1222,7 @@ class UEVMGui(tk.Tk):
                 pw = gui_f.show_progress(
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True
                 )
-            for row_index in row_indexes:
+            for count, row_index in enumerate(row_indexes):
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
@@ -1194,17 +1232,17 @@ class UEVMGui(tk.Tk):
                     msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
-                    if gui_f.box_yesno(
+                    if show_message and gui_f.box_yesno(
                         f'{msg}.\nDo you wan to create a new Url with {asset_slug_from_row} and use it for scraping ?\nIf no, the given url with {asset_slug_from_url} will be used'
                     ):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
                         data_table.update_cell(row_index, col_index, marketplace_url, convert_row_number_to_row_index=False)
                 text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
-                if pw and not pw.update_and_continue(increment=1, text=text):
+                if pw and not pw.update_and_continue(value=count, text=text):
                     gui_f.close_progress(self)
                     return
-                asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
+                asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message, update_progress=not use_range)
                 if asset_data:
                     if self.core.verbose_mode or gui_g.s.debug_mode:
                         debug_parsed_data(asset_data, self.editable_table.data_source_type)
@@ -1385,7 +1423,6 @@ class UEVMGui(tk.Tk):
         current_row = data_table.get_selected_row_fixed()
         current_row_index = data_table.add_page_offset(current_row) if current_row is not None else -1
 
-        gui_f.update_widgets_in_list(len(data_table.multiplerowlist) > 0, 'row_is_selected')
         gui_f.update_widgets_in_list(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
         gui_f.update_widgets_in_list(current_row_index > 0, 'not_first_asset')
         gui_f.update_widgets_in_list(current_row_index < max_index - 1, 'not_last_asset')
@@ -1413,10 +1450,13 @@ class UEVMGui(tk.Tk):
             gui_f.update_widgets_in_list(index_displayed < total_displayed, 'not_last_page')
 
         # conditions based on info about the current asset
+        row_is_selected = False
         is_owned = False
         is_added = False
         url = ''
+
         if current_row is not None:
+            row_is_selected = len(data_table.multiplerowlist) > 0
             url = data_table.get_cell(current_row, data_table.get_col_index('Url'))
             is_added = data_table.get_cell(current_row, data_table.get_col_index('Added manually'))
             is_owned = data_table.get_cell(current_row, data_table.get_col_index('Owned'))
@@ -1425,6 +1465,9 @@ class UEVMGui(tk.Tk):
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
         gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
         gui_f.update_widgets_in_list(data_table.is_using_database(), 'db_is_available')
+        gui_f.update_widgets_in_list(row_is_selected, 'row_is_selected')
+        gui_f.update_widgets_in_list(row_is_selected and not gui_g.s.offline_mode, 'row_is_selected_and_not_offline')
+        gui_f.update_widgets_in_list(is_owned and not gui_g.s.offline_mode, 'asset_is_owned_and_not_offline')
 
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)
