@@ -17,7 +17,7 @@ from threading import current_thread
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import GrabResult, is_asset_obsolete
-from UEVaultManager.core import AppCore, default_datetime_format
+from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import convert_data_to_csv, csv_sql_fields, debug_parsed_data, get_csv_field_name_list, is_on_state, \
     is_preserved
@@ -247,7 +247,7 @@ class UEAssetScraper:
                     if not found:
                         self._log(f'No app_name found for asset with id={uid}.The dummy value {app_name} has be used instead', level='warning')
                 origin = 'Marketplace'  # by default when scraped from marketplace
-                date_now = datetime.now().strftime(default_datetime_format)
+                date_now = datetime.now().strftime(DateFormat.csv)
                 grab_result = GrabResult.NO_ERROR.name
 
                 # make some calculation with the "raw" data
@@ -296,7 +296,7 @@ class UEAssetScraper:
                     asset_url = self.core.egs.get_marketplace_product_url(asset_slug)
                 asset_data['asset_slug'] = asset_slug
                 asset_data['asset_url'] = asset_url
-                asset_data['urlSlug'] = None  # we remove the duplicate field to avoid future mistakes
+                asset_data.pop('urlSlug')  # we remove the duplicate field to avoid future mistakes
 
                 # prices and discount
                 price = self.core.egs.extract_price(asset_data.get('price', gui_g.no_float_data))
@@ -764,7 +764,7 @@ class UEAssetScraper:
                         count = int(url_vars['count'])
                         suffix = f'{start}-{start + count - 1}'
                     except Exception:
-                        suffix = datetime.now().strftime('%y-%m-%d_%H-%M-%S')
+                        suffix = datetime.now().strftime(DateFormat.file_suffix)
                     filename = f'assets_{suffix}.json'
                     self.save_to_file(filename=filename, data=json_data, is_global=True)
 

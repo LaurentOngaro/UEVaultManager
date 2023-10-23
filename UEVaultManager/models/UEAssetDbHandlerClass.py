@@ -16,10 +16,9 @@ from pathlib import Path
 from faker import Faker
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.core import default_datetime_format
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list, set_default_values
-from UEVaultManager.models.types import DbVersionNum
+from UEVaultManager.models.types import DateFormat, DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str, create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, merge_lists_or_strings, path_from_relative_to_absolute
@@ -537,16 +536,16 @@ class UEAssetDbHandler:
         if self.connection is not None:
             if not isinstance(assets, list):
                 assets = [assets]
-            str_today = datetime.datetime.now().strftime(default_datetime_format)
+            str_today = datetime.datetime.now().strftime(DateFormat.csv)
             # Note: the order of columns and value must match the order of the fields in UEAsset.init_data() method
             for asset in assets:
                 # make some conversion before saving the asset
                 asset['update_date'] = str_today
                 asset['creation_date'] = convert_to_str_datetime(
-                    value=asset['creation_date'], date_format=default_datetime_format
+                    value=asset['creation_date'], date_format=DateFormat.csv
                 ) if 'creation_date' in assets else str_today
                 asset['date_added'] = convert_to_str_datetime(
-                    value=asset['date_added'], date_format=default_datetime_format
+                    value=asset['date_added'], date_format=DateFormat.csv
                 ) if 'date_added' in assets else str_today
                 # converting lists to strings
                 tags = asset.get('tags', [])
@@ -1197,7 +1196,7 @@ class UEAssetDbHandler:
             self.set_assets(ue_asset.get_data())
             scraped_ids.append(assets_id)
         content = {
-            'date': datetime.datetime.now().strftime(default_datetime_format),
+            'date': datetime.datetime.now().strftime(DateFormat.csv),
             'mode': 'save',
             'files_count': 0,
             'items_count': number_of_rows,

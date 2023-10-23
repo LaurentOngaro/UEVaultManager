@@ -20,7 +20,8 @@ csv_sql_fields = {
     'Asset_id': {
         'sql_name': 'asset_id',
         'state': CSVFieldState.NOT_PRESERVED,
-        'field_type': CSVFieldType.STR
+        'field_type': CSVFieldType.STR,
+        'label': 'Latest release id'
     },
     'App name': {
         'sql_name': 'title',
@@ -151,7 +152,8 @@ csv_sql_fields = {
     'Installed folders': {
         'sql_name': 'installed_folders',
         'state': CSVFieldState.USER,
-        'field_type': CSVFieldType.STR
+        'field_type': CSVFieldType.STR,
+        'label': 'Installed in  folders\n(all releases)'
     },
     'Alternative': {
         'sql_name': 'alternative',
@@ -190,12 +192,12 @@ csv_sql_fields = {
         'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR
     },
-    'Compatible versions': {
-        # not in database
-        'sql_name': None,
-        'state': CSVFieldState.CSV_ONLY,
-        'field_type': CSVFieldType.STR
-    },
+    # 'Compatible versions': {
+    #     # not in database
+    #     'sql_name': None,
+    #     'state': CSVFieldState.CSV_ONLY,
+    #     'field_type': CSVFieldType.STR
+    # },
     'Date added': {
         'sql_name': 'date_added',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -211,12 +213,12 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.DATETIME
     },
-    'UE version': {
-        # not in database
-        'sql_name': None,
-        'state': CSVFieldState.CSV_ONLY,
-        'field_type': CSVFieldType.STR
-    },
+    # 'UE version': {
+    #     # not in database
+    #     'sql_name': None,
+    #     'state': CSVFieldState.CSV_ONLY,
+    #     'field_type': CSVFieldType.STR
+    # },
     'Uid': {
         'sql_name': 'id',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -235,7 +237,7 @@ csv_sql_fields = {
     },
     'Asset slug': {
         'sql_name': 'asset_slug',
-        'state': CSVFieldState.SQL_ONLY,
+        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR
     },
     # 'urlSlug': {
@@ -509,6 +511,18 @@ def get_sql_field_name(csv_field_name: str):
         return None
 
 
+def get_label_for_field(csv_field_name: str):
+    """
+    Get the label associated to a csv field name. Can be used for widgets, usefull when it differs from the csv field name.
+    :param csv_field_name: csv field name.
+    :return: label for field name or the field name if no label is found.
+    """
+    try:
+        return csv_sql_fields[csv_field_name]['label']
+    except KeyError:
+        return csv_field_name.replace('_', ' ').title()
+
+
 def get_csv_field_name(sql_field_name: str) -> str:
     """
     Get the csv field name for a sql field name.
@@ -605,10 +619,9 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
         'discountPercentage', 'keyImages', 'effectiveDate', 'seller', 'description', 'technicalDetails', 'longDescription', 'isFeatured',
         'isCatalogItem', 'categories', 'bundle', 'releaseInfo', 'platforms', 'compatibleApps',
         # 'urlSlug',
-        'purchaseLimit', 'tax', 'tags',
-        'commentRatingId', 'ratingId', 'klass', 'isNew', 'free', 'discounted', 'featured', 'thumbnail', 'learnThumbnail', 'headerImage', 'status',
-        'price', 'discount', 'discountPrice', 'ownedCount', 'canPurchase', 'owned', 'isDownloadable', 'isSunset', 'isBuyAble', 'distributionMethod',
-        'legacyCommentCount'
+        'purchaseLimit', 'tax', 'tags', 'commentRatingId', 'ratingId', 'klass', 'isNew', 'free', 'discounted', 'featured', 'thumbnail',
+        'learnThumbnail', 'headerImage', 'status', 'price', 'discount', 'discountPrice', 'ownedCount', 'canPurchase', 'owned', 'isDownloadable',
+        'isSunset', 'isBuyAble', 'distributionMethod', 'legacyCommentCount'
     ]
 
     # fields used in asset data when the application is in FILE mode

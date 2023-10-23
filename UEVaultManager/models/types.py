@@ -16,6 +16,8 @@ class DateFormat:
     """
     csv: str = '%Y-%m-%d %H:%M:%S'
     epic: str = '%Y-%m-%dT%H:%M:%S.%fZ'
+    us_short: str = '%Y-%m-%d'
+    file_suffix: str = '%Y-%m-%d_%H-%M-%S'
 
 
 class CSVFieldState(Enum):

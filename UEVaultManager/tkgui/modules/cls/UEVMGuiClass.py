@@ -28,7 +28,6 @@ from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import get_version_from_path, path_join
 from UEVaultManager.models.csv_sql_fields import debug_parsed_data
 from UEVaultManager.models.types import DateFormat
-from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
 from UEVaultManager.tkgui.modules.cls.DbToolWindowClass import DbToolWindowClass
@@ -134,36 +133,13 @@ class UEVMGui(tk.Tk):
         if not self.core:
             self.core = AppCore()
 
-        # update the content of the database BEFORE loading the data in the datatable
-        # as it, all the formatting and filtering could be done at start with good values
         if self.is_using_database():
-            # update the installed folder field in database from the installed_assets json file
-            installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
-            db_handler = UEAssetDbHandler(database_name=data_source)  # we need it BEFORE CREATING the editable_table and use its db_handler property
-            if db_handler:
-                merged_installed_folders = {}
-                # get all installed folders for a given catalog_item_id
-                for app_name, asset in installed_assets_json.items():
-                    installed_folders_ori = asset.get('installed_folders', None)
-                    # WE USE A COPY to avoid modifying the original list and merging all the installation folders for all releases
-                    installed_folders = installed_folders_ori.copy() if installed_folders_ori is not None else None
-                    if installed_folders is not None and len(installed_folders) > 0:
-                        catalog_item_id = asset.get('catalog_item_id', None)
-                        if merged_installed_folders.get(catalog_item_id, None) is None:
-                            merged_installed_folders[catalog_item_id] = installed_folders
-                        else:
-                            merged_installed_folders[catalog_item_id].extend(installed_folders)
-                    else:
-                        # the installed_folders field is empty for the installed_assets, we remove it from the json file
-                        self.core.uevmlfs.remove_installed_asset(app_name)
-                # update the database using catalog_item_id instead as asset_id to merge installed_folders for ALL the releases
-                for catalog_item_id, folders_to_add in merged_installed_folders.items():
-                    db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_add)
-            # update the installed_assets json file from the database info
-            # NO TO DO because the in installed_folders have not the same content (for one asset in the json file, for all releases in the database)
-            # installed_assets_db = db_handler.get_rows_with_installed_folders()
-            # for app_name, asset_data in installed_assets_db.items():
-            #     self.core.uevmlfs.update_installed_asset(app_name, asset_data)
+            # if using DATABASE
+            # ________________
+            # update the "installed folders" BEFORE loading the data in the datatable (because datatable content <> database content)
+            # update the installed folder field from the installed_assets json file
+            # db_handler = UEAssetDbHandler(database_name=data_source)  # we need it BEFORE CREATING the editable_table and use its db_handler property
+            self.core.uevmlfs.pre_update_installed_folders(db_handler=self.core.uevmlfs.db_handler)
 
         data_table = EditableTable(
             container=frm_content,
@@ -177,10 +153,17 @@ class UEVMGui(tk.Tk):
         )
 
         # get the data AFTER updating the installed folder field in database
-        if data_table.get_data() is None:
+        df = data_table.get_data()
+        if df is None:
             self.logger.error('No valid source to read data from. Application will be closed')
             self.quit()
             self.core.clean_exit(1)  # previous line could not quit
+
+        if not self.is_using_database():
+            # if using FILE
+            # ________________
+            # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
+            self.core.uevmlfs.post_update_installed_folders(df)
 
         self.editable_table = data_table
 
@@ -1002,7 +985,7 @@ class UEVMGui(tk.Tk):
             self.core.scan_assets_logger.info(msg)
         date_added = datetime.now().strftime(DateFormat.csv)
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
-        data = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         count = len(valid_folders.items())
         pw.reset(new_text='Scraping data and updating assets', new_max_value=count)
         pw.show_progress_bar()
@@ -1033,14 +1016,14 @@ class UEVMGui(tk.Tk):
             # check if the row already exists
             try:
                 # we try to get the indexes if value already exists in column 'Origin' for a pandastable
-                rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
+                rows_serie = df.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
                 row_indexes = rows_serie.index  # returns a list of indexes. It should contain only 1 value
                 if not row_indexes.empty:
                     # FOUND, we update the row
                     row_index = row_indexes[0]
-                    index_copy = data.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
-                    old_name = data.loc[index_copy, 'App name']
-                    old_comment = data.loc[index_copy, 'Comment']
+                    index_copy = df.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
+                    old_name = df.loc[index_copy, 'App name']
+                    old_comment = df.loc[index_copy, 'Comment']
                     text = f'Updating {name} at row {row_index}. Old name is {old_name}'
                     self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
@@ -1104,7 +1087,7 @@ class UEVMGui(tk.Tk):
             result = '\n'.join(invalid_folders)
             result = f'The following folders have produce invalid results during the scan:\n{result}'
             if gui_g.WindowsRef.display_content is None:
-                file_name = f'scan_folder_results_{datetime.now().strftime("%y-%m-%d")}.txt'
+                file_name = f'scan_folder_results_{datetime.now().strftime(DateFormat.us_short)}.txt'
                 gui_g.WindowsRef.display_content = DisplayContentWindow(
                     title='UEVM: status command output', quit_on_close=False, result_filename=file_name
                 )
@@ -1208,7 +1191,7 @@ class UEVMGui(tk.Tk):
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 # we keep UrlSlug here because it can arise from the scrapped data
-                asset_slug_from_row = row_data.get('Asset slug', '') or row_data.get('urlSlug', '')
+                asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
                 if asset_slug_from_row and asset_slug_from_url and asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
@@ -1260,11 +1243,11 @@ class UEVMGui(tk.Tk):
         :return: the asset_data with the updated asset_id and/or asset_slug
         """
         is_unique = True
-        data = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         asset_id = asset_data['asset_id']
         asset_slug = asset_data['asset_slug']
-        rows_serie_for_id = data.loc[lambda x: x['Asset_id'] == asset_id]
-        rows_serie_for_slug = data.loc[lambda x: x['Asset slug'].str.lower() == asset_slug.lower()]
+        rows_serie_for_id = df.loc[lambda x: x['Asset_id'] == asset_id]
+        rows_serie_for_slug = df.loc[lambda x: x['Asset slug'].str.lower() == asset_slug.lower()]
         if not rows_serie_for_id.empty:
             is_unique = False
             new_asset_id = gui_g.s.empty_row_prefix + gui_fn.create_uid()
@@ -1550,6 +1533,12 @@ class UEVMGui(tk.Tk):
                 self.clean_asset_folders()
             gui_f.show_progress(self, text=f'Rebuilding Asset data...')
             if data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
+                if not self.is_using_database():
+                    df = data_table.get_data()
+                    # if using FILE
+                    # ________________
+                    # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
+                    self.core.uevmlfs.post_update_installed_folders(df)
                 self.update_controls_state()
                 self.update_category_var()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')

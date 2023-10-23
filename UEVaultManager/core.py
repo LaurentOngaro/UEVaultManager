@@ -33,14 +33,15 @@ from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResu
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.tkgui.modules.functions import exit_and_clean_windows
 from UEVaultManager.tkgui.modules.functions_no_deps import format_size
 from UEVaultManager.utils.cli import check_and_create_file, check_and_create_folder
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
+
 # make some properties of the AppCore class accessible from outside to limit the number of imports needed
-default_datetime_format: str = '%Y-%m-%d %H:%M:%S'
 
 
 class AppCore:
@@ -199,7 +200,7 @@ class AppCore:
                 return None
 
         formatter = logging.Formatter('%(message)s')
-        message = f"-----\n{datetime.now().strftime(default_datetime_format)} Log Started\n-----\n"
+        message = f"-----\n{datetime.now().strftime(DateFormat.csv)} Log Started\n-----\n"
 
         if self.ignored_assets_filename_log:
             self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)

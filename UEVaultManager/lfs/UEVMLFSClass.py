@@ -11,11 +11,15 @@ from datetime import datetime
 from time import time
 from typing import Optional
 
+import pandas as pd
+
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import InstalledAsset
+from UEVaultManager.models.types import DateFormat
+from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str, create_file_backup
 from UEVaultManager.tkgui.modules.functions_no_deps import create_uid, merge_lists_or_strings
 from UEVaultManager.utils.cli import check_and_create_file
@@ -767,9 +771,9 @@ class UEVMLFS:
                 compatible_list = item.get('compatibleApps', None)
                 date_added = item.get('dateAdded', '')
                 # Convert the string to a datetime object
-                datetime_obj = datetime.strptime(date_added, "%Y-%m-%dT%H:%M:%S.%fZ")
+                datetime_obj = datetime.strptime(date_added, DateFormat.epic)
                 # Format the datetime object as "YYYY-MM-DD"
-                formatted_date = datetime_obj.strftime('%Y-%m-%d')
+                formatted_date = datetime_obj.strftime(DateFormat.us_short)
                 if asset_id is not None and release_title is not None and compatible_list is not None:
                     # remove 'UE_' from items of the compatible_list
                     compatible_list = [item.replace('UE_', '') for item in compatible_list]
@@ -840,3 +844,49 @@ class UEVMLFS:
                     file_path = os.path.join(root, file)
                     downloaded_assets[asset_id] = {'size': size, 'path': file_path}
         return downloaded_assets
+
+    def pre_update_installed_folders(self,db_handler: UEAssetDbHandler = None) -> None:
+        """
+        Update the "installed folders" BEFORE loading the data.
+        :param db_handler: the database handler
+        """
+        installed_assets_json = self.get_installed_assets().copy()  # copy because the content could change during the process
+        merged_installed_folders = {}
+        # get all installed folders for a given catalog_item_id
+        for app_name, asset in installed_assets_json.items():
+            installed_folders_ori = asset.get('installed_folders', None)
+            # WE USE A COPY to avoid modifying the original list and merging all the installation folders for all releases
+            installed_folders = installed_folders_ori.copy() if installed_folders_ori is not None else None
+            if installed_folders:
+                catalog_item_id = asset.get('catalog_item_id', None)
+                if merged_installed_folders.get(catalog_item_id, None) is None:
+                    merged_installed_folders[catalog_item_id] = installed_folders
+                else:
+                    merged_installed_folders[catalog_item_id].extend(installed_folders)
+            else:
+                # the installed_folders field is empty for the installed_assets, we remove it from the json file
+                self.remove_installed_asset(app_name)
+
+        # as it, all the formatting and filtering could be done at start with good values
+        # update the database using catalog_item_id instead as asset_id to merge installed_folders for ALL the releases
+        for catalog_item_id, folders_to_add in merged_installed_folders.items():
+            db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_add)
+        # update the installed_assets json file from the database info
+        # NO TO DO because the in installed_folders have not the same content (for one asset in the json file, for all releases in the database)
+        # installed_assets_db = db_handler.get_rows_with_installed_folders()
+        # for app_name, asset_data in installed_assets_db.items():
+        #  self.update_installed_asset(app_name, asset_data)
+
+    def post_update_installed_folders(self,df:pd.DataFrame) -> None:
+        """
+        Update the "installed folders" AFTER loading the data.
+        :param df: the datatable
+        """
+        installed_assets_json = self.get_installed_assets().copy()  # copy because the content could change during the process
+        # get all installed folders for a given catalog_item_id
+        for app_name, asset in installed_assets_json.items():
+            installed_folders = asset.get('installed_folders', None)
+            if installed_folders:
+                # here we use app_name because catalog_item_id does not exsist in CSV
+                app_name = asset.get('app_name', None)
+                df.loc[df['Asset_id'] == app_name, 'Installed folders'] = installed_folders

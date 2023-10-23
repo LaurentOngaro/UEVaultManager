@@ -11,6 +11,7 @@ import ttkbootstrap as ttk
 from ttkbootstrap.constants import WARNING
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.models.csv_sql_fields import get_label_for_field
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.TaggedLabelFrameComp import TaggedLabelFrame
@@ -158,58 +159,66 @@ class UEVMGuiControlFrame(ttk.Frame):
         ttk_item = ttk.Label(self.lbtf_quick_edit, text='The selected row values are updated when focus changes', foreground='#158CBA')
         ttk_item.pack()
         self.var_asset_id = tk.StringVar(value='')
+        tag = 'Asset_id'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Asset_id',
+            tag=tag,
             state='readonly',
-            label='Latest release id (click to copy)',
+            label=get_label_for_field(tag) + ' (click to copy)',
             width=5,
             click_on_callback=self._container.copy_asset_id,
             textvariable=self.var_asset_id,
         )
+        tag = 'Url'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Url',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Comment'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.TEXT,
-            tag='Comment',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in,
             width=10,
             height=4
         )
+        tag = 'Stars'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Stars',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Test result'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Test result',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Installed folders'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Installed folders',
-            label='Installed folders\n(all releases)',
+            tag=tag,
+            label=get_label_for_field(tag),
             default_content='Installed in',
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Origin'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Origin',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Alternative'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Alternative',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
