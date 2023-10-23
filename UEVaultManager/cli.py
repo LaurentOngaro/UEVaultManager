@@ -122,14 +122,14 @@ def init_display_window(logger=None, _message: str = 'Starting command...') -> (
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
-    if gui_g.display_content_window_ref is not None:
-        gui_g.display_content_window_ref.close_window()
+    if gui_g.WindowsRef.display_content is not None:
+        gui_g.WindowsRef.display_content.close_window()
 
-    gui_g.display_content_window_ref = DisplayContentWindow(title='UEVM command output', quit_on_close=not uewm_gui_exists)
-    gui_g.display_content_window_ref.display(_message, False)
-    # make_modal(gui_g.display_content_window_ref) # no modal here, will prevent display update by the function
+    gui_g.WindowsRef.display_content = DisplayContentWindow(title='UEVM command output', quit_on_close=not uewm_gui_exists)
+    gui_g.WindowsRef.display_content.display(_message, False)
+    # make_modal(gui_g.WindowsRef.display_content) # no modal here, will prevent display update by the function
 
-    return uewm_gui_exists, gui_g.display_content_window_ref
+    return uewm_gui_exists, gui_g.WindowsRef.display_content
 
 
 class UEVaultManagerCLI:
@@ -192,8 +192,8 @@ class UEVaultManagerCLI:
         """
         quit_on_error = quit_on_error and not (level in ('info', 'debug'))
         if UEVaultManagerCLI.is_gui:
-            if gui_g.display_content_window_ref is not None:
-                gui_g.display_content_window_ref.close_window()
+            if gui_g.WindowsRef.display_content is not None:
+                gui_g.WindowsRef.display_content.close_window()
             box_message(message, level='error' if quit_on_error else 'warning')  # level='error' will force the application to quit
             # log_function() is called in box_message
         else:
@@ -209,8 +209,8 @@ class UEVaultManagerCLI:
         :param level: level of message. Will determnie the function to use to log.
         """
         self._log(message, level)
-        if UEVaultManagerCLI.is_gui and gui_g.display_content_window_ref is not None:
-            gui_g.display_content_window_ref.display(message)
+        if UEVaultManagerCLI.is_gui and gui_g.WindowsRef.display_content is not None:
+            gui_g.WindowsRef.display_content.display(message)
 
     def _init_data_for_gui(self, args) -> (str, DataSourceType):
         data_source_type = DataSourceType.FILE
@@ -444,6 +444,14 @@ class UEVaultManagerCLI:
                 return
 
             manifest_data, _, status_code = self.core.get_cdn_manifest(item, platform='Windows')
+            if not manifest_data:
+                self._log_and_gui_message(
+                    f'Manifest data is empty for "{args.app_name}". Could be a timeout or an issue with the connection.',
+                    quit_on_error=False,
+                    level='error'
+                )
+                return
+
         manifest = self.core.load_manifest(manifest_data)
         files = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
         content = ''
@@ -608,6 +616,14 @@ class UEVaultManagerCLI:
                     message = f'\nYou can only get information about assets you own!\nFailed to get manifest for the asset {item.app_name}'
                 self._log_and_gui_display(message, level='error')
                 return
+            if not manifest_data:
+                self._log_and_gui_message(
+                    f'Manifest data is empty for "{item.app_name}". Could be a timeout or an issue with the connection.',
+                    quit_on_error=False,
+                    level='error'
+                )
+                return
+
         if item:
             asset_infos = info_items['assets']
             asset_infos.append(InfoItem('Asset name', 'app_name', item.app_name, item.app_name))
@@ -1142,22 +1158,28 @@ class UEVaultManagerCLI:
         install_path_base = os.path.normpath(install_path_base)
 
         self._log_and_gui_display(f'Preparing download for {release_title}...')
-        dlm, analysis, installed_asset = self.core.prepare_download(
-            base_asset=asset,  # contains generic info of the base asset for all releases, NOT the selected release
-            release_name=release_name,
-            release_title=release_title,
-            download_folder=download_path,
-            install_folder=install_path_base,
-            no_resume=args.no_resume,
-            max_shm=args.shared_memory,
-            max_workers=args.max_workers,
-            reuse_last_install=args.reuse_last_install,
-            dl_optimizations=args.order_opt,
-            override_manifest=args.override_manifest,
-            override_base_url=args.override_base_url,
-            preferred_cdn=args.preferred_cdn,
-            disable_https=args.disable_https,
-        )
+        max_workers = args.max_workers if gui_g.s.use_threads else 1
+        try:
+            dlm, analysis, installed_asset = self.core.prepare_download(
+                base_asset=asset,  # contains generic info of the base asset for all releases, NOT the selected release
+                release_name=release_name,
+                release_title=release_title,
+                download_folder=download_path,
+                install_folder=install_path_base,
+                no_resume=args.no_resume,
+                max_shm=args.shared_memory,
+                max_workers=max_workers,
+                reuse_last_install=args.reuse_last_install,
+                dl_optimizations=args.order_opt,
+                override_manifest=args.override_manifest,
+                override_base_url=args.override_base_url,
+                preferred_cdn=args.preferred_cdn,
+                disable_https=args.disable_https,
+            )
+        except ValueError as error:
+            self._log_and_gui_display(f'Download failed: {error!r}')
+            return False
+
         if install_path_base and not args.no_install and analysis.already_installed and not box_yesno(
             f'The selected asset as already been installed in "{install_path_base}".\nDo you want to continue ?'
         ):
@@ -1250,6 +1272,9 @@ class UEVaultManagerCLI:
                 ):  # We DON'T check the size if the plugin is installed in an engine because it's too long
                     self.core.uevmlfs.add_to_installed_assets(installed_asset)
                     self.core.uevmlfs.save_installed_assets()
+                    gui_g.UEVM_command_result = {
+                        'Installed folders': installed_asset.install_path
+                    }  # store the result for the GUI, needed when not using a database because this result is not stored anymore
                     if db_handler is not None:
                         db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=[installed_asset.install_path])
                     message += f'\nAsset have been installed in "{installed_asset.install_path}"'

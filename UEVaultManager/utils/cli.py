@@ -7,7 +7,7 @@ import os
 import re
 
 from UEVaultManager.models.csv_sql_fields import get_sql_field_name
-from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str
 
 
 def get_boolean_choice(prompt: str, default=True) -> bool:

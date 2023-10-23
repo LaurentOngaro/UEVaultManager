@@ -37,7 +37,7 @@ class EditableTable(Table):
     A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
     :param container: the parent frame for the table.
-    :param data_source_type: the type of data source (DataSourceType.FILE or DataSourceType.DATABASE).
+    :param data_source_type: the type of data source (DataSourceType. FILE or DataSourceType. DATABASE).
     :param data_source: the path to the source that contains the table data.
     :param rows_per_page: the number of rows to show per page.
     :param show_toolbar: whether to show the toolbar.
@@ -1631,8 +1631,8 @@ class EditableTable(Table):
         Create the edit row window for the selected row in the table.
         :param event: the event that triggered the function call.
         """
-        if gui_g.edit_row_window_ref is not None and gui_g.edit_row_window_ref.winfo_viewable():
-            gui_g.edit_row_window_ref.focus_set()
+        if gui_g.WindowsRef.edit_row is not None and gui_g.WindowsRef.edit_row.winfo_viewable():
+            gui_g.WindowsRef.edit_row.focus_set()
             return
 
         if event is not None:
@@ -1646,7 +1646,7 @@ class EditableTable(Table):
             return None
         title = 'Edit current row'
         width = 800
-        height = 1020
+        height = 1010 if self.data_source_type == DataSourceType.DATABASE else 920
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
@@ -1664,7 +1664,7 @@ class EditableTable(Table):
         Edit the values of the specified row in the table.
         :param row_number: row number from a datatable. Will be converted into real row index.
         """
-        edit_row_window = gui_g.edit_row_window_ref
+        edit_row_window = gui_g.WindowsRef.edit_row
         if row_number is None or edit_row_window is None:
             return
         idx = self.get_real_index(row_number)
@@ -1676,10 +1676,12 @@ class EditableTable(Table):
         image_url = ''
         previous_was_a_bool = False
         row = 0
+        hidden_col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
+        hidden_col_list_lower = [col.lower() for col in hidden_col_list]
         for key, value in row_data.items():
             # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool})  # debug only
-            hidden_col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
-            if key in hidden_col_list:
+            key_lower = key.lower()
+            if key_lower in hidden_col_list_lower:
                 continue
             if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(
                 key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
@@ -1687,8 +1689,7 @@ class EditableTable(Table):
                 continue
             if self.is_using_database() and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
-            label = key.replace('_', ' ').title()
-            key_lower = key.lower()
+            label = gui_t.get_label_for_field(key)
 
             if key_lower == 'image':
                 image_url = value
@@ -1777,8 +1778,8 @@ class EditableTable(Table):
         Create the edit cell window for the selected cell in the table.
         :param event: the event that triggered the creation of the edit cell window.
         """
-        if gui_g.edit_cell_window_ref is not None and gui_g.edit_cell_window_ref.winfo_viewable():
-            gui_g.edit_cell_window_ref.focus_set()
+        if gui_g.WindowsRef.edit_cell is not None and gui_g.WindowsRef.edit_cell.winfo_viewable():
+            gui_g.WindowsRef.edit_cell.focus_set()
             return
 
         if event.type != tk.EventType.KeyPress:
@@ -1793,7 +1794,7 @@ class EditableTable(Table):
         cell_value = self.get_cell(row_number, col_index)
         title = 'Edit current cell values'
         width = 300
-        height = 110
+        height = 120
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
@@ -1802,7 +1803,8 @@ class EditableTable(Table):
 
         # get and display the cell data
         col_name = self.get_col_name(col_index)
-        ttk.Label(edit_cell_window.frm_content, text=col_name).pack(side=tk.LEFT)
+        label = gui_t.get_label_for_field(col_name)
+        ttk.Label(edit_cell_window.frm_content, text=label).pack(side=tk.LEFT)
         cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_empty_list) else ''
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)

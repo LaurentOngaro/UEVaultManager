@@ -59,7 +59,7 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
-        gui_g.edit_row_window_ref = self
+        gui_g.WindowsRef.edit_row = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
         self.after(500, self.update_controls_state)  # run after a delay to let the caller fill the widgets
 
@@ -177,7 +177,7 @@ class EditRowWindow(tk.Toplevel):
         """
         Close the window.
         """
-        gui_g.edit_row_window_ref = None
+        gui_g.WindowsRef.edit_row = None
         self.editable_table.reset_style()
         self.destroy()
 

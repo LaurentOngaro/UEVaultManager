@@ -19,6 +19,7 @@ from PIL import Image, ImageTk
 from termcolor import colored
 
 from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.tkgui.modules import globals as gui_g
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 
@@ -277,8 +278,8 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
     result = '\n'.join(_process(json_obj))
 
     if print_result:
-        if output_on_gui and gui_g.display_content_window_ref is not None:
-            gui_g.display_content_window_ref.display(result)
+        if output_on_gui and gui_g.WindowsRef.display_content is not None:
+            gui_g.WindowsRef.display_content.display(result)
         else:
             print(result)
 
@@ -289,8 +290,8 @@ def custom_print(text='', keep_mode=True) -> None:
     :param text: the text to print.
     :param keep_mode: whether to keep the existing content when adding a new one.
     """
-    if gui_g.display_content_window_ref is not None:
-        gui_g.display_content_window_ref.display(content=text, keep_mode=keep_mode)
+    if gui_g.WindowsRef.display_content is not None:
+        gui_g.WindowsRef.display_content.display(content=text, keep_mode=keep_mode)
     else:
         print(text)
 
@@ -418,7 +419,7 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, path: str =
         return ''
     try:
         file_name_no_ext, file_ext = os.path.splitext(file_src)
-        file_backup = f'{file_name_no_ext}_{datetime.now().strftime("%y-%m-%d_%H-%M-%S")}{file_ext}.BAK'
+        file_backup = f'{file_name_no_ext}_{datetime.now().strftime(DateFormat.file_suffix)}{file_ext}.BAK'
         shutil.copy(file_src, file_backup)
         if logger is not None:
             logger.info(f'File {file_src} has been copied to {file_backup}')
@@ -545,25 +546,9 @@ def exit_and_clean_windows(code: int = 1):
     Exit the application and clean all the windows before.
     :return:
     """
-    gui_g.windows_ref = [
-        gui_g.edit_cell_window_ref, gui_g.edit_row_window_ref, gui_g.display_content_window_ref, gui_g.progress_window_ref, gui_g.tool_window_ref
-    ]
-    for windows in gui_g.windows_ref:
-        if windows is not None:
-            windows.quit()
-            windows.destroy()
+    window_list = gui_g.WindowsRef.get_properties()
+    for window in window_list:
+        if window is not None:
+            window.quit()
+            window.destroy()
     sys.exit(code)
-
-
-def check_and_convert_list_to_str(str_or_list) -> str:
-    """
-    Check if the given parameter is a list and convert it to a string, else return the given parameter.
-    :param str_or_list: the string or list to convert.
-    :return: the converted string or the given parameter.
-    """
-    result = str_or_list
-    if type(str_or_list).__name__ in ['list', 'dict_values']:
-        # if the list does not only contain strings, it will raise an error.
-        # So we use map to convert all the values to string
-        result = ','.join(map(str, str_or_list))
-    return result

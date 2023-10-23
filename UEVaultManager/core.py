@@ -33,14 +33,15 @@ from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResu
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
 from UEVaultManager.models.manifest import Manifest
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.tkgui.modules.functions import exit_and_clean_windows
 from UEVaultManager.tkgui.modules.functions_no_deps import format_size
 from UEVaultManager.utils.cli import check_and_create_file, check_and_create_folder
 from UEVaultManager.utils.egl_crypt import decrypt_epic_data
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
+
 # make some properties of the AppCore class accessible from outside to limit the number of imports needed
-default_datetime_format: str = '%Y-%m-%d %H:%M:%S'
 
 
 class AppCore:
@@ -171,8 +172,8 @@ class AppCore:
         :param message: message to log.
         """
         self.log.info(message)
-        if gui_g.display_content_window_ref is not None:
-            gui_g.display_content_window_ref.display(message)
+        if gui_g.WindowsRef.display_content is not None:
+            gui_g.WindowsRef.display_content.display(message)
 
     def setup_assets_loggers(self) -> None:
         """
@@ -199,7 +200,7 @@ class AppCore:
                 return None
 
         formatter = logging.Formatter('%(message)s')
-        message = f"-----\n{datetime.now().strftime(default_datetime_format)} Log Started\n-----\n"
+        message = f"-----\n{datetime.now().strftime(DateFormat.csv)} Log Started\n-----\n"
 
         if self.ignored_assets_filename_log:
             self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
@@ -602,7 +603,7 @@ class AppCore:
 
         # load old manifest if we have one
         if override_old_manifest:
-            self.log.info(f'Overriding old manifest with "{override_old_manifest}"')
+            self.log_info_and_gui_display(f'Overriding old manifest with "{override_old_manifest}"')
             old_bytes, _ = self.get_uri_manifest(override_old_manifest)
             old_manifest = self.load_manifest(old_bytes)
         elif not disable_patching and not no_resume and self.is_installed(release_name):
@@ -630,6 +631,10 @@ class AppCore:
             new_manifest_data, base_urls, status_code = self.get_cdn_manifest(base_asset, platform, disable_https=disable_https)
             # overwrite base urls in metadata with current ones to avoid using old/dead CDNs
             base_asset.base_urls = base_urls
+
+        if not new_manifest_data:
+            message = f'Manifest data is empty for "{release_name}". Could be a timeout or an issue with the connection.'
+            raise ValueError(message)
 
         self.log_info_and_gui_display('Parsing game manifest...')
         manifest = self.load_manifest(new_manifest_data)

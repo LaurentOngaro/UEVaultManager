@@ -1,6 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
+- PW_Settings: settings for the class when running as main.
 - ProgressWindow: window to display the progress of a function.
 """
 import queue
@@ -87,7 +88,7 @@ class ProgressWindow(tk.Toplevel):
         if not show_btn_stop:
             self.hide_btn_stop()
 
-        gui_g.progress_window_ref = self
+        gui_g.WindowsRef.progress = self
         gui_f.make_modal(self, wait_for_close=False)
 
         # Start the execution if not control frame is present
@@ -108,7 +109,7 @@ class ProgressWindow(tk.Toplevel):
 
     def __del__(self):
         gui_f.log_debug(f'Destruction of {self.__class__.__name__} object')
-        gui_g.progress_window_ref = None
+        gui_g.WindowsRef.progress = None
 
     class ContentFrame(ttk.Frame):
         """

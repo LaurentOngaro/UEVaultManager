@@ -1,7 +1,8 @@
 # coding=utf-8
 """
 Implementation for:
-- DbFilesWindowClass: the window to import/export data from/to CSV files.
+- DBTW_Settings: settings for the class when running as main.
+- DbToolWindowClass: the window to import/export data from/to CSV files.
 """
 import os
 import tkinter as tk
@@ -9,11 +10,12 @@ from tkinter import messagebox
 from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
 
-class DBFW_Settings:
+class DBTW_Settings:
     """
     Settings for the class when running as main.
     """
@@ -22,7 +24,7 @@ class DBFW_Settings:
     title = 'Database Import/Export Window'
 
 
-class DbFilesWindowClass(tk.Toplevel):
+class DbToolWindowClass(tk.Toplevel):
     """
     Processes JSON files and stores some data in a database.
     :param title: the title.
@@ -58,7 +60,12 @@ class DbFilesWindowClass(tk.Toplevel):
         self.db_handler = UEAssetDbHandler(database_name=self.db_path)
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
+        gui_g.WindowsRef.tool = self
         # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+
+    def __del__(self):
+        self._log(f'Destruction of {self.__class__.__name__} object')
+        gui_g.WindowsRef.tool = None
 
     @staticmethod
     def _log(message):
@@ -76,7 +83,7 @@ class DbFilesWindowClass(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            self.container: DbFilesWindowClass = container
+            self.container: DbToolWindowClass = container
             self.processing: bool = False
 
             self.lbl_title = tk.Label(self, text='Database Import/Export Window', font=('Helvetica', 16, 'bold'))
@@ -236,9 +243,9 @@ class DbFilesWindowClass(tk.Toplevel):
 
 
 if __name__ == '__main__':
-    st = DBFW_Settings()
+    st = DBTW_Settings()
     main = tk.Tk()
     main.title('FAKE MAIN Window')
     main.geometry('200x100')
-    DbFilesWindowClass(title=st.title, db_path=st.db_path, folder_for_csv_files=st.folder_for_csv_files)
+    DbToolWindowClass(title=st.title, db_path=st.db_path, folder_for_csv_files=st.folder_for_csv_files)
     main.mainloop()

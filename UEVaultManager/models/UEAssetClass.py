@@ -5,7 +5,7 @@ implementation for:
 """
 
 from UEVaultManager.models.csv_sql_fields import get_default_value, get_sql_field_name_list
-from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str
 from UEVaultManager.utils.cli import init_dict_from_data
 
 
