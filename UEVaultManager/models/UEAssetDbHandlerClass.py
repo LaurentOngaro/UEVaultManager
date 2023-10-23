@@ -20,8 +20,9 @@ from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list, set_default_values
 from UEVaultManager.models.types import DateFormat, DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
-from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str, create_file_backup, update_loggers_level
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_str_datetime, create_uid, merge_lists_or_strings, path_from_relative_to_absolute
+from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, convert_to_str_datetime, create_uid, merge_lists_or_strings, \
+    path_from_relative_to_absolute
 from UEVaultManager.utils.cli import check_and_create_file
 
 

@@ -25,7 +25,8 @@ from UEVaultManager.models.types import CSVFieldState, DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, check_and_convert_list_to_str, update_loggers_level
+from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, update_loggers_level
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.utils.cli import str_is_bool, str_to_bool
 

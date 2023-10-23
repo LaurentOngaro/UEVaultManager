@@ -6,7 +6,7 @@ from datetime import datetime
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType, DateFormat
-from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_float, convert_to_int, create_uid
 from UEVaultManager.tkgui.modules.types import DataSourceType, GrabResult, UEAssetType
 

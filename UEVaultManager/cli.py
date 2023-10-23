@@ -1158,6 +1158,7 @@ class UEVaultManagerCLI:
         install_path_base = os.path.normpath(install_path_base)
 
         self._log_and_gui_display(f'Preparing download for {release_title}...')
+        max_workers = args.max_workers if gui_g.s.use_threads else 1
         try:
             dlm, analysis, installed_asset = self.core.prepare_download(
                 base_asset=asset,  # contains generic info of the base asset for all releases, NOT the selected release
@@ -1167,7 +1168,7 @@ class UEVaultManagerCLI:
                 install_folder=install_path_base,
                 no_resume=args.no_resume,
                 max_shm=args.shared_memory,
-                max_workers=args.max_workers,
+                max_workers=max_workers,
                 reuse_last_install=args.reuse_last_install,
                 dl_optimizations=args.order_opt,
                 override_manifest=args.override_manifest,
@@ -1271,6 +1272,9 @@ class UEVaultManagerCLI:
                 ):  # We DON'T check the size if the plugin is installed in an engine because it's too long
                     self.core.uevmlfs.add_to_installed_assets(installed_asset)
                     self.core.uevmlfs.save_installed_assets()
+                    gui_g.UEVM_command_result = {
+                        'Installed folders': installed_asset.install_path
+                    }  # store the result for the GUI, needed when not using a database because this result is not stored anymore
                     if db_handler is not None:
                         db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=[installed_asset.install_path])
                     message += f'\nAsset have been installed in "{installed_asset.install_path}"'

@@ -64,7 +64,8 @@ UEVM_gui_ref = None  # avoid importing classes from the UEVM GUI class here beca
 UEVM_log_ref = None
 #  reference to the default command line parser (used for help button in gui).
 UEVM_parser_ref = None
-
+# restult of the last UEVM cli command run from the GUI
+UEVM_command_result = None
 # global variables
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 # noinspection PyTypeChecker

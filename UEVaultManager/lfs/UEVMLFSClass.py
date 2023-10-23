@@ -20,8 +20,8 @@ from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import InstalledAsset
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
-from UEVaultManager.tkgui.modules.functions import check_and_convert_list_to_str, create_file_backup
-from UEVaultManager.tkgui.modules.functions_no_deps import create_uid, merge_lists_or_strings
+from UEVaultManager.tkgui.modules.functions import create_file_backup
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, create_uid, merge_lists_or_strings
 from UEVaultManager.utils.cli import check_and_create_file
 from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
@@ -845,7 +845,7 @@ class UEVMLFS:
                     downloaded_assets[asset_id] = {'size': size, 'path': file_path}
         return downloaded_assets
 
-    def pre_update_installed_folders(self,db_handler: UEAssetDbHandler = None) -> None:
+    def pre_update_installed_folders(self, db_handler: UEAssetDbHandler = None) -> None:
         """
         Update the "installed folders" BEFORE loading the data.
         :param db_handler: the database handler
@@ -877,7 +877,7 @@ class UEVMLFS:
         # for app_name, asset_data in installed_assets_db.items():
         #  self.update_installed_asset(app_name, asset_data)
 
-    def post_update_installed_folders(self,df:pd.DataFrame) -> None:
+    def post_update_installed_folders(self, df: pd.DataFrame) -> None:
         """
         Update the "installed folders" AFTER loading the data.
         :param df: the datatable
@@ -889,4 +889,5 @@ class UEVMLFS:
             if installed_folders:
                 # here we use app_name because catalog_item_id does not exsist in CSV
                 app_name = asset.get('app_name', None)
-                df.loc[df['Asset_id'] == app_name, 'Installed folders'] = installed_folders
+                installed_folders_str= check_and_convert_list_to_str(installed_folders)
+                df.loc[df['Asset_id'] == app_name, 'Installed folders'] = installed_folders_str

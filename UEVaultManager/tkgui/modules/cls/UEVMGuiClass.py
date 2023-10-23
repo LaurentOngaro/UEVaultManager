@@ -362,21 +362,18 @@ class UEVMGui(tk.Tk):
             # the window has been closed so an error is raised
             self.add_error(error)
 
-    def _update_installed_folders(self, row_index: int, asset_id: str = '') -> None:
+    def _update_installed_folders_cell(self, row_index: int, installed_folders: str = None) -> None:
         """
         update the content of the 'Installed folders' cell of the row and the quick edit window.
         :param row_index: the index of the row to update.
-        :param asset_id: the asset id to update.
+        :param installed_folders: the new value for the cell.
         """
-        asset_id = asset_id or self.get_asset_id()
         data_table = self.editable_table
-        db_handler = data_table.db_handler
-        if db_handler:
-            installed_folders = db_handler.get_installed_folders(asset_id)
+        if installed_folders:
             col_index = data_table.get_col_index('Installed folders')
             if data_table.update_cell(row_index, col_index, installed_folders):
                 data_table.update()  # because the "installed folder" field changed
-            data_table.update_quick_edit(data_table.get_selected_row_fixed())
+        data_table.update_quick_edit(row_index)
 
     def on_key_press(self, event):
         """
@@ -1505,6 +1502,18 @@ class UEVMGui(tk.Tk):
         if row_count_filtered != row_count:
             _add_text(f'Filtered rows: {row_count_filtered} ')
 
+    def _update_after_reload(self):
+        data_table = self.editable_table  # shortcut
+        if not self.is_using_database():
+            df = data_table.get_data()
+            # if using FILE
+            # ________________
+            # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
+            self.core.uevmlfs.post_update_installed_folders(df)
+        self.update_controls_state()
+        self.update_category_var()
+        # data_table.update()
+
     def reload_data(self) -> None:
         """
         Reload the data from the data source.
@@ -1516,8 +1525,7 @@ class UEVMGui(tk.Tk):
             data_table.update_col_infos(apply_resize_cols=False)
             gui_f.show_progress(self, text=f'Reloading assets data...')
             if data_table.reload_data(self.core.uevmlfs.asset_sizes):
-                # self.update_page_numbers() done in reload_data
-                self.update_category_var()
+                self._update_after_reload()
                 gui_f.box_message(f'Data Reloaded from {data_table.data_source}')
             else:
                 gui_f.box_message(f'Failed to reload data from {data_table.data_source}', level='warning')
@@ -1533,15 +1541,10 @@ class UEVMGui(tk.Tk):
                 self.clean_asset_folders()
             gui_f.show_progress(self, text=f'Rebuilding Asset data...')
             if data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
-                if not self.is_using_database():
-                    df = data_table.get_data()
-                    # if using FILE
-                    # ________________
-                    # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
-                    self.core.uevmlfs.post_update_installed_folders(df)
-                self.update_controls_state()
-                self.update_category_var()
+                self._update_after_reload()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
+            else:
+                gui_f.box_message(f'Failed to rebuild data from {data_table.data_source}', level='warning')
 
     def run_uevm_command(self, command_name='') -> (int, str):
         """
@@ -1559,6 +1562,9 @@ class UEVMGui(tk.Tk):
             return
         row_index = self.editable_table.get_selected_row_fixed()
         app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('Asset_id')) if row_index is not None else ''
+
+        gui_g.UEVM_command_result = None  # clean result before running the command
+
         if app_name != '':
             gui_g.UEVM_cli_args['app_name'] = app_name
 
@@ -1631,7 +1637,25 @@ class UEVMGui(tk.Tk):
         gui_g.UEVM_cli_args['order_opt'] = True
         gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
         row_index, asset_id = self.run_uevm_command('install_asset')
-        self._update_installed_folders(row_index, asset_id)
+        db_handler = self.editable_table.db_handler
+        if db_handler:
+            # get from db
+            installed_folders = db_handler.get_installed_folders(asset_id)
+        else:
+            # get from data, updated after install
+            try:
+                installed_folders = gui_g.UEVM_command_result['Installed folders']
+            except (TypeError, KeyError):
+                installed_folders = ''
+        if installed_folders:
+            # get the content of the series existing_folders
+            df = self.editable_table.get_data()
+            result = df.loc[df['Asset_id'] == asset_id, 'Installed folders']
+            existing_folders = result.iloc[0]
+            installed_folders = gui_fn.merge_lists_or_strings(existing_folders, installed_folders)
+            installed_folders_str = gui_fn.check_and_convert_list_to_str(installed_folders)
+            row_index = self.editable_table.get_selected_row_fixed()
+            self._update_installed_folders_cell(row_index, installed_folders_str)
 
     def download_asset(self) -> None:
         """
@@ -1711,8 +1735,6 @@ class UEVMGui(tk.Tk):
             no_content_text='This release has not been installed yet',
         )
         gui_f.make_modal(cw)
-        row_index = data_table.get_selected_row_fixed()
-        self._update_installed_folders(row_index)
 
     def remove_installed_folder(self, selected_ids: tuple) -> bool:
         """
@@ -1756,6 +1778,16 @@ class UEVMGui(tk.Tk):
                     # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
                     catalog_item_id = asset_installed.catalog_item_id
                     db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=[folder_selected])
+                else:
+                    # get the content of the series existing_folders
+                    df = self.editable_table.get_data()
+                    result = df.loc[df['Asset_id'] == asset_id, 'Installed folders']
+                    existing_folders = result.iloc[0]
+                    installed_folders = gui_fn.merge_lists_or_strings(existing_folders, installed_folders_cleaned)
+                    installed_folders.remove(folder_selected)
+                    installed_folders_str = gui_fn.check_and_convert_list_to_str(installed_folders)
+                    row_index = self.editable_table.get_selected_row_fixed()
+                    self._update_installed_folders_cell(row_index, installed_folders_str)
                 return True
         else:
             return False
