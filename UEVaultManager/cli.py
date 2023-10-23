@@ -444,6 +444,14 @@ class UEVaultManagerCLI:
                 return
 
             manifest_data, _, status_code = self.core.get_cdn_manifest(item, platform='Windows')
+            if not manifest_data:
+                self._log_and_gui_message(
+                    f'Manifest data is empty for "{args.app_name}". Could be a timeout or an issue with the connection.',
+                    quit_on_error=False,
+                    level='error'
+                )
+                return
+
         manifest = self.core.load_manifest(manifest_data)
         files = sorted(manifest.file_manifest_list.elements, key=lambda a: a.filename.lower())
         content = ''
@@ -608,6 +616,14 @@ class UEVaultManagerCLI:
                     message = f'\nYou can only get information about assets you own!\nFailed to get manifest for the asset {item.app_name}'
                 self._log_and_gui_display(message, level='error')
                 return
+            if not manifest_data:
+                self._log_and_gui_message(
+                    f'Manifest data is empty for "{item.app_name}". Could be a timeout or an issue with the connection.',
+                    quit_on_error=False,
+                    level='error'
+                )
+                return
+
         if item:
             asset_infos = info_items['assets']
             asset_infos.append(InfoItem('Asset name', 'app_name', item.app_name, item.app_name))
@@ -1142,22 +1158,27 @@ class UEVaultManagerCLI:
         install_path_base = os.path.normpath(install_path_base)
 
         self._log_and_gui_display(f'Preparing download for {release_title}...')
-        dlm, analysis, installed_asset = self.core.prepare_download(
-            base_asset=asset,  # contains generic info of the base asset for all releases, NOT the selected release
-            release_name=release_name,
-            release_title=release_title,
-            download_folder=download_path,
-            install_folder=install_path_base,
-            no_resume=args.no_resume,
-            max_shm=args.shared_memory,
-            max_workers=args.max_workers,
-            reuse_last_install=args.reuse_last_install,
-            dl_optimizations=args.order_opt,
-            override_manifest=args.override_manifest,
-            override_base_url=args.override_base_url,
-            preferred_cdn=args.preferred_cdn,
-            disable_https=args.disable_https,
-        )
+        try:
+            dlm, analysis, installed_asset = self.core.prepare_download(
+                base_asset=asset,  # contains generic info of the base asset for all releases, NOT the selected release
+                release_name=release_name,
+                release_title=release_title,
+                download_folder=download_path,
+                install_folder=install_path_base,
+                no_resume=args.no_resume,
+                max_shm=args.shared_memory,
+                max_workers=args.max_workers,
+                reuse_last_install=args.reuse_last_install,
+                dl_optimizations=args.order_opt,
+                override_manifest=args.override_manifest,
+                override_base_url=args.override_base_url,
+                preferred_cdn=args.preferred_cdn,
+                disable_https=args.disable_https,
+            )
+        except ValueError as error:
+            self._log_and_gui_display(f'Download failed: {error!r}')
+            return False
+
         if install_path_base and not args.no_install and analysis.already_installed and not box_yesno(
             f'The selected asset as already been installed in "{install_path_base}".\nDo you want to continue ?'
         ):

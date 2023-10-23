@@ -603,7 +603,7 @@ class AppCore:
 
         # load old manifest if we have one
         if override_old_manifest:
-            self.log.info(f'Overriding old manifest with "{override_old_manifest}"')
+            self.log_info_and_gui_display(f'Overriding old manifest with "{override_old_manifest}"')
             old_bytes, _ = self.get_uri_manifest(override_old_manifest)
             old_manifest = self.load_manifest(old_bytes)
         elif not disable_patching and not no_resume and self.is_installed(release_name):
@@ -631,6 +631,10 @@ class AppCore:
             new_manifest_data, base_urls, status_code = self.get_cdn_manifest(base_asset, platform, disable_https=disable_https)
             # overwrite base urls in metadata with current ones to avoid using old/dead CDNs
             base_asset.base_urls = base_urls
+
+        if not new_manifest_data:
+            message = f'Manifest data is empty for "{release_name}". Could be a timeout or an issue with the connection.'
+            raise ValueError(message)
 
         self.log_info_and_gui_display('Parsing game manifest...')
         manifest = self.load_manifest(new_manifest_data)
