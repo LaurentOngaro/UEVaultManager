@@ -601,8 +601,8 @@ class UEAssetDbHandler:
             if where_clause:
                 query += f" WHERE {where_clause}"
             if not gui_g.s.assets_order_col:
-                gui_g.s.assets_order_col = 'date_added'
-            query += f" ORDER by {gui_g.s.assets_order_col} DESC"
+                gui_g.s.assets_order_col = 'date_added DESC'
+            query += f" ORDER by {gui_g.s.assets_order_col}"
             if gui_g.s.testing_switch == 1:
                 query += f" LIMIT {gui_g.s.testing_assets_limit}"
             try:

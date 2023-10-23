@@ -1138,14 +1138,6 @@ class UEVMGui(tk.Tk):
         Scrap a range of assets in the table.
         :return:
         """
-        # current_value = tk.StringVar(value=0)
-        # spin_box = ttk.Spinbox(
-        #     container,
-        #     from_=0,
-        #     to=30,
-        #     textvariable=current_value,
-        #     wrap=True)
-        #
         data_table = self.editable_table  # shortcut
         df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         min_val = 0
@@ -1166,6 +1158,8 @@ class UEVMGui(tk.Tk):
                 maxvalue=max_val
             )
             if end is not None:
+                start = max(min_val, start)
+                end = min(max_val, end)
                 all_row_numbers = list(range(start, end))
                 self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False)
 
