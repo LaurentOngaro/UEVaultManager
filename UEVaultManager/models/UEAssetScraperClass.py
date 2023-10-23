@@ -1026,10 +1026,10 @@ class UEAssetScraper:
                 json.dump(content, file)
 
         if self.use_database:
-            self.progress_window.reset(new_value=0, new_text='Saving into database', new_max_value=None)
+            self.progress_window.reset(new_value=0, new_text='Saving into database. It could take some time...', new_max_value=None)
             is_ok = self._save_in_db(last_run_content=content)
         else:
-            self.progress_window.reset(new_value=0, new_text='Saving into file', new_max_value=None)
+            self.progress_window.reset(new_value=0, new_text='Saving into file. It could take some time...', new_max_value=None)
             is_ok = self._save_in_file(save_to_format)
         self._log('data saved')
         return is_ok

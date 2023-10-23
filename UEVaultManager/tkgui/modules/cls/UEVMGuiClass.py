@@ -403,7 +403,7 @@ class UEVMGui(tk.Tk):
         elif control_pressed and (event.keysym == '2' or event.keysym == 'eacute'):
             self.editable_table.create_edit_row_window(event)
         elif control_pressed and (event.keysym == '3' or event.keysym == 'quotedbl'):
-            self.scrap_row()
+            self.scrap_asset()
         return 'break'
 
         # return 'break'  # stop event propagation
@@ -1054,7 +1054,7 @@ class UEVMGui(tk.Tk):
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
-                    self.scrap_row(
+                    self.scrap_asset(
                         marketplace_url=marketplace_url,
                         row_index=row_index,
                         forced_data=forced_data,
@@ -1137,7 +1137,10 @@ class UEVMGui(tk.Tk):
                 self.logger.warning(msg)
         return asset_data[0] if asset_data is not None else None
 
-    def scrap_row(
+    def scrap_all_assets(self):
+        gui_f.todo_message()
+
+    def scrap_asset(
         self,
         marketplace_url: str = None,
         row_index: int = -1,
@@ -1385,7 +1388,6 @@ class UEVMGui(tk.Tk):
         current_row = data_table.get_selected_row_fixed()
         current_row_index = data_table.add_page_offset(current_row) if current_row is not None else -1
 
-        gui_f.update_widgets_in_list(len(data_table.multiplerowlist) > 0, 'row_is_selected')
         gui_f.update_widgets_in_list(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
         gui_f.update_widgets_in_list(current_row_index > 0, 'not_first_asset')
         gui_f.update_widgets_in_list(current_row_index < max_index - 1, 'not_last_asset')
@@ -1413,10 +1415,13 @@ class UEVMGui(tk.Tk):
             gui_f.update_widgets_in_list(index_displayed < total_displayed, 'not_last_page')
 
         # conditions based on info about the current asset
+        row_is_selected = False
         is_owned = False
         is_added = False
         url = ''
+
         if current_row is not None:
+            row_is_selected = len(data_table.multiplerowlist) > 0
             url = data_table.get_cell(current_row, data_table.get_col_index('Url'))
             is_added = data_table.get_cell(current_row, data_table.get_col_index('Added manually'))
             is_owned = data_table.get_cell(current_row, data_table.get_col_index('Owned'))
@@ -1425,6 +1430,9 @@ class UEVMGui(tk.Tk):
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
         gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
         gui_f.update_widgets_in_list(data_table.is_using_database(), 'db_is_available')
+        gui_f.update_widgets_in_list(row_is_selected, 'row_is_selected')
+        gui_f.update_widgets_in_list(row_is_selected and not gui_g.s.offline_mode, 'row_is_selected_and_not_offline')
+        gui_f.update_widgets_in_list(is_owned and not gui_g.s.offline_mode, 'asset_is_owned_and_not_offline')
 
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)

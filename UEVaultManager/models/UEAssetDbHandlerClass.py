@@ -539,8 +539,11 @@ class UEAssetDbHandler:
             if not isinstance(assets, list):
                 assets = [assets]
             str_today = datetime.datetime.now().strftime(DateFormat.csv)
-            # Note: the order of columns and value must match the order of the fields in UEAsset.init_data() method
-            for asset in assets:
+            if gui_g.WindowsRef.progress:
+                gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(assets))
+            for index, asset in enumerate(assets):
+                if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
+                    return False
                 # make some conversion before saving the asset
                 asset['update_date'] = str_today
                 asset['creation_date'] = convert_to_str_datetime(
