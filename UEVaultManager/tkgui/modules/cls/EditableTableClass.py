@@ -1502,7 +1502,7 @@ class EditableTable(Table):
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
         if asset_id in gui_g.s.cell_is_empty_list[1:]:  # exclude 'NA'
             asset_id = ue_asset_data.get('asset_id', gui_g.s.cell_is_empty_list[0])
-        text = f'row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
+        text = f'Row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
         for key, value in ue_asset_data.items():
