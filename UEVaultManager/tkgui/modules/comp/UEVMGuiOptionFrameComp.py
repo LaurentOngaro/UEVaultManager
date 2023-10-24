@@ -3,6 +3,7 @@
 Implementation for:
 - UEVMGuiOptionFrame: an options/settings frame for the UEVMGui Class.
 """
+import os
 import tkinter as tk
 from tkinter import filedialog
 
@@ -195,6 +196,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         initial_dir = cb_selection if cb_selection else gui_g.s.last_opened_folder
         # open a file dialog to select a folder
         folder_selected = filedialog.askdirectory(title='Select a folder to scan for UE assets', initialdir=initial_dir)
+        folder_selected = os.path.normpath(folder_selected)
         gui_g.s.last_opened_folder = folder_selected
 
         # add the folder to the list

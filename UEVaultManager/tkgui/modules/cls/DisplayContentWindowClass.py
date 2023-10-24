@@ -4,6 +4,7 @@ Implementation for:
 - DCW_Settings: settings for the class when running as main.
 - DisplayContentWindow: the window to display a text content.
 """
+import os
 import tkinter as tk
 from tkinter import filedialog as fd
 from tkinter import ttk
@@ -205,6 +206,7 @@ class DisplayContentWindow(tk.Toplevel):
             title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=self.result_filename
         )
         if filename:
+            filename = os.path.normpath(filename)
             with open(filename, 'w', encoding='utf-8') as file:
                 file.write(self.frm_content.text_content.get('1.0', tk.END))
             gui_f.box_message(f'Content Saved to {filename}')

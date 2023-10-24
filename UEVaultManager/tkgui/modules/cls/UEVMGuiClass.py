@@ -315,6 +315,7 @@ class UEVMGui(tk.Tk):
             filename = fd.askopenfilename(
                 title='Choose a file to read data from', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
             )
+        filename = os.path.normpath(filename)
         return filename
 
     def _check_and_get_widget_value(self, tag: str) -> tuple:
@@ -602,6 +603,7 @@ class UEVMGui(tk.Tk):
         """
         data_table = self.editable_table  # shortcut
         filename = self._open_file_dialog(filename=gui_g.s.last_opened_file)
+        filename = os.path.normpath(filename)
         if filename and os.path.isfile(filename):
             data_table.data_source = filename
             if data_table.valid_source_type(filename):
@@ -681,6 +683,7 @@ class UEVMGui(tk.Tk):
                 if gui_g.s.last_opened_folder else gui_g.s.folders_to_scan[0] if gui_g.s.folders_to_scan else None,
             )
             if folder:
+                folder = os.path.normpath(folder)
                 gui_g.s.last_opened_folder = folder
                 add_new_row = False
                 self.scan_for_assets([folder], from_add_button=True)

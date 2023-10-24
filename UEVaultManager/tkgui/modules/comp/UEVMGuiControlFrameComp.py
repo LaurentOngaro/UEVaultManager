@@ -264,7 +264,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
         widget_list = gui_g.stated_widgets.get('row_is_selected', [])
-        append_no_duplicate(widget_list, [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], btn_show_installed_releases])
+        append_no_duplicate(widget_list, [self.buttons['edit_row']['widget'], btn_show_installed_releases])
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
         widget_list = gui_g.stated_widgets.get('not_offline', [])
@@ -295,7 +295,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         )
         if not filename:
             return
-        fd_folder = os.path.abspath(os.path.dirname(filename))
+        filename = os.path.normpath(filename)
+        fd_folder = os.path.abspath(filename)
         filename = os.path.basename(filename)  # remove the folder from the filename
         filename, ext = os.path.splitext(filename)
         if not ext:
@@ -326,7 +327,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         )
         if not filename:
             return {}
-        fd_folder = os.path.abspath(os.path.dirname(filename))
+        filename = os.path.normpath(filename)
+        fd_folder = os.path.dirname(filename)
         if folder != fd_folder:
             messagebox.showwarning(
                 'Warning', f'Only files in the folder {folder} can be loaded as filters. Please try again without changing the folder.'

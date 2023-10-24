@@ -1107,6 +1107,7 @@ class UEVaultManagerCLI:
                         title='Select a project to install the asset into', initialdir=gui_g.s.last_opened_project
                     )
                     if install_path_base:
+                        install_path_base = os.path.normpath(install_path_base)
                         gui_g.s.last_opened_project = install_path_base
 
         if not install_path_base:
