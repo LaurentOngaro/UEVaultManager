@@ -440,7 +440,7 @@ def remove_last_suffix(string: str, separator: str = '_') -> str:
 
 def format_size(size: int, precision: int = 1) -> str:
     """
-    Format a size in bytes to a human readable string.
+    Format a size in bytes to a human-readable string.
     :param size: the size to format.
     :param precision: the number of digits after the decimal point.
     :return: the formatted size.
@@ -451,3 +451,17 @@ def format_size(size: int, precision: int = 1) -> str:
         suffix_index += 1  # increment the index of the suffix
         size /= 1024.0  # apply the division
     return f'{size:.{precision}f}{suffixes[suffix_index]}'
+
+
+def check_and_convert_list_to_str(str_or_list) -> str:
+    """
+    Check if the given parameter is a list and convert it to a string, else return the given parameter.
+    :param str_or_list: the string or list to convert.
+    :return: the converted string or the given parameter.
+    """
+    result = str_or_list
+    if type(str_or_list).__name__ in ['list', 'dict_values']:
+        # if the list does not only contain strings, it will raise an error.
+        # So we use map to convert all the values to string
+        result = ','.join(map(str, str_or_list))
+    return result

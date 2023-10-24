@@ -14,6 +14,7 @@ from queue import Empty
 
 import requests
 
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.ChunkClass import Chunk
 from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskResult, TaskFlags, TerminateWorkerTask, WriterTask, WriterTaskResult)
@@ -77,6 +78,9 @@ class DLWorker(Process):
 
             try:
                 while tries < self.max_retries:
+                    if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.continue_execution:
+                        logger.warning('Stop button has been pressed, exit requested, quitting...')
+                        break
                     # retry once immediately, otherwise do exponential backoff
                     if tries > 1:
                         sleep_time = 2 ** (tries - 1)

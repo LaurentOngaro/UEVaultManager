@@ -1,6 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
+_ clean_ue_asset_name: clean a name to remove unwanted characters.
 - UEVMGui: the main window of the application.
 """
 import filecmp
@@ -9,11 +10,10 @@ import logging
 import os
 import re
 import shutil
-import sys
 import tkinter as tk
 from datetime import datetime
 from time import sleep
-from tkinter import filedialog as fd
+from tkinter import filedialog as fd, simpledialog
 from typing import Optional
 
 import pandas as pd
@@ -24,15 +24,18 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import EPCAPI, GrabResult
+from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import get_version_from_path, path_join
+from UEVaultManager.models.csv_sql_fields import debug_parsed_data
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
-from UEVaultManager.tkgui.modules.cls.DbFilesWindowClass import DbFilesWindowClass
+from UEVaultManager.tkgui.modules.cls.DbToolWindowClass import DbToolWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.cls.JsonProcessingWindowClass import JsonProcessingWindow
+from UEVaultManager.tkgui.modules.cls.JsonToolWindowClass import JsonToolWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
@@ -89,22 +92,14 @@ class UEVMGui(tk.Tk):
     :param icon: the icon.
     :param screen_index: the screen index where the window will be displayed.
     :param data_source: the source where the data is stored or read from.
-    :param data_source_type: the type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
-    :param show_open_file_dialog: whether the open file dialog will be shown at startup.
     """
+    is_fake = False
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
     _errors: [Exception] = []
 
     def __init__(
-        self,
-        title: str = 'UVMEGUI',
-        icon='',
-        screen_index: int = 0,
-        data_source_type: DataSourceType = DataSourceType.FILE,
-        data_source=None,
-        show_open_file_dialog: bool = False,
-        rebuild_data: bool = False,
+        self, title: str = 'UVMEGUI', icon='', screen_index: int = 0, data_source_type: DataSourceType = DataSourceType.FILE, data_source=None,
     ):
         self._frm_toolbar: Optional[UEVMGuiToolbarFrame] = None
         self._frm_control: Optional[UEVMGuiControlFrame] = None
@@ -116,8 +111,7 @@ class UEVMGui(tk.Tk):
         self.egs: Optional[EPCAPI] = None
         super().__init__()
         self.data_source_type = data_source_type
-        if data_source_type == DataSourceType.SQLITE:
-            show_open_file_dialog = False
+
         self.title(title)
         self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         width: int = gui_g.s.width
@@ -133,39 +127,20 @@ class UEVMGui(tk.Tk):
 
         frm_content = UEVMGuiContentFrame(self)
         self._frm_content = frm_content
-        self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
         self.releases_choice = {}
+        # get the core instance from the cli application if it exists
+        self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
+        # if the core instance is not set, create a new one
+        if not self.core:
+            self.core = AppCore()
 
-        # update the content of the database BEFORE loading the data in the datatable
-        # as it, all the formatting and filtering could be done at start with good values
-        if data_source_type == DataSourceType.SQLITE:
-            # update the installed folder field in database from the installed_assets json file
-            installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
-            db_handler = UEAssetDbHandler(database_name=data_source)
-            if db_handler is not None:
-                merged_installed_folders = {}
-                # get all installed folders for a given catalog_item_id
-                for app_name, asset in installed_assets_json.items():
-                    installed_folders_ori = asset.get('installed_folders', None)
-                    # WE USE A COPY to avoid modifying the original list and merging all the installation folders for all releases
-                    installed_folders = installed_folders_ori.copy() if installed_folders_ori is not None else None
-                    if installed_folders is not None and len(installed_folders) > 0:
-                        catalog_item_id = asset.get('catalog_item_id', None)
-                        if merged_installed_folders.get(catalog_item_id, None) is None:
-                            merged_installed_folders[catalog_item_id] = installed_folders
-                        else:
-                            merged_installed_folders[catalog_item_id].extend(installed_folders)
-                    else:
-                        # the installed_folders field is empty for the installed_assets, we remove it from the json file
-                        self.core.uevmlfs.remove_installed_asset(app_name)
-                # update the database using catalog_item_id instead as asset_id to merge installed_folders for ALL the releases
-                for catalog_item_id, folders_to_add in merged_installed_folders.items():
-                    db_handler.add_to_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_add)
-            # update the installed_assets json file from the database info
-            # NO TO DO because the in installed_folders have not the same content (for one asset in the json file, for all releases in the database)
-            # installed_assets_db = db_handler.get_rows_with_installed_folders()
-            # for app_name, asset_data in installed_assets_db.items():
-            #     self.core.uevmlfs.update_installed_asset(app_name, asset_data)
+        if self.is_using_database():
+            # if using DATABASE
+            # ________________
+            # update the "installed folders" BEFORE loading the data in the datatable (because datatable content <> database content)
+            # update the installed folder field from the installed_assets json file
+            db_handler = UEAssetDbHandler(database_name=data_source)  # we need it BEFORE CREATING the editable_table and use its db_handler property
+            self.core.uevmlfs.pre_update_installed_folders(db_handler=db_handler)
 
         data_table = EditableTable(
             container=frm_content,
@@ -179,10 +154,17 @@ class UEVMGui(tk.Tk):
         )
 
         # get the data AFTER updating the installed folder field in database
-        if data_table.get_data() is None:
+        df = data_table.get_data()
+        if df is None:
             self.logger.error('No valid source to read data from. Application will be closed')
             self.quit()
             self.core.clean_exit(1)  # previous line could not quit
+
+        if not self.is_using_database():
+            # if using FILE
+            # ________________
+            # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
+            self.core.uevmlfs.post_update_installed_folders(df)
 
         self.editable_table = data_table
 
@@ -218,14 +200,24 @@ class UEVMGui(tk.Tk):
 
         self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
+        gui_g.UEVM_gui_ref = self
 
+    def setup(self, show_open_file_dialog: bool = False, rebuild_data: bool = False) -> None:
+        """
+        Set up the application. Called after the window is created.
+        :param show_open_file_dialog: whether the open file dialog will be shown at startup.
+        :param rebuild_data: whether the data will be rebuilt at startup.
+        """
+        data_table = self.editable_table  # shortcut
+        if data_table.is_using_database():
+            show_open_file_dialog = False
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
-                if not data_table.rebuild_data():
+                if not data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
                     self.logger.error('Rebuild data error. This application could not run without a file to read from or some data to build from it')
                     self.destroy()  # self.quit() won't work here
                     return
-            elif data_source_type == DataSourceType.FILE and gui_f.box_yesno(
+            elif data_table.data_source_type == DataSourceType.FILE and gui_f.box_yesno(
                 'So, do you want to load another file ? If not, the application will be closed'
             ):
                 show_open_file_dialog = True
@@ -240,7 +232,7 @@ class UEVMGui(tk.Tk):
                 self.logger.error('This application could not run without a file to read data from')
                 self.close_window(True)
 
-        self._update_downloaded_size()
+        data_table.update_downloaded_size(self.core.uevmlfs.asset_sizes)
 
         if gui_g.s.last_opened_filter != '':
             filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
@@ -261,10 +253,9 @@ class UEVMGui(tk.Tk):
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
 
-    def _update_downloaded_size(self) -> None:
-        gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-        downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-        self.editable_table.update_downloaded_size(downloaded_data)
+    def is_using_database(self) -> bool:
+        """ Check if the table is using a database as data source. """
+        return self.data_source_type == DataSourceType.DATABASE
 
     def mainloop(self, n=0):
         """
@@ -274,7 +265,7 @@ class UEVMGui(tk.Tk):
         self.logger.info(f'starting mainloop in {__name__}')
         self.tk.mainloop(n)
         # check is a child window is still open
-        # child_windows = self.progress_window or gui_g.edit_cell_window_ref or gui_g.edit_row_window_ref
+        # child_windows = self.progress_window or gui_g.WindowsRef.edit_cell or gui_g.WindowsRef.edit_row
         # print('root loop')
         # if child_windows:
         #     self._wait_for_window(child_windows)
@@ -372,20 +363,18 @@ class UEVMGui(tk.Tk):
             # the window has been closed so an error is raised
             self.add_error(error)
 
-    def _update_installed_folders(self, row_index: int, asset_id: str = '') -> None:
+    def _update_installed_folders_cell(self, row_index: int, installed_folders: str = None) -> None:
         """
         update the content of the 'Installed folders' cell of the row and the quick edit window.
         :param row_index: the index of the row to update.
-        :param asset_id: the asset id to update.
+        :param installed_folders: the new value for the cell.
         """
-        asset_id = asset_id or self.get_asset_id()
         data_table = self.editable_table
-        db_handler = data_table.db_handler
-        installed_folders = db_handler.get_installed_folders(asset_id)
-        col_index = data_table.get_col_index('Installed folders')
-        if data_table.update_cell(row_index, col_index, installed_folders):
-            data_table.update()  # because the "installed folder" field changed
-        data_table.update_quick_edit(data_table.get_selected_row_fixed())
+        if installed_folders:
+            col_index = data_table.get_col_index('Installed folders')
+            if data_table.update_cell(row_index, col_index, installed_folders):
+                data_table.update()  # because the "installed folder" field changed
+        data_table.update_quick_edit(row_index)
 
     def on_key_press(self, event):
         """
@@ -399,12 +388,12 @@ class UEVMGui(tk.Tk):
         # 4th keys of (FRENCH) keyboard: ampersand eacute quotedbl apostrophe
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
-            if gui_g.edit_cell_window_ref:
-                gui_g.edit_cell_window_ref.on_close()
-                gui_g.edit_cell_window_ref = None
-            elif gui_g.edit_row_window_ref:
-                gui_g.edit_row_window_ref.on_close()
-                gui_g.edit_row_window_ref = None
+            if gui_g.WindowsRef.edit_cell:
+                gui_g.WindowsRef.edit_cell.on_close()
+                gui_g.WindowsRef.edit_cell = None
+            elif gui_g.WindowsRef.edit_row:
+                gui_g.WindowsRef.edit_row.on_close()
+                gui_g.WindowsRef.edit_row = None
             else:
                 self.on_close()
         elif control_pressed and (event.keysym == 's' or event.keysym == 'S'):
@@ -414,7 +403,7 @@ class UEVMGui(tk.Tk):
         elif control_pressed and (event.keysym == '2' or event.keysym == 'eacute'):
             self.editable_table.create_edit_row_window(event)
         elif control_pressed and (event.keysym == '3' or event.keysym == 'quotedbl'):
-            self.scrap_row()
+            self.scrap_asset()
         return 'break'
 
         # return 'break'  # stop event propagation
@@ -549,7 +538,7 @@ class UEVMGui(tk.Tk):
         gui_f.enable_widgets_in_list(widget_list)
         # update the column infos
         columns = self.editable_table.model.df.columns  # df. model checked
-        old_columns_infos = gui_g.s.column_infos
+        old_columns_infos = gui_g.s.get_column_infos(self.data_source_type)
         # reorder column_infos using columns keys
         new_columns_infos = {}
         for i, col in enumerate(columns):
@@ -558,7 +547,7 @@ class UEVMGui(tk.Tk):
                 new_columns_infos[col]['pos'] = i
             except KeyError:
                 pass
-        gui_g.s.column_infos = new_columns_infos
+        gui_g.s.set_column_infos(new_columns_infos, self.data_source_type)
         gui_g.s.save_config_file()
 
     def on_close(self, _event=None) -> None:
@@ -578,7 +567,7 @@ class UEVMGui(tk.Tk):
         self.save_settings()
         self.quit()
         if force_quit:
-            sys.exit(0)
+            gui_f.exit_and_clean_windows(0)
 
     def add_error(self, error: Exception) -> None:
         """
@@ -651,10 +640,11 @@ class UEVMGui(tk.Tk):
             if filename:
                 data_table.save_data()
                 self.update_data_source()
+                gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
         else:
             data_table.save_data()
             filename = ''
-        gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
+            gui_f.box_message(f'Changed data has been saved to {data_table.data_source}')
         return filename
 
     def export_selection(self) -> None:
@@ -867,7 +857,6 @@ class UEVMGui(tk.Tk):
                     parent_folder = os.path.dirname(parent_folder)
                     path = os.path.dirname(full_folder)
                     pw.set_text(f'{folder_name} as a valid folder.\nChecking asset url...')
-                    pw.update()
                     msg = f'-->Found {folder_name} as a valid project'
                     self.logger.info(msg)
                     marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
@@ -991,13 +980,11 @@ class UEVMGui(tk.Tk):
         self.logger.info(msg)
         if self.core.scan_assets_logger:
             self.core.scan_assets_logger.info(msg)
-        date_added = datetime.now().strftime(gui_g.s.csv_datetime_format)
+        date_added = datetime.now().strftime(DateFormat.csv)
         row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
-        data = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         count = len(valid_folders.items())
         pw.reset(new_text='Scraping data and updating assets', new_max_value=count)
-        pw.show_progress_bar()
-        pw.update()
         row_added = 0
         data_table.is_scanning = True
         # copy_col_index = data_table.get_col_index(gui_g.s.index_copy_col_name)
@@ -1024,14 +1011,14 @@ class UEVMGui(tk.Tk):
             # check if the row already exists
             try:
                 # we try to get the indexes if value already exists in column 'Origin' for a pandastable
-                rows_serie = data.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
+                rows_serie = df.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
                 row_indexes = rows_serie.index  # returns a list of indexes. It should contain only 1 value
                 if not row_indexes.empty:
                     # FOUND, we update the row
                     row_index = row_indexes[0]
-                    index_copy = data.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
-                    old_name = data.loc[index_copy, 'App name']
-                    old_comment = data.loc[index_copy, 'Comment']
+                    index_copy = df.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
+                    old_name = df.loc[index_copy, 'App name']
+                    old_comment = df.loc[index_copy, 'Comment']
                     text = f'Updating {name} at row {row_index}. Old name is {old_name}'
                     self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
@@ -1061,11 +1048,10 @@ class UEVMGui(tk.Tk):
                 'category': content['asset_type'].category_name,
                 'comment': content['comment'] if not old_comment else old_comment + '\n' + content['comment'],
                 'downloaded_size': content['downloaded_size']
-                # 'supported_versions': content.get('supported_versions', '', # we want to get the scraped data
             }
             if content['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
-                    self.scrap_row(
+                    self.scrap_asset(
                         marketplace_url=marketplace_url,
                         row_index=row_index,
                         forced_data=forced_data,
@@ -1086,7 +1072,6 @@ class UEVMGui(tk.Tk):
         pw.hide_progress_bar()
         pw.hide_btn_stop()
         pw.set_text('Updating the table. Could take a while...')
-        pw.update()
         data_table.is_scanning = False
         data_table.update(update_format=True, update_filters=True)
         data_table.update_col_infos()
@@ -1095,16 +1080,16 @@ class UEVMGui(tk.Tk):
         if invalid_folders:
             result = '\n'.join(invalid_folders)
             result = f'The following folders have produce invalid results during the scan:\n{result}'
-            if gui_g.display_content_window_ref is None:
-                file_name = f'scan_folder_results_{datetime.now().strftime("%y-%m-%d")}.txt'
-                gui_g.display_content_window_ref = DisplayContentWindow(
+            if gui_g.WindowsRef.display_content is None:
+                file_name = f'scan_folder_results_{datetime.now().strftime(DateFormat.us_short)}.txt'
+                gui_g.WindowsRef.display_content = DisplayContentWindow(
                     title='UEVM: status command output', quit_on_close=False, result_filename=file_name
                 )
-                gui_g.display_content_window_ref.display(result)
-                gui_f.make_modal(gui_g.display_content_window_ref)
+                gui_g.WindowsRef.display_content.display(result)
+                gui_f.make_modal(gui_g.WindowsRef.display_content)
             self.logger.warning(result)
 
-    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False) -> dict:
+    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False, update_progress=True) -> dict:
         is_ok = False
         asset_data = None
         # check if the marketplace_url is a marketplace marketplace_url
@@ -1121,14 +1106,14 @@ class UEVMGui(tk.Tk):
                 return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             scraper = UEAssetScraper(
+                datasource_filename=self.editable_table.data_source,
+                use_database=self.editable_table.is_using_database(),
                 start=0,
                 assets_per_page=1,
                 max_threads=1,
-                store_in_db=True,
-                store_in_files=True,
-                store_ids=False,  # useless for now
+                save_to_files=True,
                 load_from_files=False,
-                engine_version_for_obsolete_assets=self.core.engine_version_for_obsolete_assets,
+                store_ids=False,  # useless for now
                 core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
             )
             scraper.get_data_from_url(api_product_url)
@@ -1137,7 +1122,7 @@ class UEVMGui(tk.Tk):
                 if forced_data is not None:
                     for key, value in forced_data.items():
                         asset_data[0][key] = value
-                scraper.asset_db_handler.set_assets(asset_data)
+                scraper.asset_db_handler.set_assets(asset_data, update_progress=update_progress)
                 is_ok = True
         if not is_ok:
             asset_data = None
@@ -1148,42 +1133,77 @@ class UEVMGui(tk.Tk):
                 self.logger.warning(msg)
         return asset_data[0] if asset_data is not None else None
 
-    def scrap_row(
+    def scrap_range(self) -> None:
+        """
+        Scrap a range of assets in the table.
+        :return:
+        """
+        data_table = self.editable_table  # shortcut
+        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        min_val = 0
+        max_val = len(df) - 1
+        start = simpledialog.askinteger(
+            parent=self,  #
+            title='Select the starting row',  #
+            prompt=f'Start index (between {min_val} and {max_val-1})',  #
+            minvalue=min_val,  #
+            maxvalue=max_val - 1
+        )
+        if start is not None:
+            end = simpledialog.askinteger(
+                parent=self,
+                title='Select the ending row',  #
+                prompt=f'Stop index (between {start+1} and {max_val})',  #
+                minvalue=start + 1,  #
+                maxvalue=max_val
+            )
+            if end is not None:
+                start = max(min_val, start)
+                end = min(max_val, end)
+                all_row_numbers = list(range(start, end))
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False)
+
+    def scrap_asset(
         self,
         marketplace_url: str = None,
         row_index: int = -1,
+        row_numbers: list = None,
         forced_data: {} = None,
         show_message: bool = True,
         update_dataframe: bool = True,
-        check_unicity: bool = False
-    ):
+        check_unicity: bool = False,
+    ) -> None:
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param row_index: the (real) index of the row to scrap.
+        :param row_numbers: a list a row numbers to scrap. If None, will use the selected rows.
+        :param row_index: the (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
         :param show_message: whether to show a message if the marketplace_url is not valid
         :param update_dataframe: whether to update the dataframe after scraping
         :param check_unicity: whether to check if the data are unique and ask the user to update the row if not
         """
-
         if gui_g.s.offline_mode:
             gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
             return
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible')
             return
+
         is_unique = not check_unicity  # by default, we consider that the data are unique
         data_table = self.editable_table  # shortcut
         data_table.save_data()  # save the data before scraping because we will update the row(s) and override non saved changes
-        row_numbers = data_table.multiplerowlist
+        if not row_numbers:
+            row_numbers = data_table.multiplerowlist
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
                 gui_f.box_message('You must select a row first', level='warning')
             return
+        use_range = True
         if row_index >= 0:
             # a row index has been given, we scrap only this row
             row_indexes = [row_index]
+            use_range = False
         else:
             # convert row numbers to row indexes
             row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
@@ -1195,30 +1215,33 @@ class UEVMGui(tk.Tk):
                 pw = gui_f.show_progress(
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True
                 )
-            for row_index in row_indexes:
+            for count, row_index in enumerate(row_indexes):
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
-                asset_slug_from_row = row_data['Asset slug']
-                if asset_slug_from_url != asset_slug_from_row:
+                # we keep UrlSlug here because it can arise from the scrapped data
+                asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
+                if asset_slug_from_row and asset_slug_from_url and asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
-                    if gui_f.box_yesno(
+                    if show_message and gui_f.box_yesno(
                         f'{msg}.\nDo you wan to create a new Url with {asset_slug_from_row} and use it for scraping ?\nIf no, the given url with {asset_slug_from_url} will be used'
                     ):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
                         data_table.update_cell(row_index, col_index, marketplace_url, convert_row_number_to_row_index=False)
                 text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
-                if pw and not pw.update_and_continue(increment=1, text=text):
+                if pw and not pw.update_and_continue(value=count, text=text):
                     gui_f.close_progress(self)
                     return
-                asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
+                asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message, update_progress=not use_range)
                 if asset_data:
+                    if self.core.verbose_mode or gui_g.s.debug_mode:
+                        debug_parsed_data(asset_data, self.editable_table.data_source_type)
                     if check_unicity:
                         is_unique, asset_data = self._check_unicity(asset_data)
-                    if not is_unique and gui_f.box_yesno(
+                    if is_unique or gui_f.box_yesno(
                         f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
@@ -1231,9 +1254,11 @@ class UEVMGui(tk.Tk):
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             if asset_data:
+                if self.core.verbose_mode or gui_g.s.debug_mode:
+                    debug_parsed_data(asset_data, self.editable_table.data_source_type)
                 if check_unicity:
                     is_unique, asset_data = self._check_unicity(asset_data)
-                if not is_unique and gui_f.box_yesno(
+                if is_unique or gui_f.box_yesno(
                     f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                 ):
                     data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
@@ -1247,11 +1272,11 @@ class UEVMGui(tk.Tk):
         :return: the asset_data with the updated asset_id and/or asset_slug
         """
         is_unique = True
-        data = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         asset_id = asset_data['asset_id']
         asset_slug = asset_data['asset_slug']
-        rows_serie_for_id = data.loc[lambda x: x['Asset_id'] == asset_id]
-        rows_serie_for_slug = data.loc[lambda x: x['Asset slug'].str.lower() == asset_slug.lower()]
+        rows_serie_for_id = df.loc[lambda x: x['Asset_id'] == asset_id]
+        rows_serie_for_slug = df.loc[lambda x: x['Asset slug'].str.lower() == asset_slug.lower()]
         if not rows_serie_for_id.empty:
             is_unique = False
             new_asset_id = gui_g.s.empty_row_prefix + gui_fn.create_uid()
@@ -1350,12 +1375,12 @@ class UEVMGui(tk.Tk):
             force_showing = not self._frm_control.winfo_ismapped()
         if force_showing:
             self._frm_control.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self._frm_toolbar.btn_toggle_controls.config(text='Hide Actions')
-            self._frm_toolbar.btn_toggle_options.config(state=tk.DISABLED)
+            self._frm_toolbar.btn_toggle_controls.config(text=' Hide Actions')
+            # self._frm_toolbar.btn_toggle_options.config(state=tk.DISABLED)
         else:
             self._frm_control.pack_forget()
             self._frm_toolbar.btn_toggle_controls.config(text='Show Actions')
-            self._frm_toolbar.btn_toggle_options.config(state=tk.NORMAL)
+            # self._frm_toolbar.btn_toggle_options.config(state=tk.NORMAL)
 
     # noinspection DuplicatedCode
     def toggle_options_panel(self, force_showing: bool = None) -> None:
@@ -1368,12 +1393,12 @@ class UEVMGui(tk.Tk):
             force_showing = not self._frm_option.winfo_ismapped()
         if force_showing:
             self._frm_option.pack(side=tk.RIGHT, fill=tk.BOTH)
-            self._frm_toolbar.btn_toggle_options.config(text='Hide Options')
-            self._frm_toolbar.btn_toggle_controls.config(state=tk.DISABLED)
+            self._frm_toolbar.btn_toggle_options.config(text=' Hide Options')
+            # self._frm_toolbar.btn_toggle_controls.config(state=tk.DISABLED)
         else:
             self._frm_option.pack_forget()
             self._frm_toolbar.btn_toggle_options.config(text='Show Options')
-            self._frm_toolbar.btn_toggle_controls.config(state=tk.NORMAL)
+            # self._frm_toolbar.btn_toggle_controls.config(state=tk.NORMAL)
 
     def update_controls_state(self, update_title=False) -> None:
         """
@@ -1391,7 +1416,6 @@ class UEVMGui(tk.Tk):
         current_row = data_table.get_selected_row_fixed()
         current_row_index = data_table.add_page_offset(current_row) if current_row is not None else -1
 
-        gui_f.update_widgets_in_list(len(data_table.multiplerowlist) > 0, 'row_is_selected')
         gui_f.update_widgets_in_list(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
         gui_f.update_widgets_in_list(current_row_index > 0, 'not_first_asset')
         gui_f.update_widgets_in_list(current_row_index < max_index - 1, 'not_last_asset')
@@ -1419,16 +1443,24 @@ class UEVMGui(tk.Tk):
             gui_f.update_widgets_in_list(index_displayed < total_displayed, 'not_last_page')
 
         # conditions based on info about the current asset
+        row_is_selected = False
         is_owned = False
         is_added = False
         url = ''
+
         if current_row is not None:
+            row_is_selected = len(data_table.multiplerowlist) > 0
             url = data_table.get_cell(current_row, data_table.get_col_index('Url'))
             is_added = data_table.get_cell(current_row, data_table.get_col_index('Added manually'))
             is_owned = data_table.get_cell(current_row, data_table.get_col_index('Owned'))
         gui_f.update_widgets_in_list(is_owned, 'asset_is_owned')
         gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
+        gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
+        gui_f.update_widgets_in_list(data_table.is_using_database(), 'db_is_available')
+        gui_f.update_widgets_in_list(row_is_selected, 'row_is_selected')
+        gui_f.update_widgets_in_list(row_is_selected and not gui_g.s.offline_mode, 'row_is_selected_and_not_offline')
+        gui_f.update_widgets_in_list(is_owned and not gui_g.s.offline_mode, 'asset_is_owned_and_not_offline')
 
         self._frm_toolbar.btn_first_item.config(text=first_item_text)
         self._frm_toolbar.btn_last_item.config(text=last_item_text)
@@ -1491,7 +1523,7 @@ class UEVMGui(tk.Tk):
             app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
             _add_text(f'Asset id: {app_name}')
             size = self.core.uevmlfs.get_asset_size(app_name)
-            if size is not None and size > 0:
+            if size and size > 0:
                 _add_text(f'Asset size: {gui_fn.format_size(size)}', 'blue')
             else:
                 _add_text(f'Asset size: Clic on "Asset Info"', 'orange')
@@ -1507,6 +1539,18 @@ class UEVMGui(tk.Tk):
         if row_count_filtered != row_count:
             _add_text(f'Filtered rows: {row_count_filtered} ')
 
+    def _update_after_reload(self):
+        data_table = self.editable_table  # shortcut
+        if not self.is_using_database():
+            df = data_table.get_data()
+            # if using FILE
+            # ________________
+            # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
+            self.core.uevmlfs.post_update_installed_folders(df)
+        self.update_controls_state()
+        self.update_category_var()
+        # data_table.update()
+
     def reload_data(self) -> None:
         """
         Reload the data from the data source.
@@ -1516,11 +1560,9 @@ class UEVMGui(tk.Tk):
             data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             data_table.update_col_infos(apply_resize_cols=False)
-            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-            if data_table.reload_data(downloaded_data):
-                # self.update_page_numbers() done in reload_data
-                self.update_category_var()
+            gui_f.show_progress(self, text=f'Reloading assets data...')
+            if data_table.reload_data(self.core.uevmlfs.asset_sizes):
+                self._update_after_reload()
                 gui_f.box_message(f'Data Reloaded from {data_table.data_source}')
             else:
                 gui_f.box_message(f'Failed to reload data from {data_table.data_source}', level='warning')
@@ -1534,21 +1576,21 @@ class UEVMGui(tk.Tk):
             data_table.update_col_infos(apply_resize_cols=False)
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
-            gui_f.show_progress(self, text=f'Scanning downloaded assets in {self.core.egl.vault_cache_folder}...')
-            downloaded_data = self.core.uevmlfs.get_downloaded_assets_data(self.core.egl.vault_cache_folder, max_depth=2)
-            if data_table.rebuild_data(downloaded_data):
-                self.update_controls_state()
-                self.update_category_var()
+            gui_f.show_progress(self, text=f'Rebuilding Asset data...')
+            if data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
+                self._update_after_reload()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
+            else:
+                gui_f.box_message(f'Failed to rebuild data from {data_table.data_source}', level='warning')
 
     def run_uevm_command(self, command_name='') -> (int, str):
         """
         Execute a cli command and display the result in DisplayContentWindow.
         :param command_name: the name of the command to execute.
         """
-        if gui_g.display_content_window_ref is not None:
+        if gui_g.WindowsRef.display_content is not None:
             self.logger.info('A UEVM command is already running, please wait for it to finish.')
-            gui_g.display_content_window_ref.set_focus()
+            gui_g.WindowsRef.display_content.set_focus()
             return
         if not command_name:
             return
@@ -1557,6 +1599,9 @@ class UEVMGui(tk.Tk):
             return
         row_index = self.editable_table.get_selected_row_fixed()
         app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('Asset_id')) if row_index is not None else ''
+
+        gui_g.UEVM_command_result = None  # clean result before running the command
+
         if app_name != '':
             gui_g.UEVM_cli_args['app_name'] = app_name
 
@@ -1574,18 +1619,17 @@ class UEVMGui(tk.Tk):
         # gui_g.UEVM_cli_args['auth_delete'] = True
 
         # arguments for cleanup command
-        # now set in command options
-        # gui_g.UEVM_cli_args['delete_extra_data'] = True
-        # gui_g.UEVM_cli_args['delete_metadata'] = True
-        # gui_g.UEVM_cli_args['delete_scraping_data'] = True
+        choice = (command_name == 'cleanup' and gui_f.box_yesno('Do you want to delete all the data including scraping data and image cache ?'))
+        gui_g.UEVM_cli_args['delete_scraping_data'] = choice
+        gui_g.UEVM_cli_args['delete_cache_data'] = choice
 
         # arguments for help command
         gui_g.UEVM_cli_args['full_help'] = True
 
-        # already_displayed = gui_g.display_content_window_ref is not None
+        # already_displayed = gui_g.WindowsRef.display_content is not None
         # if already_displayed:
-        #     # Note: next line will raise an exption if gui_g.display_content_window_ref is None
-        #     already_displayed = not gui_g.display_content_window_ref.winfo_viewable()
+        #     # Note: next line will raise an exption if gui_g.WindowsRef.display_content is None
+        #     already_displayed = not gui_g.WindowsRef.display_content.winfo_viewable()
         #
         # if not already_displayed:
         #     # we display the window only if it is not already displayed
@@ -1596,11 +1640,11 @@ class UEVMGui(tk.Tk):
         if subparser:
             display_name += ' - ' + gui_g.UEVM_cli_args['subparser']
         display_window = DisplayContentWindow(title=f'UEVM: {display_name} display result')
-        gui_g.display_content_window_ref = display_window
+        gui_g.WindowsRef.display_content = display_window
         display_window.display(f'Running command {command_name}...Please wait')
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         function_to_call(gui_g.UEVM_cli_args)
-        self._wait_for_window(gui_g.display_content_window_ref)  # a local variable won't work here
+        self._wait_for_window(gui_g.WindowsRef.display_content)  # a local variable won't work here
         # make_modal(display_window)
         # usefull to tell the caller what row could have been updated
         return row_index, app_name
@@ -1630,7 +1674,25 @@ class UEVMGui(tk.Tk):
         gui_g.UEVM_cli_args['order_opt'] = True
         gui_g.UEVM_cli_args['vault_cache'] = True  # in gui mode, we CHOOSE to always use the vault cache for the download_path
         row_index, asset_id = self.run_uevm_command('install_asset')
-        self._update_installed_folders(row_index, asset_id)
+        db_handler = self.editable_table.db_handler
+        if db_handler:
+            # get from db
+            installed_folders = db_handler.get_installed_folders(asset_id)
+        else:
+            # get from data, updated after install
+            try:
+                installed_folders = gui_g.UEVM_command_result['Installed folders']
+            except (TypeError, KeyError):
+                installed_folders = ''
+        if installed_folders:
+            # get the content of the series existing_folders
+            df = self.editable_table.get_data()
+            result = df.loc[df['Asset_id'] == asset_id, 'Installed folders']
+            existing_folders = result.iloc[0]
+            installed_folders = gui_fn.merge_lists_or_strings(existing_folders, installed_folders)
+            installed_folders_str = gui_fn.check_and_convert_list_to_str(installed_folders)
+            row_index = self.editable_table.get_selected_row_fixed()
+            self._update_installed_folders_cell(row_index, installed_folders_str)
 
     def download_asset(self) -> None:
         """
@@ -1646,38 +1708,11 @@ class UEVMGui(tk.Tk):
         """
         gui_g.UEVM_cli_args['subparser_name'] = 'install'
         gui_g.UEVM_cli_args['no_install'] = False
-        self.run_install()
 
-    def remove_installed_release(self, release_index: int) -> bool:
-        """
-        Delete the release from the installed releases.
-        :param release_index: the index of the release to delete.
-        :return: True if the release has been deleted, False otherwise.
-        """
-        asset_id = ''
-        if release_index >= 0:
-            try:
-                release_selected = self.releases_choice[release_index]
-                asset_id = release_selected['id']
-            except IndexError:
-                return False
-        if not asset_id:
-            return False
-        if not self.core.is_installed(asset_id):
-            gui_f.box_message(f'The release {asset_id} is not installed. Nothing to remove here.')
-        elif gui_f.box_yesno(f'Are you sure you want to remove the release {asset_id} from the installed asset list ?'):
-            asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)
-            if asset_installed:
-                folders_to_remove = asset_installed.installed_folders
-                self.core.uevmlfs.remove_installed_asset(asset_id)
-                db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
-                if db_handler is not None:
-                    # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
-                    catalog_item_id = asset_installed.catalog_item_id
-                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=folders_to_remove)
-                return True
-        else:
-            return False
+        if self.editable_table.data_source_type != DataSourceType.FILE or gui_f.box_yesno(
+            'To install an asset, using a database is a better option to avoid incoherent data in the "installed folder" field of the asset.\nThe current datasource type is "FILE", not "DATABASE".\nYou can switch the mode by using the "cli edit --database" instead of "cli edit --input" command.\nAre you sure you want to continue the operation in the current mode ?',
+        ):
+            self.run_install()
 
     def show_installed_releases(self) -> None:
         """
@@ -1687,6 +1722,7 @@ class UEVMGui(tk.Tk):
         release_info_json = data_table.get_release_info()
         if not release_info_json:
             return
+        # BAD release_info = json.dumps(release_info_json)
         release_info = json.loads(release_info_json)
         self.releases_choice, _ = self.core.uevmlfs.extract_version_from_releases(release_info)
         cw = ChoiceFromListWindow(
@@ -1696,16 +1732,13 @@ class UEVMGui(tk.Tk):
             json_data=self.releases_choice,
             default_value='',
             show_validate_button=False,
-            show_delete_button=True,
-            list_remove_func=self.remove_installed_release,
+            show_delete_button=False,
             show_content_list=True,
             remove_from_content_func=self.remove_installed_folder,
             show_delete_content_button=True,
             no_content_text='This release has not been installed yet',
         )
         gui_f.make_modal(cw)
-        row_index = data_table.get_selected_row_fixed()
-        self._update_installed_folders(row_index)
 
     def remove_installed_folder(self, selected_ids: tuple) -> bool:
         """
@@ -1743,12 +1776,22 @@ class UEVMGui(tk.Tk):
                 else:
                     self.core.uevmlfs.set_installed_asset(asset_installed)  # will also set the installed folders without merging values
                     self.core.uevmlfs.save_installed_assets()
-
-                db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source)
-                if db_handler is not None:
+                # db_handler = UEAssetDbHandler(database_name=self.editable_table.data_source) # do not create one if the editable table is not a database
+                db_handler = self.editable_table.db_handler
+                if db_handler:
                     # remove the "installation folder" for the LATEST RELEASE in the db (others are NOT PRESENT !!) , using the calalog_item_id
                     catalog_item_id = asset_installed.catalog_item_id
-                    db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=[folder_selected])
+                    installed_folders_str = db_handler.remove_from_installed_folders(catalog_item_id=catalog_item_id, folders=[folder_selected])
+                else:
+                    # get the content of the series existing_folders
+                    df = self.editable_table.get_data()
+                    result = df.loc[df['Asset_id'] == asset_id, 'Installed folders']
+                    existing_folders = result.iloc[0]
+                    installed_folders = gui_fn.merge_lists_or_strings(existing_folders, installed_folders_cleaned)
+                    installed_folders.remove(folder_selected)
+                    installed_folders_str = gui_fn.check_and_convert_list_to_str(installed_folders)
+                row_index = self.editable_table.get_selected_row_fixed()
+                self._update_installed_folders_cell(row_index, installed_folders_str)
                 return True
         else:
             return False
@@ -1810,17 +1853,17 @@ class UEVMGui(tk.Tk):
         """
         Run the window to update missing data in database from json files.
         """
-        if self.editable_table.data_source_type != DataSourceType.SQLITE:
+        if not self.editable_table.is_using_database():
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
-        tool_window = JsonProcessingWindow(
+        tool_window = JsonToolWindow(
             title='Json Files Data Processing',
             icon=gui_g.s.app_icon_filename,
             db_path=self.editable_table.data_source,
             folder_for_tags_path=gui_g.s.assets_data_folder,
             folder_for_rating_path=gui_g.s.assets_csv_files_folder
         )
-        gui_g.tool_window_ref = tool_window
+        gui_g.WindowsRef.tool = tool_window
         # self._wait_for_window(tool_window)
         gui_f.make_modal(tool_window)
 
@@ -1828,16 +1871,16 @@ class UEVMGui(tk.Tk):
         """
         Run the window to import/export database to csv files.
         """
-        if self.editable_table.data_source_type != DataSourceType.SQLITE:
+        if not self.editable_table.is_using_database():
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
-        tool_window = DbFilesWindowClass(
+        tool_window = DbToolWindowClass(
             title='Database Import/Export Window',
             icon=gui_g.s.app_icon_filename,
             db_path=self.editable_table.data_source,
             folder_for_csv_files=gui_g.s.assets_csv_files_folder
         )
-        gui_g.tool_window_ref = tool_window
+        gui_g.WindowsRef.tool = tool_window
         # self._wait_for_window(tool_window)
         gui_f.make_modal(tool_window)
         if tool_window.must_reload and gui_f.box_yesno('Some data has been imported into the database. Do you want to reload the data ?'):

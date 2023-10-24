@@ -1,7 +1,8 @@
 # coding=utf-8
 """
 Implementation for:
-- JsonProcessingWindow: the window to process JSON files.
+- JTW_Settings: settings for the class when running as main.
+- JsonToolWindow: the window to process JSON files.
 """
 import json
 import os
@@ -11,10 +12,12 @@ from tkinter import messagebox
 from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import path_join
+from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
 
-class JSPW_Settings:
+class JTW_Settings:
     """
     Settings for the class when running as main.
     """
@@ -24,7 +27,7 @@ class JSPW_Settings:
     title = 'Json Files Data Processing'
 
 
-class JsonProcessingWindow(tk.Toplevel):
+class JsonToolWindow(tk.Toplevel):
     """
     This window processes JSON files and stores some data in a database.
     :param title: the title.
@@ -61,7 +64,20 @@ class JsonProcessingWindow(tk.Toplevel):
 
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
+        gui_g.WindowsRef.tool = self
         # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+
+    def __del__(self):
+        self._log(f'Destruction of {self.__class__.__name__} object')
+        gui_g.WindowsRef.tool = None
+
+    @staticmethod
+    def _log(message):
+        """ a simple wrapper to use when cli is not initialized"""
+        if UEVM_log_ref is None:
+            print(f'DEBUG {message}')
+        else:
+            UEVM_log_ref.debug(message)
 
     class ControlFrame(ttk.Frame):
         """
@@ -71,7 +87,7 @@ class JsonProcessingWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            self.container: JsonProcessingWindow = container
+            self.container: JsonToolWindow = container
             self.processing: bool = False
 
             self.lbl_title = tk.Label(self, text='File Data Processing Window', font=('Helvetica', 16, 'bold'))
@@ -223,6 +239,7 @@ class JsonProcessingWindow(tk.Toplevel):
                     break
                 self.frm_control.progress_bar['value'] = i
                 self.update()
+                self._log(f'Processing file {i} of {total_files}: {file_path}')
                 with open(file_path, 'r', encoding='utf-8') as file:
                     try:
                         json_data = json.load(file)
@@ -255,7 +272,7 @@ class JsonProcessingWindow(tk.Toplevel):
         for tag in tags:
             if isinstance(tag, dict):
                 uid = tag.get('id')
-                tag_name = tag.get('name')
+                tag_name = tag.get('name').title()
                 is_existing = cursor.execute('SELECT id FROM tags WHERE id = ?', (uid, )).fetchone()
                 if is_existing:
                     self.updated += 1
@@ -303,11 +320,11 @@ class JsonProcessingWindow(tk.Toplevel):
 
 
 if __name__ == '__main__':
-    st = JSPW_Settings()
+    st = JTW_Settings()
     main = tk.Tk()
     main.title('FAKE MAIN Window')
     main.geometry('200x100')
-    window = JsonProcessingWindow(
+    window = JsonToolWindow(
         title=st.title, db_path=st.db_path, folder_for_tags_path=st.folder_for_tags_path, folder_for_rating_path=st.folder_for_rating_path
     )
     main.mainloop()

@@ -1,6 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
+- DCW_Settings: settings for the class when running as main.
 - DisplayContentWindow: the window to display a text content.
 """
 import tkinter as tk
@@ -71,7 +72,7 @@ class DisplayContentWindow(tk.Toplevel):
         self.protocol('WM_DELETE_WINDOW', self.on_close)
         if text:
             self.display(text)
-        gui_g.display_content_window_ref = self
+        gui_g.WindowsRef.display_content = self
         # gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
 
     @property
@@ -161,7 +162,7 @@ class DisplayContentWindow(tk.Toplevel):
         """
         Close the window.
         """
-        gui_g.display_content_window_ref = None
+        gui_g.WindowsRef.display_content = None
         if self.quit_on_close:
             self.quit()
         else:

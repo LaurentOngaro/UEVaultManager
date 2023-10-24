@@ -57,6 +57,6 @@ class SaferDict(dict):
         :param source: the source dictionary to copy from.
         """
         if not isinstance(source, dict):
-            raise TypeError("source must be a dictionary")
+            raise TypeError('source must be a dictionary')
         self.clear()
         self.update({k: v for k, v in source.items()})

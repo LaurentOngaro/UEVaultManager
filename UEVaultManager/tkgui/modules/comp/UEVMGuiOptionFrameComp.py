@@ -22,7 +22,6 @@ class UEVMGuiOptionFrame(ttk.Frame):
         super().__init__()
         self._container = _container
         self._folders_to_scan = gui_g.s.folders_to_scan if gui_g.s.folders_to_scan else []
-        self._folders_to_scan = []
 
         # pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
         lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'fill': tk.X}
@@ -65,20 +64,6 @@ class UEVMGuiOptionFrame(ttk.Frame):
         var_auth_delete.trace_add('write', lambda name, index, mode: gui_g.set_args_auth_delete(var_auth_delete.get()))
         ck_auth_delete = ttk.Checkbutton(lblf_command_options, text='Delete auth (auth/login)', variable=var_auth_delete)
         ck_auth_delete.grid(row=cur_row, column=cur_col, **grid_ew_options)
-        # new row
-        cur_row += 1
-        cur_col = 0
-        var_delete_metadata = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_metadata', False))
-        var_delete_metadata.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_metadata(var_delete_metadata.get()))
-        ck_delete_metadata = ttk.Checkbutton(lblf_command_options, text='Delete metadata (cleanup)', variable=var_delete_metadata)
-        ck_delete_metadata.grid(row=cur_row, column=cur_col, **grid_ew_options)
-        # new row
-        cur_row += 1
-        cur_col = 0
-        var_delete_extra_data = tk.BooleanVar(value=gui_g.UEVM_cli_args.get('delete_extra_data', False))
-        var_delete_extra_data.trace_add('write', lambda name, index, mode: gui_g.set_args_delete_extra_data(var_delete_extra_data.get()))
-        ck_delete_extra_data = ttk.Checkbutton(lblf_command_options, text='Delete extra data (cleanup)', variable=var_delete_extra_data)
-        ck_delete_extra_data.grid(row=cur_row, column=cur_col, **grid_ew_options)
         # new row
         cur_row += 1
         cur_col = 0

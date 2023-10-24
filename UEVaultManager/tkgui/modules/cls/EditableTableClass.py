@@ -17,6 +17,7 @@ from pandastable import config, Table, TableModel
 import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
@@ -36,7 +37,7 @@ class EditableTable(Table):
     A class that extends the pandastable.Table class, providing additional functionalities
     such as loading data from CSV files, searching, filtering, pagination, and editing cell values.
     :param container: the parent frame for the table.
-    :param data_source_type: the type of data source (DataSourceType.FILE or DataSourceType.SQLITE).
+    :param data_source_type: the type of data source (DataSourceType. FILE or DataSourceType. DATABASE).
     :param data_source: the path to the source that contains the table data.
     :param rows_per_page: the number of rows to show per page.
     :param show_toolbar: whether to show the toolbar.
@@ -106,7 +107,7 @@ class EditableTable(Table):
         self.update_preview_info_func = update_preview_info_func
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         gui_f.show_progress(container, text='Loading Data from data source...')
-        if self.data_source_type == DataSourceType.SQLITE:
+        if self.is_using_database():
             self._db_handler = UEAssetDbHandler(database_name=self.data_source)
         df_loaded = self.read_data()
         if df_loaded is None:
@@ -310,10 +311,10 @@ class EditableTable(Table):
         self._set_with_for_hidden_columns()
         self.redraw()
         # save the new column width in the config file
-        new_columns_infos = gui_g.s.column_infos
+        new_columns_infos = gui_g.s.get_column_infos(self.data_source_type)
         try:
             new_columns_infos[colname]['width'] = width
-            gui_g.s.column_infos = new_columns_infos
+            gui_g.s.set_column_infos(new_columns_infos, self.data_source_type)
             gui_g.s.save_config_file()
         except KeyError:
             pass
@@ -449,6 +450,10 @@ class EditableTable(Table):
             return True
         return False
 
+    def is_using_database(self) -> bool:
+        """ Check if the table is using a database as data source. """
+        return self.data_source_type == DataSourceType.DATABASE
+
     def set_frm_filter(self, frm_filter=None) -> None:
         """
         Set the filter frame.
@@ -521,7 +526,7 @@ class EditableTable(Table):
         """
         if updated_info is None:
             updated_info = self.get_col_infos()
-        gui_g.s.column_infos = updated_info
+        gui_g.s.set_column_infos(updated_info, self.data_source_type)
         if apply_resize_cols:
             self.resize_columns()
 
@@ -531,7 +536,7 @@ class EditableTable(Table):
         :param row_number: row number from a datatable. Will be converted into real row index.
         :param df_type: the dataframe type to get. See DataFrameUsed type description for more details
         :param add_page_offset: true to add the page offset to the row number, False otherwise.
-        :return:
+        :return: the real row index or -1 if not found.
         """
         # OLD if row_number < 0 or row_number == '':
         if row_number < 0:
@@ -625,42 +630,59 @@ class EditableTable(Table):
         """
         Resize and reorder the columns of the table.
         """
-        column_infos = gui_g.s.column_infos
+        column_infos = gui_g.s.get_column_infos(self.data_source_type)
         column_infos_len = len(column_infos)
-        df = self.get_data(DataFrameUsed.UNFILTERED)
-        column_len = len(df.columns)
-        diff_len = abs(column_infos_len - column_len)
         if column_infos_len <= 0:
             return
+        df = self.get_data(DataFrameUsed.UNFILTERED)
+        column_len = len(df.columns)
+        diff_len = column_infos_len - column_len
         if diff_len > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
             gui_f.box_message(
                 f'The number of columns in data source ({column_len}) does not match the number of values in "column_infos" from the config file ({column_infos_len}).\nA backup of the current config file has been made.\nNormally, this will be fixed automatically on quit.\nIf not, please check the config file.'
             )
-            # just for debugging
-            for col in column_infos.keys():
-                if col not in df.columns and col != gui_g.s.index_copy_col_name:
-                    self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable.')
-            for col in df.columns:
-                if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
-                    self.logger.warning(f'Column "{col}" is in the datatable BUT not in column_infos.')
+        # just for debugging
+        for col in column_infos.keys():
+            if col not in df.columns and col != gui_g.s.index_copy_col_name:
+                self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable.')
+        for col in df.columns:
+            if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
+                self.logger.info(f'Column "{col}" is in the datatable BUT not in column_infos.')
         try:
-            # add to column_infos all the colums in the datatable that are not in column_infos, at the end, with a width of 2
+            # Add columns to column_infos that are not already present, with a width of 2
             pos = column_infos_len
             for col in df.columns:
                 if col not in column_infos:
                     column_infos[str(col)] = {'width': 2, 'pos': pos}
                     pos += 1
 
-            # reordering columns
-            first_value = next(iter(column_infos.values()))
-            if first_value.get('pos', None) is None:
-                # old format without the 'p' key (as position
+            # Update position for an unordered and hidden columns
+            max_pos = column_infos_len
+            for col, info in column_infos.items():
+                pos = info['pos']
+                width = info['width']
+                if pos > max_pos:
+                    max_pos = pos
+                elif pos < 0 or width == 2:  # hidden column
+                    max_pos += 1
+                    column_infos[col]['pos'] = max_pos
+            column_infos[gui_g.s.index_copy_col_name] = {'pos': max_pos + 1, 'width': 2}  # always put 'Index copy' col at the end
+
+            # Reorder columns based on position
+            if 'pos' not in column_infos[next(iter(column_infos))]:
+                # Old format without the 'pos' key
                 keys_ordered = column_infos.keys()
             else:
+                # Sort by position
                 sorted_cols_by_pos = dict(sorted(column_infos.items(), key=lambda item: item[1]['pos']))
-                # save the new column_infos in the config file
-                gui_g.s.column_infos = sorted_cols_by_pos
+                # Set new positions
+                for i, (col, info) in enumerate(sorted_cols_by_pos.items()):
+                    info['pos'] = i
+                # Save the new column_infos in the config file
+                gui_g.s.set_column_infos(sorted_cols_by_pos, self.data_source_type)
+                gui_g.s.save_config_file()
                 keys_ordered = sorted_cols_by_pos.keys()
+
             # reorder columns
             df = df.reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.UNFILTERED)
@@ -712,7 +734,7 @@ class EditableTable(Table):
         """
         file, ext = os.path.splitext(filename)
         stored_type = self.data_source_type
-        self.data_source_type = DataSourceType.SQLITE if ext == '.db' else DataSourceType.FILE
+        self.data_source_type = DataSourceType.DATABASE if ext == '.db' else DataSourceType.FILE
         go_on = True
         if stored_type != self.data_source_type:
             go_on = gui_f.box_yesno(
@@ -736,7 +758,7 @@ class EditableTable(Table):
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
-            elif self.data_source_type == DataSourceType.SQLITE:
+            elif self.is_using_database():
                 if self._db_handler is None:
                     # could occur after a call to self.valid_source_type()
                     self._db_handler = UEAssetDbHandler(database_name=self.data_source)
@@ -789,7 +811,7 @@ class EditableTable(Table):
             col_data = gui_t.get_csv_field_name_list(return_as_string=True)  # column names
             str_data = col_data + '\n' + gui_t.create_empty_csv_row(return_as_string=True)  # dummy row
             table_row = pd.read_csv(io.StringIO(str_data), usecols=col_data.split(','), nrows=1, **gui_g.s.csv_options)
-        elif self.data_source_type == DataSourceType.SQLITE:
+        elif self.is_using_database():
             # create an empty row (in the database) with the correct columns
             data = self._db_handler.create_empty_row(return_as_string=False, do_not_save=do_not_save)  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
@@ -903,7 +925,7 @@ class EditableTable(Table):
         self.updateModel(TableModel(df))  # needed to restore all the data and not only the current page
         # noinspection GrazieInspection
         if source_type == DataSourceType.FILE:
-            df.to_csv(self.data_source, index=False, na_rep='', date_format=gui_g.s.csv_datetime_format)
+            df.to_csv(self.data_source, index=False, na_rep='', date_format=DateFormat.csv)
         else:
             for row_number in self._changed_rows:
                 row_data = self.get_row(row_number, return_as_dict=True)
@@ -919,11 +941,11 @@ class EditableTable(Table):
                 try:
                     ue_asset.init_from_dict(asset_data)
                     # update the row in the database
-                    tags = ue_asset.data.get('tags', [])
+                    tags = ue_asset.get('tags', [])
                     tags_str = self._db_handler.convert_tag_list_to_string(tags)
-                    ue_asset.data['tags'] = tags_str
+                    ue_asset.set('tags', tags_str)
                     self._db_handler.save_ue_asset(ue_asset)
-                    asset_id = ue_asset.data.get('asset_id', '')
+                    asset_id = ue_asset.get('asset_id', '')
                     self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
                 except (KeyError, ValueError, AttributeError) as error:
                     self.add_error(error)
@@ -942,17 +964,17 @@ class EditableTable(Table):
         self.must_save = False
         self.update_page()
 
-    def update_downloaded_size(self, downloaded_data: {}) -> None:
+    def update_downloaded_size(self, asset_sizes: dict) -> None:
         """
-        Update the downloaded size for the assets in the table using the downloaded_data (from the Vault Cache folder content)
-        :param downloaded_data: the downloaded data from the Vault Cache folder content.
+        Update the downloaded size for the assets in the table using the asset_sizes dictionnary (filled at start up)
+        :param asset_sizes: the asset_sizes
         """
-        if downloaded_data:
+        if asset_sizes:
             df = self.get_data(df_type=DataFrameUsed.UNFILTERED)
             # update the downloaded_size field in the datatable using asset_id as key
-            for asset_id, asset_data in downloaded_data.items():
+            for asset_id, size in asset_sizes.items():
                 try:
-                    size = int(asset_data['size'])
+                    size = int(size)
                     size = format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
                     df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
                     # print(f'asset_id={asset_id} size={size}')
@@ -960,10 +982,10 @@ class EditableTable(Table):
                     pass
             # self.editable_table.set_data(df, df_type=DataFrameUsed.UNFILTERED)
 
-    def reload_data(self, downloaded_data: dict = None) -> bool:
+    def reload_data(self, asset_sizes: dict) -> bool:
         """
         Reload data from the CSV file and refreshes the table display.
-        :param downloaded_data: the downloaded data from the Vault Cache folder content.
+        :param asset_sizes: the asset_sizes
         :return: True if the data has been loaded successfully, False otherwise.
         """
         gui_f.show_progress(self, text='Reloading Data from data source...')
@@ -971,86 +993,73 @@ class EditableTable(Table):
         if df_loaded is None:
             return False
         self.set_data(df_loaded)
-        self.update_downloaded_size(downloaded_data)
+        self.update_downloaded_size(asset_sizes)
         self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
         # mf.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
-    def rebuild_data(self, downloaded_data: dict = None) -> bool:
+    def rebuild_data(self, asset_sizes: dict) -> bool:
         """
-         Rebuild the data in the table.
-         :param downloaded_data: the downloaded data from the Vault Cache folder content.
-         :return: True if the data was successfully rebuilt, False otherwise.
-         """
+        Rebuild the data in the table.
+        :param asset_sizes: the asset_sizes
+        :return: True if the data was successfully rebuilt, False otherwise.
+        """
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
-        if self.data_source_type == DataSourceType.FILE:
-            # we use a string comparison here to avoid to import of the module to check the real class of UEVM_cli_ref
-            if gui_g.UEVM_cli_ref is None or 'UEVaultManagerCLI' not in str(type(gui_g.UEVM_cli_ref)):
-                gui_f.from_cli_only_message()
-                return False
+        use_database = self.is_using_database()
+        message = 'Rebuilding Data For database...' if use_database else 'Rebuilding Data For CSV file...'
+        pw = gui_f.show_progress(self, message, force_new_window=True)
+        # we create the progress window here to avoid lots of imports in UEAssetScraper class
+        max_threads = get_max_threads()
+        owned_assets_only = False
+        db_asset_per_page = 100  # a bigger value will be refused by UE API
+        if gui_g.s.testing_switch == 1:
+            start_row = 15000
+            stop_row = 15000 + db_asset_per_page
+        else:
+            start_row = 0
+            stop_row = 0
+        if gui_g.s.offline_mode:
+            load_from_files = True
+        else:
+            if gui_g.UEVM_cli_args and gui_g.UEVM_cli_args.get('force_refresh', False):
+                load_from_files = False
             else:
-                gui_g.UEVM_cli_ref.list_assets(gui_g.UEVM_cli_args)
-                self.current_page = 1
-                gui_f.show_progress(self, 'Rebuilding Data from file...')
-                df_loaded = self.read_data()
-                if df_loaded is None:
-                    return False
-                self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)
-                self.update()  # this call will copy the changes to model. df AND to self.filtered_df
-                gui_f.close_progress(self)
-                return True
-        elif self.data_source_type == DataSourceType.SQLITE:
-            pw = gui_f.show_progress(self, 'Rebuilding Data from database...')
-            # we create the progress window here to avoid lots of imports in UEAssetScraper class
-            max_threads = get_max_threads()
-            owned_assets_only = False
-            db_asset_per_page = 100  # a bigger value will be refused by UE API
-            if gui_g.s.testing_switch == 1:
-                start_row = 15000
-                stop_row = 15000 + db_asset_per_page
-            else:
-                start_row = 0
-                stop_row = 0
-            if gui_g.s.offline_mode:
-                load_from_files = True
-            else:
-                if gui_g.UEVM_cli_args and gui_g.UEVM_cli_args.get('force_refresh', False):
-                    load_from_files = False
-                else:
-                    load_from_files = gui_g.UEVM_cli_args.get('offline', True)
-            scraper = UEAssetScraper(
-                start=start_row,
-                stop=stop_row,
-                assets_per_page=db_asset_per_page,
-                max_threads=max_threads,
-                store_in_db=True,
-                store_in_files=True,
-                store_ids=False,  # useless for now
-                load_from_files=load_from_files,
-                clean_database=False,
-                engine_version_for_obsolete_assets=None,  # None will allow get this value from its context
-                core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
-                progress_window=pw
-            )
-            scraper.gather_all_assets_urls(empty_list_before=True, owned_assets_only=owned_assets_only)
-            if not pw.continue_execution:
-                gui_f.close_progress(self)
-                return False
-            scraper.save(owned_assets_only=owned_assets_only)
+                load_from_files = gui_g.UEVM_cli_args.get('offline', True)
+        scraper = UEAssetScraper(
+            datasource_filename=self.data_source,
+            use_database=use_database,
+            start=start_row,
+            stop=stop_row,
+            assets_per_page=db_asset_per_page,
+            max_threads=max_threads,
+            save_to_files=True,
+            load_from_files=load_from_files,
+            store_ids=False,  # useless for now
+            clean_database=False,
+            progress_window=pw,
+            core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
+        )
+        result_count = 0
+        if not load_from_files:
+            result_count = scraper.gather_all_assets_urls(
+                empty_list_before=True, owned_assets_only=owned_assets_only
+            )  # return -1 if interrupted or error
+        if result_count == -1:
+            gui_f.close_progress(self)
+            return False
+        if scraper.save(owned_assets_only=owned_assets_only):
             self.current_page = 1
             df_loaded = self.read_data()
             if df_loaded is None:
                 gui_f.close_progress(self)
                 return False
             self.set_data(df_loaded)
-            self.update_downloaded_size(downloaded_data)
-            self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
-            # mf.close_progress(self)  # done in data_table.update(update_format=True)
-            return True
-        else:
-            return False
+            self.update_downloaded_size(asset_sizes)
+        self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
+        # gui_f.close_progress(self)  # done in data_table.update(update_format=True)
+        return True
 
     def gradient_color_cells(
         self, col_names: [] = None, cmap: str = 'blues', alpha: float = 1, min_val=None, max_val=None, is_reversed: bool = False
@@ -1084,7 +1093,7 @@ class EditableTable(Table):
                 clrs = pd.Series(clrs, index=df.index)
                 rc = self.rowcolors
                 rc[col_name] = clrs
-            except (KeyError, ValueError) as error:
+            except (KeyError, ValueError, TypeError) as error:
                 self.add_error(error)
                 self.logger.debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
                 continue
@@ -1493,7 +1502,7 @@ class EditableTable(Table):
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
         if asset_id in gui_g.s.cell_is_empty_list[1:]:  # exclude 'NA'
             asset_id = ue_asset_data.get('asset_id', gui_g.s.cell_is_empty_list[0])
-        text = f'row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
+        text = f'Row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
         for key, value in ue_asset_data.items():
@@ -1504,9 +1513,7 @@ class EditableTable(Table):
                 key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
             ):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(
-                key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
-            ):
+            if self.is_using_database() and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
             if col_index >= 0:
@@ -1531,7 +1538,7 @@ class EditableTable(Table):
         """
         Return the index of the column with the specified name.
         :param col_name: column name.
-        :return: the index of the column with the specified name.
+        :return: the index of the column with the specified name or -1 if the column name is not found.
         """
         try:
             return self.get_data().columns.get_loc(col_name)  # Use Unfiltered here to be sure to have all the columns
@@ -1624,8 +1631,8 @@ class EditableTable(Table):
         Create the edit row window for the selected row in the table.
         :param event: the event that triggered the function call.
         """
-        if gui_g.edit_row_window_ref is not None and gui_g.edit_row_window_ref.winfo_viewable():
-            gui_g.edit_row_window_ref.focus_set()
+        if gui_g.WindowsRef.edit_row is not None and gui_g.WindowsRef.edit_row.winfo_viewable():
+            gui_g.WindowsRef.edit_row.focus_set()
             return
 
         if event is not None:
@@ -1639,7 +1646,7 @@ class EditableTable(Table):
             return None
         title = 'Edit current row'
         width = 800
-        height = 1020
+        height = 1010 if self.data_source_type == DataSourceType.DATABASE else 920
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
@@ -1657,7 +1664,7 @@ class EditableTable(Table):
         Edit the values of the specified row in the table.
         :param row_number: row number from a datatable. Will be converted into real row index.
         """
-        edit_row_window = gui_g.edit_row_window_ref
+        edit_row_window = gui_g.WindowsRef.edit_row
         if row_number is None or edit_row_window is None:
             return
         idx = self.get_real_index(row_number)
@@ -1669,21 +1676,20 @@ class EditableTable(Table):
         image_url = ''
         previous_was_a_bool = False
         row = 0
+        hidden_col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
+        hidden_col_list_lower = [col.lower() for col in hidden_col_list]
         for key, value in row_data.items():
             # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool})  # debug only
-            hidden_col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
-            if key in hidden_col_list:
+            key_lower = key.lower()
+            if key_lower in hidden_col_list_lower:
                 continue
             if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(
                 key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
             ):
                 continue
-            if self.data_source_type == DataSourceType.SQLITE and gui_t.is_on_state(
-                key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
-            ):
+            if self.is_using_database() and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
-            label = key.replace('_', ' ').title()
-            key_lower = key.lower()
+            label = gui_t.get_label_for_field(key)
 
             if key_lower == 'image':
                 image_url = value
@@ -1772,8 +1778,8 @@ class EditableTable(Table):
         Create the edit cell window for the selected cell in the table.
         :param event: the event that triggered the creation of the edit cell window.
         """
-        if gui_g.edit_cell_window_ref is not None and gui_g.edit_cell_window_ref.winfo_viewable():
-            gui_g.edit_cell_window_ref.focus_set()
+        if gui_g.WindowsRef.edit_cell is not None and gui_g.WindowsRef.edit_cell.winfo_viewable():
+            gui_g.WindowsRef.edit_cell.focus_set()
             return
 
         if event.type != tk.EventType.KeyPress:
@@ -1788,7 +1794,7 @@ class EditableTable(Table):
         cell_value = self.get_cell(row_number, col_index)
         title = 'Edit current cell values'
         width = 300
-        height = 110
+        height = 120
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
@@ -1797,7 +1803,8 @@ class EditableTable(Table):
 
         # get and display the cell data
         col_name = self.get_col_name(col_index)
-        ttk.Label(edit_cell_window.frm_content, text=col_name).pack(side=tk.LEFT)
+        label = gui_t.get_label_for_field(col_name)
+        ttk.Label(edit_cell_window.frm_content, text=label).pack(side=tk.LEFT)
         cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_empty_list) else ''
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)

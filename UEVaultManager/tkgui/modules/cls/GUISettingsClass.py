@@ -14,28 +14,18 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
 from UEVaultManager import __codename__, __name__, __version__
 from UEVaultManager.lfs.utils import clean_filename, path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
-
-
-def log_info(msg: str) -> None:
-    """
-    Print a message to the console.
-    :param msg: the message to log_info.
-    """
-    msg = colored(msg, 'orange')
-    print(msg)
+from UEVaultManager.tkgui.modules.types import DataSourceType
+from UEVaultManager.utils.cli import check_and_create_folder
 
 
 class GUISettings:
     """
     A class that contains all the settings for the GUI.
     :param config_file: path to config file to use instead of default
-.
     """
     path: str = ''
     config_file_gui: str = ''  # config file path for gui part (tkgui)
     config_file: str = ''  # config file path for cli part (cli). Set by the cli part
-    csv_datetime_format: str = '%Y-%m-%d %H:%M:%S'
-    epic_datetime_format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
     data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('SQlite file', '*.db'))
 
     def __init__(self, config_file=None):
@@ -59,9 +49,9 @@ class GUISettings:
         self.owned_assets_data_folder: str = path_join(self.scraping_folder, 'assets', 'owned')
         self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
         self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
-        self.filters_folder = path_join(self.path, 'filters')
+        self.filters_folder: str = path_join(self.path, 'filters')
 
-        self.default_filename = 'assets'
+        self.default_filename: str = 'assets'
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
         self.ue_valid_file_ext = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder
@@ -69,18 +59,18 @@ class GUISettings:
         # if a folder is in this tuple, the parent folder is considered as a valid ue folder for a manifest file
         self.ue_valid_manifest_subfolder = ('data', 'Data')  # must be a tuple.
         # subfolder to store an ASSET content for an installation or a download or a scan (same value)
-        self.ue_asset_content_subfolder = 'Content'
+        self.ue_asset_content_subfolder: str = 'Content'
         # subfolder to store a PLUGIN for a download in the vaultCache folder
-        self.ue_plugin_vaultcache_subfolder = 'data'
+        self.ue_plugin_vaultcache_subfolder: str = 'data'
         # subfolder to store a PLUGIN for a download in the vaultCache folder
-        self.ue_plugin_project_subfolder = 'Plugins'
+        self.ue_plugin_project_subfolder: str = 'Plugins'
         # subfolder to store a PLUGIN for an installation in an ENGINE folder (relativelly to the base folder of the engine).
         # USE '/' as separator ! important for path_join
-        self.ue_plugin_install_subfolder = 'Engine/Plugins/Marketplace'
+        self.ue_plugin_install_subfolder: str = 'Engine/Plugins/Marketplace'
         # file name of a UE manifest file
-        self.ue_manifest_filename = 'manifest'
+        self.ue_manifest_filename: str = 'manifest'
 
-        self.index_copy_col_name = 'Index copy'
+        self.index_copy_col_name: str = 'Index copy'
         # if a folder is in this tuple, the folder won't be scanned to find ue folders
         self.ue_invalid_content_subfolder = (
             'binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data'
@@ -99,6 +89,7 @@ class GUISettings:
         self.sqlite_filename: str = path_join(self.scraping_folder, self.default_filename + '.db')
 
         self.app_monitor: int = 1
+        self.testing_assets_limit = 300  # when testing (ie testing_switch==1) , limit the number of assets to process to this value
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
         self.preview_max_width: int = 150
@@ -111,7 +102,7 @@ class GUISettings:
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'dummy_row_'
         self.unknown_size: str = 'yes'
-        self.tag_prefix = 't_'
+        self.tag_prefix: str = 't_'
         self.expand_columns_factor: int = 20
         self.contract_columns_factor: int = 20
         # ttkbootstrap themes:
@@ -136,10 +127,23 @@ class GUISettings:
         }
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
 
+        folders = [
+            self.assets_folder, self.assets_data_folder, self.owned_assets_data_folder, self.assets_global_folder, self.assets_csv_files_folder,
+            self.filters_folder
+        ]
+        for folder in folders:
+            check_and_create_folder(folder)
+
         # keep at the end
         self._app_title_long: str = ''  # use a getter to uddate the value in live
         self.app_title: str = __name__
-        self.offline_mode = False
+        self.offline_mode: bool = False
+
+    @staticmethod
+    def _log(message):
+        """ print a colored message."""
+        msg = colored(message, 'orange')
+        print(msg)
 
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
@@ -168,7 +172,7 @@ class GUISettings:
         try:
             values = json.loads(read_value)
         except json.decoder.JSONDecodeError:
-            log_info(f'Failed to decode json string for {var_name} in config file. Using default value')
+            self._log(f'Failed to decode json string for {var_name} in config file. Using default value')
             values = default
         self._config_vars_deserialized[var_name] = values
         return values
@@ -326,16 +330,6 @@ class GUISettings:
         self._set_serialized('minimal_fuzzy_score_by_name', values)
 
     @property
-    def column_infos(self) -> dict:
-        """ Getter for columns infos """
-        return self._get_serialized('column_infos')
-
-    @column_infos.setter
-    def column_infos(self, values: dict):
-        """ Setter for columns infos """
-        self._set_serialized('column_infos', values)
-
-    @property
     def use_threads(self) -> bool:
         """ Getter for use_threads """
         return gui_fn.convert_to_bool(self.config_vars['use_threads'])
@@ -435,6 +429,29 @@ class GUISettings:
         """ Setter for last_opened_filter """
         self.config_vars['last_opened_filter'] = value
 
+    def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
+        """
+        Get columns infos depending on the datasource type
+        :param source_type:  the data source type
+
+        NOTE:
+        We don't use a @property for this because we need to be able to choose the source_type
+        """
+        var_name = 'column_infos_sqlite' if source_type == DataSourceType.DATABASE else 'column_infos_file'
+        return self._get_serialized(var_name)
+
+    def set_column_infos(self, values: dict, source_type: DataSourceType = DataSourceType.DATABASE):
+        """
+        Set columns infos depending on the datasource type
+        :param values:  the data source type
+        :param source_type:  the data source type
+
+        NOTE:
+        We don't use a @property for this because we need to be able to choose the source_type
+        """
+        var_name = 'column_infos_sqlite' if source_type == DataSourceType.DATABASE else 'column_infos_file'
+        self._set_serialized(var_name, values)
+
     # noinspection PyPep8
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
@@ -452,7 +469,7 @@ class GUISettings:
                 self.config_file_gui = os.path.abspath(config_file)
             else:
                 self.config_file_gui = path_join(self.path, clean_filename(config_file))
-            log_info(f'UEVMGui is using non-default config file "{self.config_file_gui}"')
+            self._log(f'UEVMGui is using non-default config file "{self.config_file_gui}"')
         else:
             self.config_file_gui = path_join(self.path, 'config_gui.ini')
 
@@ -460,14 +477,74 @@ class GUISettings:
         try:
             self.config.read(self.config_file_gui)
         except Exception as error:
-            log_info(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
-            log_info('Continuing with blank config in safe-mode...')
+            self._log(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
+            self._log('Continuing with blank config in safe-mode...')
             self.config.read_only = True
         config_defaults = {
+            'folders_to_scan': {
+                'comment': 'List of Folders to scan for assets. Their content will be added to the list',
+                'value': ''
+            },
+            'debug_mode': {
+                'comment': 'Set to True to print debug information (GUI related only)',
+                'value': 'False'
+            },
+            'use_threads': {
+                'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
+                'value': 'True'
+            },
+            'reopen_last_file': {
+                'comment': 'Set to True to re-open the last file at startup if no input file is given',
+                'value': 'True'
+            },
+            'never_update_data_files': {
+                'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
+                'value': 'False'
+            },
+            'use_colors_for_data': {
+                'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
+                'value': 'True'
+            },
+            'check_asset_folders': {
+                'comment': 'Set to True to check and clean invalid asset folders when scraping or rebuilding data for UE assets',
+                'value': 'True'
+            },
+            'browse_when_add_row': {
+                'comment': 'Set to True to browse for a folder when adding a new row. If false, an empty row will be added',
+                'value': 'True'
+            },
             'rows_per_page': {
                 'comment':
                 'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
                 'value': 37
+            },
+            'image_cache_max_time': {
+                'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
+                'value': str(60 * 60 * 24 * 15)
+            },
+            'cache_folder': {
+                'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
+                'value': '../../../cache'
+            },
+            'scraping_folder': {
+                'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
+                'value': '../../../scraping'
+            },
+            'results_folder': {
+                'comment': 'Folder (relative or absolute) to store result files to read and save data from',
+                'value': '../../../results'
+            },
+            # minimal score required when looking for an url file comparing to an asset name.
+            # some comparison are more fuzzy than others, so we can set a different score for each comparison
+            # The key is a string that must be in the url file name or asset name
+            # default value if no key is found
+            'minimal_fuzzy_score_by_name': {
+                'comment': 'Minimal score required when looking for an url file comparing to an asset name. MUST BE LOWERCASE',
+                'value': {
+                    'default': 80,
+                    'brushify': 80,
+                    'elite_landscapes': 90
+                }
             },
             'x_pos': {
                 'comment': 'X position of the main windows. Set to 0 to center the window. Automatically saved on quit',
@@ -485,87 +562,9 @@ class GUISettings:
                 'comment': 'Height of the main windows. Automatically saved on quit',
                 'value': 960
             },
-            'debug_mode': {
-                'comment': 'Set to True to print debug information (GUI related only)',
-                'value': 'False'
-            },
-            'never_update_data_files': {
-                'comment': 'Set to True to speed the update process by not updating the metadata files. FOR TESTING ONLY',
-                'value': 'False'
-            },
-            'reopen_last_file': {
-                'comment': 'Set to True to re-open the last file at startup if no input file is given',
-                'value': 'True'
-            },
-            'use_colors_for_data': {
-                'comment': 'Set to True to enable cell coloring depending on its content.It could slow down data and display refreshing',
-                'value': 'True'
-            },
             'last_opened_file': {
                 'comment': 'File name of the last opened file. Automatically saved on quit',
                 'value': ''
-            },
-            'image_cache_max_time': {
-                'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
-                'value': str(60 * 60 * 24 * 15)
-            },
-            'cache_folder': {
-                'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
-                'value': '../../../cache'
-            },
-            'results_folder': {
-                'comment': 'Folder (relative or absolute) to store result files to read and save data from',
-                'value': '../../../results'
-            },
-            'scraping_folder': {
-                'comment': 'Folder (relative or absolute) to store the scraped files for the assets in markeplace',
-                'value': '../../../scraping'
-            },
-            'folders_to_scan': {
-                'comment': 'List of Folders to scan for assets. Their content will be added to the list',
-                'value': ''
-            },
-            'hidden_column_names': {
-                'comment':
-                'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
-                'value': ['Uid', 'Release info']
-            },
-            # minimal score required when looking for an url file comparing to an asset name.
-            # some comparison are more fuzzy than others, so we can set a different score for each comparison
-            # The key is a string that must be in the url file name or asset name
-            # default value if no key is found
-            'minimal_fuzzy_score_by_name': {
-                'comment': 'Minimal score required when looking for an url file comparing to an asset name. MUST BE LOWERCASE',
-                'value': {
-                    'default': 80,
-                    'brushify': 80,
-                    'elite_landscapes': 90
-                }
-            },
-            'use_threads': {
-                'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
-                'value': 'True'
-            },
-            'column_infos': {
-                'comment': 'Infos about columns of the table. Automatically saved on quit. Leave empty for default',
-                'value': ''
-            },
-            'testing_switch': {
-                'comment':
-                'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviours whithout quitting.',
-                'value': 0
-            },
-            'assets_order_col': {
-                'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column used to order the assets list from the database.',
-                'value': 'date_added_in_db'
-            },
-            'check_asset_folders': {
-                'comment': 'Set to True to check and clean invalid asset folders when scraping or rebuilding data for UE assets',
-                'value': 'True'
-            },
-            'browse_when_add_row': {
-                'comment': 'Set to True to browse for a folder when adding a new row. If false, an empty row will be added',
-                'value': 'True'
             },
             'last_opened_folder': {
                 'comment': 'The last opened Folder name. Automatically saved when browsing a folder',
@@ -583,6 +582,28 @@ class GUISettings:
                 'comment':
                 'The last opened filter file name.Automatically saved when loading a filter.Leave empty to load no filter at start.Contains the file name only, not the path',
                 'value': ''
+            },
+            'hidden_column_names': {
+                'comment':
+                'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
+                'value': ['Uid', 'Release info']
+            },
+            'column_infos_sqlite': {
+                'comment': 'Infos about columns width and pos in DATABASE mode. Automatically saved on quit. Leave empty for default',
+                'value': ''
+            },
+            'column_infos_file': {
+                'comment': 'Infos about columns width and pos in FILE mode. Automatically saved on quit. Leave empty for default',
+                'value': ''
+            },
+            'assets_order_col': {
+                'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column used to order the assets list from the database.',
+                'value': 'date_added'
+            },
+            'testing_switch': {
+                'comment':
+                'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviours whithout quitting.',
+                'value': 0
             },
         }
 
@@ -624,7 +645,8 @@ class GUISettings:
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
-            'column_infos': self.config.get('UEVaultManager', 'column_infos'),
+            'column_infos_sqlite': self.config.get('UEVaultManager', 'column_infos_sqlite'),
+            'column_infos_file': self.config.get('UEVaultManager', 'column_infos_file'),
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
             'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
             'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
@@ -662,7 +684,7 @@ class GUISettings:
         if os.path.exists(self.config_file_gui):
             if (mod_time := int(os.stat(self.config_file_gui).st_mtime)) != self.config.mod_time:
                 new_filename = f'config.{mod_time}.ini.BAK'
-                log_info(
+                self._log(
                     f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
                 )
                 os.rename(self.config_file_gui, path_join(os.path.dirname(self.config_file_gui), new_filename))

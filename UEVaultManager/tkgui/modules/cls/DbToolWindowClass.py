@@ -1,7 +1,8 @@
 # coding=utf-8
 """
 Implementation for:
-- DbFilesWindowClass: the window to import/export data from/to CSV files.
+- DBTW_Settings: settings for the class when running as main.
+- DbToolWindowClass: the window to import/export data from/to CSV files.
 """
 import os
 import tkinter as tk
@@ -9,10 +10,12 @@ from tkinter import messagebox
 from tkinter import ttk
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
 
-class DBFW_Settings:
+class DBTW_Settings:
     """
     Settings for the class when running as main.
     """
@@ -21,7 +24,7 @@ class DBFW_Settings:
     title = 'Database Import/Export Window'
 
 
-class DbFilesWindowClass(tk.Toplevel):
+class DbToolWindowClass(tk.Toplevel):
     """
     Processes JSON files and stores some data in a database.
     :param title: the title.
@@ -57,7 +60,20 @@ class DbFilesWindowClass(tk.Toplevel):
         self.db_handler = UEAssetDbHandler(database_name=self.db_path)
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
+        gui_g.WindowsRef.tool = self
         # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+
+    def __del__(self):
+        self._log(f'Destruction of {self.__class__.__name__} object')
+        gui_g.WindowsRef.tool = None
+
+    @staticmethod
+    def _log(message):
+        """ a simple wrapper to use when cli is not initialized"""
+        if UEVM_log_ref is None:
+            print(f'DEBUG {message}')
+        else:
+            UEVM_log_ref.debug(message)
 
     class ControlFrame(ttk.Frame):
         """
@@ -67,7 +83,7 @@ class DbFilesWindowClass(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            self.container: DbFilesWindowClass = container
+            self.container: DbToolWindowClass = container
             self.processing: bool = False
 
             self.lbl_title = tk.Label(self, text='Database Import/Export Window', font=('Helvetica', 16, 'bold'))
@@ -153,13 +169,13 @@ class DbFilesWindowClass(tk.Toplevel):
                 messagebox.showinfo('Info', 'Processing is already running.')
                 return
             self.processing = True
-            self.set_status('Processing...')
-            self.add_result('Processing...')
+            self.add_result('Processing...', set_status=True)
             self.update()
             delete_content = self.var_delete_content.get()
             table_name = self.cb_table.get()
             if table_name == self.container.value_for_all:
                 table_name = ''
+            files_u = []
             files, must_reload = self.container.db_handler.import_from_csv(
                 self.container.folder_for_csv_files,
                 table_name,
@@ -178,12 +194,16 @@ class DbFilesWindowClass(tk.Toplevel):
                 )
                 files += files_u
                 must_reload = must_reload or must_reload_u
-
+            if not files and not files_u:
+                message = 'No file to load have been found.'
+                self.add_result(message, set_status=True)
+                self.container._log(message)
+                self.processing = False
+                return
             self.add_result('Data imported from files:')
             for file in files:
                 self.add_result(file)
-            self.add_result('Import finished.')
-            self.set_status('Import finished.')
+            self.add_result('Import finished.', set_status=True)
             self.container.must_reload = must_reload
             self.processing = False
 
@@ -195,8 +215,7 @@ class DbFilesWindowClass(tk.Toplevel):
                 messagebox.showinfo('Info', 'Processing is already running.')
                 return
             self.processing = True
-            self.set_status('Processing...')
-            self.add_result('Processing...')
+            self.add_result('Processing...', set_status=True)
             self.update()
             table_name = self.cb_table.get()
             if table_name == self.container.value_for_all:
@@ -205,7 +224,9 @@ class DbFilesWindowClass(tk.Toplevel):
             files = self.container.db_handler.export_to_csv(self.container.folder_for_csv_files, table_name, backup_existing=backup_on_export)
 
             if self.var_user_fields.get():
-                fields = ','.join(self.container.db_handler.user_fields)
+                fields = ','.join(
+                    self.container.db_handler.user_fields
+                )  # keep join() here to raise an error if installed_folders is not a list of strings
                 files += self.container.db_handler.export_to_csv(
                     self.container.folder_for_csv_files,
                     'assets',
@@ -217,15 +238,14 @@ class DbFilesWindowClass(tk.Toplevel):
             self.add_result('Data exported to files:')
             for file in files:
                 self.add_result(file)
-            self.add_result('Export finished.')
-            self.set_status('Export finished.')
+            self.add_result('Export finished.', set_status=True)
             self.processing = False
 
 
 if __name__ == '__main__':
-    st = DBFW_Settings()
+    st = DBTW_Settings()
     main = tk.Tk()
     main.title('FAKE MAIN Window')
     main.geometry('200x100')
-    DbFilesWindowClass(title=st.title, db_path=st.db_path, folder_for_csv_files=st.folder_for_csv_files)
+    DbToolWindowClass(title=st.title, db_path=st.db_path, folder_for_csv_files=st.folder_for_csv_files)
     main.mainloop()

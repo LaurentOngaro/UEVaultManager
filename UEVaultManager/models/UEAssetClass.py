@@ -5,6 +5,7 @@ implementation for:
 """
 
 from UEVaultManager.models.csv_sql_fields import get_default_value, get_sql_field_name_list
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str
 from UEVaultManager.utils.cli import init_dict_from_data
 
 
@@ -22,7 +23,7 @@ class UEAsset:
             self.engine_version_for_obsolete_assets = '4.26'  # no access to the engine_version_for_obsolete_assets global settings here without importing its module
         else:
             self.engine_version_for_obsolete_assets = engine_version_for_obsolete_assets
-        self.data = {}
+        self._data = {}
         self.init_data()
 
     def __str__(self) -> str:
@@ -30,7 +31,7 @@ class UEAsset:
         Return a string representation of the asset.
         :return: a string representation of the asset.
         """
-        return ','.join(str(value) for value in self.data.values())
+        return check_and_convert_list_to_str(str(value) for value in self._data.values())
 
     def init_data(self) -> None:
         """
@@ -42,7 +43,7 @@ class UEAsset:
         data = {}
         for key in get_sql_field_name_list(include_asset_only=True):
             data[key] = get_default_value(sql_field_name=key)
-        self.data = data
+        self._data = data
 
     def init_from_dict(self, data: dict = None) -> None:
         """
@@ -52,7 +53,7 @@ class UEAsset:
         if data:
             self.init_data()
             # copy all the keys from the data dict to the self.data dict
-            init_dict_from_data(self.data, data)
+            init_dict_from_data(self._data, data)
 
     def init_from_list(self, data: list = None) -> None:
         """
@@ -63,5 +64,36 @@ class UEAsset:
             self.init_data()
             # fill dictionary with the data from the list
             # Note: keep in mind that the order for the values of the list and must correspond to the order of the keys in self.data
-            keys = self.data.keys()
-            self.data = dict(zip(keys, data))
+            keys = self._data.keys()
+            self._data = dict(zip(keys, data))
+
+    def get_data(self) -> dict:
+        """
+        Return the asset data.
+        :return: the asset data.
+        """
+        return self._data
+
+    def set_data(self, data: dict) -> None:
+        """
+        Set the asset data.
+        :param data: the asset data.
+        """
+        self._data = data
+
+    def get(self, key: str, default=None):
+        """
+        Return the value of the given key.
+        :param key: the key to get the value from.
+        :param default: the default value to return if the key is not found.
+        :return: the value or the default value.
+        """
+        return self._data.get(key, default)
+
+    def set(self, key: str, value):
+        """
+        Set the value of the given key.
+        :param key: the key to set the value to.
+        :param value: the value
+        """
+        self._data[key] = value

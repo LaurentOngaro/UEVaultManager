@@ -2,6 +2,8 @@
 """
 global variables and references to global objects.
 """
+from abc import ABC
+
 # circular import error
 # import UEVaultManager.tkgui.modules.DisplayContentWindowClass as DisplayContentWindow
 import UEVaultManager.tkgui.modules.cls.EditCellWindowClass as EditCellWindow
@@ -10,15 +12,47 @@ from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 
-# references to global objects
-edit_cell_window_ref: EditCellWindow = None
-edit_row_window_ref: EditRowWindow = None
-# circular import error
-# display_content_window_ref: DisplayContentWindow = None
-display_content_window_ref = None
-# noinspection PyTypeChecker
-progress_window_ref: ProgressWindow = None
-tool_window_ref = None
+
+class WindowsRef(ABC):
+    """
+    Class to hold references to global windows.
+    Abstractclass
+    """
+    edit_cell: EditCellWindow = None
+    edit_row: EditRowWindow = None
+    # display_content: DisplayContentWindow = None
+    display_content = None
+    progress: ProgressWindow = None
+    tool = None  # could be a ref to a ToolWindows like DBToolWindow or JsonToolWindow
+
+    @classmethod
+    def get_properties_name(cls) -> list:
+        """
+        Get the propertie NAME of the class.
+        :return: a list of the propertie NAMES of the class.
+        """
+        return [prop for prop in dir(cls) if not prop.startswith('__') and not prop == '_abc_impl' and not callable(getattr(cls, prop))]
+
+    @classmethod
+    def get_properties(cls) -> list:
+        """
+        Get the properties of the class.
+        :return: a list the properties of the class.
+        """
+        result = []
+        for name in cls.get_properties_name():
+            result.append(getattr(cls, name))
+        return result
+
+
+# global variables that are not settings
+timeout_error_count = 0  # incremented each time an image generate a request timeout
+no_int_data = 0
+no_float_data = 0.0
+no_text_data = ''
+no_bool_true_data = True
+no_bool_false_data = False
+
 # reference to the cli object of the UEVM main application (the main one, it gives all access to all the features)
 # if empty, direct access to its features from this script won't be available and a message will be displayed instead
 # noinspection PyTypeChecker
@@ -30,7 +64,8 @@ UEVM_gui_ref = None  # avoid importing classes from the UEVM GUI class here beca
 UEVM_log_ref = None
 #  reference to the default command line parser (used for help button in gui).
 UEVM_parser_ref = None
-
+# restult of the last UEVM cli command run from the GUI
+UEVM_command_result = None
 # global variables
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 # noinspection PyTypeChecker
@@ -57,7 +92,7 @@ stated_widgets = {
     'not_first_page': [],
     # selected page is not the last one
     'not_last_page': [],
-    # not in offline_mode
+    # not in offline
     'not_offline': [],
     # a row is selected and the asset is owned
     'asset_is_owned': [],
@@ -65,9 +100,15 @@ stated_widgets = {
     'asset_has_url': [],
     # a row is selected and the asset is local
     'asset_added_mannually': [],
+    # the cli object is available
+    'cli_is_available': [],
+    # the database is available
+    'db_is_available': [],
+    # at least a row must be selected and not in offline
+    'row_is_selected_and_not_offline': [],
+    # a row is selected and the asset is owned and not in offline
+    'asset_is_owned_and_not_offline': [],
 }
-# incremented each time an image generate a request timeout
-timeout_error_count = 0
 
 
 # options that can be changed in the GUI
@@ -101,22 +142,6 @@ def set_args_auth_delete(value: bool) -> None:
     :param value: true or False.
     """
     UEVM_cli_args['auth_delete'] = value
-
-
-def set_args_delete_metadata(value: bool) -> None:
-    """
-    Set the value of the argument delete_metadata. Mandadory fot the associated ttk.ckbutton to work.
-    :param value:  True or False.
-    """
-    UEVM_cli_args['delete_metadata'] = value
-
-
-def set_args_delete_extra_data(value: bool) -> None:
-    """
-    Set the value of the argument delete_extra_data. Mandadory fot the associated ttk.ckbutton to work.
-    :param value:  True or False.
-    """
-    UEVM_cli_args['delete_extra_data'] = value
 
 
 def set_args_delete_scraping_data(value: bool) -> None:

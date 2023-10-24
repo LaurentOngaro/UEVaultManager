@@ -7,8 +7,17 @@ Definition for the types used in this module:
 """
 from enum import Enum
 
-from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int
+
+
+class DateFormat:
+    """
+    for the date format.
+    """
+    csv: str = '%Y-%m-%d %H:%M:%S'
+    epic: str = '%Y-%m-%dT%H:%M:%S.%fZ'
+    us_short: str = '%Y-%m-%d'
+    file_suffix: str = '%Y-%m-%d_%H-%M-%S'
 
 
 class CSVFieldState(Enum):
@@ -50,7 +59,7 @@ class CSVFieldType(Enum):
         if self == self.BOOL:
             return convert_to_bool(value)
         if self == self.BOOL:
-            return convert_to_datetime(value, formats_to_use=[GUISettings.epic_datetime_format, GUISettings.csv_datetime_format])
+            return convert_to_datetime(value, formats_to_use=[DateFormat.epic, DateFormat.csv])
         return str(value)
 
 

@@ -22,8 +22,8 @@ from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.downloading import AnalysisResult, ChunkTask, DownloaderTask, FileTask, SharedMemorySegment, TaskFlags, \
     TerminateWorkerTask, UIUpdate, WriterTask
 from UEVaultManager.models.manifest import Manifest, ManifestComparison
+from UEVaultManager.tkgui.modules.cls.FakeUEVMGuiClass import FakeUEVMGuiClass
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
-from UEVaultManager.tkgui.modules.cls.UEVMGuiHiddenRootClass import UEVMGuiHiddenRoot
 
 
 class DLManager(Process):
@@ -710,7 +710,7 @@ class DLManager(Process):
         self.writer_result_queue = MPQueue(-1)
 
         # create a hiddenroot for the progress window because if not a tk window will be created and visible
-        fake_root = UEVMGuiHiddenRoot()
+        fake_root = FakeUEVMGuiClass()
         pw = ProgressWindow(parent=fake_root, title='Download in progress...', width=300, show_btn_stop=True, show_progress=True, quit_on_close=False)
         pw.set_activation(False)
 
@@ -722,7 +722,8 @@ class DLManager(Process):
                 self.result_queue,
                 self.shared_memory.name,
                 logging_queue=self.logging_queue,
-                timeout=self.timeout
+                timeout=self.timeout,
+                max_retries=3,
             )
             self.children.append(w)
             w.start()
@@ -810,6 +811,7 @@ class DLManager(Process):
             if not pw.update_and_continue(value=processed_chunks, text=message):
                 self.log.warning('User requested immediate exit!')
                 self.chunks_to_dl.clear()
+                self.cancel()
                 break
             self.trace_func(f'= Progress: {perc:.02f}% ({processed_chunks}/{num_chunk_tasks})')
             self.trace_func(f'Running for {rt_hours:02d}:{rt_minutes:02d}:{rt_seconds:02d}')
@@ -875,3 +877,11 @@ class DLManager(Process):
         pw.close_window(destroy_window=True)
         # finally, exit the process.
         sys.exit(0)
+
+    def cancel(self):
+        """
+        Cancel the download manager by clearing the tasks and chunks_to_dl queues.
+        """
+        self.log.warning('User requested immediate exit!. Cancelling queues...')
+        self.chunks_to_dl.clear()
+        self.tasks.clear()

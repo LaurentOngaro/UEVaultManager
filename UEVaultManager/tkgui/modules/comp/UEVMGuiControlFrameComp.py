@@ -11,6 +11,7 @@ import ttkbootstrap as ttk
 from ttkbootstrap.constants import WARNING
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.models.csv_sql_fields import get_label_for_field
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.TaggedLabelFrameComp import TaggedLabelFrame
@@ -58,7 +59,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.var_entry_data_source_type = tk.StringVar(value=data_table.data_source_type.name)
         # noinspection PyArgumentList
         # (bootstyle is not recognized by PyCharm)
-        entry_data_type = ttk.Entry(lblf_content, textvariable=self.var_entry_data_source_type, state='readonly', width=6, bootstyle=WARNING)
+        entry_data_type = ttk.Entry(lblf_content, textvariable=self.var_entry_data_source_type, state='readonly', width=10, bootstyle=WARNING)
         entry_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.W)
         # new row
         cur_row += 1
@@ -82,9 +83,9 @@ class UEVMGuiControlFrame(ttk.Frame):
                 'text': 'Edit',  # if empty, the key of the dict will be used
                 'command': self._container.edit_row
             },  #
-            'scrap_row': {
-                'text': 'Scrap',  # if empty, the key of the dict will be used
-                'command': self._container.scrap_row
+            'scrap_range': {
+                'text': 'Scrap range',  # if empty, the key of the dict will be used
+                'command': self._container.scrap_range
             },  #
             'scan_for_assets': {
                 'text': 'Scan Assets',  # if empty, the key of the dict will be used
@@ -153,63 +154,73 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_download_asset.pack(**pack_def_options, side=tk.LEFT)
         btn_install_asset = ttk.Button(frm_asset_action, text='INSTALL', command=self._container.install_asset)
         btn_install_asset.pack(**pack_def_options, side=tk.LEFT)
+        btn_scrap_asset = ttk.Button(frm_asset_action, text='Scrap', command=self._container.scrap_asset)
+        btn_scrap_asset.pack(**pack_def_options, side=tk.LEFT)
         frm_asset_action.pack(**lblf_fw_options)
 
         ttk_item = ttk.Label(self.lbtf_quick_edit, text='The selected row values are updated when focus changes', foreground='#158CBA')
         ttk_item.pack()
         self.var_asset_id = tk.StringVar(value='')
+        tag = 'Asset_id'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Asset_id',
+            tag=tag,
             state='readonly',
-            label='Latest release id (click to copy)',
+            label=get_label_for_field(tag) + ' (click to copy)',
             width=5,
             click_on_callback=self._container.copy_asset_id,
             textvariable=self.var_asset_id,
         )
+        tag = 'Url'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Url',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Comment'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.TEXT,
-            tag='Comment',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in,
             width=10,
             height=4
         )
+        tag = 'Stars'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Stars',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Test result'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Test result',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Installed folders'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Installed folders',
-            label='Installed folders\n(all releases)',
+            tag=tag,
+            label=get_label_for_field(tag),
             default_content='Installed in',
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Origin'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Origin',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
+        tag = 'Alternative'
         self.lbtf_quick_edit.add_child(
             widget_type=WidgetType.ENTRY,
-            tag='Alternative',
+            tag=tag,
             focus_out_callback=self._container.on_quick_edit_focus_out,
             focus_in_callback=self._container.on_quick_edit_focus_in
         )
@@ -253,20 +264,19 @@ class UEVMGuiControlFrame(ttk.Frame):
         ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
         widget_list = gui_g.stated_widgets.get('row_is_selected', [])
-        append_no_duplicate(
-            widget_list,
-            [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], self.buttons['scrap_row']['widget'], btn_show_installed_releases]
-        )
+        append_no_duplicate(widget_list, [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], btn_show_installed_releases])
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
         widget_list = gui_g.stated_widgets.get('not_offline', [])
-        append_no_duplicate(widget_list, [self.buttons['scrap_row']['widget'], self.buttons['scan_for_assets']['widget']])
-        widget_list = gui_g.stated_widgets.get('asset_is_owned', [])
+        append_no_duplicate(widget_list, [self.buttons['scrap_range']['widget'], self.buttons['scan_for_assets']['widget']])
+        widget_list = gui_g.stated_widgets.get('asset_is_owned_and_not_offline', [])
         append_no_duplicate(widget_list, [btn_download_asset, btn_install_asset])
         widget_list = gui_g.stated_widgets.get('asset_has_url', [])
         append_no_duplicate(widget_list, [btn_open_url])
         widget_list = gui_g.stated_widgets.get('asset_added_mannually', [])
         append_no_duplicate(widget_list, [btn_open_folder])
+        widget_list = gui_g.stated_widgets.get('row_is_selected_and_not_offline', [])
+        append_no_duplicate(widget_list, [btn_scrap_asset])
 
     def save_filters(self, filters: dict) -> None:
         """
