@@ -88,6 +88,7 @@ def init_progress_window(text: str, args, logger=None, callback: callable = None
     if gui_g.UEVM_gui_ref is None:
         # create a fake root because ProgressWindow must always be a top level window
         gui_g.UEVM_gui_ref = FakeUEVMGuiClass()
+        gui_g.UEVM_gui_ref.mainloop()
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
@@ -103,6 +104,7 @@ def init_progress_window(text: str, args, logger=None, callback: callable = None
         },
         force_new_window=force_new_window
     )
+    gui_g.UEVM_gui_ref.progress_window = pw
     return uewm_gui_exists, pw
 
 

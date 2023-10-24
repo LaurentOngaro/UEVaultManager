@@ -100,7 +100,7 @@ class UEAssetScraper:
         offline_mode=False,
         progress_window=None,  # don't use a typed annotation here to avoid import
         core: AppCore = None,
-        timeout: float = (7, 7),
+        timeout: (float, float) = (7, 7),
     ) -> None:
         self._last_run_filename: str = 'last_run.json'
         self._urls_list_filename: str = 'urls_list.txt'
@@ -213,6 +213,11 @@ class UEAssetScraper:
         """
 
         all_assets = []
+
+        if not self.progress_window.continue_execution:
+            # this could accur when running in threads and the process has been cancelled by the "stop" button
+            return all_assets
+
         if json_data is None:
             return all_assets
         try:
@@ -416,10 +421,6 @@ class UEAssetScraper:
                 # we use an UEAsset object to store the data and create a valid dict from it
                 ue_asset = UEAsset()
                 ue_asset.init_from_dict(asset_data)
-
-                # -----
-                # end similar part as in UEAssetScrappedClass._parse_data
-                # -----
 
                 all_assets.append(ue_asset.get_data())
                 message = f'Asset with uid={uid} added to content: owned={ue_asset.get("owned")} creation_date={ue_asset.get("creation_date")}'
@@ -715,20 +716,30 @@ class UEAssetScraper:
             self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=owned_assets_only)
         return assets_to_scrap
 
-    def get_data_from_url(self, url='', owned_assets_only=False) -> None:
+    def get_data_from_url(self, url='', owned_assets_only=False) -> bool:
         """
         Grab the data from the given url and stores it in the scraped_data property.
         :param url: the url to grab the data from. If not given, uses the url property of the class.
         :param owned_assets_only: whether only the owned assets are scraped.
         """
+        thread_state = ' RUNNING...'
+
+        # HERE WE CAN'T UPDATE the progress window because it's not in the main thread
+        # the next lines raise a  RuntimeError('main thread is not in main loop')
+        # if not self.progress_window.update_and_continue(increment=1, text=f'Getting data from {url}):
+        # self.progress_window.update()
         if not self.progress_window.continue_execution:
-            return
+            thread_state = ' CANCELLING...'
+            self._log(f'{url} has been cancelled. Waiting all others to be terminated {thread_state}.', 'info')
+            self.progress_window.close_window()  # must be done here because we will never return to the caller
+            self._stop_executor()
+            return False
         if not url:
             self._log('No url given to get_data_from_url()', 'error')
-            return
+            return True
         if self.offline_mode:
             self._log('The offline mode is active. No online data could be retreived')
-            return
+            return True
         thread_data = ''
         try:
             if self._threads_count > 1:
@@ -736,16 +747,16 @@ class UEAssetScraper:
                 time.sleep(random.uniform(1.0, 3.0))
                 thread = current_thread()
                 thread_data = f' ==> By Thread name={thread.name}'
-            self._log(f'--- START scraping data from {url}{thread_data}')
-            json_data = self.core.egs.get_json_data_from_url(url)
+            self._log(f'--- START scraping data from {url}{thread_data}{thread_state}')
+            json_data = self.core.egs.get_json_data_from_url(url, override_timeout=15)
             no_error = json_data.get('status', '') == 'OK'
             if not no_error:
                 self._log(f'Error getting data from url {url}. Making another try....')
-                json_data = self.core.egs.get_json_data_from_url(url)
+                json_data = self.core.egs.get_json_data_from_url(url, override_timeout=15)
                 no_error = json_data.get('status', '') == 'OK'
                 if not no_error:
                     self._log(f'Error getting data from url {url}: {json_data["errorCode"]}', 'error')
-                    return
+                    return True
             try:
                 # when multiple assets are returned, the data is in the 'elements' key
                 count = len(json_data['data']['elements'])
@@ -770,19 +781,31 @@ class UEAssetScraper:
                     self.save_to_file(filename=filename, data=json_data, is_global=True)
 
                     # store the individial asset in file
-                    saved_text = self.progress_window.get_text()
-                    count = len(json_data['data']['elements'])
                     for index, asset_data in enumerate(json_data['data']['elements']):
-                        self.progress_window.set_text(f'Saving data to json files ({index}/{count})')
                         filename, app_name = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
                         asset_data['app_name'] = app_name
                         self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                         self._files_count += 1
-                    self.progress_window.set_text(saved_text)
                 content = self._parse_data(json_data)
                 self._scraped_data.append(content)
         except Exception as error:
             self._log(f'Error getting data from url {url}: {error!r}', 'warning')
+        return True
+
+    def _stop_executor(self) -> None:
+        """
+        Cancel all outstanding tasks and shut down the executor.
+        """
+        self._thread_executor.shutdown(wait=False, cancel_futures=True)
+
+    def _future_has_ended(self, future_param):
+        self._log(f'{future_param} has ended.', 'debug')
+        # HERE WE CAN'T UPDATE the progress window because it's not in the main thread
+        # the next lines raise does nothing because the stop button state is never updated
+        # if not self.progress_window.continue_execution:
+        #     self._log(f'{future_param} has been cancelled. Waiting all others to be terminated.', 'info')
+        #     self.progress_window.close_window()  # must be done here because we will never return to the caller
+        #     self._stop_executor()
 
     def _execute(self, owned_assets_only=False) -> bool:
         """
@@ -794,16 +817,6 @@ class UEAssetScraper:
         Notes:
             If self.urls is None or empty, gather_urls() will be called first.
         """
-
-        def stop_executor(tasks) -> None:
-            """
-            Cancel all outstanding tasks and shut down the executor.
-            :param tasks: tasks to cancel.
-            """
-            for _, task in tasks.items():
-                task.cancel()
-            self._thread_executor.shutdown(wait=False)
-
         try:
             egs_available_assets_count = self.core.egs.get_available_assets_count(owned_assets_only)
         except (Exception, ):
@@ -829,8 +842,17 @@ class UEAssetScraper:
                 result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
             if result_count == -1:
                 return False
-            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs and saving to json files', new_max_value=len(self._urls))
             url_count = len(self._urls)
+
+            # allow the main windows to update the progress window and unfreeze its buttons while threads are running
+            gui_g.UEVM_gui_ref.progress_window = self.progress_window
+
+            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs and saving to json files', new_max_value=None)
+            # fake_root = FakeUEVMGuiClass()
+            # self.progress_window.close_window()
+            # pw = ProgressWindow(parent=fake_root, title='Scraping in progress...', width=300, show_btn_stop=True, show_progress=True,
+            #                     quit_on_close=False)
+            # pw.set_activation(False)
             if self.max_threads > 0 and url_count > 0:
                 self._threads_count = min(self.max_threads, url_count)
                 # threading processing COULD be stopped by the progress window
@@ -843,22 +865,27 @@ class UEAssetScraper:
                     # Submit the task and add its Future to the dictionary
                     future = self._thread_executor.submit(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), url)
                     futures[url] = future
+                    future.add_done_callback(self._future_has_ended)
 
                 with concurrent.futures.ThreadPoolExecutor():
-                    for future in concurrent.futures.as_completed(futures.values()):
+                    count = 0
+                    for future in concurrent.futures.as_completed(futures.values(), timeout=10):
+                        if not self.progress_window.update_and_continue(increment=1):
+                            # self._log(f'User stop has been pressed. Stopping running threads....')   # will flood console
+                            self._stop_executor()
+                        count += 1
                         if gui_g.s.testing_switch == 1 and len(self._scraped_data) >= gui_g.s.testing_assets_limit:
                             # stop the scraping after 3000 assets when testing
-                            stop_executor(futures)
+                            self._stop_executor()
                             break
                         try:
                             _ = future.result()
+                            # must_stop = future.result()
+                            # if must_stop:
+                            #    self._ stop_executor(futures)  # this never occurs whe clicking on "Stop" in the progressWindow (Why ?). Keep it for safety
                             # print("Result: ", result)
                         except Exception as error:
                             self._log(f'The following error occurs in threading: {error!r}', 'warning')
-                        if not self.progress_window.update_and_continue(increment=1):
-                            # self._log(f'User stop has been pressed. Stopping running threads....')   # will flood console
-                            stop_executor(futures)
-                self._thread_executor.shutdown(wait=False)
             else:
                 for url in self._urls:
                     self.get_data_from_url(url, owned_assets_only)
@@ -880,6 +907,8 @@ class UEAssetScraper:
                 box_message(message)
             else:
                 self.progress_window.reset(new_value=0, new_text=message, new_max_value=None)
+
+        gui_g.UEVM_gui_ref.progress_window = None  # disable the update function to the main window
         return True
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
