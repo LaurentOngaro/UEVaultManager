@@ -266,6 +266,7 @@ class UEVMGui(tk.Tk):
         Overrided to add logging function for debugging
         """
         self.logger.info(f'starting mainloop in {__name__}')
+        self.after(2000, self.update_progress_windows)
         self.tk.mainloop(n)
         # check is a child window is still open
         # child_windows = self.progress_window or gui_g.WindowsRef.edit_cell or gui_g.WindowsRef.edit_row
@@ -273,6 +274,15 @@ class UEVMGui(tk.Tk):
         # if child_windows:
         #     self._wait_for_window(child_windows)
         self.logger.info(f'ending mainloop in {__name__}')
+
+    def update_progress_windows(self):
+        """
+        Update the child progress windows.
+        """
+        if self.progress_window:
+            self.progress_window.update()
+            # print('UPDATE')
+        self.after(2000, self.update_progress_windows)
 
     @staticmethod
     def _focus_next_widget(event):
