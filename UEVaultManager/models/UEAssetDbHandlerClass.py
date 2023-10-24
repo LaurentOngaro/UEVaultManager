@@ -892,7 +892,7 @@ class UEAssetDbHandler:
     # def get_rows_with_tags_to_convert(self, tag_value: int = None) -> list:
     #     """
     #     Get all rows from the 'assets_tags' table that could be scrapped to fix their tags.
-    #     :param tag_value: if not None, only get the rows that have a tag == tag_value.
+    #     param tag_value: if not None, only get the rows that have a tag == tag_value.
     #     :return: a list of asset_id.
     #
     #     Notes:
