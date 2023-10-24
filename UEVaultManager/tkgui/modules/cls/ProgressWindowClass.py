@@ -69,7 +69,7 @@ class ProgressWindow(tk.Toplevel):
         self.is_closing: bool = False
         self.quit_on_close: bool = quit_on_close
         self.max_value: int = max_value
-        self.continue_execution: bool = True
+        self._continue_execution: bool = True
         self.function = function
         self.function_params = function_parameters
         self.function_return_value = None
@@ -296,6 +296,7 @@ class ProgressWindow(tk.Toplevel):
         :param new_max_value: the new maximum value.
         """
         self.is_closing = False
+        self.frm_control.btn_stop.config(text='Stop')
         try:
             # sometimes the window is already destroyed
             if new_title is not None:
@@ -314,8 +315,15 @@ class ProgressWindow(tk.Toplevel):
                 self.hide_btn_stop()
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
-        self.continue_execution = True
+        self._continue_execution = True
         self.update()
+
+    @property
+    def continue_execution(self) -> bool:
+        """
+        Returns whether the execution should continue.
+        """
+        return self._continue_execution
 
     def start_execution(self) -> None:
         """
@@ -324,7 +332,7 @@ class ProgressWindow(tk.Toplevel):
         if self.function is None:
             gui_f.log_warning('the function name to execute is not set')
             return
-        self.continue_execution = True
+        self._continue_execution = True
         self.set_activation(False)
         # Run the function in a separate thread
         t = threading.Thread(target=self._function_result_wrapper, args=(self.function, self), kwargs=self.function_params)
@@ -336,7 +344,9 @@ class ProgressWindow(tk.Toplevel):
         """
         Stop the execution of the function.
         """
-        self.continue_execution = False
+        if self.frm_control.btn_stop is not None:
+            self.frm_control.btn_stop.config(text='Canceling...')
+        self._continue_execution = False
         self.set_activation(True)
 
     def get_result(self):
@@ -377,7 +387,7 @@ class ProgressWindow(tk.Toplevel):
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
         self.update()
-        return self.continue_execution
+        return self._continue_execution
 
     def close_window(self, destroy_window=True, _event=None) -> None:
         """
@@ -386,7 +396,7 @@ class ProgressWindow(tk.Toplevel):
         :param _event: the event that triggered the close.
         """
         self.is_closing = True
-        self.continue_execution = True
+        self._continue_execution = True
         if destroy_window:
             if self.quit_on_close:
                 self.quit()
