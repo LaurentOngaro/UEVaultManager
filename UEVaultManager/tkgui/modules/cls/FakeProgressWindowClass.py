@@ -103,3 +103,7 @@ class FakeProgressWindow:
     def close_window(self, destroy_window=True, _event=None) -> None:
         """ FAKE METHOD"""
         pass
+
+    def update(self) -> None:
+        """ FAKE METHOD"""
+        pass
