@@ -55,8 +55,8 @@ class DbToolWindowClass(tk.Toplevel):
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.must_reload: bool = False
-        self.folder_for_csv_files = os.path.normpath(folder_for_csv_files)
-        self.db_path = os.path.normpath(db_path)
+        self.folder_for_csv_files = os.path.normpath(folder_for_csv_files) if folder_for_csv_files else ''
+        self.db_path = os.path.normpath(db_path) if db_path else ''
         self.db_handler = UEAssetDbHandler(database_name=self.db_path)
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)

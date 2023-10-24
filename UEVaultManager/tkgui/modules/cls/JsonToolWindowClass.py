@@ -55,9 +55,9 @@ class JsonToolWindow(tk.Toplevel):
         self.title(title)
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
-        self.folder_for_tags_path = os.path.normpath(folder_for_tags_path)
-        self.folder_for_rating_path = os.path.normpath(folder_for_rating_path)
-        self.db_path = os.path.normpath(db_path)
+        self.folder_for_tags_path = os.path.normpath(folder_for_tags_path) if folder_for_tags_path else ''
+        self.folder_for_rating_path = os.path.normpath(folder_for_rating_path) if folder_for_tags_path else ''
+        self.db_path = os.path.normpath(db_path) if db_path else ''
 
         self.updated = 0
         self.added = 0

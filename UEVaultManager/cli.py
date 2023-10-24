@@ -1151,7 +1151,6 @@ class UEVaultManagerCLI:
 
         # normpath is usefull for future comparisons
         download_path = os.path.normpath(download_path)
-        install_path_base = os.path.normpath(install_path_base)
 
         self._log_and_gui_display(f'Preparing download for {release_title}...')
         max_workers = args.max_workers if gui_g.s.use_threads else 1

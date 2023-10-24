@@ -198,10 +198,8 @@ def check_and_get_folder(folder_path: str) -> (bool, str):
                 path = os.path.expanduser('~/.config/UEVaultManager')
             if not os.path.exists(path):
                 os.makedirs(path)
-                path = os.path.normpath(path)
+            path = os.path.normpath(path)
             log(f'The following folder {path} will be used as default')
-
-    path = os.path.normpath(path)
     return is_valid, path
 
 

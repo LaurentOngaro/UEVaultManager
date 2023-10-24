@@ -787,7 +787,7 @@ class UEVMLFS:
         This scan is done when the datatable is loaded.
         So, increase the max_depth value with care to avoid long loading times.
         """
-        vault_cache_folder = os.path.normpath(vault_cache_folder)
+        vault_cache_folder = os.path.normpath(vault_cache_folder) if vault_cache_folder else ''
         downloaded_assets = {}
         # scan the vault_cache_folder for files. Proceed level by level until max_depth is reached.
         for root, dirs, files in os.walk(vault_cache_folder):
