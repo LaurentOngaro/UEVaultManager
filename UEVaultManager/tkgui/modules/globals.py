@@ -102,8 +102,10 @@ stated_widgets = {
     'asset_added_mannually': [],
     # the cli object is available
     'cli_is_available': [],
-    # the database is available
-    'db_is_available': [],
+    # the database mode is used
+    'database_is_used': [],
+    # the file mode is used
+    'file_is_used': [],
     # at least a row must be selected and not in offline
     'row_is_selected_and_not_offline': [],
     # a row is selected and the asset is owned and not in offline

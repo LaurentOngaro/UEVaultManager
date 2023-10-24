@@ -126,5 +126,5 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         append_no_duplicate(widget_list, [btn_asset_info])
         widget_list = gui_g.stated_widgets.get('cli_is_available', [])
         append_no_duplicate(widget_list, [btn_status, btn_cleanup, btn_asset_info])
-        widget_list = gui_g.stated_widgets.get('db_is_available', [])
+        widget_list = gui_g.stated_widgets.get('database_is_used', [])
         append_no_duplicate(widget_list, [btn_json_data, btn_import_export])

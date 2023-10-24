@@ -524,10 +524,10 @@ class UEAssetDbHandler:
             cursor.close()
             self.connection.commit()
 
-    def set_assets(self, assets, update_progress=True) -> bool:
+    def set_assets(self, _asset_list, update_progress=True) -> bool:
         """
         Insert or update assets into the 'assets' table.
-        :param assets: a dictionary or a list of dictionaries representing assets.
+        :param _asset_list: a dictionary or a list of dictionaries representing assets.
         :param update_progress: True to update the progress window, otherwise False.
         :return: True if the assets were inserted or updated, otherwise False.
 
@@ -538,22 +538,22 @@ class UEAssetDbHandler:
         if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):
             return False
         if self.connection is not None:
-            if not isinstance(assets, list):
-                assets = [assets]
+            if not isinstance(_asset_list, list):
+                _asset_list = [_asset_list]
             str_today = datetime.datetime.now().strftime(DateFormat.csv)
             if update_progress and gui_g.WindowsRef.progress:
-                gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(assets))
-            for index, asset in enumerate(assets):
+                gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(_asset_list))
+            for index, asset in enumerate(_asset_list):
                 if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
                     return False
                 # make some conversion before saving the asset
                 asset['update_date'] = str_today
                 asset['creation_date'] = convert_to_str_datetime(
                     value=asset['creation_date'], date_format=DateFormat.csv
-                ) if 'creation_date' in assets else str_today
+                ) if 'creation_date' in asset else str_today
                 asset['date_added'] = convert_to_str_datetime(
                     value=asset['date_added'], date_format=DateFormat.csv
-                ) if 'date_added' in assets else str_today
+                ) if 'date_added' in asset else str_today
                 # converting lists to strings
                 tags = asset.get('tags', [])
                 asset['tags'] = self.convert_tag_list_to_string(tags)  # will search the tags table for ids

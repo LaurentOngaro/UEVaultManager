@@ -642,9 +642,12 @@ class EditableTable(Table):
                 f'The number of columns in data source ({column_len}) does not match the number of values in "column_infos" from the config file ({column_infos_len}).\nA backup of the current config file has been made.\nNormally, this will be fixed automatically on quit.\nIf not, please check the config file.'
             )
         # just for debugging
-        for col in column_infos.keys():
+        col_list = column_infos.copy().keys()
+        for col in col_list:
             if col not in df.columns and col != gui_g.s.index_copy_col_name:
-                self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable.')
+                self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable. It has been removed from column_infos.')
+                # remove col from dict column_infos
+                column_infos.pop(col)
         for col in df.columns:
             if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
                 self.logger.info(f'Column "{col}" is in the datatable BUT not in column_infos.')

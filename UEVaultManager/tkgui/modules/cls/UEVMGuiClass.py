@@ -109,6 +109,9 @@ class UEVMGui(tk.Tk):
         self.editable_table: Optional[EditableTable] = None
         self.progress_window: Optional[FakeProgressWindow] = None
         self.egs: Optional[EPCAPI] = None
+        # using a global scraper to avoid creating a new one and a new db connection on multiple scrapes
+        self.ue_asset_scraper: Optional[UEAssetScraper] = None
+
         super().__init__()
         self.data_source_type = data_source_type
 
@@ -1114,24 +1117,26 @@ class UEVMGui(tk.Tk):
                     self.logger.warning(msg)
                 return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
-            scraper = UEAssetScraper(
-                datasource_filename=self.editable_table.data_source,
-                use_database=self.editable_table.is_using_database(),
-                start=0,
-                assets_per_page=1,
-                max_threads=1,
-                save_to_files=True,
-                load_from_files=False,
-                store_ids=False,  # useless for now
-                core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
-            )
-            scraper.get_data_from_url(api_product_url)
-            asset_data = scraper.pop_last_scrapped_data()  # returns a list of one element
+            if self.ue_asset_scraper is None:
+                # using a global scraper to avoid creating a new one and a new db connection for each row
+                self.ue_asset_scraper = UEAssetScraper(
+                    datasource_filename=self.editable_table.data_source,
+                    use_database=self.editable_table.is_using_database(),
+                    start=0,
+                    assets_per_page=1,
+                    max_threads=1,
+                    save_to_files=True,
+                    load_from_files=False,
+                    store_ids=False,  # useless for now
+                    core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
+                )
+            self.ue_asset_scraper.get_data_from_url(api_product_url)
+            asset_data = self.ue_asset_scraper.pop_last_scrapped_data()  # returns a list of one element
             if asset_data is not None and len(asset_data) > 0:
                 if forced_data is not None:
                     for key, value in forced_data.items():
                         asset_data[0][key] = value
-                scraper.asset_db_handler.set_assets(asset_data, update_progress=update_progress)
+                self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=update_progress)
                 is_ok = True
         if not is_ok:
             asset_data = None
@@ -1171,6 +1176,7 @@ class UEVMGui(tk.Tk):
                 end = min(max_val, end)
                 all_row_numbers = list(range(start, end))
                 self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False, )
+                self.ue_asset_scraper = None
 
     def scrap_asset(
         self,
@@ -1466,7 +1472,8 @@ class UEVMGui(tk.Tk):
         gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
         gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
-        gui_f.update_widgets_in_list(data_table.is_using_database(), 'db_is_available')
+        gui_f.update_widgets_in_list(data_table.is_using_database(), 'database_is_used')
+        gui_f.update_widgets_in_list(not data_table.is_using_database(), 'file_is_used')
         gui_f.update_widgets_in_list(row_is_selected, 'row_is_selected')
         gui_f.update_widgets_in_list(row_is_selected and not gui_g.s.offline_mode, 'row_is_selected_and_not_offline')
         gui_f.update_widgets_in_list(is_owned and not gui_g.s.offline_mode, 'asset_is_owned_and_not_offline')

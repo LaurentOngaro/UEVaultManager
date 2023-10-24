@@ -111,8 +111,6 @@ class AppCore:
         self.notfound_logger = None
         self.bad_data_logger = None
         self.scan_assets_logger = None
-        # store time to process metadata and extra update
-        self.process_time_average = {'time': 0.0, 'count': 0}
         self.use_threads = False
         self.thread_executor = None
         self.thread_executor_must_stop = False

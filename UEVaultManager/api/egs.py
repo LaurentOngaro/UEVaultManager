@@ -307,16 +307,21 @@ class EPCAPI:
             result = True
         return result
 
-    def get_json_data_from_url(self, url='') -> dict:
+    def get_json_data_from_url(self, url='', override_timeout=-1) -> dict:
         """
         Return the scraped assets.
         :param url: the url to scrap.
+        :param override_timeout: override the timeout set for the current object
         :return: the json data.
+
+        NOTES:
+          Getting the data could take more time than other calls to the API. Use the override_timeout parameter to set a longer timeout if needed/
         """
         json_data = {}
         if not url:
             return json_data
-        r = self.session.get(url, timeout=self.timeout)
+        timeout = self.timeout if override_timeout == -1 else override_timeout
+        r = self.session.get(url, timeout=timeout)
         # r.raise_for_status() # commented line because we want the exceptions to be raised
         json_data = r.json()
         return json_data

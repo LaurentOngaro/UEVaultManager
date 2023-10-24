@@ -272,7 +272,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         widget_list = gui_g.stated_widgets.get('row_is_selected', [])
         append_no_duplicate(widget_list, [self.buttons['edit_row']['widget'], btn_show_installed_releases])
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
-        append_no_duplicate(widget_list, [self.buttons['save_changes']['widget'], self.buttons['save_changes_as']['widget']])
+        append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
         widget_list = gui_g.stated_widgets.get('not_offline', [])
         append_no_duplicate(widget_list, [self.buttons['scrap_range']['widget'], self.buttons['scan_for_assets']['widget']])
         widget_list = gui_g.stated_widgets.get('asset_is_owned_and_not_offline', [])
@@ -283,6 +283,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         append_no_duplicate(widget_list, [btn_open_folder])
         widget_list = gui_g.stated_widgets.get('row_is_selected_and_not_offline', [])
         append_no_duplicate(widget_list, [self.buttons['scrap_asset']['widget']])
+        widget_list = gui_g.stated_widgets.get('file_is_used', [])
+        append_no_duplicate(widget_list, [self.buttons['save_changes_as']['widget']])
 
     def save_filters(self, filters: dict) -> None:
         """
