@@ -510,20 +510,15 @@ class UEVaultManagerCLI:
             args.offline = True
         else:
             user_name = self.core.uevmlfs.userdata['displayName']
-        cache_information = self.core.uevmlfs.get_assets_cache_info()
         update_information = self.core.uevmlfs.get_online_version_saved()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
-        last_cache_update = cache_information.get('last_update', '')
         if last_update != '':
             last_update = time.strftime('%x', time.localtime(last_update))
-        if last_cache_update != '':
-            last_cache_update = time.strftime('%x', time.localtime(last_cache_update))
 
         json_content = {
             'Epic account': user_name,  #
             'Last data update': last_update,
-            'Last cache update': last_cache_update,
             'Config directory': self.core.uevmlfs.path,
             'Platform': f'{platform()} ({os.name})',
             'Current version': f'{UEVM_version} - {UEVM_codename}',
@@ -1709,7 +1704,6 @@ def main():
     cli.core.create_output_backup = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'create_output_backup', fallback=True))
     cli.core.create_log_backup = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'create_log_backup', fallback=True))
     cli.core.verbose_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'verbose_mode', fallback=False))
-    cli.ue_assets_max_cache_duration = int(cli.core.uevmlfs.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000))
 
     cli.core.ignored_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
     cli.core.notfound_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')

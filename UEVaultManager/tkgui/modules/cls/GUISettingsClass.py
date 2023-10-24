@@ -39,7 +39,7 @@ class GUISettings:
         # the following folders are relative to the current file location
         # they must be used trought path_from_relative_to_absolute
         # following vars are not set as properties to avoid storing absolute paths in the config file
-        self.cache_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
+        self.asset_images_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['asset_images_folder'])
         self.results_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
         self.scraping_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['scraping_folder'])
 
@@ -522,7 +522,7 @@ class GUISettings:
                 'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
                 'value': str(60 * 60 * 24 * 15)
             },
-            'cache_folder': {
+            'asset_images_folder': {
                 'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
                 'value': '../../../cache'
             },
@@ -641,7 +641,7 @@ class GUISettings:
             'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),
             'image_cache_max_time': self.config.getint('UEVaultManager', 'image_cache_max_time'),
             'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file'),
-            'cache_folder': self.config.get('UEVaultManager', 'cache_folder'),
+            'asset_images_folder': self.config.get('UEVaultManager', 'asset_images_folder'),
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),

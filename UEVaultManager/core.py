@@ -92,9 +92,6 @@ class AppCore:
 
         # UE assets metadata cache properties
         self.ue_assets_count = 0
-        self.cache_is_invalidate = False
-        # Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days
-        self.ue_assets_max_cache_duration = 15 * 24 * 3600
         # set to True to add print more information during long operations
         self.verbose_mode = False
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file

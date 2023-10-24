@@ -201,9 +201,9 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
     try:
         # print(image_url)
         # noinspection DuplicatedCode
-        if not os.path.isdir(gui_g.s.cache_folder):
-            os.mkdir(gui_g.s.cache_folder)
-        image_filename = path_join(gui_g.s.cache_folder, os.path.basename(image_url))
+        if not os.path.isdir(gui_g.s.asset_images_folder):
+            os.mkdir(gui_g.s.asset_images_folder)
+        image_filename = path_join(gui_g.s.asset_images_folder, os.path.basename(image_url))
         # Check if the image is already cached
         if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < gui_g.s.image_cache_max_time:
             # Load the image from the cache folder

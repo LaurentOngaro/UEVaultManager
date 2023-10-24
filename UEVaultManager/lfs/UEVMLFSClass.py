@@ -41,14 +41,8 @@ class UEVMLFS:
             self.path = os.path.expanduser('~/.config/UEVaultManager')
         # EGS user info
         self._user_data = None
-        # EGS entitlements
-        self._entitlements = None
-        # dict of json asset data
-        # TOOBIG self.assets_data = {}
         # UEVaultManager update check info
         self._update_info = None
-        # UE assets metadata cache data
-        self._assets_cache_info = None
         # store the dowload size of assets
         self._asset_sizes = None
 
@@ -160,10 +154,6 @@ class UEVMLFS:
         if not self.config.has_option('UEVaultManager', 'verbose_mode'):
             self.config.set('UEVaultManager', '; Set to True to print more information during long operations')
             self.config.set('UEVaultManager', 'verbose_mode', 'False')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'ue_assets_max_cache_duration'):
-            self.config.set('UEVaultManager', '; Delay in seconds when UE assets metadata cache will be invalidated. Default value represent 15 days')
-            self.config.set('UEVaultManager', 'ue_assets_max_cache_duration', '1296000')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'ignored_assets_filename_log'):
             self.config.set(
@@ -513,7 +503,7 @@ class UEVMLFS:
         Delete all the files in the cache folders.
         :return: the size of the deleted files.
         """
-        return self.delete_folder_content(gui_g.s.cache_folder)
+        return self.delete_folder_content(gui_g.s.asset_images_folder)
 
     def clean_manifests(self) -> int:
         """
@@ -723,32 +713,6 @@ class UEVMLFS:
         self._update_info = dict(last_update=time(), data=version_data)
         with open(self.online_version_filename, 'w', encoding='utf-8') as file:
             json.dump(self._update_info, file, indent=2, sort_keys=True)
-
-    def get_assets_cache_info(self) -> dict:
-        """
-        Get assets metadata cache information.
-        :return: dict {last_update, ue_assets_count}.
-        """
-        if self._assets_cache_info:
-            return self._assets_cache_info
-        try:
-            with open(self.assets_cache_info_filename, 'r', encoding='utf-8') as file:
-                self._assets_cache_info = json.load(file)
-        except Exception as error:
-            self.log.debug(f'Failed to UE assets last update data: {error!r}')
-            self._assets_cache_info = dict(last_update=0, ue_assets_count=0)
-        return self._assets_cache_info
-
-    def set_assets_cache_info(self, last_update: float, ue_assets_count: int) -> None:
-        """
-        Set assets metadata cache information.
-        :param last_update: last update time.
-        :param ue_assets_count: number of UE assets on last update.
-        :return:
-        """
-        self._assets_cache_info = dict(last_update=last_update, ue_assets_count=ue_assets_count)
-        with open(self.assets_cache_info_filename, 'w', encoding='utf-8') as file:
-            json.dump(self._assets_cache_info, file, indent=2, sort_keys=True)
 
     def extract_version_from_releases(self, release_info: dict) -> (dict, str):
         """

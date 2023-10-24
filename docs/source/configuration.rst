@@ -37,8 +37,6 @@ This is an example of this file content and the settings you can change:
     create_log_backup = True
     ; Set to True to print more information during long operations
     verbose_mode = False
-    ; Delay in seconds when UE assets metadata cache will be invalidated. Default value represent 15 days
-    ue_assets_max_cache_duration = 1296000
     ; File name (and path) to log issues with assets when running the --list command
     ; use "~/" at the start of the filename to store it relatively to the user directory
     ignored_assets_filename_log = ~/.config/ignored_assets.log
@@ -79,8 +77,8 @@ This is an example of this file content and the settings you can change:
   use_colors_for_data = True
   ;Delay in seconds when image cache will be invalidated. Default value represent 15 days
   image_cache_max_time = 1296000
-  ;Folder (relative or absolute) to store cached data for assets (mainly preview images)
-  cache_folder = ../../../cache
+  ;Folder (relative or absolute) to store images for assets
+  asset_images_folder = ../../../asset_images
   ;Folder (relative or absolute) to store result files to read and save data from
   results_folder = ../../../results
   ;The last opened filter file name.Automatically saved when loading a filter.Leave empty to load no filter at start.Contains the file name only, not the path
