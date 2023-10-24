@@ -1897,7 +1897,7 @@ class UEVMGui(tk.Tk):
              <label> is the label to display in the quick filter list
              <callable> is the function to call to get the mask.
         """
-        return {
+        filters = {
             # add ^ to the beginning of the value to search for the INVERSE the result
             'Owned': ['Owned', True],  #
             'Not Owned': ['Owned', False],  #
@@ -1905,18 +1905,23 @@ class UEVMGui(tk.Tk):
             'Not Obsolete': ['Obsolete', False],  #
             'Must buy': ['Must buy', True],  #
             'Added manually': ['Added manually', True],  #
-            'Result OK': ['Grab result', 'NO_ERROR'],  #
-            'Result Not OK': ['Grab result', '^NO_ERROR'],  #
             'Plugins only': ['Category', 'plugins'],  #
             'Free': ['Price', 0],  #
-            'Dummy rows': ['Asset_id', gui_g.s.empty_row_prefix],  #
-            'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
-            'Tags with number': ['callable', self.filter_tags_with_number],  #
-            'With comment': ['callable', self.filter_with_comment],  #
             'Free and not owned': ['callable', self.filter_free_and_not_owned],  #
-            'Installed in folder': ['callable', self.filter_with_installed_folders],  #
+            'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
             'Downloaded': ['callable', self.filter_is_downloaded],  #
+            'Installed in folder': ['callable', self.filter_with_installed_folders],  #
+            'With comment': ['callable', self.filter_with_comment],  #
+            'Dummy rows': ['Asset_id', gui_g.s.empty_row_prefix],  #
+            'Result OK': ['Grab result', 'NO_ERROR'],  #
+            'Result Not OK': ['Grab result', '^NO_ERROR'],  #
         }
+        if self.is_using_database():
+            db_filters = {
+                'Tags with number': ['callable', self.filter_tags_with_number],  #
+            }
+            filters.update(db_filters)
+        return filters
 
     def filter_tags_with_number(self) -> pd.Series:
         """
