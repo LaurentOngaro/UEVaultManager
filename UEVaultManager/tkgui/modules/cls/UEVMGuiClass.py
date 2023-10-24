@@ -315,7 +315,7 @@ class UEVMGui(tk.Tk):
             filename = fd.askopenfilename(
                 title='Choose a file to read data from', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
             )
-        filename = os.path.normpath(filename)
+        filename = os.path.normpath(filename) if filename else ''
         return filename
 
     def _check_and_get_widget_value(self, tag: str) -> tuple:
@@ -603,7 +603,6 @@ class UEVMGui(tk.Tk):
         """
         data_table = self.editable_table  # shortcut
         filename = self._open_file_dialog(filename=gui_g.s.last_opened_file)
-        filename = os.path.normpath(filename)
         if filename and os.path.isfile(filename):
             data_table.data_source = filename
             if data_table.valid_source_type(filename):
@@ -623,7 +622,14 @@ class UEVMGui(tk.Tk):
             else:
                 gui_f.box_message('Operation cancelled')
 
-    def save_changes(self, show_dialog: bool = True) -> str:
+    def save_changes(self) -> str:
+        """
+        Save the data to the current data source.
+        :return: the name of the file that was saved.
+        """
+        return self.save_changes_as(show_dialog=False)
+
+    def save_changes_as(self, show_dialog: bool = True) -> str:
         """
         Save the data to the current data source.
         :param show_dialog: whether to show a dialog to select the file to save to, if False, use the current file.
