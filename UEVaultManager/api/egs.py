@@ -92,23 +92,23 @@ class EPCAPI:
     _user_agent = 'UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit'
     _store_user_agent = 'EpicGamesLauncher/14.0.8-22004686+++Portal+Release-Live'
     # required for the oauth request
+    # _label = 'Live-EternalKnight'
     _user_basic = '34a02cf8f4414e29b15921876da36f9a'
     _pw_basic = 'daafbccc737745039dffe53d94fc76cf'
-    _label = 'Live-EternalKnight'
 
     _oauth_host = 'account-public-service-prod03.ol.epicgames.com'
     _launcher_host = 'launcher-public-service-prod06.ol.epicgames.com'
-    _entitlements_host = 'entitlement-public-service-prod08.ol.epicgames.com'
+    # _entitlements_host = 'entitlement-public-service-prod08.ol.epicgames.com'
     _catalog_host = 'catalog-public-service-prod06.ol.epicgames.com'
-    _ecommerce_host = 'ecommerceintegration-public-service-ecomprod02.ol.epicgames.com'
-    _datastorage_host = 'datastorage-public-service-liveegs.live.use1a.on.epicgames.com'
-    _library_host = 'library-service.live.use1a.on.epicgames.com'
+    # _ecommerce_host = 'ecommerceintegration-public-service-ecomprod02.ol.epicgames.com'
+    # _datastorage_host = 'datastorage-public-service-liveegs.live.use1a.on.epicgames.com'
+    # _library_host = 'library-service.live.use1a.on.epicgames.com'
     # Using the actual store host with a user-agent newer than 14.0.8 leads to a CF verification page,
     # but the dedicated graphql host works fine.
     # _store_gql_host = 'launcher.store.epicgames.com'
-    _store_gql_host = 'graphql.epicgames.com'
-    _artifact_service_host = 'artifact-public-service-prod.beee.live.use1a.on.epicgames.com'
-    _login_url = 'www.unrealengine.com/id/login/epic'
+    # _store_gql_host = 'graphql.epicgames.com'
+    # _artifact_service_host = 'artifact-public-service-prod.beee.live.use1a.on.epicgames.com'
+    # _login_url = 'www.unrealengine.com/id/login/epic'
 
     _url_marketplace = 'www.unrealengine.com/marketplace'
     _search_url = _url_marketplace + '/en-US'
@@ -178,7 +178,6 @@ class EPCAPI:
     - library_items
     https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}", include_metadata)
     https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}&cursor={}", include_metadata, c)
-
     """
 
     def __init__(self, lc='en', cc='US', timeout=(7, 7)):
