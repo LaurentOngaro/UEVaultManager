@@ -558,7 +558,7 @@ class UEVMGui(tk.Tk):
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
-                self.save_changes(show_dialog=False)  # will save the settings too
+                self.save_changes()  # will save the settings too
         self.close_window()  # will save the settings too
 
     def close_window(self, force_quit=False) -> None:
@@ -1153,16 +1153,16 @@ class UEVMGui(tk.Tk):
         max_val = len(df) - 1
         start = simpledialog.askinteger(
             parent=self,  #
-            title='Select the starting row',  #
-            prompt=f'Start index (between {min_val} and {max_val-1})',  #
+            title='Select the starting asset',  #
+            prompt=f'INDEX (not row number) between {min_val} and {max_val-1})',  #
             minvalue=min_val,  #
             maxvalue=max_val - 1
         )
         if start is not None:
             end = simpledialog.askinteger(
                 parent=self,
-                title='Select the ending row',  #
-                prompt=f'Stop index (between {start+1} and {max_val})',  #
+                title='Select the ending asset',  #
+                prompt=f'INDEX (not row number) between {start+1} and {max_val})',  #
                 minvalue=start + 1,  #
                 maxvalue=max_val
             )
@@ -1170,7 +1170,7 @@ class UEVMGui(tk.Tk):
                 start = max(min_val, start)
                 end = min(max_val, end)
                 all_row_numbers = list(range(start, end))
-                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False)
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False, )
 
     def scrap_asset(
         self,
@@ -1215,7 +1215,7 @@ class UEVMGui(tk.Tk):
             use_range = False
         else:
             # convert row numbers to row indexes
-            row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
+            row_indexes = [data_table.get_real_index(row_number, add_page_offset=not use_range) for row_number in row_numbers]
         pw = None
         row_count = len(row_indexes)
         if marketplace_url is None:
