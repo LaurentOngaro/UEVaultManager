@@ -691,7 +691,7 @@ class DLManager(Process):
         Run the download manager
 
         Notes:
-            The DisplayContentWindow_ref is anavailable here. So the display windows will not be updated when calling trace_func.
+            The DisplayContentWindow_ref is unavailable here. So the display windows will not be updated when calling trace_func.
         """
         self.shared_memory = SharedMemory(create=True, size=self.max_shared_memory)
         self.log.debug(f'Created shared memory of size: {self.shared_memory.size / 1024 / 1024:.02f} MiB')
@@ -709,7 +709,7 @@ class DLManager(Process):
         self.result_queue = MPQueue(-1)
         self.writer_result_queue = MPQueue(-1)
 
-        # create a hiddenroot for the progress window because if not a tk window will be created and visible
+        # create a hiddenroot for the progress window because if not, a tk window will be created and visible
         fake_root = FakeUEVMGuiClass()
         pw = ProgressWindow(parent=fake_root, title='Download in progress...', width=300, show_btn_stop=True, show_progress=True, quit_on_close=False)
         pw.set_activation(False)
