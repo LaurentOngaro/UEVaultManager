@@ -597,8 +597,8 @@ class GUISettings:
                 'value': ''
             },
             'assets_order_col': {
-                'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column used to order the assets list from the database.',
-                'value': 'date_added'
+                'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column name to sort the assets from the database followed by ASC or DESC (Optional).',
+                'value': 'date_added DESC'
             },
             'testing_switch': {
                 'comment':

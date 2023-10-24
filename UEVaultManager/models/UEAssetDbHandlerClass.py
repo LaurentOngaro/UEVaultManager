@@ -21,7 +21,8 @@ from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_na
 from UEVaultManager.models.types import DateFormat, DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
-from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, convert_to_str_datetime, create_uid, merge_lists_or_strings, \
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, convert_to_int, convert_to_str_datetime, create_uid, \
+    merge_lists_or_strings, \
     path_from_relative_to_absolute
 from UEVaultManager.utils.cli import check_and_create_file
 
@@ -601,10 +602,23 @@ class UEAssetDbHandler:
             if where_clause:
                 query += f" WHERE {where_clause}"
             if not gui_g.s.assets_order_col:
-                gui_g.s.assets_order_col = 'date_added DESC'
-            query += f" ORDER by {gui_g.s.assets_order_col}"
+                order = 'date_added DESC'
+            else:
+                # make some checks to avoid SQL injection
+                order = gui_g.s.assets_order_col
+                if ' ASC' in order:
+                    sort = ' ASC'
+                else:
+                    sort = ' DESC'
+                order = order.replace(' ASC', '').replace(' DESC', '')
+                if order not in get_sql_field_name_list(exclude_csv_only=True, return_as_string=True):
+                    order = 'date_added DESC'
+                else:
+                    order += sort
+            query += f" ORDER by {order}"
             if gui_g.s.testing_switch == 1:
-                query += f" LIMIT {gui_g.s.testing_assets_limit}"
+                limit = convert_to_int(gui_g.s.testing_assets_limit)  # cast to avoid SQL injection
+                query += f" LIMIT {limit}"
             try:
                 cursor.execute(query)
                 rows = cursor.fetchall()
@@ -623,7 +637,7 @@ class UEAssetDbHandler:
             cursor = self.connection.cursor()
             # generate column names for the CSV file using AS to rename the columns
             fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
-            query = f"SELECT {fields} FROM assets ORDER BY date_added DESC LIMIT 1"
+            query = f"SELECT {fields} FROM assets LIMIT 1"
             try:
                 cursor.execute(query)
                 csv_column_names = [
@@ -875,27 +889,27 @@ class UEAssetDbHandler:
             cursor.close()
             return row_data
 
-    def get_rows_with_tags_to_convert(self, tag_value: int = None) -> list:
-        """
-        Get all rows from the 'assets_tags' table that could be scrapped to fix their tags.
-        :param tag_value: if not None, only get the rows that have a tag == tag_value.
-        :return: a list of asset_id.
-
-        Notes:
-            If tag_value is None, the returned list contains the asset_id that have at least a tag in the tags field that is an id in the tag table
-        """
-        rows = []
-        if self.connection is not None:
-            cursor = self.connection.cursor()
-            if tag_value is None:
-                # get the asset_id that have at least a tag in the tags field that is an id in the tag table
-                cursor.execute("SELECT DISTINCT asset_id FROM assets_tags WHERE tag GLOB '*[^0-9]*' = 0 AND tag IN (SELECT id FROM tags)")
-            else:
-                # get the asset_id that have at least a tag in the tags field that is id == tag_value
-                cursor.execute("SELECT asset_id FROM assets_tags WHERE CAST(tag AS INTEGER) == ?", tag_value)
-            rows = cursor.fetchall()
-            cursor.close()
-        return [row[0] for row in rows]
+    # def get_rows_with_tags_to_convert(self, tag_value: int = None) -> list:
+    #     """
+    #     Get all rows from the 'assets_tags' table that could be scrapped to fix their tags.
+    #     :param tag_value: if not None, only get the rows that have a tag == tag_value.
+    #     :return: a list of asset_id.
+    #
+    #     Notes:
+    #         If tag_value is None, the returned list contains the asset_id that have at least a tag in the tags field that is an id in the tag table
+    #     """
+    #     rows = []
+    #     if self.connection is not None:
+    #         cursor = self.connection.cursor()
+    #         if tag_value is None:
+    #             # get the asset_id that have at least a tag in the tags field that is an id in the tag table
+    #             cursor.execute("SELECT DISTINCT asset_id FROM assets_tags WHERE tag GLOB '*[^0-9]*' = 0 AND tag IN (SELECT id FROM tags)")
+    #         else:
+    #             # get the asset_id that have at least a tag in the tags field that is id == tag_value
+    #             cursor.execute("SELECT asset_id FROM assets_tags WHERE CAST(tag AS INTEGER) == ?", tag_value)
+    #         rows = cursor.fetchall()
+    #         cursor.close()
+    #     return [row[0] for row in rows]
 
     def convert_tag_list_to_string(self, tags: None) -> str:
         """
@@ -945,6 +959,7 @@ class UEAssetDbHandler:
         if self.connection is not None:
             cursor = self.connection.cursor()
             cursor.execute("DROP VIEW IF EXISTS assets_tags")
+            cursor.execute("DROP TABLE IF EXISTS ratings")
             cursor.execute("DROP TABLE IF EXISTS tags")
             cursor.execute("DROP TABLE IF EXISTS last_run")
             cursor.execute("DROP TABLE IF EXISTS assets")
