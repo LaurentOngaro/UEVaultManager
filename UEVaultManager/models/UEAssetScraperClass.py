@@ -844,7 +844,7 @@ class UEAssetScraper:
             url_count = len(self._urls)
 
             # allow the main windows to update the progress window and unfreeze its buttons while threads are running
-            gui_g.UEVM_gui_ref.progress_window = self.progress_window
+            gui_g.WindowsRef.uevm_gui.progress_window = self.progress_window
 
             self.progress_window.reset(new_value=0, new_text='Scraping data from URLs and saving to json files', new_max_value=None)
             # fake_root = FakeUEVMGuiClass()
@@ -907,7 +907,7 @@ class UEAssetScraper:
             else:
                 self.progress_window.reset(new_value=0, new_text=message, new_max_value=None)
 
-        gui_g.UEVM_gui_ref.progress_window = None  # disable the update function to the main window
+        gui_g.WindowsRef.uevm_gui.progress_window = None  # disable the update function to the main window
         return True
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:

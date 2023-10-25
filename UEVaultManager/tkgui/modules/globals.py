@@ -8,6 +8,7 @@ from abc import ABC
 # import UEVaultManager.tkgui.modules.DisplayContentWindowClass as DisplayContentWindow
 import UEVaultManager.tkgui.modules.cls.EditCellWindowClass as EditCellWindow
 import UEVaultManager.tkgui.modules.cls.EditRowWindowClass as EditRowWindow
+from UEVaultManager.tkgui.modules.cls.FakeUEVMGuiClass import FakeUEVMGuiClass
 from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
@@ -18,6 +19,7 @@ class WindowsRef(ABC):
     Class to hold references to global windows.
     Abstractclass
     """
+    uevm_gui: FakeUEVMGuiClass = None  # tkgui window , we can not use the real UEVMGuiClass because it will cause circular import error
     edit_cell: EditCellWindow = None
     edit_row: EditRowWindow = None
     # display_content: DisplayContentWindow = None
@@ -57,8 +59,6 @@ no_bool_false_data = False
 # if empty, direct access to its features from this script won't be available and a message will be displayed instead
 # noinspection PyTypeChecker
 UEVM_cli_ref = None  # avoid importing classes from the UEVM main application here because it can cause circular dependencies when importing the module
-# noinspection PyTypeChecker
-UEVM_gui_ref = None  # avoid importing classes from the UEVM GUI class here because it can cause circular dependencies when importing the module
 #  reference to the log object of the UEVM main application.
 #  If empty, log will be message printed in the console
 UEVM_log_ref = None
