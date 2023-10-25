@@ -295,20 +295,23 @@ def convert_to_str_datetime(value, date_format='%Y-%m-%d %H:%M:%S', default=None
         return default
 
 
-def is_an_int(value, prefix: str = '') -> bool:
+def is_an_int(value, prefix: str = '', prefix_is_mandatory: bool = False) -> bool:
     """
     Check if a value is an integer.
     :param value: value to check.
     :param prefix: prefix to remove from the value before checking if it is an integer.
+    :param prefix_is_mandatory: wether the prefix is mandatory or not.
     :return: True if the value is an integer, False otherwise.
     """
-    # remove prefix if any
+    # check prefix if any
     if prefix and isinstance(value, str) and value.startswith(prefix):
         value = value[len(prefix):]
+    elif prefix_is_mandatory:
+        return False
     try:
         float_n = float(value)
         int_n = int(float_n)
-    except (Exception,):
+    except (Exception, ):
         return False
     else:
         return float_n == int_n
