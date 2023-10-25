@@ -1143,6 +1143,9 @@ class UEVMGui(tk.Tk):
                     store_ids=False,  # useless for now
                     core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
                 )
+            else:
+                # next line because the scrapper is initialized only at startup
+                self.ue_asset_scraper.keep_intermediate_files = gui_g.s.debug_mode
             self.ue_asset_scraper.get_data_from_url(api_product_url)
             asset_data = self.ue_asset_scraper.pop_last_scrapped_data()  # returns a list of one element
             if asset_data is not None and len(asset_data) > 0:

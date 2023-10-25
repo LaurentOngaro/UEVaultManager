@@ -955,6 +955,7 @@ class UEVaultManagerCLI:
             assets_per_page=ue_asset_per_page,
             max_threads=max_threads,
             load_from_files=load_from_files,
+            keep_intermediate_files=args.debug,
             debug_mode=args.debug,
             offline_mode=args.offline,
             progress_window=pw,

@@ -70,6 +70,7 @@ class UEAssetScraper:
     :param max_threads: maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
     :param save_to_files: True to store data in json file. Defaults to True. Could create lots of files (1 file per asset).
     :param load_from_files: True to load the data from files instead of scraping it. Defaults to False. If set to True, save_to_files will be set to False and use_database will be set to True.
+    :param keep_intermediate_files: True to keep the intermediate json files. Defaults to None. If None, the files will be kept only if debug_mode is True.
     :param store_ids: True to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
     :param clean_database: True to clean the database before saving the data. Defaults to False.
     :param debug_mode: True to enable debug mode. Defaults to False.
@@ -94,6 +95,7 @@ class UEAssetScraper:
         max_threads: int = 8,
         save_to_files: bool = True,
         load_from_files: bool = False,
+        keep_intermediate_files=None,
         store_ids: bool = False,
         clean_database: bool = False,
         debug_mode=False,
@@ -121,8 +123,9 @@ class UEAssetScraper:
         self.sort_by: str = sort_by
         self.sort_order: str = sort_order
         self.max_threads: int = max_threads if gui_g.s.use_threads else 0
-        self.load_from_files: bool = load_from_files
         self.save_to_files: bool = save_to_files
+        self.load_from_files: bool = load_from_files
+        self.keep_intermediate_files: bool = keep_intermediate_files if keep_intermediate_files is not None else gui_g.s.debug_mode
         self.store_ids = store_ids
         self.clean_database: bool = clean_database
         self.debug_mode = debug_mode
@@ -683,7 +686,7 @@ class UEAssetScraper:
         Gather all the URLs (with pagination) to be parsed and stores them in a list for further use.
         :param egs_available_assets_count: number of assets available on the marketplace. If not given, it will be retrieved from the EGS API.
         :param empty_list_before: whether the list of URLs is emptied before adding the new ones.
-        :param save_result: whether the list of URLs is saved in the database.
+        :param save_result: whether the list of URLs is saved into a text file.
         :param owned_assets_only: whether only the owned assets are scraped.
         :return: number of assets to be scraped or -1 if the offline mode is active or if the process has been interrupted.
         """
@@ -767,7 +770,7 @@ class UEAssetScraper:
                 json_data['data']['elements'] = [json_data['data']['data']]
 
             if json_data:
-                if self.save_to_files:
+                if self.keep_intermediate_files:
                     # store the result file in the raw format
                     try:
                         url_vars = gui_fn.extract_variables_from_url(url)
@@ -779,6 +782,7 @@ class UEAssetScraper:
                     filename = f'assets_{suffix}.json'
                     self.save_to_file(filename=filename, data=json_data, is_global=True)
 
+                if self.save_to_files:
                     # store the individial asset in file
                     for index, asset_data in enumerate(json_data['data']['elements']):
                         filename, app_name = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
