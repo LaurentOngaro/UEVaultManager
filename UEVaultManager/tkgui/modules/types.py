@@ -3,7 +3,7 @@
 Definition for the types used in this module:
 - GrabResult: enum for the result of grabbing a page
 - UEAssetType: enum to represent the asset type
-- DataSourceType: an enum to represent the data source type
+- DataSourceType: enum to represent the data source type
 - WidgetType: enum for the widget types.
 """
 from enum import Enum

@@ -38,7 +38,7 @@ def guid_from_json(in_str):
     """
     Get guid from a json string.
     :param in_str: string to convert.
-    :return: the Guid
+    :return: guid
     """
     return struct.unpack('>IIII', bytes.fromhex(in_str))
 
@@ -66,7 +66,7 @@ class JSONManifest(Manifest):
         """
         Read all kind of manifest
         :param manifest:
-        :return: a json manifest
+        :return: json manifest
         """
         _m = cls.read(manifest)
         _tmp = deepcopy(_m.json_data)

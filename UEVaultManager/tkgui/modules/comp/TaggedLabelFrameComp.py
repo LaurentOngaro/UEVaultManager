@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- TaggedLabelFrame: a custom LabelFrame widget that allows child widgets to be identified by tags.
+- TaggedLabelFrame: custom LabelFrame widget that allows child widgets to be identified by tags.
 """
 import tkinter as tk
 from tkinter import ttk
@@ -124,7 +124,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
     def get_children(self) -> dict:
         """
         Return the dictionary of tagged children.
-        :return: a dictionary of tagged children.
+        :return: dictionary of tagged children.
         """
         return self._tagged_child
 

@@ -2,7 +2,7 @@
 """
 Implementation for:
 - DCW_Settings: settings for the class when running as main.
-- DisplayContentWindow: the window to display a text content.
+- DisplayContentWindow: window to display a text content.
 """
 import os
 import tkinter as tk
@@ -28,11 +28,11 @@ class DCW_Settings:
 class DisplayContentWindow(tk.Toplevel):
     """
     Window to display a text content.
-    :param title: the title of the window.
-    :param width: the width of the window.
-    :param height: the height of the window.
-    :param icon: the icon of the window.
-    :param screen_index: the index of the screen on which the window will be displayed.
+    :param title: title of the window.
+    :param width: width of the window.
+    :param height: height of the window.
+    :param icon: icon of the window.
+    :param screen_index: index of the screen on which the window will be displayed.
     :param quit_on_close: whether to quit the application when the window is closed.
     """
 
@@ -80,7 +80,7 @@ class DisplayContentWindow(tk.Toplevel):
     def keep_existing(self) -> bool:
         """
         Get wether to keep the existing content when adding a new one.
-        :return: True if keep_existing
+        :return: True if keep_existing.
         """
         return self._keep_existing
 
@@ -88,7 +88,7 @@ class DisplayContentWindow(tk.Toplevel):
     def keep_existing(self, value: bool):
         """
         Set wether to keep the existing content when adding a new one.
-        :param value: value to set
+        :param value: value to set.
         """
         self._keep_existing = value
 
@@ -105,7 +105,7 @@ class DisplayContentWindow(tk.Toplevel):
     class ContentFrame(ttk.Frame):
         """
         The frame containing the content of the window.
-        :param container: the container of the frame.
+        :param container: container of the frame.
         """
 
         def __init__(self, container):
@@ -124,7 +124,7 @@ class DisplayContentWindow(tk.Toplevel):
     class ControlFrame(ttk.Frame):
         """
         The frame containing the control buttons of the window.
-        :param container: the container of the frame.
+        :param container: container of the frame.
         """
 
         def __init__(self, container):
@@ -143,7 +143,7 @@ class DisplayContentWindow(tk.Toplevel):
     def on_key_press(self, event):
         """
                 Event when a key is pressed.
-                :param event: the event that triggered the call of this function.
+                :param event: event that triggered the call of this function.
                 """
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
         if event.keysym == 'Escape':
@@ -155,7 +155,7 @@ class DisplayContentWindow(tk.Toplevel):
     def on_close(self, _event=None) -> None:
         """
         Event when the window is closing.
-        :param _event: the event that triggered the call of this function.
+        :param _event: event that triggered the call of this function.
         """
         self.close_window()
 
@@ -172,7 +172,7 @@ class DisplayContentWindow(tk.Toplevel):
     def display(self, content='', keep_mode=True) -> None:
         """
         Display the content in the window. By default, i.e. keep_mode==True, each new call adds the content to the existing content with a new line.
-        :param content: the text to print.
+        :param content: text to print.
         :param keep_mode: whether to keep the existing content when a new one is added.
         """
         try:

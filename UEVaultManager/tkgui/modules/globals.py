@@ -29,7 +29,7 @@ class WindowsRef(ABC):
     def get_properties_name(cls) -> list:
         """
         Get the propertie NAME of the class.
-        :return: a list of the propertie NAMES of the class.
+        :return: list of the propertie NAMES of the class.
         """
         return [prop for prop in dir(cls) if not prop.startswith('__') and not prop == '_abc_impl' and not callable(getattr(cls, prop))]
 
@@ -37,7 +37,7 @@ class WindowsRef(ABC):
     def get_properties(cls) -> list:
         """
         Get the properties of the class.
-        :return: a list the properties of the class.
+        :return: list the properties of the class.
         """
         result = []
         for name in cls.get_properties_name():
@@ -117,7 +117,7 @@ stated_widgets = {
 def set_args_force_refresh(value: bool) -> None:
     """
     Set the value of the argument force_refresh. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     UEVM_cli_args['force_refresh'] = value
 
@@ -133,7 +133,7 @@ def set_args_offline(value: bool) -> None:
 def set_args_debug(value: bool) -> None:
     """
     Set the value of the argument debug. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     UEVM_cli_args['debug'] = value
 
@@ -141,7 +141,7 @@ def set_args_debug(value: bool) -> None:
 def set_args_auth_delete(value: bool) -> None:
     """
     Set the value of the argument auth_delete. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     UEVM_cli_args['auth_delete'] = value
 
@@ -157,7 +157,7 @@ def set_args_delete_scraping_data(value: bool) -> None:
 def set_use_threads(value: bool) -> None:
     """
     Set the value of the settings use_threads. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     s.use_threads = value
 
@@ -165,7 +165,7 @@ def set_use_threads(value: bool) -> None:
 def set_use_colors_for_data(value: bool) -> None:
     """
     Set the value of the settings use_colors_for_data. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     s.use_colors_for_data = value
 
@@ -180,7 +180,7 @@ def set_use_colors_for_data(value: bool) -> None:
 def set_check_asset_folders(value: bool) -> None:
     """
     Set the value of the settings check_asset_folders. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     s.check_asset_folders = value
 
@@ -188,6 +188,6 @@ def set_check_asset_folders(value: bool) -> None:
 def set_browse_when_add_row(value: bool) -> None:
     """
     Set the value of the settings browse_when_add_row. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     s.browse_when_add_row = value

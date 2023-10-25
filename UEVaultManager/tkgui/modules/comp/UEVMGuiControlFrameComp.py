@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiControlFrame: a control frame for the UEVMGui Class.
+- UEVMGuiControlFrame: control frame for the UEVMGui Class.
 """
 import os
 import tkinter as tk
@@ -22,8 +22,8 @@ from UEVaultManager.tkgui.modules.types import WidgetType
 class UEVMGuiControlFrame(ttk.Frame):
     """
     A control frame for the UEVMGui Class.
-    :param container: the parent self._container.
-    :param data_table: the EditableTable instance.
+    :param container: parent self._container.
+    :param data_table: EditableTable instance.
     """
 
     def __init__(self, container, data_table: EditableTable):
@@ -145,7 +145,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self._container._frm_filter = frm_filter
         data_table.set_frm_filter(frm_filter)
 
-        # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
+        # Note: TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
         # to get the widgets it needs. So they can't be changed freely
         self.lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing its USER FIELDS')
         self.lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
@@ -289,7 +289,7 @@ class UEVMGuiControlFrame(ttk.Frame):
     def save_filters(self, filters: dict) -> None:
         """
         Save the filters to a file (Wrapper)
-        :param filters: the filters to save.
+        :param filters: filters to save.
         """
         json_ext = '.json'
         if not filters:

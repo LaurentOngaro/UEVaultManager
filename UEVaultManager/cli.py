@@ -909,10 +909,10 @@ class UEVaultManagerCLI:
         """
         Scrap assets from the Epic Games Store or from previously saved files.
         :param args: options passed to the command
-        :param use_database: if True, the database will be used to store the data, otherwise the data will be stored in files
-        :param file_name: the name of the file to save the data. Used only when use_database is False
-        :param save_to_format: the format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
-        :return: a List containing the scrapped data
+        :param use_database: wether the database will be used to store the data, otherwise the data will be stored in files
+        :param file_name: name of the file to save the data. Used only when use_database is False
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
+        :return: List containing the scrapped data
 
         Notes:
             Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
@@ -982,7 +982,7 @@ class UEVaultManagerCLI:
     def set_release_id(self, value):
         """
         Set the release id. Callback for the ChoiceFromListWindow
-        :param value: the value selected in the list
+        :param value: value selected in the list
         """
         self.release_id = value
 
@@ -1050,7 +1050,7 @@ class UEVaultManagerCLI:
                 default_value=''
             )
             make_modal(cw)
-            # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
+            # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
             if self.release_id:
                 try:
                     release_selected = releases[self.release_id]
@@ -1247,7 +1247,7 @@ class UEVaultManagerCLI:
                 else:
                     src_folder = path_join(download_path, subfolder)
                 if is_plugin:
-                    # note: the folder has already been checked when selected
+                    # note: folder has already been checked when selected
                     if installed_in_engine:
                         # if installed in engine, NOTHING MORE TO DO
                         dest_folder = install_path_base

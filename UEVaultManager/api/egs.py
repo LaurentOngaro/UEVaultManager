@@ -37,8 +37,8 @@ class GrabResult(Enum):
 
 def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=None) -> bool:
     """
-    :param supported_versions: the supported versions the check the obsolete status against.
-    :param engine_version_for_obsolete_assets: the engine version to use to check if an asset is obsolete.
+    :param supported_versions: supported versions the check the obsolete status against.
+    :param engine_version_for_obsolete_assets: engine version to use to check if an asset is obsolete.
     :return: True if the asset is obsolete, False otherwise.
     """
     if not engine_version_for_obsolete_assets or not supported_versions:
@@ -61,7 +61,7 @@ def create_empty_assets_extra(asset_name: str) -> dict:
     """
     Create an empty asset extra dict.
     :param asset_name:  The name of the asset.
-    :return: the empty asset extra dict.
+    :return: empty asset extra dict.
      """
     return {
         'asset_name': asset_name,
@@ -83,8 +83,8 @@ def create_empty_assets_extra(asset_name: str) -> dict:
 class EPCAPI:
     """
     Epic Games Client API.
-    :param lc: the language code.
-    :param cc: the country code.
+    :param lc: language code.
+    :param cc: country code.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
     ignored_logger = None
@@ -204,9 +204,9 @@ class EPCAPI:
     def extract_price(self, price_text=None, asset_name='NO NAME') -> float:
         """
         Extracts the price from a string.
-        :param price_text: the string to extract the price from.
-        :param asset_name: the name of the asset (for display purpose only).
-        :return: the price.
+        :param price_text: string to extract the price from.
+        :param asset_name: name of the asset (for display purpose only).
+        :return: price.
         """
         if not price_text:
             self.log.debug(f'Price not found for {asset_name}')
@@ -255,8 +255,8 @@ class EPCAPI:
     def get_marketplace_product_url(self, asset_slug: str = '') -> str:
         """
         Return the url for the asset in the marketplace.
-        :param asset_slug: the asset slug.
-        :return: the url.
+        :param asset_slug: asset slug.
+        :return: url.
         """
         url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
         return url
@@ -264,8 +264,8 @@ class EPCAPI:
     def get_api_product_url(self, uid: str = '') -> str:
         """
         Return the url for the asset using the UE API.
-        :param uid: the id of the asset (not the slug, nor the catalog_id).
-        :return: the url.
+        :param uid: id of the asset (not the slug, nor the catalog_id).
+        :return: url.
         """
         url = f'https://{self._url_asset}/{uid}'
         return url
@@ -292,7 +292,7 @@ class EPCAPI:
     def is_valid_url(self, url='') -> bool:
         """
         Check is the url is valid (i.e. http response status is 200).
-        :param url: the url to check.
+        :param url: url to check.
         :return: True if the url is valid.
         """
         result = False
@@ -310,9 +310,9 @@ class EPCAPI:
     def get_json_data_from_url(self, url='', override_timeout=-1) -> dict:
         """
         Return the scraped assets.
-        :param url: the url to scrap.
+        :param url: url to scrap.
         :param override_timeout: override the timeout set for the current object
-        :return: the json data.
+        :return: json data
 
         NOTES:
           Getting the data could take more time than other calls to the API. Use the override_timeout parameter to set a longer timeout if needed/
@@ -329,8 +329,8 @@ class EPCAPI:
     def resume_session(self, session: dict) -> dict:
         """
         Resumes a session.
-        :param session: the session.
-        :return: the session.
+        :param session: session.
+        :return: session.
         """
         self.session.headers['Authorization'] = f'bearer {session["access_token"]}'
         url = f'https://{self._oauth_host}/account/api/oauth/verify'
@@ -357,7 +357,7 @@ class EPCAPI:
         :param exchange_token: exchange token.
         :param authorization_code: authorization code.
         :param client_credentials: client credentials.
-        :return: the session.
+        :return: session.
         :raise: ValueError,InvalidCredentialsError.
         """
         if refresh_token:
@@ -400,7 +400,7 @@ class EPCAPI:
         """
         Get the item token.
         Unused but kept for the global API reference.
-        :return: the item token using json format.
+        :return: item token using json format.
         """
         url = f'https://{self._oauth_host}/account/api/oauth/exchange'
         r = self.session.get(url, timeout=self.timeout)
@@ -415,7 +415,7 @@ class EPCAPI:
         :param app_name: Asset name.
         :param platform: platform to get manifest for.
         :param label: label of the manifest.
-        :return: the item manifest using json format.
+        :return: item manifest using json format.
         """
         url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
         r = self.session.get(url, timeout=self.timeout)
@@ -443,7 +443,7 @@ class EPCAPI:
     def get_asset_data_from_marketplace(self, url: str) -> dict:
         """
         Get the asset data from the marketplace using beautifulsoup.
-        :param url: the url to grab.
+        :param url: url to grab.
 
         Notes:
             This is the only way I know to get the id of an asset from its slug (or url)

@@ -368,14 +368,13 @@ def get_typed_value(csv_field='', sql_field='', value='') -> (any, ):
     if sql_field and not csv_field:
         csv_field = get_csv_field_name(sql_field)
 
-    # noinspection PyBroadException
     try:
         associated_field = csv_sql_fields.get(csv_field, None)
         if associated_field is not None:
             field_type = associated_field['field_type']
             typed_value = field_type.cast(value)
             return typed_value
-    except Exception:
+    except (Exception, ):
         # print(f'Failed to cast value {value}')
         return value
     return value
@@ -594,8 +593,8 @@ def convert_csv_row_to_sql_row(csv_row: dict) -> dict:
 def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     """
     Debug the parsed data to see missing or empty keys.
-    :param asset_data: an instance of asset used to fill the datatable
-    :param mode: the mode of the application (could be from DataSourceType. DATABASE or DataSourceType. FILE)
+    :param asset_data: instance of asset used to fill the datatable
+    :param mode: mode of the application (could be from DataSourceType. DATABASE or DataSourceType. FILE)
     """
     if gui_g.UEVM_log_ref:
         debug_func = gui_g.UEVM_log_ref.info  # info and debug here because we want to see even if debug mode is disabled in CLI (but enabled in GUI)
@@ -664,8 +663,8 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
 def convert_data_to_csv(sql_asset_data: dict) -> dict:
     """
     Return the asset data as a dictionary with the csv field names.
-    :param sql_asset_data: the asset data with keys in sql format
-    :return: the asset data with keys in csv format
+    :param sql_asset_data: asset data with keys in sql format
+    :return: asset data with keys in csv format
     """
     # return asset_data to record by converting the "sql" field names to "csv" field names
     csv_field_names = get_csv_field_name_list()

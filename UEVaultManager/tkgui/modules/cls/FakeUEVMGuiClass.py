@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- FakeUEVMGuiClass: a hidden main window for the application.
+- FakeUEVMGuiClass: hidden main window for the application.
 """
 import ttkbootstrap as ttk
 

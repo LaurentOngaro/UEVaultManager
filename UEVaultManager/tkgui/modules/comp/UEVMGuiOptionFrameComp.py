@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiOptionFrame: an options/settings frame for the UEVMGui Class.
+- UEVMGuiOptionFrame: options/settings frame for the UEVMGui Class.
 """
 import os
 import tkinter as tk
@@ -16,7 +16,7 @@ from UEVaultManager.tkgui.modules.functions import update_loggers_level
 class UEVMGuiOptionFrame(ttk.Frame):
     """
     an options/settings frame for the UEVMGui Class.
-    :param _container: the parent container.
+    :param _container: parent container.
     """
 
     def __init__(self, _container):

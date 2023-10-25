@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- FilterFrame class: a frame that contains widgets for filtering a DataFrame.
+- FilterFrame class: frame that contains widgets for filtering a DataFrame.
 """
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -21,13 +21,13 @@ class FilterFrame(ttk.LabelFrame):
     """
     A frame that contains widgets for filtering a DataFrame.
     :param container: container widget.
-    :param data_func: a function that returns the DataFrame to be filtered.
-    :param update_func: a function that updates the table.
-    :param save_filter_func: a function that save the filters.
-    :param load_filter_func: a function that load the filters.
-    :param dynamic_filters_func: a function used to create dynamic filter added to the quick filter list.
-    :param title: the title of the frame.
-    :param value_for_all: the value to use for the 'All' option.
+    :param data_func: function that returns the DataFrame to be filtered.
+    :param update_func: function that updates the table.
+    :param save_filter_func: function that save the filters.
+    :param load_filter_func: function that load the filters.
+    :param dynamic_filters_func: function used to create dynamic filter added to the quick filter list.
+    :param title: title of the frame.
+    :param value_for_all: value to use for the 'All' option.
     """
 
     def __init__(
@@ -85,8 +85,8 @@ class FilterFrame(ttk.LabelFrame):
     def _search_combobox(self, _event, combobox) -> None:
         """
         Search for the text in the Combobox's values.
-        :param _event: the event that triggered the search.
-        :param combobox: the Combobox to search in.
+        :param _event: event that triggered the search.
+        :param combobox: Combobox to search in.
         """
         # Get the current text in the Combobox
         text_lower = combobox.get().lower()
@@ -228,7 +228,7 @@ class FilterFrame(ttk.LabelFrame):
     def _get_filter_value_and_type(self) -> Tuple[str, Any]:
         """
         Read current value from filter widgets and determines its type.
-        :return: a tuple containing the type (str) and value of the filter condition.
+        :return: tuple containing the type (str) and value of the filter condition.
         """
         if not self.filter_widget:
             return 'str', ''
@@ -308,7 +308,7 @@ class FilterFrame(ttk.LabelFrame):
     def set_filters(self, filters: Dict[str, Tuple[type, Any]]) -> None:
         """
         Set the filters used.
-        :param filters: the filter dictionary containing the filter conditions.
+        :param filters: filter dictionary containing the filter conditions.
         """
         if not filters or not isinstance(filters, dict):
             return
@@ -388,8 +388,8 @@ class FilterFrame(ttk.LabelFrame):
     def quick_filter(self, only_return_filter=False) -> dict:
         """
         Update the widgets that are used for filtering based on the selected column.
-        :param only_return_filter: if True, only return the filter string without applying it.
-        :return: the filter dict.
+        :param only_return_filter: wether only return the filter string without applying it.
+        :return: filter dict.
         """
         filter_dict = {}
         selected_filter = self.cb_quick_filter.get()

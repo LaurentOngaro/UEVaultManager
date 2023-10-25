@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiContentFrame: a container for a datatable widget for the UEVMGui Class.
+- UEVMGuiContentFrame: container for a datatable widget for the UEVMGui Class.
 """
 import ttkbootstrap as ttk
 
@@ -9,7 +9,7 @@ import ttkbootstrap as ttk
 class UEVMGuiContentFrame(ttk.Frame):
     """
     A container for a datatable widget for the UEVMGui Class.
-    :param container: the parent container.
+    :param container: parent container.
     """
 
     def __init__(self, container):

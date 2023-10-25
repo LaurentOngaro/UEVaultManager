@@ -2,7 +2,7 @@
 """
 Implementation for:
 - DBTW_Settings: settings for the class when running as main.
-- DbToolWindowClass: the window to import/export data from/to CSV files.
+- DbToolWindowClass: window to import/export data from/to CSV files.
 """
 import os
 import tkinter as tk
@@ -27,13 +27,13 @@ class DBTW_Settings:
 class DbToolWindowClass(tk.Toplevel):
     """
     Processes JSON files and stores some data in a database.
-    :param title: the title.
-    :param width: the width.
-    :param height: the height.
-    :param icon: the icon.
-    :param screen_index: the screen index.
-    :param folder_for_csv_files: the path to the folder with files for tags.
-    :param db_path: the path to the database.
+    :param title: title.
+    :param width: width.
+    :param height: height.
+    :param icon: icon.
+    :param screen_index: screen index.
+    :param folder_for_csv_files: path to the folder with files for tags.
+    :param db_path: path to the database.
     """
     _user_fields_suffix = '_user_fields'
     value_for_all: str = 'All'
@@ -78,7 +78,7 @@ class DbToolWindowClass(tk.Toplevel):
     class ControlFrame(ttk.Frame):
         """
         The frame that contains the control buttons.
-        :param container: the container.
+        :param container: container.
         """
 
         def __init__(self, container):
@@ -140,7 +140,7 @@ class DbToolWindowClass(tk.Toplevel):
             """
             Add text to the result label.
             :param text: text to add
-            :param set_status: true for setting the status label, False otherwise
+            :param set_status: True for setting the status label, False otherwise
             """
             if set_status:
                 self.set_status(text)

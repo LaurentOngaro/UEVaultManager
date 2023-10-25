@@ -2,7 +2,7 @@
 """
 Implementation for:
 _ clean_ue_asset_name: clean a name to remove unwanted characters.
-- UEVMGui: the main window of the application.
+- UEVMGui: main window of the application.
 """
 import filecmp
 import json
@@ -88,10 +88,10 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
 class UEVMGui(tk.Tk):
     """
     This class is used to create the main window for the application.
-    :param title: the title.
-    :param icon: the icon.
-    :param screen_index: the screen index where the window will be displayed.
-    :param data_source: the source where the data is stored or read from.
+    :param title: title.
+    :param icon: icon.
+    :param screen_index: screen index where the window will be displayed.
+    :param data_source: source where the data is stored or read from.
     """
     is_fake = False
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
@@ -298,8 +298,8 @@ class UEVMGui(tk.Tk):
         """
         Open a file dialog to choose a file to save or load data to/from.
         :param save_mode: whether the dialog will be in saving mode, else in loading mode.
-        :param filename: the default filename to use.
-        :return: the chosen filename.
+        :param filename: default filename to use.
+        :return: chosen filename.
         """
         # adding category to the default filename
         if not filename:
@@ -358,7 +358,7 @@ class UEVMGui(tk.Tk):
     def _wait_for_window(self, window: tk.Toplevel) -> None:
         """
         Wait for a window to be closed.
-        :param window: the window to wait for.
+        :param window: window to wait for.
         """
         if not window:
             # the window could have been closed before this call
@@ -380,8 +380,8 @@ class UEVMGui(tk.Tk):
     def _update_installed_folders_cell(self, row_index: int, installed_folders: str = None) -> None:
         """
         update the content of the 'Installed folders' cell of the row and the quick edit window.
-        :param row_index: the index of the row to update.
-        :param installed_folders: the new value for the cell.
+        :param row_index: index of the row to update.
+        :param installed_folders: new value for the cell.
         """
         data_table = self.editable_table
         if installed_folders:
@@ -567,7 +567,7 @@ class UEVMGui(tk.Tk):
     def on_close(self, _event=None) -> None:
         """
         When the window is closed, check if there are unsaved changes and ask the user if he wants to save them.
-        :param _event: the event that triggered the call of this function.
+        :param _event: event that triggered the call of this function.
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
@@ -586,7 +586,7 @@ class UEVMGui(tk.Tk):
     def add_error(self, error: Exception) -> None:
         """
         Add an error to the list of errors.
-        :param error: the error to add.
+        :param error: error to add.
         """
         self._errors.append(error)
 
@@ -612,7 +612,7 @@ class UEVMGui(tk.Tk):
     def open_file(self) -> str:
         """
         Open a file and Load data from it.
-        :return: the name of the file that was loaded.
+        :return: name of the file that was loaded.
         """
         data_table = self.editable_table  # shortcut
         filename = self._open_file_dialog(filename=gui_g.s.last_opened_file)
@@ -638,7 +638,7 @@ class UEVMGui(tk.Tk):
     def save_changes(self) -> str:
         """
         Save the data to the current data source.
-        :return: the name of the file that was saved.
+        :return: name of the file that was saved.
         """
         return self.save_changes_as(show_dialog=False)
 
@@ -646,7 +646,7 @@ class UEVMGui(tk.Tk):
         """
         Save the data to the current data source.
         :param show_dialog: whether to show a dialog to select the file to save to, if False, use the current file.
-        :return: the name of the file that was saved.
+        :return: name of the file that was saved.
         """
         data_table = self.editable_table  # shortcut
         self.save_settings()
@@ -737,15 +737,15 @@ class UEVMGui(tk.Tk):
         :param folder: name to search for.
         :param parent: parent folder to search in.
         :param check_if_valid: whether to check if the marketplace_url is valid. Return an empty string if not.
-        :return: the marketplace_url found in the file or an empty string if not found.
+        :return: marketplace_url found in the file or an empty string if not found.
         """
 
         def read_from_url_file(entry, folder_name: str, returned_urls: [str]) -> bool:
             """
             Read an url from a .url file and add it to the list of urls to return.
-            :param entry: the entry to process.
-            :param folder_name: the name of the folder to search for.
-            :param returned_urls: a list of urls to return. We use a list instead of a str because we need to modify it from the inner function.
+            :param entry: entry to process.
+            :param folder_name: name of the folder to search for.
+            :param returned_urls: list of urls to return. We use a list instead of a str because we need to modify it from the inner function.
             :return: True if the entry is a file and the name matches the folder name, False otherwise.
             """
             if entry.is_file() and entry.name.lower().endswith('.url'):
@@ -791,14 +791,14 @@ class UEVMGui(tk.Tk):
     def scan_for_assets(self, folder_list: list = None, from_add_button: bool = False) -> None:
         """
         Scan the folders to find files that can be loaded.
-        :param folder_list: the list of folders to scan. If empty, use the folders in the config file.
+        :param folder_list: list of folders to scan. If empty, use the folders in the config file.
         :param from_add_button: whether the call has been done from the "add" button or not.
         """
 
         def _fix_folder_structure(content_folder_name: str = gui_g.s.ue_asset_content_subfolder):
             """
             Fix the folder structure by moving all the subfolders inside a "Content" subfolder.
-            :param content_folder_name: the name of the subfolder to create.
+            :param content_folder_name: name of the subfolder to create.
             """
             if gui_f.box_yesno(
                 f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
@@ -1012,7 +1012,7 @@ class UEVMGui(tk.Tk):
         # copy_col_index = data_table.get_col_index(gui_g.s.index_copy_col_name)
         for name, content in valid_folders.items():
             marketplace_url = content['marketplace_url']
-            self.logger.info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
+            self.logger.info(f'{name} : {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
             # set default values for the row, some will be replaced by Scraping
             row_data.update(
                 {
@@ -1201,8 +1201,8 @@ class UEVMGui(tk.Tk):
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param row_numbers: a list a row numbers to scrap. If None, will use the selected rows.
-        :param row_index: the (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
+        :param row_numbers: list a row numbers to scrap. If None, will use the selected rows.
+        :param row_index: (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data
         :param show_message: whether to show a message if the marketplace_url is not valid
         :param update_dataframe: whether to update the dataframe after scraping
@@ -1293,8 +1293,8 @@ class UEVMGui(tk.Tk):
     def _check_unicity(self, asset_data: {}) -> (bool, dict):
         """
         Check if the given asset_data is unique in the table. If not, will change the asset_id and/or the asset_slug to avoid issue.
-        :param asset_data: the asset data to check
-        :return: the asset_data with the updated asset_id and/or asset_slug
+        :param asset_data: asset data to check
+        :return: asset_data with the updated asset_id and/or asset_slug
         """
         is_unique = True
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
@@ -1503,7 +1503,7 @@ class UEVMGui(tk.Tk):
     def update_category_var(self) -> dict:
         """
         Update the category variable with the current categories in the data.
-        :return: a dict with the new categories list as value and the key is the name of the variable.
+        :return: dict with the new categories list as value and the key is the name of the variable.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         try:
@@ -1612,7 +1612,7 @@ class UEVMGui(tk.Tk):
     def run_uevm_command(self, command_name='') -> (int, str):
         """
         Execute a cli command and display the result in DisplayContentWindow.
-        :param command_name: the name of the command to execute.
+        :param command_name: name of the command to execute.
         """
         if gui_g.WindowsRef.display_content is not None:
             self.logger.info('A UEVM command is already running, please wait for it to finish.')
@@ -1834,7 +1834,7 @@ class UEVMGui(tk.Tk):
     def set_asset_id(self, value: str) -> None:
         """
         Set the asset id in the control frame.
-        :param value: the value to set.
+        :param value: value to set.
         """
         frm_control: UEVMGuiControlFrame = self._frm_control
         if not frm_control:
@@ -1854,7 +1854,7 @@ class UEVMGui(tk.Tk):
     def clean_asset_folders(self) -> int:
         """
         Delete the assets which folder in 'Origin' does not exist.
-        :return: the number of deleted assets.
+        :return: number of deleted assets.
         """
         data_table = self.editable_table  # shortcut
         df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
@@ -1915,7 +1915,7 @@ class UEVMGui(tk.Tk):
     def create_dynamic_filters(self) -> {str: []}:
         """
         Create a dynamic filters list that can be added to the filter frame quick filter list.
-        :return: a dict that will be added to the FilterFrame quick filters list.
+        :return: dict that will be added to the FilterFrame quick filters list.
 
         Notes:
             It returns a dict where each entry must respect the folowing format: "{'<label>': ['callable': <callable> ]}"
@@ -1952,7 +1952,7 @@ class UEVMGui(tk.Tk):
     def filter_tags_with_number(self) -> pd.Series:
         """
         Create a mask to filter the data with tags that contains an integer.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix) for i in x))
@@ -1962,7 +1962,7 @@ class UEVMGui(tk.Tk):
         """
         Create a mask to filter the data that are not owned and with a price <=0.5 or free.
         Assets that custom attributes contains external_link are also filtered.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         # Ensure 'Discount price' and 'Price' are float type
@@ -1976,8 +1976,8 @@ class UEVMGui(tk.Tk):
     def filter_not_empty(self, col_name: str) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty value for a column.
-        :param col_name: the name of the column to check.
-        :return: a mask to filter the data.
+        :param col_name: name of the column to check.
+        :return: mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         # mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
@@ -1989,20 +1989,20 @@ class UEVMGui(tk.Tk):
     def filter_with_comment(self) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty comment value.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         return self.filter_not_empty('Comment')
 
     def filter_with_installed_folders(self) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty installed_folders value.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         return self.filter_not_empty('Installed folders')
 
     def filter_is_downloaded(self) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty downloaded size.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         return self.filter_not_empty('Downloaded size')

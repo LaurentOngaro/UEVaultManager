@@ -40,7 +40,7 @@ class UEADBH_Settings:
 class UEAssetDbHandler:
     """
     Handles database operations for the UE Assets.
-    :param database_name: the name of the database file.
+    :param database_name: name of the database file.
     :param reset_database: whether the database will be reset.
 
     Note: The database will be created if it doesn't exist.
@@ -74,7 +74,7 @@ class UEAssetDbHandler:
     class DatabaseConnection:
         """
         Context manager for opening and closing a database connection.
-        :param database_name: the name of the database file.
+        :param database_name: name of the database file.
         """
 
         def __init__(self, database_name: str):
@@ -84,7 +84,7 @@ class UEAssetDbHandler:
         def __enter__(self):
             """
             Open the database connection.
-            :return: the sqlite3.Connection object.
+            :return: sqlite3.Connection object.
             """
             self.sqlite_conn = sqlite3.connect(self.database_name, check_same_thread=False)
             return self.sqlite_conn
@@ -128,7 +128,7 @@ class UEAssetDbHandler:
     def _get_db_version(self) -> DbVersionNum:
         """
         Check the database version.
-        :return: the database version.
+        :return: database version.
         """
         try:
             if self.connection is not None:
@@ -145,7 +145,7 @@ class UEAssetDbHandler:
     def _set_db_version(self, new_version: DbVersionNum) -> None:
         """
         Set the database version.
-        :param new_version: the new database version.
+        :param new_version: new database version.
         """
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -156,8 +156,8 @@ class UEAssetDbHandler:
     def _check_db_version(self, minimal_db_version: DbVersionNum, caller_name='this method') -> bool:
         """
         Check if the database version is compatible with the current method.
-        :param minimal_db_version: the minimal database version that is compatible with the current method.
-        :param caller_name: the name of the method that called this method.
+        :param minimal_db_version: minimal database version that is compatible with the current method.
+        :param caller_name: name of the method that called this method.
         :return:  True if the database version is compatible, otherwise False.
         """
         if self.db_version.value < minimal_db_version.value:
@@ -189,9 +189,9 @@ class UEAssetDbHandler:
     def _run_query(self, query: str, data: dict = None) -> list:
         """
         Run a query.
-        :param query: the query to run.
-        :param data: a dictionary containing the data to use in the query.
-        :return: the result of the query.
+        :param query: query to run.
+        :param data: dictionary containing the data to use in the query.
+        :return: result of the query.
         """
         result = None
         if self.connection is not None:
@@ -208,8 +208,8 @@ class UEAssetDbHandler:
     def _insert_or_update_row(self, table_name: str, row_data: dict) -> bool:
         """
         Insert or update a row in the given table.
-        :param table_name: the name of the table.
-        :param row_data: a dictionary representing the row to insert or update.
+        :param table_name: name of the table.
+        :param row_data: row to insert or update.
         :return: True if the row was inserted or updated, otherwise False.
         """
         if not table_name or not row_data:
@@ -272,7 +272,7 @@ class UEAssetDbHandler:
     def init_connection(self) -> sqlite3.Connection:
         """
         Initialize the database connection.
-        :return: the sqlite3.Connection object.
+        :return: sqlite3.Connection object.
 
         Notes:
             It will also set self.Connection property.
@@ -294,7 +294,7 @@ class UEAssetDbHandler:
     def create_tables(self, upgrade_to_version=DbVersionNum.V1) -> None:
         """
         Create the tables if they don't exist.
-        :param upgrade_to_version: the database version we want to upgrade TO.
+        :param upgrade_to_version: database version we want to upgrade TO.
         """
         # all the following steps must be run sequentially
         if upgrade_to_version.value >= DbVersionNum.V1.value:
@@ -378,7 +378,7 @@ class UEAssetDbHandler:
     def check_and_upgrade_database(self, upgrade_from_version: DbVersionNum = None) -> None:
         """
         Change the tables structure according to different versions.
-        :param upgrade_from_version: the version we want to upgrade FROM. if None, the current version will be used.
+        :param upgrade_from_version: version we want to upgrade FROM. if None, the current version will be used.
         """
         if not self.is_table_exist('assets'):
             previous_version = DbVersionNum.V0
@@ -483,7 +483,7 @@ class UEAssetDbHandler:
     def is_table_exist(self, table_name) -> bool:
         """
         Check if a table exists.
-        :param table_name: the name of the table to check.
+        :param table_name: name of the table to check.
         :return:  True if the 'assets' table exists, otherwise False.
         """
         result = None
@@ -497,7 +497,7 @@ class UEAssetDbHandler:
     def get_rows_count(self, table_name='assets') -> int:
         """
         Get the number of rows in the given table.
-        :param table_name: the name of the table.
+        :param table_name: name of the table.
         :return:  The number of rows in the 'assets' table.
         """
         row_count = 0
@@ -512,7 +512,7 @@ class UEAssetDbHandler:
     def save_last_run(self, data: dict):
         """
         Save the last run data into the 'last_run' table.
-        :param data: a dictionary containing the data to save.
+        :param data: dictionary containing the data to save.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V3, caller_name=inspect.currentframe().f_code.co_name):
@@ -527,7 +527,7 @@ class UEAssetDbHandler:
     def set_assets(self, _asset_list, update_progress=True) -> bool:
         """
         Insert or update assets into the 'assets' table.
-        :param _asset_list: a dictionary or a list of dictionaries representing assets.
+        :param _asset_list: dictionary or a list of dictionaries representing assets.
         :param update_progress: True to update the progress window, otherwise False.
         :return: True if the assets were inserted or updated, otherwise False.
 
@@ -570,7 +570,7 @@ class UEAssetDbHandler:
         """
         Get data from all the assets in the 'assets' table.
         :param fields: list of fields to return.
-        :param uid: the id of the asset to get data for. If None, all the assets will be returned.
+        :param uid: id of the asset to get data for. If None, all the assets will be returned.
         :return: dictionary {ids, rows}.
         """
         if not isinstance(fields, str):
@@ -590,7 +590,7 @@ class UEAssetDbHandler:
     def get_assets_data_for_csv(self, where_clause='') -> list:
         """
         Get data from all the assets in the 'assets' table for a "CSV file" like format.
-        :param where_clause: a string containing the WHERE clause to use in the SQL query.
+        :param where_clause: string containing the WHERE clause to use in the SQL query.
         :return: list(rows).
         """
         rows = []
@@ -651,9 +651,9 @@ class UEAssetDbHandler:
     def create_empty_row(self, return_as_string=True, do_not_save=False):
         """
         Create an empty row in the 'assets' table.
-        :param return_as_string: true to return the row as a string, False to.
-        :param do_not_save: true to not save the row in the database.
-        :return: a row (dict) or a string representing the empty row.
+        :param return_as_string: True to return the row as a string, False to.
+        :param do_not_save: True to not save the row in the database.
+        :return: row (dict) or a string representing the empty row.
         """
         result = '' if return_as_string else {}
         # add a new row to the 'assets' table
@@ -682,7 +682,7 @@ class UEAssetDbHandler:
     def read_ue_asset(self, uid: str) -> UEAsset:
         """
         Read an UEAsset object from the 'assets' table.
-        :param uid: the ID of the asset to get.
+        :param uid: ID of the asset to get.
         :return: uEAsset object.
         """
         ue_asset = None
@@ -705,8 +705,8 @@ class UEAssetDbHandler:
     def delete_asset(self, uid: str = '', asset_id: str = '') -> None:
         """
         Delete an asset from the 'assets' table by its ID or asset_id.
-        :param uid: the ID of the asset to delete.
-        :param asset_id: the Asset_id of the asset to delete. If both uid and asset_id are provided, only asset_id is used.
+        :param uid: ID of the asset to delete.
+        :param asset_id: Asset_id of the asset to delete. If both uid and asset_id are provided, only asset_id is used.
         """
         if self.connection is not None and (uid or asset_id):
             cursor = self.connection.cursor()
@@ -720,7 +720,7 @@ class UEAssetDbHandler:
     def delete_all_assets(self, keep_added_manually=True) -> None:
         """
         Delete all assets from the 'assets' table.
-        :param keep_added_manually: true to keep the assets added manually, False to delete all assets.
+        :param keep_added_manually: True to keep the assets added manually, False to delete all assets.
         """
         if keep_added_manually:
             where_clause = "added_manually = 0"
@@ -735,10 +735,10 @@ class UEAssetDbHandler:
     def update_asset(self, column: str, value, uid: str = '', asset_id: str = '') -> None:
         """
         Update a specific column of an asset in the 'assets' table by its ID.
-        :param column: the name of the column.
-        :param value: the new value.
-        :param uid: the ID of the asset to delete.
-        :param asset_id: the Asset_id of the asset to delete. If both uid and asset_id are provided, only asset_id is used.
+        :param column: name of the column.
+        :param value: new value.
+        :param uid: ID of the asset to delete.
+        :param asset_id: Asset_id of the asset to delete. If both uid and asset_id are provided, only asset_id is used.
         """
         if self.connection is not None and (uid or asset_id):
             cursor = self.connection.cursor()
@@ -753,7 +753,7 @@ class UEAssetDbHandler:
     def save_tag(self, data: dict):
         """
         Save a tag into the 'tag' table.
-        :param data: a dictionary containing the data to save.
+        :param data: dictionary containing the data to save.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V7, caller_name=inspect.currentframe().f_code.co_name):
@@ -770,7 +770,7 @@ class UEAssetDbHandler:
     def get_tag_by_id(self, uid: int) -> str:
         """
         Read a tag name using its id from the 'tags' table.
-        :param uid: the ID of the tag to get.
+        :param uid: ID of the tag to get.
         :return: name of the tag.
         """
         result = None
@@ -786,7 +786,7 @@ class UEAssetDbHandler:
     def save_rating(self, data: dict):
         """
         Save a tag into the 'rating' table.
-        :param data: a dictionary containing the data to save.
+        :param data: dictionary containing the data to save.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V8, caller_name=inspect.currentframe().f_code.co_name):
@@ -803,7 +803,7 @@ class UEAssetDbHandler:
     def get_rating_by_id(self, uid: str) -> ():
         """
         Read a rating using its id from the 'ratings' table.
-        :param uid: the ID of the ratings to get.
+        :param uid: ID of the ratings to get.
         :return: tuple (averageRating, total)
         """
         result = (None, None)
@@ -818,9 +818,9 @@ class UEAssetDbHandler:
     def get_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', ) -> str:
         """
         Get the list of installed folders for the given asset.
-        :param asset_id: the asset_id (i.e. app_name) of the asset to get.
-        :param catalog_item_id: the catalog_item_id of the asset to get. If present, the asset_id is ignored.
-        :return: a list of installed folders.
+        :param asset_id: asset_id (i.e. app_name) of the asset to get.
+        :param catalog_item_id: catalog_item_id of the asset to get. If present, the asset_id is ignored.
+        :return: list of installed folders.
         """
         if self.connection is None or (not asset_id and not catalog_item_id):
             return ''
@@ -839,9 +839,9 @@ class UEAssetDbHandler:
     def add_to_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', folders: list = None) -> None:
         """
         Add folders to the list of installed folders for the given asset.
-        :param asset_id: the asset_id (i.e. app_name) of the asset to get.
-        :param catalog_item_id: the catalog_item_id of the asset to get. If present, the asset_id is ignored.
-        :param folders: the folders list to add.
+        :param asset_id: asset_id (i.e. app_name) of the asset to get.
+        :param catalog_item_id: catalog_item_id of the asset to get. If present, the asset_id is ignored.
+        :param folders: folders list to add.
         """
         installed_folders_updated, installed_folders_existing = self._precheck_installed_folders(asset_id, catalog_item_id, folders)
         # remove all empty string in installed_folders lists
@@ -855,10 +855,10 @@ class UEAssetDbHandler:
     def remove_from_installed_folders(self, asset_id: str = '', catalog_item_id: str = '', folders: list = None) -> str:
         """
         Remove folders from the list of installed folders for the given asset.
-        :param asset_id: the asset_id (i.e. app_name) of the asset to get.
-        :param catalog_item_id: the catalog_item_id of the asset to get. If present, the asset_id is ignored.
-        :param folders: the folders list to remove.
-        :return: the new list of installed folders.
+        :param asset_id: asset_id (i.e. app_name) of the asset to get.
+        :param catalog_item_id: catalog_item_id of the asset to get. If present, the asset_id is ignored.
+        :param folders: folders list to remove.
+        :return: new list of installed folders.
         """
         installed_folders_updated, installed_folders_existing = self._precheck_installed_folders(asset_id, catalog_item_id, folders)
         # remove the folders to remove from the installed_folders list
@@ -869,7 +869,7 @@ class UEAssetDbHandler:
     def get_rows_with_installed_folders(self) -> dict:
         """
         Get the list of assets with an installed folders defined.
-        :return: a dict with {asset_id,title,installed folders}
+        :return: dict with {asset_id,title,installed folders}
 
         Notes:
             The database does not contain all the data for an InstalledAsset object. The missing fields are set to default values and should be updated on a "real" installation.
@@ -893,7 +893,7 @@ class UEAssetDbHandler:
     #     """
     #     Get all rows from the 'assets_tags' table that could be scrapped to fix their tags.
     #     param tag_value: if not None, only get the rows that have a tag == tag_value.
-    #     :return: a list of asset_id.
+    #     :return: list of asset_id.
     #
     #     Notes:
     #         If tag_value is None, the returned list contains the asset_id that have at least a tag in the tags field that is an id in the tag table
@@ -919,10 +919,9 @@ class UEAssetDbHandler:
         prefix = gui_g.s.tag_prefix  # prefix to add to the tag that has been checked
         if tags is not None and tags != [] and tags != {} and tags != '':
             if isinstance(tags, str):
-                # noinspection PyBroadException
                 try:
                     tags = tags.split(',')  # convert the string to a list
-                except Exception:
+                except (Exception, ):
                     return tags_str
             if isinstance(tags, list):
                 names = []
@@ -969,7 +968,7 @@ class UEAssetDbHandler:
     def get_table_names(self) -> list:
         """
         Get the names of all the tables in the database.
-        :return: a list of table names.
+        :return: list of table names.
         """
         result = []
         if self.connection is not None:
@@ -990,12 +989,12 @@ class UEAssetDbHandler:
     ) -> [str]:
         """
         Export the database to a CSV file.
-        :param folder_for_csv_files: the folder where the CSV files will be saved.
-        :param table_name: the name of the table to export. If None, all the tables will be exported.
-        :param fields: the fields to export. If None, all the fields will be exported.
-        :param backup_existing: true to back up the existing CSV file before overwriting it.
-        :param suffix_separator: the separator used to separate the table name from the suffix in the CSV file name.
-        :param suffix: a suffix to add to the CSV file name.
+        :param folder_for_csv_files: folder where the CSV files will be saved.
+        :param table_name: name of the table to export. If None, all the tables will be exported.
+        :param fields: fields to export. If None, all the fields will be exported.
+        :param backup_existing: True to back up the existing CSV file before overwriting it.
+        :param suffix_separator: separator used to separate the table name from the suffix in the CSV file name.
+        :param suffix: suffix to add to the CSV file name.
         :return: list of CSV files that have been writen, [] if none.
 
         Notes:
@@ -1054,12 +1053,12 @@ class UEAssetDbHandler:
     ) -> ([str], bool):
         """
         Import the database from a CSV file.
-        :param folder_for_csv_files: the folder containing the CSV files to import.
-        :param table_name: the name of the table to import. If None, all the tables will be imported.
-        :param delete_content: true to delete the content of the table before importing the data, False to append the data to the table.
-        :param is_partial: true to indicate the import is partial. It True, only some fields are imported and the columns will not be checked.
-        :param suffix_separator: the separator used to separate the table name from the suffix in the CSV file name.
-        :param suffix_to_ignore: a list of suffix to ignore when importing the CSV files.
+        :param folder_for_csv_files: folder containing the CSV files to import.
+        :param table_name: name of the table to import. If None, all the tables will be imported.
+        :param delete_content: True to delete the content of the table before importing the data, False to append the data to the table.
+        :param is_partial: True to indicate the import is partial. It True, only some fields are imported and the columns will not be checked.
+        :param suffix_separator: separator used to separate the table name from the suffix in the CSV file name.
+        :param suffix_to_ignore: list of suffix to ignore when importing the CSV files.
         :return: (list of CSV files that have been read, True if the database must be reloaded).
         """
         if suffix_to_ignore is None:
@@ -1155,7 +1154,7 @@ class UEAssetDbHandler:
     def generate_test_data(self, number_of_rows=1) -> None:
         """
         Generate and insert the specified number of fake assets into the 'assets' table.
-        :param number_of_rows: the number of fake assets to generate and insert.
+        :param number_of_rows: number of fake assets to generate and insert.
         """
         # check if the database version is compatible with the current method
         if not self._check_db_version(DbVersionNum.V2, caller_name=inspect.currentframe().f_code.co_name):

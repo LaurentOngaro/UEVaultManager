@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 implementation for:
-- FakeProgressWindow: a fake ProgressWindow object to use when no ProgressWindow object is provided and provide the same interface.
+- FakeProgressWindow: fake ProgressWindow object to use when no ProgressWindow object is provided and provide the same interface.
 """
 
 

@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- GUISettings: a class that contains all the settings for the GUI.
+- GUISettings: class that contains all the settings for the GUI.
 """
 import json
 import os
@@ -149,8 +149,8 @@ class GUISettings:
         """
         Getter for a serialized config vars
         :param var_name: name of the config var to get
-        :param is_dict: true if the value is a dict, False if it's a list
-        :param force_reload: true to force reloading the value from the config file and update the deserialized value
+        :param is_dict: True if the value is a dict, False if it's a list
+        :param force_reload: True to force reloading the value from the config file and update the deserialized value
         :return: list or Dict
         """
         default = {} if is_dict else []
@@ -456,7 +456,7 @@ class GUISettings:
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
         Initialize the config file for the gui.
-        :param config_file: the path to the config file to use.
+        :param config_file: path to the config file to use.
         """
         if config_path := os.environ.get('XDG_CONFIG_HOME'):
             self.path = path_join(config_path, 'UEVaultManager')

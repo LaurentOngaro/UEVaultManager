@@ -121,7 +121,7 @@ class AppCore:
         """
         Load a manifest.
         :param data: bytes object to load the manifest from.
-        :return: manifest object.
+        :return: Manifest object.
         """
         if data[0:1] == b'{':
             return JSONManifest.read_all(data)
@@ -570,7 +570,7 @@ class AppCore:
     ) -> (DLManager, AnalysisResult, InstalledAsset):
         """
         Prepare a download.
-        :param base_asset: the "base" asset to prepare the download for, not the selected release.
+        :param base_asset: "base" asset to prepare the download for, not the selected release.
         :param release_name: release name prepare the download for.
         :param release_title: release title prepare the download for.
         :param download_folder: folder to download the asset to.

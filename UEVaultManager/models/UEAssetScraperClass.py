@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEAssetScraper: a class that handles scraping data from the Unreal Engine Marketplace.
+- UEAssetScraper: class that handles scraping data from the Unreal Engine Marketplace.
 """
 import concurrent.futures
 import csv
@@ -60,22 +60,22 @@ class UEAssetScraper:
     """
     A class that handles scraping data from the Unreal Engine Marketplace.
     It saves the data in json files and/or in a sqlite database.
-    :param datasource_filename: the name of the database or file to save the data to.
-    :param use_database: a boolean indicating whether to use a database for reading missing data (ex tags names) and save data in a sqlite database. Defaults to True.
-    :param start: an int representing the starting index for the data to retrieve. Defaults to 0.
-    :param stop: an int representing the ending index for the data to retrieve. Defaults to 0.
-    :param assets_per_page: an int representing the number of items to retrieve per request. Defaults to 100.
-    :param sort_by: a string representing the field to sort by. Defaults to 'effectiveDate'.
-    :param sort_order: a string representing the sort order. Defaults to 'ASC'.
-    :param max_threads: an int representing the maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
-    :param save_to_files: a boolean indicating whether to store the data in csv files. Defaults to True. Could create lots of files (1 file per asset).
-    :param load_from_files: a boolean indicating whether to load the data from files instead of scraping it. Defaults to False. If set to True, save_to_files will be set to False and use_database will be set to True.
-    :param store_ids: a boolean indicating whether to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
-    :param clean_database: a boolean indicating whether to clean the database before saving the data. Defaults to False.
+    :param datasource_filename: name of the database or file to save the data to.
+    :param use_database: True to use a database for reading missing data (ex tags names) and save data in a sqlite database. Defaults to True.
+    :param start: starting index for the data to retrieve. Defaults to 0.
+    :param stop: ending index for the data to retrieve. Defaults to 0.
+    :param assets_per_page: number of items to retrieve per request. Defaults to 100.
+    :param sort_by: field to sort by. Defaults to 'effectiveDate'.
+    :param sort_order: sort order. Defaults to 'ASC'.
+    :param max_threads: maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
+    :param save_to_files: True to store data in json file. Defaults to True. Could create lots of files (1 file per asset).
+    :param load_from_files: True to load the data from files instead of scraping it. Defaults to False. If set to True, save_to_files will be set to False and use_database will be set to True.
+    :param store_ids: True to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
+    :param clean_database: True to clean the database before saving the data. Defaults to False.
     :param debug_mode: True to enable debug mode. Defaults to False.
     :param offline_mode: True to enable offline mode. Defaults to False.
-    :param progress_window: a ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
-    :param core: an AppCore object. Defaults to None. If None, a new AppCore object will be created.
+    :param progress_window: ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
+    :param core: AppCore object. Defaults to None. If None, a new AppCore object will be created.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
 
@@ -208,8 +208,8 @@ class UEAssetScraper:
     def _parse_data(self, json_data: dict = None) -> list:
         """
         Parse on or more asset data from the response of an url query.
-        :param json_data: a dictionary containing the data to parse.
-        :return: a list containing the parsed data.
+        :param json_data: dictionary containing the data to parse.
+        :return: list containing the parsed data.
         """
 
         all_assets = []
@@ -503,7 +503,7 @@ class UEAssetScraper:
                         _price = gui_fn.convert_to_float(_csv_record[price_index])
                         old_price = gui_fn.convert_to_float(
                             item_in_file[_csv_field]
-                        )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                        )  # Note: 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                     elif _csv_field == 'Origin':
                         # all the folders when the asset came from are stored in a comma separated list
                         if isinstance(value, str):
@@ -556,7 +556,7 @@ class UEAssetScraper:
                 _price = float(_json_record['Price'])
                 old_price = float(
                     _assets_in_file[_asset_id]['Price']
-                )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                )  # Note: 'old price' is the 'price' saved in the file, not the 'old_price' in the file
             except Exception as _error:
                 self._log(f'Old price values can not be converted for asset {_asset_id}\nError:{_error!r}', level='warning')
             _json_record['Old price'] = old_price
@@ -567,7 +567,7 @@ class UEAssetScraper:
     def _save_in_file(self, save_to_format: str = 'csv') -> bool:
         """
         Save the scraped data into a file.
-        :param save_to_format: the format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
         :return: True if the data have been saved, False otherwise.
         """
         assets_to_output = {}
@@ -681,11 +681,11 @@ class UEAssetScraper:
     def gather_all_assets_urls(self, egs_available_assets_count: int = -1, empty_list_before=False, save_result=True, owned_assets_only=False) -> int:
         """
         Gather all the URLs (with pagination) to be parsed and stores them in a list for further use.
-        :param egs_available_assets_count: the number of assets available on the marketplace. If not given, it will be retrieved from the EGS API.
+        :param egs_available_assets_count: number of assets available on the marketplace. If not given, it will be retrieved from the EGS API.
         :param empty_list_before: whether the list of URLs is emptied before adding the new ones.
         :param save_result: whether the list of URLs is saved in the database.
         :param owned_assets_only: whether only the owned assets are scraped.
-        :return: the number of assets to be scraped or -1 if the offline mode is active or if the process has been interrupted.
+        :return: number of assets to be scraped or -1 if the offline mode is active or if the process has been interrupted.
         """
         if self.offline_mode:
             self._log('The offline mode is active. No online data could be retreived')
@@ -719,7 +719,7 @@ class UEAssetScraper:
     def get_data_from_url(self, url='', owned_assets_only=False) -> bool:
         """
         Grab the data from the given url and stores it in the scraped_data property.
-        :param url: the url to grab the data from. If not given, uses the url property of the class.
+        :param url: url to grab the data from. If not given, uses the url property of the class.
         :param owned_assets_only: whether only the owned assets are scraped.
         """
         thread_state = ' RUNNING...'
@@ -769,13 +769,12 @@ class UEAssetScraper:
             if json_data:
                 if self.save_to_files:
                     # store the result file in the raw format
-                    # noinspection PyBroadException
                     try:
                         url_vars = gui_fn.extract_variables_from_url(url)
                         start = int(url_vars['start'])
                         count = int(url_vars['count'])
                         suffix = f'{start}-{start + count - 1}'
-                    except Exception:
+                    except (Exception, ):
                         suffix = datetime.now().strftime(DateFormat.file_suffix)
                     filename = f'assets_{suffix}.json'
                     self.save_to_file(filename=filename, data=json_data, is_global=True)
@@ -914,13 +913,13 @@ class UEAssetScraper:
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
         """
         Save JSON data to a file.
-        :param data: a dictionary containing the data to save. Defaults to None. If None, the data will be used.
-        :param prefix: a string representing the prefix to use for the file name. Defaults to 'assets'.
-        :param filename: a string representing the file name to use. Defaults to None. If None, a file name will be generated using the prefix and the start and count properties.
-        :param is_json: a boolean indicating whether the data is JSON or not. Defaults to True.
-        :param is_owned: a boolean indicating whether the data is owned assets or not. Defaults to False.
-        :param is_global: a boolean indicating whether if the data to save id the "global" result, as produced by the url scraping. Defaults to False.
-        :return: a boolean indicating whether the file was saved successfully.
+        :param data: dictionary containing the data to save. Defaults to None. If None, the data will be used.
+        :param prefix: prefix to use for the file name. Defaults to 'assets'.
+        :param filename: file name to use. Defaults to None. If None, a file name will be generated using the prefix and the start and count properties.
+        :param is_json: boolean indicating whether the data is JSON or not. Defaults to True.
+        :param is_owned: boolean indicating whether the data is owned assets or not. Defaults to False.
+        :param is_global: boolean indicating whether if the data to save id the "global" result, as produced by the url scraping. Defaults to False.
+        :return: boolean indicating whether the file was saved successfully.
         """
         if data is None:
             data = self._scraped_data
@@ -953,7 +952,7 @@ class UEAssetScraper:
         """
         Load all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param owned_assets_only: whether to only the owned assets are scraped.
-        :return: the number of files loaded or -1 if the process has been interrupted.
+        :return: number of files loaded or -1 if the process has been interrupted.
         """
         start_time = time.time()
         old_text = self.progress_window.get_text()
@@ -1014,7 +1013,7 @@ class UEAssetScraper:
         Save all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param owned_assets_only: whether to only the owned assets are scraped.
         :param save_last_run_file: whether the last_run file is saved.
-        :param save_to_format: the format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
         :return: True if OK, False if not
         """
         if owned_assets_only:
@@ -1066,7 +1065,7 @@ class UEAssetScraper:
     def pop_last_scrapped_data(self) -> []:
         """
         Pop the last scraped data from the scraped_data property.
-        :return: the last scraped data.
+        :return: last scraped data.
         """
         result = []
         if len(self._scraped_data) > 0:
