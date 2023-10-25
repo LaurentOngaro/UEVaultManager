@@ -298,7 +298,6 @@ class ProgressWindow(tk.Toplevel):
         :param new_max_value: new maximum value.
         """
         self.is_closing = False
-        self.frm_control.btn_stop.config(text='Stop')
         try:
             # sometimes the window is already destroyed
             if new_title is not None:
@@ -315,6 +314,7 @@ class ProgressWindow(tk.Toplevel):
             else:
                 self.hide_progress_bar()
                 self.hide_btn_stop()
+            self.frm_control.btn_stop.config(text='Stop')
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
         self._continue_execution = True
