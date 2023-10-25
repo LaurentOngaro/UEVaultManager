@@ -1,5 +1,5 @@
 The (new) Gui
-================
+=============
 .. _gui:
 
 Since the 1.1.0 version , the application provides a graphical user interface (GUI)
@@ -41,8 +41,10 @@ you can set the line start_in_edit_mode=true in the configuration file.
 In this case, the application will use the default data file.
 If the file does not exists, a new one will be created and its content will be rebuilt from scratch.
 
-Screenshots
-~~~~~~~~~~~
+Some Screenshots
+~~~~~~~~~~~~~~~~
+
+Here some screen shot of windows used by the application. They could have evolved since the time this documentation was written.
 
 The main window
 ^^^^^^^^^^^^^^^
@@ -97,17 +99,5 @@ Note that the data are raw and not formatted as in the main window, exception fo
 The changes made to a value must respect the initial format of the field to avoid errors on save.
 
 .. image:: https://i.imgur.com/16mqJde.png
-    :alt: cell edit window
-    :align: center
-
-
-The Result window
-^^^^^^^^^^^^^^^^^
-
-When running a command by clicking on a button of the `Cli commands` panel, the result is displayed in a windows and can be saved in a text file for later use.
-
-For instance, this is the result of the `status` command
-
-.. image:: https://i.imgur.com/kVg2vK0.png
     :alt: cell edit window
     :align: center

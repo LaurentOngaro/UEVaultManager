@@ -48,23 +48,16 @@ v3.0 <https://github.com/LaurentOngaro/UEVaultManager/blob/UEVaultManager/LICENS
 Implemented Features:
 ~~~~~~~~~~~~~~~~~~~~~
 
--  Authenticating with Epic's service
--  Listing and getting data about assets
-
-   -  all the metadata that were already downloaded before by legendary:
-      name, title, id, description, UE versions...
-   -  **extra data grabbed from the marketplace page of an asset :
-      price, review, tags, owned or not...**
--  **Scraping the marketplace page of an asset to get all the data using the EPIC MARKETPLACE API (since the version 1.8.0)**
+-  **Downloading and installing the assets you own from the EPIC MARKETPLACE (since the version 1.10.0)**
+-  **Scanning user folders for local assets (since the version 1.9.0)**
+-  **Scraping the marketplace page of an asset to get all its data using the EPIC GAME SERVICE API (since the version 1.8.0)**
 -  Since version 1.8.0, the application can also use a sqlite database to store
    the data and, as it, it could list ALLthe assets available on the marketplace (and not only the ones you own like in the previous versions).
--  Using a cache system to avoid getting data using API calls and web
+-  Using a several cache systems to avoid getting data using API calls and web
    scraping each time the application is run. The delay of cache conservation
    can be set in the configuration file
--  **Filtering the asset list by category before their listing (using the
-   "-fc | -filter-category" optional argument)**
--  **Saving the resulting list in a csv or a json file (using the "-o |
-   -output" optional argument)**
+-  Filtering the asset list by category before their listing
+-  Saving the resulting list in a csv or a json file
 -  Saving the metadata and the extra data in individual json files (one
    for each asset) in sub-folders of the config folder
 -  **Editing the content of a result file (json or csv) using a GUI (since the version 1.1.0)**
@@ -72,6 +65,11 @@ Implemented Features:
 
    -  Some fields in the result file (comments, personal note...) will be
       protected and not overwritten by a future data update.
+-  Listing and getting data about assets
+
+   -  all the metadata that are usually available: name, title, id, description, UE versions...
+   -  extra data grabbed from the marketplace page of an asset : price, review, tags, owned or not...
+-  Authenticating with Epic's service
 
 Planned Features
 ~~~~~~~~~~~~~~~~
@@ -88,14 +86,11 @@ Special thanks
 Legendary team
 ^^^^^^^^^^^^^^
 
-This code was mainly a lighter, cleaned and improved version of the
-`Legendary <https://github.com/derrod/legendary>`__ tool code base, with
+This code was initially based on a lighter and improved version of the
+`Legendary <https://github.com/derrod/legendary>`__ code base, with
 some addition regarding the listing and the management of unreal engine
 marketplace assets. So Thanks to the Legendary team for the fantastic
 work on their tool !!
-
-Till now, without it and its server REST API, This application won't be able to
-use the Epic API, specially the authentication part.
 
 Jetbrains
 ^^^^^^^^^
