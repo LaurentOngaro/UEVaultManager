@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiControlFrame: a control frame for the UEVMGui Class.
+- UEVMGuiControlFrame: control frame for the UEVMGui Class.
 """
 import os
 import tkinter as tk
@@ -22,8 +22,8 @@ from UEVaultManager.tkgui.modules.types import WidgetType
 class UEVMGuiControlFrame(ttk.Frame):
     """
     A control frame for the UEVMGui Class.
-    :param container: the parent self._container.
-    :param data_table: the EditableTable instance.
+    :param container: parent self._container.
+    :param data_table: EditableTable instance.
     """
 
     def __init__(self, container, data_table: EditableTable):
@@ -45,7 +45,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         # content frame
         lblf_content = ttk.LabelFrame(self, text='Data Table and content')
         lblf_content.pack(**lblf_def_options)
-        max_col = 5
+        max_col = 6
         cur_row = -1
         # new row
         cur_row += 1
@@ -83,12 +83,16 @@ class UEVMGuiControlFrame(ttk.Frame):
                 'text': 'Edit',  # if empty, the key of the dict will be used
                 'command': self._container.edit_row
             },  #
+            'scrap_asset': {
+                'text': 'Scrap',  # if empty, the key of the dict will be used
+                'command': self._container.scrap_asset
+            },  #
             'scrap_range': {
                 'text': 'Scrap range',  # if empty, the key of the dict will be used
                 'command': self._container.scrap_range
             },  #
             'scan_for_assets': {
-                'text': 'Scan Assets',  # if empty, the key of the dict will be used
+                'text': 'Scan assets',  # if empty, the key of the dict will be used
                 'command': self._container.scan_for_assets
             },  #
             'load_table': {
@@ -98,6 +102,10 @@ class UEVMGuiControlFrame(ttk.Frame):
             'save_changes': {
                 'text': ' Save ',  # if empty, the key of the dict will be used
                 'command': self._container.save_changes
+            },  #
+            'save_changes_as': {
+                'text': ' Save As',  # if empty, the key of the dict will be used
+                'command': self._container.save_changes_as
             },  #
             'export_selection': {
                 'text': 'Export',  # if empty, the key of the dict will be used
@@ -137,7 +145,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self._container._frm_filter = frm_filter
         data_table.set_frm_filter(frm_filter)
 
-        # Note: the TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
+        # Note: TAG of the child widgets of the lbf_quick_edit will also be used in the editable_table.quick_edit method
         # to get the widgets it needs. So they can't be changed freely
         self.lbtf_quick_edit = TaggedLabelFrame(self, text='Select a row for Quick Editing its USER FIELDS')
         self.lbtf_quick_edit.pack(**lblf_fw_options, anchor=tk.NW)
@@ -154,8 +162,6 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_download_asset.pack(**pack_def_options, side=tk.LEFT)
         btn_install_asset = ttk.Button(frm_asset_action, text='INSTALL', command=self._container.install_asset)
         btn_install_asset.pack(**pack_def_options, side=tk.LEFT)
-        btn_scrap_asset = ttk.Button(frm_asset_action, text='Scrap', command=self._container.scrap_asset)
-        btn_scrap_asset.pack(**pack_def_options, side=tk.LEFT)
         frm_asset_action.pack(**lblf_fw_options)
 
         ttk_item = ttk.Label(self.lbtf_quick_edit, text='The selected row values are updated when focus changes', foreground='#158CBA')
@@ -264,7 +270,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         ttk.Sizegrip(lblf_bottom).pack(side=tk.RIGHT)
 
         widget_list = gui_g.stated_widgets.get('row_is_selected', [])
-        append_no_duplicate(widget_list, [self.buttons['add_row']['widget'], self.buttons['edit_row']['widget'], btn_show_installed_releases])
+        append_no_duplicate(widget_list, [self.buttons['edit_row']['widget'], btn_show_installed_releases])
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         append_no_duplicate(widget_list, [self.buttons['save_changes']['widget']])
         widget_list = gui_g.stated_widgets.get('not_offline', [])
@@ -276,12 +282,14 @@ class UEVMGuiControlFrame(ttk.Frame):
         widget_list = gui_g.stated_widgets.get('asset_added_mannually', [])
         append_no_duplicate(widget_list, [btn_open_folder])
         widget_list = gui_g.stated_widgets.get('row_is_selected_and_not_offline', [])
-        append_no_duplicate(widget_list, [btn_scrap_asset])
+        append_no_duplicate(widget_list, [self.buttons['scrap_asset']['widget']])
+        widget_list = gui_g.stated_widgets.get('file_is_used', [])
+        append_no_duplicate(widget_list, [self.buttons['save_changes_as']['widget']])
 
     def save_filters(self, filters: dict) -> None:
         """
         Save the filters to a file (Wrapper)
-        :param filters: the filters to save.
+        :param filters: filters to save.
         """
         json_ext = '.json'
         if not filters:
@@ -295,7 +303,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         )
         if not filename:
             return
-        fd_folder = os.path.abspath(os.path.dirname(filename))
+        filename = os.path.normpath(filename)
+        fd_folder = os.path.abspath(filename)
         filename = os.path.basename(filename)  # remove the folder from the filename
         filename, ext = os.path.splitext(filename)
         if not ext:
@@ -326,7 +335,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         )
         if not filename:
             return {}
-        fd_folder = os.path.abspath(os.path.dirname(filename))
+        filename = os.path.normpath(filename)
+        fd_folder = os.path.dirname(filename)
         if folder != fd_folder:
             messagebox.showwarning(
                 'Warning', f'Only files in the folder {folder} can be loaded as filters. Please try again without changing the folder.'

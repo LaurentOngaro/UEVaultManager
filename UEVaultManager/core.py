@@ -92,19 +92,14 @@ class AppCore:
 
         # UE assets metadata cache properties
         self.ue_assets_count = 0
-        self.cache_is_invalidate = False
-        # Delay (in seconds) when UE assets metadata cache will be invalidated. Default value is 15 days
-        self.ue_assets_max_cache_duration = 15 * 24 * 3600
         # set to True to add print more information during long operations
         self.verbose_mode = False
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
-        # Set the file name (and path) to log issues when an asset is ignored or filtered when running the --list command
-        self.ignored_assets_filename_log = ''
-        # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the --list command
+        # Set the file name (and path) to log issues when an asset is ignored or filtered when running the list or scrap commands
+        self.scrap_assets_filename_log = ''
+        # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the list or scrap commands
         self.notfound_assets_filename_log = ''
-        # Set the file name (and path) to log issues when an asset has metadata and extra data are incoherent when running the --list command
-        self.bad_data_assets_filename_log = ''
         # Set the file name (and path) to log issues when scanning folder to find assets
         self.scan_assets_filename_log = ''
         # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
@@ -114,8 +109,6 @@ class AppCore:
         self.notfound_logger = None
         self.bad_data_logger = None
         self.scan_assets_logger = None
-        # store time to process metadata and extra update
-        self.process_time_average = {'time': 0.0, 'count': 0}
         self.use_threads = False
         self.thread_executor = None
         self.thread_executor_must_stop = False
@@ -126,7 +119,7 @@ class AppCore:
         """
         Load a manifest.
         :param data: bytes object to load the manifest from.
-        :return: manifest object.
+        :return: Manifest object.
         """
         if data[0:1] == b'{':
             return JSONManifest.read_all(data)
@@ -139,8 +132,8 @@ class AppCore:
         Check installation conditions.
         :param analysis: analysis result to check.
         :param folders: folders to check free size for.
-        :param ignore_space_req:
-        :return:
+        :param ignore_space_req: whether to ignore space requirements or not.
+        :return: ConditionCheckResult object.
         """
         results = ConditionCheckResult(failures=set(), warnings=set())
         if not isinstance(folders, list):
@@ -202,12 +195,10 @@ class AppCore:
         formatter = logging.Formatter('%(message)s')
         message = f"-----\n{datetime.now().strftime(DateFormat.csv)} Log Started\n-----\n"
 
-        if self.ignored_assets_filename_log:
-            self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
+        if self.scrap_assets_filename_log:
+            self.ignored_logger = create_logger('ScrapAssets', self.scrap_assets_filename_log)
         if self.notfound_assets_filename_log:
             self.notfound_logger = create_logger('NotFoundAssets', self.notfound_assets_filename_log)
-        if self.bad_data_assets_filename_log:
-            self.bad_data_logger = create_logger('BadDataAssets', self.bad_data_assets_filename_log)
         if self.scan_assets_filename_log:
             self.scan_assets_logger = create_logger('ScanAssets', self.scan_assets_filename_log)
 
@@ -457,7 +448,7 @@ class AppCore:
     def asset_obj_from_json(self, app_name: str) -> Optional[Asset]:
         """
         return an "item" like for compatibilty with "old" methods .
-        :param app_name:
+        :param app_name: asset name to get the asset object for.
         :return: Asset object.
         """
         asset_data, _ = self.uevmlfs.get_asset(app_name)
@@ -575,7 +566,7 @@ class AppCore:
     ) -> (DLManager, AnalysisResult, InstalledAsset):
         """
         Prepare a download.
-        :param base_asset: the "base" asset to prepare the download for, not the selected release.
+        :param base_asset: "base" asset to prepare the download for, not the selected release.
         :param release_name: release name prepare the download for.
         :param release_title: release title prepare the download for.
         :param download_folder: folder to download the asset to.

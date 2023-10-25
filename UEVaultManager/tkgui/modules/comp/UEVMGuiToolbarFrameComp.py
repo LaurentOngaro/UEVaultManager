@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEVMGuiToolbarFrame: a toolbar frame for the UEVMGui Class.
+- UEVMGuiToolbarFrame: toolbar frame for the UEVMGui Class.
 """
 import tkinter as tk
 
@@ -16,8 +16,8 @@ from UEVaultManager.tkgui.modules.functions_no_deps import append_no_duplicate
 class UEVMGuiToolbarFrame(ttk.Frame):
     """
     A toolbar frame for the UEVMGui Class.
-    :param container: the parent container.
-    :param data_table: the EditableTable instance.
+    :param container: parent container.
+    :param data_table: EditableTable instance.
     """
 
     def __init__(self, container, data_table: EditableTable):
@@ -126,5 +126,5 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         append_no_duplicate(widget_list, [btn_asset_info])
         widget_list = gui_g.stated_widgets.get('cli_is_available', [])
         append_no_duplicate(widget_list, [btn_status, btn_cleanup, btn_asset_info])
-        widget_list = gui_g.stated_widgets.get('db_is_available', [])
+        widget_list = gui_g.stated_widgets.get('database_is_used', [])
         append_no_duplicate(widget_list, [btn_json_data, btn_import_export])

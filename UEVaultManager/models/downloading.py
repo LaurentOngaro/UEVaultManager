@@ -4,9 +4,9 @@ Implementation for:
 - SharedMemorySegment: Segment of the shared memory used for one Chunk.
 - DownloaderTask: Task submitted to the download worker.
 - DownloaderTaskResult: Result of DownloaderTask provided by download workers.
-- ChunkTask: A task describing a single read of a (partial) chunk from memory or an existing file.
-- TaskFlags: Flags for FileTask.
-- FileTask: A task describing some operation on the filesystem.
+- ChunkTask: Task describing a single read of a (partial) chunk from memory or an existing file.
+- TaskFlags: Flags foT.
+- FileTask: Task describing some operation on the filesystem.
 - WriterTask: Task for FileWriter worker process, describing an operation on the filesystem.
 - WriterTaskResult: Result from the FileWriter worker.
 - UIUpdate: Status update object sent from the manager to the CLI/GUI to update status indicators.
@@ -58,7 +58,7 @@ class DownloaderTaskResult(DownloaderTask):
 @dataclass
 class ChunkTask:
     """
-    A task describing a single read of a (partial) chunk from memory or an existing file.
+    Task describing a single read of a (partial) chunk from memory or an existing file.
     """
     chunk_guid: int
     chunk_offset: int = 0
@@ -87,7 +87,7 @@ class TaskFlags(Flag):
 @dataclass
 class FileTask:
     """
-    A task describing some operation on the filesystem.
+    Task describing some operation on the filesystem.
     """
     filename: str
     flags: TaskFlags

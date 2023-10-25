@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- TaggedLabelFrame: a custom LabelFrame widget that allows child widgets to be identified by tags.
+- TaggedLabelFrame: custom LabelFrame widget that allows child widgets to be identified by tags.
 """
 import tkinter as tk
 from tkinter import ttk
@@ -61,7 +61,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param focus_out_callback: callback to call when the child widget loses focus.
         :param focus_in_callback: callback to call when the child widget get focus.
         :param click_on_callback: callback to call when the child widget is clicked or checked.
-        :return: child widget
+        :return: child widget.
 
         Notes:
             We can not use command parameter to manage callback here because it should be transmited
@@ -124,7 +124,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
     def get_children(self) -> dict:
         """
         Return the dictionary of tagged children.
-        :return: a dictionary of tagged children.
+        :return: dictionary of tagged children.
         """
         return self._tagged_child
 

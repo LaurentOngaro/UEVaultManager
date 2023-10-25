@@ -27,7 +27,7 @@ class AssetBase:
         """
         Create AssetBase from EGS.
         :param json: data.
-        :return: an AssetBase.
+        :return: AssetBase object.
         """
         tmp = cls()
         tmp.app_name = json.get('appName', '')
@@ -45,7 +45,7 @@ class AssetBase:
         """
         Create AssetBase from json.
         :param json: data.
-        :return: an AssetBase.
+        :return: AssetBase object.
         """
         tmp = cls()
         tmp.app_name = json.get('app_name', '')
@@ -74,7 +74,7 @@ class Asset:
         """
         Get Asset version for a given platform.
         :param platform: platform.
-        :return: Asset version.
+        :return: asset version.
         """
         if platform not in self.asset_infos:
             return None
@@ -105,7 +105,7 @@ class Asset:
         """
         Create Asset from json.
         :param asset_data: data.
-        :return: an Asset.
+        :return: Asset object.
         """
         tmp = cls(app_name=asset_data.get('app_name', ''), app_title=asset_data.get('app_title', ''), )  # call to the class constructor
         tmp.metadata = asset_data.get('metadata', {})
@@ -151,7 +151,7 @@ class InstalledAsset:
         """
         Create InstalledAsset from json.
         :param asset_data: data.
-        :return: an InstalledAsset.
+        :return: InstalledAsset object.
         """
         tmp = cls(
             app_name=asset_data.get('app_name', ''),

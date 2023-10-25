@@ -85,15 +85,16 @@ def init_progress_window(text: str, args, logger=None, callback: callable = None
     gui_g.UEVM_log_ref = logger
 
     # check if the GUI is already running
-    if gui_g.UEVM_gui_ref is None:
+    if gui_g.WindowsRef.uevm_gui is None:
         # create a fake root because ProgressWindow must always be a top level window
-        gui_g.UEVM_gui_ref = FakeUEVMGuiClass()
+        gui_g.WindowsRef.uevm_gui = FakeUEVMGuiClass()
+        gui_g.WindowsRef.uevm_gui.mainloop()
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
     force_refresh = True if args.force_refresh else False
     pw = show_progress(
-        parent=gui_g.UEVM_gui_ref,
+        parent=gui_g.WindowsRef.uevm_gui,
         text=text,
         quit_on_close=not uewm_gui_exists,
         function=callback,
@@ -103,6 +104,7 @@ def init_progress_window(text: str, args, logger=None, callback: callable = None
         },
         force_new_window=force_new_window
     )
+    gui_g.WindowsRef.uevm_gui.progress_window = pw
     return uewm_gui_exists, pw
 
 
@@ -116,9 +118,9 @@ def init_display_window(logger=None, _message: str = 'Starting command...') -> (
     gui_g.UEVM_log_ref = logger
 
     # check if the GUI is already running
-    if gui_g.UEVM_gui_ref is None:
+    if gui_g.WindowsRef.uevm_gui is None:
         # create a fake root because DisplayContentWindow must always be a top level window
-        gui_g.UEVM_gui_ref = FakeUEVMGuiClass()
+        gui_g.WindowsRef.uevm_gui = FakeUEVMGuiClass()
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
@@ -259,9 +261,8 @@ class UEVaultManagerCLI:
         """
         Create a backup of the log files.
         """
-        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
+        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
         create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
-        create_file_backup(self.core.bad_data_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
         create_file_backup(self.core.scan_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
 
     def auth(self, args) -> None:
@@ -361,8 +362,8 @@ class UEVaultManagerCLI:
             message = 'Login attempt failed, please see log for details.'
             self._log_and_gui_message(message, level='error')
 
-        if not uewm_gui_exists:
-            gui_g.UEVM_gui_ref.mainloop()
+        # if not uewm_gui_exists:
+        #     gui_g.WindowsRef.uevm_gui.mainloop()
 
     def list_assets(self, args) -> None:
         """
@@ -483,7 +484,7 @@ class UEVaultManagerCLI:
             uewm_gui_exists, _ = init_display_window(self.logger)
             custom_print(content, keep_mode=False)  # as it, next print will not keep the content
             if not uewm_gui_exists:
-                gui_g.UEVM_gui_ref.mainloop()
+                gui_g.WindowsRef.uevm_gui.mainloop()
         else:
             print(content)
 
@@ -510,20 +511,15 @@ class UEVaultManagerCLI:
             args.offline = True
         else:
             user_name = self.core.uevmlfs.userdata['displayName']
-        cache_information = self.core.uevmlfs.get_assets_cache_info()
         update_information = self.core.uevmlfs.get_online_version_saved()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
-        last_cache_update = cache_information.get('last_update', '')
         if last_update != '':
             last_update = time.strftime('%x', time.localtime(last_update))
-        if last_cache_update != '':
-            last_cache_update = time.strftime('%x', time.localtime(last_cache_update))
 
         json_content = {
             'Epic account': user_name,  #
             'Last data update': last_update,
-            'Last cache update': last_cache_update,
             'Config directory': self.core.uevmlfs.path,
             'Platform': f'{platform()} ({os.name})',
             'Current version': f'{UEVM_version} - {UEVM_codename}',
@@ -544,7 +540,7 @@ class UEVaultManagerCLI:
         if UEVaultManagerCLI.is_gui:
             json_print_key_val(json_content, output_on_gui=True)
             if not uewm_gui_exists:
-                gui_g.UEVM_gui_ref.mainloop()
+                gui_g.WindowsRef.uevm_gui.mainloop()
         else:
             json_print_key_val(json_content)
         # prevent update message on close
@@ -783,7 +779,7 @@ class UEVaultManagerCLI:
                 custom_print('No asset information available.')
             custom_print(keep_mode=False)  # as it, next print will not keep the content
             if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
-                gui_g.UEVM_gui_ref.mainloop()
+                gui_g.WindowsRef.uevm_gui.mainloop()
         else:
             json_out = dict(asset={}, install={}, manifest={})
             if info_items.get('asset'):
@@ -840,8 +836,8 @@ class UEVaultManagerCLI:
         self._log(message)
         custom_print(message, keep_mode=False)
 
-        if not uewm_gui_exists and gui_g.UEVM_gui_ref is not None:
-            gui_g.UEVM_gui_ref.mainloop()
+        if not uewm_gui_exists and gui_g.WindowsRef.uevm_gui is not None:
+            gui_g.WindowsRef.uevm_gui.mainloop()
 
     def get_token(self, args) -> None:
         """
@@ -905,17 +901,15 @@ class UEVaultManagerCLI:
         # we delay the setup method because it could create a progressWindow, and it MUST be created AFTER the mainloop to avoid a "main thread is not in main loop" message
         gui_windows.after(500, lambda: gui_windows.setup(rebuild_data=rebuild))
         gui_windows.mainloop()
-        # print('Exiting...')  #
-        # gui_g.UEVM_gui_ref.quit()
 
     def scrap_assets(self, args, use_database=True, file_name: str = '', save_to_format: str = 'csv') -> []:
         """
         Scrap assets from the Epic Games Store or from previously saved files.
-        :param args: options passed to the command
-        :param use_database: if True, the database will be used to store the data, otherwise the data will be stored in files
-        :param file_name: the name of the file to save the data. Used only when use_database is False
-        :param save_to_format: the format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
-        :return: a List containing the scrapped data
+        :param args: options passed to the command.
+        :param use_database: wether the database will be used to store the data, otherwise the data will be stored in files.
+        :param file_name: name of the file to save the data. Used only when use_database is False.
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False.
+        :return: List containing the scrapped data.
 
         Notes:
             Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
@@ -960,6 +954,7 @@ class UEVaultManagerCLI:
             assets_per_page=ue_asset_per_page,
             max_threads=max_threads,
             load_from_files=load_from_files,
+            keep_intermediate_files=args.debug,
             debug_mode=args.debug,
             offline_mode=args.offline,
             progress_window=pw,
@@ -985,7 +980,7 @@ class UEVaultManagerCLI:
     def set_release_id(self, value):
         """
         Set the release id. Callback for the ChoiceFromListWindow
-        :param value: the value selected in the list
+        :param value: value selected in the list.
         """
         self.release_id = value
 
@@ -994,15 +989,11 @@ class UEVaultManagerCLI:
         Installs an asset.
         :param args: options passed to the command.
         """
-        uewm_gui_exists = gui_g.UEVM_gui_ref is not None
+        uewm_gui_exists = gui_g.WindowsRef.uevm_gui is not None
         try:
-            db_handler = gui_g.UEVM_gui_ref.editable_table.db_handler
-            # use_database = gui_g.UEVM_gui_ref.editable_table.data_source_type == DataSourceType.DATABASE
-            # database_name = gui_g.UEVM_gui_ref.editable_table.data_source
+            db_handler = gui_g.WindowsRef.uevm_gui.editable_table.db_handler
         except AttributeError:
             db_handler = None
-            # use_database = False
-            # database_name = ''
         if args.subparser_name == 'download':
             args.no_install = True
         if args.clean_dowloaded_data and args.no_install:
@@ -1053,7 +1044,7 @@ class UEVaultManagerCLI:
                 default_value=''
             )
             make_modal(cw)
-            # NOTE: the next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
+            # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
             if self.release_id:
                 try:
                     release_selected = releases[self.release_id]
@@ -1112,6 +1103,7 @@ class UEVaultManagerCLI:
                         title='Select a project to install the asset into', initialdir=gui_g.s.last_opened_project
                     )
                     if install_path_base:
+                        install_path_base = os.path.normpath(install_path_base)
                         gui_g.s.last_opened_project = install_path_base
 
         if not install_path_base:
@@ -1155,7 +1147,6 @@ class UEVaultManagerCLI:
 
         # normpath is usefull for future comparisons
         download_path = os.path.normpath(download_path)
-        install_path_base = os.path.normpath(install_path_base)
 
         self._log_and_gui_display(f'Preparing download for {release_title}...')
         max_workers = args.max_workers if gui_g.s.use_threads else 1
@@ -1250,7 +1241,7 @@ class UEVaultManagerCLI:
                 else:
                     src_folder = path_join(download_path, subfolder)
                 if is_plugin:
-                    # note: the folder has already been checked when selected
+                    # note: folder has already been checked when selected
                     if installed_in_engine:
                         # if installed in engine, NOTHING MORE TO DO
                         dest_folder = install_path_base
@@ -1353,7 +1344,7 @@ class UEVaultManagerCLI:
             return
 
         if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
-            gui_g.UEVM_gui_ref.mainloop()
+            gui_g.WindowsRef.uevm_gui.mainloop()
 
     def run_test(self, _args) -> None:
         """
@@ -1690,9 +1681,14 @@ def main():
         cli.run_test(args)
         return
 
+    try:
+        UEVaultManagerCLI.is_gui = args.gui
+    except (AttributeError, KeyError):
+        UEVaultManagerCLI.is_gui = False
+
     start_in_edit_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'start_in_edit_mode', fallback=False))
 
-    if not start_in_edit_mode and (not args.subparser_name or args.full_help):
+    if (not start_in_edit_mode and args.subparser_name is None) or args.full_help:
         UEVaultManagerCLI.print_help(args=args, parser=parser)
         return
 
@@ -1709,11 +1705,9 @@ def main():
     cli.core.create_output_backup = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'create_output_backup', fallback=True))
     cli.core.create_log_backup = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'create_log_backup', fallback=True))
     cli.core.verbose_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'verbose_mode', fallback=False))
-    cli.ue_assets_max_cache_duration = int(cli.core.uevmlfs.config.get('UEVaultManager', 'ue_assets_max_cache_duration', fallback=1296000))
 
-    cli.core.ignored_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
+    cli.core.scrap_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'scrap_assets_filename_log', fallback='')
     cli.core.notfound_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
-    cli.core.bad_data_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'bad_data_assets_filename_log', fallback='')
     cli.core.scan_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'scan_assets_filename_log', fallback='')
 
     cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get(
@@ -1726,11 +1720,6 @@ def main():
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
         args.yes = True
-
-    try:
-        UEVaultManagerCLI.is_gui = args.gui
-    except (AttributeError, KeyError):
-        UEVaultManagerCLI.is_gui = False
 
     # technically args.func() with set defaults could work (see docs on subparsers)
     # but that would require all funcs to accept args and extra...

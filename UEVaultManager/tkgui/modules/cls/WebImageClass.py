@@ -14,7 +14,7 @@ from UEVaultManager.tkgui.modules.functions import log_warning
 class WebImage:
     """
     Class to download an image from an url and get it as a PhotoImage.
-    :param url: the url of the image to download.
+    :param url: url of the image to download.
     """
 
     def __init__(self, url: str = None):
@@ -30,7 +30,7 @@ class WebImage:
     def get(self) -> ImageTk.PhotoImage:
         """
         Get the downloaded image.
-        :return: the image.
+        :return: image.
         """
         return self.__image_tk
 
@@ -39,7 +39,7 @@ class WebImage:
         Get the downloaded image resized to the given size.
         :param new_width: width of the resized image.
         :param new_height: height of the resized image.
-        :return: the resized image.
+        :return: resized image.
         """
         try:
             # resize the PIL.Image object in place

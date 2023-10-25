@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- UEAssetScraper: a class that handles scraping data from the Unreal Engine Marketplace.
+- UEAssetScraper: class that handles scraping data from the Unreal Engine Marketplace.
 """
 import concurrent.futures
 import csv
@@ -60,22 +60,23 @@ class UEAssetScraper:
     """
     A class that handles scraping data from the Unreal Engine Marketplace.
     It saves the data in json files and/or in a sqlite database.
-    :param datasource_filename: the name of the database or file to save the data to.
-    :param use_database: a boolean indicating whether to use a database for reading missing data (ex tags names) and save data in a sqlite database. Defaults to True.
-    :param start: an int representing the starting index for the data to retrieve. Defaults to 0.
-    :param stop: an int representing the ending index for the data to retrieve. Defaults to 0.
-    :param assets_per_page: an int representing the number of items to retrieve per request. Defaults to 100.
-    :param sort_by: a string representing the field to sort by. Defaults to 'effectiveDate'.
-    :param sort_order: a string representing the sort order. Defaults to 'ASC'.
-    :param max_threads: an int representing the maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
-    :param save_to_files: a boolean indicating whether to store the data in csv files. Defaults to True. Could create lots of files (1 file per asset).
-    :param load_from_files: a boolean indicating whether to load the data from files instead of scraping it. Defaults to False. If set to True, save_to_files will be set to False and use_database will be set to True.
-    :param store_ids: a boolean indicating whether to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
-    :param clean_database: a boolean indicating whether to clean the database before saving the data. Defaults to False.
+    :param datasource_filename: name of the database or file to save the data to.
+    :param use_database: True to use a database for reading missing data (ex tags names) and save data in a sqlite database. Defaults to True.
+    :param start: starting index for the data to retrieve. Defaults to 0.
+    :param stop: ending index for the data to retrieve. Defaults to 0.
+    :param assets_per_page: number of items to retrieve per request. Defaults to 100.
+    :param sort_by: field to sort by. Defaults to 'effectiveDate'.
+    :param sort_order: sort order. Defaults to 'ASC'.
+    :param max_threads: maximum number of threads to use. Defaults to 8. Set to 0 to disable multithreading.
+    :param save_to_files: True to store data in json file. Defaults to True. Could create lots of files (1 file per asset).
+    :param load_from_files: True to load the data from files instead of scraping it. Defaults to False. If set to True, save_to_files will be set to False and use_database will be set to True.
+    :param keep_intermediate_files: True to keep the intermediate json files. Defaults to None. If None, the files will be kept only if debug_mode is True.
+    :param store_ids: True to store and save the IDs of the assets. Defaults to False. Could be memory consuming.
+    :param clean_database: True to clean the database before saving the data. Defaults to False.
     :param debug_mode: True to enable debug mode. Defaults to False.
     :param offline_mode: True to enable offline mode. Defaults to False.
-    :param progress_window: a ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
-    :param core: an AppCore object. Defaults to None. If None, a new AppCore object will be created.
+    :param progress_window: ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
+    :param core: AppCore object. Defaults to None. If None, a new AppCore object will be created.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
 
@@ -94,13 +95,14 @@ class UEAssetScraper:
         max_threads: int = 8,
         save_to_files: bool = True,
         load_from_files: bool = False,
+        keep_intermediate_files=None,
         store_ids: bool = False,
         clean_database: bool = False,
         debug_mode=False,
         offline_mode=False,
         progress_window=None,  # don't use a typed annotation here to avoid import
         core: AppCore = None,
-        timeout: float = (7, 7),
+        timeout: (float, float) = (7, 7),
     ) -> None:
         self._last_run_filename: str = 'last_run.json'
         self._urls_list_filename: str = 'urls_list.txt'
@@ -121,8 +123,9 @@ class UEAssetScraper:
         self.sort_by: str = sort_by
         self.sort_order: str = sort_order
         self.max_threads: int = max_threads if gui_g.s.use_threads else 0
-        self.load_from_files: bool = load_from_files
         self.save_to_files: bool = save_to_files
+        self.load_from_files: bool = load_from_files
+        self.keep_intermediate_files: bool = keep_intermediate_files if keep_intermediate_files is not None else gui_g.s.debug_mode
         self.store_ids = store_ids
         self.clean_database: bool = clean_database
         self.debug_mode = debug_mode
@@ -208,11 +211,16 @@ class UEAssetScraper:
     def _parse_data(self, json_data: dict = None) -> list:
         """
         Parse on or more asset data from the response of an url query.
-        :param json_data: a dictionary containing the data to parse.
-        :return: a list containing the parsed data.
+        :param json_data: dictionary containing the data to parse.
+        :return: list containing the parsed data.
         """
 
         all_assets = []
+
+        if not self.progress_window.continue_execution:
+            # this could accur when running in threads and the process has been cancelled by the "stop" button
+            return all_assets
+
         if json_data is None:
             return all_assets
         try:
@@ -417,10 +425,6 @@ class UEAssetScraper:
                 ue_asset = UEAsset()
                 ue_asset.init_from_dict(asset_data)
 
-                # -----
-                # end similar part as in UEAssetScrappedClass._parse_data
-                # -----
-
                 all_assets.append(ue_asset.get_data())
                 message = f'Asset with uid={uid} added to content: owned={ue_asset.get("owned")} creation_date={ue_asset.get("creation_date")}'
                 self._log(message, 'debug')  # use debug here instead of info to avoid spamming the log file
@@ -502,7 +506,7 @@ class UEAssetScraper:
                         _price = gui_fn.convert_to_float(_csv_record[price_index])
                         old_price = gui_fn.convert_to_float(
                             item_in_file[_csv_field]
-                        )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                        )  # Note: 'old price' is the 'price' saved in the file, not the 'old_price' in the file
                     elif _csv_field == 'Origin':
                         # all the folders when the asset came from are stored in a comma separated list
                         if isinstance(value, str):
@@ -534,7 +538,7 @@ class UEAssetScraper:
         :param _assets_in_file: list of assets in the file.
         :param _no_float_value:  value to use when no float data is available.
         :param _no_bool_false_value: value (False) to use when no bool data is available.
-        :return:
+        :return: dict of data of the asset to update.
         """
         _asset_id = _asset[0]
         _json_record = _asset[1]
@@ -555,7 +559,7 @@ class UEAssetScraper:
                 _price = float(_json_record['Price'])
                 old_price = float(
                     _assets_in_file[_asset_id]['Price']
-                )  # Note: the 'old price' is the 'price' saved in the file, not the 'old_price' in the file
+                )  # Note: 'old price' is the 'price' saved in the file, not the 'old_price' in the file
             except Exception as _error:
                 self._log(f'Old price values can not be converted for asset {_asset_id}\nError:{_error!r}', level='warning')
             _json_record['Old price'] = old_price
@@ -566,7 +570,7 @@ class UEAssetScraper:
     def _save_in_file(self, save_to_format: str = 'csv') -> bool:
         """
         Save the scraped data into a file.
-        :param save_to_format: the format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False.
         :return: True if the data have been saved, False otherwise.
         """
         assets_to_output = {}
@@ -680,11 +684,11 @@ class UEAssetScraper:
     def gather_all_assets_urls(self, egs_available_assets_count: int = -1, empty_list_before=False, save_result=True, owned_assets_only=False) -> int:
         """
         Gather all the URLs (with pagination) to be parsed and stores them in a list for further use.
-        :param egs_available_assets_count: the number of assets available on the marketplace. If not given, it will be retrieved from the EGS API.
+        :param egs_available_assets_count: number of assets available on the marketplace. If not given, it will be retrieved from the EGS API.
         :param empty_list_before: whether the list of URLs is emptied before adding the new ones.
-        :param save_result: whether the list of URLs is saved in the database.
+        :param save_result: whether the list of URLs is saved into a text file.
         :param owned_assets_only: whether only the owned assets are scraped.
-        :return: the number of assets to be scraped or -1 if the offline mode is active or if the process has been interrupted.
+        :return: number of assets to be scraped or -1 if the offline mode is active or if the process has been interrupted.
         """
         if self.offline_mode:
             self._log('The offline mode is active. No online data could be retreived')
@@ -715,20 +719,30 @@ class UEAssetScraper:
             self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=owned_assets_only)
         return assets_to_scrap
 
-    def get_data_from_url(self, url='', owned_assets_only=False) -> None:
+    def get_data_from_url(self, url='', owned_assets_only=False) -> bool:
         """
         Grab the data from the given url and stores it in the scraped_data property.
-        :param url: the url to grab the data from. If not given, uses the url property of the class.
+        :param url: url to grab the data from. If not given, uses the url property of the class.
         :param owned_assets_only: whether only the owned assets are scraped.
         """
+        thread_state = ' RUNNING...'
+
+        # HERE WE CAN'T UPDATE the progress window because it's not in the main thread
+        # the next lines raise a  RuntimeError('main thread is not in main loop')
+        # if not self.progress_window.update_and_continue(increment=1, text=f'Getting data from {url}):
+        # self.progress_window.update()
         if not self.progress_window.continue_execution:
-            return
+            thread_state = ' CANCELLING...'
+            self._log(f'{url} has been cancelled. Waiting all others to be terminated {thread_state}.', 'info')
+            self.progress_window.close_window()  # must be done here because we will never return to the caller
+            self._stop_executor()
+            return False
         if not url:
             self._log('No url given to get_data_from_url()', 'error')
-            return
+            return True
         if self.offline_mode:
             self._log('The offline mode is active. No online data could be retreived')
-            return
+            return True
         thread_data = ''
         try:
             if self._threads_count > 1:
@@ -736,16 +750,16 @@ class UEAssetScraper:
                 time.sleep(random.uniform(1.0, 3.0))
                 thread = current_thread()
                 thread_data = f' ==> By Thread name={thread.name}'
-            self._log(f'--- START scraping data from {url}{thread_data}')
-            json_data = self.core.egs.get_json_data_from_url(url)
+            self._log(f'--- START scraping data from {url}{thread_data}{thread_state}')
+            json_data = self.core.egs.get_json_data_from_url(url, override_timeout=15)
             no_error = json_data.get('status', '') == 'OK'
             if not no_error:
                 self._log(f'Error getting data from url {url}. Making another try....')
-                json_data = self.core.egs.get_json_data_from_url(url)
+                json_data = self.core.egs.get_json_data_from_url(url, override_timeout=15)
                 no_error = json_data.get('status', '') == 'OK'
                 if not no_error:
                     self._log(f'Error getting data from url {url}: {json_data["errorCode"]}', 'error')
-                    return
+                    return True
             try:
                 # when multiple assets are returned, the data is in the 'elements' key
                 count = len(json_data['data']['elements'])
@@ -756,54 +770,56 @@ class UEAssetScraper:
                 json_data['data']['elements'] = [json_data['data']['data']]
 
             if json_data:
-                if self.save_to_files:
+                if self.keep_intermediate_files:
                     # store the result file in the raw format
-                    # noinspection PyBroadException
                     try:
                         url_vars = gui_fn.extract_variables_from_url(url)
                         start = int(url_vars['start'])
                         count = int(url_vars['count'])
                         suffix = f'{start}-{start + count - 1}'
-                    except Exception:
+                    except (Exception, ):
                         suffix = datetime.now().strftime(DateFormat.file_suffix)
                     filename = f'assets_{suffix}.json'
                     self.save_to_file(filename=filename, data=json_data, is_global=True)
 
+                if self.save_to_files:
                     # store the individial asset in file
-                    saved_text = self.progress_window.get_text()
-                    count = len(json_data['data']['elements'])
                     for index, asset_data in enumerate(json_data['data']['elements']):
-                        self.progress_window.set_text(f'Saving data to json files ({index}/{count})')
                         filename, app_name = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
                         asset_data['app_name'] = app_name
                         self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                         self._files_count += 1
-                    self.progress_window.set_text(saved_text)
                 content = self._parse_data(json_data)
                 self._scraped_data.append(content)
         except Exception as error:
             self._log(f'Error getting data from url {url}: {error!r}', 'warning')
+        return True
+
+    def _stop_executor(self) -> None:
+        """
+        Cancel all outstanding tasks and shut down the executor.
+        """
+        self._thread_executor.shutdown(wait=False, cancel_futures=True)
+
+    def _future_has_ended(self, future_param):
+        self._log(f'{future_param} has ended.', 'debug')
+        # HERE WE CAN'T UPDATE the progress window because it's not in the main thread
+        # the next lines raise does nothing because the stop button state is never updated
+        # if not self.progress_window.continue_execution:
+        #     self._log(f'{future_param} has been cancelled. Waiting all others to be terminated.', 'info')
+        #     self.progress_window.close_window()  # must be done here because we will never return to the caller
+        #     self._stop_executor()
 
     def _execute(self, owned_assets_only=False) -> bool:
         """
         Execute the scrapper. Load from files or downloads the items from the URLs and stores them in the scraped_data property.
         The execution is done in parallel using threads.
-        :param owned_assets_only: whether only the owned assets are scraped
+        :param owned_assets_only: whether only the owned assets are scraped.
         :return: True if the execution is successful, False otherwise.
 
         Notes:
             If self.urls is None or empty, gather_urls() will be called first.
         """
-
-        def stop_executor(tasks) -> None:
-            """
-            Cancel all outstanding tasks and shut down the executor.
-            :param tasks: tasks to cancel.
-            """
-            for _, task in tasks.items():
-                task.cancel()
-            self._thread_executor.shutdown(wait=False)
-
         try:
             egs_available_assets_count = self.core.egs.get_available_assets_count(owned_assets_only)
         except (Exception, ):
@@ -811,7 +827,6 @@ class UEAssetScraper:
             egs_available_assets_count = -1
             self.offline_mode = True
             self.load_from_files = True
-
         asset_loaded = 0
         if self.load_from_files:
             asset_loaded = self.load_from_json_files()
@@ -819,6 +834,11 @@ class UEAssetScraper:
                 # stop has been pressed
                 return False
 
+        if self.use_database:
+            tags_count_old = self.asset_db_handler.get_rows_count('tags')
+            rating_count_old = self.asset_db_handler.get_rows_count('ratings')
+        else:
+            tags_count_old, rating_count_old = 0, 0
         if asset_loaded <= 0:
             # no data, ie no files loaded, so we have to save them
             self.load_from_files = False
@@ -829,8 +849,18 @@ class UEAssetScraper:
                 result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
             if result_count == -1:
                 return False
-            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs and saving to json files', new_max_value=len(self._urls))
+
             url_count = len(self._urls)
+
+            # allow the main windows to update the progress window and unfreeze its buttons while threads are running
+            gui_g.WindowsRef.uevm_gui.progress_window = self.progress_window
+
+            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs and saving to json files', new_max_value=None)
+            # fake_root = FakeUEVMGuiClass()
+            # self.progress_window.close_window()
+            # pw = ProgressWindow(parent=fake_root, title='Scraping in progress...', width=300, show_btn_stop=True, show_progress=True,
+            #                     quit_on_close=False)
+            # pw.set_activation(False)
             if self.max_threads > 0 and url_count > 0:
                 self._threads_count = min(self.max_threads, url_count)
                 # threading processing COULD be stopped by the progress window
@@ -843,22 +873,27 @@ class UEAssetScraper:
                     # Submit the task and add its Future to the dictionary
                     future = self._thread_executor.submit(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), url)
                     futures[url] = future
+                    future.add_done_callback(self._future_has_ended)
 
                 with concurrent.futures.ThreadPoolExecutor():
-                    for future in concurrent.futures.as_completed(futures.values()):
+                    count = 0
+                    for future in concurrent.futures.as_completed(futures.values(), timeout=10):
+                        if not self.progress_window.update_and_continue(increment=1):
+                            # self._log(f'User stop has been pressed. Stopping running threads....')   # will flood console
+                            self._stop_executor()
+                        count += 1
                         if gui_g.s.testing_switch == 1 and len(self._scraped_data) >= gui_g.s.testing_assets_limit:
                             # stop the scraping after 3000 assets when testing
-                            stop_executor(futures)
+                            self._stop_executor()
                             break
                         try:
                             _ = future.result()
+                            # must_stop = future.result()
+                            # if must_stop:
+                            #    self._ stop_executor(futures)  # this never occurs whe clicking on "Stop" in the progressWindow (Why ?). Keep it for safety
                             # print("Result: ", result)
                         except Exception as error:
                             self._log(f'The following error occurs in threading: {error!r}', 'warning')
-                        if not self.progress_window.update_and_continue(increment=1):
-                            # self._log(f'User stop has been pressed. Stopping running threads....')   # will flood console
-                            stop_executor(futures)
-                self._thread_executor.shutdown(wait=False)
             else:
                 for url in self._urls:
                     self.get_data_from_url(url, owned_assets_only)
@@ -880,18 +915,24 @@ class UEAssetScraper:
                 box_message(message)
             else:
                 self.progress_window.reset(new_value=0, new_text=message, new_max_value=None)
+
+        if self.use_database:
+            tags_count = self.asset_db_handler.get_rows_count('tags')
+            rating_count = self.asset_db_handler.get_rows_count('ratings')
+            self._log(f'{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.')
+        gui_g.WindowsRef.uevm_gui.progress_window = None  # disable the update function to the main window
         return True
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
         """
         Save JSON data to a file.
-        :param data: a dictionary containing the data to save. Defaults to None. If None, the data will be used.
-        :param prefix: a string representing the prefix to use for the file name. Defaults to 'assets'.
-        :param filename: a string representing the file name to use. Defaults to None. If None, a file name will be generated using the prefix and the start and count properties.
-        :param is_json: a boolean indicating whether the data is JSON or not. Defaults to True.
-        :param is_owned: a boolean indicating whether the data is owned assets or not. Defaults to False.
-        :param is_global: a boolean indicating whether if the data to save id the "global" result, as produced by the url scraping. Defaults to False.
-        :return: a boolean indicating whether the file was saved successfully.
+        :param data: dictionary containing the data to save. Defaults to None. If None, the data will be used.
+        :param prefix: prefix to use for the file name. Defaults to 'assets'.
+        :param filename: file name to use. Defaults to None. If None, a file name will be generated using the prefix and the start and count properties.
+        :param is_json: boolean indicating whether the data is JSON or not. Defaults to True.
+        :param is_owned: boolean indicating whether the data is owned assets or not. Defaults to False.
+        :param is_global: boolean indicating whether if the data to save id the "global" result, as produced by the url scraping. Defaults to False.
+        :return: boolean indicating whether the file was saved successfully.
         """
         if data is None:
             data = self._scraped_data
@@ -924,7 +965,7 @@ class UEAssetScraper:
         """
         Load all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param owned_assets_only: whether to only the owned assets are scraped.
-        :return: the number of files loaded or -1 if the process has been interrupted.
+        :return: number of files loaded or -1 if the process has been interrupted.
         """
         start_time = time.time()
         old_text = self.progress_window.get_text()
@@ -985,8 +1026,8 @@ class UEAssetScraper:
         Save all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param owned_assets_only: whether to only the owned assets are scraped.
         :param save_last_run_file: whether the last_run file is saved.
-        :param save_to_format: the format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
-        :return: True if OK, False if not
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False.
+        :return: True if OK, False if no.
         """
         if owned_assets_only:
             self._log('Only Owned Assets will be scraped')
@@ -1037,7 +1078,7 @@ class UEAssetScraper:
     def pop_last_scrapped_data(self) -> []:
         """
         Pop the last scraped data from the scraped_data property.
-        :return: the last scraped data.
+        :return: last scraped data.
         """
         result = []
         if len(self._scraped_data) > 0:

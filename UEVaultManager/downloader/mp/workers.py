@@ -23,12 +23,12 @@ from UEVaultManager.models.downloading import (DownloaderTask, DownloaderTaskRes
 class DLWorker(Process):
     """
     Worker process that downloads chunks from the internet and writes them to the shared memory segment.
-    :param name: name of the process
-    :param queue: queue to get jobs from
-    :param out_queue: queue to put results in
-    :param shm: name of the shared memory segment to write to
-    :param max_retries: maximum number of retries for a chunk
-    :param logging_queue: queue to send log messages to
+    :param name: name of the process.
+    :param queue: queue to get jobs from.
+    :param out_queue: queue to put results in.
+    :param shm: name of the shared memory segment to write to.
+    :param max_retries: maximum number of retries for a chunk.
+    :param logging_queue: queue to send log messages to.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
 
@@ -142,12 +142,12 @@ class DLWorker(Process):
 class FileWorker(Process):
     """
     Worker process that writes chunks to files.
-    :param queue: queue to get jobs from
-    :param out_queue: queue to put results in
-    :param base_path: base path to write files to
-    :param shm: name of the shared memory segment to read from
-    :param cache_path: path to the cache directory
-    :param logging_queue: queue to send log messages to
+    :param queue: queue to get jobs from.
+    :param out_queue: queue to put results in.
+    :param base_path: base path to write files to.
+    :param shm: name of the shared memory segment to read from.
+    :param cache_path: path to the cache directory.
+    :param logging_queue: queue to send log messages to.
     """
 
     def __init__(self, queue, out_queue, base_path, shm, cache_path=None, logging_queue=None):

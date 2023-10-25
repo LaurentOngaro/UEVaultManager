@@ -2,7 +2,7 @@
 """
 Implementation for:
 - DBTW_Settings: settings for the class when running as main.
-- DbToolWindowClass: the window to import/export data from/to CSV files.
+- DbToolWindowClass: window to import/export data from/to CSV files.
 """
 import os
 import tkinter as tk
@@ -27,13 +27,13 @@ class DBTW_Settings:
 class DbToolWindowClass(tk.Toplevel):
     """
     Processes JSON files and stores some data in a database.
-    :param title: the title.
-    :param width: the width.
-    :param height: the height.
-    :param icon: the icon.
-    :param screen_index: the screen index.
-    :param folder_for_csv_files: the path to the folder with files for tags.
-    :param db_path: the path to the database.
+    :param title: title.
+    :param width: width.
+    :param height: height.
+    :param icon: icon.
+    :param screen_index: screen index.
+    :param folder_for_csv_files: path to the folder with files for tags.
+    :param db_path: path to the database.
     """
     _user_fields_suffix = '_user_fields'
     value_for_all: str = 'All'
@@ -55,8 +55,8 @@ class DbToolWindowClass(tk.Toplevel):
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.must_reload: bool = False
-        self.folder_for_csv_files = os.path.normpath(folder_for_csv_files)
-        self.db_path = os.path.normpath(db_path)
+        self.folder_for_csv_files = os.path.normpath(folder_for_csv_files) if folder_for_csv_files else ''
+        self.db_path = os.path.normpath(db_path) if db_path else ''
         self.db_handler = UEAssetDbHandler(database_name=self.db_path)
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
@@ -78,7 +78,7 @@ class DbToolWindowClass(tk.Toplevel):
     class ControlFrame(ttk.Frame):
         """
         The frame that contains the control buttons.
-        :param container: the container.
+        :param container: container.
         """
 
         def __init__(self, container):
@@ -129,7 +129,7 @@ class DbToolWindowClass(tk.Toplevel):
         def copy_to_clipboard(self, _event):
             """
             Copy text to the clipboard.
-            :param _event: event
+            :param _event: event.
             """
             self.clipboard_clear()
             content = self.text_result.get('1.0', 'end-1c')
@@ -139,8 +139,8 @@ class DbToolWindowClass(tk.Toplevel):
         def add_result(self, text: str, set_status: bool = False) -> None:
             """
             Add text to the result label.
-            :param text: text to add
-            :param set_status: true for setting the status label, False otherwise
+            :param text: text to add.
+            :param set_status: True for setting the status label, False otherwise.
             """
             if set_status:
                 self.set_status(text)
@@ -150,7 +150,7 @@ class DbToolWindowClass(tk.Toplevel):
         def set_status(self, text: str) -> None:
             """
             Set the status label.
-            :param text: text to set
+            :param text: text to set.
             """
             self.lbl_status.config(text=text)
             self.update()

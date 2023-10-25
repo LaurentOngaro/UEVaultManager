@@ -41,14 +41,8 @@ class UEVMLFS:
             self.path = os.path.expanduser('~/.config/UEVaultManager')
         # EGS user info
         self._user_data = None
-        # EGS entitlements
-        self._entitlements = None
-        # dict of json asset data
-        # TOOBIG self.assets_data = {}
         # UEVaultManager update check info
         self._update_info = None
-        # UE assets metadata cache data
-        self._assets_cache_info = None
         # store the dowload size of assets
         self._asset_sizes = None
 
@@ -161,22 +155,15 @@ class UEVMLFS:
             self.config.set('UEVaultManager', '; Set to True to print more information during long operations')
             self.config.set('UEVaultManager', 'verbose_mode', 'False')
             has_changed = True
-        if not self.config.has_option('UEVaultManager', 'ue_assets_max_cache_duration'):
-            self.config.set('UEVaultManager', '; Delay in seconds when UE assets metadata cache will be invalidated. Default value represent 15 days')
-            self.config.set('UEVaultManager', 'ue_assets_max_cache_duration', '1296000')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'ignored_assets_filename_log'):
+        if not self.config.has_option('UEVaultManager', 'scrap_assets_filename_log'):
             self.config.set(
-                'UEVaultManager', '; File name (and path) to log issues with assets when running the --list command' + "\n" +
+                'UEVaultManager', '; File name (and path) to log issues with assets when running the list or scrap commands' + "\n" +
                 '; use "~/" at the start of the filename to store it relatively to the user directory'
             )
-            self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
+            self.config.set('UEVaultManager', 'scrap_assets_filename_log', '~/.config/scrap_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'notfound_assets_filename_log'):
             self.config.set('UEVaultManager', 'notfound_assets_filename_log', '~/.config/notfound_assets.log')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'bad_data_assets_filename_log'):
-            self.config.set('UEVaultManager', 'bad_data_assets_filename_log', '~/.config/bad_data_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'scan_assets_filename_log'):
             self.config.set('UEVaultManager', 'scan_assets_filename_log', '~/.config/scan_assets.log')
@@ -279,10 +266,10 @@ class UEVMLFS:
     def _get_manifest_filename(self, app_name: str, version: str, platform: str = None) -> str:
         """
         Get the manifest filename.
-        :param app_name: Asset name.
+        :param app_name: asset name.
         :param version: version of the manifest.
         :param platform: platform of the manifest.
-        :return: the manifest filename.
+        :return: manifest filename.
         """
         if platform:
             fname = clean_filename(f'{app_name}_{platform}_{version}')
@@ -294,7 +281,7 @@ class UEVMLFS:
     def load_filter_list(filename: str = '') -> Optional[dict]:
         """
         Load the filters from a json file
-        :return: the filters or {} if not found. Will return None on error
+        :return: filters or {} if not found. Will return None on erro.
         """
         filename = filename or gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
@@ -325,8 +312,8 @@ class UEVMLFS:
     def get_app_name_from_asset_data(asset_data: dict) -> (str, bool):
         """
         Return the app_name to use to get the asset data.
-        :param asset_data: the asset data.
-        :return: (app_name (ie asset_id), and a True if the app_id has been found)
+        :param asset_data: asset data.
+        :return: (app_name (ie asset_id), and a True if the app_id has been found).
         """
         found = True
         try:
@@ -343,8 +330,8 @@ class UEVMLFS:
     def get_filename_from_asset_data(asset_data: dict) -> (str, str):
         """
         Return the filename and the app_name to use to save the asset data.
-        :param asset_data: the asset data.
-        :return: (the filename, the app_id)
+        :param asset_data: asset data.
+        :return: (the filename, the app_id).
         """
         app_name, found = UEVMLFS.get_app_name_from_asset_data(asset_data)
         return f'{app_name}.json' if found else f'_no_appId_{app_name}.json', app_name
@@ -352,9 +339,9 @@ class UEVMLFS:
     @staticmethod
     def json_data_mapping(data_from_egs_format: dict) -> dict:
         """
-        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary
-        :param data_from_egs_format: json data from EGS format (NEW)
-        :return: json data in UEVM format (OLD)
+        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary).
+        :param data_from_egs_format: json data from EGS format (NEW).
+        :return: json data in UEVM format (OLD).
         """
         app_name = data_from_egs_format['appName']
         category = data_from_egs_format['categories'][0]['path']
@@ -406,9 +393,9 @@ class UEVMLFS:
     def get_asset(self, app_name: str, owned_assets_only=False) -> (dict, str):
         """
         Load JSON data from a file.
-        :param app_name: the name of the asset to load the data from.
+        :param app_name: name of the asset to load the data from.
         :param owned_assets_only: whether only the owned assets are scraped.
-        :return: a dictionary containing the loaded data.
+        :return: dictionary containing the loaded data.
         """
         folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
         filename = app_name + '.json'
@@ -428,10 +415,10 @@ class UEVMLFS:
     def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:
         """
         Delete all the files in a folder that are not in the list_of_items_to_keep list.
-        :param folders: the list of folder to clean. Could be a list or a string for a single folder.If None, the function will return 0.
-        :param extensions_to_delete: the list of extensions to delete. Leave to Empty to delete all extentions.
-        :param file_name_to_keep: the list of items to keep. Leave to Empty to delete all files.
-        :return: the total size of deleted files.
+        :param folders: list of folder to clean. Could be a list or a string for a single folder.If None, the function will return 0.
+        :param extensions_to_delete: list of extensions to delete. Leave to Empty to delete all extentions.
+        :param file_name_to_keep: list of items to keep. Leave to Empty to delete all files.
+        :return: total size of deleted files.
         """
         if not folders:
             return 0
@@ -473,10 +460,10 @@ class UEVMLFS:
     def load_manifest(self, app_name: str, version: str, platform: str = 'Windows') -> any:
         """
         Load the manifest data from a file.
-        :param app_name: the name of the item.
+        :param app_name: name of the item.
         :param version: version of the manifest.
         :param platform: platform of the manifest.
-        :return: the manifest data.
+        :return: manifest data.
         """
         try:
             return open(self._get_manifest_filename(app_name, version, platform), 'rb').read()
@@ -490,11 +477,11 @@ class UEVMLFS:
     def save_manifest(self, app_name: str, manifest_data, version: str, platform: str = 'Windows') -> str:
         """
         Save the manifest data to a file.
-        :param app_name: the name of the item.
-        :param manifest_data: the manifest data.
+        :param app_name: name of the item.
+        :param manifest_data: manifest data.
         :param version: version of the manifest.
         :param platform: platform of the manifest.
-        :return: the manifest filename.
+        :return: manifest filename.
         """
         filename = self._get_manifest_filename(app_name, version, platform)
         with open(filename, 'wb') as file:
@@ -504,16 +491,16 @@ class UEVMLFS:
     def clean_tmp_data(self) -> int:
         """
         Delete all the files in the tmp folder.
-        :return: the size of the deleted files.
+        :return: size of the deleted files.
         """
         return self.delete_folder_content(self.tmp_folder)
 
     def clean_cache_data(self) -> int:
         """
         Delete all the files in the cache folders.
-        :return: the size of the deleted files.
+        :return: size of the deleted files.
         """
-        return self.delete_folder_content(gui_g.s.cache_folder)
+        return self.delete_folder_content(gui_g.s.asset_images_folder)
 
     def clean_manifests(self) -> int:
         """
@@ -524,7 +511,7 @@ class UEVMLFS:
     def clean_logs_and_backups(self) -> int:
         """
         Delete all the log and backup files in the application folders.
-        :return: the size of the deleted files.
+        :return: size of the deleted files.
         """
         folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
         return self.delete_folder_content(folders, ['.log', '.bak'])
@@ -532,7 +519,7 @@ class UEVMLFS:
     def load_installed_assets(self) -> bool:
         """
         Get the installed asset data.
-        :return: True if the asset data is loaded.
+        :return: True if the asset data is loade.
         """
         try:
             with open(self.installed_asset_filename, 'r', encoding='utf-8') as file:
@@ -564,8 +551,8 @@ class UEVMLFS:
     def get_installed_asset(self, app_name: str) -> Optional[InstalledAsset]:
         """
         Get the installed asset data. If it's not currently loaded, it will be read from the json file
-        :param app_name: the asset name.
-        :return: the installed asset or None if not found.
+        :param app_name: asset name.
+        :return: installed asset or None if not found.
         """
         if not app_name:
             return None
@@ -582,7 +569,7 @@ class UEVMLFS:
     def remove_installed_asset(self, app_name: str) -> None:
         """
         Remove an installed asset from the list.
-        :param app_name: the asset name.
+        :param app_name: asset name.
         :return:
         """
         if app_name and app_name in self._installed_assets:
@@ -592,8 +579,8 @@ class UEVMLFS:
     def update_installed_asset(self, app_name: str, asset_data: dict = None) -> None:
         """
         Update an installed asset data.
-        :param app_name: the asset name.
-        :param asset_data: the installed asset data.
+        :param app_name: asset name.
+        :param asset_data: installed asset data.
         """
         if not app_name:
             return
@@ -622,7 +609,7 @@ class UEVMLFS:
     def set_installed_asset(self, installed_asset: InstalledAsset) -> None:
         """
         Set the installed asset. Will not create the list if it doesn't exist. Use add_to_installed_assets() instead.
-        :param installed_asset: the installed asset to set.
+        :param installed_asset: installed asset to set.
         """
         app_name = installed_asset.app_name
         if not app_name or app_name not in self._installed_assets:
@@ -632,7 +619,7 @@ class UEVMLFS:
     def add_to_installed_assets(self, installed_asset: InstalledAsset) -> bool:
         """
         Add an installed asset to the list.
-        :param installed_asset: the installed asset to add.
+        :param installed_asset: installed asset to add.
         :return: True if the asset was added.
         """
         if not self._installed_assets:
@@ -646,16 +633,16 @@ class UEVMLFS:
     def get_installed_assets(self) -> dict:
         """
         Get the installed asset data.
-        :return: the installed asset data.
+        :return: installed asset data.
         """
         return self._installed_assets
 
     def get_asset_size(self, app_name: str, default=0) -> int:
         """
         Get the size of an asset.
-        :param app_name: the asset name.
-        :param default: the default value to return if the asset is not found.
-        :return: the size of the asset, default if not found.
+        :param app_name: asset name.
+        :param default: default value to return if the asset is not found.
+        :return: size of the asset, default if not found.
         """
         if not app_name:
             return default
@@ -664,8 +651,8 @@ class UEVMLFS:
     def set_asset_size(self, app_name: str, size: int) -> None:
         """
         Set the size of an asset.
-        :param app_name: the asset name.
-        :param size: the size of the asset
+        :param app_name: asset name.
+        :param size: size of the asset.
         """
         if not app_name:
             return
@@ -693,7 +680,7 @@ class UEVMLFS:
     def clean_scrapping(self) -> int:
         """
         Delete all the metadata files that are not in the names_to_keep list.
-        :return: the size of the deleted files.
+        :return: size of the deleted files.
         """
         folders = [gui_g.s.assets_data_folder, gui_g.s.owned_assets_data_folder, gui_g.s.assets_global_folder, gui_g.s.assets_csv_files_folder]
         return self.delete_folder_content(folders)
@@ -716,7 +703,7 @@ class UEVMLFS:
     def set_online_version_saved(self, version_data: dict) -> None:
         """
         Set the cached version data.
-        :param version_data: the version data.
+        :param version_data: version data.
         """
         if not version_data:
             return
@@ -724,36 +711,10 @@ class UEVMLFS:
         with open(self.online_version_filename, 'w', encoding='utf-8') as file:
             json.dump(self._update_info, file, indent=2, sort_keys=True)
 
-    def get_assets_cache_info(self) -> dict:
-        """
-        Get assets metadata cache information.
-        :return: dict {last_update, ue_assets_count}.
-        """
-        if self._assets_cache_info:
-            return self._assets_cache_info
-        try:
-            with open(self.assets_cache_info_filename, 'r', encoding='utf-8') as file:
-                self._assets_cache_info = json.load(file)
-        except Exception as error:
-            self.log.debug(f'Failed to UE assets last update data: {error!r}')
-            self._assets_cache_info = dict(last_update=0, ue_assets_count=0)
-        return self._assets_cache_info
-
-    def set_assets_cache_info(self, last_update: float, ue_assets_count: int) -> None:
-        """
-        Set assets metadata cache information.
-        :param last_update: last update time.
-        :param ue_assets_count: number of UE assets on last update.
-        :return:
-        """
-        self._assets_cache_info = dict(last_update=last_update, ue_assets_count=ue_assets_count)
-        with open(self.assets_cache_info_filename, 'w', encoding='utf-8') as file:
-            json.dump(self._assets_cache_info, file, indent=2, sort_keys=True)
-
     def extract_version_from_releases(self, release_info: dict) -> (dict, str):
         """
         Extract the version list and the release dict from the release info.
-        :param release_info: the release info (from the asset info).
+        :param release_info: release info (from the asset info).
         :return: (the release dict, the id of the latest release).
         """
         releases = {}
@@ -814,16 +775,16 @@ class UEVMLFS:
     def get_downloaded_assets_data(self, vault_cache_folder: str, max_depth: int = 3) -> dict:
         """
         Get the list of the assets in the Vault cache folder. Get its size from the installed_asset file if it exists.
-        :param vault_cache_folder: the Vault cache folder.
+        :param vault_cache_folder: Vault cache folder.
         :param max_depth: maximum depth of subfolders to include in the file list.
-        :return: dict {asset_id: {size, path}}
+        :return: dict {asset_id: {size, path}}.
 
-        NOTES:
-        The scan of a Vault cache folder with lots of assets can take a long time.
-        This scan is done when the datatable is loaded.
-        So, increase the max_depth value with care to avoid long loading times.
+        Notes:
+            The scan of a Vault cache folder with lots of assets can take a long time.
+            This scan is done when the datatable is loaded.
+            So, increase the max_depth value with care to avoid long loading times.
         """
-        vault_cache_folder = os.path.normpath(vault_cache_folder)
+        vault_cache_folder = os.path.normpath(vault_cache_folder) if vault_cache_folder else ''
         downloaded_assets = {}
         # scan the vault_cache_folder for files. Proceed level by level until max_depth is reached.
         for root, dirs, files in os.walk(vault_cache_folder):
@@ -848,7 +809,7 @@ class UEVMLFS:
     def pre_update_installed_folders(self, db_handler: UEAssetDbHandler = None) -> None:
         """
         Update the "installed folders" BEFORE loading the data.
-        :param db_handler: the database handler
+        :param db_handler: database handler.
         """
         installed_assets_json = self.get_installed_assets().copy()  # copy because the content could change during the process
         merged_installed_folders = {}
@@ -880,7 +841,7 @@ class UEVMLFS:
     def post_update_installed_folders(self, df: pd.DataFrame) -> None:
         """
         Update the "installed folders" AFTER loading the data.
-        :param df: the datatable
+        :param df: datatable.
         """
         installed_assets_json = self.get_installed_assets().copy()  # copy because the content could change during the process
         # get all installed folders for a given catalog_item_id

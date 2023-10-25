@@ -3,7 +3,7 @@
 Definition for the types used in this module:
 - CSVFieldState: Enum for the state of a field in the database
 - CSVFieldType: Enum for the (simplified) type of field in the database
-- DbVersionNum: The version of the database or/and class.
+- DbVersionNum: version of the database or/and class.
 """
 from enum import Enum
 

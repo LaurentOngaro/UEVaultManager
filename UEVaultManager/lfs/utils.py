@@ -15,7 +15,7 @@ logger = logging.getLogger('LFS Utils')
 def clean_filename(filename: str) -> str:
     """
     Clean a filename from invalid characters.
-    :param filename: the filename to clean.
+    :param filename: filename to clean.
     :return:  The cleaned filename.
     """
     return ''.join(i for i in filename if i not in '<>:"/\\|?*')
@@ -24,8 +24,8 @@ def clean_filename(filename: str) -> str:
 def get_dir_size(path: str) -> int:
     """
     Get the size of a directory.
-    :param path: the path to the directory.
-    :return:
+    :param path: path to the directory.
+    :return: size of the directory.
     """
     return sum(f.stat().st_size for f in Path(path).glob('**/*') if f.is_file())
 
@@ -33,8 +33,8 @@ def get_dir_size(path: str) -> int:
 def path_join(*paths):
     """
     Join multiple paths together. Make the return value unified
-    :param paths: the paths to join.
-    :return: the joined paths.
+    :param paths: paths to join.
+    :return: joined paths.
     """
     return os.path.normpath(Path(*paths).resolve())
 
@@ -42,10 +42,10 @@ def path_join(*paths):
 def copy_folder(src_folder: str, dest_folder: str, check_copy_size=True) -> bool:
     """
     Copy files from src_folder to dest_folder
-    :param src_folder: source directory
-    :param dest_folder: destination directory
-    :param check_copy_size: check if copy was successful by comparing the size of copied files
-    :return: True if successful, False otherwise
+    :param src_folder: source directory.
+    :param dest_folder: destination directory.
+    :param check_copy_size: check if copy was successful by comparing the size of copied files.
+    :return: True if successful, False otherwis.
     """
     try:
         os.makedirs(dest_folder, exist_ok=True)
@@ -84,9 +84,9 @@ def copy_folder(src_folder: str, dest_folder: str, check_copy_size=True) -> bool
 def compare_folders(folder1: str, folder2: str) -> list:
     """
     Compare two directories and return a list of files that are different
-    :param folder1: first directory
-    :param folder2: second directory
-    :return: list of files that are different
+    :param folder1: first directory.
+    :param folder2: second directory.
+    :return: list of files that are differen.
     """
     comparison = filecmp.dircmp(folder1, folder2)
     return comparison.diff_files
@@ -95,14 +95,14 @@ def compare_folders(folder1: str, folder2: str) -> list:
 def generate_label_from_path(path: str) -> str:
     """
     Generate a label from a path. Used in comboboxes
-    :param path: the path to generate the label from
-    :return: the label (ex : UE_4.26 (4.26))
+    :param path: path to generate the label from.
+    :return: label (ex : UE_4.26 (4.26)).
 
-    NOTES:
-    path = 'C:/Program Files/Epic Games/UE_4.27/Engine/Plugins/Marketplace/MyAsset'
-    Output: MyAsset (4.27)
-    path = 'D:/MyFolder
-    Output: MyFolder (D:)
+    Notes:
+        path = 'C:/Program Files/Epic Games/UE_4.27/Engine/Plugins/Marketplace/MyAsset'
+        Output: MyAsset (4.27)
+        path = 'D:/MyFolder
+        Output: MyFolder (D:)
     """
     folder_name = os.path.basename(path)
     version = get_version_from_path(path)
@@ -113,9 +113,9 @@ def generate_label_from_path(path: str) -> str:
 
 def get_version_from_path(path: str) -> str:
     """
-    Get the UE version from a path
-    :param path: the path to get the version from (ex : C:/UE_4.26)
-    :return: the version (ex : 4.26)
+    Get the UE version from a path.
+    :param path: path to get the version from (ex : C:/UE_4.26).
+    :return: version (ex : 4.26).
     """
     parts = path.split(os.sep)
     patterns = [

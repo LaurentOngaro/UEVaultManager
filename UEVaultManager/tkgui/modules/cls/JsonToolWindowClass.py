@@ -2,7 +2,7 @@
 """
 Implementation for:
 - JTW_Settings: settings for the class when running as main.
-- JsonToolWindow: the window to process JSON files.
+- JsonToolWindow: window to process JSON files.
 """
 import json
 import os
@@ -30,14 +30,14 @@ class JTW_Settings:
 class JsonToolWindow(tk.Toplevel):
     """
     This window processes JSON files and stores some data in a database.
-    :param title: the title.
-    :param width: the width.
-    :param height: the height.
-    :param icon: the icon.
-    :param screen_index: the screen index.
-    :param folder_for_tags_path: the path to the folder with files for tags.
-    :param folder_for_rating_path: the path to the folder with files for  ratings.
-    :param db_path: the path to the database.
+    :param title: title.
+    :param width: width.
+    :param height: height.
+    :param icon: icon.
+    :param screen_index: screen index.
+    :param folder_for_tags_path: path to the folder with files for tags.
+    :param folder_for_rating_path: path to the folder with files for  ratings.
+    :param db_path: path to the database.
     """
 
     def __init__(
@@ -55,9 +55,9 @@ class JsonToolWindow(tk.Toplevel):
         self.title(title)
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
-        self.folder_for_tags_path = os.path.normpath(folder_for_tags_path)
-        self.folder_for_rating_path = os.path.normpath(folder_for_rating_path)
-        self.db_path = os.path.normpath(db_path)
+        self.folder_for_tags_path = os.path.normpath(folder_for_tags_path) if folder_for_tags_path else ''
+        self.folder_for_rating_path = os.path.normpath(folder_for_rating_path) if folder_for_tags_path else ''
+        self.db_path = os.path.normpath(db_path) if db_path else ''
 
         self.updated = 0
         self.added = 0
@@ -82,7 +82,7 @@ class JsonToolWindow(tk.Toplevel):
     class ControlFrame(ttk.Frame):
         """
         The frame that contains the control buttons.
-        :param container: the container.
+        :param container: container.
         """
 
         def __init__(self, container):
@@ -122,7 +122,7 @@ class JsonToolWindow(tk.Toplevel):
         def copy_to_clipboard(self, _event):
             """
             Copy text to the clipboard.
-            :param _event: event
+            :param _event: event.
             """
             self.clipboard_clear()
             content = self.text_result.get('1.0', 'end-1c')
@@ -132,8 +132,8 @@ class JsonToolWindow(tk.Toplevel):
         def add_result(self, text: str, set_status: bool = False) -> None:
             """
             Add text to the result label.
-            :param text: text to add
-            :param set_status: true for setting the status label, False otherwise
+            :param text: text to add.
+            :param set_status: True for setting the status label, False otherwise.
             """
             if set_status:
                 self.set_status(text)
@@ -143,7 +143,7 @@ class JsonToolWindow(tk.Toplevel):
         def set_status(self, text: str) -> None:
             """
             Set the status label.
-            :param text: text to set
+            :param text: text to set.
             """
             self.lbl_status.config(text=text)
             self.update()
@@ -157,7 +157,7 @@ class JsonToolWindow(tk.Toplevel):
         def activate_processing(self, for_start=True):
             """
             Activate or deactivate processing.
-            :param for_start: true for enabling Start, False otherwise
+            :param for_start: True for enabling Start, False otherwise.
             """
 
             if for_start:
@@ -201,7 +201,7 @@ class JsonToolWindow(tk.Toplevel):
     def process_json_files(self, data_type='') -> None:
         """
         Process JSON files and stores data in the database.
-        :param data_type: type of data to process. Can be 'tags' or 'ratings'
+        :param data_type: type of data to process. Can be 'tags' or 'ratings'.
         """
         folder = ''
         query = ''
@@ -265,8 +265,8 @@ class JsonToolWindow(tk.Toplevel):
     def extract_and_save_tags(self, cursor, json_data: dict) -> None:
         """
         Extract tags from JSON data and saves them in the database.
-        :param cursor: database cursor
-        :param json_data: jSON data
+        :param cursor: database cursor.
+        :param json_data: jSON data.
         """
         tags = json_data.get('tags', [])
         for tag in tags:
@@ -291,8 +291,8 @@ class JsonToolWindow(tk.Toplevel):
     def extract_and_save_ratings(self, cursor, json_data: dict) -> None:
         """
         Extract ratings from JSON data and saves them in the database.
-        :param cursor: database cursor
-        :param json_data: jSON data
+        :param cursor: database cursor.
+        :param json_data: jSON data.
         """
         if 'data' in json_data and 'elements' in json_data['data']:
             for index, element in enumerate(json_data['data']['elements']):
