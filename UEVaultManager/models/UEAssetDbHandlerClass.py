@@ -1164,7 +1164,7 @@ class UEAssetDbHandler:
         fake = Faker()
         for index in range(number_of_rows):
             assets_id = fake.uuid4()
-            print(f'creating test asset # {index} with id {assets_id}')
+            print(f'creating test asset #{index} with id {assets_id}')
             ue_asset = UEAsset()
             data = {
                 'id': assets_id,

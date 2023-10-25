@@ -889,10 +889,10 @@ class EditableTable(Table):
                         asset_id = df.at[idx, 'Asset_id']  # at checked
                         index_to_delete.append(idx)
                         self.add_to_asset_ids_to_delete(asset_id)
-                        self.logger.info(f'Adding row {idx} with asset_id={asset_id} to the list of index to delete')
+                        self.logger.info(f'Adding row index #{idx} with asset_id={asset_id} to the list of index to delete')
                     except (IndexError, KeyError) as error:
                         self.add_error(error)
-                        self.logger.warning(f'Could add row {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
+                        self.logger.warning(f'Could add row index #{idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
 
                     # update the index copy column because index is changed after each deletion
                     df[gui_g.s.index_copy_col_name] = df.index
@@ -1498,7 +1498,7 @@ class EditableTable(Table):
             else:
                 return row
         except IndexError:
-            self.logger.warning(f'Could not get row {row_index} from the table data')
+            self.logger.warning(f'Could not get row index #{row_index} from the table data')
             return None
 
     def update_row(self, row_number: int, ue_asset_data: dict, convert_row_number_to_row_index: bool = False) -> None:
@@ -1684,7 +1684,7 @@ class EditableTable(Table):
         idx = self.get_real_index(row_number)
         row_data = self.get_row(idx, return_as_dict=True)
         if row_data is None:
-            self.logger.warning(f'edit_row: row_data is None for row_index={idx}')
+            self.logger.warning(f'edit_row: row_data is None for index #{idx}')
             return
         entries = {}
         image_url = ''

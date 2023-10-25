@@ -1044,7 +1044,7 @@ class UEVMGui(tk.Tk):
                     index_copy = df.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
                     old_name = df.loc[index_copy, 'App name']
                     old_comment = df.loc[index_copy, 'Comment']
-                    text = f'Updating {name} at row {row_index}. Old name is {old_name}'
+                    text = f'Updating {name} row index #{row_index}. Old name is {old_name}'
                     self.logger.info(f"{text} with path {content['path']}")
             except (IndexError, ValueError) as error:
                 self.add_error(error)
@@ -1057,7 +1057,7 @@ class UEVMGui(tk.Tk):
             if is_adding:
                 # NOT FOUND, we add a new row
                 _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
-                text = f'Adding {name} at row {row_index}'
+                text = f'Adding {name} row index #{row_index}'
                 self.logger.info(f"{text} with path {content['path']}")
                 row_added += 1
 
@@ -1225,6 +1225,7 @@ class UEVMGui(tk.Tk):
             return
 
         is_unique = not check_unicity  # by default, we consider that the data are unique
+        show_message = False  # no message by default to not interrupt the process by a messagebox
         data_table = self.editable_table  # shortcut
         data_table.save_data()  # save the data before scraping because we will update the row(s) and override non saved changes
         if not row_numbers:
@@ -1239,6 +1240,7 @@ class UEVMGui(tk.Tk):
         if row_index >= 0:
             # a row index has been given, we scrap only this row
             row_indexes = [row_index]
+            show_message = True
         elif use_range:
             # convert row numbers to row indexes
             row_indexes = [
@@ -1280,7 +1282,7 @@ class UEVMGui(tk.Tk):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
                         data_table.update_cell(row_index, col_index, marketplace_url, convert_row_number_to_row_index=False)
-                text = base_text + f'\n Row {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
+                text = base_text + f'\n Row index #{row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
                 if pw and not pw.update_and_continue(value=count, text=text):
                     gui_f.close_progress(self)
                     return
@@ -1291,23 +1293,16 @@ class UEVMGui(tk.Tk):
                     if check_unicity:
                         is_unique, asset_data = self._check_unicity(asset_data)
                     if is_unique or gui_f.box_yesno(
-                        f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                        f'The data for row index #{row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                        # if show_message and row_count == 1:
-                        #     tags_message = ''
-                        #     if self.is_using_database():
-                        #         tags_count = data_table.db_handler.get_rows_count('tags')
-                        #         rating_count = data_table.db_handler.get_rows_count('ratings')
-                        #         tags_message = f'\n{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.'
-                        #     gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace.{tags_message}')
 
             gui_f.close_progress(self)
             # if show_message and row_count > 1:
             if row_count > 1:
                 message = f'All Datas for {row_count} rows have been updated from the marketplace.'
             else:
-                message = f'Data for row {row_index} have been updated from the marketplace.'
+                message = f'Data for row index #{row_index} have been updated from the marketplace.'
             tags_message = ''
             if self.is_using_database():
                 tags_count = data_table.db_handler.get_rows_count('tags')
@@ -1322,7 +1317,7 @@ class UEVMGui(tk.Tk):
                 if check_unicity:
                     is_unique, asset_data = self._check_unicity(asset_data)
                 if is_unique or gui_f.box_yesno(
-                    f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
+                    f'The data for row index #{row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                 ):
                     data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
         if update_dataframe:
