@@ -29,18 +29,18 @@ class PW_Settings:
 class ProgressWindow(tk.Toplevel):
     """
     The window to display the progress of a function.
-    :param parent: the parent window.
-    :param title: the title.
-    :param width: the width.
-    :param height: the height.
-    :param icon: the icon.
-    :param screen_index: the index of the screen on which the window will be displayed.
-    :param max_value: the maximum value of the progress bar.
+    :param parent: parent window.
+    :param title: title.
+    :param width: width.
+    :param height: height.
+    :param icon: icon.
+    :param screen_index: index of the screen on which the window will be displayed.
+    :param max_value: maximum value of the progress bar.
     :param show_btn_start: whether to show the start button.
     :param show_btn_stop: whether to show the stop button.
     :param show_progress: whether to show the progress bar.
-    :param function: the function to execute.
-    :param function_parameters: the parameters of the function.
+    :param function: function to execute.
+    :param function_parameters: parameters of the function.
     :param quit_on_close: whether to quit the application when the window is closed.
     """
     is_fake = False
@@ -69,7 +69,7 @@ class ProgressWindow(tk.Toplevel):
         self.is_closing: bool = False
         self.quit_on_close: bool = quit_on_close
         self.max_value: int = max_value
-        self.continue_execution: bool = True
+        self._continue_execution: bool = True
         self.function = function
         self.function_params = function_parameters
         self.function_return_value = None
@@ -99,6 +99,8 @@ class ProgressWindow(tk.Toplevel):
     def mainloop(self, n=0):
         """
         Mainloop method
+        :param n: threshold.
+
         Overrided to add logging function for debugging
         """
         gui_f.log_info(f'starting mainloop in {__name__}')
@@ -114,7 +116,7 @@ class ProgressWindow(tk.Toplevel):
     class ContentFrame(ttk.Frame):
         """
         The frame that contains the content of the window.
-        :param container: the container.
+        :param container: container.
         """
 
         def __init__(self, container):
@@ -134,7 +136,7 @@ class ProgressWindow(tk.Toplevel):
     class ControlFrame(ttk.Frame):
         """
         The frame that contains the control buttons.
-        :param container: the container.
+        :param container: container.
         :param show_btn_start: whether to show the start button.
         :param show_btn_stop: whether to show the stop button.
         """
@@ -157,7 +159,7 @@ class ProgressWindow(tk.Toplevel):
     def _function_result_wrapper(self, function, *args, **kwargs) -> None:
         """
         Wrap the function call and puts the result in the queue.
-        :param function: the function to execute.
+        :param function: function to execute.
         :param args: args to pass to the function.
         :param kwargs: kwargs to pass to the function.
         """
@@ -169,7 +171,7 @@ class ProgressWindow(tk.Toplevel):
     def _check_for_end(self, t: threading) -> None:
         """
         Check if the thread has ended, if not, schedules another check.
-        :param t: the thread to check.
+        :param t: thread to check.
         """
         if t.is_alive():
             # Schedule another check in a few ms
@@ -183,14 +185,14 @@ class ProgressWindow(tk.Toplevel):
     def get_text(self) -> str:
         """
         Get the text of the label.
-        :return: the text.
+        :return: text.
         """
         return self.frm_content.lbl_text.cget('text')
 
     def set_text(self, new_text: str) -> None:
         """
         Set the text of the label.
-        :param new_text: the new text.
+        :param new_text: new text.
         """
         self.frm_content.lbl_text.config(text=new_text)
         self.update()
@@ -198,7 +200,7 @@ class ProgressWindow(tk.Toplevel):
     def set_value(self, new_value: int) -> None:
         """
         Set the value of the progress bar.
-        :param new_value: the new value.
+        :param new_value: new value.
         """
         new_value = max(0, new_value)
         self.frm_content.progress_bar['value'] = new_value
@@ -207,7 +209,7 @@ class ProgressWindow(tk.Toplevel):
     def set_max_value(self, new_max_value: int) -> None:
         """
         Set the maximum value of the progress bar.
-        :param new_max_value: the new maximum value.
+        :param new_max_value: new maximum value.
         """
         self.max_value = new_max_value
         self.frm_content.progress_bar['maximum'] = new_max_value
@@ -216,7 +218,7 @@ class ProgressWindow(tk.Toplevel):
     def set_function(self, new_function) -> None:
         """
         Set the function to execute.
-        :param new_function: the new function.
+        :param new_function: new function.
         """
         if new_function is None:
             return
@@ -227,7 +229,7 @@ class ProgressWindow(tk.Toplevel):
     def set_function_parameters(self, parameters: dict) -> None:
         """
         Set the parameters to pass to the function.
-        :param parameters: the parameters.
+        :param parameters: parameters.
         """
         self.function_params = parameters
 
@@ -290,10 +292,10 @@ class ProgressWindow(tk.Toplevel):
     def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None) -> None:
         """
         Reset the progress bar.
-        :param new_title: the new title.
-        :param new_value: the new value.
-        :param new_text: the new text.
-        :param new_max_value: the new maximum value.
+        :param new_title: new title.
+        :param new_value: new value.
+        :param new_text: new text.
+        :param new_max_value: new maximum value.
         """
         self.is_closing = False
         try:
@@ -312,10 +314,18 @@ class ProgressWindow(tk.Toplevel):
             else:
                 self.hide_progress_bar()
                 self.hide_btn_stop()
+            self.frm_control.btn_stop.config(text='Stop')
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
-        self.continue_execution = True
+        self._continue_execution = True
         self.update()
+
+    @property
+    def continue_execution(self) -> bool:
+        """
+        Returns whether the execution should continue.
+        """
+        return self._continue_execution
 
     def start_execution(self) -> None:
         """
@@ -324,7 +334,7 @@ class ProgressWindow(tk.Toplevel):
         if self.function is None:
             gui_f.log_warning('the function name to execute is not set')
             return
-        self.continue_execution = True
+        self._continue_execution = True
         self.set_activation(False)
         # Run the function in a separate thread
         t = threading.Thread(target=self._function_result_wrapper, args=(self.function, self), kwargs=self.function_params)
@@ -336,7 +346,9 @@ class ProgressWindow(tk.Toplevel):
         """
         Stop the execution of the function.
         """
-        self.continue_execution = False
+        if self.frm_control.btn_stop is not None:
+            self.frm_control.btn_stop.config(text='Canceling...')
+        self._continue_execution = False
         self.set_activation(True)
 
     def get_result(self):
@@ -360,9 +372,9 @@ class ProgressWindow(tk.Toplevel):
     def update_and_continue(self, value=0, increment=0, text=None) -> bool:
         """
         Update the progress bar and returns whether the execution should continue.
-        :param value: the value to set.
-        :param increment: the value to increment. If both value and increment are set, the value is ignored.
-        :param text: the text to set.
+        :param value: value to set.
+        :param increment: value to increment. If both value and increment are set, the value is ignored.
+        :param text: text to set.
         """
         try:
             # sometimes the window is already destroyed
@@ -377,16 +389,16 @@ class ProgressWindow(tk.Toplevel):
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
         self.update()
-        return self.continue_execution
+        return self._continue_execution
 
     def close_window(self, destroy_window=True, _event=None) -> None:
         """
         Close the window.
         :param destroy_window: whether to destroy the window or just hide it.
-        :param _event: the event that triggered the close.
+        :param _event: event that triggered the close.
         """
         self.is_closing = True
-        self.continue_execution = True
+        self._continue_execution = True
         if destroy_window:
             if self.quit_on_close:
                 self.quit()

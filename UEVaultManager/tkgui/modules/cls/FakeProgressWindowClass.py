@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 implementation for:
-- FakeProgressWindow: a fake ProgressWindow object to use when no ProgressWindow object is provided and provide the same interface.
+- FakeProgressWindow: fake ProgressWindow object to use when no ProgressWindow object is provided and provide the same interface.
 """
 
 
@@ -101,5 +101,9 @@ class FakeProgressWindow:
         return True
 
     def close_window(self, destroy_window=True, _event=None) -> None:
+        """ FAKE METHOD"""
+        pass
+
+    def update(self) -> None:
         """ FAKE METHOD"""
         pass

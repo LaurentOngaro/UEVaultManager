@@ -2,7 +2,7 @@
 """
 Implementation for:
 _ clean_ue_asset_name: clean a name to remove unwanted characters.
-- UEVMGui: the main window of the application.
+- UEVMGui: main window of the application.
 """
 import filecmp
 import json
@@ -88,10 +88,10 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
 class UEVMGui(tk.Tk):
     """
     This class is used to create the main window for the application.
-    :param title: the title.
-    :param icon: the icon.
-    :param screen_index: the screen index where the window will be displayed.
-    :param data_source: the source where the data is stored or read from.
+    :param title: title.
+    :param icon: icon.
+    :param screen_index: screen index where the window will be displayed.
+    :param data_source: source where the data is stored or read from.
     """
     is_fake = False
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
@@ -109,6 +109,9 @@ class UEVMGui(tk.Tk):
         self.editable_table: Optional[EditableTable] = None
         self.progress_window: Optional[FakeProgressWindow] = None
         self.egs: Optional[EPCAPI] = None
+        # using a global scraper to avoid creating a new one and a new db connection on multiple scrapes
+        self.ue_asset_scraper: Optional[UEAssetScraper] = None
+
         super().__init__()
         self.data_source_type = data_source_type
 
@@ -128,6 +131,7 @@ class UEVMGui(tk.Tk):
         frm_content = UEVMGuiContentFrame(self)
         self._frm_content = frm_content
         self.releases_choice = {}
+        self.update_delay: int = 2000
         # get the core instance from the cli application if it exists
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
         # if the core instance is not set, create a new one
@@ -200,7 +204,7 @@ class UEVMGui(tk.Tk):
 
         self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
-        gui_g.UEVM_gui_ref = self
+        gui_g.WindowsRef.uevm_gui = self
 
     def setup(self, show_open_file_dialog: bool = False, rebuild_data: bool = False) -> None:
         """
@@ -260,9 +264,12 @@ class UEVMGui(tk.Tk):
     def mainloop(self, n=0):
         """
         Mainloop method
+        :param n: threshold.
+
         Overrided to add logging function for debugging
         """
         self.logger.info(f'starting mainloop in {__name__}')
+        self.after(self.update_delay, self.update_progress_windows)
         self.tk.mainloop(n)
         # check is a child window is still open
         # child_windows = self.progress_window or gui_g.WindowsRef.edit_cell or gui_g.WindowsRef.edit_row
@@ -270,6 +277,15 @@ class UEVMGui(tk.Tk):
         # if child_windows:
         #     self._wait_for_window(child_windows)
         self.logger.info(f'ending mainloop in {__name__}')
+
+    def update_progress_windows(self):
+        """
+        Update the child progress windows.
+        """
+        if self.progress_window:
+            self.progress_window.update()
+            # print('UPDATE')
+        self.after(self.update_delay, self.update_progress_windows)
 
     @staticmethod
     def _focus_next_widget(event):
@@ -285,8 +301,8 @@ class UEVMGui(tk.Tk):
         """
         Open a file dialog to choose a file to save or load data to/from.
         :param save_mode: whether the dialog will be in saving mode, else in loading mode.
-        :param filename: the default filename to use.
-        :return: the chosen filename.
+        :param filename: default filename to use.
+        :return: chosen filename.
         """
         # adding category to the default filename
         if not filename:
@@ -315,6 +331,7 @@ class UEVMGui(tk.Tk):
             filename = fd.askopenfilename(
                 title='Choose a file to read data from', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
             )
+        filename = os.path.normpath(filename) if filename else ''
         return filename
 
     def _check_and_get_widget_value(self, tag: str) -> tuple:
@@ -344,7 +361,7 @@ class UEVMGui(tk.Tk):
     def _wait_for_window(self, window: tk.Toplevel) -> None:
         """
         Wait for a window to be closed.
-        :param window: the window to wait for.
+        :param window: window to wait for.
         """
         if not window:
             # the window could have been closed before this call
@@ -366,8 +383,8 @@ class UEVMGui(tk.Tk):
     def _update_installed_folders_cell(self, row_index: int, installed_folders: str = None) -> None:
         """
         update the content of the 'Installed folders' cell of the row and the quick edit window.
-        :param row_index: the index of the row to update.
-        :param installed_folders: the new value for the cell.
+        :param row_index: index of the row to update.
+        :param installed_folders: new value for the cell.
         """
         data_table = self.editable_table
         if installed_folders:
@@ -379,7 +396,7 @@ class UEVMGui(tk.Tk):
     def on_key_press(self, event):
         """
         Handle key press events.
-        :param event:
+        :param event: event that triggered the call.
         """
         # Note: this event will be triggered AFTER the event in the editabletable
         # print(event.keysym)
@@ -411,7 +428,7 @@ class UEVMGui(tk.Tk):
     def on_mouse_over_cell(self, event=None) -> None:
         """
         Show the image of the asset when the mouse is over the cell.
-        :param event:
+        :param event: event that triggered the call.
         """
         if event is None:
             return
@@ -431,7 +448,7 @@ class UEVMGui(tk.Tk):
     def on_mouse_leave_cell(self, _event=None) -> None:
         """
         Show the default image when the mouse leaves the cell.
-        :param _event:
+        :param _event: event that triggered the call.
         """
         self.update_preview_info()
         canvas_image = self._frm_control.canvas_image
@@ -440,7 +457,7 @@ class UEVMGui(tk.Tk):
     def on_selection_change(self, event=None) -> None:
         """
         When the selection changes, show the selected row in the quick edit frame.
-        :param event:
+        :param event: event that triggered the call.
         """
         row_number = event.widget.currentrow
         self.editable_table.update_quick_edit(row_number)
@@ -465,7 +482,7 @@ class UEVMGui(tk.Tk):
     def on_entry_current_item_changed(self, _event=None) -> None:
         """
         When the item (i.e. row or page) number changes, show the corresponding item.
-        :param _event:
+        :param _event: event that triggered the call.
         """
         item_num = self._frm_toolbar.entry_current_item.get()
         try:
@@ -553,11 +570,11 @@ class UEVMGui(tk.Tk):
     def on_close(self, _event=None) -> None:
         """
         When the window is closed, check if there are unsaved changes and ask the user if he wants to save them.
-        :param _event: the event that triggered the call of this function.
+        :param _event: event that triggered the call of this function.
         """
         if self.editable_table is not None and self.editable_table.must_save:
             if gui_f.box_yesno('Changes have been made. Do you want to save them in the source file ?'):
-                self.save_changes(show_dialog=False)  # will save the settings too
+                self.save_changes()  # will save the settings too
         self.close_window()  # will save the settings too
 
     def close_window(self, force_quit=False) -> None:
@@ -572,7 +589,7 @@ class UEVMGui(tk.Tk):
     def add_error(self, error: Exception) -> None:
         """
         Add an error to the list of errors.
-        :param error: the error to add.
+        :param error: error to add.
         """
         self._errors.append(error)
 
@@ -598,7 +615,7 @@ class UEVMGui(tk.Tk):
     def open_file(self) -> str:
         """
         Open a file and Load data from it.
-        :return: the name of the file that was loaded.
+        :return: name of the file that was loaded.
         """
         data_table = self.editable_table  # shortcut
         filename = self._open_file_dialog(filename=gui_g.s.last_opened_file)
@@ -621,11 +638,18 @@ class UEVMGui(tk.Tk):
             else:
                 gui_f.box_message('Operation cancelled')
 
-    def save_changes(self, show_dialog: bool = True) -> str:
+    def save_changes(self) -> str:
+        """
+        Save the data to the current data source.
+        :return: name of the file that was saved.
+        """
+        return self.save_changes_as(show_dialog=False)
+
+    def save_changes_as(self, show_dialog: bool = True) -> str:
         """
         Save the data to the current data source.
         :param show_dialog: whether to show a dialog to select the file to save to, if False, use the current file.
-        :return: the name of the file that was saved.
+        :return: name of the file that was saved.
         """
         data_table = self.editable_table  # shortcut
         self.save_settings()
@@ -681,6 +705,7 @@ class UEVMGui(tk.Tk):
                 if gui_g.s.last_opened_folder else gui_g.s.folders_to_scan[0] if gui_g.s.folders_to_scan else None,
             )
             if folder:
+                folder = os.path.normpath(folder)
                 gui_g.s.last_opened_folder = folder
                 add_new_row = False
                 self.scan_for_assets([folder], from_add_button=True)
@@ -715,15 +740,15 @@ class UEVMGui(tk.Tk):
         :param folder: name to search for.
         :param parent: parent folder to search in.
         :param check_if_valid: whether to check if the marketplace_url is valid. Return an empty string if not.
-        :return: the marketplace_url found in the file or an empty string if not found.
+        :return: marketplace_url found in the file or an empty string if not found.
         """
 
         def read_from_url_file(entry, folder_name: str, returned_urls: [str]) -> bool:
             """
             Read an url from a .url file and add it to the list of urls to return.
-            :param entry: the entry to process.
-            :param folder_name: the name of the folder to search for.
-            :param returned_urls: a list of urls to return. We use a list instead of a str because we need to modify it from the inner function.
+            :param entry: entry to process.
+            :param folder_name: name of the folder to search for.
+            :param returned_urls: list of urls to return. We use a list instead of a str because we need to modify it from the inner function.
             :return: True if the entry is a file and the name matches the folder name, False otherwise.
             """
             if entry.is_file() and entry.name.lower().endswith('.url'):
@@ -769,14 +794,14 @@ class UEVMGui(tk.Tk):
     def scan_for_assets(self, folder_list: list = None, from_add_button: bool = False) -> None:
         """
         Scan the folders to find files that can be loaded.
-        :param folder_list: the list of folders to scan. If empty, use the folders in the config file.
+        :param folder_list: list of folders to scan. If empty, use the folders in the config file.
         :param from_add_button: whether the call has been done from the "add" button or not.
         """
 
         def _fix_folder_structure(content_folder_name: str = gui_g.s.ue_asset_content_subfolder):
             """
             Fix the folder structure by moving all the subfolders inside a "Content" subfolder.
-            :param content_folder_name: the name of the subfolder to create.
+            :param content_folder_name: name of the subfolder to create.
             """
             if gui_f.box_yesno(
                 f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
@@ -990,7 +1015,7 @@ class UEVMGui(tk.Tk):
         # copy_col_index = data_table.get_col_index(gui_g.s.index_copy_col_name)
         for name, content in valid_folders.items():
             marketplace_url = content['marketplace_url']
-            self.logger.info(f'{name} : a {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
+            self.logger.info(f'{name} : {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
             # set default values for the row, some will be replaced by Scraping
             row_data.update(
                 {
@@ -1105,28 +1130,36 @@ class UEVMGui(tk.Tk):
                     self.logger.warning(msg)
                 return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
-            scraper = UEAssetScraper(
-                datasource_filename=self.editable_table.data_source,
-                use_database=self.editable_table.is_using_database(),
-                start=0,
-                assets_per_page=1,
-                max_threads=1,
-                save_to_files=True,
-                load_from_files=False,
-                store_ids=False,  # useless for now
-                core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
-            )
-            scraper.get_data_from_url(api_product_url)
-            asset_data = scraper.pop_last_scrapped_data()  # returns a list of one element
+            if self.ue_asset_scraper is None:
+                # using a global scraper to avoid creating a new one and a new db connection for each row
+                self.ue_asset_scraper = UEAssetScraper(
+                    datasource_filename=self.editable_table.data_source,
+                    use_database=self.editable_table.is_using_database(),
+                    start=0,
+                    assets_per_page=1,
+                    max_threads=1,
+                    save_to_files=True,
+                    load_from_files=False,
+                    store_ids=False,  # useless for now
+                    core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
+                )
+            else:
+                # next line because the scrapper is initialized only at startup
+                self.ue_asset_scraper.keep_intermediate_files = gui_g.s.debug_mode
+            self.ue_asset_scraper.get_data_from_url(api_product_url)
+            asset_data = self.ue_asset_scraper.pop_last_scrapped_data()  # returns a list of one element
             if asset_data is not None and len(asset_data) > 0:
                 if forced_data is not None:
                     for key, value in forced_data.items():
                         asset_data[0][key] = value
-                scraper.asset_db_handler.set_assets(asset_data, update_progress=update_progress)
+                self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=update_progress)
                 is_ok = True
+                # TODO: add to cli.core.scan_assets_filename_log
         if not is_ok:
             asset_data = None
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
+            # TODO: add to cli.core.notfound_assets_filename_log
+            # TODO: change the grab result for this asset
             if show_message:
                 gui_f.box_message(msg, level='warning')
             else:
@@ -1144,16 +1177,16 @@ class UEVMGui(tk.Tk):
         max_val = len(df) - 1
         start = simpledialog.askinteger(
             parent=self,  #
-            title='Select the starting row',  #
-            prompt=f'Start index (between {min_val} and {max_val-1})',  #
+            title='Select the starting asset',  #
+            prompt=f'INDEX (not row number) between {min_val} and {max_val-1})',  #
             minvalue=min_val,  #
             maxvalue=max_val - 1
         )
         if start is not None:
             end = simpledialog.askinteger(
                 parent=self,
-                title='Select the ending row',  #
-                prompt=f'Stop index (between {start+1} and {max_val})',  #
+                title='Select the ending asset',  #
+                prompt=f'INDEX (not row number) between {start+1} and {max_val})',  #
                 minvalue=start + 1,  #
                 maxvalue=max_val
             )
@@ -1161,7 +1194,8 @@ class UEVMGui(tk.Tk):
                 start = max(min_val, start)
                 end = min(max_val, end)
                 all_row_numbers = list(range(start, end))
-                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False)
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False, )
+                self.ue_asset_scraper = None
 
     def scrap_asset(
         self,
@@ -1176,12 +1210,12 @@ class UEVMGui(tk.Tk):
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param row_numbers: a list a row numbers to scrap. If None, will use the selected rows.
-        :param row_index: the (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
-        :param forced_data: if not None, all the key in forced_data will replace the scrapped data
-        :param show_message: whether to show a message if the marketplace_url is not valid
-        :param update_dataframe: whether to update the dataframe after scraping
-        :param check_unicity: whether to check if the data are unique and ask the user to update the row if not
+        :param row_numbers: list a row numbers to scrap. If None, will use the selected rows.
+        :param row_index: (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
+        :param forced_data: if not None, all the key in forced_data will replace the scrapped data.
+        :param show_message: whether to show a message if the marketplace_url is not valid.
+        :param update_dataframe: whether to update the dataframe after scraping.
+        :param check_unicity: whether to check if the data are unique and ask the user to update the row if not.
         """
         if gui_g.s.offline_mode:
             gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
@@ -1195,20 +1229,32 @@ class UEVMGui(tk.Tk):
         data_table.save_data()  # save the data before scraping because we will update the row(s) and override non saved changes
         if not row_numbers:
             row_numbers = data_table.multiplerowlist
+            use_range = False
+        else:
+            use_range = True
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
                 gui_f.box_message('You must select a row first', level='warning')
             return
-        use_range = True
         if row_index >= 0:
             # a row index has been given, we scrap only this row
             row_indexes = [row_index]
-            use_range = False
+        elif use_range:
+            # convert row numbers to row indexes
+            row_indexes = [
+                data_table.get_real_index(row_number, add_page_offset=False, df_type=DataFrameUsed.UNFILTERED) for row_number in row_numbers
+            ]
         else:
             # convert row numbers to row indexes
             row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
         pw = None
         row_count = len(row_indexes)
+        data_table = self.editable_table  # shortcut
+        if self.is_using_database():
+            tags_count_old = data_table.db_handler.get_rows_count('tags')
+            rating_count_old = data_table.db_handler.get_rows_count('ratings')
+        else:
+            tags_count_old, rating_count_old = 0, 0
         if marketplace_url is None:
             base_text = "Scraping asset's data. Could take a while..."
             if row_count > 1:
@@ -1216,6 +1262,9 @@ class UEVMGui(tk.Tk):
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True
                 )
             for count, row_index in enumerate(row_indexes):
+                if row_index < 0:
+                    # a conversion error in get_real_index has occured
+                    continue
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
@@ -1245,12 +1294,26 @@ class UEVMGui(tk.Tk):
                         f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                        if show_message and row_count == 1:
-                            gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
+                        # if show_message and row_count == 1:
+                        #     tags_message = ''
+                        #     if self.is_using_database():
+                        #         tags_count = data_table.db_handler.get_rows_count('tags')
+                        #         rating_count = data_table.db_handler.get_rows_count('ratings')
+                        #         tags_message = f'\n{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.'
+                        #     gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace.{tags_message}')
 
             gui_f.close_progress(self)
-            if show_message and row_count > 1:
-                gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
+            # if show_message and row_count > 1:
+            if row_count > 1:
+                message = f'All Datas for {row_count} rows have been updated from the marketplace.'
+            else:
+                message = f'Data for row {row_index} have been updated from the marketplace.'
+            tags_message = ''
+            if self.is_using_database():
+                tags_count = data_table.db_handler.get_rows_count('tags')
+                rating_count = data_table.db_handler.get_rows_count('ratings')
+                tags_message = f'\n{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.'
+            gui_f.box_message(message + tags_message)
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             if asset_data:
@@ -1268,8 +1331,8 @@ class UEVMGui(tk.Tk):
     def _check_unicity(self, asset_data: {}) -> (bool, dict):
         """
         Check if the given asset_data is unique in the table. If not, will change the asset_id and/or the asset_slug to avoid issue.
-        :param asset_data: the asset data to check
-        :return: the asset_data with the updated asset_id and/or asset_slug
+        :param asset_data: asset data to check.
+        :return: asset_data with the updated asset_id and/or asset_slu.
         """
         is_unique = True
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
@@ -1403,7 +1466,7 @@ class UEVMGui(tk.Tk):
     def update_controls_state(self, update_title=False) -> None:
         """
         Update the controls and redraw the table.
-        :return: 
+        :param update_title: whether to update the window title.
         """
         if update_title:
             self.title(gui_g.s.app_title_long)
@@ -1457,7 +1520,8 @@ class UEVMGui(tk.Tk):
         gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
         gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
-        gui_f.update_widgets_in_list(data_table.is_using_database(), 'db_is_available')
+        gui_f.update_widgets_in_list(data_table.is_using_database(), 'database_is_used')
+        gui_f.update_widgets_in_list(not data_table.is_using_database(), 'file_is_used')
         gui_f.update_widgets_in_list(row_is_selected, 'row_is_selected')
         gui_f.update_widgets_in_list(row_is_selected and not gui_g.s.offline_mode, 'row_is_selected_and_not_offline')
         gui_f.update_widgets_in_list(is_owned and not gui_g.s.offline_mode, 'asset_is_owned_and_not_offline')
@@ -1477,7 +1541,7 @@ class UEVMGui(tk.Tk):
     def update_category_var(self) -> dict:
         """
         Update the category variable with the current categories in the data.
-        :return: a dict with the new categories list as value and the key is the name of the variable.
+        :return: dict with the new categories list as value and the key is the name of the variable.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         try:
@@ -1586,7 +1650,7 @@ class UEVMGui(tk.Tk):
     def run_uevm_command(self, command_name='') -> (int, str):
         """
         Execute a cli command and display the result in DisplayContentWindow.
-        :param command_name: the name of the command to execute.
+        :param command_name: name of the command to execute.
         """
         if gui_g.WindowsRef.display_content is not None:
             self.logger.info('A UEVM command is already running, please wait for it to finish.')
@@ -1743,7 +1807,7 @@ class UEVMGui(tk.Tk):
     def remove_installed_folder(self, selected_ids: tuple) -> bool:
         """
         Remove an installed folder from an installed release.
-        :param selected_ids: tuple (the index of the release, index of the folder)
+        :param selected_ids: tuple (the index of the release, index of the folder).
         :return: True if the release has been deleted, False otherwise.
         """
         folder_selected = ''
@@ -1808,7 +1872,7 @@ class UEVMGui(tk.Tk):
     def set_asset_id(self, value: str) -> None:
         """
         Set the asset id in the control frame.
-        :param value: the value to set.
+        :param value: value to set.
         """
         frm_control: UEVMGuiControlFrame = self._frm_control
         if not frm_control:
@@ -1828,7 +1892,7 @@ class UEVMGui(tk.Tk):
     def clean_asset_folders(self) -> int:
         """
         Delete the assets which folder in 'Origin' does not exist.
-        :return: the number of deleted assets.
+        :return: number of deleted assets.
         """
         data_table = self.editable_table  # shortcut
         df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
@@ -1889,7 +1953,7 @@ class UEVMGui(tk.Tk):
     def create_dynamic_filters(self) -> {str: []}:
         """
         Create a dynamic filters list that can be added to the filter frame quick filter list.
-        :return: a dict that will be added to the FilterFrame quick filters list.
+        :return: dict that will be added to the FilterFrame quick filters list.
 
         Notes:
             It returns a dict where each entry must respect the folowing format: "{'<label>': ['callable': <callable> ]}"
@@ -1897,7 +1961,7 @@ class UEVMGui(tk.Tk):
              <label> is the label to display in the quick filter list
              <callable> is the function to call to get the mask.
         """
-        return {
+        filters = {
             # add ^ to the beginning of the value to search for the INVERSE the result
             'Owned': ['Owned', True],  #
             'Not Owned': ['Owned', False],  #
@@ -1905,33 +1969,38 @@ class UEVMGui(tk.Tk):
             'Not Obsolete': ['Obsolete', False],  #
             'Must buy': ['Must buy', True],  #
             'Added manually': ['Added manually', True],  #
-            'Result OK': ['Grab result', 'NO_ERROR'],  #
-            'Result Not OK': ['Grab result', '^NO_ERROR'],  #
             'Plugins only': ['Category', 'plugins'],  #
             'Free': ['Price', 0],  #
-            'Dummy rows': ['Asset_id', gui_g.s.empty_row_prefix],  #
-            'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
-            'Tags with number': ['callable', self.filter_tags_with_number],  #
-            'With comment': ['callable', self.filter_with_comment],  #
             'Free and not owned': ['callable', self.filter_free_and_not_owned],  #
-            'Installed in folder': ['callable', self.filter_with_installed_folders],  #
+            'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
             'Downloaded': ['callable', self.filter_is_downloaded],  #
+            'Installed in folder': ['callable', self.filter_with_installed_folders],  #
+            'With comment': ['callable', self.filter_with_comment],  #
+            'Dummy rows': ['Asset_id', gui_g.s.empty_row_prefix],  #
+            'Result OK': ['Grab result', 'NO_ERROR'],  #
+            'Result Not OK': ['Grab result', '^NO_ERROR'],  #
         }
+        if self.is_using_database():
+            db_filters = {
+                'Tags with number': ['callable', self.filter_tags_with_number],  #
+            }
+            filters.update(db_filters)
+        return filters
 
     def filter_tags_with_number(self) -> pd.Series:
         """
         Create a mask to filter the data with tags that contains an integer.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix) for i in x))
+        mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix, prefix_is_mandatory=True) for i in x))
         return mask
 
     def filter_free_and_not_owned(self) -> pd.Series:
         """
         Create a mask to filter the data that are not owned and with a price <=0.5 or free.
         Assets that custom attributes contains external_link are also filtered.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         # Ensure 'Discount price' and 'Price' are float type
@@ -1945,8 +2014,8 @@ class UEVMGui(tk.Tk):
     def filter_not_empty(self, col_name: str) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty value for a column.
-        :param col_name: the name of the column to check.
-        :return: a mask to filter the data.
+        :param col_name: name of the column to check.
+        :return: mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         # mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
@@ -1958,20 +2027,20 @@ class UEVMGui(tk.Tk):
     def filter_with_comment(self) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty comment value.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         return self.filter_not_empty('Comment')
 
     def filter_with_installed_folders(self) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty installed_folders value.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         return self.filter_not_empty('Installed folders')
 
     def filter_is_downloaded(self) -> pd.Series:
         """
         Create a mask to filter the data with a non-empty downloaded size.
-        :return: a mask to filter the data.
+        :return: mask to filter the data.
         """
         return self.filter_not_empty('Downloaded size')

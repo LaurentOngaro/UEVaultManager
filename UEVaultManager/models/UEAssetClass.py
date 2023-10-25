@@ -12,7 +12,7 @@ from UEVaultManager.utils.cli import init_dict_from_data
 class UEAsset:
     """
     A class to represent an Unreal Engine asset. With the EGS data and user data.
-    :param engine_version_for_obsolete_assets: the engine version to use to check if an asset is obsolete.
+    :param engine_version_for_obsolete_assets: engine version to use to check if an asset is obsolete.
     """
 
     # unused logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
@@ -29,7 +29,7 @@ class UEAsset:
     def __str__(self) -> str:
         """
         Return a string representation of the asset.
-        :return: a string representation of the asset.
+        :return: string representation of the asset.
         """
         return check_and_convert_list_to_str(str(value) for value in self._data.values())
 
@@ -70,30 +70,30 @@ class UEAsset:
     def get_data(self) -> dict:
         """
         Return the asset data.
-        :return: the asset data.
+        :return: asset data.
         """
         return self._data
 
     def set_data(self, data: dict) -> None:
         """
         Set the asset data.
-        :param data: the asset data.
+        :param data: asset data.
         """
         self._data = data
 
     def get(self, key: str, default=None):
         """
         Return the value of the given key.
-        :param key: the key to get the value from.
-        :param default: the default value to return if the key is not found.
-        :return: the value or the default value.
+        :param key: key to get the value from.
+        :param default: default value to return if the key is not found.
+        :return: value or the default value.
         """
         return self._data.get(key, default)
 
     def set(self, key: str, value):
         """
         Set the value of the given key.
-        :param key: the key to set the value to.
-        :param value: the value
+        :param key: key to set the value to.
+        :param value: value to set.
         """
         self._data[key] = value

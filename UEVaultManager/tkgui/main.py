@@ -19,7 +19,7 @@ def init_gui(open_gui_window=True, use_db=False) -> str:
     :param open_gui_window: whether the main window will be opened (default mode).
             Set to False for running the GUI initialization only, useful if called from cli.py.
     :param use_db: whether the database will be used instead of the csv file.
-    :return: the path to the csv file to use at startup. It's used when the window is opened from the cli.py script.
+    :return: path to the csv file to use at startup. It's used when the window is opened from the cli.py script.
     """
     gui_g.s.app_icon_filename = gui_fn.path_from_relative_to_absolute(gui_g.s.app_icon_filename)
     rebuild = False

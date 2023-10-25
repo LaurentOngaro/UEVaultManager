@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- GUISettings: a class that contains all the settings for the GUI.
+- GUISettings: class that contains all the settings for the GUI.
 """
 import json
 import os
@@ -21,7 +21,7 @@ from UEVaultManager.utils.cli import check_and_create_folder
 class GUISettings:
     """
     A class that contains all the settings for the GUI.
-    :param config_file: path to config file to use instead of default
+    :param config_file: path to config file to use instead of default.
     """
     path: str = ''
     config_file_gui: str = ''  # config file path for gui part (tkgui)
@@ -39,7 +39,7 @@ class GUISettings:
         # the following folders are relative to the current file location
         # they must be used trought path_from_relative_to_absolute
         # following vars are not set as properties to avoid storing absolute paths in the config file
-        self.cache_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['cache_folder'])
+        self.asset_images_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['asset_images_folder'])
         self.results_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['results_folder'])
         self.scraping_folder: str = gui_fn.path_from_relative_to_absolute(self.config_vars['scraping_folder'])
 
@@ -148,10 +148,10 @@ class GUISettings:
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
         Getter for a serialized config vars
-        :param var_name: name of the config var to get
-        :param is_dict: true if the value is a dict, False if it's a list
-        :param force_reload: true to force reloading the value from the config file and update the deserialized value
-        :return: list or Dict
+        :param var_name: name of the config var to get.
+        :param is_dict: True if the value is a dict, False if it's a list.
+        :param force_reload: True to force reloading the value from the config file and update the deserialized value.
+        :return: list or Dic.
         """
         default = {} if is_dict else []
         if not force_reload and self._config_vars_deserialized.get(var_name, None) is not None:
@@ -180,8 +180,8 @@ class GUISettings:
     def _set_serialized(self, var_name: str = '', values=None):
         """
         Setter for a serialized config vars
-        :param var_name: name of the config var to get
-        :param values: list or Dict to serialize
+        :param var_name: name of the config var to get.
+        :param values: list or Dict to serialize.
         """
         if not values:
             json_str = ''
@@ -432,10 +432,10 @@ class GUISettings:
     def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
         """
         Get columns infos depending on the datasource type
-        :param source_type:  the data source type
+        :param source_type:  the data source type.
 
-        NOTE:
-        We don't use a @property for this because we need to be able to choose the source_type
+        Notes:
+            We don't use a @property for this because we need to be able to choose the source_type
         """
         var_name = 'column_infos_sqlite' if source_type == DataSourceType.DATABASE else 'column_infos_file'
         return self._get_serialized(var_name)
@@ -443,11 +443,11 @@ class GUISettings:
     def set_column_infos(self, values: dict, source_type: DataSourceType = DataSourceType.DATABASE):
         """
         Set columns infos depending on the datasource type
-        :param values:  the data source type
-        :param source_type:  the data source type
+        :param values: dict of columns infos.
+        :param source_type: data source type.
 
-        NOTE:
-        We don't use a @property for this because we need to be able to choose the source_type
+        Notes:
+            We don't use a @property for this because we need to be able to choose the source_type
         """
         var_name = 'column_infos_sqlite' if source_type == DataSourceType.DATABASE else 'column_infos_file'
         self._set_serialized(var_name, values)
@@ -456,7 +456,7 @@ class GUISettings:
     def init_gui_config_file(self, config_file: str = '') -> None:
         """
         Initialize the config file for the gui.
-        :param config_file: the path to the config file to use.
+        :param config_file: path to the config file to use.
         """
         if config_path := os.environ.get('XDG_CONFIG_HOME'):
             self.path = path_join(config_path, 'UEVaultManager')
@@ -522,7 +522,7 @@ class GUISettings:
                 'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
                 'value': str(60 * 60 * 24 * 15)
             },
-            'cache_folder': {
+            'asset_images_folder': {
                 'comment': 'Folder (relative or absolute) to store cached data for assets (mainly preview images)',
                 'value': '../../../cache'
             },
@@ -597,8 +597,8 @@ class GUISettings:
                 'value': ''
             },
             'assets_order_col': {
-                'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column used to order the assets list from the database.',
-                'value': 'date_added'
+                'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column name to sort the assets from the database followed by ASC or DESC (Optional).',
+                'value': 'date_added DESC'
             },
             'testing_switch': {
                 'comment':
@@ -641,7 +641,7 @@ class GUISettings:
             'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),
             'image_cache_max_time': self.config.getint('UEVaultManager', 'image_cache_max_time'),
             'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file'),
-            'cache_folder': self.config.get('UEVaultManager', 'cache_folder'),
+            'asset_images_folder': self.config.get('UEVaultManager', 'asset_images_folder'),
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
             'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),

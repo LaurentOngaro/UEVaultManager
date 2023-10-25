@@ -9,32 +9,22 @@ Log files and debug
 file to set their file name (and path). If a file name is missing, empty
 or set to '' the corresponding log feature will be disabled.
 
--  ignored assets file log
+-  assets scraping log
 
-   -  file is defined by the setting: `ignored_assets_filename_log`
-      (default is ``~/.config/ignored_assets.log``)
-   -  each asset listed in the file has been ignored during the process.
-      Possible reasons are: not a UE asset, not an asset, asset filtered
-      by category (-fc option)
+   -  file is defined by the setting: `scrap_assets_filename_log`
+      (default is ``~/.config/scan_assets.log``)
+   -  each scraped asset is listed here whith the result of the scan
+
 
 -  not found assets log
 
    -  file is defined by the setting: `notfound_assets_filename_log`
       (default is ``~/.config/notfound_assets.log``)
    -  each asset listed in the file has not been found during the
-      grabbing process (extra data). Possible reasons are: invalid,
+      scraping process. Possible reasons are: invalid url,
       obsolete or removed from the marketplace
 
--  bad data assets log
-
-   -  file is defined by the setting: `bad_data_assets_filename_log`
-      (default is ``~/.config/bad_data_assets.log``)
-   -  each asset listed has different value in extra data and metadata.
-      Reasons is: ambiguous asset name that leaded to an invalid search
-      result during the grabbing process. See the :ref:`how-to-fix-invalid-search-result-during-the-grabbing-process`
-      section.
-
--  scan for assets log
+-  folder scanning for assets log
 
    -  file is defined by the setting: `scan_assets_filename_log`
       (default is ``~/.config/scan_assets_filename_log.log``)
@@ -366,55 +356,38 @@ Each asset will also have its data saved in to different json files:
 
 -  for the assets OWNED by the user
 
-  -  the folder ``<data folder>/metadata``: contains a json file for each
-     asset (identified by its `asset_id`) to store its metadata (get from
-     a call to the epic API)
-  -  the folder ``<data folder>/extra``: contains a json file for each
-     asset (identified by its `asset_id`) to store its ''extra data''
-     (grabbed from the marketplace page of the asset)
+  -  the folder ``<Scraping folder>/owned``: contains a json file for each
+     asset (identified by its `asset_id` is the asset has one) to store its metadata (get from
+     a call to the epic API). The <Scraping folder> can be set in the ``<config folder>/config_gui.ini`` configuration file
 
-Note:
 
--  filtering data (using the -fc optional arguments) occurs BEFORE
-   saving extra data
--  some `extra` json files can be missing where the corresponding
-   `metadata` json file is present, that's because some data could have
-   not been grabbed or the asset page not found during the process.
--  the grabbing processing for extra data is using a text based search,
-   so the analysed asset page could be the bad one and results could be
-   taken for another asset. See the :ref:`how-to-fix-invalid-search-result-during-the-grabbing-process`
-   section.
+.. _how-to-fix-invalid-search-result-during-the-scrapin-process:
 
-.. _how-to-fix-invalid-search-result-during-the-grabbing-process:
-
-how to fix invalid search result during the grabbing process
+how to fix invalid search result during the scraping process
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The grabbing processing for extra data is using a text based search
-(partial and case-insensitive). By default, only the first result of
-this search is taken as the corresponding asset. When the asset name,
-which must be converted to be used as a search keyword, is ambiguous,
-the search could provide several results or even a wrong result (an
-asset that don't correspond).
+The INDIVIDUAL scraping process (i.e. click on the "Scrap" or "Scrap range" buttons
+some a text based search (partial and case-insensitive) can be used if the url of the asset is invalid.
+By default, only the first result of this search is taken as the corresponding asset. When the asset name,
+which must be converted to be used as a search keyword, is ambiguous,the search could provide several
+results or even a wrong result (an asset that don't correspond).
 
 So, in that case, the asset page that is analyzed could be the bad one
 and grabbed data could be taken for the wrong asset.
 
 To limit this error, a text comparison is done between the asset title
 in the metadata and the title in the asset page. If the values are
-different, the asset name is added to the file pointed by the
-`bad_data_assets_filename_log` value of the config file and its `error`
-field will contain a value different from 0. Each value correspond to a
-specific error code (see :ref:`possible-values-in-the-error-field`)
+different, its `Grab Result` field will contain a value different from NO_ERROR.
+Each value correspond to a specific status code (see :ref:`possible-values-in-the-error-field`)
 
 To fix that, the search of the correct url for the asset must be done
 and validated manually.
 
 Once validated, the correct URL could be added into the result file,
-inside the Url field. As this field is marked as `protected`, it won't
+inside the Url field. As this field is marked as `USER`, it won't
 be overwritten on the next data update and will be used as a source url
 for the page to be grabbed instead of making a new search for the asset
-page. (THIS IS STILL TO BE DONE / TODO)
+page.
 
 **Please Note that the user is responsable for respecting the attended
 format of the result file when modifying its content. Breaking its

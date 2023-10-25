@@ -17,7 +17,7 @@ class HiddenAliasSubparsersAction(argparse._SubParsersAction):
         Add a parser to the set of parsers for this action.
         :param name: name of the parser.
         :param kwargs: keyword arguments.
-        :return: the created parser.
+        :return: created parser.
         """
         # set prog from the existing prefix
         if kwargs.get('prog') is None:

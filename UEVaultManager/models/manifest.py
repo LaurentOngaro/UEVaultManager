@@ -27,11 +27,11 @@ from typing import Optional
 logger = logging.getLogger('Manifest')
 
 
-def read_fstring(bio):
+def read_fstring(bio) -> str:
     """
     Read a string from a binary file.
-    :param bio:
-    :return:
+    :param bio: binary stream.
+    :return: string.
     """
     length = struct.unpack('<i', bio.read(4))[0]
 
@@ -51,12 +51,11 @@ def read_fstring(bio):
     return s
 
 
-def write_fstring(bio, string):
+def write_fstring(bio, string: str) -> None:
     """
     Write a string to a binary file.
-    :param bio:
-    :param string:
-    :return:
+    :param bio: binary stream.
+    :param string: string to write.
     """
     if not string:
         bio.write(struct.pack('<i', 0))
@@ -408,7 +407,7 @@ class CDL:
         """
         Get chunk by GUID string or number, creates index of chunks on first call
         Integer GUIDs are usually faster and require less memory, use those when possible.
-        :param guid: gUID string or number
+        :param guid: gUID string or number.
         :return: chunk.
         """
         if isinstance(guid, int):

@@ -8,6 +8,7 @@ from abc import ABC
 # import UEVaultManager.tkgui.modules.DisplayContentWindowClass as DisplayContentWindow
 import UEVaultManager.tkgui.modules.cls.EditCellWindowClass as EditCellWindow
 import UEVaultManager.tkgui.modules.cls.EditRowWindowClass as EditRowWindow
+from UEVaultManager.tkgui.modules.cls.FakeUEVMGuiClass import FakeUEVMGuiClass
 from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
@@ -18,6 +19,7 @@ class WindowsRef(ABC):
     Class to hold references to global windows.
     Abstractclass
     """
+    uevm_gui: FakeUEVMGuiClass = None  # tkgui window , we can not use the real UEVMGuiClass because it will cause circular import error
     edit_cell: EditCellWindow = None
     edit_row: EditRowWindow = None
     # display_content: DisplayContentWindow = None
@@ -29,7 +31,7 @@ class WindowsRef(ABC):
     def get_properties_name(cls) -> list:
         """
         Get the propertie NAME of the class.
-        :return: a list of the propertie NAMES of the class.
+        :return: list of the propertie NAMES of the class.
         """
         return [prop for prop in dir(cls) if not prop.startswith('__') and not prop == '_abc_impl' and not callable(getattr(cls, prop))]
 
@@ -37,7 +39,7 @@ class WindowsRef(ABC):
     def get_properties(cls) -> list:
         """
         Get the properties of the class.
-        :return: a list the properties of the class.
+        :return: list the properties of the class.
         """
         result = []
         for name in cls.get_properties_name():
@@ -57,8 +59,6 @@ no_bool_false_data = False
 # if empty, direct access to its features from this script won't be available and a message will be displayed instead
 # noinspection PyTypeChecker
 UEVM_cli_ref = None  # avoid importing classes from the UEVM main application here because it can cause circular dependencies when importing the module
-# noinspection PyTypeChecker
-UEVM_gui_ref = None  # avoid importing classes from the UEVM GUI class here because it can cause circular dependencies when importing the module
 #  reference to the log object of the UEVM main application.
 #  If empty, log will be message printed in the console
 UEVM_log_ref = None
@@ -102,8 +102,10 @@ stated_widgets = {
     'asset_added_mannually': [],
     # the cli object is available
     'cli_is_available': [],
-    # the database is available
-    'db_is_available': [],
+    # the database mode is used
+    'database_is_used': [],
+    # the file mode is used
+    'file_is_used': [],
     # at least a row must be selected and not in offline
     'row_is_selected_and_not_offline': [],
     # a row is selected and the asset is owned and not in offline
@@ -115,7 +117,7 @@ stated_widgets = {
 def set_args_force_refresh(value: bool) -> None:
     """
     Set the value of the argument force_refresh. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     UEVM_cli_args['force_refresh'] = value
 
@@ -131,7 +133,7 @@ def set_args_offline(value: bool) -> None:
 def set_args_debug(value: bool) -> None:
     """
     Set the value of the argument debug. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     UEVM_cli_args['debug'] = value
 
@@ -139,7 +141,7 @@ def set_args_debug(value: bool) -> None:
 def set_args_auth_delete(value: bool) -> None:
     """
     Set the value of the argument auth_delete. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     UEVM_cli_args['auth_delete'] = value
 
@@ -155,7 +157,7 @@ def set_args_delete_scraping_data(value: bool) -> None:
 def set_use_threads(value: bool) -> None:
     """
     Set the value of the settings use_threads. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     s.use_threads = value
 
@@ -163,7 +165,7 @@ def set_use_threads(value: bool) -> None:
 def set_use_colors_for_data(value: bool) -> None:
     """
     Set the value of the settings use_colors_for_data. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     s.use_colors_for_data = value
 
@@ -178,7 +180,7 @@ def set_use_colors_for_data(value: bool) -> None:
 def set_check_asset_folders(value: bool) -> None:
     """
     Set the value of the settings check_asset_folders. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     s.check_asset_folders = value
 
@@ -186,6 +188,6 @@ def set_check_asset_folders(value: bool) -> None:
 def set_browse_when_add_row(value: bool) -> None:
     """
     Set the value of the settings browse_when_add_row. Mandadory fot the associated ttk.ckbutton to work.
-    :param value: true or False.
+    :param value: True or False.
     """
     s.browse_when_add_row = value

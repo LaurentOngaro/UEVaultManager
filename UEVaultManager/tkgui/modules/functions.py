@@ -27,10 +27,10 @@ from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 def log_format_message(name: str, levelname: str, message: str) -> str:
     """
     Format the log message.
-    :param name: the name of the logger.
-    :param levelname: the level of log.
-    :param message: the message to format.
-    :return: the formatted message.
+    :param name: name of the logger.
+    :param levelname: level of log.
+    :param message: message to format.
+    :return: formatted message.
     """
     return f'[{name}] {levelname}: {message}'
 
@@ -38,8 +38,8 @@ def log_format_message(name: str, levelname: str, message: str) -> str:
 def box_message(msg: str, level='info'):
     """
     Display a message box with the given message.
-    :param msg: the message to display.
-    :param level: the level of the message (info, warning, error).
+    :param msg: message to display.
+    :param level: level of the message (info, warning, error).
     """
     level_lower = level.lower()
     if level_lower == 'warning':
@@ -58,8 +58,8 @@ def box_message(msg: str, level='info'):
 def box_yesno(msg: str) -> bool:
     """
     Display a YES/NO message box with the given message.
-    :param msg: the message to display .
-    :return:  True if the user clicked on Yes, False otherwise.
+    :param msg: message to display .
+    :return: True if the user clicked on Yes, False otherwise.
     """
     return messagebox.askyesno(title=gui_g.s.app_title, message=msg)
 
@@ -67,8 +67,8 @@ def box_yesno(msg: str) -> bool:
 def box_okcancel(msg: str) -> bool:
     """
     Display an OK/CANCEL message box with the given message.
-    :param msg: the message to display.
-    :return:  True if the user clicked on Yes, False otherwise.
+    :param msg: message to display.
+    :return: True if the user clicked on Yes, False otherwise.
     """
     return messagebox.askokcancel(title=gui_g.s.app_title, message=msg)
 
@@ -96,7 +96,7 @@ def from_cli_only_message(content='This feature is only accessible') -> None:
 def log_info(msg: str) -> None:
     """
     Log an info message.
-    :param msg: the message to log.
+    :param msg: message to log.
 
     Notes:
         It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
@@ -111,7 +111,7 @@ def log_info(msg: str) -> None:
 def log_debug(msg: str) -> None:
     """
     Log a debug message.
-    :param msg: the message to log.
+    :param msg: message to log.
 
     Notes:
         It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
@@ -134,7 +134,7 @@ def log_debug(msg: str) -> None:
 def log_warning(msg: str) -> None:
     """
     Log a warning message.
-    :param msg: the message to log.
+    :param msg: message to log.
 
     Notes:
         It will use gui_g.UEVM_log_ref if defined, otherwise it will print the message on the console.
@@ -149,7 +149,7 @@ def log_warning(msg: str) -> None:
 def log_error(msg: str) -> None:
     """
     Log an error message.
-    :param msg: the message to log.
+    :param msg: message to log.
 
     Notes:
         The application will (normally) exit after logging the message. Sometimes it doesn't work (check ?)
@@ -166,9 +166,9 @@ def log_error(msg: str) -> None:
 def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -> None:
     """
     Resize the given image and display it in the given canvas.
-    :param image: the image to display.
-    :param canvas: the canvas to display the image in.
-    :param scale: the scale to apply to the image.
+    :param image: image to display.
+    :param canvas: canvas to display the image in.
+    :param scale: scale to apply to the image.
     """
     # Resize the image while keeping the aspect ratio
     target_height = int(gui_g.s.preview_max_height * scale)
@@ -186,9 +186,9 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -
 def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> bool:
     """
     Show the image of the given asset in the given canvas.
-    :param image_url: the url of the image to display.
-    :param canvas_image: the canvas to display the image in.
-    :param scale: the scale to apply to the image.
+    :param image_url: url of the image to display.
+    :param canvas_image: canvas to display the image in.
+    :param scale: scale to apply to the image.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     :return: True if the image has been displayed, False otherwise.
     """
@@ -201,9 +201,9 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
     try:
         # print(image_url)
         # noinspection DuplicatedCode
-        if not os.path.isdir(gui_g.s.cache_folder):
-            os.mkdir(gui_g.s.cache_folder)
-        image_filename = path_join(gui_g.s.cache_folder, os.path.basename(image_url))
+        if not os.path.isdir(gui_g.s.asset_images_folder):
+            os.mkdir(gui_g.s.asset_images_folder)
+        image_filename = path_join(gui_g.s.asset_images_folder, os.path.basename(image_url))
         # Check if the image is already cached
         if os.path.isfile(image_filename) and (time.time() - os.path.getmtime(image_filename)) < gui_g.s.image_cache_max_time:
             # Load the image from the cache folder
@@ -232,7 +232,7 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
 def show_default_image(canvas_image=None) -> None:
     """
     Show the default image in the given canvas.
-    :param canvas_image: the canvas to display the image in.
+    :param canvas_image: canvas to display the image in.
     """
     if canvas_image is None:
         return
@@ -250,10 +250,10 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
     """
     Pretty prints a JSON object in a simple 'key: value' format.
     :param json_obj:  The JSON object to print.
-    :param indent: the number of spaces to indent each level.
+    :param indent: number of spaces to indent each level.
     :param print_result: determines whether to print the result.
     :param output_on_gui: determines whether to print the result on the GUI.
-    :return: the pretty printed JSON object.
+    :return: pretty printed JSON object.
     """
 
     def _process(obj, level=0):
@@ -287,7 +287,7 @@ def json_print_key_val(json_obj, indent=4, print_result=True, output_on_gui=Fals
 def custom_print(text='', keep_mode=True) -> None:
     """
     Print the given text on the GUI if it's available, otherwise print it on the console².
-    :param text: the text to print.
+    :param text: text to print.
     :param keep_mode: whether to keep the existing content when adding a new one.
     """
     if gui_g.WindowsRef.display_content is not None:
@@ -299,8 +299,8 @@ def custom_print(text='', keep_mode=True) -> None:
 def get_tk_root(container) -> Optional[tk.Tk]:
     """
     Get the root window.
-    :param container:  the container window or object
-    :return: the root window
+    :param container:  the container window or object.
+    :return: root windo.
     """
     if container is None:
         return None
@@ -334,19 +334,19 @@ def show_progress(
 ) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
-    :param parent: the parent window. Could be None
-    :param text: the text to display in the progress window.
-    :param width: the width of the progress window.
-    :param height: the height of the progress window.
-    :param max_value_l: the maximum value of the progress bar.
+    :param parent: parent window. Could be None.
+    :param text: text to display in the progress window.
+    :param width: width of the progress window.
+    :param height: height of the progress window.
+    :param max_value_l: maximum value of the progress bar.
     :param show_progress_l: whether to show the progress bar.
     :param show_btn_stop_l: whether to show the stop button.
     :param quit_on_close: whether to quit the application when the window is closed.
     :param keep_existing: whether to keep the existing content when adding a new one.
-    :param function: the function to execute.
-    :param function_parameters: the parameters of the function.
+    :param function: function to execute.
+    :param function_parameters: parameters of the function.
     :param force_new_window: whether to force the creation of a new progress window.
-    :return: the progress window.
+    :return: progress window.
     It will create a new progress window if one does not exist and update parent._progress_window
     """
     pw = None
@@ -395,7 +395,7 @@ def show_progress(
 def close_progress(parent) -> None:
     """
     Close the progress window.
-    :param parent: the parent window.
+    :param parent: parent window.
     It accesses to the parent.progress_window property
     """
     root = get_tk_root(parent)
@@ -408,9 +408,9 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, path: str =
     """
     Create a backup of a file.
     :param file_src: path to the file to back up.
-    :param logger: the logger to use to display info. Could be None.
-    :param path: the path to the config folder.
-    :return: the full path to the backup file.
+    :param logger: logger to use to display info. Could be None.
+    :param path: path to the config folder.
+    :return: full path to the backup file.
     """
     # for files defined relatively to the config folder
     file_src = file_src.replace('~/.config', path)
@@ -432,8 +432,8 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, path: str =
 def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> None:
     """
     Change the logger level of debug depending on the debug mode.
-    :param logger: the logger
-    :param debug_value: the value to set. If None, it will use the value of gui_g.s.debug_mode
+    :param logger: logger.
+    :param debug_value: value to set. If None, it will use the value of gui_g.s.debug_mode.
 
     Notes:
         Will also update all the loggers level of the UEVM classes.
@@ -451,8 +451,8 @@ def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> Non
 def make_modal(window: tk.Toplevel = None, wait_for_close=True) -> None:
     """
     Make the given window modal.
-    :param window: the window to make modal
-    :param wait_for_close: whether to wait for the window to be closed before continuing
+    :param window: window to make modal.
+    :param wait_for_close: whether to wait for the window to be closed before continuing.
     """
     window.grab_set()
     window.focus_set()
@@ -503,7 +503,7 @@ def disable_widget(widget) -> None:
 def set_widget_state_in_list(list_of_widget: [], is_enabled: bool, text_swap: {} = None) -> None:
     """
     Enable or disable a widget.
-     :param list_of_widget: the list of widgets to update.
+     :param list_of_widget: list of widgets to update.
     :param is_enabled: whether to enable the widget, if False, disable it.
     :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
     """
@@ -514,7 +514,7 @@ def set_widget_state_in_list(list_of_widget: [], is_enabled: bool, text_swap: {}
 def enable_widgets_in_list(list_of_widget: []) -> None:
     """
     Enable a list of widgets.
-    :param list_of_widget: the list of widgets to enable.
+    :param list_of_widget: list of widgets to enable.
     """
     for widget in list_of_widget:
         enable_widget(widget)
@@ -523,7 +523,7 @@ def enable_widgets_in_list(list_of_widget: []) -> None:
 def disable_widgets_in_list(list_of_widget: []) -> None:
     """
     Disable a list of widgets.
-    :param list_of_widget: the list of widgets to disable.
+    :param list_of_widget: list of widgets to disable.
     :return:
     """
     for widget in list_of_widget:
@@ -533,8 +533,8 @@ def disable_widgets_in_list(list_of_widget: []) -> None:
 def update_widgets_in_list(is_enabled: bool, list_name: str, text_swap=None) -> None:
     """
     Update the state of a list of widgets.
-    :param is_enabled: true to enable the widgets, False to disable them.
-    :param list_name: the name of the list of widgets to update.
+    :param is_enabled: True to enable the widgets, False to disable them.
+    :param list_name: name of the list of widgets to update.
     :param text_swap: dict {'normal':text, 'disabled':text} to swap the text of the widget depending on its state.
     """
     widget_list = gui_g.stated_widgets.get(list_name, [])

@@ -69,22 +69,22 @@ class CFLW_Settings:
 class ChoiceFromListWindow(tk.Toplevel):
     """
     Window to select a value in a list
-    :param window_title: the window title.
-    :param title: the title.
-    :param sub_title: the subtitle.
-    :param width: the width.
-    :param height: the height.
-    :param icon: the icon.
-    :param screen_index: the screen index.
-    :param json_data: the dict for choices to display. See the CFLW_Settings in this file for an example of format.
-    :param default_value: the default value to return if no value is selected. If None, the set_value_func method will not be called on closed window.
-    :param show_validate_button: if True, the validate button will be displayed.
-    :param show_delete_button: if True, the delete button will be displayed.
-    :param set_value_func: the function to call after the validate button is clicked and the window closed.
-    :param list_remove_func: the function to call after the delete button is clicked.
-    :param show_content_list: if True, the content list will be displayed.
-    :param remove_from_content_func: the function to call after the delete button is clicked in the content list.
-    :param show_delete_content_button: if True, the delete button for the content list will be displayed.
+    :param window_title: window title.
+    :param title: title.
+    :param sub_title: subtitle.
+    :param width: width.
+    :param height: height.
+    :param icon: icon.
+    :param screen_index: screen index.
+    :param json_data: dict for choices to display. See the CFLW_Settings in this file for an example of format.
+    :param default_value: default value to return if no value is selected. If None, the set_value_func method will not be called on closed window.
+    :param show_validate_button: wether the validate button will be displayed.
+    :param show_delete_button: wether the delete button will be displayed.
+    :param set_value_func: function to call after the validate button is clicked and the window closed.
+    :param list_remove_func: function to call after the delete button is clicked.
+    :param show_content_list: wether the content list will be displayed.
+    :param remove_from_content_func: function to call after the delete button is clicked in the content list.
+    :param show_delete_content_button: wether the delete button for the content list will be displayed.
 
     """
 
@@ -140,7 +140,7 @@ class ChoiceFromListWindow(tk.Toplevel):
     class ControlFrame(ttk.Frame):
         """
         The frame that contains the control buttons.
-        :param container: the container.
+        :param container: container.
         """
 
         def __init__(self, container):
@@ -356,7 +356,7 @@ def set_choice(selection):
 def delete_list(list_id) -> bool:
     """
     Delete the id choosen in the first list.
-    :param list_id: the value to delete.
+    :param list_id: value to delete.
     :return: True if the value has been deleted, False otherwise.
     """
     st_l = CFLW_Settings()
@@ -370,7 +370,7 @@ def delete_list(list_id) -> bool:
 def delete_content(id_tuple: tuple) -> bool:
     """
     Delete the id choosen in the second list.
-    :param id_tuple: tuple of (list_id, content_id)
+    :param id_tuple: tuple of (list_id, content_id).
     :return: True if the value has been deleted, False otherwise.
     """
     st_l = CFLW_Settings()

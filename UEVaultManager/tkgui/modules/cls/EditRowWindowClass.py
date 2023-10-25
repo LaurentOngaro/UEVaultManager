@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- EditRowWindow: the window to edit a row.
+- EditRowWindow: window to edit a row.
 """
 import tkinter as tk
 from tkinter import ttk
@@ -16,13 +16,13 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 class EditRowWindow(tk.Toplevel):
     """
     The window to edit a row.
-    :param parent: the parent window.
-    :param title: the title of the window.
-    :param width: the width of the window.
-    :param height: the height of the window.
-    :param icon: the icon of the window.
-    :param screen_index: the index of the screen on which the window will be displayed.
-    :param editable_table: the table to edit.
+    :param parent: parent window.
+    :param title: title of the window.
+    :param width: width of the window.
+    :param height: height of the window.
+    :param icon: icon of the window.
+    :param screen_index: index of the screen on which the window will be displayed.
+    :param editable_table: table to edit.
     """
 
     def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
@@ -76,7 +76,7 @@ class EditRowWindow(tk.Toplevel):
     class ContentFrame(ttk.Frame):
         """
         The frame containing the editable fields.
-        :param container: the parent window.
+        :param container: parent window.
         """
 
         def __init__(self, container):
@@ -85,7 +85,7 @@ class EditRowWindow(tk.Toplevel):
     class ControlFrame(ttk.Frame):
         """
         The frame containing the buttons.
-        :param container: the parent window.
+        :param container: parent window.
         """
 
         def __init__(self, container):
@@ -144,7 +144,7 @@ class EditRowWindow(tk.Toplevel):
     def on_close(self, _event=None) -> None:
         """
         Event when the window is closing.
-        :param _event: the event that triggered the call of this function.
+        :param _event: event that triggered the call of this function.
         """
         if self.must_save:
             if gui_f.box_yesno('Changes have been made in the window. Do you want to keep them ?'):
@@ -155,7 +155,7 @@ class EditRowWindow(tk.Toplevel):
     def on_key_press(self, event):
         """
         Event when a key is pressed.
-        :param event: the event that triggered the call of this function.
+        :param event: event that triggered the call of this function.
         """
         self.update_controls_state()
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
@@ -169,7 +169,7 @@ class EditRowWindow(tk.Toplevel):
     def on_left_click(self, event=None) -> None:
         """
         When the left mouse button is clicked, show the selected row in the quick edit frame.
-        :param event:
+        :param event: event that triggered the call of this function.
         """
         self.update_controls_state()  # to update when clicking on the checkbox
 

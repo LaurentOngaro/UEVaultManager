@@ -68,8 +68,8 @@ class ExtendedWidget:
     def tag_to_label(tag: str or None) -> str:
         """
         Convert a tag to a label.
-        :param tag: the tag to convert.
-        :return: the label.
+        :param tag: tag to convert.
+        :return: label.
         """
         if tag is None:
             return ''
@@ -126,7 +126,7 @@ class ExtendedWidget:
     def get_default_font(self) -> tk.font.Font:
         """
         Get the default font for ttk widgets. If the default font is not found, use the TkDefaultFont.
-        :return: the default font for ttk widgets.
+        :return: default font for ttk widgets.
         """
         default_font = nametofont('TkDefaultFont')
         style = self.get_style()
