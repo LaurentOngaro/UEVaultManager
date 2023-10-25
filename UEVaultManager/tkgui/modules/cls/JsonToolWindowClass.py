@@ -122,7 +122,7 @@ class JsonToolWindow(tk.Toplevel):
         def copy_to_clipboard(self, _event):
             """
             Copy text to the clipboard.
-            :param _event: event
+            :param _event: event.
             """
             self.clipboard_clear()
             content = self.text_result.get('1.0', 'end-1c')
@@ -132,8 +132,8 @@ class JsonToolWindow(tk.Toplevel):
         def add_result(self, text: str, set_status: bool = False) -> None:
             """
             Add text to the result label.
-            :param text: text to add
-            :param set_status: True for setting the status label, False otherwise
+            :param text: text to add.
+            :param set_status: True for setting the status label, False otherwise.
             """
             if set_status:
                 self.set_status(text)
@@ -143,7 +143,7 @@ class JsonToolWindow(tk.Toplevel):
         def set_status(self, text: str) -> None:
             """
             Set the status label.
-            :param text: text to set
+            :param text: text to set.
             """
             self.lbl_status.config(text=text)
             self.update()
@@ -157,7 +157,7 @@ class JsonToolWindow(tk.Toplevel):
         def activate_processing(self, for_start=True):
             """
             Activate or deactivate processing.
-            :param for_start: True for enabling Start, False otherwise
+            :param for_start: True for enabling Start, False otherwise.
             """
 
             if for_start:
@@ -201,7 +201,7 @@ class JsonToolWindow(tk.Toplevel):
     def process_json_files(self, data_type='') -> None:
         """
         Process JSON files and stores data in the database.
-        :param data_type: type of data to process. Can be 'tags' or 'ratings'
+        :param data_type: type of data to process. Can be 'tags' or 'ratings'.
         """
         folder = ''
         query = ''
@@ -265,8 +265,8 @@ class JsonToolWindow(tk.Toplevel):
     def extract_and_save_tags(self, cursor, json_data: dict) -> None:
         """
         Extract tags from JSON data and saves them in the database.
-        :param cursor: database cursor
-        :param json_data: jSON data
+        :param cursor: database cursor.
+        :param json_data: jSON data.
         """
         tags = json_data.get('tags', [])
         for tag in tags:
@@ -291,8 +291,8 @@ class JsonToolWindow(tk.Toplevel):
     def extract_and_save_ratings(self, cursor, json_data: dict) -> None:
         """
         Extract ratings from JSON data and saves them in the database.
-        :param cursor: database cursor
-        :param json_data: jSON data
+        :param cursor: database cursor.
+        :param json_data: jSON data.
         """
         if 'data' in json_data and 'elements' in json_data['data']:
             for index, element in enumerate(json_data['data']['elements']):

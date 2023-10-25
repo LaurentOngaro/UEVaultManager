@@ -593,15 +593,15 @@ def convert_csv_row_to_sql_row(csv_row: dict) -> dict:
 def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     """
     Debug the parsed data to see missing or empty keys.
-    :param asset_data: instance of asset used to fill the datatable
-    :param mode: mode of the application (could be from DataSourceType. DATABASE or DataSourceType. FILE)
+    :param asset_data: instance of asset used to fill the datatable.
+    :param mode: mode of the application (could be from DataSourceType. DATABASE or DataSourceType. FILE).
     """
     if gui_g.UEVM_log_ref:
         debug_func = gui_g.UEVM_log_ref.info  # info and debug here because we want to see even if debug mode is disabled in CLI (but enabled in GUI)
     else:
         debug_func = print
 
-    # NOTES:
+    # Notes:
     # all the field names in the genuine data (via old or new method) are in pascalCase
     # all the field names in asset data are in snake_case
     # the CSV header (in datatable or CSV file) are the keys of csv_sql_fields and fierrent of the previous both
@@ -663,8 +663,8 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
 def convert_data_to_csv(sql_asset_data: dict) -> dict:
     """
     Return the asset data as a dictionary with the csv field names.
-    :param sql_asset_data: asset data with keys in sql format
-    :return: asset data with keys in csv format
+    :param sql_asset_data: asset data with keys in sql format.
+    :return: asset data with keys in csv format.
     """
     # return asset_data to record by converting the "sql" field names to "csv" field names
     csv_field_names = get_csv_field_name_list()

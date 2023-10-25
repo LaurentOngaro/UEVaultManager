@@ -134,8 +134,8 @@ class AppCore:
         Check installation conditions.
         :param analysis: analysis result to check.
         :param folders: folders to check free size for.
-        :param ignore_space_req:
-        :return:
+        :param ignore_space_req: whether to ignore space requirements or not.
+        :return: ConditionCheckResult object.
         """
         results = ConditionCheckResult(failures=set(), warnings=set())
         if not isinstance(folders, list):
@@ -452,7 +452,7 @@ class AppCore:
     def asset_obj_from_json(self, app_name: str) -> Optional[Asset]:
         """
         return an "item" like for compatibilty with "old" methods .
-        :param app_name:
+        :param app_name: asset name to get the asset object for.
         :return: Asset object.
         """
         asset_data, _ = self.uevmlfs.get_asset(app_name)

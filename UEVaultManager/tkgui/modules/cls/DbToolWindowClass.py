@@ -129,7 +129,7 @@ class DbToolWindowClass(tk.Toplevel):
         def copy_to_clipboard(self, _event):
             """
             Copy text to the clipboard.
-            :param _event: event
+            :param _event: event.
             """
             self.clipboard_clear()
             content = self.text_result.get('1.0', 'end-1c')
@@ -139,8 +139,8 @@ class DbToolWindowClass(tk.Toplevel):
         def add_result(self, text: str, set_status: bool = False) -> None:
             """
             Add text to the result label.
-            :param text: text to add
-            :param set_status: True for setting the status label, False otherwise
+            :param text: text to add.
+            :param set_status: True for setting the status label, False otherwise.
             """
             if set_status:
                 self.set_status(text)
@@ -150,7 +150,7 @@ class DbToolWindowClass(tk.Toplevel):
         def set_status(self, text: str) -> None:
             """
             Set the status label.
-            :param text: text to set
+            :param text: text to set.
             """
             self.lbl_status.config(text=text)
             self.update()

@@ -370,7 +370,7 @@ def delete_list(list_id) -> bool:
 def delete_content(id_tuple: tuple) -> bool:
     """
     Delete the id choosen in the second list.
-    :param id_tuple: tuple of (list_id, content_id)
+    :param id_tuple: tuple of (list_id, content_id).
     :return: True if the value has been deleted, False otherwise.
     """
     st_l = CFLW_Settings()

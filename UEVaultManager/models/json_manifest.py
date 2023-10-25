@@ -38,15 +38,15 @@ def guid_from_json(in_str):
     """
     Get guid from a json string.
     :param in_str: string to convert.
-    :return: guid
+    :return: gui.
     """
     return struct.unpack('>IIII', bytes.fromhex(in_str))
 
 
 def log_debug(msg):
     """
-    print a debug message
-    :param msg:
+    Print a debug message.
+    :param msg: message to print.
     """
     if debug_mode:
         print(msg)
@@ -64,9 +64,9 @@ class JSONManifest(Manifest):
     @classmethod
     def read_all(cls, manifest):
         """
-        Read all kind of manifest
-        :param manifest:
-        :return: json manifest
+        Read all kind of Manifest.
+        :param manifest: manifest data.
+        :return: json manifest.
         """
         _m = cls.read(manifest)
         _tmp = deepcopy(_m.json_data)

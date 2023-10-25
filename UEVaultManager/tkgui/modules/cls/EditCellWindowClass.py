@@ -105,8 +105,8 @@ class EditCellWindow(tk.Toplevel):
         """
         Set the size (aka geometry) the window.
         :param width: width.
-        :param height: height
-        
+        :param height: height.
+
         Notes:
             The window is centered on the screen.
         """
@@ -131,7 +131,7 @@ class EditCellWindow(tk.Toplevel):
     def on_left_click(self, event=None) -> None:
         """
         When the left mouse button is clicked, show the selected row in the quick edit frame.
-        :param event:
+        :param event: event that triggered the call of this function.
         """
         self.update_controls_state()  # to update when clicking on the checkbox
 

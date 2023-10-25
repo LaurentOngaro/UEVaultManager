@@ -59,7 +59,7 @@ def box_yesno(msg: str) -> bool:
     """
     Display a YES/NO message box with the given message.
     :param msg: message to display .
-    :return:  True if the user clicked on Yes, False otherwise.
+    :return: True if the user clicked on Yes, False otherwise.
     """
     return messagebox.askyesno(title=gui_g.s.app_title, message=msg)
 
@@ -68,7 +68,7 @@ def box_okcancel(msg: str) -> bool:
     """
     Display an OK/CANCEL message box with the given message.
     :param msg: message to display.
-    :return:  True if the user clicked on Yes, False otherwise.
+    :return: True if the user clicked on Yes, False otherwise.
     """
     return messagebox.askokcancel(title=gui_g.s.app_title, message=msg)
 
@@ -299,8 +299,8 @@ def custom_print(text='', keep_mode=True) -> None:
 def get_tk_root(container) -> Optional[tk.Tk]:
     """
     Get the root window.
-    :param container:  the container window or object
-    :return: root window
+    :param container:  the container window or object.
+    :return: root windo.
     """
     if container is None:
         return None
@@ -334,7 +334,7 @@ def show_progress(
 ) -> Optional[ProgressWindow]:
     """
     Show the progress window. If the progress window does not exist, it will be created.
-    :param parent: parent window. Could be None
+    :param parent: parent window. Could be None.
     :param text: text to display in the progress window.
     :param width: width of the progress window.
     :param height: height of the progress window.
@@ -432,8 +432,8 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, path: str =
 def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> None:
     """
     Change the logger level of debug depending on the debug mode.
-    :param logger: logger
-    :param debug_value: value to set. If None, it will use the value of gui_g.s.debug_mode
+    :param logger: logger.
+    :param debug_value: value to set. If None, it will use the value of gui_g.s.debug_mode.
 
     Notes:
         Will also update all the loggers level of the UEVM classes.
@@ -451,8 +451,8 @@ def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> Non
 def make_modal(window: tk.Toplevel = None, wait_for_close=True) -> None:
     """
     Make the given window modal.
-    :param window: window to make modal
-    :param wait_for_close: whether to wait for the window to be closed before continuing
+    :param window: window to make modal.
+    :param wait_for_close: whether to wait for the window to be closed before continuing.
     """
     window.grab_set()
     window.focus_set()

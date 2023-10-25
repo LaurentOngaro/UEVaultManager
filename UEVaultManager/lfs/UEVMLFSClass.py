@@ -284,7 +284,7 @@ class UEVMLFS:
     def load_filter_list(filename: str = '') -> Optional[dict]:
         """
         Load the filters from a json file
-        :return: filters or {} if not found. Will return None on error
+        :return: filters or {} if not found. Will return None on erro.
         """
         filename = filename or gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
@@ -316,7 +316,7 @@ class UEVMLFS:
         """
         Return the app_name to use to get the asset data.
         :param asset_data: asset data.
-        :return: (app_name (ie asset_id), and a True if the app_id has been found)
+        :return: (app_name (ie asset_id), and a True if the app_id has been found).
         """
         found = True
         try:
@@ -334,7 +334,7 @@ class UEVMLFS:
         """
         Return the filename and the app_name to use to save the asset data.
         :param asset_data: asset data.
-        :return: (the filename, the app_id)
+        :return: (the filename, the app_id).
         """
         app_name, found = UEVMLFS.get_app_name_from_asset_data(asset_data)
         return f'{app_name}.json' if found else f'_no_appId_{app_name}.json', app_name
@@ -342,9 +342,9 @@ class UEVMLFS:
     @staticmethod
     def json_data_mapping(data_from_egs_format: dict) -> dict:
         """
-        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary
-        :param data_from_egs_format: json data from EGS format (NEW)
-        :return: json data in UEVM format (OLD)
+        Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary).
+        :param data_from_egs_format: json data from EGS format (NEW).
+        :return: json data in UEVM format (OLD).
         """
         app_name = data_from_egs_format['appName']
         category = data_from_egs_format['categories'][0]['path']
@@ -522,7 +522,7 @@ class UEVMLFS:
     def load_installed_assets(self) -> bool:
         """
         Get the installed asset data.
-        :return: True if the asset data is loaded
+        :return: True if the asset data is loade.
         """
         try:
             with open(self.installed_asset_filename, 'r', encoding='utf-8') as file:
@@ -655,7 +655,7 @@ class UEVMLFS:
         """
         Set the size of an asset.
         :param app_name: asset name.
-        :param size: size of the asset
+        :param size: size of the asset.
         """
         if not app_name:
             return
@@ -780,12 +780,12 @@ class UEVMLFS:
         Get the list of the assets in the Vault cache folder. Get its size from the installed_asset file if it exists.
         :param vault_cache_folder: Vault cache folder.
         :param max_depth: maximum depth of subfolders to include in the file list.
-        :return: dict {asset_id: {size, path}}
+        :return: dict {asset_id: {size, path}}.
 
-        NOTES:
-        The scan of a Vault cache folder with lots of assets can take a long time.
-        This scan is done when the datatable is loaded.
-        So, increase the max_depth value with care to avoid long loading times.
+        Notes:
+            The scan of a Vault cache folder with lots of assets can take a long time.
+            This scan is done when the datatable is loaded.
+            So, increase the max_depth value with care to avoid long loading times.
         """
         vault_cache_folder = os.path.normpath(vault_cache_folder) if vault_cache_folder else ''
         downloaded_assets = {}
@@ -812,7 +812,7 @@ class UEVMLFS:
     def pre_update_installed_folders(self, db_handler: UEAssetDbHandler = None) -> None:
         """
         Update the "installed folders" BEFORE loading the data.
-        :param db_handler: database handler
+        :param db_handler: database handler.
         """
         installed_assets_json = self.get_installed_assets().copy()  # copy because the content could change during the process
         merged_installed_folders = {}
@@ -844,7 +844,7 @@ class UEVMLFS:
     def post_update_installed_folders(self, df: pd.DataFrame) -> None:
         """
         Update the "installed folders" AFTER loading the data.
-        :param df: datatable
+        :param df: datatable.
         """
         installed_assets_json = self.get_installed_assets().copy()  # copy because the content could change during the process
         # get all installed folders for a given catalog_item_id

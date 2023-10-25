@@ -535,7 +535,7 @@ class UEAssetScraper:
         :param _assets_in_file: list of assets in the file.
         :param _no_float_value:  value to use when no float data is available.
         :param _no_bool_false_value: value (False) to use when no bool data is available.
-        :return:
+        :return: dict of data of the asset to update.
         """
         _asset_id = _asset[0]
         _json_record = _asset[1]
@@ -567,7 +567,7 @@ class UEAssetScraper:
     def _save_in_file(self, save_to_format: str = 'csv') -> bool:
         """
         Save the scraped data into a file.
-        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False.
         :return: True if the data have been saved, False otherwise.
         """
         assets_to_output = {}
@@ -810,7 +810,7 @@ class UEAssetScraper:
         """
         Execute the scrapper. Load from files or downloads the items from the URLs and stores them in the scraped_data property.
         The execution is done in parallel using threads.
-        :param owned_assets_only: whether only the owned assets are scraped
+        :param owned_assets_only: whether only the owned assets are scraped.
         :return: True if the execution is successful, False otherwise.
 
         Notes:
@@ -1013,8 +1013,8 @@ class UEAssetScraper:
         Save all JSON data retrieved from the Unreal Engine Marketplace API to paginated files.
         :param owned_assets_only: whether to only the owned assets are scraped.
         :param save_last_run_file: whether the last_run file is saved.
-        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
-        :return: True if OK, False if not
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False.
+        :return: True if OK, False if no.
         """
         if owned_assets_only:
             self._log('Only Owned Assets will be scraped')

@@ -301,7 +301,7 @@ class FilterFrame(ttk.LabelFrame):
     def get_filter_mask(self) -> pd.Series:
         """
         Get the boolean mask for specified column based on filter value in a pandas DataFrame.
-        :return:
+        :return: boolean mask.
         """
         return self._filter_mask
 

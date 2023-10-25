@@ -24,7 +24,7 @@ def get_hash(data) -> int:
     """
     Calculates the rolling hash of a string.
     :param data: string to hash.
-    :return:
+    :return: hash of the string.
     """
     if not hash_table:
         _init()

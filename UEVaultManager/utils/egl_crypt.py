@@ -235,9 +235,9 @@ class AES:
 def decrypt_epic_data(key, encrypted):
     """
     Decrypts the given data using the given key.
-    :param key: key to use for decryption
-    :param encrypted: data to decrypt
-    :return: decrypted data
+    :param key: key to use for decryption.
+    :param encrypted: data to decrypt.
+    :return: decrypted data.
     """
     decrypted = unpad(AES(key.encode('ascii')).decrypt_ecb(encrypted)).strip(b'\x00')
     # try various encodings, just to be sure

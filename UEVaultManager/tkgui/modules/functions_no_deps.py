@@ -146,8 +146,8 @@ def set_toolbar_style(tk_window) -> None:
 def set_icon_and_minmax(tk_window, icon=None) -> None:
     """
     Set the icon and remove the min/max buttons of the window if no icon is provided.
-    :param tk_window:.
-    :param icon:
+    :param tk_window: tkinter window.
+    :param icon: path of the icon to use.
     """
     if icon is None:
         # remove the min/max buttons of the window
@@ -207,7 +207,7 @@ def convert_to_bool(value) -> bool:
     """
     Convert a value to a boolean. Useful for None values.
     :param value: value to convert. If the value is not a boolean, it will be converted to a string and then to a boolean.
-    :return:
+    :return: boolean value.
     """
     try:
         if str(value).lower() in ('1', '1.0', 'true', 'yes', 'y', 't'):
@@ -300,7 +300,7 @@ def is_an_int(value, prefix: str = '') -> bool:
     Check if a value is an integer.
     :param value: value to check.
     :param prefix: prefix to remove from the value before checking if it is an integer.
-    :return:  True if the value is an integer, False otherwise.
+    :return: True if the value is an integer, False otherwise.
     """
     # remove prefix if any
     if prefix and isinstance(value, str) and value.startswith(prefix):
@@ -325,9 +325,9 @@ def create_uid() -> str:
 def shorten_text(url: str, limit: int = 30) -> str:
     """
     Shorten an url. Get its last part
-    :param url:  the url to shorten
-    :param limit: limit of characters to keep
-    :return: shortened url
+    :param url:  the url to shorten.
+    :param limit: limit of characters to keep.
+    :return: shortened ur.
     """
     if len(url) < limit:
         return url
@@ -338,8 +338,8 @@ def shorten_text(url: str, limit: int = 30) -> str:
 def extract_variables_from_url(url: str) -> dict:
     """
     Extract variables from an url.
-    :param url: url to extract variables from
-    :return: dict containing the variables
+    :param url: url to extract variables from.
+    :return: dict containing the variable.
     """
     result = {}
     url_parts = url.split('?')

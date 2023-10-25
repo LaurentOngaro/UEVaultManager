@@ -94,6 +94,6 @@ class UEAsset:
         """
         Set the value of the given key.
         :param key: key to set the value to.
-        :param value: value
+        :param value: value to set.
         """
         self._data[key] = value

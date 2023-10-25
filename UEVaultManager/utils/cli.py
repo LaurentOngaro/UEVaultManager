@@ -168,7 +168,7 @@ def float_range(start: float, stop: float, step: float) -> iter:
 def create_list_from_string(string: str) -> list:
     """
     Create a list from a string using ',' as a separator. If an item contains a '-', it is converted into a string of float values.
-    :param: string: input string.
+    :param string: input string.
     :return: resulting list.
     """
     items = string.split(',')

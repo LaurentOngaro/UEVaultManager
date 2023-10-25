@@ -169,7 +169,7 @@ class EditRowWindow(tk.Toplevel):
     def on_left_click(self, event=None) -> None:
         """
         When the left mouse button is clicked, show the selected row in the quick edit frame.
-        :param event:
+        :param event: event that triggered the call of this function.
         """
         self.update_controls_state()  # to update when clicking on the checkbox
 

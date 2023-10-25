@@ -43,7 +43,8 @@ class UEAssetDbHandler:
     :param database_name: name of the database file.
     :param reset_database: whether the database will be reset.
 
-    Note: The database will be created if it doesn't exist.
+    Notes:
+        The database will be created if it doesn't exist.
     """
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     update_loggers_level(logger)
@@ -153,12 +154,12 @@ class UEAssetDbHandler:
             cursor.close()
             self.logger.info(f'database version is now set to {new_version}')
 
-    def _check_db_version(self, minimal_db_version: DbVersionNum, caller_name='this method') -> bool:
+    def _check_db_version(self, minimal_db_version: DbVersionNum, caller_name: str = 'this method') -> bool:
         """
         Check if the database version is compatible with the current method.
         :param minimal_db_version: minimal database version that is compatible with the current method.
         :param caller_name: name of the method that called this method.
-        :return:  True if the database version is compatible, otherwise False.
+        :return: True if the database version is compatible, otherwise False.
         """
         if self.db_version.value < minimal_db_version.value:
             message = f'This version of {caller_name} is only compatible with {minimal_db_version} or more database.\nPlease upgrade the database first.'
@@ -484,7 +485,7 @@ class UEAssetDbHandler:
         """
         Check if a table exists.
         :param table_name: name of the table to check.
-        :return:  True if the 'assets' table exists, otherwise False.
+        :return: True if the 'assets' table exists, otherwise False.
         """
         result = None
         if self.connection is not None:
@@ -498,7 +499,7 @@ class UEAssetDbHandler:
         """
         Get the number of rows in the given table.
         :param table_name: name of the table.
-        :return:  The number of rows in the 'assets' table.
+        :return: number of rows in the 'assets' table.
         """
         row_count = 0
         if self.connection is not None:
@@ -683,7 +684,7 @@ class UEAssetDbHandler:
         """
         Read an UEAsset object from the 'assets' table.
         :param uid: ID of the asset to get.
-        :return: uEAsset object.
+        :return: UEAsset object.
         """
         ue_asset = None
         if self.connection is not None:
@@ -804,7 +805,7 @@ class UEAssetDbHandler:
         """
         Read a rating using its id from the 'ratings' table.
         :param uid: ID of the ratings to get.
-        :return: tuple (averageRating, total)
+        :return: tuple (averageRating, total).
         """
         result = (None, None)
         if self.connection is not None:
@@ -869,7 +870,7 @@ class UEAssetDbHandler:
     def get_rows_with_installed_folders(self) -> dict:
         """
         Get the list of assets with an installed folders defined.
-        :return: dict with {asset_id,title,installed folders}
+        :return: dict with {asset_id,title,installed folders}.
 
         Notes:
             The database does not contain all the data for an InstalledAsset object. The missing fields are set to default values and should be updated on a "real" installation.

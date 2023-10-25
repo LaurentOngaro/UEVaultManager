@@ -45,8 +45,8 @@ def extract_codename(pypi_description: str) -> str:
 def extract_severity(old_version: str, new_version: str):
     """
     Get the update severity of a new version.
-    :param old_version: old version in standard format "major.minor.micro"
-    :param new_version: new version in standard format "major.minor.micro"
+    :param old_version: old version in standard format "major.minor.micro".
+    :param new_version: new version in standard format "major.minor.micro".
     :return: update severity (UpdateSeverity type).
     """
     old_ver = version.parse(old_version)

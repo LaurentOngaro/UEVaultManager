@@ -458,8 +458,8 @@ class DLManager(Process):
     def download_job_manager(self, task_cond: Condition, shm_cond: Condition):
         """
         Download job manager that handles adding download jobs to the queue.
-        :param task_cond: task condition
-        :param shm_cond: shared memory condition
+        :param task_cond: task condition.
+        :param shm_cond: shared memory condition.
         """
         while self.chunks_to_dl and self.running:
             while self.active_tasks < self.max_workers * 2 and self.chunks_to_dl:
@@ -499,7 +499,7 @@ class DLManager(Process):
     def dl_results_handler(self, task_cond: Condition):
         """
         Download result handler that handles adding writer jobs to the queue.
-        :param task_cond: task condition
+        :param task_cond: task condition.
         """
         in_buffer = {}
 
@@ -591,7 +591,7 @@ class DLManager(Process):
     def fw_results_handler(self, shm_cond: Condition):
         """
         Writer result handler that handles releasing shared memory and writing to the resume file.
-        :param shm_cond: shared memory condition
+        :param shm_cond: shared memory condition.
         """
         while self.running:
             try:

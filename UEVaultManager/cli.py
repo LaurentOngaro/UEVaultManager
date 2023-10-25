@@ -908,11 +908,11 @@ class UEVaultManagerCLI:
     def scrap_assets(self, args, use_database=True, file_name: str = '', save_to_format: str = 'csv') -> []:
         """
         Scrap assets from the Epic Games Store or from previously saved files.
-        :param args: options passed to the command
-        :param use_database: wether the database will be used to store the data, otherwise the data will be stored in files
-        :param file_name: name of the file to save the data. Used only when use_database is False
-        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False
-        :return: List containing the scrapped data
+        :param args: options passed to the command.
+        :param use_database: wether the database will be used to store the data, otherwise the data will be stored in files.
+        :param file_name: name of the file to save the data. Used only when use_database is False.
+        :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False.
+        :return: List containing the scrapped data.
 
         Notes:
             Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
@@ -982,7 +982,7 @@ class UEVaultManagerCLI:
     def set_release_id(self, value):
         """
         Set the release id. Callback for the ChoiceFromListWindow
-        :param value: value selected in the list
+        :param value: value selected in the list.
         """
         self.release_id = value
 

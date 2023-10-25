@@ -27,7 +27,7 @@ class AssetBase:
         """
         Create AssetBase from EGS.
         :param json: data.
-        :return: AssetBase object
+        :return: AssetBase object.
         """
         tmp = cls()
         tmp.app_name = json.get('appName', '')
@@ -45,7 +45,7 @@ class AssetBase:
         """
         Create AssetBase from json.
         :param json: data.
-        :return: AssetBase object
+        :return: AssetBase object.
         """
         tmp = cls()
         tmp.app_name = json.get('app_name', '')

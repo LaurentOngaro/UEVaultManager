@@ -187,6 +187,7 @@ class EditableTable(Table):
         """
         Handle arrow keys events.
         :param event: event that triggered the function call.
+
         Overrided to add new key bindings
         """
         control_pressed = event.state == 4 or event.state & 0x00004 != 0
@@ -209,6 +210,7 @@ class EditableTable(Table):
         """
         Handle left mouse button release events.
         :param event: event that triggered the function call.
+
         Overrided for handle columns reordering.
         Just a placeholder for now.
         """
@@ -220,6 +222,7 @@ class EditableTable(Table):
         """
         Handle left mouse button release events.
         :param event: event that triggered the function call.
+
         Overrided for handle columns reordering
         Just a placeholder for now.
         """
@@ -253,6 +256,7 @@ class EditableTable(Table):
         Redraw the table
         :param event: event that triggered the function call.
         :param callback: callback function to call after the table has been redrawn.
+
         Overrided for debugging
         """
         super().redraw(event, callback)
@@ -261,6 +265,7 @@ class EditableTable(Table):
         """
         Color individual cells in column(s). Requires that the rowcolors.
         dataframe has been set. This needs to be updated if the index is reset.
+
         Overrided to check indexes when rebuildind data from en empty table.
         """
         df = self.get_data(df_type=self._dftype_for_coloring)
@@ -287,6 +292,7 @@ class EditableTable(Table):
     def setColPositions(self):
         """
         Determine current column grid positions
+
         Overrided for debugging
         """
         try:
@@ -299,6 +305,7 @@ class EditableTable(Table):
         Resize a column by dragging
         :param col: column to resize.
         :param width: new width of the column.
+
         Overrided to remove the minimal size and for debugging
         """
         colname = self.model.getColumnName(col)
@@ -323,9 +330,10 @@ class EditableTable(Table):
     def sortTable(self, columnIndex=None, ascending=1, index=False):
         """
         Sort the table by a column.
-        :param columnIndex:
-        :param ascending:
-        :param index:
+        :param columnIndex: column to sort.
+        :param ascending: 1 for ascending, -1 for descending.
+        :param index: True to sort by index, False to sort by column.
+
         Overrided to allow fixing index_copy column
         """
         # super().sortTable(columnIndex, ascending, index)
@@ -353,6 +361,7 @@ class EditableTable(Table):
     def tableChanged(self) -> None:
         """
         Called when the table is changed.
+
         Overrided for debugging
         """
         super().tableChanged()
@@ -362,6 +371,7 @@ class EditableTable(Table):
         """
         Handle left mouse button release events.
         :param event: event that triggered the function call.
+
         Overrided to trap raised error when clicking on an empty row
         """
         try:
@@ -372,6 +382,7 @@ class EditableTable(Table):
     def handleCellEntry(self, row, col):
         """
         Callback for cell entry
+
         Overrided for debugging
         """
         # get the value from the MODEL because the value in the datatable could not have been updated yet
@@ -385,6 +396,7 @@ class EditableTable(Table):
     def handleEntryMenu(self, *args):
         """
         Callback for option menu in categorical columns entry
+
         Overrided for debugging
         """
         # get the value from the MODEL because the value in the datatable could not have been updated yet
@@ -533,7 +545,7 @@ class EditableTable(Table):
         """
         Get the real row index for a row number from the value saved in the 'Index copy' column.
         :param row_number: row number from a datatable. Will be converted into real row index.
-        :param df_type: dataframe type to get. See DataFrameUsed type description for more details
+        :param df_type: dataframe type to get. See DataFrameUsed type description for more details.
         :param add_page_offset: True to add the page offset to the row number, False otherwise.
         :return: real row index or -1 if not found.
         """
@@ -581,7 +593,7 @@ class EditableTable(Table):
     def get_data(self, df_type: DataFrameUsed = DataFrameUsed.UNFILTERED) -> pd.DataFrame:
         """
         Get a dataframe content depending on the df_type parameter. By default, the unfiltered dataframe is returned.
-        :param df_type: dataframe type to get. See DataFrameUsed type description for more details
+        :param df_type: dataframe type to get. See DataFrameUsed type description for more details.
         :return: dataframe.
 
         Notes:
@@ -606,7 +618,7 @@ class EditableTable(Table):
         """
         Set a dataframe content depending on the df_type parameter. By default, the unfiltered dataframe is used.
         :param df: dataframe content to set.
-        :param df_type: dataframe type to set. See DataFrameUsed type description for more details
+        :param df_type: dataframe type to set. See DataFrameUsed type description for more details.
         """
         if df_type == DataFrameUsed.AUTO:
             if self.is_filtered:
@@ -800,7 +812,7 @@ class EditableTable(Table):
         :param row_data: data to add to the row.
         :param add_to_existing: True to add the row to the existing data, False to replace the existing data.
         :param do_not_save: True to not save the row in the database.
-        :return: (The created row, the index of the created row)
+        :return: (The created row, the index of the created row).
 
         Notes:
             Be sure to call self.update() after calling this function to copy the changes in all the dataframes.
@@ -969,7 +981,7 @@ class EditableTable(Table):
     def update_downloaded_size(self, asset_sizes: dict) -> None:
         """
         Update the downloaded size for the assets in the table using the asset_sizes dictionnary (filled at start up)
-        :param asset_sizes: asset_sizes
+        :param asset_sizes: asset_sizes.
         """
         if asset_sizes:
             df = self.get_data(df_type=DataFrameUsed.UNFILTERED)
@@ -987,7 +999,7 @@ class EditableTable(Table):
     def reload_data(self, asset_sizes: dict) -> bool:
         """
         Reload data from the CSV file and refreshes the table display.
-        :param asset_sizes: asset_sizes
+        :param asset_sizes: asset_sizes.
         :return: True if the data has been loaded successfully, False otherwise.
         """
         gui_f.show_progress(self, text='Reloading Data from data source...')
@@ -1003,7 +1015,7 @@ class EditableTable(Table):
     def rebuild_data(self, asset_sizes: dict) -> bool:
         """
         Rebuild the data in the table.
-        :param asset_sizes: asset_sizes
+        :param asset_sizes: asset_sizes.
         :return: True if the data was successfully rebuilt, False otherwise.
         """
         self.clear_rows_to_save()
@@ -1475,7 +1487,7 @@ class EditableTable(Table):
         """
         Return the row at the specified index.
         :param row_index: (real) index of the row to get.
-        :param return_as_dict: set to True to return the row as a dict
+        :param return_as_dict: set to True to return the row as a dict.
         :return: row at the specified index.
         """
         try:
@@ -1493,8 +1505,8 @@ class EditableTable(Table):
         """
         Update the row with the data from ue_asset_data
         :param row_number: row number from a datatable. Will be converted into real row index.
-        :param ue_asset_data: data to update the row with
-        :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value
+        :param ue_asset_data: data to update the row with.
+        :param convert_row_number_to_row_index: set to True to convert the row_number to a row index when editing each cell value.
         """
         # OLD if ue_asset_data is None or not ue_asset_data or len(ue_asset_data) == 0:
         if not ue_asset_data:
@@ -1528,8 +1540,8 @@ class EditableTable(Table):
     def get_col_name(self, col_index: int) -> str:
         """
         Return the name of the column at the specified index.
-        :param col_index:
-        :return:
+        :param col_index: column index.
+        :return: name of the column at the specified index or '' if the column index is out of range.
         """
         try:
             return self.get_data().columns[col_index]  # Use Unfiltered here to be sure to have all the columns
@@ -2007,7 +2019,7 @@ class EditableTable(Table):
         """
         Return the "Release info" field the selected row.
         :param row_number: row number from a datatable. Will be converted into real row index.
-        :return: "Release info" dict as a json string
+        :return: "Release info" dict as a json strin.
         """
         row_number = row_number or self.get_selected_row_fixed()
         if row_number is None or row_number < 0:

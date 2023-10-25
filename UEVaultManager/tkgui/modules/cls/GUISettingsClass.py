@@ -21,7 +21,7 @@ from UEVaultManager.utils.cli import check_and_create_folder
 class GUISettings:
     """
     A class that contains all the settings for the GUI.
-    :param config_file: path to config file to use instead of default
+    :param config_file: path to config file to use instead of default.
     """
     path: str = ''
     config_file_gui: str = ''  # config file path for gui part (tkgui)
@@ -148,10 +148,10 @@ class GUISettings:
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
         Getter for a serialized config vars
-        :param var_name: name of the config var to get
-        :param is_dict: True if the value is a dict, False if it's a list
-        :param force_reload: True to force reloading the value from the config file and update the deserialized value
-        :return: list or Dict
+        :param var_name: name of the config var to get.
+        :param is_dict: True if the value is a dict, False if it's a list.
+        :param force_reload: True to force reloading the value from the config file and update the deserialized value.
+        :return: list or Dic.
         """
         default = {} if is_dict else []
         if not force_reload and self._config_vars_deserialized.get(var_name, None) is not None:
@@ -180,8 +180,8 @@ class GUISettings:
     def _set_serialized(self, var_name: str = '', values=None):
         """
         Setter for a serialized config vars
-        :param var_name: name of the config var to get
-        :param values: list or Dict to serialize
+        :param var_name: name of the config var to get.
+        :param values: list or Dict to serialize.
         """
         if not values:
             json_str = ''
@@ -432,10 +432,10 @@ class GUISettings:
     def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
         """
         Get columns infos depending on the datasource type
-        :param source_type:  the data source type
+        :param source_type:  the data source type.
 
-        NOTE:
-        We don't use a @property for this because we need to be able to choose the source_type
+        Notes:
+            We don't use a @property for this because we need to be able to choose the source_type
         """
         var_name = 'column_infos_sqlite' if source_type == DataSourceType.DATABASE else 'column_infos_file'
         return self._get_serialized(var_name)
@@ -443,11 +443,11 @@ class GUISettings:
     def set_column_infos(self, values: dict, source_type: DataSourceType = DataSourceType.DATABASE):
         """
         Set columns infos depending on the datasource type
-        :param values:  the data source type
-        :param source_type:  the data source type
+        :param values: dict of columns infos.
+        :param source_type: data source type.
 
-        NOTE:
-        We don't use a @property for this because we need to be able to choose the source_type
+        Notes:
+            We don't use a @property for this because we need to be able to choose the source_type
         """
         var_name = 'column_infos_sqlite' if source_type == DataSourceType.DATABASE else 'column_infos_file'
         self._set_serialized(var_name, values)

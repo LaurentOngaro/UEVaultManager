@@ -311,11 +311,11 @@ class EPCAPI:
         """
         Return the scraped assets.
         :param url: url to scrap.
-        :param override_timeout: override the timeout set for the current object
-        :return: json data
+        :param override_timeout: override the timeout set for the current object.
+        :return: json data.
 
-        NOTES:
-          Getting the data could take more time than other calls to the API. Use the override_timeout parameter to set a longer timeout if needed/
+        Notes:
+            Getting the data could take more time than other calls to the API. Use the override_timeout parameter to set a longer timeout if needed/
         """
         json_data = {}
         if not url:
@@ -329,7 +329,7 @@ class EPCAPI:
     def resume_session(self, session: dict) -> dict:
         """
         Resumes a session.
-        :param session: session.
+        :param session: session to resume.
         :return: session.
         """
         self.session.headers['Authorization'] = f'bearer {session["access_token"]}'

@@ -23,6 +23,7 @@ class FakeUEVMGuiClass(ttk.Window):
     def mainloop(self, n=0):
         """
         Mainloop method
+
         Overrided to add logging function for debugging
         """
         print(f'starting mainloop in {__name__}')

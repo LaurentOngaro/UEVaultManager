@@ -99,6 +99,8 @@ class ProgressWindow(tk.Toplevel):
     def mainloop(self, n=0):
         """
         Mainloop method
+        :param n: threshold.
+
         Overrided to add logging function for debugging
         """
         gui_f.log_info(f'starting mainloop in {__name__}')

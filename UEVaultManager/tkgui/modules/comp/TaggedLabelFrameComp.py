@@ -61,7 +61,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
         :param focus_out_callback: callback to call when the child widget loses focus.
         :param focus_in_callback: callback to call when the child widget get focus.
         :param click_on_callback: callback to call when the child widget is clicked or checked.
-        :return: child widget
+        :return: child widget.
 
         Notes:
             We can not use command parameter to manage callback here because it should be transmited

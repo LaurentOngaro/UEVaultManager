@@ -263,6 +263,8 @@ class UEVMGui(tk.Tk):
     def mainloop(self, n=0):
         """
         Mainloop method
+        :param n: threshold.
+
         Overrided to add logging function for debugging
         """
         self.logger.info(f'starting mainloop in {__name__}')
@@ -393,7 +395,7 @@ class UEVMGui(tk.Tk):
     def on_key_press(self, event):
         """
         Handle key press events.
-        :param event:
+        :param event: event that triggered the call.
         """
         # Note: this event will be triggered AFTER the event in the editabletable
         # print(event.keysym)
@@ -425,7 +427,7 @@ class UEVMGui(tk.Tk):
     def on_mouse_over_cell(self, event=None) -> None:
         """
         Show the image of the asset when the mouse is over the cell.
-        :param event:
+        :param event: event that triggered the call.
         """
         if event is None:
             return
@@ -445,7 +447,7 @@ class UEVMGui(tk.Tk):
     def on_mouse_leave_cell(self, _event=None) -> None:
         """
         Show the default image when the mouse leaves the cell.
-        :param _event:
+        :param _event: event that triggered the call.
         """
         self.update_preview_info()
         canvas_image = self._frm_control.canvas_image
@@ -454,7 +456,7 @@ class UEVMGui(tk.Tk):
     def on_selection_change(self, event=None) -> None:
         """
         When the selection changes, show the selected row in the quick edit frame.
-        :param event:
+        :param event: event that triggered the call.
         """
         row_number = event.widget.currentrow
         self.editable_table.update_quick_edit(row_number)
@@ -479,7 +481,7 @@ class UEVMGui(tk.Tk):
     def on_entry_current_item_changed(self, _event=None) -> None:
         """
         When the item (i.e. row or page) number changes, show the corresponding item.
-        :param _event:
+        :param _event: event that triggered the call.
         """
         item_num = self._frm_toolbar.entry_current_item.get()
         try:
@@ -1203,10 +1205,10 @@ class UEVMGui(tk.Tk):
         :param marketplace_url: marketplace_url to scrap.
         :param row_numbers: list a row numbers to scrap. If None, will use the selected rows.
         :param row_index: (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
-        :param forced_data: if not None, all the key in forced_data will replace the scrapped data
-        :param show_message: whether to show a message if the marketplace_url is not valid
-        :param update_dataframe: whether to update the dataframe after scraping
-        :param check_unicity: whether to check if the data are unique and ask the user to update the row if not
+        :param forced_data: if not None, all the key in forced_data will replace the scrapped data.
+        :param show_message: whether to show a message if the marketplace_url is not valid.
+        :param update_dataframe: whether to update the dataframe after scraping.
+        :param check_unicity: whether to check if the data are unique and ask the user to update the row if not.
         """
         if gui_g.s.offline_mode:
             gui_f.box_message('You are in offline mode, Scraping and scanning features are not available')
@@ -1293,8 +1295,8 @@ class UEVMGui(tk.Tk):
     def _check_unicity(self, asset_data: {}) -> (bool, dict):
         """
         Check if the given asset_data is unique in the table. If not, will change the asset_id and/or the asset_slug to avoid issue.
-        :param asset_data: asset data to check
-        :return: asset_data with the updated asset_id and/or asset_slug
+        :param asset_data: asset data to check.
+        :return: asset_data with the updated asset_id and/or asset_slu.
         """
         is_unique = True
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
@@ -1428,7 +1430,7 @@ class UEVMGui(tk.Tk):
     def update_controls_state(self, update_title=False) -> None:
         """
         Update the controls and redraw the table.
-        :return: 
+        :param update_title: whether to update the window title.
         """
         if update_title:
             self.title(gui_g.s.app_title_long)
@@ -1769,7 +1771,7 @@ class UEVMGui(tk.Tk):
     def remove_installed_folder(self, selected_ids: tuple) -> bool:
         """
         Remove an installed folder from an installed release.
-        :param selected_ids: tuple (the index of the release, index of the folder)
+        :param selected_ids: tuple (the index of the release, index of the folder).
         :return: True if the release has been deleted, False otherwise.
         """
         folder_selected = ''
