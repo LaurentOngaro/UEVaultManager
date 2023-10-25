@@ -827,7 +827,6 @@ class UEAssetScraper:
             egs_available_assets_count = -1
             self.offline_mode = True
             self.load_from_files = True
-
         asset_loaded = 0
         if self.load_from_files:
             asset_loaded = self.load_from_json_files()
@@ -835,6 +834,11 @@ class UEAssetScraper:
                 # stop has been pressed
                 return False
 
+        if self.use_database:
+            tags_count_old = self.asset_db_handler.get_rows_count('tags')
+            rating_count_old = self.asset_db_handler.get_rows_count('ratings')
+        else:
+            tags_count_old, rating_count_old = 0, 0
         if asset_loaded <= 0:
             # no data, ie no files loaded, so we have to save them
             self.load_from_files = False
@@ -845,6 +849,7 @@ class UEAssetScraper:
                 result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
             if result_count == -1:
                 return False
+
             url_count = len(self._urls)
 
             # allow the main windows to update the progress window and unfreeze its buttons while threads are running
@@ -911,6 +916,10 @@ class UEAssetScraper:
             else:
                 self.progress_window.reset(new_value=0, new_text=message, new_max_value=None)
 
+        if self.use_database:
+            tags_count = self.asset_db_handler.get_rows_count('tags')
+            rating_count = self.asset_db_handler.get_rows_count('ratings')
+            self._log(f'{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.')
         gui_g.WindowsRef.uevm_gui.progress_window = None  # disable the update function to the main window
         return True
 

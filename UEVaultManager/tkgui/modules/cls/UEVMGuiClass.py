@@ -1154,9 +1154,12 @@ class UEVMGui(tk.Tk):
                         asset_data[0][key] = value
                 self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=update_progress)
                 is_ok = True
+                # TODO: add to cli.core.scan_assets_filename_log
         if not is_ok:
             asset_data = None
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
+            # TODO: add to cli.core.notfound_assets_filename_log
+            # TODO: change the grab result for this asset
             if show_message:
                 gui_f.box_message(msg, level='warning')
             else:
@@ -1169,7 +1172,7 @@ class UEVMGui(tk.Tk):
         :return:
         """
         data_table = self.editable_table  # shortcut
-        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        df = data_table.get_data(df_type=DataFrameUsed.AUTO)
         min_val = 0
         max_val = len(df) - 1
         start = simpledialog.askinteger(
@@ -1240,6 +1243,12 @@ class UEVMGui(tk.Tk):
             row_indexes = [data_table.get_real_index(row_number, add_page_offset=not use_range) for row_number in row_numbers]
         pw = None
         row_count = len(row_indexes)
+        data_table = self.editable_table  # shortcut
+        if self.is_using_database():
+            tags_count_old = data_table.db_handler.get_rows_count('tags')
+            rating_count_old = data_table.db_handler.get_rows_count('ratings')
+        else:
+            tags_count_old, rating_count_old = 0, 0
         if marketplace_url is None:
             base_text = "Scraping asset's data. Could take a while..."
             if row_count > 1:
@@ -1276,12 +1285,26 @@ class UEVMGui(tk.Tk):
                         f'The data for row {row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                        if show_message and row_count == 1:
-                            gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace')
+                        # if show_message and row_count == 1:
+                        #     tags_message = ''
+                        #     if self.is_using_database():
+                        #         tags_count = data_table.db_handler.get_rows_count('tags')
+                        #         rating_count = data_table.db_handler.get_rows_count('ratings')
+                        #         tags_message = f'\n{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.'
+                        #     gui_f.box_message(f'Data for row {row_index} have been updated from the marketplace.{tags_message}')
 
             gui_f.close_progress(self)
-            if show_message and row_count > 1:
-                gui_f.box_message(f'All Datas for {row_count} rows have been updated from the marketplace')
+            # if show_message and row_count > 1:
+            if row_count > 1:
+                message = f'All Datas for {row_count} rows have been updated from the marketplace.'
+            else:
+                message = f'Data for row {row_index} have been updated from the marketplace.'
+            tags_message = ''
+            if self.is_using_database():
+                tags_count = data_table.db_handler.get_rows_count('tags')
+                rating_count = data_table.db_handler.get_rows_count('ratings')
+                tags_message = f'\n{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.'
+            gui_f.box_message(message + tags_message)
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
             if asset_data:
@@ -1961,7 +1984,7 @@ class UEVMGui(tk.Tk):
         :return: mask to filter the data.
         """
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix) for i in x))
+        mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix, prefix_is_mandatory=True) for i in x))
         return mask
 
     def filter_free_and_not_owned(self) -> pd.Series:
