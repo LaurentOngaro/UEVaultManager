@@ -14,9 +14,6 @@ from UEVaultManager.tkgui.modules.types import DataSourceType, GrabResult, UEAss
 csv_sql_fields = {
     # fields mapping from csv to sql
     # key: csv field name, value: {sql name, state }
-    # some field are intentionnaly duplicated because
-    #   several CSV fields could come from a same database field
-    #   a csv field with this name must exist to get the value
     'Asset_id': {
         'sql_name': 'asset_id',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -192,12 +189,6 @@ csv_sql_fields = {
         'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR
     },
-    # 'Compatible versions': {
-    #     # not in database
-    #     'sql_name': None,
-    #     'state': CSVFieldState.CSV_ONLY,
-    #     'field_type': CSVFieldType.STR
-    # },
     'Date added': {
         'sql_name': 'date_added',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -213,12 +204,6 @@ csv_sql_fields = {
         'state': CSVFieldState.NOT_PRESERVED,
         'field_type': CSVFieldType.DATETIME
     },
-    # 'UE version': {
-    #     # not in database
-    #     'sql_name': None,
-    #     'state': CSVFieldState.CSV_ONLY,
-    #     'field_type': CSVFieldType.STR
-    # },
     'Uid': {
         'sql_name': 'id',
         'state': CSVFieldState.NOT_PRESERVED,
@@ -240,12 +225,6 @@ csv_sql_fields = {
         'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR
     },
-    # 'urlSlug': {
-    #     # intentionnaly duplicated
-    #     'sql_name': 'asset_slug',
-    #     'state': CSVFieldState.CHANGED,
-    #     'field_type': CSVFieldType.STR
-    # },
     'Currency code': {
         'sql_name': 'currency_code',
         'state': CSVFieldState.ASSET_ONLY,

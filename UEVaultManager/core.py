@@ -97,11 +97,9 @@ class AppCore:
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
         # Set the file name (and path) to log issues when an asset is ignored or filtered when running the --list command
-        self.ignored_assets_filename_log = ''
+        self.scrap_assets_filename_log = ''
         # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the --list command
         self.notfound_assets_filename_log = ''
-        # Set the file name (and path) to log issues when an asset has metadata and extra data are incoherent when running the --list command
-        self.bad_data_assets_filename_log = ''
         # Set the file name (and path) to log issues when scanning folder to find assets
         self.scan_assets_filename_log = ''
         # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
@@ -197,12 +195,10 @@ class AppCore:
         formatter = logging.Formatter('%(message)s')
         message = f"-----\n{datetime.now().strftime(DateFormat.csv)} Log Started\n-----\n"
 
-        if self.ignored_assets_filename_log:
-            self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
+        if self.scrap_assets_filename_log:
+            self.ignored_logger = create_logger('ScrapAssets', self.scrap_assets_filename_log)
         if self.notfound_assets_filename_log:
             self.notfound_logger = create_logger('NotFoundAssets', self.notfound_assets_filename_log)
-        if self.bad_data_assets_filename_log:
-            self.bad_data_logger = create_logger('BadDataAssets', self.bad_data_assets_filename_log)
         if self.scan_assets_filename_log:
             self.scan_assets_logger = create_logger('ScanAssets', self.scan_assets_filename_log)
 

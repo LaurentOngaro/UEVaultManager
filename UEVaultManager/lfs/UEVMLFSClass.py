@@ -155,18 +155,15 @@ class UEVMLFS:
             self.config.set('UEVaultManager', '; Set to True to print more information during long operations')
             self.config.set('UEVaultManager', 'verbose_mode', 'False')
             has_changed = True
-        if not self.config.has_option('UEVaultManager', 'ignored_assets_filename_log'):
+        if not self.config.has_option('UEVaultManager', 'scrap_assets_filename_log'):
             self.config.set(
-                'UEVaultManager', '; File name (and path) to log issues with assets when running the --list command' + "\n" +
+                'UEVaultManager', '; File name (and path) to log issues with assets when running the list or scrap commands' + "\n" +
                 '; use "~/" at the start of the filename to store it relatively to the user directory'
             )
-            self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
+            self.config.set('UEVaultManager', 'scrap_assets_filename_log', '~/.config/scrap_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'notfound_assets_filename_log'):
             self.config.set('UEVaultManager', 'notfound_assets_filename_log', '~/.config/notfound_assets.log')
-            has_changed = True
-        if not self.config.has_option('UEVaultManager', 'bad_data_assets_filename_log'):
-            self.config.set('UEVaultManager', 'bad_data_assets_filename_log', '~/.config/bad_data_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'scan_assets_filename_log'):
             self.config.set('UEVaultManager', 'scan_assets_filename_log', '~/.config/scan_assets.log')
