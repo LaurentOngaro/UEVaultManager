@@ -1172,7 +1172,7 @@ class UEVMGui(tk.Tk):
         :return:
         """
         data_table = self.editable_table  # shortcut
-        df = data_table.get_data(df_type=DataFrameUsed.AUTO)
+        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         min_val = 0
         max_val = len(df) - 1
         start = simpledialog.askinteger(
@@ -1229,18 +1229,24 @@ class UEVMGui(tk.Tk):
         data_table.save_data()  # save the data before scraping because we will update the row(s) and override non saved changes
         if not row_numbers:
             row_numbers = data_table.multiplerowlist
+            use_range = False
+        else:
+            use_range = True
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
             if show_message:
                 gui_f.box_message('You must select a row first', level='warning')
             return
-        use_range = True
         if row_index >= 0:
             # a row index has been given, we scrap only this row
             row_indexes = [row_index]
-            use_range = False
+        elif use_range:
+            # convert row numbers to row indexes
+            row_indexes = [
+                data_table.get_real_index(row_number, add_page_offset=False, df_type=DataFrameUsed.UNFILTERED) for row_number in row_numbers
+            ]
         else:
             # convert row numbers to row indexes
-            row_indexes = [data_table.get_real_index(row_number, add_page_offset=not use_range) for row_number in row_numbers]
+            row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
         pw = None
         row_count = len(row_indexes)
         data_table = self.editable_table  # shortcut
@@ -1256,6 +1262,9 @@ class UEVMGui(tk.Tk):
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True
                 )
             for count, row_index in enumerate(row_indexes):
+                if row_index < 0:
+                    # a conversion error in get_real_index has occured
+                    continue
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
