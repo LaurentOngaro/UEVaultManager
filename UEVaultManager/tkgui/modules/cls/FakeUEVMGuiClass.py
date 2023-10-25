@@ -19,18 +19,23 @@ class FakeUEVMGuiClass(ttk.Window):
         self.geometry('100x150')
         self.withdraw()
         self.progress_window = None
+        self.update_delay: int = 2000
+        self.editable_table = None
+        self.editable_table.db_handler = None
 
-    def mainloop(self, n=0):
+    def mainloop(self, n=0, call_tk_mainloop: bool = True):
         """
         Mainloop method
+        :param n: threshold.
+        :param call_tk_mainloop: if True, call the original mainloop method.
 
         Overrided to add logging function for debugging
         """
         print(f'starting mainloop in {__name__}')
-        self.after(2000, self.update_progress_windows)
-        # the original mainloop is not called because in a CLI session, it will block the console
-        # we only update child the progress windows
-        # self.tk.mainloop(n)
+        self.after(self.update_delay, self.update_progress_windows)
+        if call_tk_mainloop:
+            # the original mainloop could not be called sometime in a CLI session because it will block the console
+            self.tk.mainloop(n)
         print(f'ending mainloop in {__name__}')
 
     def update_progress_windows(self):
@@ -40,4 +45,4 @@ class FakeUEVMGuiClass(ttk.Window):
         if self.progress_window:
             self.progress_window.update()
             print('UPDATE')
-        self.after(2000, self.update_progress_windows)
+        self.after(self.update_delay, self.update_progress_windows)

@@ -131,6 +131,7 @@ class UEVMGui(tk.Tk):
         frm_content = UEVMGuiContentFrame(self)
         self._frm_content = frm_content
         self.releases_choice = {}
+        self.update_delay: int = 2000
         # get the core instance from the cli application if it exists
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
         # if the core instance is not set, create a new one
@@ -203,7 +204,7 @@ class UEVMGui(tk.Tk):
 
         self.bind('<Button-1>', self.on_left_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
-        gui_g.UEVM_gui_ref = self
+        gui_g.WindowsRef.uevm_gui = self
 
     def setup(self, show_open_file_dialog: bool = False, rebuild_data: bool = False) -> None:
         """
@@ -268,7 +269,7 @@ class UEVMGui(tk.Tk):
         Overrided to add logging function for debugging
         """
         self.logger.info(f'starting mainloop in {__name__}')
-        self.after(2000, self.update_progress_windows)
+        self.after(self.update_delay, self.update_progress_windows)
         self.tk.mainloop(n)
         # check is a child window is still open
         # child_windows = self.progress_window or gui_g.WindowsRef.edit_cell or gui_g.WindowsRef.edit_row
@@ -284,7 +285,7 @@ class UEVMGui(tk.Tk):
         if self.progress_window:
             self.progress_window.update()
             # print('UPDATE')
-        self.after(2000, self.update_progress_windows)
+        self.after(self.update_delay, self.update_progress_windows)
 
     @staticmethod
     def _focus_next_widget(event):
