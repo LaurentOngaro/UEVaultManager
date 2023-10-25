@@ -308,7 +308,7 @@ def is_an_int(value, prefix: str = '') -> bool:
     try:
         float_n = float(value)
         int_n = int(float_n)
-    except ValueError:
+    except (Exception,):
         return False
     else:
         return float_n == int_n
