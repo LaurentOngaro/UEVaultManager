@@ -96,9 +96,9 @@ class AppCore:
         self.verbose_mode = False
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
-        # Set the file name (and path) to log issues when an asset is ignored or filtered when running the --list command
+        # Set the file name (and path) to log issues when an asset is ignored or filtered when running the list or scrap commands
         self.scrap_assets_filename_log = ''
-        # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the --list command
+        # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the list or scrap commands
         self.notfound_assets_filename_log = ''
         # Set the file name (and path) to log issues when scanning folder to find assets
         self.scan_assets_filename_log = ''

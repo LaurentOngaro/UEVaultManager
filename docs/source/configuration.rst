@@ -37,7 +37,7 @@ This is an example of this file content and the settings you can change:
     create_log_backup = True
     ; Set to True to print more information during long operations
     verbose_mode = False
-    ; File name (and path) to log issues with assets when running the --list command
+    ; File name (and path) to log issues with assets when running the list or scrap commands
     ; use "~/" at the start of the filename to store it relatively to the user directory
     scrap_assets_filename_log = ~/.config/scrap_assets.log
     notfound_assets_filename_log = ~/.config/notfound_assets.log
