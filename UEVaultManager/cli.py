@@ -85,16 +85,16 @@ def init_progress_window(text: str, args, logger=None, callback: callable = None
     gui_g.UEVM_log_ref = logger
 
     # check if the GUI is already running
-    if gui_g.UEVM_gui_ref is None:
+    if gui_g.WindowsRef.uevm_gui is None:
         # create a fake root because ProgressWindow must always be a top level window
-        gui_g.UEVM_gui_ref = FakeUEVMGuiClass()
-        gui_g.UEVM_gui_ref.mainloop()
+        gui_g.WindowsRef.uevm_gui = FakeUEVMGuiClass()
+        gui_g.WindowsRef.uevm_gui.mainloop()
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
     force_refresh = True if args.force_refresh else False
     pw = show_progress(
-        parent=gui_g.UEVM_gui_ref,
+        parent=gui_g.WindowsRef.uevm_gui,
         text=text,
         quit_on_close=not uewm_gui_exists,
         function=callback,
@@ -104,7 +104,7 @@ def init_progress_window(text: str, args, logger=None, callback: callable = None
         },
         force_new_window=force_new_window
     )
-    gui_g.UEVM_gui_ref.progress_window = pw
+    gui_g.WindowsRef.uevm_gui.progress_window = pw
     return uewm_gui_exists, pw
 
 
@@ -118,9 +118,9 @@ def init_display_window(logger=None, _message: str = 'Starting command...') -> (
     gui_g.UEVM_log_ref = logger
 
     # check if the GUI is already running
-    if gui_g.UEVM_gui_ref is None:
+    if gui_g.WindowsRef.uevm_gui is None:
         # create a fake root because DisplayContentWindow must always be a top level window
-        gui_g.UEVM_gui_ref = FakeUEVMGuiClass()
+        gui_g.WindowsRef.uevm_gui = FakeUEVMGuiClass()
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
@@ -363,8 +363,8 @@ class UEVaultManagerCLI:
             message = 'Login attempt failed, please see log for details.'
             self._log_and_gui_message(message, level='error')
 
-        if not uewm_gui_exists:
-            gui_g.UEVM_gui_ref.mainloop()
+        # if not uewm_gui_exists:
+        #     gui_g.WindowsRef.uevm_gui.mainloop()
 
     def list_assets(self, args) -> None:
         """
@@ -485,7 +485,7 @@ class UEVaultManagerCLI:
             uewm_gui_exists, _ = init_display_window(self.logger)
             custom_print(content, keep_mode=False)  # as it, next print will not keep the content
             if not uewm_gui_exists:
-                gui_g.UEVM_gui_ref.mainloop()
+                gui_g.WindowsRef.uevm_gui.mainloop()
         else:
             print(content)
 
@@ -541,7 +541,7 @@ class UEVaultManagerCLI:
         if UEVaultManagerCLI.is_gui:
             json_print_key_val(json_content, output_on_gui=True)
             if not uewm_gui_exists:
-                gui_g.UEVM_gui_ref.mainloop()
+                gui_g.WindowsRef.uevm_gui.mainloop()
         else:
             json_print_key_val(json_content)
         # prevent update message on close
@@ -780,7 +780,7 @@ class UEVaultManagerCLI:
                 custom_print('No asset information available.')
             custom_print(keep_mode=False)  # as it, next print will not keep the content
             if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
-                gui_g.UEVM_gui_ref.mainloop()
+                gui_g.WindowsRef.uevm_gui.mainloop()
         else:
             json_out = dict(asset={}, install={}, manifest={})
             if info_items.get('asset'):
@@ -837,8 +837,8 @@ class UEVaultManagerCLI:
         self._log(message)
         custom_print(message, keep_mode=False)
 
-        if not uewm_gui_exists and gui_g.UEVM_gui_ref is not None:
-            gui_g.UEVM_gui_ref.mainloop()
+        if not uewm_gui_exists and gui_g.WindowsRef.uevm_gui is not None:
+            gui_g.WindowsRef.uevm_gui.mainloop()
 
     def get_token(self, args) -> None:
         """
@@ -902,8 +902,6 @@ class UEVaultManagerCLI:
         # we delay the setup method because it could create a progressWindow, and it MUST be created AFTER the mainloop to avoid a "main thread is not in main loop" message
         gui_windows.after(500, lambda: gui_windows.setup(rebuild_data=rebuild))
         gui_windows.mainloop()
-        # print('Exiting...')  #
-        # gui_g.UEVM_gui_ref.quit()
 
     def scrap_assets(self, args, use_database=True, file_name: str = '', save_to_format: str = 'csv') -> []:
         """
@@ -991,15 +989,11 @@ class UEVaultManagerCLI:
         Installs an asset.
         :param args: options passed to the command.
         """
-        uewm_gui_exists = gui_g.UEVM_gui_ref is not None
+        uewm_gui_exists = gui_g.WindowsRef.uevm_gui is not None
         try:
-            db_handler = gui_g.UEVM_gui_ref.editable_table.db_handler
-            # use_database = gui_g.UEVM_gui_ref.editable_table.data_source_type == DataSourceType.DATABASE
-            # database_name = gui_g.UEVM_gui_ref.editable_table.data_source
+            db_handler = gui_g.WindowsRef.uevm_gui.editable_table.db_handler
         except AttributeError:
             db_handler = None
-            # use_database = False
-            # database_name = ''
         if args.subparser_name == 'download':
             args.no_install = True
         if args.clean_dowloaded_data and args.no_install:
@@ -1350,7 +1344,7 @@ class UEVaultManagerCLI:
             return
 
         if UEVaultManagerCLI.is_gui and not uewm_gui_exists:
-            gui_g.UEVM_gui_ref.mainloop()
+            gui_g.WindowsRef.uevm_gui.mainloop()
 
     def run_test(self, _args) -> None:
         """
@@ -1687,9 +1681,14 @@ def main():
         cli.run_test(args)
         return
 
+    try:
+        UEVaultManagerCLI.is_gui = args.gui
+    except (AttributeError, KeyError):
+        UEVaultManagerCLI.is_gui = False
+
     start_in_edit_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'start_in_edit_mode', fallback=False))
 
-    if not start_in_edit_mode and (not args.subparser_name or args.full_help):
+    if (not start_in_edit_mode and args.subparser_name is None) or args.full_help:
         UEVaultManagerCLI.print_help(args=args, parser=parser)
         return
 
@@ -1722,11 +1721,6 @@ def main():
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
         args.yes = True
-
-    try:
-        UEVaultManagerCLI.is_gui = args.gui
-    except (AttributeError, KeyError):
-        UEVaultManagerCLI.is_gui = False
 
     # technically args.func() with set defaults could work (see docs on subparsers)
     # but that would require all funcs to accept args and extra...
