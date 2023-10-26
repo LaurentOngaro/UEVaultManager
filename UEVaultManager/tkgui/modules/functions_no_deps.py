@@ -88,7 +88,7 @@ def get_center_screen_positions(screen_index: int, width: int, height: int) -> (
 def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
     """
     Set the custom style for the application.
-    :return: style object.
+    :return: Style object.
     """
     try:
         style = ttk.Style(theme_name)
@@ -325,17 +325,18 @@ def create_uid() -> str:
     return str(uuid.uuid4())[:8]
 
 
-def shorten_text(url: str, limit: int = 30) -> str:
+def shorten_text(url: str, limit: int = 30, prefix: str = '...') -> str:
     """
     Shorten an url. Get its last part
     :param url:  the url to shorten.
     :param limit: limit of characters to keep.
-    :return: shortened ur.
+    :param prefix: prefix to add to the shorted url (if it has been shorted).
+    :return: shortened url.
     """
     if len(url) < limit:
         return url
     else:
-        return '...' + url[-limit:]
+        return prefix + url[-limit:]
 
 
 def extract_variables_from_url(url: str) -> dict:

@@ -2019,7 +2019,7 @@ class EditableTable(Table):
         """
         Return the "Release info" field the selected row.
         :param row_number: row number from a datatable. Will be converted into real row index.
-        :return: "Release info" dict as a json strin.
+        :return: "Release info" dict as a json string.
         """
         row_number = row_number or self.get_selected_row_fixed()
         if row_number is None or row_number < 0:

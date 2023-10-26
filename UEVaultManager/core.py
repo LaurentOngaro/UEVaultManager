@@ -390,7 +390,7 @@ class AppCore:
             """
             Convert a version string to a tuple of ints.
             :param v: version string.
-            :return:  tuple of ints.
+            :return:  tuple of int.
             """
             return tuple(map(int, (v.split('.'))))
 

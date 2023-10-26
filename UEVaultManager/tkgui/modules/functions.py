@@ -300,7 +300,7 @@ def get_tk_root(container) -> Optional[tk.Tk]:
     """
     Get the root window.
     :param container:  the container window or object.
-    :return: root windo.
+    :return: root window.
     """
     if container is None:
         return None
