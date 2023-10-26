@@ -33,7 +33,6 @@ from UEVaultManager.tkgui.main import init_gui
 from UEVaultManager.tkgui.modules.cls.ChoiceFromListWindowClass import ChoiceFromListWindow
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.FakeUEVMGuiClass import FakeUEVMGuiClass
-from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
 from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, create_file_backup, custom_print, exit_and_clean_windows, make_modal, \
@@ -70,43 +69,6 @@ def init_gui_args(args, additional_args=None) -> None:
     gui_g.UEVM_cli_args = SaferDict({})
     # copy the dict content to the SaferDict object
     gui_g.UEVM_cli_args.copy_from(temp_dict)
-
-
-def init_progress_window(text: str, args, logger=None, callback: callable = None, force_new_window=False) -> (bool, ProgressWindow):
-    """
-    Initialize the progress window.
-    :param text: text to display in the progress window.
-    :param args: args of the command line.
-    :param logger: logger to use.
-    :param callback: callback function to call while progress updating.
-    :param force_new_window: whether we force the creation of a new window.
-    :return: (True if the UEVMGui window already existed | False, ProgressWindow).
-    """
-    gui_g.UEVM_log_ref = logger
-
-    # check if the GUI is already running
-    if gui_g.WindowsRef.uevm_gui is None:
-        # create a fake root because ProgressWindow must always be a top level window
-        gui_g.WindowsRef.uevm_gui = FakeUEVMGuiClass()
-        gui_g.WindowsRef.uevm_gui.mainloop()
-        uewm_gui_exists = False
-    else:
-        uewm_gui_exists = True
-    # force_refresh = True if args.force_refresh else False
-    pw = show_progress(
-        parent=gui_g.WindowsRef.uevm_gui,
-        text=text,
-        quit_on_close=not uewm_gui_exists,
-        function=callback,
-        # not used anymore
-        # function_parameters={
-        #     'filter_category': gui_g.UEVM_filter_category,
-        #     'force_refresh': force_refresh,
-        # },
-        force_new_window=force_new_window,
-    )
-    gui_g.WindowsRef.uevm_gui.progress_window = pw
-    return uewm_gui_exists, pw
 
 
 def init_display_window(logger=None, _message: str = 'Starting command...') -> (bool, DisplayContentWindow):
@@ -408,8 +370,7 @@ class UEVaultManagerCLI:
         else:
             file_format = ''
         save_to_file = (file_format != '')
-        assets_json_data = self.scrap_assets(
-            args, use_database=False, file_name=args.output, save_to_format=file_format)
+        assets_json_data = self.scrap_assets(args, use_database=False, file_name=args.output, save_to_format=file_format)
         if assets_json_data and not save_to_file:
             # here, no other output has been done before, so we print the asset in a quick format to the console
             print('\nAvailable UE Assets:')
@@ -919,8 +880,19 @@ class UEVaultManagerCLI:
         gui_g.progress_window_ref = None
         pw = None
         if UEVaultManagerCLI.is_gui:
-            uewm_gui_exists, pw = init_progress_window(text='Updating Assets List', force_new_window=True, args=args)
+            # check if the GUI is already running
+            if gui_g.WindowsRef.uevm_gui is None:
+                # create a fake root because ProgressWindow must always be a top level window
+                gui_g.WindowsRef.uevm_gui = FakeUEVMGuiClass()
+                uewm_gui_exists = False
+            else:
+                uewm_gui_exists = True
+            pw = show_progress(
+                parent=gui_g.WindowsRef.uevm_gui, text='Updating Assets List', quit_on_close=not uewm_gui_exists, force_new_window=True,
+            )
+            gui_g.WindowsRef.uevm_gui.progress_window = pw
             gui_g.progress_window_ref = pw
+
         if not args.offline:
             # not offline mode => check log in
             try:
@@ -974,7 +946,9 @@ class UEVaultManagerCLI:
                 for asset_data in scrapped_data:
                     app_name = asset_data.get('asset_id', '')
                     asset_data['downloaded_size'] = self.core.uevmlfs.get_asset_size(app_name)
+
         if UEVaultManagerCLI.is_gui:
+            pw.mainloop()
             pw.quit_on_close = False
             pw.close_window(destroy_window=True)
         return scrapped_data
