@@ -162,6 +162,8 @@ class UEAssetScraper:
             message += f'\nData will be saved in DATABASE in {self._datasource_filename}'
         else:
             message += f'\nData will be saved in FILE in {self._datasource_filename}'
+        if self.filter_category:
+            message += f'The String "{self.filter_category}" will be search in Assets category'
         self._log(message)
 
     @property
@@ -742,7 +744,6 @@ class UEAssetScraper:
         :param owned_assets_only: whether only the owned assets are scraped.
         """
         thread_state = ' RUNNING...'
-
         # HERE WE CAN'T UPDATE the progress window because it's not in the main thread
         # the next lines raise a  RuntimeError('main thread is not in main loop')
         # if not self.progress_window.update_and_continue(increment=1, text=f'Getting data from {url}):
@@ -766,7 +767,10 @@ class UEAssetScraper:
                 time.sleep(random.uniform(1.0, 3.0))
                 thread = current_thread()
                 thread_data = f' ==> By Thread name={thread.name}'
-            self._log(f'--- START scraping data from {url}{thread_data}{thread_state}')
+            message = f'--- START scraping data from {url}{thread_data}{thread_state}'
+            self._log(message)
+            if self.core.scrap_asset_logger:
+                self.core.scrap_asset_logger.info('\n' + message)
             json_data = self.core.egs.get_json_data_from_url(url, override_timeout=15)
             no_error = json_data.get('status', '') == 'OK'
             if not no_error:
@@ -774,7 +778,10 @@ class UEAssetScraper:
                 json_data = self.core.egs.get_json_data_from_url(url, override_timeout=15)
                 no_error = json_data.get('status', '') == 'OK'
                 if not no_error:
-                    self._log(f'Error getting data from url {url}: {json_data["errorCode"]}', 'error')
+                    message = f'Error getting data from url {url}: {json_data["errorCode"]}'
+                    self._log(message, 'error')
+                    if self.core.scrap_asset_logger:
+                        self.core.scrap_asset_logger.warning(message)
                     return True
             try:
                 # when multiple assets are returned, the data is in the 'elements' key
@@ -807,8 +814,13 @@ class UEAssetScraper:
                         self._files_count += 1
                 content = self._parse_data(json_data)
                 self._scraped_data.append(content)
-        except Exception as error:
-            self._log(f'Error getting data from url {url}: {error!r}', 'warning')
+                if self.core.scrap_asset_logger:
+                    self.core.scrap_asset_logger.info(f'--- END scraping from {url}: {len(json_data)} asset ADDED to scraped_data')
+        except (Exception, ) as error:
+            message = f'Error getting data from url {url}: {error!r}'
+            self._log(message, 'warning')
+            if self.core.scrap_asset_logger:
+                self.core.scrap_asset_logger.warning(message)
         return True
 
     def _stop_executor(self) -> None:
@@ -871,7 +883,7 @@ class UEAssetScraper:
             # allow the main windows to update the progress window and unfreeze its buttons while threads are running
             gui_g.WindowsRef.uevm_gui.progress_window = self.progress_window
 
-            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs and saving to json files', new_max_value=None)
+            self.progress_window.reset(new_value=0, new_text='Scraping data from URLs and saving to json files', new_max_value=url_count)
             # fake_root = FakeUEVMGuiClass()
             # self.progress_window.close_window()
             # pw = ProgressWindow(parent=fake_root, title='Scraping in progress...', width=300, show_btn_stop=True, show_progress=True,
@@ -893,6 +905,7 @@ class UEAssetScraper:
 
                 with concurrent.futures.ThreadPoolExecutor():
                     count = 0
+                    # try:
                     for future in concurrent.futures.as_completed(futures.values(), timeout=10):
                         if not self.progress_window.update_and_continue(increment=1):
                             # self._log(f'User stop has been pressed. Stopping running threads....')   # will flood console
@@ -908,8 +921,16 @@ class UEAssetScraper:
                             # if must_stop:
                             #    self._ stop_executor(futures)  # this never occurs whe clicking on "Stop" in the progressWindow (Why ?). Keep it for safety
                             # print("Result: ", result)
-                        except Exception as error:
-                            self._log(f'The following error occurs in threading: {error!r}', 'warning')
+                        except (Exception, ) as error:
+                            message = f'The following error occurs in threading: {error!r}'
+                            self._log(message, 'warning')
+                            if self.core.scrap_asset_logger:
+                                self.core.scrap_asset_logger.warning(message)
+                    # except TimeoutError:
+                    #     message = 'A Timeout error occured in threading'
+                    #     self._log(message, 'warning')
+                    #     if self.core.scrap_asset_logger:
+                    #         self.core.scrap_asset_logger.warning(message)
             else:
                 for url in self._urls:
                     self.get_data_from_url(url, owned_assets_only)
@@ -927,7 +948,7 @@ class UEAssetScraper:
             # some asset are missing in json files
             message = f'{asset_loaded} assets have been loaded from json files, {egs_available_assets_count} available on the marketplace.\nYou should do a rebuild with the force_refresh option enabled to get ²the new ones.'
             if self.progress_window.is_fake:
-                # use a box message only if the progress window is fake, ie whe are not in GUI mode
+                # use a box message only if the progress window is fake, ie we are in a CLI command with gui option
                 box_message(message)
             else:
                 self.progress_window.reset(new_value=0, new_text=message, new_max_value=None)
@@ -1061,14 +1082,14 @@ class UEAssetScraper:
         }
         start_time = time.time()
         if self.save_to_files:
-            self.progress_window.reset(new_value=0, new_text='Saving into files', new_max_value=len(self._scraped_data))
-            # store the data in a AFTER parsing it
+            self.progress_window.reset(new_value=0, new_text='Saving assets into files', new_max_value=len(self._scraped_data))
+            # store the data in file a AFTER parsing it
             self._files_count = 0
             for asset_data in self._scraped_data:
                 filename, _ = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
                 self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                 self._files_count += 1
-                if not self.progress_window.update_and_continue(increment=1):
+                if not self.progress_window.update_and_continue(increment=1, text=f'Saving asset to {filename}'):
                     return False
             message = f'It took {(time.time() - start_time):.3f} seconds to save the data in {self._files_count} files'
             self._log(message)
