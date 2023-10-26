@@ -724,7 +724,7 @@ class UEVMLFS:
         for asset_id, installed_asset in installed_assets.items():
             all_installed_folders[asset_id] = installed_asset['installed_folders']
         if release_info is not None and len(release_info) > 0:
-            # TODO: only keep releases that are compatible with the version of the selected project or engine.
+            # TODO: print a message if release is not compatible with the version of the selected project or engine.
             for index, item in enumerate(reversed(release_info)):  # reversed to have the latest release first
                 asset_id = item.get('appId', None)
                 latest_id = latest_id or asset_id

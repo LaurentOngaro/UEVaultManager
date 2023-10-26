@@ -6,8 +6,8 @@ from datetime import datetime
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType, DateFormat
-from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str
-from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_float, convert_to_int, create_uid
+from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, convert_to_bool, convert_to_float, convert_to_int, \
+    create_uid
 from UEVaultManager.tkgui.modules.types import DataSourceType, GrabResult, UEAssetType
 
 # noinspection GrazieInspection
@@ -586,7 +586,7 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     # the CSV header (in datatable or CSV file) are the keys of csv_sql_fields and fierrent of the previous both
 
     # all the fields that are present in data grabed with the "old" method (ie file/csv mode)
-    old_csv_data_keys = [
+    csv_data_keys_saved = [
         'categories', 'creationDate', 'description', 'developer', 'developerId', 'endOfSupport', 'entitlementName', 'entitlementType', 'id',
         'itemType', 'keyImages', 'lastModifiedDate', 'longDescription', 'namespace', 'releaseInfo', 'requiresSecureAccount', 'status',
         'technicalDetails', 'title', 'unsearchable'
@@ -610,11 +610,11 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     db_field_names = get_sql_field_name_list(include_asset_only=True)
 
     debug_func('keys in old_data_keys that are not in new_data_keys.\nThese data will be LOST when switching from FILE to db mode')
-    key_lost_from_file = [key for key in old_csv_data_keys if key not in new_data_keys]
+    key_lost_from_file = [key for key in csv_data_keys_saved if key not in new_data_keys]
     debug_func(key_lost_from_file)
 
     debug_func('keys in new_data_keys that are not in old_data_keys.\nThese data will be LOST when switching from DB to file mode')
-    key_lost_from_db = [key for key in new_data_keys if key not in old_csv_data_keys]
+    key_lost_from_db = [key for key in new_data_keys if key not in csv_data_keys_saved]
     debug_func(key_lost_from_db)
 
     if mode == DataSourceType.FILE:

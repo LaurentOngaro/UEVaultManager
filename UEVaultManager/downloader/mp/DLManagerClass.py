@@ -428,7 +428,7 @@ class DLManager(Process):
         self.log.debug(f'Final cache size requirement: {last_cache_size / 1024 / 1024} MiB.')
         analysis_res.min_memory = last_cache_size + (1024 * 1024 * 32)  # add some padding just to be safe
 
-        # Todo implement on-disk caching to avoid this issue.
+        # Todo: implement on-disk caching to avoid this issue.
         if analysis_res.min_memory > self.max_shared_memory:
             shared_mib = f'{self.max_shared_memory / 1024 / 1024:.01f} MiB'
             required_mib = f'{analysis_res.min_memory / 1024 / 1024:.01f} MiB'

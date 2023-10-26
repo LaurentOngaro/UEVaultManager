@@ -2,13 +2,11 @@
 """
 Implementation for:
 - EPCAPI : Epic Games Client API
-- GrabResult : Enum for the result of grabbing a page.
 - create_empty_assets_extra : Create an empty asset extra dict.
 - is_asset_obsolete : Check if an asset is obsolete.
 """
 import json
 import logging
-from enum import Enum
 
 import requests
 import requests.adapters
@@ -16,23 +14,8 @@ from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.tkgui.modules.types import GrabResult
 from UEVaultManager.utils.cli import create_list_from_string
-
-
-class GrabResult(Enum):
-    """
-    Enum for the result of grabbing a page.
-    """
-    NO_ERROR = 0
-    # next codes could occur only with beautifulsoup data grabbing (UEVM Version 1.X.X.X)
-    INCONSISTANT_DATA = 1
-    PAGE_NOT_FOUND = 2
-    CONTENT_NOT_FOUND = 3
-    TIMEOUT = 4
-    # next codes could occur only with API scraping only (UEVM version 2.X.X.X)
-    PARTIAL = 5  # when asset has been added when owned asset data only (less complete that "standard" asset data)
-    NO_APPID = 6  # no appid found in the data (will produce a file name like '_no_appId_asset_1e10acc0cca34d5c8ff7f0ab57e7f89f
-    NO_RESPONSE = 7  # the url does not return HTTP 200
 
 
 def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=None) -> bool:
@@ -87,7 +70,8 @@ class EPCAPI:
     :param cc: country code.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
-    ignored_logger = None
+    notfound_logger = None
+    scrap_asset_logger = None
 
     _user_agent = 'UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit'
     _store_user_agent = 'EpicGamesLauncher/14.0.8-22004686+++Portal+Release-Live'
@@ -182,7 +166,6 @@ class EPCAPI:
 
     def __init__(self, lc='en', cc='US', timeout=(7, 7)):
         self.log = logging.getLogger('EPCAPI')
-        self.notfound_logger = None  # will be setup when created in core.py
         self.session = requests.session()
         self.session.headers['User-Agent'] = self._user_agent
         # increase maximum pool size for multithreaded metadata requests

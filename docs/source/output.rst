@@ -413,8 +413,11 @@ file:
 .. code:: python
 
    class GrabResult(Enum):
-       NO_ERROR = 0
-       INCONSISTANT_DATA = 1
-       PAGE_NOT_FOUND = 2
-       CONTENT_NOT_FOUND = 3
-       TIMEOUT = 4
+      NO_ERROR = 0
+      INCONSISTANT_DATA = 1
+      PAGE_NOT_FOUND = 2
+      CONTENT_NOT_FOUND = 3
+      TIMEOUT = 4
+      PARTIAL = 5  # when asset has been added when owned asset data only (less complete that "standard" asset data)
+      NO_APPID = 6  # no appid found in the data (will produce a file name like '_no_appId_asset_1e10acc0cca34d5c8ff7f0ab57e7f89f
+      NO_RESPONSE = 7  # the url does not return HTTP 200

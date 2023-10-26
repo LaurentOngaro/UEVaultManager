@@ -16,6 +16,7 @@ from pandastable import config, Table, TableModel
 
 import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
@@ -25,7 +26,6 @@ from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions_no_deps import format_size, open_folder_in_file_explorer
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
@@ -64,12 +64,13 @@ class EditableTable(Table):
     _edit_cell_widget = None
     _dftype_for_coloring = DataFrameUsed.MODEL  # type of dataframe used for coloring
     _is_scanning = False  # True when a folders scan is in progress
-    _column_infos_stored = False  # used to see if column_infos has changed
     _errors: [Exception] = []
     _current_page: int = 1
-    _old_page: int = 1
+    _current_page_saved: int = 1
     _is_filtered: bool = False
-    _old_is_filtered: bool = False
+    _is_filtered_saved: bool = False
+    _column_infos_saved = False  # used to see if column_infos has changed
+    columns_saved_str: str = ''
     is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
     logger = gui_f.logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
@@ -136,7 +137,7 @@ class EditableTable(Table):
         Set the current page.
         :param value: page number to set.
         """
-        self._old_page = self._current_page
+        self._current_page_saved = self._current_page
         self._current_page = value
         # self.update_controls_state_func()
         # self.update_preview_info_func()
@@ -155,7 +156,7 @@ class EditableTable(Table):
         Set the filtered state.
         :param value: filtered state to set.
         """
-        self._old_is_filtered = self._is_filtered
+        self._is_filtered_saved = self._is_filtered
         self._is_filtered = value
 
     @property
@@ -387,11 +388,11 @@ class EditableTable(Table):
         """
         # get the value from the MODEL because the value in the datatable could not have been updated yet
         try:
-            old_value = self.get_data(df_type=DataFrameUsed.MODEL).iat[row, col]  # iat checked
+            value_saved = self.get_data(df_type=DataFrameUsed.MODEL).iat[row, col]  # iat checked
         except IndexError:
-            old_value = None
+            value_saved = None
         super().handleCellEntry(row, col)
-        self._check_cell_has_changed(old_value)
+        self._check_cell_has_changed(value_saved)
 
     def handleEntryMenu(self, *args):
         """
@@ -401,11 +402,11 @@ class EditableTable(Table):
         """
         # get the value from the MODEL because the value in the datatable could not have been updated yet
         try:
-            old_value = self.get_data(df_type=DataFrameUsed.MODEL).iat[self._last_selected_row, self._last_selected_col]  # iat checked
+            value_saved = self.get_data(df_type=DataFrameUsed.MODEL).iat[self._last_selected_row, self._last_selected_col]  # iat checked
         except IndexError:
-            old_value = None
+            value_saved = None
         super().handleEntryMenu(*args)
-        self._check_cell_has_changed(old_value)
+        self._check_cell_has_changed(value_saved)
 
     def resetColors(self):
         """
@@ -445,16 +446,16 @@ class EditableTable(Table):
             self._last_cell_value = self.get_cell(selected_row, selected_col)
             self.event_generate('<<CellSelectionChanged>>')
 
-    def _check_cell_has_changed(self, old_value) -> bool:
+    def _check_cell_has_changed(self, value_saved) -> bool:
         """
         Check if the cell value has changed. If so, the row is added to the list of changed rows.
-        :param old_value: old value of the cell.
+        :param value_saved: old value of the cell.
         :return: True if the cell value has changed, False otherwise.
         """
         row = self._last_selected_row
         col = self._last_selected_col
         new_value = self.get_cell(row, col)
-        if new_value is not None and old_value != new_value:
+        if new_value is not None and value_saved != new_value:
             row_index = self.get_real_index(row)
             self.add_to_rows_to_save(row_index)
             # self.tableChanged() # done in add_to_rows_to_save
@@ -702,6 +703,7 @@ class EditableTable(Table):
             self.set_data(df, DataFrameUsed.UNFILTERED)
             df = self.get_data(DataFrameUsed.MODEL).reindex(columns=keys_ordered, fill_value='')
             self.set_data(df, DataFrameUsed.MODEL)
+            self.columns_saved_str = gui_fn.check_and_convert_list_to_str(df.columns.values)
             df = self.get_data(DataFrameUsed.FILTERED)
             if df is not None:
                 df.reindex(columns=keys_ordered, fill_value='')  # reorder columns
@@ -747,10 +749,10 @@ class EditableTable(Table):
         :return: True if the file extension is valid for the current data source type, False otherwise.
         """
         file, ext = os.path.splitext(filename)
-        stored_type = self.data_source_type
+        type_saved = self.data_source_type
         self.data_source_type = DataSourceType.DATABASE if ext == '.db' else DataSourceType.FILE
         go_on = True
-        if stored_type != self.data_source_type:
+        if type_saved != self.data_source_type:
             go_on = gui_f.box_yesno(
                 f'The type of data source has changed from the previous one.\nYou should quit and restart the application to avoid any data loss.\nAre you sure you want to continue ?'
             )
@@ -989,7 +991,7 @@ class EditableTable(Table):
             for asset_id, size in asset_sizes.items():
                 try:
                     size = int(size)
-                    size = format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
+                    size = gui_fn.format_size(size) if size > 1 else gui_g.s.unknown_size  # convert size to readable text
                     df.loc[df['Asset_id'] == asset_id, 'Downloaded size'] = size
                     # print(f'asset_id={asset_id} size={size}')
                 except KeyError:
@@ -1275,7 +1277,7 @@ class EditableTable(Table):
         :param update_filters: whether to update the current filters.
         :param update_format: whether to update the table format.
         """
-        self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
+        self._column_infos_saved = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data()
         if update_format:
             # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
@@ -1310,7 +1312,7 @@ class EditableTable(Table):
         if reset_page:
             self.current_page = 1
             self.update_preview_info_func()
-        if update_filters or self._old_is_filtered != self.is_filtered:
+        if update_filters or self._is_filtered_saved != self.is_filtered:
             self.resetColors()
         self.update_page(keep_col_infos=True)
 
@@ -1319,7 +1321,7 @@ class EditableTable(Table):
         Update the page.
         """
         if not keep_col_infos:
-            self._column_infos_stored = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
+            self._column_infos_saved = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data(df_type=DataFrameUsed.AUTO)
         try:
             # self.model could be None before load_data is called
@@ -1342,11 +1344,11 @@ class EditableTable(Table):
             self.df_filtered[gui_g.s.index_copy_col_name] = self.df_filtered.index
         # check if the columns order has changed
         new_cols_infos = self.get_col_infos()
-        if self._column_infos_stored != new_cols_infos:
+        if self._column_infos_saved != new_cols_infos:
             self.update_col_infos(
-                updated_info=self._column_infos_stored, apply_resize_cols=True
+                updated_info=self._column_infos_saved, apply_resize_cols=True
             )  # resize the columns using the data stored before the update
-        if self._old_page != self.current_page:
+        if self._current_page_saved != self.current_page:
             self.resetColors()
         self.set_colors()
         if self.update_controls_state_func is not None:
@@ -1752,7 +1754,6 @@ class EditableTable(Table):
             image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale
         ):
             # the image could not be loaded and the offline mode could have been enabled
-            # TODO: check if a nicer method could be used here to avoid coupling whithout a big refactoring (i.e. passing an "update" function)
             self._container.update_controls_state(update_title=True)
         gui_f.make_modal(edit_row_window)
 
@@ -1763,15 +1764,15 @@ class EditableTable(Table):
         row_number = self._edit_row_number
         for col_name, value in self.get_edited_row_values().items():
             col_index = self.get_col_index(col_name)
-            old_value = self.get_cell(row_number, col_index)
-            typed_old_value = gui_t.get_typed_value(csv_field=col_name, value=old_value)
+            value_saved = self.get_cell(row_number, col_index)
+            typed_value_saved = gui_t.get_typed_value(csv_field=col_name, value=value_saved)
             typed_value = gui_t.get_typed_value(csv_field=col_name, value=value)
             try:
                 typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
             except AttributeError:
                 # no strip method
                 pass
-            if col_name == 'Installed folders' and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+            if col_name == 'Installed folders' and typed_value != gui_g.s.empty_cell and typed_value != typed_value_saved:
                 if not gui_f.box_yesno(
                     'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
                 ):
@@ -1869,8 +1870,8 @@ class EditableTable(Table):
             value = self._edit_cell_widget.get_content()
             row_number = self._edit_cell_row_number
             col_index = self._edit_cell_col_index
-            old_value = self.get_cell(row_number, col_index)
-            typed_old_value = gui_t.get_typed_value(csv_field=tag, value=old_value)
+            value_saved = self.get_cell(row_number, col_index)
+            typed_value_saved = gui_t.get_typed_value(csv_field=tag, value=value_saved)
             typed_value = gui_t.get_typed_value(csv_field=tag, value=value)
             try:
                 typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
@@ -1878,7 +1879,7 @@ class EditableTable(Table):
                 # no strip method for the typed_value
                 pass
             col_installed_folders = self.get_col_index('Installed folders')
-            if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+            if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_value_saved:
                 if not gui_f.box_yesno(
                     'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
                 ):
@@ -1919,7 +1920,6 @@ class EditableTable(Table):
             col_index = self.get_col_index(col_name)
             value = self.get_cell(row_number, col_index)
             if col_name == 'Asset_id':
-                # TODO: check if a nicer method could be used here to avoid coupling whithout a big refactoring (i.e. passing an "update" function)
                 frm_content = self._container
                 uevm_gui = frm_content.container
                 uevm_gui.set_asset_id(value)
@@ -1945,18 +1945,18 @@ class EditableTable(Table):
         :param col_index: column index of the cell.
         :param tag: tag associated to the control where the value come from.
         """
-        old_value = self.get_cell(row_number, col_index)
-        typed_old_value = gui_t.get_typed_value(sql_field=tag, value=old_value)
+        value_saved = self.get_cell(row_number, col_index)
+        typed_value_saved = gui_t.get_typed_value(sql_field=tag, value=value_saved)
         typed_value = gui_t.get_typed_value(sql_field=tag, value=value)
         try:
             typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
         except AttributeError:
             # no strip method for the typed_value
             pass
-        if row_number < 0 or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or col_index < 0 or typed_old_value == typed_value:
+        if row_number < 0 or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or col_index < 0 or typed_value_saved == typed_value:
             return
         col_installed_folders = self.get_col_index('Installed folders')
-        if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_old_value:
+        if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_value_saved:
             if not gui_f.box_yesno(
                 'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
             ):
@@ -2010,7 +2010,7 @@ class EditableTable(Table):
         if added:
             origin = self.get_cell(row_number, self.get_col_index('Origin'))
             # open the folder of the asset
-            if not open_folder_in_file_explorer(origin):
+            if not gui_fn.open_folder_in_file_explorer(origin):
                 gui_f.box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
         else:
             gui_f.box_message('Only possible with asset that have been mannualy added.', 'info')
