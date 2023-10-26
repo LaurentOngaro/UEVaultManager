@@ -1032,7 +1032,7 @@ class EditableTable(Table):
         db_asset_per_page = 100  # a bigger value will be refused by UE API
         if gui_g.s.testing_switch == 1:
             start_row = 15000
-            stop_row = 15000 + db_asset_per_page
+            stop_row = 15000 + db_asset_per_page*5
         else:
             start_row = 0
             stop_row = 0
