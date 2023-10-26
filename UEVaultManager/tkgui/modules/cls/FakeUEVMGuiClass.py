@@ -3,6 +3,8 @@
 Implementation for:
 - FakeUEVMGuiClass: hidden main window for the application.
 """
+import time
+
 import ttkbootstrap as ttk
 
 
@@ -19,9 +21,8 @@ class FakeUEVMGuiClass(ttk.Window):
         self.geometry('100x150')
         self.withdraw()
         self.progress_window = None
-        self.update_delay: int = 2000
+        self.update_delay: int = 1000
         self.editable_table = None
-        self.editable_table.db_handler = None
 
     def mainloop(self, n=0, call_tk_mainloop: bool = True):
         """
@@ -31,18 +32,26 @@ class FakeUEVMGuiClass(ttk.Window):
 
         Overrided to add logging function for debugging
         """
-        print(f'starting mainloop in {__name__}')
-        self.after(self.update_delay, self.update_progress_windows)
-        if call_tk_mainloop:
+        if call_tk_mainloop or self.progress_window is None:
+            self.after(self.update_delay, self.update_progress)
+            print(f'starting mainloop in {__name__}')
             # the original mainloop could not be called sometime in a CLI session because it will block the console
             self.tk.mainloop(n)
-        print(f'ending mainloop in {__name__}')
+        else:
+            print(f'starting update progress loop in {__name__}')
+            while self.progress_window.continue_execution:
+                time.sleep(self.update_delay / 2)
+                self.update_idletasks()
+                time.sleep(self.update_delay / 2)
+                self.update_progress()
+        print(f'ending mainloop or update progress loop in {__name__}')
 
-    def update_progress_windows(self):
+    def update_progress(self):
         """
         Update the child progress windows.
         """
+        self.update_idletasks()
         if self.progress_window:
             self.progress_window.update()
-            print('UPDATE')
-        self.after(self.update_delay, self.update_progress_windows)
+            # print('UPDATE')
+        self.after(self.update_delay, self.update_progress)
