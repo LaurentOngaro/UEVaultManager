@@ -320,8 +320,13 @@ class UEVMLFS:
         """
         found = True
         try:
-            app_id = asset_data['releaseInfo'][-1]['appId']  # latest release
-        except (KeyError, IndexError):
+            release_info = asset_data.get('releaseInfo', None)
+            if type(release_info) is list:
+                app_id = release_info[-1]['appId']
+            else:
+                release_info = json.loads(release_info)
+                app_id = release_info['appId']
+        except (KeyError, IndexError, TypeError):
             # we keep UrlSlug here because it can arise from the scrapped data
             app_id = asset_data.get('urlSlug', None) or asset_data.get('asset_slug', None)
             if app_id is None:
