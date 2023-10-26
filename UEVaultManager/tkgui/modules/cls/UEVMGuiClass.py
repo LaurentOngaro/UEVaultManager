@@ -985,12 +985,16 @@ class UEVMGui(tk.Tk):
                                     'supported_versions': supported_versions,
                                     'downloaded_size': gui_g.s.unknown_size  # as it's local, it's downloaded, so we add a size
                                 }
-                                msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_ext else f'-->Found {folder_name} containing a {asset_type.name}'
-                                self.logger.debug(msg)
-                                if self.core.scan_assets_logger:
-                                    self.core.scan_assets_logger.info(msg)
                                 if grab_result != GrabResult.NO_ERROR.name or not marketplace_url:
                                     invalid_folders.append(full_folder)
+                                    msg = f'-->{folder_name} is an invalid folder'
+                                    if self.core.scan_assets_logger:
+                                        self.core.scan_assets_logger.warning(msg)
+                                else:
+                                    msg = f'-->Found {folder_name} as a valid project containing a {asset_type.name}' if extension_lower in gui_g.s.ue_valid_file_ext else f'-->Found {folder_name} containing a {asset_type.name}'
+                                    if self.core.scan_assets_logger:
+                                        self.core.scan_assets_logger.info(msg)
+                                self.logger.debug(msg)
                                 # remove all the subfolders from the list of folders to scan
                                 folder_to_scan = [folder for folder in folder_to_scan if not folder.startswith(full_folder)]
                                 continue
