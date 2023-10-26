@@ -16,7 +16,7 @@ from threading import current_thread
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import GrabResult, is_asset_obsolete
+from UEVaultManager.api.egs import is_asset_obsolete
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import convert_data_to_csv, csv_sql_fields, debug_parsed_data, get_csv_field_name_list, is_on_state, \
@@ -28,6 +28,7 @@ from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgres
 from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str
 from UEVaultManager.tkgui.modules.types import DataSourceType
+from UEVaultManager.tkgui.modules.types import GrabResult
 from UEVaultManager.utils.cli import str_is_bool, str_to_bool
 
 
@@ -78,6 +79,7 @@ class UEAssetScraper:
     :param progress_window: ProgressWindow object. Defaults to None. If None, a new ProgressWindow object will be created.
     :param core: AppCore object. Defaults to None. If None, a new AppCore object will be created.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
+    :param filter_category: category to filter the data. Defaults to '' (no filter).
     """
 
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
@@ -103,6 +105,7 @@ class UEAssetScraper:
         progress_window=None,  # don't use a typed annotation here to avoid import
         core: AppCore = None,
         timeout: (float, float) = (7, 7),
+        filter_category: str = ''
     ) -> None:
         self._last_run_filename: str = 'last_run.json'
         self._urls_list_filename: str = 'urls_list.txt'
@@ -136,11 +139,11 @@ class UEAssetScraper:
             self._log(message, 'error')
             return
         self.core = AppCore(timeout=timeout) if core is None else core
-
+        self.timeout = timeout
         if progress_window is None:
             progress_window = FakeProgressWindow()
         self.progress_window = progress_window
-
+        self.filter_category = filter_category
         if self.load_from_files:
             self.save_to_files = False  # no need to save if the source are the files , they won't be changes
             # self.use_database = True
@@ -284,8 +287,21 @@ class UEAssetScraper:
                                 break
                     except IndexError:
                         self._log(f'asset {app_name} has no image', level='debug')
+
+                # category and FILTER
                 if categories:
-                    asset_data['category'] = categories[0].get('name', '') or categories[0].get('path', '') or ''
+                    category = categories[0].get('name', '') or categories[0].get('path', '') or ''
+                    category = str(category)
+                    category_lower = category.lower()
+                    if self.filter_category and self.filter_category.lower() not in category_lower:
+                        self._log(
+                            f'{app_name} has been FILTERED by category ("{self.filter_category}" text not found in "{category_lower}").It has been added to the ignored_logger file'
+                        )
+                        if self.core.ignored_logger:
+                            self.core.ignored_logger.info(app_name)
+                        continue
+                    else:
+                        asset_data['category'] = category
 
                 # asset_id
                 try:
@@ -398,9 +414,9 @@ class UEAssetScraper:
                 # we use copy data for user_fields to preserve user data
                 if asset_existing_data and use_database:
                     for field in asset_db_handler.user_fields:
-                        old_value = asset_existing_data.get(field, None)
-                        if old_value:
-                            asset_data[field] = old_value
+                        existing_value = asset_existing_data.get(field, None)
+                        if existing_value:
+                            asset_data[field] = existing_value
 
                 # installed_folders and tags
                 installed_folders_str = asset_data.get('installed_folders', '')
@@ -835,10 +851,10 @@ class UEAssetScraper:
                 return False
 
         if self.use_database:
-            tags_count_old = self.asset_db_handler.get_rows_count('tags')
-            rating_count_old = self.asset_db_handler.get_rows_count('ratings')
+            tags_count_saved = self.asset_db_handler.get_rows_count('tags')
+            rating_count_saved = self.asset_db_handler.get_rows_count('ratings')
         else:
-            tags_count_old, rating_count_old = 0, 0
+            tags_count_saved, rating_count_saved = 0, 0
         if asset_loaded <= 0:
             # no data, ie no files loaded, so we have to save them
             self.load_from_files = False
@@ -919,7 +935,7 @@ class UEAssetScraper:
         if self.use_database:
             tags_count = self.asset_db_handler.get_rows_count('tags')
             rating_count = self.asset_db_handler.get_rows_count('ratings')
-            self._log(f'{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.')
+            self._log(f'{tags_count - tags_count_saved} tags and {rating_count - rating_count_saved} ratings have been added to the database.')
         gui_g.WindowsRef.uevm_gui.progress_window = None  # disable the update function to the main window
         return True
 
@@ -968,7 +984,7 @@ class UEAssetScraper:
         :return: number of files loaded or -1 if the process has been interrupted.
         """
         start_time = time.time()
-        old_text = self.progress_window.get_text()
+        text_saved = self.progress_window.get_text()
         self._files_count = 0
         self._scraped_ids = []
         self._scraped_data = []
@@ -1017,7 +1033,7 @@ class UEAssetScraper:
         with open(filename, 'w', encoding='utf-8') as file:
             json.dump(content, file)
 
-        self.progress_window.reset(new_value=0, new_text=old_text, new_max_value=0)
+        self.progress_window.reset(new_value=0, new_text=text_saved, new_max_value=0)
         # self._save_in_db(last_run_content=content) # duplicate with a caller
         return self._files_count
 

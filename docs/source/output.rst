@@ -9,12 +9,12 @@ Log files and debug
 file to set their file name (and path). If a file name is missing, empty
 or set to '' the corresponding log feature will be disabled.
 
--  assets scraping log
+-  ignored assets file log
 
-   -  file is defined by the setting: `scrap_assets_filename_log`
-      (default is ``~/.config/scan_assets.log``)
-   -  each scraped asset is listed here whith the result of the scan
-
+   -  file is defined by the setting: `ignored_assets_filename_log`
+      (default is ``~/.config/ignored_assets.log``)
+   -  each asset listed in the file has been ignored during the process.
+      Possible reasons are: asset filtered by category (list with -fc option)
 
 -  not found assets log
 
@@ -29,6 +29,13 @@ or set to '' the corresponding log feature will be disabled.
    -  file is defined by the setting: `scan_assets_filename_log`
       (default is ``~/.config/scan_assets_filename_log.log``)
    -  each scanned folder is listed here whith the result of the scan
+
+
+-  assets scraping log
+
+   -  file is defined by the setting: `scrap_assets_filename_log`
+      (default is ``~/.config/scan_assets.log``)
+   -  each scraped asset is listed here whith the result of the scan
 
 
 The output file

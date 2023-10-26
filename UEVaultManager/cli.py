@@ -92,17 +92,18 @@ def init_progress_window(text: str, args, logger=None, callback: callable = None
         uewm_gui_exists = False
     else:
         uewm_gui_exists = True
-    force_refresh = True if args.force_refresh else False
+    # force_refresh = True if args.force_refresh else False
     pw = show_progress(
         parent=gui_g.WindowsRef.uevm_gui,
         text=text,
         quit_on_close=not uewm_gui_exists,
         function=callback,
-        function_parameters={
-            'filter_category': gui_g.UEVM_filter_category,
-            'force_refresh': force_refresh,
-        },
-        force_new_window=force_new_window
+        # not used anymore
+        # function_parameters={
+        #     'filter_category': gui_g.UEVM_filter_category,
+        #     'force_refresh': force_refresh,
+        # },
+        force_new_window=force_new_window,
     )
     gui_g.WindowsRef.uevm_gui.progress_window = pw
     return uewm_gui_exists, pw
@@ -261,9 +262,10 @@ class UEVaultManagerCLI:
         """
         Create a backup of the log files.
         """
-        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
+        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
         create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
         create_file_backup(self.core.scan_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
+        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
 
     def auth(self, args) -> None:
         """
@@ -375,8 +377,7 @@ class UEVaultManagerCLI:
 
         # open log file for assets if necessary
         self.core.setup_assets_loggers()
-        self.core.egs.notfound_logger = self.core.notfound_logger
-        self.core.egs.ignored_logger = self.core.ignored_logger
+
         if args.output:
             # test if the folder is writable
             if not check_and_create_file(args.output):
@@ -394,7 +395,6 @@ class UEVaultManagerCLI:
             message = 'Getting asset list... (this may take a while)'
         self._log(message)
         if args.filter_category and args.filter_category != gui_g.s.default_value_for_all:
-            gui_g.UEVM_filter_category = args.filter_category
             self._log(f'The String "{args.filter_category}" will be search in Assets category')
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
@@ -408,7 +408,8 @@ class UEVaultManagerCLI:
         else:
             file_format = ''
         save_to_file = (file_format != '')
-        assets_json_data = self.scrap_assets(args, use_database=False, file_name=args.output, save_to_format=file_format)
+        assets_json_data = self.scrap_assets(
+            args, use_database=False, file_name=args.output, save_to_format=file_format)
         if assets_json_data and not save_to_file:
             # here, no other output has been done before, so we print the asset in a quick format to the console
             print('\nAvailable UE Assets:')
@@ -959,6 +960,7 @@ class UEVaultManagerCLI:
             offline_mode=args.offline,
             progress_window=pw,
             core=self.core,  # VERY IMPORTANT: pass the code object to the scraper to keep the same session
+            filter_category=args.filter_category,
         )
         scrapped_data = []
         result_count = 0
@@ -1204,10 +1206,14 @@ class UEVaultManagerCLI:
             return False
 
         if not args.yes:
-            if not get_boolean_choice(f'Do you wish to install {release_title} ?'):  # todo: use a gui yes/no if gui is enabled
+            message = f'Do you wish to install {release_title} ?'
+            if UEVaultManagerCLI.is_gui and not box_yesno(message):
                 print('Aborting...')
-                # not in GUI self.core.clean_exit(0)
                 return False
+            elif not UEVaultManagerCLI.is_gui and not get_boolean_choice(message):
+                print('Aborting...')
+                return False
+
         start_t = time.time()
         try:
             # set up logging stuff (should be moved somewhere else later)
@@ -1706,9 +1712,10 @@ def main():
     cli.core.create_log_backup = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'create_log_backup', fallback=True))
     cli.core.verbose_mode = str_to_bool(cli.core.uevmlfs.config.get('UEVaultManager', 'verbose_mode', fallback=False))
 
-    cli.core.scrap_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'scrap_assets_filename_log', fallback='')
+    cli.core.ignored_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'ignored_assets_filename_log', fallback='')
     cli.core.notfound_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'notfound_assets_filename_log', fallback='')
     cli.core.scan_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'scan_assets_filename_log', fallback='')
+    cli.core.scrap_assets_filename_log = cli.core.uevmlfs.config.get('UEVaultManager', 'scrap_assets_filename_log', fallback='')
 
     cli.core.engine_version_for_obsolete_assets = cli.core.uevmlfs.config.get(
         'UEVaultManager', 'engine_version_for_obsolete_assets', fallback=gui_g.s.engine_version_for_obsolete_assets

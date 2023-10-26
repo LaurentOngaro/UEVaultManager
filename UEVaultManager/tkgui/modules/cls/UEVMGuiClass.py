@@ -23,7 +23,7 @@ from requests import ReadTimeout
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import EPCAPI, GrabResult
+from UEVaultManager.api.egs import EPCAPI
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import get_version_from_path, path_join
 from UEVaultManager.models.csv_sql_fields import debug_parsed_data
@@ -42,6 +42,7 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiCon
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionFrameComp import UEVMGuiOptionFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
+from UEVaultManager.tkgui.modules.types import GrabResult
 
 
 # not needed here
@@ -549,23 +550,26 @@ class UEVMGui(tk.Tk):
         When the mouse is released on the header.
         :param event: event that triggered the call.
         """
-        self.editable_table.on_header_release(event)
-        # TODO: check if the column order has changed before enabling the widget
+        data_table = self.editable_table  # shortcut
+        data_table.on_header_release(event)
+        columns = data_table.model.df.columns  # df. model checked
+        if data_table.columns_saved_str == gui_fn.check_and_convert_list_to_str(columns.values):
+            return
         widget_list = gui_g.stated_widgets.get('table_has_changed', [])
         gui_f.enable_widgets_in_list(widget_list)
         # update the column infos
-        columns = self.editable_table.model.df.columns  # df. model checked
-        old_columns_infos = gui_g.s.get_column_infos(self.data_source_type)
+        columns_infos_saved = gui_g.s.get_column_infos(self.data_source_type)
         # reorder column_infos using columns keys
         new_columns_infos = {}
         for i, col in enumerate(columns):
             try:
-                new_columns_infos[col] = old_columns_infos[col]
+                new_columns_infos[col] = columns_infos_saved[col]
                 new_columns_infos[col]['pos'] = i
             except KeyError:
                 pass
         gui_g.s.set_column_infos(new_columns_infos, self.data_source_type)
         gui_g.s.save_config_file()
+        data_table._columns_saved = gui_fn.check_and_convert_list_to_str(data_table.model.df.columns.values)
 
     def on_close(self, _event=None) -> None:
         """
@@ -1080,7 +1084,6 @@ class UEVMGui(tk.Tk):
                         marketplace_url=marketplace_url,
                         row_index=row_index,
                         forced_data=forced_data,
-                        show_message=False,
                         update_dataframe=False,
                         check_unicity=is_adding
                     )  # call update_row() inside
@@ -1114,7 +1117,18 @@ class UEVMGui(tk.Tk):
                 gui_f.make_modal(gui_g.WindowsRef.display_content)
             self.logger.warning(result)
 
-    def _scrap_from_url(self, marketplace_url: str, forced_data: {} = None, show_message: bool = False, update_progress=True) -> dict:
+    def _scrap_from_url(
+        self, marketplace_url: str, forced_data: {} = None, show_message: bool = False, update_progress=True, app_name: str = ''
+    ) -> dict:
+        """
+        Scrap the data from a marketplace_url.
+        :param marketplace_url: marketplace_url to scrap.
+        :param forced_data: data to force in the row.
+        :param show_message: whether to show message boxes or not.
+        :param update_progress: whether to update the progressWindow or not.
+        :param app_name: name of the app to scrap (Optional).
+        :return: data scrapped from the marketplace_url Or None if the marketplace_url is invalid.
+        """
         is_ok = False
         asset_data = None
         # check if the marketplace_url is a marketplace marketplace_url
@@ -1128,6 +1142,8 @@ class UEVMGui(tk.Tk):
                     gui_f.box_message(msg, level='warning')
                 else:
                     self.logger.warning(msg)
+                    if self.core.notfound_assets_filename_log:
+                        self.core.notfound_assets_filename_log.info(msg)
                 return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             if self.ue_asset_scraper is None:
@@ -1149,17 +1165,18 @@ class UEVMGui(tk.Tk):
             self.ue_asset_scraper.get_data_from_url(api_product_url)
             asset_data = self.ue_asset_scraper.pop_last_scrapped_data()  # returns a list of one element
             if asset_data is not None and len(asset_data) > 0:
-                if forced_data is not None:
+                if self.is_using_database() and forced_data is not None:
                     for key, value in forced_data.items():
                         asset_data[0][key] = value
                 self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=update_progress)
                 is_ok = True
-                # TODO: add to cli.core.scan_assets_filename_log
         if not is_ok:
             asset_data = None
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
-            # TODO: add to cli.core.notfound_assets_filename_log
-            # TODO: change the grab result for this asset
+            if self.core.notfound_assets_filename_log:
+                self.core.notfound_assets_filename_log.info(f'{app_name}: invalid url "{marketplace_url}"')
+            if self.is_using_database():
+                self.ue_asset_scraper.asset_db_handler.update_asset('grab_result', GrabResult.CONTENT_NOT_FOUND.name, asset_id=app_name)
             if show_message:
                 gui_f.box_message(msg, level='warning')
             else:
@@ -1194,7 +1211,7 @@ class UEVMGui(tk.Tk):
                 start = max(min_val, start)
                 end = min(max_val, end)
                 all_row_numbers = list(range(start, end))
-                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, show_message=False, )
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False)
                 self.ue_asset_scraper = None
 
     def scrap_asset(
@@ -1203,7 +1220,6 @@ class UEVMGui(tk.Tk):
         row_index: int = -1,
         row_numbers: list = None,
         forced_data: {} = None,
-        show_message: bool = True,
         update_dataframe: bool = True,
         check_unicity: bool = False,
     ) -> None:
@@ -1213,7 +1229,6 @@ class UEVMGui(tk.Tk):
         :param row_numbers: list a row numbers to scrap. If None, will use the selected rows.
         :param row_index: (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
         :param forced_data: if not None, all the key in forced_data will replace the scrapped data.
-        :param show_message: whether to show a message if the marketplace_url is not valid.
         :param update_dataframe: whether to update the dataframe after scraping.
         :param check_unicity: whether to check if the data are unique and ask the user to update the row if not.
         """
@@ -1253,10 +1268,10 @@ class UEVMGui(tk.Tk):
         row_count = len(row_indexes)
         data_table = self.editable_table  # shortcut
         if self.is_using_database():
-            tags_count_old = data_table.db_handler.get_rows_count('tags')
-            rating_count_old = data_table.db_handler.get_rows_count('ratings')
+            tags_count_saved = data_table.db_handler.get_rows_count('tags')
+            rating_count_saved = data_table.db_handler.get_rows_count('ratings')
         else:
-            tags_count_old, rating_count_old = 0, 0
+            tags_count_saved, rating_count_saved = 0, 0
         if marketplace_url is None:
             base_text = "Scraping asset's data. Could take a while..."
             if row_count > 1:
@@ -1296,7 +1311,9 @@ class UEVMGui(tk.Tk):
                         f'The data for row index #{row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-
+                else:
+                    col_index = data_table.get_col_index('Grab result')
+                    data_table.update_cell(row_index, col_index, GrabResult.CONTENT_NOT_FOUND.name, convert_row_number_to_row_index=False)
             gui_f.close_progress(self)
             # if show_message and row_count > 1:
             if row_count > 1:
@@ -1307,7 +1324,7 @@ class UEVMGui(tk.Tk):
             if self.is_using_database():
                 tags_count = data_table.db_handler.get_rows_count('tags')
                 rating_count = data_table.db_handler.get_rows_count('ratings')
-                tags_message = f'\n{tags_count - tags_count_old} tags and {rating_count - rating_count_old} ratings have been added to the database.'
+                tags_message = f'\n{tags_count - tags_count_saved} tags and {rating_count - rating_count_saved} ratings have been added to the database.'
             gui_f.box_message(message + tags_message)
         else:
             asset_data = self._scrap_from_url(marketplace_url, forced_data=forced_data, show_message=show_message)
@@ -1320,6 +1337,10 @@ class UEVMGui(tk.Tk):
                     f'The data for row index #{row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped'
                 ):
                     data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+            else:
+                col_index = data_table.get_col_index('Grab result')
+                data_table.update_cell(row_index, col_index, GrabResult.CONTENT_NOT_FOUND.name, convert_row_number_to_row_index=False)
+
         if update_dataframe:
             data_table.update()
 

@@ -160,13 +160,16 @@ class UEVMLFS:
                 'UEVaultManager', '; File name (and path) to log issues with assets when running the list or scrap commands' + "\n" +
                 '; use "~/" at the start of the filename to store it relatively to the user directory'
             )
-            self.config.set('UEVaultManager', 'scrap_assets_filename_log', '~/.config/scrap_assets.log')
+            self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'notfound_assets_filename_log'):
             self.config.set('UEVaultManager', 'notfound_assets_filename_log', '~/.config/notfound_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'scan_assets_filename_log'):
             self.config.set('UEVaultManager', 'scan_assets_filename_log', '~/.config/scan_assets.log')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'scrap_assets_filename_log'):
+            self.config.set('UEVaultManager', 'scan_assets_filename_log', '~/.config/scrap_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'engine_version_for_obsolete_assets'):
             self.config.set('UEVaultManager', '; Minimal unreal engine version to check for obsolete assets (default is 4.26)')

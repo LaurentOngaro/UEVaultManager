@@ -28,7 +28,7 @@ from UEVaultManager.downloader.mp.DLManagerClass import DLManager
 from UEVaultManager.lfs.EPCLFSClass import EPCLFS
 from UEVaultManager.lfs.UEVMLFSClass import UEVMLFS
 from UEVaultManager.lfs.utils import clean_filename, path_join
-from UEVaultManager.models.Asset import Asset, AssetBase, InstalledAsset
+from UEVaultManager.models.Asset import Asset, InstalledAsset
 from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResult
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
@@ -97,18 +97,20 @@ class AppCore:
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
         # Set the file name (and path) to log issues when an asset is ignored or filtered when running the list or scrap commands
-        self.scrap_assets_filename_log = ''
+        self.ignored_assets_filename_log = ''
         # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the list or scrap commands
         self.notfound_assets_filename_log = ''
         # Set the file name (and path) to log issues when scanning folder to find assets
         self.scan_assets_filename_log = ''
+        # Set the file name (and path) to log scraped assets
+        self.scrap_assets_filename_log = ''
         # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
         self.create_log_backup = True
-        # new file loggers
+        # file loggers
         self.ignored_logger = None
         self.notfound_logger = None
-        self.bad_data_logger = None
         self.scan_assets_logger = None
+        self.scrap_asset_logger = None
         self.use_threads = False
         self.thread_executor = None
         self.thread_executor_must_stop = False
@@ -195,12 +197,14 @@ class AppCore:
         formatter = logging.Formatter('%(message)s')
         message = f"-----\n{datetime.now().strftime(DateFormat.csv)} Log Started\n-----\n"
 
-        if self.scrap_assets_filename_log:
-            self.ignored_logger = create_logger('ScrapAssets', self.scrap_assets_filename_log)
+        if self.ignored_assets_filename_log:
+            self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
         if self.notfound_assets_filename_log:
             self.notfound_logger = create_logger('NotFoundAssets', self.notfound_assets_filename_log)
         if self.scan_assets_filename_log:
             self.scan_assets_logger = create_logger('ScanAssets', self.scan_assets_filename_log)
+        if self.scrap_assets_filename_log:
+            self.scrap_asset_logger = create_logger('ScrapAssets', self.scrap_assets_filename_log)
 
     def auth_sid(self, sid) -> str:
         """
@@ -405,27 +409,6 @@ class AppCore:
         :return: update info dict.
         """
         return self.uevmlfs.get_online_version_saved()['data']
-
-    def get_assets(self, update_assets=False) -> List[AssetBase]:
-        """
-        Return a list of assets.
-        :param update_assets: whether to always fetches a new list of assets from the server.
-        :return: list of AssetBase objects.
-        """
-        # TODO: adapt this code using the scraped json files
-        # do not save and always fetch list when platform is overridden
-        if not self.uevmlfs.asset_list or update_assets:
-            # if not logged in, return empty list
-            if not self.egs.user:
-                return []
-            assets = self.uevmlfs.asset_list.copy() if self.uevmlfs.asset_list else {}
-            # TODO : scrap asset here
-
-            # only save (and write to disk) if there were changes
-            if self.uevmlfs.asset_list != assets:
-                self.uevmlfs.asset_list = assets  # this also save the list in json file
-        assets = self.uevmlfs.asset_list
-        return assets
 
     def is_installed(self, app_name: str) -> bool:
         """
