@@ -559,6 +559,7 @@ class UEAssetDbHandler:
                 tags = asset.get('tags', [])
                 asset['tags'] = self.convert_tag_list_to_string(tags)  # will search the tags table for ids
                 asset['installed_folders'] = check_and_convert_list_to_str(asset.get('installed_folders', []))
+                asset['release_info'] = json.dumps(asset.get('release_info', []))
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()

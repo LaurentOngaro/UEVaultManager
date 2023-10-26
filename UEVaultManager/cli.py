@@ -948,7 +948,7 @@ class UEVaultManagerCLI:
                     asset_data['downloaded_size'] = self.core.uevmlfs.get_asset_size(app_name)
 
         if UEVaultManagerCLI.is_gui:
-            pw.mainloop()
+            # pw.mainloop()
             pw.quit_on_close = False
             pw.close_window(destroy_window=True)
         return scrapped_data

@@ -91,6 +91,16 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
+        ttk_item = ttk.Label(lblf_gui_settings, text='Timeout for scraping')
+        ttk_item.grid(row=cur_row, column=cur_col, **grid_e_options)
+        cur_col += 1
+        self.var_timeout_for_scraping = tk.IntVar(value=gui_g.s.timeout_for_scraping)
+        self.var_timeout_for_scraping.trace_add('write', lambda name, index, mode: self.update_gui_options())
+        entry_timeout_for_scraping = ttk.Entry(lblf_gui_settings, textvariable=self.var_timeout_for_scraping, width=2)
+        entry_timeout_for_scraping.grid(row=cur_row, column=cur_col, **grid_ew_options)
+        # new row
+        cur_row += 1
+        cur_col = 0
         var_use_threads = tk.BooleanVar(value=gui_g.s.use_threads)
         var_use_threads.trace_add('write', lambda name, index, mode: gui_g.set_use_threads(var_use_threads.get()))
         ck_use_threads = ttk.Checkbutton(lblf_gui_settings, text='Use threads', variable=var_use_threads)
@@ -155,6 +165,14 @@ class UEVMGuiOptionFrame(ttk.Frame):
         """
         Update the GUI options.
         """
+        try:
+            value = self.var_timeout_for_scraping.get()
+            value = int(value)  # tkinter will raise an error is the value can be converted to an int
+        except (ValueError, tk.TclError):
+            pass
+        else:
+            gui_g.s.timeout_for_scraping = value
+
         try:
             value = self.var_testing_switch.get()
             value = int(value)  # tkinter will raise an error is the value can be converted to an int

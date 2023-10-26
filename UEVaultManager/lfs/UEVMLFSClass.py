@@ -284,7 +284,7 @@ class UEVMLFS:
     def load_filter_list(filename: str = '') -> Optional[dict]:
         """
         Load the filters from a json file
-        :return: filters or {} if not found. Will return None on erro.
+        :return: filters or {} if not found. Will return None on error.
         """
         filename = filename or gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
@@ -312,36 +312,47 @@ class UEVMLFS:
             json.dump(filters, file, indent=2, sort_keys=True)
 
     @staticmethod
-    def get_app_name_from_asset_data(asset_data: dict) -> (str, bool):
+    def get_app_name_from_asset_data(asset_data: dict, use_sql_fields: bool = False) -> (str, bool):
         """
         Return the app_name to use to get the asset data.
         :param asset_data: asset data.
+        :param use_sql_fields: whether to use the sql fields name instead of json field name. Adapt the value with the type of asset_data.
         :return: (app_name (ie asset_id), and a True if the app_id has been found).
         """
+        app_id_field = 'appId'  # does not change between JSON and SQL data because is inside another json field
+        if use_sql_fields:
+            # field names are AFTER parsing (ie in an ue_asset object)
+            release_info_field = 'release_info'
+            asset_slug_field = 'asset_slug'
+            catalog_item_id_field = 'catalog_item_id'
+        else:
+            # raw field names are BEFORE parsing (ie in json data)
+            release_info_field = 'releaseInfo'
+            asset_slug_field = 'urlSlug'
+            catalog_item_id_field = 'catalogItemId'
         found = True
         try:
-            release_info = asset_data.get('releaseInfo', None)
-            if type(release_info) is list:
-                app_id = release_info[-1]['appId']
-            else:
+            release_info = asset_data[release_info_field]
+            if type(release_info) is str:
                 release_info = json.loads(release_info)
-                app_id = release_info['appId']
-        except (KeyError, IndexError, TypeError):
+            app_id = release_info[-1][app_id_field]  # appid from the latest release
+        except (Exception, ):
             # we keep UrlSlug here because it can arise from the scrapped data
-            app_id = asset_data.get('urlSlug', None) or asset_data.get('asset_slug', None)
+            app_id = asset_data.get(asset_slug_field, None)
             if app_id is None:
-                app_id = asset_data.get('catalogItemId', create_uid())
+                app_id = asset_data.get(catalog_item_id_field, create_uid())
                 found = False
         return app_id, found
 
     @staticmethod
-    def get_filename_from_asset_data(asset_data: dict) -> (str, str):
+    def get_filename_from_asset_data(asset_data: dict, use_sql_fields: bool = False) -> (str, str):
         """
         Return the filename and the app_name to use to save the asset data.
         :param asset_data: asset data.
+        :param use_sql_fields: whether to use the sql fields name instead of json field name. Adapt the value with the type of asset_data.
         :return: (the filename, the app_id).
         """
-        app_name, found = UEVMLFS.get_app_name_from_asset_data(asset_data)
+        app_name, found = UEVMLFS.get_app_name_from_asset_data(asset_data, use_sql_fields=use_sql_fields)
         return f'{app_name}.json' if found else f'_no_appId_{app_name}.json', app_name
 
     @staticmethod
@@ -527,7 +538,7 @@ class UEVMLFS:
     def load_installed_assets(self) -> bool:
         """
         Get the installed asset data.
-        :return: True if the asset data is loade.
+        :return: True if the asset data is loaded.
         """
         try:
             with open(self.installed_asset_filename, 'r', encoding='utf-8') as file:

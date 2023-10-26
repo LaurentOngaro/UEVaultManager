@@ -105,6 +105,7 @@ class GUISettings:
         self.tag_prefix: str = 't_'
         self.expand_columns_factor: int = 20
         self.contract_columns_factor: int = 20
+        self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
         # dark themes: "darkly", "superhero", "solar", "cyborg", "vapor"
@@ -125,7 +126,6 @@ class GUISettings:
             'rowselectedcolor': '#E4DED4',  #
             'textcolor': 'black'  #
         }
-        self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
 
         folders = [
             self.assets_folder, self.assets_data_folder, self.owned_assets_data_folder, self.assets_global_folder, self.assets_csv_files_folder,
@@ -151,7 +151,7 @@ class GUISettings:
         :param var_name: name of the config var to get.
         :param is_dict: True if the value is a dict, False if it's a list.
         :param force_reload: True to force reloading the value from the config file and update the deserialized value.
-        :return: list or Dic.
+        :return: list or dict.
         """
         default = {} if is_dict else []
         if not force_reload and self._config_vars_deserialized.get(var_name, None) is not None:
@@ -429,6 +429,16 @@ class GUISettings:
         """ Setter for last_opened_filter """
         self.config_vars['last_opened_filter'] = value
 
+    @property
+    def timeout_for_scraping(self) -> int:
+        """ Getter for timeout_for_scraping """
+        return gui_fn.convert_to_int(self.config_vars['timeout_for_scraping'])
+
+    @timeout_for_scraping.setter
+    def timeout_for_scraping(self, value):
+        """ Setter for timeout_for_scraping """
+        self.config_vars['timeout_for_scraping'] = value
+
     def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
         """
         Get columns infos depending on the datasource type
@@ -597,13 +607,19 @@ class GUISettings:
                 'value': ''
             },
             'assets_order_col': {
-                'comment': 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column name to sort the assets from the database followed by ASC or DESC (Optional).',
+                'comment':
+                'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column name to sort the assets from the database followed by ASC or DESC (Optional).',
                 'value': 'date_added DESC'
             },
             'testing_switch': {
                 'comment':
                 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviours whithout quitting.',
                 'value': 0
+            },
+            'timeout_for_scraping': {
+                'comment':
+                'timeout in second when scraping several assets in once. This value should not be too low to limit timeout issues and scraping cancellation.',
+                'value': 30
             },
         }
 
@@ -630,34 +646,35 @@ class GUISettings:
         # store all the properties that must be saved in config file
         # no need of fallback values here, they are set in the config file by default
         config_vars = {
+            'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
+            'debug_mode': self.config.getboolean('UEVaultManager', 'debug_mode'),
+            'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
+            'timeout_for_scraping': self.config.getint('UEVaultManager', 'timeout_for_scraping'),
+            'reopen_last_file': self.config.getboolean('UEVaultManager', 'reopen_last_file'),
+            'never_update_data_files': self.config.getboolean('UEVaultManager', 'never_update_data_files'),
+            'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),
+            'check_asset_folders': self.config.getboolean('UEVaultManager', 'check_asset_folders'),
+            'browse_when_add_row': self.config.getboolean('UEVaultManager', 'browse_when_add_row'),
             'rows_per_page': self.config.getint('UEVaultManager', 'rows_per_page'),
+            'image_cache_max_time': self.config.getint('UEVaultManager', 'image_cache_max_time'),
+            'asset_images_folder': self.config.get('UEVaultManager', 'asset_images_folder'),
+            'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
+            'results_folder': self.config.get('UEVaultManager', 'results_folder'),
+            'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
             'x_pos': self.config.getint('UEVaultManager', 'x_pos'),
             'y_pos': self.config.getint('UEVaultManager', 'y_pos'),
             'width': self.config.getint('UEVaultManager', 'width'),
             'height': self.config.getint('UEVaultManager', 'height'),
-            'debug_mode': self.config.getboolean('UEVaultManager', 'debug_mode'),
-            'never_update_data_files': self.config.getboolean('UEVaultManager', 'never_update_data_files'),
-            'reopen_last_file': self.config.getboolean('UEVaultManager', 'reopen_last_file'),
-            'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),
-            'image_cache_max_time': self.config.getint('UEVaultManager', 'image_cache_max_time'),
             'last_opened_file': self.config.get('UEVaultManager', 'last_opened_file'),
-            'asset_images_folder': self.config.get('UEVaultManager', 'asset_images_folder'),
-            'results_folder': self.config.get('UEVaultManager', 'results_folder'),
-            'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
-            'folders_to_scan': self.config.get('UEVaultManager', 'folders_to_scan'),
-            'column_infos_sqlite': self.config.get('UEVaultManager', 'column_infos_sqlite'),
-            'column_infos_file': self.config.get('UEVaultManager', 'column_infos_file'),
-            'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
-            'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
-            'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
-            'testing_switch': self.config.getint('UEVaultManager', 'testing_switch'),
-            'assets_order_col': self.config.get('UEVaultManager', 'assets_order_col'),
-            'check_asset_folders': self.config.getboolean('UEVaultManager', 'check_asset_folders'),
-            'browse_when_add_row': self.config.getboolean('UEVaultManager', 'browse_when_add_row'),
             'last_opened_folder': self.config.get('UEVaultManager', 'last_opened_folder'),
             'last_opened_project': self.config.get('UEVaultManager', 'last_opened_project'),
             'last_opened_engine': self.config.get('UEVaultManager', 'last_opened_engine'),
             'last_opened_filter': self.config.get('UEVaultManager', 'last_opened_filter'),
+            'hidden_column_names': self.config.get('UEVaultManager', 'hidden_column_names'),
+            'column_infos_sqlite': self.config.get('UEVaultManager', 'column_infos_sqlite'),
+            'column_infos_file': self.config.get('UEVaultManager', 'column_infos_file'),
+            'assets_order_col': self.config.get('UEVaultManager', 'assets_order_col'),
+            'testing_switch': self.config.getint('UEVaultManager', 'testing_switch'),
         }
         return config_vars
 

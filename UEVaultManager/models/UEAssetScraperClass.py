@@ -32,6 +32,36 @@ from UEVaultManager.tkgui.modules.types import GrabResult
 from UEVaultManager.utils.cli import str_is_bool, str_to_bool
 
 
+class ScrapTask:
+    """
+    A class that handles scraping data from the Unreal Engine Marketplace.
+    :param caller: UEAssetScraper object.
+    :param log_func: function to use to log messages. Defaults to print.
+    :param task_name: name of the task. Defaults to ''.
+
+    """
+
+    def __init__(self, caller, log_func: callable = None, task_name: str = '', url: str = '', owned_assets_only: bool = False):
+        self.caller = caller
+        self.name = f'ScrapTask_{gui_fn.shorten_text(url,limit=35,prefix="_")}' if not task_name else task_name
+        self.log_func = log_func if log_func else print
+        self.url = url
+        self.owned_assets_only = owned_assets_only
+
+    def __call__(self):
+        self.log_func(f'Started ScrapTask {self.name} at {datetime.now()}')
+        res = self.caller.get_data_from_url(self.url, self.owned_assets_only)
+        self.log_func(f'END OF ScrapTask {self.name} at {datetime.now()}')
+        return res
+
+    def interrupt(self, message: str = '') -> None:
+        """
+        Interrupt the task.
+        :param message: additional message to log.
+        """
+        self.log_func(f'INTERRUPTION OF ScrapTask {self.name} at {datetime.now()}:{message}')
+
+
 class UEAS_Settings:
     """
     Settings for the class when running as main.
@@ -244,22 +274,30 @@ class UEAssetScraper:
                 # this should never occur
                 self._log(f'No id found for current asset. Passing to next asset', level='warning')
             else:
-                asset_existing_data = {}  # when getting data the "OLD" method, no existing data , because the CSV will be compared after
+                asset_existing_data = {}
                 if use_database:
                     existing_data = asset_db_handler.get_assets_data(asset_db_handler.preserved_data_fields, uid)
                     asset_existing_data = existing_data.get(uid, None)
                 categories = asset_data.get('categories', None)
-                release_info = asset_data.get('releaseInfo', {})
-                # convert release_info to a json string
-                asset_data['release_info'] = json.dumps(release_info) if release_info else gui_g.no_text_data
-                latest_release = release_info[-1] if release_info else {}
-                first_release = release_info[0] if release_info else {}
+                release_info = asset_data.get('release_info', {})  # correct field name in json file
+                if not release_info:
+                    release_info = asset_data.get('releaseInfo', {})  # old/incorrect field name in json file
+                # get app_name from asset_data or from the release_info
                 app_name = asset_data.get('app_name', '')
                 if not app_name:
-                    app_name, found = self.core.uevmlfs.get_app_name_from_asset_data(asset_data)
+                    app_name, found = self.core.uevmlfs.get_app_name_from_asset_data(asset_data.copy())
                     asset_data['app_name'] = app_name
                     if not found:
                         self._log(f'No app_name found for asset with id={uid}.The dummy value {app_name} has be used instead', level='warning')
+                # for saving in json files we must keep the data as a LIST here
+                # convert release_info to a json string
+                # release_info_str = json.dumps(release_info) if release_info else gui_g.no_text_data
+                # asset_data['release_info'] = release_info_str
+                asset_data['release_info'] = release_info
+                if 'releaseInfo' in asset_data:
+                    asset_data.pop('releaseInfo')  # we remove the duplicate field to avoid future mistakes
+                latest_release = release_info[-1] if release_info else {}
+                first_release = release_info[0] if release_info else {}
                 origin = 'Marketplace'  # by default when scraped from marketplace
                 date_now = datetime.now().strftime(DateFormat.csv)
                 grab_result = GrabResult.NO_ERROR.name
@@ -281,7 +319,7 @@ class UEAssetScraper:
                 asset_data['thumbnail_url'] = asset_data.get('thumbnail', '')
                 if not asset_data['thumbnail_url']:
                     try:
-                        key_images = asset_data['keyImages']
+                        key_images = asset_data.get('keyImages', [])
                         # search for the image with the key 'Thumbnail'
                         for image in key_images:
                             if image['type'] == 'Thumbnail':
@@ -323,7 +361,8 @@ class UEAssetScraper:
                     asset_url = self.core.egs.get_marketplace_product_url(asset_slug)
                 asset_data['asset_slug'] = asset_slug
                 asset_data['asset_url'] = asset_url
-                asset_data.pop('urlSlug')  # we remove the duplicate field to avoid future mistakes
+                if 'urlSlug' in asset_data:
+                    asset_data.pop('urlSlug')  # we remove the duplicate field to avoid future mistakes
 
                 # prices and discount
                 price = self.core.egs.extract_price(asset_data.get('price', gui_g.no_float_data))
@@ -808,7 +847,7 @@ class UEAssetScraper:
                 if self.save_to_files:
                     # store the individial asset in file
                     for index, asset_data in enumerate(json_data['data']['elements']):
-                        filename, app_name = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
+                        filename, app_name = self.core.uevmlfs.get_filename_from_asset_data(asset_data, use_sql_fields=False)
                         asset_data['app_name'] = app_name
                         self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                         self._files_count += 1
@@ -894,43 +933,30 @@ class UEAssetScraper:
                 # threading processing COULD be stopped by the progress window
                 self.progress_window.show_btn_stop()
                 self._thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self._threads_count, thread_name_prefix='Asset_Scaper')
-                futures = {}
-                # for url in self.urls:
-                while len(self._urls) > 0:
-                    url = self._urls.pop()
-                    # Submit the task and add its Future to the dictionary
-                    future = self._thread_executor.submit(lambda url_param: self.get_data_from_url(url_param, owned_assets_only), url)
-                    futures[url] = future
-                    future.add_done_callback(self._future_has_ended)
-
+                tasks = [
+                    ScrapTask(caller=self, log_func=self._log, task_name=f'ScrapTask #{i}', url=url, owned_assets_only=False)
+                    for i, url in enumerate(self._urls)
+                ]
                 with concurrent.futures.ThreadPoolExecutor():
-                    count = 0
-                    # try:
-                    for future in concurrent.futures.as_completed(futures.values(), timeout=10):
-                        if not self.progress_window.update_and_continue(increment=1):
-                            # self._log(f'User stop has been pressed. Stopping running threads....')   # will flood console
-                            self._stop_executor()
-                        count += 1
-                        if gui_g.s.testing_switch == 1 and len(self._scraped_data) >= gui_g.s.testing_assets_limit:
-                            # stop the scraping after 3000 assets when testing
+                    self.progress_window.reset(new_value=0, new_text='Scraping data from URLs', new_max_value=url_count)
+                    for task, future in [(_task, self._thread_executor.submit(_task)) for _task in tasks]:
+                        if not self.progress_window.update_and_continue(increment=1, text=f'Scraping {gui_fn.shorten_text(task.url,limit=60)}'):
+                            self.progress_window.stop_execution()
                             self._stop_executor()
                             break
                         try:
-                            _ = future.result()
-                            # must_stop = future.result()
-                            # if must_stop:
-                            #    self._ stop_executor(futures)  # this never occurs whe clicking on "Stop" in the progressWindow (Why ?). Keep it for safety
-                            # print("Result: ", result)
-                        except (Exception, ) as error:
-                            message = f'The following error occurs in threading: {error!r}'
+                            future.result(timeout=gui_g.s.timeout_for_scraping)
+                        except concurrent.futures.TimeoutError:
+                            message = f'A Timeout error occured with task {task.name} and url {task.url}'
                             self._log(message, 'warning')
                             if self.core.scrap_asset_logger:
                                 self.core.scrap_asset_logger.warning(message)
-                    # except TimeoutError:
-                    #     message = 'A Timeout error occured in threading'
-                    #     self._log(message, 'warning')
-                    #     if self.core.scrap_asset_logger:
-                    #         self.core.scrap_asset_logger.warning(message)
+                            task.interrupt(message='Timeout error')
+                        except concurrent.futures.CancelledError:
+                            message = f'Task {task.name} and url {task.url} has been cancelled'
+                            self._log(message, 'warning')
+                            if self.core.scrap_asset_logger:
+                                self.core.scrap_asset_logger.warning(message)
             else:
                 for url in self._urls:
                     self.get_data_from_url(url, owned_assets_only)
@@ -957,6 +983,7 @@ class UEAssetScraper:
             tags_count = self.asset_db_handler.get_rows_count('tags')
             rating_count = self.asset_db_handler.get_rows_count('ratings')
             self._log(f'{tags_count - tags_count_saved} tags and {rating_count - rating_count_saved} ratings have been added to the database.')
+
         gui_g.WindowsRef.uevm_gui.progress_window = None  # disable the update function to the main window
         return True
 
@@ -1086,7 +1113,7 @@ class UEAssetScraper:
             # store the data in file a AFTER parsing it
             self._files_count = 0
             for asset_data in self._scraped_data:
-                filename, _ = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
+                filename, _ = self.core.uevmlfs.get_filename_from_asset_data(asset_data, use_sql_fields=True)
                 self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                 self._files_count += 1
                 if not self.progress_window.update_and_continue(increment=1, text=f'Saving asset to {filename}'):

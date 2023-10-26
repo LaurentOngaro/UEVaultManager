@@ -1146,8 +1146,8 @@ class UEVMGui(tk.Tk):
                     gui_f.box_message(msg, level='warning')
                 else:
                     self.logger.warning(msg)
-                    if self.core.notfound_assets_filename_log:
-                        self.core.notfound_assets_filename_log.info(msg)
+                    if self.core.notfound_logger:
+                        self.core.notfound_logger.info(msg)
                 return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             if self.ue_asset_scraper is None:
@@ -1177,8 +1177,8 @@ class UEVMGui(tk.Tk):
         if not is_ok:
             asset_data = None
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
-            if self.core.notfound_assets_filename_log:
-                self.core.notfound_assets_filename_log.info(f'{app_name}: invalid url "{marketplace_url}"')
+            if self.core.notfound_logger:
+                self.core.notfound_logger.info(f'{app_name}: invalid url "{marketplace_url}"')
             if self.is_using_database():
                 self.ue_asset_scraper.asset_db_handler.update_asset('grab_result', GrabResult.CONTENT_NOT_FOUND.name, asset_id=app_name)
             if show_message:
@@ -1352,7 +1352,7 @@ class UEVMGui(tk.Tk):
         """
         Check if the given asset_data is unique in the table. If not, will change the asset_id and/or the asset_slug to avoid issue.
         :param asset_data: asset data to check.
-        :return: asset_data with the updated asset_id and/or asset_slu.
+        :return: asset_data with the updated asset_id and/or asset_slug.
         """
         is_unique = True
         df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
