@@ -1057,6 +1057,8 @@ class EditableTable(Table):
             progress_window=pw,
             core=None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core,
         )
+        scraper.clear_ignored_asset_names()
+
         result_count = 0
         if not load_from_files:
             result_count = scraper.gather_all_assets_urls(

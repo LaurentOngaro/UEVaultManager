@@ -119,7 +119,8 @@ class UEVaultManagerCLI:
             print(json.dumps(data))
 
     def _log(self, message, level: str = 'info'):
-        if level == 'debug':
+        level_lower = level.lower()
+        if level_lower == 'debug':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None:
                 print(f'DEBUG {message}')
@@ -129,19 +130,19 @@ class UEVaultManagerCLI:
                     self.logger.info(message)
                 else:
                     self.logger.debug(message)
-        elif level == 'info':
+        elif level_lower == 'info':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None:
                 print(f'INFO {message}')
             else:
                 self.logger.info(message)
-        elif level == 'warning':
+        elif level_lower == 'warning':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None:
                 print(f'WARNING {message}')
             else:
                 self.logger.warning(message)
-        elif level == 'error':
+        elif level_lower == 'error':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None:
                 print(f'ERROR {message}')
@@ -939,7 +940,7 @@ class UEVaultManagerCLI:
             )  # return -1 if interrupted or error
         if result_count != -1:
             if scraper.save(owned_assets_only=owned_assets_only, save_to_format=save_to_format):
-                scrapped_data = scraper.get_scrapped_data()
+                scrapped_data = scraper.scrapped_data
                 for asset_data in scrapped_data:
                     app_name = asset_data.get('asset_id', '')
                     asset_data['downloaded_size'] = self.core.uevmlfs.get_asset_size(app_name)
@@ -1672,6 +1673,7 @@ def main():
     ql = cli.setup_threaded_logging()
 
     conf_log_level = cli.core.uevmlfs.config.get('UEVaultManager', 'log_level', fallback='info')
+    conf_log_level=conf_log_level.lower()
     if conf_log_level == 'debug' or args.debug:
         cli.core.verbose_mode = True
         logging.getLogger().setLevel(level=logging.DEBUG)

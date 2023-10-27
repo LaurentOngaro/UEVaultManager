@@ -143,6 +143,7 @@ class UEAssetScraper:
         self._files_count: int = 0
         self._thread_executor = None
         self._scraped_data = []  # the scraper scraped_data. Increased on each call to get_data_from_url(). Could be huge !!
+        self._ignored_asset_names = []
 
         self._data_source: str = datasource_filename
         self._scraped_ids = []  # store IDs of all items
@@ -174,6 +175,7 @@ class UEAssetScraper:
             progress_window = FakeProgressWindow()
         self.progress_window = progress_window
         self.filter_category = filter_category
+        self.has_been_cancelled = False
         if self.load_from_files:
             self.save_parsed_to_files = False  # no need to save if the source are the files , they won't be changes
             # self.use_database = True
@@ -197,6 +199,11 @@ class UEAssetScraper:
         self._log(message)
 
     @property
+    def scrapped_data(self) -> list:
+        """ Return the scraped data. """
+        return self._scraped_data
+
+    @property
     def data_source_filename(self):
         """ Get the name of the database to save the data to."""
         return self._data_source
@@ -214,32 +221,33 @@ class UEAssetScraper:
                 self.asset_db_handler = UEAssetDbHandler(self.data_source_filename)
 
     def _log(self, message: str, level: str = 'info'):
-        if level == 'debug':
+        level_lower = level.lower()
+        if level_lower == 'debug':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None and self.debug_mode:
-                print(f'DEBUG {message}')
+                print(f'DEBUG: {message}')
             else:
                 if gui_g.s.testing_switch >= 1:
                     # force printing debug messages when testing
                     self.logger.info(message)
                 else:
                     self.logger.debug(message)
-        elif level == 'info':
+        elif level_lower == 'info':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None:
-                print(f'INFO {message}')
+                print(f'INFO: {message}')
             else:
                 self.logger.info(message)
-        elif level == 'warning':
+        elif level_lower == 'warning':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None:
-                print(f'WARNING {message}')
+                print(f'WARNING: {message}')
             else:
                 self.logger.warning(message)
-        elif level == 'error':
+        elif level_lower == 'error':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None:
-                print(f'ERROR {message}')
+                print(f'ERROR: {message}')
             else:
                 self.logger.error(message)
 
@@ -251,30 +259,31 @@ class UEAssetScraper:
         """
         Parse on or more asset data from the response of an url query.
         :param json_data: dictionary containing the data to parse.
-        :return: list containing the parsed data.
+        :return: list of parsed data
         """
 
-        all_assets = []
+        returned_assets_data = []
 
         if not self.progress_window.continue_execution:
             # this could accur when running in threads and the process has been cancelled by the "stop" button
-            return all_assets
+            return returned_assets_data
 
         if json_data is None:
-            return all_assets
+            return returned_assets_data
         try:
             # get the list of assets after a "scraping" of the json data using URL
             assets_data_list = json_data['data']['elements']
         except KeyError:
             # this exception is raised when data come from a json file. Not an issue
             # create a list of one asset when data come from a json file
-            assets_data_list = json_data
+            assets_data_list = [json_data]
 
         asset_db_handler = self.asset_db_handler
         use_database = self.use_database and asset_db_handler
         for asset_data_ori in assets_data_list:
-            asset_data = asset_data_ori.copy()
-            uid = asset_data.get('id', '')
+            # WARNING: asset_data_ori WILL ALSO BE MODIFIED OUTSIDE the method and changed WILL BE SAVED in the json files
+            result_data = {}
+            uid = asset_data_ori.get('id', '')
             if not uid:
                 # this should never occur
                 self._log(f'No id found for current asset. Passing to next asset', level='warning')
@@ -283,27 +292,29 @@ class UEAssetScraper:
                 if use_database:
                     existing_data = asset_db_handler.get_assets_data(asset_db_handler.preserved_data_fields, uid)
                     asset_existing_data = existing_data.get(uid, None)
-                categories = asset_data.get('categories', None)
-                release_info = asset_data.get('release_info', {})  # correct field name in json file
+                categories = asset_data_ori.get('categories', None)
+                release_info = asset_data_ori.get('release_info', {})  # correct field name in json file
                 if not release_info:
-                    release_info = asset_data.get('releaseInfo', {})  # old/incorrect field name in json file
+                    release_info = asset_data_ori.get('releaseInfo', {})  # old/incorrect field name in json file
                 # get app_name from asset_data or from the release_info
-                app_name = asset_data.get('app_name', '')
+                app_name = asset_data_ori.get('app_name', '')
                 if not app_name:
-                    app_name, found = self.core.uevmlfs.get_app_name_from_asset_data(asset_data.copy())
-                    asset_data['app_name'] = app_name
+                    app_name, found = self.core.uevmlfs.get_app_name_from_asset_data(asset_data_ori.copy())
+                    result_data['app_name'] = app_name
                     if not found:
                         self._log(f'No app_name found for asset with id={uid}.The dummy value {app_name} has be used instead', level='warning')
+                # add the app_name to the asset_data, and it will be saved in the json file
+                asset_data_ori['app_name'] = app_name
                 # for saving in json files we must keep the data as a LIST here
                 # convert release_info to a json string
                 # release_info_str = json.dumps(release_info) if release_info else gui_g.no_text_data
                 # asset_data['release_info'] = release_info_str
-                asset_data['release_info'] = release_info
+                result_data['release_info'] = release_info
                 if isinstance(release_info, str):
                     # could occur if data come from a json file with a "corrupted" release_info field
                     release_info = json.loads(release_info)
-                if 'releaseInfo' in asset_data:
-                    asset_data.pop('releaseInfo')  # we remove the duplicate field to avoid future mistakes
+                # if 'releaseInfo' in asset_data_ori:
+                #     asset_data_ori.pop('releaseInfo')  # we remove the duplicate field to avoid future mistakes
                 latest_release = release_info[-1] if release_info else {}
                 first_release = release_info[0] if release_info else {}
                 origin = gui_g.s.origin_marketplace  # by default when scraped from marketplace
@@ -313,31 +324,30 @@ class UEAssetScraper:
                 # make some calculation with the "raw" data
                 # ------------
                 # simple fields
-                seller = asset_data.get('seller', None)
-                author = seller.get('name', '') if seller else asset_data.get('developer', '')
-                asset_data['author'] = author
-                asset_data['page_title'] = asset_data['title']
-                asset_data['origin'] = origin
-                asset_data['update_date'] = date_now
-                asset_data['downloaded_size'] = self.core.uevmlfs.get_asset_size(
+                seller = asset_data_ori.get('seller', None)
+                author = seller.get('name', '') if seller else asset_data_ori.get('developer', '')
+                result_data['author'] = author
+                result_data['page_title'] = asset_data_ori['title']
+                result_data['origin'] = origin
+                result_data['update_date'] = date_now
+                result_data['downloaded_size'] = self.core.uevmlfs.get_asset_size(
                     app_name, gui_g.no_text_data
                 )  # '' because we want the cell to be empty if no size
 
                 # thumbnail_url
-                asset_data['thumbnail_url'] = asset_data.get('thumbnail', '')
-                if not asset_data['thumbnail_url']:
+                result_data['thumbnail_url'] = asset_data_ori.get('thumbnail', '')
+                if not result_data['thumbnail_url']:
                     try:
-                        key_images = asset_data.get('keyImages', [])
+                        key_images = asset_data_ori.get('keyImages', [])
                         # search for the image with the key 'Thumbnail'
                         for image in key_images:
                             if image['type'] == 'Thumbnail':
-                                asset_data['thumbnail_url'] = image['url']
+                                result_data['thumbnail_url'] = image['url']
                                 break
                     except IndexError:
                         self._log(f'asset {app_name} has no image', level='debug')
 
                 # category and FILTER
-                asset_data['is_filtered'] = False
                 if categories:
                     category = categories[0].get('name', '') or categories[0].get('path', '') or ''
                     category = str(category)
@@ -346,12 +356,12 @@ class UEAssetScraper:
                         self._log(
                             f'{app_name} has been FILTERED by category ("{self.filter_category}" text not found in "{category_lower}").It has been added to the ignored_logger file'
                         )
-                        asset_data['is_filtered'] = True
+                        self._ignored_asset_names.append(app_name)
                         if self.core.ignored_logger:
                             self.core.ignored_logger.info(app_name)
                         continue
                     else:
-                        asset_data['category'] = category
+                        result_data['category'] = category
 
                 # asset_id
                 try:
@@ -359,80 +369,81 @@ class UEAssetScraper:
                 except (Exception, ):
                     grab_result = GrabResult.NO_APPID.name
                     asset_id = uid  # that's not the REAL asset_id, we use the uid instead
-                asset_data['asset_id'] = asset_id
+                result_data['asset_id'] = asset_id
 
                 # asset slug and asset url
                 # we keep UrlSlug here because it can arise from the scrapped data
-                asset_slug = asset_data.get('urlSlug', gui_g.no_text_data) or asset_data.get('asset_slug', gui_g.no_text_data)
+                asset_slug = asset_data_ori.get('urlSlug', gui_g.no_text_data) or asset_data_ori.get('asset_slug', gui_g.no_text_data)
                 if asset_slug == gui_g.no_text_data:
                     asset_url = gui_g.no_text_data
                     self._log(f'No asset_slug found for asset id={uid}. Its asset_url will be empty', level='warning')
                 else:
                     asset_url = self.core.egs.get_marketplace_product_url(asset_slug)
-                asset_data['asset_slug'] = asset_slug
-                asset_data['asset_url'] = asset_url
-                if 'urlSlug' in asset_data:
-                    asset_data.pop('urlSlug')  # we remove the duplicate field to avoid future mistakes
+                result_data['asset_slug'] = asset_slug
+                result_data['asset_url'] = asset_url
+                # if 'urlSlug' in asset_data:
+                #     asset_data.pop('urlSlug')  # we remove the duplicate field to avoid future mistakes
 
                 # prices and discount
-                price = self.core.egs.extract_price(asset_data.get('price', gui_g.no_text_data), asset_name=app_name)
-                discount_price = self.core.egs.extract_price(asset_data.get('discount_price', gui_g.no_float_data))
-                discount_percentage = int(asset_data.get('discount_percentage', gui_g.no_int_data))
-                if asset_data.get('priceValue', 0) > 0:
+                price = self.core.egs.extract_price(asset_data_ori.get('price', gui_g.no_text_data), asset_name=app_name)
+                discount_price = self.core.egs.extract_price(asset_data_ori.get('discount_price', gui_g.no_float_data))
+                discount_percentage = int(asset_data_ori.get('discount_percentage', gui_g.no_int_data))
+                if asset_data_ori.get('priceValue', 0) > 0:
                     # tbh the logic here is flawed as hell lol. discount should only be set if there's a discount Epic wtf
                     # price = asset_data['priceValue'] if asset_data['priceValue'] == asset_data['discountPriceValue'] else asset_data['discountPriceValue'] # here we keep the CURRENT price
-                    price = float(asset_data['priceValue'])  # here we keep the NORMAL price
-                    discount_price = float(asset_data['discountPriceValue'])
+                    price = float(asset_data_ori['priceValue'])  # here we keep the NORMAL price
+                    discount_price = float(asset_data_ori['discountPriceValue'])
                     # price are in cents
                     price /= 100
                     discount_price /= 100
-                    discount_percentage = 100 - int(asset_data['discountPercentage'])
+                    discount_percentage = 100 - int(asset_data_ori['discountPercentage'])
                     # discount_percentage = 0.0 if (discount_price == 0.0 or price == 0.0 or discount_price == price) else int((price-discount_price) / price * 100.0)
                 if discount_price == gui_g.no_int_data:
                     discount_price = price
-                asset_data['price'] = price
-                asset_data['discount_price'] = discount_price
-                asset_data['discount_percentage'] = discount_percentage
+                result_data['price'] = price
+                result_data['discount_price'] = discount_price
+                result_data['discount_percentage'] = discount_percentage
 
                 # old price
                 old_price = asset_existing_data.get('price', gui_g.no_float_data) if asset_existing_data else gui_g.no_float_data
                 older_price = asset_existing_data.get('old_price', gui_g.no_float_data) if asset_existing_data else gui_g.no_float_data
-                asset_data['old_price'] = old_price if old_price else older_price
+                result_data['old_price'] = old_price if old_price else older_price
 
                 # rating
-                average_rating = asset_data.get('review', gui_g.no_int_data)
+                average_rating = asset_data_ori.get('review', gui_g.no_int_data)
                 rating_total = gui_g.no_int_data
-                if asset_data.get('rating', ''):
+                if asset_data_ori.get('rating', ''):
                     try:
-                        average_rating = asset_data['rating']['averageRating']
-                        rating_total = asset_data['rating']['total']
+                        average_rating = asset_data_ori['rating']['averageRating']
+                        rating_total = asset_data_ori['rating']['total']
                     except KeyError:
-                        self._log(f'No rating for {asset_data["title"]}', 'debug')
+                        self._log(f'No rating for {asset_data_ori["title"]}', 'debug')
                         # check if self has asset_db_handler
                         if use_database:
                             average_rating, rating_total = asset_db_handler.get_rating_by_id(uid)
-                asset_data['review'] = average_rating
-                asset_data['review_count'] = rating_total
+                result_data['review'] = average_rating
+                result_data['review_count'] = rating_total
 
                 # custom attributes
-                asset_data['custom_attributes'] = ''
+                result_data['custom_attributes'] = ''
                 try:
-                    custom_attributes = asset_data.get('customAttributes', '')
+                    custom_attributes = asset_data_ori.get('customAttributes', '')
                     if isinstance(custom_attributes, dict):
                         # check for "has an external link"
                         custom_attributes = 'external_link:' + custom_attributes['BuyLink']['value'] if custom_attributes.get('BuyLink', '') else ''
-                        asset_data['custom_attributes'] = custom_attributes
+                        result_data['custom_attributes'] = custom_attributes
                 except (KeyError, AttributeError):
-                    asset_data['custom_attributes'] = gui_g.no_text_data
+                    result_data['custom_attributes'] = gui_g.no_text_data
 
                 # supported_versions
-                supported_versions = asset_data.get('supported_versions', gui_g.no_text_data)  # data can come from the extra_data
+                # supported_versions = asset_data.get('supported_versions', gui_g.no_text_data)  # data can come from the extra_data
+                supported_versions = ''
                 try:
                     tmp_list = [check_and_convert_list_to_str(item.get('compatibleApps')) for item in release_info]
                     supported_versions = check_and_convert_list_to_str(tmp_list) or supported_versions
                 except TypeError as error:
                     self._log(f'Error getting compatibleApps for asset with uid={uid}: {error!r}', level='debug')
-                asset_data['supported_versions'] = supported_versions
+                result_data['supported_versions'] = supported_versions
 
                 # dates
                 # asset_data['creation_date'] = asset_data['creationDate']  # does not exist in when scrapping from marketplace
@@ -440,8 +451,8 @@ class UEAssetScraper:
                 tmp_date = first_release.get('dateAdded', gui_g.no_text_data) if first_release else gui_g.no_text_data
                 tmp_date = gui_fn.convert_to_datetime(tmp_date, formats_to_use=[DateFormat.epic, DateFormat.csv])
                 tmp_date = gui_fn.convert_to_str_datetime(tmp_date, DateFormat.csv)
-                asset_data['creation_date'] = tmp_date
-                asset_data['date_added'] = asset_existing_data.get('date_added', date_now) if asset_existing_data else date_now
+                result_data['creation_date'] = tmp_date
+                result_data['date_added'] = asset_existing_data.get('date_added', date_now) if asset_existing_data else date_now
 
                 # obsolete
                 try:
@@ -450,7 +461,7 @@ class UEAssetScraper:
                     )
                 except (Exception, ):
                     engine_version_for_obsolete_assets = None
-                asset_data['obsolete'] = is_asset_obsolete(supported_versions, engine_version_for_obsolete_assets)
+                result_data['obsolete'] = is_asset_obsolete(supported_versions, engine_version_for_obsolete_assets)
 
                 # grab_result and old_grab_result
                 # old_grab_result = asset_existing_data.get(
@@ -460,7 +471,7 @@ class UEAssetScraper:
                 #     # if no error occurs and if we only parse owned assets, the parsed data ARE less complete than the "normal" one
                 #     # so, we set the grab result to PARTIAL
                 #     grab_result = GrabResult.PARTIAL.name
-                asset_data['grab_result'] = grab_result
+                result_data['grab_result'] = grab_result
 
                 # we use copy data for user_fields to preserve user data
                 if asset_existing_data.get('origin', '') == gui_g.s.origin_marketplace:
@@ -472,15 +483,15 @@ class UEAssetScraper:
                     for field in asset_db_handler.user_fields:
                         existing_value = asset_existing_data.get(field, None)
                         if existing_value:
-                            asset_data[field] = existing_value
+                            result_data[field] = existing_value
 
                 # installed_folders and tags
-                installed_folders_str = asset_data.get('installed_folders', '')
+                installed_folders_str = result_data.get('installed_folders', '')
                 asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)  # from current existing install
                 if asset_installed:
                     asset_installed_folders = asset_installed.installed_folders
                     installed_folders_str = gui_fn.merge_lists_or_strings(installed_folders_str, asset_installed_folders)
-                tags = asset_data.get('tags', [])
+                tags = asset_data_ori.get('tags', [])
                 if use_database:
                     # get tag name from tag id and convert the list into a comma separated string
                     tags_str = asset_db_handler.convert_tag_list_to_string(tags)
@@ -489,15 +500,14 @@ class UEAssetScraper:
                     # just convert the list of ids into a comma separated string
                     tags_str = check_and_convert_list_to_str(tags)
                     # we need to convert list to string if we are in FILE Mode because it's done when saving the asset in database in the DATABASE mode
-                    installed_folders_str = check_and_convert_list_to_str(asset_data.get('installed_folders', []))
-                asset_data['installed_folders'] = installed_folders_str
-                asset_data['tags'] = tags_str
+                    installed_folders_str = check_and_convert_list_to_str(asset_data_ori.get('installed_folders', []))
+                result_data['installed_folders'] = installed_folders_str
+                result_data['tags'] = tags_str
 
                 # we use an UEAsset object to store the data and create a valid dict from it
                 ue_asset = UEAsset()
-                ue_asset.init_from_dict(asset_data)
-
-                all_assets.append(ue_asset.get_data())
+                ue_asset.init_from_dict(result_data)
+                returned_assets_data.append(ue_asset.get_data())
                 message = f'Asset with uid={uid} added to content: owned={ue_asset.get("owned")} creation_date={ue_asset.get("creation_date")}'
                 self._log(message, 'debug')  # use debug here instead of info to avoid spamming the log file
                 if self.store_ids:
@@ -507,11 +517,7 @@ class UEAssetScraper:
                         self._log(f'Error when adding uid to self.scraped_ids: {error!r}', 'debug')
             # end else if uid:
         # end for asset_data in json_data['data']['elements']:
-        return all_assets
-
-    def get_scrapped_data(self) -> list:
-        """ Return the scraped data. """
-        return self._scraped_data
+        return returned_assets_data
 
     def _save_final_in_db(self, last_run_content: dict) -> bool:
         """
@@ -754,6 +760,21 @@ class UEAssetScraper:
         self._log(f'\n======\n{asset_count} assets have been saved (without duplicates due to different UE versions)\nOperation Finished\n======\n')
         return True
 
+    def _stop_executor(self) -> None:
+        """
+        Cancel all outstanding tasks and shut down the executor.
+        """
+        self._thread_executor.shutdown(wait=False, cancel_futures=True)
+
+    def _future_has_ended(self, future_param):
+        self._log(f'{future_param} has ended.', 'debug')
+        # HERE WE CAN'T UPDATE the progress window because it's not in the main thread
+        # the next lines raise does nothing because the stop button state is never updated
+        # if not self.progress_window.continue_execution:
+        #     self._log(f'{future_param} has been cancelled. Waiting all others to be terminated.', 'info')
+        #     self.progress_window.close_window()  # must be done here because we will never return to the caller
+        #     self._stop_executor()
+
     def gather_all_assets_urls(self, egs_available_assets_count: int = -1, empty_list_before=False, save_result=True, owned_assets_only=False) -> int:
         """
         Gather all the URLs (with pagination) to be parsed and stores them in a list for further use.
@@ -800,7 +821,6 @@ class UEAssetScraper:
         """
         thread_state = ' RUNNING...'
         self._files_count = 0
-
         # HERE WE CAN'T UPDATE the progress window because it's not in the main thread
         # the next lines raise a  RuntimeError('main thread is not in main loop')
         # if not self.progress_window.update_and_continue(increment=1, text=f'Getting data from {url}):
@@ -868,9 +888,14 @@ class UEAssetScraper:
                 if self.save_parsed_to_files:
                     # store the RAW DATA of each asset in a file
                     for index, asset_data in enumerate(json_data['data']['elements']):
-                        if asset_data.get('is_filtered', False) or (owned_assets_only and not asset_data('is_owned', False)):
-                            continue
                         filename, app_name = self.core.uevmlfs.get_filename_from_asset_data(asset_data)
+                        if app_name in self._ignored_asset_names:
+                            # already done in _parse_data()
+                            # if self.core.ignored_logger
+                            #     self.core.ignored_logger.info(app_name)
+                            continue
+                        if owned_assets_only and not asset_data('owned', False):
+                            continue
                         asset_data['app_name'] = app_name
                         self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
                         self._files_count += 1
@@ -882,21 +907,6 @@ class UEAssetScraper:
             if self.core.scrap_asset_logger:
                 self.core.scrap_asset_logger.warning(message)
         return True
-
-    def _stop_executor(self) -> None:
-        """
-        Cancel all outstanding tasks and shut down the executor.
-        """
-        self._thread_executor.shutdown(wait=False, cancel_futures=True)
-
-    def _future_has_ended(self, future_param):
-        self._log(f'{future_param} has ended.', 'debug')
-        # HERE WE CAN'T UPDATE the progress window because it's not in the main thread
-        # the next lines raise does nothing because the stop button state is never updated
-        # if not self.progress_window.continue_execution:
-        #     self._log(f'{future_param} has been cancelled. Waiting all others to be terminated.', 'info')
-        #     self.progress_window.close_window()  # must be done here because we will never return to the caller
-        #     self._stop_executor()
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
         """
@@ -1052,7 +1062,7 @@ class UEAssetScraper:
             # pw = ProgressWindow(parent=fake_root, title='Scraping in progress...', width=300, show_btn_stop=True, show_progress=True,
             #                     quit_on_close=False)
             # pw.set_activation(False)
-            has_been_cancelled = False
+            self.has_been_cancelled = False
             if self.max_threads > 0 and url_count > 0:
                 self._threads_count = min(self.max_threads, url_count)
                 # threading processing COULD be stopped by the progress window
@@ -1068,7 +1078,7 @@ class UEAssetScraper:
                         if not self.progress_window.update_and_continue(increment=1, text=f'Scraping {gui_fn.shorten_text(task.url, limit=60)}'):
                             self.progress_window.stop_execution()
                             self._stop_executor()
-                            has_been_cancelled = True
+                            self.has_been_cancelled = True
                             break
                         try:
                             future.result(timeout=gui_g.s.timeout_for_scraping)
@@ -1110,7 +1120,7 @@ class UEAssetScraper:
             rating_count = self.asset_db_handler.get_rows_count('ratings')
             self._log(f'{tags_count - tags_count_saved} tags and {rating_count - rating_count_saved} ratings have been added to the database.')
 
-        if has_been_cancelled or not self.progress_window.continue_execution:
+        if self.has_been_cancelled or not self.progress_window.continue_execution:
             self._log('PROCESS CANCELLED BY USER', 'warning')
             return False
         # Note: this data have the same structure as the table last_run inside the method UEAsset.create_tables()
@@ -1157,6 +1167,12 @@ class UEAssetScraper:
         if len(self._scraped_data) > 0:
             result = self._scraped_data.pop()
         return result
+
+    def clear_ignored_asset_names(self) -> None:
+        """
+        Clear the list of ignored asset names.
+        """
+        self._ignored_asset_names = []
 
 
 if __name__ == '__main__':

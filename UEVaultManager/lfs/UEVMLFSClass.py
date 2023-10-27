@@ -319,6 +319,10 @@ class UEVMLFS:
         :param use_sql_fields: whether to use the sql fields name instead of json field name. Adapt the value with the type of asset_data.
         :return: (app_name (ie asset_id), and a True if the app_id has been found).
         """
+        # check if the app_name has been already added into the file during the _parse_data() method
+        app_id = asset_data.get('app_name', '')
+        if app_id:
+            return app_id, True
         app_id_field = 'appId'  # does not change between JSON and SQL data because is inside another json field
         if use_sql_fields:
             # field names are AFTER parsing (ie in an ue_asset object)
