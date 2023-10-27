@@ -60,24 +60,26 @@ def box_message(msg: str, level='info', show_dialog: bool = True):
             messagebox.showinfo(title=gui_g.s.app_title, message=msg)
 
 
-def box_yesno(msg: str, show_dialog: bool = True) -> bool:
+def box_yesno(msg: str, show_dialog: bool = True, default: bool = True) -> bool:
     """
     Display a YES/NO message box with the given message.
     :param msg: message to display .
-    :param show_dialog: True to display a dialog box, False to only return True (silent mode)
+    :param show_dialog: True to display a dialog box, False to only return default value (silent mode)
+    :param default: default value to return if the dialog is not displayed.
     :return: True if the user clicked on Yes, False otherwise.
     """
-    return messagebox.askyesno(title=gui_g.s.app_title, message=msg) if show_dialog else True
+    return messagebox.askyesno(title=gui_g.s.app_title, message=msg) if show_dialog else default
 
 
-def box_okcancel(msg: str, show_dialog: bool = True) -> bool:
+def box_okcancel(msg: str, show_dialog: bool = True, default: bool = True) -> bool:
     """
     Display an OK/CANCEL message box with the given message.
     :param msg: message to display.
-    :param show_dialog: True to display a dialog box, False to only return True (silent mode)
+    :param show_dialog: True to display a dialog box, False to only return  default value (silent mode)
+    :param default: default value to return if the dialog is not displayed.
     :return: True if the user clicked on Yes, False otherwise.
     """
-    return messagebox.askokcancel(title=gui_g.s.app_title, message=msg) if show_dialog else True
+    return messagebox.askokcancel(title=gui_g.s.app_title, message=msg) if show_dialog else default
 
 
 def from_cli_only_message(content='This feature is only accessible', show_dialog: bool = True) -> None:
