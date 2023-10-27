@@ -213,7 +213,7 @@ class UEAssetScraper:
             else:
                 self.asset_db_handler = UEAssetDbHandler(self._datasource_filename)
 
-    def _log(self, message, level: str = 'info'):
+    def _log(self, message: str, level: str = 'info'):
         if level == 'debug':
             """ a simple wrapper to use when cli is not initialized"""
             if gui_g.UEVM_cli_ref is None and self.debug_mode:
@@ -242,6 +242,10 @@ class UEAssetScraper:
                 print(f'ERROR {message}')
             else:
                 self.logger.error(message)
+
+    def _log_for_task(self, message: str):
+        """ a simple wrapper for a scraptask. It allows to set the level that could not be passed as parameter"""
+        self._log(message, level='debug')
 
     def _parse_data(self, json_data: dict = None) -> list:
         """
@@ -298,7 +302,7 @@ class UEAssetScraper:
                     asset_data.pop('releaseInfo')  # we remove the duplicate field to avoid future mistakes
                 latest_release = release_info[-1] if release_info else {}
                 first_release = release_info[0] if release_info else {}
-                origin = 'Marketplace'  # by default when scraped from marketplace
+                origin = gui_g.s.origin_marketplace  # by default when scraped from marketplace
                 date_now = datetime.now().strftime(DateFormat.csv)
                 grab_result = GrabResult.NO_ERROR.name
 
@@ -453,6 +457,11 @@ class UEAssetScraper:
                 asset_data['grab_result'] = grab_result
 
                 # we use copy data for user_fields to preserve user data
+                if asset_existing_data['origin'] == gui_g.s.origin_marketplace:
+                    # we remove some existing fields to avoid keeping "incohent" values when we scarp EXISTING data that are from marketplace
+                    asset_existing_data.pop('category')
+                    asset_existing_data.pop('asset_url')
+                    asset_existing_data.pop('added_manually')
                 if asset_existing_data and use_database:
                     for field in asset_db_handler.user_fields:
                         existing_value = asset_existing_data.get(field, None)
@@ -934,7 +943,7 @@ class UEAssetScraper:
                 self.progress_window.show_btn_stop()
                 self._thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self._threads_count, thread_name_prefix='Asset_Scaper')
                 tasks = [
-                    ScrapTask(caller=self, log_func=self._log, task_name=f'ScrapTask #{i}', url=url, owned_assets_only=False)
+                    ScrapTask(caller=self, log_func=self._log_for_task, task_name=f'ScrapTask #{i}', url=url, owned_assets_only=False)
                     for i, url in enumerate(self._urls)
                 ]
                 with concurrent.futures.ThreadPoolExecutor():

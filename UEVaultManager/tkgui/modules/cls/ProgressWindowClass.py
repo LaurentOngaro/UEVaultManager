@@ -369,16 +369,20 @@ class ProgressWindow(tk.Toplevel):
             self.frm_control.btn_stop.config(state=stop_state)
         self.update()
 
-    def update_and_continue(self, value=0, increment=0, text=None) -> bool:
+    def update_and_continue(self, value=0, increment=0, text=None, max_value: int = -1) -> bool:
         """
         Update the progress bar and returns whether the execution should continue.
         :param value: value to set.
         :param increment: value to increment. If both value and increment are set, the value is ignored.
         :param text: text to set.
+        :param max_value: maximum value to set. Use -1 to keep the existing.
         """
         try:
             # sometimes the window is already destroyed
             progress_bar = self.frm_content.progress_bar
+            if max_value > 0:
+                self.max_value = max_value
+                progress_bar['maximum'] = max_value  # no call to set_max_value to avoid the update
             if increment:
                 value = progress_bar['value'] + increment
             if value > self.max_value:

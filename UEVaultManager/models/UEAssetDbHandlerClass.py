@@ -545,7 +545,11 @@ class UEAssetDbHandler:
             if update_progress and gui_g.WindowsRef.progress:
                 gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(_asset_list))
             for index, asset in enumerate(_asset_list):
-                if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
+                # if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
+                if gui_g.WindowsRef.progress and (
+                    not gui_g.WindowsRef.progress.continue_execution or
+                    (update_progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1))
+                ):
                     return False
                 # make some conversion before saving the asset
                 asset['update_date'] = str_today
