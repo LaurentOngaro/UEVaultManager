@@ -1050,7 +1050,7 @@ class EditableTable(Table):
             stop=stop_row,
             assets_per_page=db_asset_per_page,
             max_threads=max_threads,
-            save_to_files=True,
+            save_parsed_to_files=True,
             load_from_files=load_from_files,
             store_ids=False,  # useless for now
             clean_database=False,

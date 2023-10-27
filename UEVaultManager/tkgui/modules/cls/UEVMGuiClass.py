@@ -1194,7 +1194,7 @@ class UEVMGui(tk.Tk):
                     start=0,
                     assets_per_page=1,
                     max_threads=1,
-                    save_to_files=True,
+                    save_parsed_to_files=True,
                     load_from_files=False,
                     store_ids=False,  # useless for now
                     core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
