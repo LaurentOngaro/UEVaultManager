@@ -462,8 +462,7 @@ def check_and_convert_list_to_str(str_or_list) -> str:
     :return: converted string or the given parameter.
     """
     result = str_or_list
-    if type(str_or_list).__name__ in ['list', 'dict_values']:
-        # if the list does not only contain strings, it will raise an error.
-        # So we use map to convert all the values to string
-        result = ','.join(map(str, str_or_list))
+    # Note: can not use isinstance because 'Index', 'ndarray' and 'dict_values' are not recognized as types
+    if type(str_or_list).__name__ in ('list', 'dict_values', 'Index', 'ndarray'):
+        result = ','.join([str(value) for value in str_or_list])
     return result
