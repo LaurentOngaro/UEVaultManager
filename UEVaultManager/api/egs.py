@@ -184,7 +184,7 @@ class EPCAPI:
 
         self.timeout = timeout
 
-    def extract_price(self, price_text=None, asset_name='NO NAME') -> float:
+    def extract_price(self, price_text=None, asset_name='Unknown') -> float:
         """
         Extracts the price from a string.
         :param price_text: string to extract the price from.
@@ -197,7 +197,8 @@ class EPCAPI:
         price = 0.0
         try:
             # asset base price when logged
-            price = price_text.strip('$€')
+            price = str(price_text)
+            price = price.strip('$€')
             price = price.replace(',', '')
             price = float(price)
         except Exception as error:
