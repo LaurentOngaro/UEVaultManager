@@ -69,6 +69,8 @@ class GUISettings:
         self.ue_plugin_install_subfolder: str = 'Engine/Plugins/Marketplace'
         # file name of a UE manifest file
         self.ue_manifest_filename: str = 'manifest'
+        # value in orgin column for a marketplace asset
+        self.origin_marketplace = 'Marketplace'
 
         self.index_copy_col_name: str = 'Index copy'
         # if a folder is in this tuple, the folder won't be scanned to find ue folders
@@ -101,6 +103,7 @@ class GUISettings:
         self.cell_is_empty_and_zero_list = self.cell_is_empty_list + ['False', '0', '0.0', '']
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'dummy_row_'
+        self.duplicate_row_prefix: str = 'local_'
         self.unknown_size: str = 'yes'
         self.tag_prefix: str = 't_'
         self.expand_columns_factor: int = 20
