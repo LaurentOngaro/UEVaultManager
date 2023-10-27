@@ -337,9 +337,6 @@ class UEVaultManagerCLI:
         if self.core.create_log_backup:
             self.create_log_file_backup()
 
-        # open log file for assets if necessary
-        self.core.setup_assets_loggers()
-
         if args.output:
             # test if the folder is writable
             if not check_and_create_file(args.output):
@@ -1701,6 +1698,9 @@ def main():
     # if --yes is used as part of the subparsers arguments manually set the flag in the main parser.
     if '-y' in extra or '--yes' in extra:
         args.yes = True
+
+    # open log files for assets if necessary
+    cli.core.setup_assets_loggers()
 
     # technically args.func() with set defaults could work (see docs on subparsers)
     # but that would require all funcs to accept args and extra...
