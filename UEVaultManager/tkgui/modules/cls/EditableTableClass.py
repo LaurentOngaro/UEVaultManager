@@ -1841,6 +1841,7 @@ class EditableTable(Table):
             widget.selection_range(0, tk.END)  # select the content
 
         widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        widget.focus_set()
         self._edit_cell_widget = widget
         self._edit_cell_row_number = row_number
         self._edit_cell_col_index = col_index
