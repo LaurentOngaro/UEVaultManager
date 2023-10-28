@@ -165,7 +165,7 @@ class EPCAPI:
     """
 
     def __init__(self, lc='en', cc='US', timeout=(7, 7)):
-        self.log = logging.getLogger('EPCAPI')
+        self.logger = logging.getLogger('EPCAPI')
         self.session = requests.session()
         self.session.headers['User-Agent'] = self._user_agent
         # increase maximum pool size for multithreaded metadata requests
@@ -192,7 +192,7 @@ class EPCAPI:
         :return: price.
         """
         if not price_text:
-            self.log.debug(f'Price not found for {asset_name}')
+            self.logger.debug(f'Price not found for {asset_name}')
             return 0.0
         price = 0.0
         try:
@@ -202,7 +202,7 @@ class EPCAPI:
             price = price.replace(',', '')
             price = float(price)
         except Exception as error:
-            self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
+            self.logger.warning(f'Can not find the price for {asset_name}:{error!r}')
         return price
 
     def get_scrap_url(self, start=0, count=1, sort_by='effectiveDate', sort_order='DESC') -> str:
@@ -270,7 +270,7 @@ class EPCAPI:
         try:
             assets_count = json_content['data']['paging']['total']
         except Exception as error:
-            self.log.warning(f'Can not get the asset count from {url}:{error!r}')
+            self.logger.warning(f'Can not get the asset count from {url}:{error!r}')
         return assets_count
 
     def is_valid_url(self, url='') -> bool:
@@ -285,7 +285,7 @@ class EPCAPI:
         try:
             r = self.session.get(url, timeout=self.timeout)
         except (Exception, ):
-            self.log.warning(f'Timeout for {url}')
+            self.logger.warning(f'Timeout for {url}')
             raise ConnectionError()
         if r.status_code == 200:
             result = True
@@ -324,7 +324,7 @@ class EPCAPI:
 
         j = r.json()
         if 'errorMessage' in j:
-            self.log.warning(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
+            self.logger.warning(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
             raise InvalidCredentialsError(j['errorCode'])
 
         # update other data
@@ -364,13 +364,13 @@ class EPCAPI:
         j = r.json()
         if 'errorCode' in j:
             if j['errorCode'] == 'errors.com.epicgames.oauth.corrective_action_required':
-                self.log.error(f'{j["errorMessage"]} ({j["correctiveAction"]}), '
+                self.logger.error(f'{j["errorMessage"]} ({j["correctiveAction"]}), '
                                f'open the following URL to take action: {j["continuationUrl"]}')
             else:
-                self.log.error(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
+                self.logger.error(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
             raise InvalidCredentialsError(j['errorCode'])
         elif r.status_code >= 400:
-            self.log.error(f'EGS API responded with status {r.status_code} but no error in response: {j}')
+            self.logger.error(f'EGS API responded with status {r.status_code} but no error in response: {j}')
             raise InvalidCredentialsError('Unknown error')
 
         self.session.headers['Authorization'] = f'bearer {j["access_token"]}'
@@ -451,9 +451,9 @@ class EPCAPI:
         try:
             response = self.session.get(url)  # when using session, we are already logged in Epic game
             response.raise_for_status()
-            self.log.info(f'Grabbing asset data from {url}')
+            self.logger.info(f'Grabbing asset data from {url}')
         except requests.exceptions.RequestException as error:
-            self.log.warning(f'Can not get asset data for {url}:{error!r}')
+            self.logger.warning(f'Can not get asset data for {url}:{error!r}')
             json_data['grab_result'] = GrabResult.PAGE_NOT_FOUND.name
             return json_data
 
@@ -486,10 +486,10 @@ class EPCAPI:
                     json_data['price'] = json_dict['offers']['price']
                     json_data['price_currency'] = json_dict['offers']['priceCurrency']
                 except KeyError as error:
-                    self.log.warning(f"A key is missing in Script {index + 1}: {error!r}")
+                    self.logger.warning(f"A key is missing in Script {index + 1}: {error!r}")
                     json_data['grab_result'] = GrabResult.PARTIAL.name
                     continue
         if json_data['url'].lower().replace('www.', '') != url.lower().replace('www.', ''):
-            self.log.warning(f"URLs do not match: {json_data['url']} != {url}")
+            self.logger.warning(f"URLs do not match: {json_data['url']} != {url}")
             json_data['grab_result'] = GrabResult.INCONSISTANT_DATA.name
         return json_data

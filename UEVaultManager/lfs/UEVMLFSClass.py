@@ -34,7 +34,7 @@ class UEVMLFS:
     """
 
     def __init__(self, config_file=None):
-        self.log = logging.getLogger('UEVMLFS')
+        self.logger = logging.getLogger('UEVMLFS')
 
         if config_path := os.environ.get('XDG_CONFIG_HOME'):
             self.path = path_join(config_path, 'UEVaultManager')
@@ -57,7 +57,7 @@ class UEVMLFS:
                 self.config_file = os.path.abspath(config_file)
             else:
                 self.config_file = path_join(self.path, clean_filename(config_file))
-            self.log.info(f'UEVMLFS is using non-default config file "{self.config_file}"')
+            self.logger.info(f'UEVMLFS is using non-default config file "{self.config_file}"')
         else:
             self.config_file = path_join(self.path, 'config.ini')
 
@@ -90,8 +90,8 @@ class UEVMLFS:
         try:
             self.config.read(self.config_file)
         except Exception as error:
-            self.log.error(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
-            self.log.warning('Continuing with blank config in safe-mode...')
+            self.logger.error(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
+            self.logger.warning('Continuing with blank config in safe-mode...')
             self.config.read_only = True
 
         # make sure "UEVaultManager" section exists
@@ -196,14 +196,14 @@ class UEVMLFS:
         #             app_name = self.get_app_name_from_asset_data(json_data)
         #             self.assets_data[app_name] = json_data
         #     except Exception as error:
-        #         self.log.debug(f'Loading asset data file "{gm_file}" failed: {error!r}')
+        #         self.logger.debug(f'Loading asset data file "{gm_file}" failed: {error!r}')
 
         # load asset sizes
         try:
             with open(self.asset_sizes_filename, 'r', encoding='utf-8') as file:
                 self._asset_sizes = json.load(file)
         except Exception as error:
-            self.log.debug(f'Loading assets sizes failed: {error!r}')
+            self.logger.debug(f'Loading assets sizes failed: {error!r}')
             self._asset_sizes = None
 
     @property
@@ -218,7 +218,7 @@ class UEVMLFS:
             with open(self.user_data_filename, 'r', encoding='utf-8') as file:
                 self._user_data = json.load(file)
         except Exception as error:
-            self.log.debug(f'Failed to load user data: {error!r}')
+            self.logger.debug(f'Failed to load user data: {error!r}')
             return None
         return self._user_data
 
@@ -254,7 +254,7 @@ class UEVMLFS:
                 with open(self.asset_sizes_filename, 'r', encoding='utf-8') as file:
                     self._asset_sizes = json.load(file)
             except Exception as error:
-                self.log.debug(f"Failed to load asset's size: {error!r}")
+                self.logger.debug(f"Failed to load asset's size: {error!r}")
         return self._asset_sizes
 
     @asset_sizes.setter
@@ -459,7 +459,7 @@ class UEVMLFS:
         while folders_to_clean:
             folder = folders_to_clean.pop()
             if folder == self.path and extensions_to_delete is None:
-                self.log.warning("We can't delete the config folder without extensions to filter files!")
+                self.logger.warning("We can't delete the config folder without extensions to filter files!")
                 continue
             if not os.path.isdir(folder):
                 continue
@@ -476,7 +476,7 @@ class UEVMLFS:
                         os.remove(file_name)
                         size_deleted += size
                     except Exception as error:
-                        self.log.warning(f'Failed to delete file "{file_name}": {error!r}')
+                        self.logger.warning(f'Failed to delete file "{file_name}": {error!r}')
                 elif os.path.isdir(file_name):
                     folders_to_clean.append(file_name)
         return size_deleted
@@ -492,7 +492,7 @@ class UEVMLFS:
         try:
             return open(self._get_manifest_filename(app_name, version, platform), 'rb').read()
         except FileNotFoundError:  # all other errors should propagate
-            self.log.debug(f'Loading manifest failed, retrying without platform in filename...')
+            self.logger.debug(f'Loading manifest failed, retrying without platform in filename...')
             try:
                 return open(self._get_manifest_filename(app_name, version), 'rb').read()
             except FileNotFoundError:  # all other errors should propagate
@@ -549,7 +549,7 @@ class UEVMLFS:
             with open(self.installed_asset_filename, 'r', encoding='utf-8') as file:
                 self._installed_assets = json.load(file)
         except Exception as error:
-            self.log.debug(f'Failed to load installed asset data: {error!r}')
+            self.logger.debug(f'Failed to load installed asset data: {error!r}')
             return False
         has_changed = False
         for asset in self._installed_assets.values():
@@ -720,7 +720,7 @@ class UEVMLFS:
             with open(self.online_version_filename, 'r', encoding='utf-8') as file:
                 self._update_info = json.load(file)
         except Exception as error:
-            self.log.debug(f'Failed to load cached version data: {error!r}')
+            self.logger.debug(f'Failed to load cached version data: {error!r}')
             self._update_info = dict(last_update=0, data=None)
         return self._update_info
 

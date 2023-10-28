@@ -72,7 +72,7 @@ class UEVMAPI:
 
     def __init__(self):
         self.session = requests.session()
-        self.log = logging.getLogger('UEVMAPI')
+        self.logger = logging.getLogger('UEVMAPI')
         self.session.headers['User-Agent'] = self._user_agent
 
     def get_online_version_information(self) -> dict:
@@ -96,6 +96,6 @@ class UEVMAPI:
             release_url = data['info']['release_url']
             summary = data['info']['summary']
         except KeyError:
-            self.log.warning('Failed to get version information from PyPI.')
+            self.logger.warning('Failed to get version information from PyPI.')
 
         return dict(version=pypi_version, codename=pypi_codename, severity=severity, release_url=release_url, summary=summary)
