@@ -101,7 +101,7 @@ class TaggedLabelFrame(ttk.LabelFrame):
 
         self._tagged_child[tag_lower] = child
 
-        layout_option = self.pack_fw_options if layout_option == '' else layout_option
+        layout_option = self.pack_fw_options if not layout_option else layout_option
         child.pack(side=tk.LEFT, **layout_option)
 
         if focus_out_callback is not None:
