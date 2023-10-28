@@ -5,10 +5,12 @@ These functions DO NOT depend on the globals.py module and be freely imported.
 """
 import ctypes as ct
 import datetime
+import json
 import os
 import subprocess
 import sys
 import uuid
+from typing import Optional
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
@@ -466,3 +468,21 @@ def check_and_convert_list_to_str(str_or_list) -> str:
     if type(str_or_list).__name__ in ('list', 'dict_values', 'Index', 'ndarray'):
         result = ','.join([str(value) for value in str_or_list])
     return result
+
+
+def get_and_check_release_info(data_to_check) -> Optional[list]:
+    """
+    Check if the given data is a list of release info.
+    :param data_to_check: data to check.
+    :return: list of release info or None if the data is not valid.
+    """
+    if not data_to_check:
+        return []
+    if isinstance(data_to_check, str):
+        data_to_check = json.loads(data_to_check)
+    if isinstance(data_to_check, str):
+        # sometimes the release info has been encoded twice by error
+        data_to_check = json.loads(data_to_check)
+    if not isinstance(data_to_check, list):
+        return None
+    return data_to_check

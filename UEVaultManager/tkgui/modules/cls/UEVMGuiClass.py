@@ -5,7 +5,6 @@ _ clean_ue_asset_name: clean a name to remove unwanted characters.
 - UEVMGui: main window of the application.
 """
 import filecmp
-import json
 import logging
 import os
 import re
@@ -1846,13 +1845,15 @@ class UEVMGui(tk.Tk):
         """
         Display the releases of the asset in a choice window.
         """
-        data_table = self.editable_table  # shortcut
-        release_info_json = data_table.get_release_info()
-        if not release_info_json:
+        release_info = gui_fn.get_and_check_release_info(self.editable_table.get_release_info())
+        if release_info is None:
+            self.logger.warning(f'Invalid release info: {release_info}')
+
+        releases, latest_id = self.core.uevmlfs.extract_version_from_releases(release_info)
+        if not releases or not latest_id:
+            gui_f.box_message('There is no releases to install for this asset.\nCommand is aborted.')
             return
-        # BAD release_info = json.dumps(release_info_json)
-        release_info = json.loads(release_info_json)
-        self.releases_choice, _ = self.core.uevmlfs.extract_version_from_releases(release_info)
+        self.releases_choice = releases
         cw = ChoiceFromListWindow(
             window_title='UEVM: select release',
             title='Select the release',

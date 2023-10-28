@@ -1032,7 +1032,7 @@ class EditableTable(Table):
         db_asset_per_page = 100  # a bigger value will be refused by UE API
         if gui_g.s.testing_switch == 1:
             start_row = 15000
-            stop_row = 15000 + db_asset_per_page*5
+            stop_row = 15000 + db_asset_per_page * 5
         else:
             start_row = 0
             stop_row = 0
@@ -2031,6 +2031,20 @@ class EditableTable(Table):
             return ''
         else:
             return self.get_cell(row_number, col_index)
+
+    def set_release_info(self, row_number: int = None, value=None) -> None:
+        """
+        Return the "Release info" field the selected row.
+        :param row_number: row number from a datatable. Will be converted into real row index.
+        :param value: "Release info" dict as a json string.
+        :return: "Release info" dict as a json string.
+        """
+        row_number = row_number or self.get_selected_row_fixed()
+        if row_number is None or row_number < 0 or value is None:
+            return
+        col_index = self.get_col_index('Release info')
+        if col_index >= 0:
+            self.update_cell(row_number, col_index, value)
 
     def reset_style(self) -> None:
         """

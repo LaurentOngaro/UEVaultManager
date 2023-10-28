@@ -19,8 +19,8 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager.api.egs import is_asset_obsolete
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.csv_sql_fields import convert_data_to_csv, csv_sql_fields, debug_parsed_data, get_csv_field_name_list, is_on_state, \
-    is_preserved
+from UEVaultManager.models.csv_sql_fields import convert_data_to_csv, csv_sql_fields, debug_parsed_data, get_csv_field_name_list, \
+    get_sql_field_name_list, is_on_state, is_preserved
 from UEVaultManager.models.types import CSVFieldState, DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -164,18 +164,18 @@ class UEAssetScraper:
         self.clean_database: bool = clean_database
         self.debug_mode = debug_mode
         self.offline_mode = offline_mode
+        self.progress_window = progress_window or FakeProgressWindow()
+        self.core = AppCore(timeout=timeout) if core is None else core
+        self.timeout = timeout
+        self.filter_category = filter_category
+
         self.asset_db_handler = None
+        self.has_been_cancelled = False
+
         if not datasource_filename:
             message = 'Database mode is used but no database filename has been provided' if use_database else 'File mode is used but no filename has been provided'
             self._log(message, 'error')
             return
-        self.core = AppCore(timeout=timeout) if core is None else core
-        self.timeout = timeout
-        if progress_window is None:
-            progress_window = FakeProgressWindow()
-        self.progress_window = progress_window
-        self.filter_category = filter_category
-        self.has_been_cancelled = False
         if self.load_from_files:
             self.save_parsed_to_files = False  # no need to save if the source are the files , they won't be changes
             # self.use_database = True
@@ -282,7 +282,10 @@ class UEAssetScraper:
         use_database = self.use_database and asset_db_handler
         for asset_data_ori in assets_data_list:
             # WARNING: asset_data_ori WILL ALSO BE MODIFIED OUTSIDE the method and changed WILL BE SAVED in the json files
-            result_data = {}
+
+            # copy all existing data to the result_data to avoid missing one
+            result_data = {key: asset_data_ori.get(key, '') for key in get_sql_field_name_list(include_asset_only=True, exclude_csv_only=False)}
+
             uid = asset_data_ori.get('id', '')
             if not uid:
                 # this should never occur
@@ -291,11 +294,15 @@ class UEAssetScraper:
                 asset_existing_data = {}
                 if use_database:
                     existing_data = asset_db_handler.get_assets_data(asset_db_handler.preserved_data_fields, uid)
-                    asset_existing_data = existing_data.get(uid, None)
+                    asset_existing_data = existing_data.get(uid, {})
                 categories = asset_data_ori.get('categories', None)
-                release_info = asset_data_ori.get('release_info', {})  # correct field name in json file
-                if not release_info:
-                    release_info = asset_data_ori.get('releaseInfo', {})  # old/incorrect field name in json file
+
+                # releases
+                release_info = gui_fn.get_and_check_release_info(asset_data_ori.get('releaseInfo', []) )
+                result_data['release_info'] = release_info
+                latest_release = release_info[-1] if release_info else {}
+                first_release = release_info[0] if release_info else {}
+
                 # get app_name from asset_data or from the release_info
                 app_name = asset_data_ori.get('app_name', '')
                 if not app_name:
@@ -305,18 +312,6 @@ class UEAssetScraper:
                         self._log(f'No app_name found for asset with id={uid}.The dummy value {app_name} has be used instead', level='warning')
                 # add the app_name to the asset_data, and it will be saved in the json file
                 asset_data_ori['app_name'] = app_name
-                # for saving in json files we must keep the data as a LIST here
-                # convert release_info to a json string
-                # release_info_str = json.dumps(release_info) if release_info else gui_g.no_text_data
-                # asset_data['release_info'] = release_info_str
-                result_data['release_info'] = release_info
-                if isinstance(release_info, str):
-                    # could occur if data come from a json file with a "corrupted" release_info field
-                    release_info = json.loads(release_info)
-                # if 'releaseInfo' in asset_data_ori:
-                #     asset_data_ori.pop('releaseInfo')  # we remove the duplicate field to avoid future mistakes
-                latest_release = release_info[-1] if release_info else {}
-                first_release = release_info[0] if release_info else {}
                 origin = gui_g.s.origin_marketplace  # by default when scraped from marketplace
                 date_now = datetime.now().strftime(DateFormat.csv)
                 grab_result = GrabResult.NO_ERROR.name
@@ -405,8 +400,8 @@ class UEAssetScraper:
                 result_data['discount_percentage'] = discount_percentage
 
                 # old price
-                old_price = asset_existing_data.get('price', gui_g.no_float_data) if asset_existing_data else gui_g.no_float_data
-                older_price = asset_existing_data.get('old_price', gui_g.no_float_data) if asset_existing_data else gui_g.no_float_data
+                old_price = asset_existing_data.get('price', gui_g.no_float_data)
+                older_price = asset_existing_data.get('old_price', gui_g.no_float_data)
                 result_data['old_price'] = old_price if old_price else older_price
 
                 # rating
@@ -452,7 +447,7 @@ class UEAssetScraper:
                 tmp_date = gui_fn.convert_to_datetime(tmp_date, formats_to_use=[DateFormat.epic, DateFormat.csv])
                 tmp_date = gui_fn.convert_to_str_datetime(tmp_date, DateFormat.csv)
                 result_data['creation_date'] = tmp_date
-                result_data['date_added'] = asset_existing_data.get('date_added', date_now) if asset_existing_data else date_now
+                result_data['date_added'] = asset_existing_data.get('date_added', date_now)
 
                 # obsolete
                 try:
@@ -507,7 +502,12 @@ class UEAssetScraper:
                 # we use an UEAsset object to store the data and create a valid dict from it
                 ue_asset = UEAsset()
                 ue_asset.init_from_dict(result_data)
-                returned_assets_data.append(ue_asset.get_data())
+                data=ue_asset.get_data()
+                if data.get('id', None) is None:
+                    # this should never occur
+                    self._log(f'No id found for current asset. Passing to next asset', level='warning')
+                    continue
+                returned_assets_data.append(data)
                 message = f'Asset with uid={uid} added to content: owned={ue_asset.get("owned")} creation_date={ue_asset.get("creation_date")}'
                 self._log(message, 'debug')  # use debug here instead of info to avoid spamming the log file
                 if self.store_ids:
@@ -1054,7 +1054,8 @@ class UEAssetScraper:
             url_count = len(self._urls)
 
             # allow the main windows to update the progress window and unfreeze its buttons while threads are running
-            gui_g.WindowsRef.uevm_gui.progress_window = self.progress_window
+            if gui_g.WindowsRef.uevm_gui is not None:
+                gui_g.WindowsRef.uevm_gui.progress_window = self.progress_window
 
             self.progress_window.reset(new_value=0, new_text='Scraping data from URLs and saving to json files', new_max_value=url_count)
             # fake_root = FakeUEVMGuiClass()

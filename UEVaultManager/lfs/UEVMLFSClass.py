@@ -13,6 +13,7 @@ from typing import Optional
 
 import pandas as pd
 
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
 from UEVaultManager.lfs.utils import path_join
@@ -746,7 +747,10 @@ class UEVMLFS:
         latest_id = ''
         for asset_id, installed_asset in installed_assets.items():
             all_installed_folders[asset_id] = installed_asset['installed_folders']
-        if release_info is not None and len(release_info) > 0:
+        release_info = gui_fn.get_and_check_release_info(release_info)
+        if release_info is None:
+            return [], ''
+        else:
             # TODO: print a message if release is not compatible with the version of the selected project or engine.
             for index, item in enumerate(reversed(release_info)):  # reversed to have the latest release first
                 asset_id = item.get('appId', None)

@@ -1005,7 +1005,13 @@ class UEVaultManagerCLI:
         is_plugin = category and 'plugin' in category.lower()
         installed_in_engine = False
         releases, latest_id = self.core.uevmlfs.extract_version_from_releases(release_info)
-        release_selected = releases[latest_id]  # by default, we take the lastest release
+        if not releases or not latest_id:
+            self._log_and_gui_message(
+                'There is no releases to install for this asset.\nCommand is aborted.', level='error', quit_on_error=not uewm_gui_exists
+            )
+            return False
+        # by default, we take the lastest release
+        release_selected = releases[latest_id]
         if uewm_gui_exists:
             # create a windows to choose the release
             sub_title = 'In the list below, select the closest version that matches your project or engine version'
@@ -1673,7 +1679,7 @@ def main():
     ql = cli.setup_threaded_logging()
 
     conf_log_level = cli.core.uevmlfs.config.get('UEVaultManager', 'log_level', fallback='info')
-    conf_log_level=conf_log_level.lower()
+    conf_log_level = conf_log_level.lower()
     if conf_log_level == 'debug' or args.debug:
         cli.core.verbose_mode = True
         logging.getLogger().setLevel(level=logging.DEBUG)
