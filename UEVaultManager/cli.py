@@ -474,7 +474,7 @@ class UEVaultManagerCLI:
         update_information = self.core.uevmlfs.get_online_version_saved()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
-        if last_update :
+        if last_update:
             last_update = time.strftime('%x', time.localtime(last_update))
 
         json_content = {
@@ -964,6 +964,8 @@ class UEVaultManagerCLI:
         :param args: options passed to the command.
         """
         uewm_gui_exists = gui_g.WindowsRef.uevm_gui is not None
+        release_name = args.app_name
+
         try:
             db_handler = gui_g.WindowsRef.uevm_gui.editable_table.db_handler
         except AttributeError:
@@ -989,11 +991,11 @@ class UEVaultManagerCLI:
         # we use the "old" method (i.e. legendary way) to get the Asset, because we need to access to the metadata and its "base_urls"
         # that is not available in the "new" method (i.e. new API way)
         # Anyway, we can only install asset we own, so the "old" method is enough
-        asset = self.core.asset_obj_from_json(args.app_name)
+        asset = self.core.asset_obj_from_json(release_name)
         # asset_id = asset.metadata.get('appId', None)
         if not asset:
             self._log_and_gui_message(
-                f'Metadata are not available for "{args.app_name}".\nYou can only install an asset you own.\nInstallation can not be done.\nCommand is aborted.',
+                f'Metadata are not available for "{release_name}".\nYou can only install an asset you own.\nInstallation can not be done.\nCommand is aborted.',
                 'error',
                 quit_on_error=not uewm_gui_exists
             )
@@ -1035,8 +1037,7 @@ class UEVaultManagerCLI:
             else:
                 self._log_and_gui_display('\nNo release has been selected.\nSo, nothing can be done for you.\nCommand is aborted.', level='warning')
                 return False
-
-        release_name = self.release_id
+            release_name = self.release_id
         release_title = release_selected['title']
         install_path_base = args.install_path if args.install_path is not None else ''
 
