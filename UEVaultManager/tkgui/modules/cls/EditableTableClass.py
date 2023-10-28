@@ -583,7 +583,7 @@ class EditableTable(Table):
             result = int(idx)
             if copy_col_index >= 0:
                 idx_copy = df.iat[row_number, copy_col_index]  # could return '' if the column is empty
-                result = int(idx_copy) if str(idx_copy) != '' else -1
+                result = int(idx_copy) if str(idx_copy)  else -1
             else:
                 self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
         except (ValueError, IndexError) as error:

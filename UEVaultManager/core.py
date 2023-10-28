@@ -630,7 +630,7 @@ class AppCore:
         else:
             # asset are always installed in the 'Content' sub folder
             # NO we don't want to store "content" in the "install path"
-            # install_path = path_join(install_folder, 'Content') if install_folder != '' else ''
+            # install_path = path_join(install_folder, 'Content') if install_folder  else ''
             install_path = install_folder
 
         # check for write access on the installation path or its parent directory if it doesn't exist yet
@@ -718,7 +718,7 @@ class AppCore:
             processing_optimization=process_opt,
             already_installed=already_installed
         )
-        if install_path != '':
+        if install_path :
             # will add install_path to the installed_folders list after checking if it is not already in it
             installed_asset.install_path = install_path
         installed_asset.install_size = analyse_res.install_size

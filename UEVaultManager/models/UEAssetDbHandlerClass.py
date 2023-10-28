@@ -923,7 +923,7 @@ class UEAssetDbHandler:
         """
         tags_str = ''
         prefix = gui_g.s.tag_prefix  # prefix to add to the tag that has been checked
-        if tags is not None and tags != [] and tags != {} and tags != '':
+        if tags and tags is not None and tags != [] and tags != {}:
             if isinstance(tags, str):
                 try:
                     tags = tags.split(',')  # convert the string to a list

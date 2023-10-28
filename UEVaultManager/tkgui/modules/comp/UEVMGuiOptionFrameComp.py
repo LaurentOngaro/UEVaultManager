@@ -225,7 +225,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
             folders = sorted(values)  # shorter paths are first, as it, parent folders are before their children
             last_folder_lower = ''
             for folder in folders:
-                if last_folder_lower != '' and folder.lower().startswith(last_folder_lower):
+                if last_folder_lower and folder.lower().startswith(last_folder_lower):
                     values.remove(folder)
                 last_folder_lower = folder.lower()
             self._cb_folders_to_scan['values'] = values

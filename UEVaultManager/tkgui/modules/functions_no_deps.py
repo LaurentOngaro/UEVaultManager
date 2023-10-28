@@ -159,7 +159,7 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
     else:
         # windows only (remove the minimize/maximize buttons and the icon)
         icon = path_from_relative_to_absolute(icon)
-        if icon != '' and os.path.isfile(icon):
+        if icon  and os.path.isfile(icon):
             try:
                 tk_window.iconbitmap(icon)
             except Exception as error:

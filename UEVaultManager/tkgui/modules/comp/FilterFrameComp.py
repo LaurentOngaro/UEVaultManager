@@ -177,11 +177,11 @@ class FilterFrame(ttk.LabelFrame):
         cb_selection = self.cb_col_name.get()
         if cb_selection:
             value_type_str, filter_value = self._get_filter_value_and_type()
-            if cb_selection == 'Category' and filter_value != '':
+            if cb_selection == 'Category' and filter_value :
                 self.category = filter_value
             else:
                 self.category = None
-            if filter_value != '':
+            if filter_value :
                 # Filter values are a tuple of the form (value_type_str, filter_value)
                 self._filters[cb_selection] = (value_type_str, filter_value)
                 # print a text to easily add a new filter to self._quick_filters
@@ -277,14 +277,14 @@ class FilterFrame(ttk.LabelFrame):
                     mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
             else:
                 try:
-                    if value_type_str == 'bool' and filter_value != '':
+                    if value_type_str == 'bool' and filter_value :
                         mask = data[col_name].astype(bool) == filter_value
                     elif value_type_str == 'int':
                         mask = data[col_name].astype(int) == int(filter_value)
                     elif value_type_str == 'float':
                         filter_value = filter_value.replace(',', '.')
                         mask = data[col_name].astype(float) == float(filter_value)
-                    elif value_type_str.lower() in ('callable', 'method') and filter_value != '':
+                    elif value_type_str.lower() in ('callable', 'method') and filter_value :
                         # filter_value is a function that returns a mask (boolean Series)
                         mask = filter_value()
                     else:
@@ -336,7 +336,7 @@ class FilterFrame(ttk.LabelFrame):
         state = tk.NORMAL if cond_1 else tk.DISABLED
         self.cb_quick_filter['state'] = state
 
-        cond_2 = (cb_selection != '' and filter_value != '')
+        cond_2 = (cb_selection  and filter_value )
         state = tk.NORMAL if cond_2 else tk.DISABLED
         self.btn_add_filters['state'] = state
 

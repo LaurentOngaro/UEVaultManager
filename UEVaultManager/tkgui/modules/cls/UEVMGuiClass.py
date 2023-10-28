@@ -239,7 +239,7 @@ class UEVMGui(tk.Tk):
 
         data_table.update_downloaded_size(self.core.uevmlfs.asset_sizes)
 
-        if gui_g.s.last_opened_filter != '':
+        if gui_g.s.last_opened_filter :
             filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
             if filters is not None:
                 gui_f.show_progress(self, text=f'Loading filters from {gui_g.s.last_opened_filter}...')
@@ -1729,7 +1729,7 @@ class UEVMGui(tk.Tk):
 
         gui_g.UEVM_command_result = None  # clean result before running the command
 
-        if app_name != '':
+        if app_name :
             gui_g.UEVM_cli_args['app_name'] = app_name
 
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY

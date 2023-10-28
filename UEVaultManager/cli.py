@@ -474,7 +474,7 @@ class UEVaultManagerCLI:
         update_information = self.core.uevmlfs.get_online_version_saved()
         last_update = update_information.get('last_update', '')
         update_information = update_information.get('data', None)
-        if last_update != '':
+        if last_update :
             last_update = time.strftime('%x', time.localtime(last_update))
 
         json_content = {
