@@ -43,7 +43,7 @@ from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
 # make some properties of the AppCore class accessible from outside to limit the number of imports needed
 def test(message: str) -> None:
-    log=logging.getLogger('Core')
+    log = logging.getLogger('Core')
     log.warning(message)
     if gui_g.WindowsRef.display_content is not None:
         gui_g.WindowsRef.display_content.display(message)
