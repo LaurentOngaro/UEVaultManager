@@ -634,12 +634,12 @@ class AppCore:
             install_path = install_folder
 
         # check for write access on the installation path or its parent directory if it doesn't exist yet
-        if not check_and_create_folder(install_path):
-            self.log_info_and_gui_display(f'"{install_path}" did not exist, it has been created.')
-        if install_path != '' and not os.access(install_path, os.W_OK):
-            raise PermissionError(f'No write access to "{install_path}"')
-
-        self.log_info_and_gui_display(f'Install path: {install_path}')
+        if install_path:
+            self.log_info_and_gui_display(f'Install path: {install_path}')
+            if not check_and_create_folder(install_path):
+                self.log_info_and_gui_display(f'"{install_path}" did not exist, it has been created.')
+            if not os.access(install_path, os.W_OK):
+                raise PermissionError(f'No write access to "{install_path}"')
 
         if not no_resume:
             filename = clean_filename(f'{release_name}.resume')
