@@ -11,6 +11,7 @@ import ttkbootstrap as ttk
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.functions import update_loggers_level
+from UEVaultManager.tkgui.modules.functions_no_deps import open_folder_in_file_explorer
 
 
 class UEVMGuiOptionFrame(ttk.Frame):
@@ -32,6 +33,34 @@ class UEVMGuiOptionFrame(ttk.Frame):
         # global options frame (shown/hidden)
         lblf_options = ttk.Frame(self)
         lblf_options.pack(side=tk.TOP, **{'ipadx': 1, 'ipady': 1, 'fill': tk.BOTH, 'expand': True})
+
+        # Quick Folder Access
+        lblf_quick_access = ttk.LabelFrame(lblf_options, text='Quick Folder Access')
+        lblf_quick_access.pack(side=tk.TOP, **lblf_def_options)
+        max_col = 2
+        cur_row = -1
+        # new row
+        cur_row += 1
+        cur_col = 0
+        self.quick_folders_list = {
+            'Config Folder': gui_g.s.path,
+            'Last Opened Folder': gui_g.s.last_opened_folder,
+            'Last Opened Project': gui_g.s.last_opened_project,
+            'Last Opened Engine': gui_g.s.last_opened_engine,
+            'Filters Folder': gui_g.s.filters_folder,
+            'Scraping Folder': gui_g.s.scraping_folder,
+            'Results Files Folder': gui_g.s.results_folder,
+            'Assets Images Folder': gui_g.s.asset_images_folder,
+            'Assets CSV Files Folder': gui_g.s.assets_csv_files_folder,
+        }
+        cb_quick_folders = ttk.Combobox(lblf_quick_access, values=list(self.quick_folders_list.keys()), state='readonly', width=35)
+        cb_quick_folders.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
+        self._cb_quick_folders = cb_quick_folders
+        # new row
+        cur_row += 1
+        cur_col = 0
+        ttk_item = ttk.Button(lblf_quick_access, text='Browse Folder', command=self.browse_quick_folder)
+        ttk_item.grid(row=cur_row, column=cur_col, columnspan=2, **grid_ew_options)
 
         # Options for Commands frame
         lblf_command_options = ttk.LabelFrame(lblf_options, text='Options for CLI Commands')
@@ -256,3 +285,12 @@ class UEVMGuiOptionFrame(ttk.Frame):
         """
         gui_g.s.folders_to_scan = self._folders_to_scan
         gui_g.s.save_config_file()
+
+    def browse_quick_folder(self):
+        """
+        Browse a quick folder.
+        """
+        cb_selection = self._cb_quick_folders.get()
+        if cb_selection:
+            folder = self.quick_folders_list.get(cb_selection, '')
+            open_folder_in_file_explorer(folder)
