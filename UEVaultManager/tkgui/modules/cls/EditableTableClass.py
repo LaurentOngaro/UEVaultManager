@@ -367,6 +367,7 @@ class EditableTable(Table):
         """
         super().tableChanged()
         self.must_save = True
+        self.update_controls_state_func()
 
     def handle_left_release(self, event):
         """
