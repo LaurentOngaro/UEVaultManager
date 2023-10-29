@@ -2044,6 +2044,7 @@ class UEVMGui(tk.Tk):
             'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
             'Downloaded': ['callable', self.filter_is_downloaded],  #
             'Installed in folder': ['callable', self.filter_with_installed_folders],  #
+            'Local and marketplace': ['callable', self.filter_local_and_marketplace],  # show assets that are local (ie found after a scan folders) and in marketplace
             'With comment': ['callable', self.filter_with_comment],  #
             'Dummy rows': ['Asset_id', gui_g.s.empty_row_prefix],  #
             'Result OK': ['Grab result', 'NO_ERROR'],  #
@@ -2113,3 +2114,17 @@ class UEVMGui(tk.Tk):
         :return: mask to filter the data.
         """
         return self.filter_not_empty('Downloaded size')
+
+    def filter_local_and_marketplace(self) -> pd.Series:
+        """
+        Create a mask to filter the data that are not owned and with a price <=0.5 or free.
+        Assets that custom attributes contains external_link are also filtered.
+        :return: mask to filter the data.
+        """
+        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+        local_asset_rows = df['Origin'].ne(gui_g.s.origin_marketplace)
+        # create a list with the content of the  'App name' from the local_asset_rows dataframe
+        local_asset_names = df.loc[local_asset_rows, 'App name'].tolist()
+        # create a mask where the column "App name" is in the local dataframe
+        mask = df['App name'].isin(local_asset_names)
+        return mask
