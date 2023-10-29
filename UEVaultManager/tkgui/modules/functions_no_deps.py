@@ -35,7 +35,7 @@ def path_from_relative_to_absolute(path: str) -> str:
     :return: absolute path of the file.
     """
     if os.path.isabs(path):
-        return path
+        return os.path.normpath(path)
 
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
@@ -50,7 +50,7 @@ def path_from_relative_to_absolute(path: str) -> str:
         current_script_directory = os.path.dirname(current_script_path)
 
     absolute_path = path_join(current_script_directory, path)
-    return absolute_path
+    return os.path.normpath(absolute_path)
 
 
 def center_window_on_screen(screen_index: int, width: int, height: int) -> str:

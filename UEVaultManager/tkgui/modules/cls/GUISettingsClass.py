@@ -476,6 +476,7 @@ class GUISettings:
             self.path = path_join(config_path, 'UEVaultManager')
         else:
             self.path = os.path.expanduser('~/.config/UEVaultManager')
+        self.path = os.path.normpath(self.path)
         if not os.path.isdir(self.path):
             os.makedirs(self.path)
         if config_file:
