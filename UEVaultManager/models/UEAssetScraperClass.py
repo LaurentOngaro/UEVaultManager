@@ -298,7 +298,7 @@ class UEAssetScraper:
                 categories = asset_data_ori.get('categories', None)
 
                 # releases
-                release_info = gui_fn.get_and_check_release_info(asset_data_ori.get('releaseInfo', []) )
+                release_info = gui_fn.get_and_check_release_info(asset_data_ori.get('releaseInfo', []))
                 result_data['release_info'] = release_info
                 latest_release = release_info[-1] if release_info else {}
                 first_release = release_info[0] if release_info else {}
@@ -502,7 +502,7 @@ class UEAssetScraper:
                 # we use an UEAsset object to store the data and create a valid dict from it
                 ue_asset = UEAsset()
                 ue_asset.init_from_dict(result_data)
-                data=ue_asset.get_data()
+                data = ue_asset.get_data()
                 if data.get('id', None) is None:
                     # this should never occur
                     self._log(f'No id found for current asset. Passing to next asset', level='warning')
