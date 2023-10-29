@@ -239,7 +239,7 @@ class UEVMGui(tk.Tk):
 
         data_table.update_downloaded_size(self.core.uevmlfs.asset_sizes)
 
-        if gui_g.s.last_opened_filter :
+        if gui_g.s.last_opened_filter:
             filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
             if filters is not None:
                 gui_f.show_progress(self, text=f'Loading filters from {gui_g.s.last_opened_filter}...')
@@ -859,7 +859,6 @@ class UEVMGui(tk.Tk):
                 if parent_folder not in folder_to_scan:
                     folder_to_scan.append(parent_folder)
 
-        self.silent_mode = gui_f.box_yesno(f'Do you want to run the scan silently and avoid user confirmations dialogs ?')
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = folder_list if (folder_list is not None and len(folder_list) > 0) else gui_g.s.folders_to_scan
@@ -873,6 +872,13 @@ class UEVMGui(tk.Tk):
                 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
                 'G:/Assets/pour UE/02 Warez/Animations/Female Movement Animset Pro 4.26',  #
             ]
+        if not from_add_button and (
+            len(folder_to_scan) > 1 and not gui_f.box_yesno(
+                'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
+            )
+        ):
+            return
+        self.silent_mode = gui_f.box_yesno(f'Do you want to run the scan silently ?\nIt will use choices by default and avoid user confirmation dialogs.')
         if gui_g.s.offline_mode:
             self.silent_message('You are in offline mode, Scraping and scanning features are not available')
             return
@@ -884,13 +890,6 @@ class UEVMGui(tk.Tk):
             return
         if gui_g.s.check_asset_folders:
             self.clean_asset_folders()
-        if not from_add_button and (
-            len(folder_to_scan) > 1 and not gui_f.box_yesno(
-                'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?',
-                show_dialog=not self.silent_mode
-            )
-        ):
-            return
 
         pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False, show_btn_stop_l=True)
         data_table = self.editable_table  # shortcut
@@ -1049,7 +1048,11 @@ class UEVMGui(tk.Tk):
         if self.core.scan_assets_logger:
             self.core.scan_assets_logger.info(msg)
         date_added = datetime.now().strftime(DateFormat.csv)
-        row_data = {'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
+        # Note:
+        #   we need to create fake ids here because all the datatable will be saved in database in self.scrap_asset()
+        #   BEFORE scraping and getting real Ids
+        temp_id = gui_g.s.temp_id_prefix + gui_fn.create_uid()
+        row_data = {'Asset_id': temp_id, 'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
         count = len(valid_folders.items())
         pw.reset(new_text='Scraping data and updating assets', new_max_value=count)
@@ -1404,6 +1407,7 @@ class UEVMGui(tk.Tk):
             is_unique = False
             new_asset_id = gui_g.s.duplicate_row_prefix + gui_fn.create_uid()
             asset_data['asset_id'] = new_asset_id
+            asset_data['id'] = gui_fn.create_id_from_origin(asset_data['origin'])  # each origin will have its id
             gui_f.box_message(
                 f'A row with Asset_id={asset_id} already exists. To avoid issue, the Asset_id of the new row has been set to {new_asset_id}',
                 level='warning',
@@ -1729,7 +1733,7 @@ class UEVMGui(tk.Tk):
 
         gui_g.UEVM_command_result = None  # clean result before running the command
 
-        if app_name :
+        if app_name:
             gui_g.UEVM_cli_args['app_name'] = app_name
 
         # gui_g.UEVM_cli_args['offline'] = True  # speed up some commands DEBUG ONLY

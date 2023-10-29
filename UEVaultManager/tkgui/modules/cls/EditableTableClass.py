@@ -583,7 +583,7 @@ class EditableTable(Table):
             result = int(idx)
             if copy_col_index >= 0:
                 idx_copy = df.iat[row_number, copy_col_index]  # could return '' if the column is empty
-                result = int(idx_copy) if str(idx_copy)  else -1
+                result = int(idx_copy) if str(idx_copy) else -1
             else:
                 self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
         except (ValueError, IndexError) as error:
@@ -947,7 +947,20 @@ class EditableTable(Table):
                 row_data = self.get_row(row_number, return_as_dict=True)
                 if row_data is None:
                     continue
+                _id = row_data.get('Asset_id', '')
+                if _id.startswith(gui_g.s.temp_id_prefix):
+                    # this a new row , partialled empty, created before scraping the data.
+                    # No need to save it, It will produce a database error.
+                    # It will be saved after scraping
+                    if len(self._changed_rows) > 1:
+                        continue
+                    else:
+                        self.must_save = False
+                        return
                 asset_id = row_data.get('Asset_id', '')
+                if asset_id in gui_g.s.cell_is_empty_list and _id in gui_g.s.cell_is_empty_list:
+                    self.logger.warning(f'The asset for row #{row_number + 1} is missing asset_id or if field value. Bypassing the save.')
+                    continue
                 if asset_id in self._deleted_asset_ids:
                     # do not update an asset if that will be deleted
                     continue

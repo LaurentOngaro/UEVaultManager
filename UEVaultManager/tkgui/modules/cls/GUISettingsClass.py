@@ -104,6 +104,7 @@ class GUISettings:
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'dummy_row_'
         self.duplicate_row_prefix: str = 'local_'
+        self.temp_id_prefix: str = 'temp_id_'
         self.unknown_size: str = 'yes'
         self.tag_prefix: str = 't_'
         self.expand_columns_factor: int = 20

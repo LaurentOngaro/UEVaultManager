@@ -159,7 +159,7 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
     else:
         # windows only (remove the minimize/maximize buttons and the icon)
         icon = path_from_relative_to_absolute(icon)
-        if icon  and os.path.isfile(icon):
+        if icon and os.path.isfile(icon):
             try:
                 tk_window.iconbitmap(icon)
             except Exception as error:
@@ -325,6 +325,16 @@ def create_uid() -> str:
     :return: unique id.
     """
     return str(uuid.uuid4())[:8]
+
+
+def create_id_from_origin(string: str) -> str:
+    """
+    Create a hash from a string.
+    :return: unique hash.
+    """
+    # hash may return different values for same string, as PYTHONHASHSEED Value will change everytime you run your program. You may want to set it to some fixed value. Read here
+    # ignoring 1st character as it may be the negative sign.
+    return str(hash(string))[1:13]
 
 
 def shorten_text(url: str, limit: int = 30, prefix: str = '...') -> str:
