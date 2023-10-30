@@ -327,14 +327,14 @@ def create_uid() -> str:
     return str(uuid.uuid4())[:8]
 
 
-def create_id_from_origin(string: str) -> str:
-    """
-    Create a hash from a string.
-    :return: unique hash.
-    """
-    # hash may return different values for same string, as PYTHONHASHSEED Value will change everytime you run your program. You may want to set it to some fixed value. Read here
-    # ignoring 1st character as it may be the negative sign.
-    return str(hash(string))[1:13]
+# def create_id_from_origin(string: str) -> str:
+#     """
+#     Create a hash from a string.
+#     :return: unique hash.
+#     """
+#     # hash may return different values for same string, as PYTHONHASHSEED Value will change everytime you run your program. You may want to set it to some fixed value. Read here
+#     # ignoring 1st character as it may be the negative sign.
+#     return str(hash(string))[1:13]
 
 
 def shorten_text(url: str, limit: int = 30, prefix: str = '...') -> str:
