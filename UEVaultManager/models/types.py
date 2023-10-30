@@ -85,4 +85,5 @@ class DbVersionNum(Enum):
     V11 = 11  # rename column installed_folder TO installed_folders
     V12 = 12  # add release_info columns to the assets table
     V13 = 13  # add downloaded_size columns to the assets table
-    V14 = 14  # future version
+    V14 = 14  # add categories et grab_result views
+    V15 = 15  # future version

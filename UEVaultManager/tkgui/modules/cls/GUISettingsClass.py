@@ -110,6 +110,12 @@ class GUISettings:
         self.expand_columns_factor: int = 20
         self.contract_columns_factor: int = 20
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
+        # The list off all the possible value for the field 'category'. It should be updated if necessary
+        self.asset_categories = [
+            '2D Assets', 'Animations', 'Architectural Visualization', 'Blueprints', 'Characters', 'Code Plugins', 'Environments', 'Epic Content',
+            'Materials', 'Megascans', 'Music', 'Props', 'Sound Effects', 'Textures', 'UE Feature Samples', 'UE Game Samples', 'UE Legacy Samples',
+            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/asset', 'local/manifest', 'local/plugins'
+        ]
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
         # dark themes: "darkly", "superhero", "solar", "cyborg", "vapor"

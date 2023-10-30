@@ -375,6 +375,16 @@ class UEAssetDbHandler:
             cursor.execute(query)
             self.connection.commit()
             cursor.close()
+        if upgrade_to_version.value >= DbVersionNum.V14.value:
+            cursor = self.connection.cursor()
+            query = "CREATE VIEW IF NOT EXISTS categories AS SELECT DISTINCT category FROM assets ORDER BY 1"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor = self.connection.cursor()
+            query = "CREATE VIEW IF NOT EXISTS grab_results AS SELECT DISTINCT grab_result FROM assets ORDER BY 1"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
 
     def check_and_upgrade_database(self, upgrade_from_version: DbVersionNum = None) -> None:
         """
@@ -477,6 +487,9 @@ class UEAssetDbHandler:
         if upgrade_from_version == DbVersionNum.V12:
             self._add_missing_columns('assets', required_columns={'downloaded_size': 'TEXT'})
             self.db_version = upgrade_from_version = DbVersionNum.V13
+        if upgrade_from_version.value == DbVersionNum.V13.value:
+            self.db_version = upgrade_from_version = DbVersionNum.V14
+            self.create_tables(upgrade_to_version=self.db_version)
         if previous_version != self.db_version:
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)

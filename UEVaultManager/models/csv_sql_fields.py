@@ -4,6 +4,8 @@ CSV and SQL fields mapping and utility functions.
 """
 from datetime import datetime
 
+from pandas import CategoricalDtype
+
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.types import CSVFieldState, CSVFieldType, DateFormat
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, convert_to_bool, convert_to_float, convert_to_int, \
@@ -415,6 +417,12 @@ def get_converters(csv_field_name: str):
     """
     field_type = get_type(csv_field_name)
 
+    if csv_field_name == 'Category':
+        return [CategoricalDtype(categories=gui_g.s.asset_categories, ordered=True)]
+    if csv_field_name == 'Grab result':
+        # this is the list off all the possible value for the field 'Grab result'. It should be updated if necessary
+        cat_list = [grab_result.name for grab_result in GrabResult]
+        return [CategoricalDtype(categories=cat_list, ordered=True)]
     if field_type == CSVFieldType.LIST:
         # this is a special case. Use a 'category' for pandas datatable.
         # The caller should handle this case where the converter is not callable
