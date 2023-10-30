@@ -284,8 +284,8 @@ class UEAssetScraper:
             # WARNING: asset_data_ori WILL ALSO BE MODIFIED OUTSIDE the method and changed WILL BE SAVED in the json files
 
             # copy all existing data to the result_data to avoid missing one
-            result_data = {key: asset_data_ori.get(key, '') for key in get_sql_field_name_list(include_asset_only=True, exclude_csv_only=False)}
-
+            # result_data = {key: asset_data_ori.get(key, '') for key in get_sql_field_name_list(include_asset_only=True, exclude_csv_only=False)}
+            result_data=asset_data_ori.copy()
             uid = asset_data_ori.get('id', '')
             if not uid:
                 # this should never occur
@@ -507,7 +507,9 @@ class UEAssetScraper:
                     # this should never occur
                     self._log(f'No id found for current asset. Passing to next asset', level='warning')
                     continue
-                returned_assets_data.append(data)
+                # keep only fields that are in "valid" (filter all unused fields from the json file)
+                cleaned_data = {key: data.get(key, '') for key in get_sql_field_name_list(include_asset_only=True, exclude_csv_only=False)}
+                returned_assets_data.append(cleaned_data)
                 message = f'Asset with uid={uid} added to content: owned={ue_asset.get("owned")} creation_date={ue_asset.get("creation_date")}'
                 self._log(message, 'debug')  # use debug here instead of info to avoid spamming the log file
                 if self.store_ids:

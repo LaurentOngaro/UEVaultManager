@@ -862,7 +862,7 @@ class UEVMGui(tk.Tk):
         valid_folders = {}
         invalid_folders = []
         folder_to_scan = folder_list if (folder_list is not None and len(folder_list) > 0) else gui_g.s.folders_to_scan
-        if not from_add_button and gui_g.s.testing_switch == 1:  # here, do_not_ask is used to detect if the caller is the "add" button and not the "scan" button
+        if not from_add_button and gui_g.s.testing_switch == 2:  # here, do_not_ask is used to detect if the caller is the "add" button and not the "scan" button
             # noinspection GrazieInspection
             folder_to_scan = [
                 'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  #

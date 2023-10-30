@@ -1361,9 +1361,10 @@ class EditableTable(Table):
         # check if the columns order has changed
         new_cols_infos = self.get_col_infos()
         if self._column_infos_saved != new_cols_infos:
+            # resize the columns using the data stored before the update
             self.update_col_infos(
                 updated_info=self._column_infos_saved, apply_resize_cols=True
-            )  # resize the columns using the data stored before the update
+            )
         if self._current_page_saved != self.current_page:
             self.resetColors()
         self.set_colors()

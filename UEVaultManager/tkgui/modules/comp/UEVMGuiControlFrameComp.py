@@ -304,7 +304,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         if not filename:
             return
         filename = os.path.normpath(filename)
-        fd_folder = os.path.abspath(filename)
+        fd_folder = os.path.dirname(filename)
         filename = os.path.basename(filename)  # remove the folder from the filename
         filename, ext = os.path.splitext(filename)
         if not ext:
