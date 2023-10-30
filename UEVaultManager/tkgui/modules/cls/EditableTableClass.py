@@ -455,9 +455,12 @@ class EditableTable(Table):
         """
         row = self._last_selected_row
         col = self._last_selected_col
-        new_value = self.get_cell(row, col)
+        # new_value = self.get_cell(row, col)
+        df_model = self.get_data(df_type=DataFrameUsed.MODEL)  # always used the MODEL here because the user changes are always done in model
+        new_value = df_model.iat[row, col]  # iat checked
         if new_value is not None and value_saved != new_value:
             row_index = self.get_real_index(row)
+            self.update_cell(row_index, col, new_value, convert_row_number_to_row_index=False)  # copy the value in the unfiltered dataframe
             self.add_to_rows_to_save(row_index)
             # self.tableChanged() # done in add_to_rows_to_save
             return True
@@ -938,9 +941,8 @@ class EditableTable(Table):
         """
         if source_type is None:
             source_type = self.data_source_type
-        df = self.get_data()
+        df = self.get_data(df_type=DataFrameUsed.AUTO)
         self.updateModel(TableModel(df))  # needed to restore all the data and not only the current page
-        # noinspection GrazieInspection
         if source_type == DataSourceType.FILE:
             df.to_csv(self.data_source, index=False, na_rep='', date_format=DateFormat.csv)
         else:
@@ -1362,9 +1364,7 @@ class EditableTable(Table):
         new_cols_infos = self.get_col_infos()
         if self._column_infos_saved != new_cols_infos:
             # resize the columns using the data stored before the update
-            self.update_col_infos(
-                updated_info=self._column_infos_saved, apply_resize_cols=True
-            )
+            self.update_col_infos(updated_info=self._column_infos_saved, apply_resize_cols=True)
         if self._current_page_saved != self.current_page:
             self.resetColors()
         self.set_colors()
