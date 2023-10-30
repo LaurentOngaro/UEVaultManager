@@ -1476,10 +1476,10 @@ class EditableTable(Table):
         Notes:
             self.tableChanged() is called if some rows must be saved
         """
+        self.tableChanged()  # to force a controls update
         if row_index < 0 or row_index > len(self.get_data()) or row_index in self._changed_rows:
             return
         self._changed_rows.append(row_index)
-        self.tableChanged()
 
     def clear_rows_to_save(self) -> None:
         """
