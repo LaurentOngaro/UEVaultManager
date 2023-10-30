@@ -277,7 +277,7 @@ class FilterFrame(ttk.LabelFrame):
                     mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
             else:
                 try:
-                    if value_type_str == 'bool' and filter_value:
+                    if value_type_str == 'bool':
                         mask = data[col_name].astype(bool) == filter_value
                     elif value_type_str == 'int':
                         mask = data[col_name].astype(int) == int(filter_value)
@@ -288,7 +288,7 @@ class FilterFrame(ttk.LabelFrame):
                         # filter_value is a function that returns a mask (boolean Series)
                         mask = filter_value()
                     else:
-                        check_value = True
+                        check_value = True # needed for the test "==" bellow
                         if isinstance(filter_value, str) and filter_value.startswith('^'):
                             # ^ negates the filter
                             check_value = not check_value
