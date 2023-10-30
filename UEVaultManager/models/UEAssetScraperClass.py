@@ -285,7 +285,7 @@ class UEAssetScraper:
 
             # copy all existing data to the result_data to avoid missing one
             # result_data = {key: asset_data_ori.get(key, '') for key in get_sql_field_name_list(include_asset_only=True, exclude_csv_only=False)}
-            result_data=asset_data_ori.copy()
+            result_data = asset_data_ori.copy()
             uid = asset_data_ori.get('id', '')
             if not uid:
                 # this should never occur
