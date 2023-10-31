@@ -11,6 +11,8 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 
+from ttkbootstrap import WARNING
+
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import path_join
@@ -87,6 +89,7 @@ class JsonToolWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
             self.container: JsonToolWindow = container
             self.processing: bool = False
 
@@ -100,12 +103,14 @@ class JsonToolWindow(tk.Toplevel):
 
             self.frm_inner = tk.Frame(self)
             self.frm_inner.pack(pady=5)
-            self.btn_close = ttk.Button(self.frm_inner, text='Close Window', command=self.close_window)
-            self.btn_close.pack(side=tk.RIGHT, padx=5)
+            # noinspection PyArgumentList
+            # (bootstyle is not recognized by PyCharm)
+            self.btn_close = ttk.Button(self.frm_inner, text='Close Window', bootstyle=WARNING, command=self.close_window)
+            self.btn_close.pack(side=tk.RIGHT, **pack_def_options)
             self.btn_start = ttk.Button(self.frm_inner, text='Start Processing', command=self.start_processing)
-            self.btn_start.pack(side=tk.LEFT, padx=5)
+            self.btn_start.pack(side=tk.LEFT, **pack_def_options)
             self.btn_stop = ttk.Button(self.frm_inner, text='Stop Processing', command=self.stop_processing, state='disabled')
-            self.btn_stop.pack(side=tk.LEFT, padx=5)
+            self.btn_stop.pack(side=tk.LEFT, **pack_def_options)
 
             self.progress_bar = ttk.Progressbar(self, mode='determinate')
             self.progress_bar.pack(fill=tk.X, padx=10, pady=15)

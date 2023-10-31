@@ -350,7 +350,7 @@ class AppCore:
                     return True
                 except InvalidCredentialsError as error:
                     self.logger.warning(f'Resuming failed due to invalid credentials: {error!r}')
-                except Exception as error:
+                except (Exception, ) as error:
                     self.logger.warning(f'Resuming failed for unknown reason: {error!r}')
                 # If verify fails just continue the normal authentication process
                 self.logger.info('Falling back to using refresh token...')
@@ -358,9 +358,12 @@ class AppCore:
         try:
             self.logger.info('Logging in...')
             userdata = self.egs.start_session(self.uevmlfs.userdata['refresh_token'])
-        except InvalidCredentialsError:
-            self.logger.error('Stored credentials are no longer valid! Please log in again.')
+        except InvalidCredentialsError as error:
+            self.logger.warning(f'Resuming failed due to invalid credentials: {error!r}')
             self.uevmlfs.invalidate_userdata()
+            return False
+        except (Exception, ) as error:
+            self.logger.error(f'Connection failed with error : {error!r}')
             return False
         except (HTTPError, ConnectionError) as error:
             self.logger.error(f'HTTP request for log in failed: {error!r}, please try again later.')
