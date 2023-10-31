@@ -28,7 +28,7 @@ from UEVaultManager.downloader.mp.DLManagerClass import DLManager
 from UEVaultManager.lfs.EPCLFSClass import EPCLFS
 from UEVaultManager.lfs.UEVMLFSClass import UEVMLFS
 from UEVaultManager.lfs.utils import clean_filename, path_join
-from UEVaultManager.models.Asset import Asset, AssetBase, InstalledAsset
+from UEVaultManager.models.Asset import Asset, InstalledAsset
 from UEVaultManager.models.downloading import AnalysisResult, ConditionCheckResult
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.json_manifest import JSONManifest
@@ -42,6 +42,19 @@ from UEVaultManager.utils.env import is_windows_mac_or_pyi
 
 
 # make some properties of the AppCore class accessible from outside to limit the number of imports needed
+def log_info_and_gui_display(message: str) -> None:
+    """
+    Wrapper to log a message using a log function AND use a DisplayWindows to display the message if the gui is active.
+    :param message: message to log.
+
+    Notes:
+       To avoid "PicklingError" when using multithreading, this method must still here, at the start of the file and outside the class (WTF ?)
+       Do not use self. logger instead of logging.getLogger('Core')
+    """
+    # self.logger.info(message)
+    logging.getLogger('Core').info(message)
+    if gui_g.WindowsRef.display_content is not None:
+        gui_g.WindowsRef.display_content.display(message)
 
 
 class AppCore:
@@ -56,7 +69,7 @@ class AppCore:
 
     def __init__(self, override_config=None, timeout=(7, 7)):
         self.timeout = timeout
-        self.log = logging.getLogger('Core')
+        self.logger = logging.getLogger('Core')
         self.egs = EPCAPI(timeout=self.timeout)
         self.uevmlfs = UEVMLFS(config_file=override_config)
         self.egl = EPCLFS()
@@ -66,7 +79,7 @@ class AppCore:
         if os.name != 'nt':
             self.egl.programdata_path = self.uevmlfs.config.get('UEVaultManager', 'egl_programdata', fallback=None)
             if self.egl.programdata_path and not os.path.exists(self.egl.programdata_path):
-                self.log.error(f'Config EGL path ("{self.egl.programdata_path}") is invalid! Disabling sync...')
+                self.logger.error(f'Config EGL path ("{self.egl.programdata_path}") is invalid! Disabling sync...')
                 self.egl.programdata_path = None
                 self.uevmlfs.config.remove_option('UEVaultManager', 'egl_programdata')
                 self.uevmlfs.save_config()
@@ -77,18 +90,18 @@ class AppCore:
         if locale := self.uevmlfs.config.get('UEVaultManager', 'locale', fallback=getlocale(LC_CTYPE)[0]):
             try:
                 self.language_code, self.country_code = locale.split('-' if '-' in locale else '_')
-                self.log.debug(f'Set locale to {self.language_code}-{self.country_code}')
+                self.logger.debug(f'Set locale to {self.language_code}-{self.country_code}')
                 # adjust egs api language as well
                 self.egs.language_code, self.egs.country_code = self.language_code, self.country_code
             except Exception as error:
-                self.log.warning(f'Getting locale failed: {error!r}, falling back to using en-US.')
+                self.logger.warning(f'Getting locale failed: {error!r}, falling back to using en-US.')
         elif system() != 'Darwin':  # macOS doesn't have a default locale we can query
-            self.log.warning('Could not determine locale, falling back to en-US')
+            self.logger.warning('Could not determine locale, falling back to en-US')
 
         self.update_available = False
         self.force_show_update = False
         self.webview_killswitch = False
-        self.logged_in = False
+        self.user_is_connected = False
 
         # UE assets metadata cache properties
         self.ue_assets_count = 0
@@ -97,22 +110,26 @@ class AppCore:
         # Create a backup of the output file (when using the --output option) suffixed by a timestamp before creating a new file
         self.create_output_backup = True
         # Set the file name (and path) to log issues when an asset is ignored or filtered when running the list or scrap commands
-        self.scrap_assets_filename_log = ''
+        self.ignored_assets_filename_log = ''
         # Set the file name (and path) to log issues when an asset is not found on the marketplace when running the list or scrap commands
         self.notfound_assets_filename_log = ''
         # Set the file name (and path) to log issues when scanning folder to find assets
         self.scan_assets_filename_log = ''
+        # Set the file name (and path) to log scraped assets
+        self.scrap_assets_filename_log = ''
         # Create a backup of the log files that store asset analysis suffixed by a timestamp before creating a new file
         self.create_log_backup = True
-        # new file loggers
+        # file loggers
         self.ignored_logger = None
         self.notfound_logger = None
-        self.bad_data_logger = None
         self.scan_assets_logger = None
+        self.scrap_asset_logger = None
         self.use_threads = False
         self.thread_executor = None
         self.thread_executor_must_stop = False
         self.engine_version_for_obsolete_assets = gui_g.s.engine_version_for_obsolete_assets
+        # self.display_windows= DisplayContentWindow(title='UEVM command output', quit_on_close=True)
+        self.display_windows = None
 
     @staticmethod
     def load_manifest(data: bytes) -> Manifest:
@@ -159,15 +176,6 @@ class AppCore:
                     results.failures.add(message)
         return results
 
-    def log_info_and_gui_display(self, message: str) -> None:
-        """
-        Wrapper to log a message using a log function AND use a DisplayWindows to display the message if the gui is active.
-        :param message: message to log.
-        """
-        self.log.info(message)
-        if gui_g.WindowsRef.display_content is not None:
-            gui_g.WindowsRef.display_content.display(message)
-
     def setup_assets_loggers(self) -> None:
         """
         Setup logging for ignored, not found and bad data assets.
@@ -189,18 +197,20 @@ class AppCore:
                 logger.info(message)
                 return logger
             else:
-                self.log.warning(f'Failed to create logger for file: {filename_log}')
+                self.logger.warning(f'Failed to create logger for file: {filename_log}')
                 return None
 
         formatter = logging.Formatter('%(message)s')
         message = f"-----\n{datetime.now().strftime(DateFormat.csv)} Log Started\n-----\n"
 
-        if self.scrap_assets_filename_log:
-            self.ignored_logger = create_logger('ScrapAssets', self.scrap_assets_filename_log)
+        if self.ignored_assets_filename_log:
+            self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
         if self.notfound_assets_filename_log:
             self.notfound_logger = create_logger('NotFoundAssets', self.notfound_assets_filename_log)
         if self.scan_assets_filename_log:
             self.scan_assets_logger = create_logger('ScanAssets', self.scan_assets_filename_log)
+        if self.scrap_assets_filename_log:
+            self.scrap_asset_logger = create_logger('ScrapAssets', self.scrap_assets_filename_log)
 
     def auth_sid(self, sid) -> str:
         """
@@ -239,7 +249,7 @@ class AppCore:
         if r.status_code == 200:
             return r.json()['code']
 
-        self.log.error(f'Getting exchange code failed: {r.json()}')
+        self.logger.error(f'Getting exchange code failed: {r.json()}')
         return ''
 
     def auth_code(self, code) -> bool:
@@ -250,7 +260,7 @@ class AppCore:
             self.uevmlfs.userdata = self.egs.start_session(authorization_code=code)
             return True
         except Exception as error:
-            self.log.error(f'Log in failed with {error!r}, please try again.')
+            self.logger.error(f'Log in failed with {error!r}, please try again.')
             return False
 
     def auth_ex_token(self, code) -> bool:
@@ -261,7 +271,7 @@ class AppCore:
             self.uevmlfs.userdata = self.egs.start_session(exchange_token=code)
             return True
         except Exception as error:
-            self.log.error(f'Log in failed with {error!r}, please try again.')
+            self.logger.error(f'Log in failed with {error!r}, please try again.')
             return False
 
     def auth_import(self) -> bool:
@@ -279,7 +289,7 @@ class AppCore:
                     re_data = json.loads(decrypted_data)[0]
                     break
                 except Exception as error:
-                    self.log.debug(f'Decryption with key {data_key} failed with {error!r}')
+                    self.logger.debug(f'Decryption with key {data_key} failed with {error!r}')
             else:
                 raise ValueError('Decryption of EPIC launcher user information failed.')
         else:
@@ -292,7 +302,7 @@ class AppCore:
             self.uevmlfs.userdata = self.egs.start_session(refresh_token=refresh_token)
             return True
         except Exception as error:
-            self.log.error(f'Logging failed with {error!r}, please try again.')
+            self.logger.error(f'Logging failed with {error!r}, please try again.')
             return False
 
     def login(self, force_refresh: bool = False, raise_error: bool = True) -> bool:
@@ -306,9 +316,9 @@ class AppCore:
             if raise_error:
                 raise ValueError('No saved credentials')
             else:
-                self.logged_in = False
+                self.user_is_connected = False
                 return False
-        elif self.logged_in and self.uevmlfs.userdata['expires_at']:
+        elif self.user_is_connected and self.uevmlfs.userdata['expires_at']:
             dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
             dt_now = datetime.utcnow()
             td = dt_now - dt_exp
@@ -317,14 +327,14 @@ class AppCore:
             if dt_exp > dt_now and abs(td.total_seconds()) > 600:
                 return True
             else:
-                self.logged_in = False
+                self.user_is_connected = False
 
         # run update check
         if self.update_check_enabled():
             try:
                 self.check_for_updates()
             except Exception as error:
-                self.log.warning(f'Checking for UEVaultManager updates failed: {error!r}')
+                self.logger.warning(f'Checking for UEVaultManager updates failed: {error!r}')
 
         if self.uevmlfs.userdata['expires_at'] and not force_refresh:
             dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
@@ -333,31 +343,34 @@ class AppCore:
 
             # if session still has at least 10 minutes left we can re-use it.
             if dt_exp > dt_now and abs(td.total_seconds()) > 600:
-                self.log.info('Trying to re-use existing login session...')
+                self.logger.info('Trying to re-use existing login session...')
                 try:
                     self.egs.resume_session(self.uevmlfs.userdata)
-                    self.logged_in = True
+                    self.user_is_connected = True
                     return True
                 except InvalidCredentialsError as error:
-                    self.log.warning(f'Resuming failed due to invalid credentials: {error!r}')
-                except Exception as error:
-                    self.log.warning(f'Resuming failed for unknown reason: {error!r}')
+                    self.logger.warning(f'Resuming failed due to invalid credentials: {error!r}')
+                except (Exception, ) as error:
+                    self.logger.warning(f'Resuming failed for unknown reason: {error!r}')
                 # If verify fails just continue the normal authentication process
-                self.log.info('Falling back to using refresh token...')
+                self.logger.info('Falling back to using refresh token...')
 
         try:
-            self.log.info('Logging in...')
+            self.logger.info('Logging in...')
             userdata = self.egs.start_session(self.uevmlfs.userdata['refresh_token'])
-        except InvalidCredentialsError:
-            self.log.error('Stored credentials are no longer valid! Please log in again.')
+        except InvalidCredentialsError as error:
+            self.logger.warning(f'Resuming failed due to invalid credentials: {error!r}')
             self.uevmlfs.invalidate_userdata()
             return False
+        except (Exception, ) as error:
+            self.logger.error(f'Connection failed with error : {error!r}')
+            return False
         except (HTTPError, ConnectionError) as error:
-            self.log.error(f'HTTP request for log in failed: {error!r}, please try again later.')
+            self.logger.error(f'HTTP request for log in failed: {error!r}, please try again later.')
             return False
 
         self.uevmlfs.userdata = userdata
-        self.logged_in = True
+        self.user_is_connected = True
         return True
 
     def update_check_enabled(self) -> bool:
@@ -386,7 +399,7 @@ class AppCore:
             """
             Convert a version string to a tuple of ints.
             :param v: version string.
-            :return:  tuple of ints.
+            :return:  tuple of int.
             """
             return tuple(map(int, (v.split('.'))))
 
@@ -405,27 +418,6 @@ class AppCore:
         :return: update info dict.
         """
         return self.uevmlfs.get_online_version_saved()['data']
-
-    def get_assets(self, update_assets=False) -> List[AssetBase]:
-        """
-        Return a list of assets.
-        :param update_assets: whether to always fetches a new list of assets from the server.
-        :return: list of AssetBase objects.
-        """
-        # TODO: adapt this code using the scraped json files
-        # do not save and always fetch list when platform is overridden
-        if not self.uevmlfs.asset_list or update_assets:
-            # if not logged in, return empty list
-            if not self.egs.user:
-                return []
-            assets = self.uevmlfs.asset_list.copy() if self.uevmlfs.asset_list else {}
-            # TODO : scrap asset here
-
-            # only save (and write to disk) if there were changes
-            if self.uevmlfs.asset_list != assets:
-                self.uevmlfs.asset_list = assets  # this also save the list in json file
-        assets = self.uevmlfs.asset_list
-        return assets
 
     def is_installed(self, app_name: str) -> bool:
         """
@@ -502,18 +494,18 @@ class AppCore:
 
         r = {}
         for url in manifest_urls:
-            self.log.debug(f'Trying to download manifest from "{url}"...')
+            self.logger.debug(f'Trying to download manifest from "{url}"...')
             try:
                 r = self.egs.unauth_session.get(url, timeout=self.timeout)
             except Exception as error:
-                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" (Exception: {error!r}), trying next URL...')
+                self.logger.warning(f'Failed to download manifest from "{urlparse(url).netloc}" (Exception: {error!r}), trying next URL...')
                 continue
 
             if r.status_code == 200:
                 manifest_bytes = r.content
                 break
             else:
-                self.log.warning(f'Failed to download manifest from "{urlparse(url).netloc}" (status: {r.status_code}), trying next URL...')
+                self.logger.warning(f'Failed to download manifest from "{urlparse(url).netloc}" (status: {r.status_code}), trying next URL...')
         else:
             raise ValueError(f'Failed to get manifest from any CDN URL, last result: {r.status_code} ({r.reason})')
 
@@ -594,7 +586,7 @@ class AppCore:
 
         # load old manifest if we have one
         if override_old_manifest:
-            self.log_info_and_gui_display(f'Overriding old manifest with "{override_old_manifest}"')
+            log_info_and_gui_display(f'Overriding old manifest with "{override_old_manifest}"')
             old_bytes, _ = self.get_uri_manifest(override_old_manifest)
             old_manifest = self.load_manifest(old_bytes)
         elif not disable_patching and not no_resume and self.is_installed(release_name):
@@ -602,7 +594,7 @@ class AppCore:
             if _base_urls and not base_asset.base_urls:
                 base_asset.base_urls = _base_urls
             if not old_bytes:
-                self.log.error(f'Could not load old manifest, patching will not work!')
+                self.logger.error(f'Could not load old manifest, patching will not work!')
             else:
                 old_manifest = self.load_manifest(old_bytes)
 
@@ -613,7 +605,7 @@ class AppCore:
         disable_https = disable_https or self.uevmlfs.config.getboolean('UEVaultManager', 'disable_https', fallback=False)
 
         if override_manifest:
-            self.log_info_and_gui_display(f'Overriding manifest with "{override_manifest}"')
+            log_info_and_gui_display(f'Overriding manifest with "{override_manifest}"')
             new_manifest_data, _base_urls = self.get_uri_manifest(override_manifest)
             # if override manifest has a base URL use that instead
             if _base_urls:
@@ -627,15 +619,15 @@ class AppCore:
             message = f'Manifest data is empty for "{release_name}". Could be a timeout or an issue with the connection.'
             raise ValueError(message)
 
-        self.log_info_and_gui_display('Parsing game manifest...')
+        log_info_and_gui_display('Parsing game manifest...')
         manifest = self.load_manifest(new_manifest_data)
-        self.log.debug(f'Base urls: {base_urls}')
+        self.logger.debug(f'Base urls: {base_urls}')
         # save manifest with version name as well for testing/downgrading/etc.
         manifest_filename = self.uevmlfs.save_manifest(release_name, new_manifest_data, version=manifest.meta.build_version, platform=platform)
 
         # make sure donwnload folder actually exists (but do not create asset folder)
         if not check_and_create_folder(download_folder):
-            self.log_info_and_gui_display(f'"{download_folder}" did not exist, it has been created.')
+            log_info_and_gui_display(f'"{download_folder}" did not exist, it has been created.')
         if not os.access(download_folder, os.W_OK):
             raise PermissionError(f'No write access to "{download_folder}"')
 
@@ -647,16 +639,16 @@ class AppCore:
         else:
             # asset are always installed in the 'Content' sub folder
             # NO we don't want to store "content" in the "install path"
-            # install_path = path_join(install_folder, 'Content') if install_folder != '' else ''
+            # install_path = path_join(install_folder, 'Content') if install_folder  else ''
             install_path = install_folder
 
         # check for write access on the installation path or its parent directory if it doesn't exist yet
-        if not check_and_create_folder(install_path):
-            self.log_info_and_gui_display(f'"{install_path}" did not exist, it has been created.')
-        if install_path != '' and not os.access(install_path, os.W_OK):
-            raise PermissionError(f'No write access to "{install_path}"')
-
-        self.log_info_and_gui_display(f'Install path: {install_path}')
+        if install_path:
+            log_info_and_gui_display(f'Install path: {install_path}')
+            if not check_and_create_folder(install_path):
+                log_info_and_gui_display(f'"{install_path}" did not exist, it has been created.')
+            if not os.access(install_path, os.W_OK):
+                raise PermissionError(f'No write access to "{install_path}"')
 
         if not no_resume:
             filename = clean_filename(f'{release_name}.resume')
@@ -668,7 +660,7 @@ class AppCore:
         # EGS's behaviour of just selecting the first CDN in the list.
         base_url = None
         if override_base_url:
-            self.log_info_and_gui_display(f'Overriding base URL with "{override_base_url}"')
+            log_info_and_gui_display(f'Overriding base URL with "{override_base_url}"')
             base_url = override_base_url
         elif preferred_cdn or (preferred_cdn := self.uevmlfs.config.get('UEVaultManager', 'preferred_cdn', fallback=None)):
             for url in base_urls:
@@ -676,7 +668,7 @@ class AppCore:
                     base_url = url
                     break
             else:
-                self.log.warning(f'Preferred CDN "{preferred_cdn}" unavailable, using default selection.')
+                self.logger.warning(f'Preferred CDN "{preferred_cdn}" unavailable, using default selection.')
         # Use first, fail if none known
         if not base_url:
             if not base_urls:
@@ -686,15 +678,15 @@ class AppCore:
         if disable_https:
             base_url = base_url.replace('https://', 'http://')
 
-        self.log.debug(f'Using base URL: {base_url}')
+        self.logger.debug(f'Using base URL: {base_url}')
         scheme, cdn_host = base_url.split('/')[0:3:2]
-        self.log_info_and_gui_display(f'Selected CDN: {cdn_host} ({scheme.strip(":")})')
+        log_info_and_gui_display(f'Selected CDN: {cdn_host} ({scheme.strip(":")})')
 
         if not max_shm:
             max_shm = self.uevmlfs.config.getint('UEVaultManager', 'max_memory', fallback=2048)
 
         if dl_optimizations:
-            self.log_info_and_gui_display('Download order optimizations are enabled.')
+            log_info_and_gui_display('Download order optimizations are enabled.')
             process_opt = True
         else:
             process_opt = False
@@ -710,7 +702,7 @@ class AppCore:
             max_shared_memory=max_shm * 1024 * 1024,
             max_workers=max_workers,
             timeout=self.timeout,
-            trace_func=self.log_info_and_gui_display,
+            trace_func=log_info_and_gui_display,
         )
         installed_asset = self.uevmlfs.get_installed_asset(release_name)
         if installed_asset is None:
@@ -735,7 +727,7 @@ class AppCore:
             processing_optimization=process_opt,
             already_installed=already_installed
         )
-        if install_path != '':
+        if install_path:
             # will add install_path to the installed_folders list after checking if it is not already in it
             installed_asset.install_path = install_path
         installed_asset.install_size = analyse_res.install_size
@@ -760,7 +752,7 @@ class AppCore:
             with open(file_path, 'rb') as file:
                 manifest_data = file.read()
         except FileNotFoundError:
-            self.log.warning(f'The file {file_path} does not exist.')
+            self.logger.warning(f'The file {file_path} does not exist.')
             return {}
         manifest_info = {}
         manifest = self.load_manifest(manifest_data)

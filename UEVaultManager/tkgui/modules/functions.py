@@ -35,42 +35,64 @@ def log_format_message(name: str, levelname: str, message: str) -> str:
     return f'[{name}] {levelname}: {message}'
 
 
-def box_message(msg: str, level='info'):
+def box_message(msg: str, level='info', show_dialog: bool = True):
     """
     Display a message box with the given message.
     :param msg: message to display.
+    :param show_dialog: True to display the message in a messagebox, False to only print it on the console.
     :param level: level of the message (info, warning, error).
     """
     level_lower = level.lower()
     if level_lower == 'warning':
         log_warning(msg)
-        messagebox.showwarning(title=gui_g.s.app_title, message=msg)
     elif level_lower == 'error':
-        messagebox.showerror(title=gui_g.s.app_title, message=msg)
         log_error(msg)
         # done in log_error
         # exit(1)
     else:
         log_info(msg)
-        messagebox.showinfo(title=gui_g.s.app_title, message=msg)
+    if show_dialog:
+        if level_lower == 'warning':
+            messagebox.showwarning(title=gui_g.s.app_title, message=msg)
+        elif level_lower == 'error':
+            messagebox.showerror(title=gui_g.s.app_title, message=msg)
+        else:
+            messagebox.showinfo(title=gui_g.s.app_title, message=msg)
 
 
-def box_yesno(msg: str) -> bool:
+def box_yesno(msg: str, show_dialog: bool = True, default: bool = True) -> bool:
     """
     Display a YES/NO message box with the given message.
     :param msg: message to display .
+    :param show_dialog: True to display a dialog box, False to only return default value (silent mode)
+    :param default: default value to return if the dialog is not displayed.
     :return: True if the user clicked on Yes, False otherwise.
     """
-    return messagebox.askyesno(title=gui_g.s.app_title, message=msg)
+    return messagebox.askyesno(title=gui_g.s.app_title, message=msg) if show_dialog else default
 
 
-def box_okcancel(msg: str) -> bool:
+def box_okcancel(msg: str, show_dialog: bool = True, default: bool = True) -> bool:
     """
     Display an OK/CANCEL message box with the given message.
     :param msg: message to display.
+    :param show_dialog: True to display a dialog box, False to only return  default value (silent mode)
+    :param default: default value to return if the dialog is not displayed.
     :return: True if the user clicked on Yes, False otherwise.
     """
-    return messagebox.askokcancel(title=gui_g.s.app_title, message=msg)
+    return messagebox.askokcancel(title=gui_g.s.app_title, message=msg) if show_dialog else default
+
+
+def from_cli_only_message(content='This feature is only accessible', show_dialog: bool = True) -> None:
+    """
+    Display a message box with a message saying that the feature is only accessible when running the application is launched using the cli.
+    :param content: Optional content to add to the message.
+    :param show_dialog: True to display the message in a messagebox, False to only print it on the console.
+    """
+    msg = f'{content} when this application is launched using the UEVM cli edit command.'
+    print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
+    print(print_msg)
+    if show_dialog:
+        messagebox.showinfo(title=gui_g.s.app_title, message=msg)
 
 
 def todo_message() -> None:
@@ -78,16 +100,6 @@ def todo_message() -> None:
     Display a message box with a message saying that the feature is not implemented yet.
     """
     msg = 'Not implemented yet'
-    print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
-    print(print_msg)
-    messagebox.showinfo(title=gui_g.s.app_title, message=msg)
-
-
-def from_cli_only_message(content='This feature is only accessible') -> None:
-    """
-    Display a message box with a message saying that the feature is only accessible when running the application is launched using the cli.
-    """
-    msg = f'{content} when this application is launched using the UEVM cli edit command.'
     print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
     print(print_msg)
     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
@@ -300,7 +312,7 @@ def get_tk_root(container) -> Optional[tk.Tk]:
     """
     Get the root window.
     :param container:  the container window or object.
-    :return: root windo.
+    :return: root window.
     """
     if container is None:
         return None

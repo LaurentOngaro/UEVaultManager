@@ -70,7 +70,6 @@ UEVM_command_result = None
 s = GUISettings()  # using the shortest variable name for GUISettings for convenience
 # noinspection PyTypeChecker
 UEVM_cli_args: SaferDict = {}
-UEVM_filter_category = ''
 UEVM_logger_names = []  # list of logger names used by UEVM classes
 # lists of widgets that need to be enabled/disabled when some conditions change
 # - add widgets to the approprriate list when they are created by calling the append_no_duplicate() method

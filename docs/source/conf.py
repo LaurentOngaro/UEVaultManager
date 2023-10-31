@@ -102,7 +102,7 @@ exclude_patterns = ['build', '**/pptree.py']
 highlight_language = 'python3'
 pygments_style = 'sphinx'
 
-# If true, `todo` and `todoList` produce output, else they produce nothing.
+# If true, `to_do` and `to_doList` produce output, else they produce nothing.
 todo_include_todos = True
 
 # The reST default role (used for this markup: `text`) to use for all documents.

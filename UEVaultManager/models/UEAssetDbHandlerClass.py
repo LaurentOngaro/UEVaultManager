@@ -22,8 +22,7 @@ from UEVaultManager.models.types import DateFormat, DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, convert_to_int, convert_to_str_datetime, create_uid, \
-    merge_lists_or_strings, \
-    path_from_relative_to_absolute
+    get_and_check_release_info, merge_lists_or_strings, path_from_relative_to_absolute
 from UEVaultManager.utils.cli import check_and_create_file
 
 
@@ -215,17 +214,17 @@ class UEAssetDbHandler:
         """
         if not table_name or not row_data:
             return False
-        uid = row_data.get('id', None)  # check if the row as an id to check
+        _id = row_data.get('id', None)  # check if the row as an id to check
         # remove all fields whith a None Value
         filtered_fields = {k: v for k, v in row_data.items() if (v is not None and v not in gui_g.s.cell_is_empty_list)}
         if len(filtered_fields) == 0:
             return False
         column_list = filtered_fields.keys()
         cursor = self.connection.cursor()
-        if uid is not None:
+        if _id is not None:
             # check if the asset already exists in the database
             query = "SELECT id FROM " + table_name + " WHERE id = ?"  # we don't use a {table_name} here to avoid inspection warning
-            cursor.execute(query, (uid, ))
+            cursor.execute(query, (_id, ))
             result = cursor.fetchone()
         else:
             result = None
@@ -239,12 +238,12 @@ class UEAssetDbHandler:
         else:
             # the row with uid already exists in the database, update it
             fields = ", ".join(f"{column} = :{column}" for column in column_list)
-            query = "UPDATE " + table_name + f" SET {fields} WHERE id = '{uid}'"  # we don't use a {table_name} here to avoid inspection warning
+            query = "UPDATE " + table_name + f" SET {fields} WHERE id = '{_id}'"  # we don't use a {table_name} here to avoid inspection warning
         try:
             cursor.execute(query, row_data)
             return True
         except (sqlite3.IntegrityError, sqlite3.InterfaceError) as error:
-            self.logger.warning(f"Error while inserting/updating row with id '{uid}': {error!r}")
+            self.logger.warning(f"Error while inserting/updating row with id '{_id}': {error!r}")
             return False
 
     def _set_installed_folders(self, asset_id: str, catalog_item_id: str, installed_folders_existing: str, installed_folders: list) -> str:
@@ -375,6 +374,16 @@ class UEAssetDbHandler:
             cursor.execute(query)
             self.connection.commit()
             cursor.close()
+        if upgrade_to_version.value >= DbVersionNum.V14.value:
+            cursor = self.connection.cursor()
+            query = "CREATE VIEW IF NOT EXISTS categories AS SELECT DISTINCT category FROM assets ORDER BY 1"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor = self.connection.cursor()
+            query = "CREATE VIEW IF NOT EXISTS grab_results AS SELECT DISTINCT grab_result FROM assets ORDER BY 1"
+            cursor.execute(query)
+            self.connection.commit()
+            cursor.close()
 
     def check_and_upgrade_database(self, upgrade_from_version: DbVersionNum = None) -> None:
         """
@@ -477,6 +486,9 @@ class UEAssetDbHandler:
         if upgrade_from_version == DbVersionNum.V12:
             self._add_missing_columns('assets', required_columns={'downloaded_size': 'TEXT'})
             self.db_version = upgrade_from_version = DbVersionNum.V13
+        if upgrade_from_version.value == DbVersionNum.V13.value:
+            self.db_version = upgrade_from_version = DbVersionNum.V14
+            self.create_tables(upgrade_to_version=self.db_version)
         if previous_version != self.db_version:
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)
@@ -545,8 +557,19 @@ class UEAssetDbHandler:
             if update_progress and gui_g.WindowsRef.progress:
                 gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(_asset_list))
             for index, asset in enumerate(_asset_list):
-                if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
+                # if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
+                if gui_g.WindowsRef.progress and (
+                    not gui_g.WindowsRef.progress.continue_execution or
+                    (update_progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1))
+                ):
                     return False
+                _id = str(asset.get('id', ''))
+                if _id.startswith(gui_g.s.temp_id_prefix):
+                    # this a new row, partialled empty, created before scraping the data.
+                    # No need to save it, It will produce an error.
+                    # It will be saved after scraping
+                    # It should not occur here. It should have been filtered before.
+                    continue
                 # make some conversion before saving the asset
                 asset['update_date'] = str_today
                 asset['creation_date'] = convert_to_str_datetime(
@@ -559,6 +582,9 @@ class UEAssetDbHandler:
                 tags = asset.get('tags', [])
                 asset['tags'] = self.convert_tag_list_to_string(tags)  # will search the tags table for ids
                 asset['installed_folders'] = check_and_convert_list_to_str(asset.get('installed_folders', []))
+                release_info = get_and_check_release_info(asset.get('release_info', []))
+                release_info_str = json.dumps(release_info)
+                asset['release_info'] = release_info_str  # if isinstance(release_info, list) else release_info
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
@@ -918,7 +944,7 @@ class UEAssetDbHandler:
         """
         tags_str = ''
         prefix = gui_g.s.tag_prefix  # prefix to add to the tag that has been checked
-        if tags is not None and tags != [] and tags != {} and tags != '':
+        if tags and tags is not None and tags != [] and tags != {}:
             if isinstance(tags, str):
                 try:
                     tags = tags.split(',')  # convert the string to a list
@@ -1164,7 +1190,7 @@ class UEAssetDbHandler:
         fake = Faker()
         for index in range(number_of_rows):
             assets_id = fake.uuid4()
-            print(f'creating test asset # {index} with id {assets_id}')
+            print(f'creating test asset #{index} with id {assets_id}')
             ue_asset = UEAsset()
             data = {
                 'id': assets_id,

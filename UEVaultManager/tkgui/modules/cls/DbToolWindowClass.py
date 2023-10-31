@@ -9,6 +9,8 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 
+from ttkbootstrap import DANGER, WARNING
+
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -42,7 +44,7 @@ class DbToolWindowClass(tk.Toplevel):
     def __init__(
         self,
         title: str = 'Database Import/Export Window',
-        width: int = 400,
+        width: int = 420,
         height: int = 450,
         icon=None,
         screen_index: int = 0,
@@ -83,6 +85,7 @@ class DbToolWindowClass(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
+            pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
             self.container: DbToolWindowClass = container
             self.processing: bool = False
 
@@ -110,12 +113,18 @@ class DbToolWindowClass(tk.Toplevel):
 
             self.frm_inner = tk.Frame(self)
             self.frm_inner.pack(pady=5)
-            self.btn_close = ttk.Button(self.frm_inner, text='Close Window', command=self.close_window)
-            self.btn_close.pack(side=tk.RIGHT, padx=5)
+            # noinspection PyArgumentList
+            # (bootstyle is not recognized by PyCharm)
+            self.btn_close = ttk.Button(self.frm_inner, text='Close Window', bootstyle=WARNING, command=self.close_window)
+            self.btn_close.pack(side=tk.RIGHT, **pack_def_options)
             self.btn_import = ttk.Button(self.frm_inner, text='Import from files', command=self.import_data)
-            self.btn_import.pack(side=tk.LEFT, padx=5)
+            self.btn_import.pack(side=tk.LEFT, **pack_def_options)
             self.btn_export = ttk.Button(self.frm_inner, text='Export to files', command=self.export_data)
-            self.btn_export.pack(side=tk.LEFT, padx=5)
+            self.btn_export.pack(side=tk.LEFT, **pack_def_options)
+            # noinspection PyArgumentList
+            # (bootstyle is not recognized by PyCharm)
+            self.btn_clean = ttk.Button(self.frm_inner, text='Clean Assets', bootstyle=DANGER, command=self.clean_database)
+            self.btn_clean.pack(side=tk.LEFT, **pack_def_options)
 
             self.lbl_result = tk.Label(self, text='Result Window: Clic into to copy content to clipboard', fg='green')
             self.lbl_result.pack(padx=1, pady=1, anchor=tk.CENTER)
@@ -239,6 +248,22 @@ class DbToolWindowClass(tk.Toplevel):
             for file in files:
                 self.add_result(file)
             self.add_result('Export finished.', set_status=True)
+            self.processing = False
+
+        def clean_database(self) -> None:
+            """
+            Clean the database.
+            """
+            if self.processing:
+                messagebox.showinfo('Info', 'Processing is already running.')
+                return
+            if not messagebox.askyesno('Warning', 'This will delete all ASSETS in the database. Are you sure ?'):
+                return
+            self.processing = True
+            self.add_result('Processing...', set_status=True)
+            self.update()
+            self.container.db_handler.delete_all_assets(keep_added_manually=False)
+            self.add_result('All Assets have been deleted.', set_status=True)
             self.processing = False
 
 

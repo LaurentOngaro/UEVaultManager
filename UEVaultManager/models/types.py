@@ -85,4 +85,18 @@ class DbVersionNum(Enum):
     V11 = 11  # rename column installed_folder TO installed_folders
     V12 = 12  # add release_info columns to the assets table
     V13 = 13  # add downloaded_size columns to the assets table
-    V14 = 14  # future version
+    V14 = 14  # add categories et grab_result views
+    V15 = 15  # future version
+
+
+class GetDataResult(Enum):
+    """
+    Result of the get_data_from_url() function.
+    """
+    OK = 0
+    ERROR = 1
+    CANCELLED = 2  # user cancelled the process
+    BAD_CONTEXT = 3  # the context is not valid getting data (ie. offine)
+    NO_URL = 4  # no url to get data
+    ERROR_431 = 5  # mainly occurs because the number of asset to scrap is too big
+    TIMEOUT = 6  # mainly occurs because the timeout is too short for the number of asset to scrap

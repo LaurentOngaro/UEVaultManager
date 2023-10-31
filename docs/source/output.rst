@@ -9,12 +9,12 @@ Log files and debug
 file to set their file name (and path). If a file name is missing, empty
 or set to '' the corresponding log feature will be disabled.
 
--  assets scraping log
+-  ignored assets file log
 
-   -  file is defined by the setting: `scrap_assets_filename_log`
-      (default is ``~/.config/scan_assets.log``)
-   -  each scraped asset is listed here whith the result of the scan
-
+   -  file is defined by the setting: `ignored_assets_filename_log`
+      (default is ``~/.config/ignored_assets.log``)
+   -  each asset listed in the file has been ignored during the process.
+      Possible reasons are: asset filtered by category (list with -fc option)
 
 -  not found assets log
 
@@ -29,6 +29,13 @@ or set to '' the corresponding log feature will be disabled.
    -  file is defined by the setting: `scan_assets_filename_log`
       (default is ``~/.config/scan_assets_filename_log.log``)
    -  each scanned folder is listed here whith the result of the scan
+
+
+-  assets scraping log
+
+   -  file is defined by the setting: `scrap_assets_filename_log`
+      (default is ``~/.config/scan_assets.log``)
+   -  each scraped asset is listed here whith the result of the scan
 
 
 The output file
@@ -413,8 +420,11 @@ file:
 .. code:: python
 
    class GrabResult(Enum):
-       NO_ERROR = 0
-       INCONSISTANT_DATA = 1
-       PAGE_NOT_FOUND = 2
-       CONTENT_NOT_FOUND = 3
-       TIMEOUT = 4
+      NO_ERROR = 0
+      INCONSISTANT_DATA = 1
+      PAGE_NOT_FOUND = 2
+      CONTENT_NOT_FOUND = 3
+      TIMEOUT = 4
+      PARTIAL = 5  # when asset has been added when owned asset data only (less complete that "standard" asset data)
+      NO_APPID = 6  # no appid found in the data (will produce a file name like '_no_appId_asset_1e10acc0cca34d5c8ff7f0ab57e7f89f
+      NO_RESPONSE = 7  # the url does not return HTTP 200

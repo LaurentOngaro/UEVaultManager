@@ -45,7 +45,7 @@ def copy_folder(src_folder: str, dest_folder: str, check_copy_size=True) -> bool
     :param src_folder: source directory.
     :param dest_folder: destination directory.
     :param check_copy_size: check if copy was successful by comparing the size of copied files.
-    :return: True if successful, False otherwis.
+    :return: True if successful, False otherwise.
     """
     try:
         os.makedirs(dest_folder, exist_ok=True)
@@ -86,7 +86,7 @@ def compare_folders(folder1: str, folder2: str) -> list:
     Compare two directories and return a list of files that are different
     :param folder1: first directory.
     :param folder2: second directory.
-    :return: list of files that are differen.
+    :return: list of files that are different.
     """
     comparison = filecmp.dircmp(folder1, folder2)
     return comparison.diff_files

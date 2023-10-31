@@ -89,7 +89,7 @@ class UEVMGuiToolbarFrame(ttk.Frame):
         lblf_db_commands.pack(side=tk.LEFT, **lblf_def_options)
         btn_json_data = ttk.Button(lblf_db_commands, text='Get Json Data', command=lambda: container.json_processing())
         btn_json_data.pack(**pack_def_options, side=tk.LEFT)
-        btn_import_export = ttk.Button(lblf_db_commands, text='Db Import/Export', command=lambda: container.database_processing())
+        btn_import_export = ttk.Button(lblf_db_commands, text='Database Tools', command=lambda: container.database_processing())
         btn_import_export.pack(**pack_def_options, side=tk.LEFT)
 
         lblf_actions = ttk.LabelFrame(self, text='Actions')
