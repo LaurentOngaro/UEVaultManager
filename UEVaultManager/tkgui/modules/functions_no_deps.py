@@ -5,10 +5,12 @@ These functions DO NOT depend on the globals.py module and be freely imported.
 """
 import ctypes as ct
 import datetime
+import json
 import os
 import subprocess
 import sys
 import uuid
+from typing import Optional
 
 import ttkbootstrap as ttk
 from screeninfo import get_monitors
@@ -33,7 +35,7 @@ def path_from_relative_to_absolute(path: str) -> str:
     :return: absolute path of the file.
     """
     if os.path.isabs(path):
-        return path
+        return os.path.normpath(path)
 
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
@@ -48,7 +50,7 @@ def path_from_relative_to_absolute(path: str) -> str:
         current_script_directory = os.path.dirname(current_script_path)
 
     absolute_path = path_join(current_script_directory, path)
-    return absolute_path
+    return os.path.normpath(absolute_path)
 
 
 def center_window_on_screen(screen_index: int, width: int, height: int) -> str:
@@ -88,7 +90,7 @@ def get_center_screen_positions(screen_index: int, width: int, height: int) -> (
 def set_custom_style(theme_name='lumen', font=('Arial', 10, 'normal')):
     """
     Set the custom style for the application.
-    :return: style object.
+    :return: Style object.
     """
     try:
         style = ttk.Style(theme_name)
@@ -157,7 +159,7 @@ def set_icon_and_minmax(tk_window, icon=None) -> None:
     else:
         # windows only (remove the minimize/maximize buttons and the icon)
         icon = path_from_relative_to_absolute(icon)
-        if icon != '' and os.path.isfile(icon):
+        if icon and os.path.isfile(icon):
             try:
                 tk_window.iconbitmap(icon)
             except Exception as error:
@@ -325,17 +327,28 @@ def create_uid() -> str:
     return str(uuid.uuid4())[:8]
 
 
-def shorten_text(url: str, limit: int = 30) -> str:
+# def create_id_from_origin(string: str) -> str:
+#     """
+#     Create a hash from a string.
+#     :return: unique hash.
+#     """
+#     # hash may return different values for same string, as PYTHONHASHSEED Value will change everytime you run your program. You may want to set it to some fixed value. Read here
+#     # ignoring 1st character as it may be the negative sign.
+#     return str(hash(string))[1:13]
+
+
+def shorten_text(url: str, limit: int = 30, prefix: str = '...') -> str:
     """
     Shorten an url. Get its last part
     :param url:  the url to shorten.
     :param limit: limit of characters to keep.
-    :return: shortened ur.
+    :param prefix: prefix to add to the shorted url (if it has been shorted).
+    :return: shortened url.
     """
     if len(url) < limit:
         return url
     else:
-        return '...' + url[-limit:]
+        return prefix + url[-limit:]
 
 
 def extract_variables_from_url(url: str) -> dict:
@@ -461,8 +474,25 @@ def check_and_convert_list_to_str(str_or_list) -> str:
     :return: converted string or the given parameter.
     """
     result = str_or_list
-    if type(str_or_list).__name__ in ['list', 'dict_values']:
-        # if the list does not only contain strings, it will raise an error.
-        # So we use map to convert all the values to string
-        result = ','.join(map(str, str_or_list))
+    # Note: can not use isinstance because 'Index', 'ndarray' and 'dict_values' are not recognized as types
+    if type(str_or_list).__name__ in ('list', 'dict_values', 'Index', 'ndarray'):
+        result = ','.join([str(value) for value in str_or_list])
     return result
+
+
+def get_and_check_release_info(data_to_check) -> Optional[list]:
+    """
+    Check if the given data is a list of release info.
+    :param data_to_check: data to check.
+    :return: list of release info or None if the data is not valid.
+    """
+    if not data_to_check:
+        return []
+    if isinstance(data_to_check, str):
+        data_to_check = json.loads(data_to_check)
+    if isinstance(data_to_check, str):
+        # sometimes the release info has been encoded twice by error
+        data_to_check = json.loads(data_to_check)
+    if not isinstance(data_to_check, list):
+        return None
+    return data_to_check

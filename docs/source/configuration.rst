@@ -39,9 +39,10 @@ This is an example of this file content and the settings you can change:
     verbose_mode = False
     ; File name (and path) to log issues with assets when running the list or scrap commands
     ; use "~/" at the start of the filename to store it relatively to the user directory
-    scrap_assets_filename_log = ~/.config/scrap_assets.log
+    ignored_assets_filename_log = ~/.config/ignored_assets.log
     notfound_assets_filename_log = ~/.config/notfound_assets.log
     scan_assets_filename_log = ~/.config/scan_assets.log
+    scrap_assets_filename_log = ~/.config/scrap_assets.log
     ; Minimal unreal engine version to check for obsolete assets (default is 4.26)
     engine_version_for_obsolete_assets = 4.26
 

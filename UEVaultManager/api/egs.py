@@ -2,13 +2,11 @@
 """
 Implementation for:
 - EPCAPI : Epic Games Client API
-- GrabResult : Enum for the result of grabbing a page.
 - create_empty_assets_extra : Create an empty asset extra dict.
 - is_asset_obsolete : Check if an asset is obsolete.
 """
 import json
 import logging
-from enum import Enum
 
 import requests
 import requests.adapters
@@ -16,23 +14,8 @@ from bs4 import BeautifulSoup
 from requests.auth import HTTPBasicAuth
 
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.tkgui.modules.types import GrabResult
 from UEVaultManager.utils.cli import create_list_from_string
-
-
-class GrabResult(Enum):
-    """
-    Enum for the result of grabbing a page.
-    """
-    NO_ERROR = 0
-    # next codes could occur only with beautifulsoup data grabbing (UEVM Version 1.X.X.X)
-    INCONSISTANT_DATA = 1
-    PAGE_NOT_FOUND = 2
-    CONTENT_NOT_FOUND = 3
-    TIMEOUT = 4
-    # next codes could occur only with API scraping only (UEVM version 2.X.X.X)
-    PARTIAL = 5  # when asset has been added when owned asset data only (less complete that "standard" asset data)
-    NO_APPID = 6  # no appid found in the data (will produce a file name like '_no_appId_asset_1e10acc0cca34d5c8ff7f0ab57e7f89f
-    NO_RESPONSE = 7  # the url does not return HTTP 200
 
 
 def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=None) -> bool:
@@ -87,7 +70,8 @@ class EPCAPI:
     :param cc: country code.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     """
-    ignored_logger = None
+    notfound_logger = None
+    scrap_asset_logger = None
 
     _user_agent = 'UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit'
     _store_user_agent = 'EpicGamesLauncher/14.0.8-22004686+++Portal+Release-Live'
@@ -181,8 +165,7 @@ class EPCAPI:
     """
 
     def __init__(self, lc='en', cc='US', timeout=(7, 7)):
-        self.log = logging.getLogger('EPCAPI')
-        self.notfound_logger = None  # will be setup when created in core.py
+        self.logger = logging.getLogger('EPCAPI')
         self.session = requests.session()
         self.session.headers['User-Agent'] = self._user_agent
         # increase maximum pool size for multithreaded metadata requests
@@ -201,7 +184,7 @@ class EPCAPI:
 
         self.timeout = timeout
 
-    def extract_price(self, price_text=None, asset_name='NO NAME') -> float:
+    def extract_price(self, price_text=None, asset_name='Unknown') -> float:
         """
         Extracts the price from a string.
         :param price_text: string to extract the price from.
@@ -209,16 +192,17 @@ class EPCAPI:
         :return: price.
         """
         if not price_text:
-            self.log.debug(f'Price not found for {asset_name}')
+            self.logger.debug(f'Price not found for {asset_name}')
             return 0.0
         price = 0.0
         try:
             # asset base price when logged
-            price = price_text.strip('$€')
+            price = str(price_text)
+            price = price.strip('$€')
             price = price.replace(',', '')
             price = float(price)
         except Exception as error:
-            self.log.warning(f'Can not find the price for {asset_name}:{error!r}')
+            self.logger.warning(f'Can not find the price for {asset_name}:{error!r}')
         return price
 
     def get_scrap_url(self, start=0, count=1, sort_by='effectiveDate', sort_order='DESC') -> str:
@@ -286,7 +270,7 @@ class EPCAPI:
         try:
             assets_count = json_content['data']['paging']['total']
         except Exception as error:
-            self.log.warning(f'Can not get the asset count from {url}:{error!r}')
+            self.logger.warning(f'Can not get the asset count from {url}:{error!r}')
         return assets_count
 
     def is_valid_url(self, url='') -> bool:
@@ -301,7 +285,7 @@ class EPCAPI:
         try:
             r = self.session.get(url, timeout=self.timeout)
         except (Exception, ):
-            self.log.warning(f'Timeout for {url}')
+            self.logger.warning(f'Timeout for {url}')
             raise ConnectionError()
         if r.status_code == 200:
             result = True
@@ -340,7 +324,7 @@ class EPCAPI:
 
         j = r.json()
         if 'errorMessage' in j:
-            self.log.warning(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
+            self.logger.warning(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
             raise InvalidCredentialsError(j['errorCode'])
 
         # update other data
@@ -380,13 +364,13 @@ class EPCAPI:
         j = r.json()
         if 'errorCode' in j:
             if j['errorCode'] == 'errors.com.epicgames.oauth.corrective_action_required':
-                self.log.error(f'{j["errorMessage"]} ({j["correctiveAction"]}), '
+                self.logger.error(f'{j["errorMessage"]} ({j["correctiveAction"]}), '
                                f'open the following URL to take action: {j["continuationUrl"]}')
             else:
-                self.log.error(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
+                self.logger.error(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
             raise InvalidCredentialsError(j['errorCode'])
         elif r.status_code >= 400:
-            self.log.error(f'EGS API responded with status {r.status_code} but no error in response: {j}')
+            self.logger.error(f'EGS API responded with status {r.status_code} but no error in response: {j}')
             raise InvalidCredentialsError('Unknown error')
 
         self.session.headers['Authorization'] = f'bearer {j["access_token"]}'
@@ -467,9 +451,9 @@ class EPCAPI:
         try:
             response = self.session.get(url)  # when using session, we are already logged in Epic game
             response.raise_for_status()
-            self.log.info(f'Grabbing asset data from {url}')
+            self.logger.info(f'Grabbing asset data from {url}')
         except requests.exceptions.RequestException as error:
-            self.log.warning(f'Can not get asset data for {url}:{error!r}')
+            self.logger.warning(f'Can not get asset data for {url}:{error!r}')
             json_data['grab_result'] = GrabResult.PAGE_NOT_FOUND.name
             return json_data
 
@@ -502,10 +486,10 @@ class EPCAPI:
                     json_data['price'] = json_dict['offers']['price']
                     json_data['price_currency'] = json_dict['offers']['priceCurrency']
                 except KeyError as error:
-                    self.log.warning(f"A key is missing in Script {index + 1}: {error!r}")
+                    self.logger.warning(f"A key is missing in Script {index + 1}: {error!r}")
                     json_data['grab_result'] = GrabResult.PARTIAL.name
                     continue
         if json_data['url'].lower().replace('www.', '') != url.lower().replace('www.', ''):
-            self.log.warning(f"URLs do not match: {json_data['url']} != {url}")
+            self.logger.warning(f"URLs do not match: {json_data['url']} != {url}")
             json_data['grab_result'] = GrabResult.INCONSISTANT_DATA.name
         return json_data

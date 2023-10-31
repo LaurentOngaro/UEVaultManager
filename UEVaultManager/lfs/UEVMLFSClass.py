@@ -13,6 +13,7 @@ from typing import Optional
 
 import pandas as pd
 
+import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
 from UEVaultManager.lfs.utils import path_join
@@ -33,7 +34,7 @@ class UEVMLFS:
     """
 
     def __init__(self, config_file=None):
-        self.log = logging.getLogger('UEVMLFS')
+        self.logger = logging.getLogger('UEVMLFS')
 
         if config_path := os.environ.get('XDG_CONFIG_HOME'):
             self.path = path_join(config_path, 'UEVaultManager')
@@ -56,7 +57,7 @@ class UEVMLFS:
                 self.config_file = os.path.abspath(config_file)
             else:
                 self.config_file = path_join(self.path, clean_filename(config_file))
-            self.log.info(f'UEVMLFS is using non-default config file "{self.config_file}"')
+            self.logger.info(f'UEVMLFS is using non-default config file "{self.config_file}"')
         else:
             self.config_file = path_join(self.path, 'config.ini')
 
@@ -89,8 +90,8 @@ class UEVMLFS:
         try:
             self.config.read(self.config_file)
         except Exception as error:
-            self.log.error(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
-            self.log.warning('Continuing with blank config in safe-mode...')
+            self.logger.error(f'Failed to read configuration file, please ensure that file is valid!:Error: {error!r}')
+            self.logger.warning('Continuing with blank config in safe-mode...')
             self.config.read_only = True
 
         # make sure "UEVaultManager" section exists
@@ -160,13 +161,16 @@ class UEVMLFS:
                 'UEVaultManager', '; File name (and path) to log issues with assets when running the list or scrap commands' + "\n" +
                 '; use "~/" at the start of the filename to store it relatively to the user directory'
             )
-            self.config.set('UEVaultManager', 'scrap_assets_filename_log', '~/.config/scrap_assets.log')
+            self.config.set('UEVaultManager', 'ignored_assets_filename_log', '~/.config/ignored_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'notfound_assets_filename_log'):
             self.config.set('UEVaultManager', 'notfound_assets_filename_log', '~/.config/notfound_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'scan_assets_filename_log'):
             self.config.set('UEVaultManager', 'scan_assets_filename_log', '~/.config/scan_assets.log')
+            has_changed = True
+        if not self.config.has_option('UEVaultManager', 'scrap_assets_filename_log'):
+            self.config.set('UEVaultManager', 'scan_assets_filename_log', '~/.config/scrap_assets.log')
             has_changed = True
         if not self.config.has_option('UEVaultManager', 'engine_version_for_obsolete_assets'):
             self.config.set('UEVaultManager', '; Minimal unreal engine version to check for obsolete assets (default is 4.26)')
@@ -192,14 +196,14 @@ class UEVMLFS:
         #             app_name = self.get_app_name_from_asset_data(json_data)
         #             self.assets_data[app_name] = json_data
         #     except Exception as error:
-        #         self.log.debug(f'Loading asset data file "{gm_file}" failed: {error!r}')
+        #         self.logger.debug(f'Loading asset data file "{gm_file}" failed: {error!r}')
 
         # load asset sizes
         try:
             with open(self.asset_sizes_filename, 'r', encoding='utf-8') as file:
                 self._asset_sizes = json.load(file)
         except Exception as error:
-            self.log.debug(f'Loading assets sizes failed: {error!r}')
+            self.logger.debug(f'Loading assets sizes failed: {error!r}')
             self._asset_sizes = None
 
     @property
@@ -214,7 +218,7 @@ class UEVMLFS:
             with open(self.user_data_filename, 'r', encoding='utf-8') as file:
                 self._user_data = json.load(file)
         except Exception as error:
-            self.log.debug(f'Failed to load user data: {error!r}')
+            self.logger.debug(f'Failed to load user data: {error!r}')
             return None
         return self._user_data
 
@@ -250,7 +254,7 @@ class UEVMLFS:
                 with open(self.asset_sizes_filename, 'r', encoding='utf-8') as file:
                     self._asset_sizes = json.load(file)
             except Exception as error:
-                self.log.debug(f"Failed to load asset's size: {error!r}")
+                self.logger.debug(f"Failed to load asset's size: {error!r}")
         return self._asset_sizes
 
     @asset_sizes.setter
@@ -281,7 +285,7 @@ class UEVMLFS:
     def load_filter_list(filename: str = '') -> Optional[dict]:
         """
         Load the filters from a json file
-        :return: filters or {} if not found. Will return None on erro.
+        :return: filters or {} if not found. Will return None on error.
         """
         filename = filename or gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
@@ -309,31 +313,51 @@ class UEVMLFS:
             json.dump(filters, file, indent=2, sort_keys=True)
 
     @staticmethod
-    def get_app_name_from_asset_data(asset_data: dict) -> (str, bool):
+    def get_app_name_from_asset_data(asset_data: dict, use_sql_fields: bool = False) -> (str, bool):
         """
         Return the app_name to use to get the asset data.
         :param asset_data: asset data.
+        :param use_sql_fields: whether to use the sql fields name instead of json field name. Adapt the value with the type of asset_data.
         :return: (app_name (ie asset_id), and a True if the app_id has been found).
         """
+        # check if the app_name has been already added into the file during the _parse_data() method
+        app_id = asset_data.get('app_name', '')
+        if app_id:
+            return app_id, True
+        app_id_field = 'appId'  # does not change between JSON and SQL data because is inside another json field
+        if use_sql_fields:
+            # field names are AFTER parsing (ie in an ue_asset object)
+            release_info_field = 'release_info'
+            asset_slug_field = 'asset_slug'
+            catalog_item_id_field = 'catalog_item_id'
+        else:
+            # raw field names are BEFORE parsing (ie in json data)
+            release_info_field = 'releaseInfo'
+            asset_slug_field = 'urlSlug'
+            catalog_item_id_field = 'catalogItemId'
         found = True
         try:
-            app_id = asset_data['releaseInfo'][-1]['appId']  # latest release
-        except (KeyError, IndexError):
+            release_info = asset_data[release_info_field]
+            if type(release_info) is str:
+                release_info = json.loads(release_info)
+            app_id = release_info[-1][app_id_field]  # appid from the latest release
+        except (Exception, ):
             # we keep UrlSlug here because it can arise from the scrapped data
-            app_id = asset_data.get('urlSlug', None) or asset_data.get('asset_slug', None)
+            app_id = asset_data.get(asset_slug_field, None)
             if app_id is None:
-                app_id = asset_data.get('catalogItemId', create_uid())
+                app_id = asset_data.get(catalog_item_id_field, create_uid())
                 found = False
         return app_id, found
 
     @staticmethod
-    def get_filename_from_asset_data(asset_data: dict) -> (str, str):
+    def get_filename_from_asset_data(asset_data: dict, use_sql_fields: bool = False) -> (str, str):
         """
         Return the filename and the app_name to use to save the asset data.
         :param asset_data: asset data.
+        :param use_sql_fields: whether to use the sql fields name instead of json field name. Adapt the value with the type of asset_data.
         :return: (the filename, the app_id).
         """
-        app_name, found = UEVMLFS.get_app_name_from_asset_data(asset_data)
+        app_name, found = UEVMLFS.get_app_name_from_asset_data(asset_data, use_sql_fields=use_sql_fields)
         return f'{app_name}.json' if found else f'_no_appId_{app_name}.json', app_name
 
     @staticmethod
@@ -435,7 +459,7 @@ class UEVMLFS:
         while folders_to_clean:
             folder = folders_to_clean.pop()
             if folder == self.path and extensions_to_delete is None:
-                self.log.warning("We can't delete the config folder without extensions to filter files!")
+                self.logger.warning("We can't delete the config folder without extensions to filter files!")
                 continue
             if not os.path.isdir(folder):
                 continue
@@ -452,7 +476,7 @@ class UEVMLFS:
                         os.remove(file_name)
                         size_deleted += size
                     except Exception as error:
-                        self.log.warning(f'Failed to delete file "{file_name}": {error!r}')
+                        self.logger.warning(f'Failed to delete file "{file_name}": {error!r}')
                 elif os.path.isdir(file_name):
                     folders_to_clean.append(file_name)
         return size_deleted
@@ -468,7 +492,7 @@ class UEVMLFS:
         try:
             return open(self._get_manifest_filename(app_name, version, platform), 'rb').read()
         except FileNotFoundError:  # all other errors should propagate
-            self.log.debug(f'Loading manifest failed, retrying without platform in filename...')
+            self.logger.debug(f'Loading manifest failed, retrying without platform in filename...')
             try:
                 return open(self._get_manifest_filename(app_name, version), 'rb').read()
             except FileNotFoundError:  # all other errors should propagate
@@ -519,13 +543,13 @@ class UEVMLFS:
     def load_installed_assets(self) -> bool:
         """
         Get the installed asset data.
-        :return: True if the asset data is loade.
+        :return: True if the asset data is loaded.
         """
         try:
             with open(self.installed_asset_filename, 'r', encoding='utf-8') as file:
                 self._installed_assets = json.load(file)
         except Exception as error:
-            self.log.debug(f'Failed to load installed asset data: {error!r}')
+            self.logger.debug(f'Failed to load installed asset data: {error!r}')
             return False
         has_changed = False
         for asset in self._installed_assets.values():
@@ -696,7 +720,7 @@ class UEVMLFS:
             with open(self.online_version_filename, 'r', encoding='utf-8') as file:
                 self._update_info = json.load(file)
         except Exception as error:
-            self.log.debug(f'Failed to load cached version data: {error!r}')
+            self.logger.debug(f'Failed to load cached version data: {error!r}')
             self._update_info = dict(last_update=0, data=None)
         return self._update_info
 
@@ -723,8 +747,11 @@ class UEVMLFS:
         latest_id = ''
         for asset_id, installed_asset in installed_assets.items():
             all_installed_folders[asset_id] = installed_asset['installed_folders']
-        if release_info is not None and len(release_info) > 0:
-            # TODO: only keep releases that are compatible with the version of the selected project or engine.
+        release_info = gui_fn.get_and_check_release_info(release_info)
+        if release_info is None:
+            return [], ''
+        else:
+            # TODO: print a message if release is not compatible with the version of the selected project or engine.
             for index, item in enumerate(reversed(release_info)):  # reversed to have the latest release first
                 asset_id = item.get('appId', None)
                 latest_id = latest_id or asset_id

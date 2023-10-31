@@ -45,7 +45,7 @@ class DLManager(Process):
         trace_func: Callable = None,
     ):
         super().__init__(name='DLManager')
-        self.log = logging.getLogger('DLM')
+        self.logger = logging.getLogger('DLM')
         self.proc_debug = False
 
         self.base_url = base_url
@@ -96,7 +96,7 @@ class DLManager(Process):
         # chunks written since last report
         self.num_processed_since_last = 0
         self.num_tasks_processed_since_last = 0
-        self.trace_func = trace_func if trace_func is not None else self.log.info
+        self.trace_func = trace_func if trace_func is not None else self.logger.info
 
     def run_analysis(
         self,
@@ -130,9 +130,9 @@ class DLManager(Process):
         analysis_res.biggest_chunk = max(c.window_size for c in manifest.chunk_data_list.elements)
         analysis_res.biggest_file_size = max(f.file_size for f in manifest.file_manifest_list.elements)
         is_1mib = analysis_res.biggest_chunk == 1024 * 1024
-        self.log.debug(f'Biggest chunk size: {analysis_res.biggest_chunk} bytes (== 1 MiB? {is_1mib})')
+        self.logger.debug(f'Biggest chunk size: {analysis_res.biggest_chunk} bytes (== 1 MiB? {is_1mib})')
 
-        self.log.debug(f'Creating manifest comparison...')
+        self.logger.debug(f'Creating manifest comparison...')
         mc = ManifestComparison.create(manifest, old_manifest)
         analysis_res.manifest_comparison = mc
 
@@ -147,7 +147,7 @@ class DLManager(Process):
                     file_hash, _, filename = line.strip().partition(':')
                     _p = path_join(self.download_dir, filename)
                     if not os.path.exists(_p):
-                        self.log.debug(f'File does not exist but is in resume file: "{_p}"')
+                        self.logger.debug(f'File does not exist but is in resume file: "{_p}"')
                         missing += 1
                     elif file_hash != manifest.file_manifest_list.get_file_by_path(filename).sha_hash.hex():
                         mismatch += 1
@@ -155,9 +155,9 @@ class DLManager(Process):
                         completed_files.add(filename)
 
                 if missing:
-                    self.log.warning(f'{missing} previously completed file(s) are missing, they will be redownloaded.')
+                    self.logger.warning(f'{missing} previously completed file(s) are missing, they will be redownloaded.')
                 if mismatch:
-                    self.log.warning(f'{mismatch} existing file(s) have been changed and will be redownloaded.')
+                    self.logger.warning(f'{mismatch} existing file(s) have been changed and will be redownloaded.')
 
                 # remove completed files from changed/added and move them to unchanged for the analysis.
                 mc.added -= completed_files
@@ -165,7 +165,7 @@ class DLManager(Process):
                 mc.unchanged |= completed_files
                 self.trace_func(f'Skipping {len(completed_files)} files based on resume data.')
             except Exception as error:
-                self.log.warning(f'Reading resume file failed: {error!r}, continuing as normal...')
+                self.logger.warning(f'Reading resume file failed: {error!r}, continuing as normal...')
         elif resume:
             # Basic check if files exist locally, put all missing files into "added"
             # This allows new SDL tags to be installed without having to do a repair as well.
@@ -236,19 +236,19 @@ class DLManager(Process):
 
         if mc.removed:
             analysis_res.removed = len(mc.removed)
-            self.log.debug(f'{analysis_res.removed} removed files')
+            self.logger.debug(f'{analysis_res.removed} removed files')
         if mc.added:
             analysis_res.added = len(mc.added)
-            self.log.debug(f'{analysis_res.added} added files')
+            self.logger.debug(f'{analysis_res.added} added files')
         if mc.changed:
             analysis_res.changed = len(mc.changed)
-            self.log.debug(f'{analysis_res.changed} changed files')
+            self.logger.debug(f'{analysis_res.changed} changed files')
         if mc.unchanged:
             analysis_res.unchanged = len(mc.unchanged)
-            self.log.debug(f'{analysis_res.unchanged} unchanged files')
+            self.logger.debug(f'{analysis_res.unchanged} unchanged files')
 
         if processing_optimization and len(manifest.file_manifest_list.elements) > 100_000:
-            self.log.warning('Manifest contains too many files, processing optimizations will be disabled.')
+            self.logger.warning('Manifest contains too many files, processing optimizations will be disabled.')
             processing_optimization = False
         elif processing_optimization:
             self.trace_func('Processing order optimization is enabled, analysis may take a few seconds longer...')
@@ -282,7 +282,7 @@ class DLManager(Process):
                 current_tmp_size -= old_manifest.file_manifest_list.get_file_by_path(fm.filename).file_size
 
         # clamp to 0
-        self.log.debug(f'Disk space delta: {analysis_res.disk_space_delta / 1024 / 1024:.02f} MiB')
+        self.logger.debug(f'Disk space delta: {analysis_res.disk_space_delta / 1024 / 1024:.02f} MiB')
 
         if processing_optimization:
             s_time = time.time()
@@ -319,12 +319,12 @@ class DLManager(Process):
 
             fmlist = _fmlist
             opt_delta = time.time() - s_time
-            self.log.debug(f'Processing optimizations took {opt_delta:.01f} seconds.')
+            self.logger.debug(f'Processing optimizations took {opt_delta:.01f} seconds.')
 
         # determine reusable chunks and prepare lookup table for reusable ones
         re_usable = defaultdict(dict)
         if old_manifest and mc.changed and patch:
-            self.log.debug('Analyzing manifests for re-usable chunks...')
+            self.logger.debug('Analyzing manifests for re-usable chunks...')
             for changed in mc.changed:
                 old_file = old_manifest.file_manifest_list.get_file_by_path(changed)
                 new_file = manifest.file_manifest_list.get_file_by_path(changed)
@@ -355,7 +355,7 @@ class DLManager(Process):
 
         # run through the list of files and create the download jobs and also determine minimum
         # runtime cache requirement by simulating adding/removing from cache during download.
-        self.log.debug('Creating filetasks and chunktasks...')
+        self.logger.debug('Creating filetasks and chunktasks...')
         for current_file in fmlist:
             # skip unchanged and empty files
             if current_file.filename in mc.unchanged:
@@ -403,7 +403,7 @@ class DLManager(Process):
                 chunk_tasks.append(ct)
 
             if reused:
-                self.log.debug(f' + Reusing {reused} chunks from: {current_file.filename}')
+                self.logger.debug(f' + Reusing {reused} chunks from: {current_file.filename}')
                 # open temporary file that will contain download + old file contents
                 self.tasks.append(FileTask(current_file.filename + u'.tmp', flags=TaskFlags.OPEN_FILE))
                 self.tasks.extend(chunk_tasks)
@@ -422,13 +422,13 @@ class DLManager(Process):
 
             # check if runtime cache size has changed
             if current_cache_size > last_cache_size:
-                self.log.debug(f' * New maximum cache size: {current_cache_size / 1024 / 1024:.02f} MiB')
+                self.logger.debug(f' * New maximum cache size: {current_cache_size / 1024 / 1024:.02f} MiB')
                 last_cache_size = current_cache_size
 
-        self.log.debug(f'Final cache size requirement: {last_cache_size / 1024 / 1024} MiB.')
+        self.logger.debug(f'Final cache size requirement: {last_cache_size / 1024 / 1024} MiB.')
         analysis_res.min_memory = last_cache_size + (1024 * 1024 * 32)  # add some padding just to be safe
 
-        # Todo implement on-disk caching to avoid this issue.
+        # Todo: implement on-disk caching to avoid this issue.
         if analysis_res.min_memory > self.max_shared_memory:
             shared_mib = f'{self.max_shared_memory / 1024 / 1024:.01f} MiB'
             required_mib = f'{analysis_res.min_memory / 1024 / 1024:.01f} MiB'
@@ -472,11 +472,11 @@ class DLManager(Process):
 
                 c_guid = self.chunks_to_dl.popleft()
                 chunk = self.chunk_data_list.get_chunk_by_guid(c_guid)
-                self.log.debug(f'Adding {chunk.guid_num} (active: {self.active_tasks})')
+                self.logger.debug(f'Adding {chunk.guid_num} (active: {self.active_tasks})')
                 try:
                     self.worker_queue.put(DownloaderTask(url=self.base_url + '/' + chunk.path, chunk_guid=c_guid, shm=sms), timeout=1.0)
                 except Exception as error:
-                    self.log.warning(f'Failed to add to download queue: {error!r}')
+                    self.logger.warning(f'Failed to add to download queue: {error!r}')
                     self.chunks_to_dl.appendleft(c_guid)
                     break
 
@@ -484,17 +484,17 @@ class DLManager(Process):
             else:
                 # active tasks limit hit, wait for tasks to finish
                 with task_cond:
-                    self.log.debug('Waiting for download tasks to complete...')
+                    self.logger.debug('Waiting for download tasks to complete...')
                     task_cond.wait(timeout=1.0)
                     continue
 
             if no_shm:
                 # if we break we ran out of shared memory, so wait for that.
                 with shm_cond:
-                    self.log.debug('Waiting for more shared memory...')
+                    self.logger.debug('Waiting for more shared memory...')
                     shm_cond.wait(timeout=1.0)
 
-        self.log.debug('Download Job Manager quitting...')
+        self.logger.debug('Download Job Manager quitting...')
 
     def dl_results_handler(self, task_cond: Condition):
         """
@@ -517,7 +517,7 @@ class DLManager(Process):
                         current_file = task.filename
                 except Exception as error:
                     self.tasks.appendleft(task)
-                    self.log.warning(f'Adding to queue failed: {error!r}')
+                    self.logger.warning(f'Adding to queue failed: {error!r}')
                     continue
 
                 try:
@@ -532,7 +532,7 @@ class DLManager(Process):
                     res_shm = in_buffer[task.chunk_guid].shm
 
                 try:
-                    self.log.debug(f'Adding {task.chunk_guid} to writer queue')
+                    self.logger.debug(f'Adding {task.chunk_guid} to writer queue')
                     self.writer_queue.put(
                         WriterTask(
                             filename=current_file,
@@ -546,7 +546,7 @@ class DLManager(Process):
                         timeout=1.0
                     )
                 except Exception as error:
-                    self.log.warning(f'Adding to queue failed: {error!r}')
+                    self.logger.warning(f'Adding to queue failed: {error!r}')
                     break
 
                 if task.cleanup and not task.chunk_file:
@@ -567,26 +567,26 @@ class DLManager(Process):
                         task_cond.notify()
 
                     if res.success:
-                        self.log.debug(f'Download for {res.chunk_guid} succeeded, adding to in_buffer...')
+                        self.logger.debug(f'Download for {res.chunk_guid} succeeded, adding to in_buffer...')
                         in_buffer[res.chunk_guid] = res
                         self.bytes_downloaded_since_last += res.size_downloaded
                         self.bytes_decompressed_since_last += res.size_decompressed
                     else:
-                        self.log.error(f'Download for {res.chunk_guid} failed, retrying...')
+                        self.logger.error(f'Download for {res.chunk_guid} failed, retrying...')
                         try:
                             # since the result is a subclass of the task we can simply resubmit the result object
                             self.worker_queue.put(res, timeout=1.0)
                             self.active_tasks += 1
                         except Exception as error:
-                            self.log.warning(f'Failed adding retry task to queue! {error!r}')
+                            self.logger.warning(f'Failed adding retry task to queue! {error!r}')
                             # If this failed for whatever reason, put the chunk at the front of the DL list
                             self.chunks_to_dl.appendleft(res.chunk_guid)
                 except Empty:
                     pass
                 except Exception as error:
-                    self.log.warning(f'Unhandled exception when trying to read download result queue: {error!r}')
+                    self.logger.warning(f'Unhandled exception when trying to read download result queue: {error!r}')
 
-        self.log.debug('Download result handler quitting...')
+        self.logger.debug('Download result handler quitting...')
 
     def fw_results_handler(self, shm_cond: Condition):
         """
@@ -598,7 +598,7 @@ class DLManager(Process):
                 res = self.writer_result_queue.get(timeout=1.0)
 
                 if isinstance(res, TerminateWorkerTask):
-                    self.log.debug('Got termination command in FW result handler')
+                    self.logger.debug('Got termination command in FW result handler')
                     break
 
                 self.num_tasks_processed_since_last += 1
@@ -614,7 +614,7 @@ class DLManager(Process):
 
                 if not res.success:
                     # todo make this kill the installation process or at least skip the file and mark it as failed
-                    self.log.critical(f'Writing for {res.filename} failed!')
+                    self.logger.critical(f'Writing for {res.filename} failed!')
                 if res.flags & TaskFlags.RELEASE_MEMORY:
                     self.sms.appendleft(res.shared_memory)
                     with shm_cond:
@@ -630,8 +630,8 @@ class DLManager(Process):
             except Empty:
                 continue
             except Exception as error:
-                self.log.warning(f'Exception when trying to read writer result queue: {error!r}')
-        self.log.debug('Writer result handler quitting...')
+                self.logger.warning(f'Exception when trying to read writer result queue: {error!r}')
+        self.logger.debug('Writer result handler quitting...')
 
     def run(self):
         """
@@ -647,13 +647,13 @@ class DLManager(Process):
             _root.handlers = []
             _root.addHandler(QueueHandler(self.logging_queue))
 
-        self.log = logging.getLogger('DLManager')
+        self.logger = logging.getLogger('DLManager')
         self.trace_func(f'Download Manager running with process-id: {os.getpid()}')
 
         try:
             self.run_real()
         except KeyboardInterrupt:
-            self.log.warning('Immediate exit requested!')
+            self.logger.warning('Immediate exit requested!')
             self.running = False
 
             # send conditions to unlock threads if they aren't already
@@ -665,7 +665,7 @@ class DLManager(Process):
             for t in self.threads:
                 t.join(timeout=5.0)
                 if t.is_alive():
-                    self.log.warning(f'Thread did not terminate! {t!r}')
+                    self.logger.warning(f'Thread did not terminate! {t!r}')
 
             # forcibly kill DL workers that are not actually dead yet
             for child in self.children:
@@ -678,7 +678,7 @@ class DLManager(Process):
                 ('Download jobs', 'Writer jobs', 'Download results', 'Writer results'),
                 (self.worker_queue, self.writer_queue, self.result_queue, self.writer_result_queue)
             ):
-                self.log.debug(f'Cleaning up queue "{name}"')
+                self.logger.debug(f'Cleaning up queue "{name}"')
                 try:
                     while True:
                         _ = q.get_nowait()
@@ -694,14 +694,14 @@ class DLManager(Process):
             The DisplayContentWindow_ref is unavailable here. So the display windows will not be updated when calling trace_func.
         """
         self.shared_memory = SharedMemory(create=True, size=self.max_shared_memory)
-        self.log.debug(f'Created shared memory of size: {self.shared_memory.size / 1024 / 1024:.02f} MiB')
+        self.logger.debug(f'Created shared memory of size: {self.shared_memory.size / 1024 / 1024:.02f} MiB')
 
         # create the shared memory segments and add them to their respective pools
         for i in range(int(self.shared_memory.size / self.analysis.biggest_chunk)):
             _sms = SharedMemorySegment(offset=i * self.analysis.biggest_chunk, end=i * self.analysis.biggest_chunk + self.analysis.biggest_chunk)
             self.sms.append(_sms)
 
-        self.log.debug(f'Created {len(self.sms)} shared memory segments.')
+        self.logger.debug(f'Created {len(self.sms)} shared memory segments.')
 
         # Create queues
         self.worker_queue = MPQueue(-1)
@@ -739,7 +739,7 @@ class DLManager(Process):
         num_dl_tasks = len(self.chunks_to_dl)
         num_tasks = len(self.tasks)
         num_shared_memory_segments = len(self.sms)
-        self.log.debug(f'Chunks to download: {num_dl_tasks}, File tasks: {num_tasks}, Chunk tasks: {num_chunk_tasks}')
+        self.logger.debug(f'Chunks to download: {num_dl_tasks}, File tasks: {num_tasks}, Chunk tasks: {num_chunk_tasks}')
 
         # active downloader tasks
         self.active_tasks = 0
@@ -809,7 +809,7 @@ class DLManager(Process):
             pw.set_max_value(num_chunk_tasks)
             message = f'Downloaded: {total_dl / 1024 / 1024:.02f} MiB  ({perc:.02f}%)'
             if not pw.update_and_continue(value=processed_chunks, text=message):
-                self.log.warning('User requested immediate exit!')
+                self.logger.warning('User requested immediate exit!')
                 self.chunks_to_dl.clear()
                 self.cancel()
                 break
@@ -835,7 +835,7 @@ class DLManager(Process):
                         timeout=1.0
                     )
                 except Exception as error:
-                    self.log.warning(f'Failed to send status update to queue: {error!r}')
+                    self.logger.warning(f'Failed to send status update to queue: {error!r}')
 
             time.sleep(self.update_interval)
 
@@ -847,7 +847,7 @@ class DLManager(Process):
 
         writer_p.join(timeout=7)
         if writer_p.exitcode is None:
-            self.log.warning(f'Terminating writer process, no exit code!')
+            self.logger.warning(f'Terminating writer process, no exit code!')
             writer_p.terminate()
 
         # forcibly kill DL workers that are not actually dead yet
@@ -859,14 +859,14 @@ class DLManager(Process):
         for t in self.threads:
             t.join(timeout=5.0)
             if t.is_alive():
-                self.log.warning(f'Thread did not terminate! {t!r}')
+                self.logger.warning(f'Thread did not terminate! {t!r}')
 
         # clean up resume file
         if self.resume_file:
             try:
                 os.remove(self.resume_file)
             except OSError as error:
-                self.log.warning(f'Failed to remove resume file: {error!r}')
+                self.logger.warning(f'Failed to remove resume file: {error!r}')
 
         # close up shared memory
         self.shared_memory.close()
@@ -882,6 +882,6 @@ class DLManager(Process):
         """
         Cancel the download manager by clearing the tasks and chunks_to_dl queues.
         """
-        self.log.warning('User requested immediate exit!. Cancelling queues...')
+        self.logger.warning('User requested immediate exit!. Cancelling queues...')
         self.chunks_to_dl.clear()
         self.tasks.clear()
