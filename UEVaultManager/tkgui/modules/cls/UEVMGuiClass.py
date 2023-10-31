@@ -2077,7 +2077,8 @@ class UEVMGui(tk.Tk):
             'Local and marketplace':
             ['callable', self.filter_local_and_marketplace],  # show assets that are local (ie found after a scan folders) and in marketplace
             'With comment': ['callable', self.filter_with_comment],  #
-            'Dummy rows': ['Asset_id', gui_g.s.empty_row_prefix],  #
+            'With dummy_ id': ['Asset_id', gui_g.s.empty_row_prefix],  #
+            'With local_ id': ['Asset_id', gui_g.s.duplicate_row_prefix],  #
             'Result OK': ['Grab result', 'NO_ERROR'],  #
             'Result Not OK': ['Grab result', '^NO_ERROR'],  #
         }
