@@ -300,7 +300,7 @@ class EPCAPI:
         :return: json data.
 
         Notes:
-            Getting the data could take more time than other calls to the API. Use the override_timeout parameter to set a longer timeout if needed/
+            Getting the data could take more time than other calls to the API. Use the override_timeout parameter to set a longer timeout if needed.
         """
         json_data = {}
         if not url:

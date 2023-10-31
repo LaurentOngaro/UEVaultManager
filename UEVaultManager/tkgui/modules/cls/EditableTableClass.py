@@ -1077,9 +1077,7 @@ class EditableTable(Table):
 
         result_count = 0
         if not load_from_files:
-            result_count = scraper.gather_all_assets_urls(
-                empty_list_before=True, owned_assets_only=owned_assets_only
-            )  # return -1 if interrupted or error
+            result_count = scraper.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
         if result_count == -1:
             gui_f.close_progress(self)
             return False
