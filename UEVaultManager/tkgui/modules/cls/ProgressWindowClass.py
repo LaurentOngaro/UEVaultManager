@@ -74,13 +74,14 @@ class ProgressWindow(tk.Toplevel):
         self.function_params = function_parameters
         self.function_return_value = None
         self.result_queue = queue.Queue()
+        self.pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 3, 'pady': 3, 'fill': tk.X}
 
         self.frm_content = self.ContentFrame(self)
-        self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_content.pack(**self.pack_def_options)
 
         self.frm_control = self.ControlFrame(self)
         if show_btn_start or show_btn_stop:
-            self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+            self.frm_control.pack(**self.pack_def_options)
         if not show_progress:
             self.hide_progress_bar()
         if not show_btn_start:
@@ -121,15 +122,13 @@ class ProgressWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
-            pack_def_options = {'ipadx': 3, 'ipady': 3, 'padx': 5, 'pady': 5, 'fill': tk.X}
             if container.function is None:
                 lbl_text = ttk.Label(self, text='Operation has started...')
             else:
                 lbl_text = ttk.Label(self, text='Running function: ' + container.function.__name__)
-            lbl_text.pack(**pack_def_options)
+            lbl_text.pack(**container.pack_def_options)
             progress_bar = ttk.Progressbar(self, orient="horizontal", mode="determinate", maximum=container.max_value)
-            progress_bar.pack(**pack_def_options)
-            self.pack_def_options = pack_def_options
+            progress_bar.pack(**container.pack_def_options)
             self.progress_bar = progress_bar
             self.lbl_text = lbl_text
 
@@ -143,8 +142,6 @@ class ProgressWindow(tk.Toplevel):
 
         def __init__(self, container, show_btn_start=True, show_btn_stop=True):
             super().__init__(container)
-            pack_def_options = {'ipadx': 3, 'ipady': 3, 'fill': tk.X}
-            self.pack_def_options = pack_def_options
             self.btn_start = None
             self.btn_stop = None
             btn_start = ttk.Button(self, text="Start", command=container.start_execution)
@@ -152,9 +149,9 @@ class ProgressWindow(tk.Toplevel):
             self.btn_start = btn_start
             self.btn_stop = btn_stop
             if show_btn_start:
-                btn_start.pack(**pack_def_options, side=tk.LEFT)
+                btn_start.pack(**container.pack_def_options, side=tk.LEFT)
             if show_btn_stop:
-                btn_stop.pack(**pack_def_options, side=tk.RIGHT)
+                btn_stop.pack(**container.pack_def_options, side=tk.RIGHT)
 
     def _function_result_wrapper(self, function, *args, **kwargs) -> None:
         """
@@ -244,8 +241,8 @@ class ProgressWindow(tk.Toplevel):
         """
         Show the progress bar.
         """
-        self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-        self.frm_content.progress_bar.pack(**self.frm_content.pack_def_options)
+        self.frm_control.pack(**self.pack_def_options)
+        self.frm_content.progress_bar.pack(**self.pack_def_options)
         self.update()
 
     def hide_btn_start(self) -> None:
@@ -263,8 +260,8 @@ class ProgressWindow(tk.Toplevel):
         Show the start button.
         """
         try:
-            self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-            self.frm_control.btn_start.pack(**self.frm_control.pack_def_options, side=tk.LEFT)
+            self.frm_control.pack(**self.pack_def_options)
+            self.frm_control.btn_start.pack(**self.pack_def_options, side=tk.LEFT)
             self.update()
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
@@ -284,8 +281,8 @@ class ProgressWindow(tk.Toplevel):
         Show the stop button.
         """
         try:
-            self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
-            self.frm_control.btn_stop.pack(**self.frm_control.pack_def_options, side=tk.RIGHT)
+            self.frm_control.pack(**self.pack_def_options)
+            self.frm_control.btn_stop.pack(**self.pack_def_options, side=tk.RIGHT)
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
 
@@ -347,7 +344,7 @@ class ProgressWindow(tk.Toplevel):
         Stop the execution of the function.
         """
         if self.frm_control.btn_stop is not None:
-            self.frm_control.btn_stop.config(text='Canceling...')
+            self.frm_control.btn_stop.config(text='Canceling...', width=15)
         self._continue_execution = False
         self.set_activation(True)
 
