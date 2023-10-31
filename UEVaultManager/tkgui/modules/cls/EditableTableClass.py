@@ -1623,6 +1623,7 @@ class EditableTable(Table):
             if idx < 0 or idx >= len(df):
                 return False
             df.iat[idx, col_index] = value  # iat checked
+            self.must_save = True
             return True
         except TypeError as error:
             self.add_error(error)

@@ -1575,7 +1575,8 @@ class UEVMGui(tk.Tk):
         current_row = data_table.get_selected_row_fixed()
         current_row_index = data_table.add_page_offset(current_row) if current_row is not None else -1
 
-        gui_f.update_widgets_in_list(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
+        gui_f.update_widgets_in_list(data_table.must_save, 'table_has_changed')
+        # gui_f.update_widgets_in_list(data_table.must_save, 'table_has_changed', text_swap={'normal': 'Save *', 'disabled': 'Save  '})
         gui_f.update_widgets_in_list(current_row_index > 0, 'not_first_asset')
         gui_f.update_widgets_in_list(current_row_index < max_index - 1, 'not_last_asset')
         gui_f.update_widgets_in_list(not gui_g.s.offline_mode, 'not_offline')
