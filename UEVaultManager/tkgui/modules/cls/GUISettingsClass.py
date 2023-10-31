@@ -94,11 +94,11 @@ class GUISettings:
         # 0: normal mode, no changes in code
         # 1: testing mode, limit the number of assets to process in several actions
         # 2: fix the value and limit the number of folders to scan for assets
-
         self.testing_assets_limit = 300  # when testing (ie testing_switch==1) , limit the number of assets to process to this value
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
-        self.app_monitor: int = 1
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
+        self.scraped_asset_per_page = 70  # a value bigger than 100 will be refused by UE API
+        self.app_monitor: int = 1
         self.preview_max_width: int = 150
         self.preview_max_height: int = 150
         self.default_global_search: str = 'Text to search...'

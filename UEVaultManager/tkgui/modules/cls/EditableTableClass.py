@@ -1045,10 +1045,10 @@ class EditableTable(Table):
         # we create the progress window here to avoid lots of imports in UEAssetScraper class
         max_threads = get_max_threads()
         owned_assets_only = False
-        db_asset_per_page = 100  # a bigger value will be refused by UE API
+        scraped_assets_per_page = gui_g.s.scraped_asset_per_page  # a bigger value will be refused by UE API
         if gui_g.s.testing_switch == 1:
             start_row = 15000
-            stop_row = 15000 + db_asset_per_page * 5
+            stop_row = 15000 + scraped_assets_per_page * 5
         else:
             start_row = 0
             stop_row = 0
@@ -1064,7 +1064,7 @@ class EditableTable(Table):
             use_database=use_database,
             start=start_row,
             stop=stop_row,
-            assets_per_page=db_asset_per_page,
+            assets_per_page=scraped_assets_per_page,
             max_threads=max_threads,
             save_parsed_to_files=True,
             load_from_files=load_from_files,
