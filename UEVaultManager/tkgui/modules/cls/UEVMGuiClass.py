@@ -1196,7 +1196,7 @@ class UEVMGui(tk.Tk):
                     datasource_filename=self.editable_table.data_source,
                     use_database=self.editable_table.is_using_database(),
                     start=0,
-                    assets_per_page=1,
+                    assets_per_page=1,  # scrap only one asset
                     max_threads=1,
                     save_parsed_to_files=True,
                     load_from_files=False,
@@ -1219,7 +1219,7 @@ class UEVMGui(tk.Tk):
             else:
                 self.logger.warning(msg)
             # change the grab result to CONTENT_NOT_FOUND in database
-            if self.is_using_database():
+            if self.is_using_database() and self.ue_asset_scraper:
                 self.ue_asset_scraper.asset_db_handler.update_asset('grab_result', GrabResult.CONTENT_NOT_FOUND.name, asset_id=app_name)
         return asset_data[0] if asset_data is not None else None
 
