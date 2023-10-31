@@ -305,6 +305,7 @@ class EPCAPI:
         json_data = {}
         if not url:
             return json_data
+
         timeout = self.timeout if override_timeout == -1 else override_timeout
         r = self.session.get(url, timeout=timeout)
         # r.raise_for_status() # commented line because we want the exceptions to be raised
@@ -365,8 +366,10 @@ class EPCAPI:
         j = r.json()
         if 'errorCode' in j:
             if j['errorCode'] == 'errors.com.epicgames.oauth.corrective_action_required':
-                self.logger.error(f'{j["errorMessage"]} ({j["correctiveAction"]}), '
-                               f'open the following URL to take action: {j["continuationUrl"]}')
+                self.logger.error(
+                    f'{j["errorMessage"]} ({j["correctiveAction"]}), '
+                    f'open the following URL to take action: {j["continuationUrl"]}'
+                )
             else:
                 self.logger.error(f'Login to EGS API failed with errorCode: {j["errorCode"]}')
             raise InvalidCredentialsError(j['errorCode'])

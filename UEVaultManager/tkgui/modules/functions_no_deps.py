@@ -488,19 +488,18 @@ def get_and_check_release_info(data_to_check) -> Optional[list]:
     """
     if not data_to_check:
         return []
+    max_tries = 3
     tries = 0
-    # Note: here we use ast.literal_eval instead of json.loads because it can raise an error if the string came from a datatable and uses ' instead of " for string literals
-    while '[{\"id\":' in data_to_check and tries < 3:
-        # fix a double encoding issue
+    # Note:
+    #   here we use ast.literal_eval instead of json.loads because it can raise an error if the string came from a datatable and uses ' instead of " for string literals
+    while '[{\"id\":' in data_to_check and tries < max_tries:
+        # fix a multiple encoding issue. Should not occur
         # data_to_check = json.loads(data_to_check)
-        data_to_check = ast.literal_eval(data_to_check)
         tries += 1
+        data_to_check = ast.literal_eval(data_to_check)
     if isinstance(data_to_check, str):
         # data_to_check = json.loads(data_to_check)
         data_to_check = ast.literal_eval(data_to_check)
-    # if isinstance(data_to_check, str):
-    #     # sometimes the release info has been encoded twice by error
-    #     data_to_check = json.loads(data_to_check)
     if not isinstance(data_to_check, list):
         return None
     return list(data_to_check)
