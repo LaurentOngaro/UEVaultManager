@@ -22,8 +22,7 @@ from UEVaultManager.models.types import DateFormat, DbVersionNum
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, convert_to_int, convert_to_str_datetime, create_uid, \
-    merge_lists_or_strings, \
-    path_from_relative_to_absolute
+    get_and_check_release_info, merge_lists_or_strings, path_from_relative_to_absolute
 from UEVaultManager.utils.cli import check_and_create_file
 
 
@@ -583,7 +582,9 @@ class UEAssetDbHandler:
                 tags = asset.get('tags', [])
                 asset['tags'] = self.convert_tag_list_to_string(tags)  # will search the tags table for ids
                 asset['installed_folders'] = check_and_convert_list_to_str(asset.get('installed_folders', []))
-                asset['release_info'] = json.dumps(asset.get('release_info', []))
+                release_info = get_and_check_release_info(asset.get('release_info', []))
+                release_info_str = json.dumps(release_info)
+                asset['release_info'] = release_info_str  # if isinstance(release_info, list) else release_info
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
