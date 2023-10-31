@@ -74,7 +74,8 @@ class EPCAPI:
     scrap_asset_logger = None
 
     _user_agent = 'UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit'
-    _store_user_agent = 'EpicGamesLauncher/14.0.8-22004686+++Portal+Release-Live'
+    # _user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+    # _store_user_agent = 'EpicGamesLauncher/14.0.8-22004686+++Portal+Release-Live'
     # required for the oauth request
     # _label = 'Live-EternalKnight'
     _user_basic = '34a02cf8f4414e29b15921876da36f9a'
