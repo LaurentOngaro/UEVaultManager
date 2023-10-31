@@ -14,6 +14,8 @@ from datetime import datetime
 from itertools import chain
 from threading import current_thread
 
+from requests import ReadTimeout
+
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.api.egs import is_asset_obsolete
@@ -21,7 +23,7 @@ from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import convert_data_to_csv, csv_sql_fields, debug_parsed_data, get_csv_field_name_list, \
     get_sql_field_name_list, is_on_state, is_preserved
-from UEVaultManager.models.types import CSVFieldState, DateFormat
+from UEVaultManager.models.types import CSVFieldState, DateFormat, GetDataResult
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
@@ -50,9 +52,9 @@ class ScrapTask:
 
     def __call__(self):
         self.log_func(f'Started ScrapTask {self.name} at {datetime.now()}')
-        res = self.caller.get_data_from_url(self.url, self.owned_assets_only)
+        result = self.caller.get_data_from_url(self.url, self.owned_assets_only)
         self.log_func(f'END OF ScrapTask {self.name} at {datetime.now()}')
-        return res
+        return result
 
     def interrupt(self, message: str = '') -> None:
         """
@@ -283,7 +285,6 @@ class UEAssetScraper:
             # WARNING: asset_data_ori WILL ALSO BE MODIFIED OUTSIDE the method and changed WILL BE SAVED in the json files
 
             # copy all existing data to the result_data to avoid missing one
-            # result_data = {key: asset_data_ori.get(key, '') for key in get_sql_field_name_list(include_asset_only=True, exclude_csv_only=False)}
             one_asset_json_data_parsed = one_asset_json_data_from_egs_ori.copy()
             uid = one_asset_json_data_from_egs_ori.get('id', '')
             if not uid:
@@ -368,8 +369,10 @@ class UEAssetScraper:
 
                 # asset slug and asset url
                 # we keep UrlSlug here because it can arise from the scrapped data
-                asset_slug = one_asset_json_data_from_egs_ori.get('urlSlug', gui_g.no_text_data
-                                                                 ) or one_asset_json_data_from_egs_ori.get('asset_slug', gui_g.no_text_data)
+                asset_slug = (
+                    one_asset_json_data_from_egs_ori.get('urlSlug', gui_g.no_text_data)  #
+                    or one_asset_json_data_from_egs_ori.get('asset_slug', gui_g.no_text_data)
+                )
                 if asset_slug == gui_g.no_text_data:
                     asset_url = gui_g.no_text_data
                     self._log(f'No asset_slug found for asset id={uid}. Its asset_url will be empty', level='warning')
@@ -778,7 +781,7 @@ class UEAssetScraper:
         #     self.progress_window.close_window()  # must be done here because we will never return to the caller
         #     self._stop_executor()
 
-    def gather_all_assets_urls(self, egs_available_assets_count: int = -1, empty_list_before=False, save_result=True, owned_assets_only=False) -> int:
+    def gather_all_assets_urls(self, egs_available_assets_count: int = -1, empty_list_before=True, save_result=True, owned_assets_only=False) -> int:
         """
         Gather all the URLs (with pagination) to be parsed and stores them in a list for further use.
         :param egs_available_assets_count: number of assets available on the marketplace. If not given, it will be retrieved from the EGS API.
@@ -816,11 +819,12 @@ class UEAssetScraper:
             self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=owned_assets_only)
         return assets_to_scrap
 
-    def get_data_from_url(self, url='', owned_assets_only=False) -> bool:
+    def get_data_from_url(self, url='', owned_assets_only=False) -> GetDataResult:
         """
         Grab the data from the given url and stores it in the scraped_data property.
         :param url: url to grab the data from. If not given, uses the url property of the class.
         :param owned_assets_only: whether only the owned assets are scraped.
+        :return: GetDataResult value depending on the result
         """
         thread_state = ' RUNNING...'
         self._files_count = 0
@@ -833,14 +837,16 @@ class UEAssetScraper:
             self._log(f'{url} has been cancelled. Waiting all others to be terminated {thread_state}.', 'info')
             # self.progress_window.close_window()  # must be done here because we will never return to the caller
             self._stop_executor()
-            return False
+            return GetDataResult.CANCELLED
         if not url:
             self._log('No url given to get_data_from_url()', 'error')
-            return True
+            return GetDataResult.NO_URL
         if self.offline_mode:
             self._log('The offline mode is active. No online data could be retreived')
-            return True
+            return GetDataResult.BAD_CONTEXT
         thread_data = ''
+        no_error = False
+        json_data_from_egs_url = {}
         try:
             if self._threads_count > 1:
                 # add a delay when multiple threads are used
@@ -851,18 +857,46 @@ class UEAssetScraper:
             self._log(message)
             if self.core.scrap_asset_logger:
                 self.core.scrap_asset_logger.info('\n' + message)
-            json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=15)
-            no_error = json_data_from_egs_url.get('status', '') == 'OK'
+
+            try:
+                # noinspection GrazieInspection
+                """
+                debug_value = 0  # other than 0 for debug purpose, changing the value during debug will change the test case
+                if debug_value == 1:
+                    # test for a 'common.server_error' error (http 431)
+                    json_data_from_egs_url = self.core.egs.get_json_data_from_url( 'https://www.unrealengine.com/marketplace/api/assets?start=0&count=90&sortBy=effectiveDate&sortDir=DESC', override_timeout=gui_g.s.scraping_asset_timeout)
+                elif debug_value == 2:
+                    # test for a timeout error
+                    rand_start = random.randint(10, 350) * 100  # create a new url at each test to avoid server caching
+                    json_data_from_egs_url = self.core.egs.get_json_data_from_url( f'https://www.unrealengine.com/marketplace/api/assets?start={rand_start}&count=50&sortBy=effectiveDate&sortDir=DESC', override_timeout=1 )
+                else:
+                    # normal case
+                    json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=gui_g.s.scraping_asset_timeout)
+                """
+                json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=gui_g.s.scraping_asset_timeout)
+
+                error_code = json_data_from_egs_url.get('errorCode', '')  # value returned by self.session.get() call inside get_json_data_from_url()
+                no_error = (error_code == '')
+            except (ReadTimeout, ):
+                error_code = GetDataResult.TIMEOUT
+
             if not no_error:
-                self._log(f'Error getting data from url {url}. Making another try....')
-                json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=15)
-                no_error = json_data_from_egs_url.get('status', '') == 'OK'
-                if not no_error:
-                    message = f'Error getting data from url {url}: {json_data_from_egs_url["errorCode"]}'
+                if error_code == GetDataResult.TIMEOUT:
+                    # mainly occurs because the timeout is too short for the number of asset to scrap
+                    # the caller will try a bigger timeout
+                    return error_code
+                elif 'common.server_error' in error_code:
+                    # mainly occurs because the number of asset to scrap is too big
+                    # the caller will try a smaller number
+                    return GetDataResult.ERROR_431
+                else:
+                    # other error
+                    # the caller WON'T DO another try
+                    message = f'Error getting data from url {url}: {error_code}'
                     self._log(message, 'error')
                     if self.core.scrap_asset_logger:
                         self.core.scrap_asset_logger.warning(message)
-                    return True
+                return GetDataResult.ERROR
             try:
                 # when multiple assets are returned, the data is in the 'elements' key
                 count = len(json_data_from_egs_url['data']['elements'])
@@ -913,7 +947,8 @@ class UEAssetScraper:
             self._log(message, 'warning')
             if self.core.scrap_asset_logger:
                 self.core.scrap_asset_logger.warning(message)
-        return True
+            return GetDataResult.ERROR
+        return GetDataResult.OK
 
     def save_to_file(self, prefix='assets', filename=None, data=None, is_json=True, is_owned=False, is_global=False) -> bool:
         """
@@ -1058,6 +1093,36 @@ class UEAssetScraper:
             result_count = 0
             if not self._urls:
                 result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
+            if result_count == -1:
+                return False
+            # test the first url to see if the data is available
+            tries = 0
+            max_tries = 3
+            check = self.get_data_from_url(self._urls[0], owned_assets_only)
+            while check != GetDataResult.OK and tries < max_tries:
+                tries += 1
+                if check == GetDataResult.ERROR_431:
+                    self._log(
+                        f'While testing the first url, we could not get data from url {self._urls[0]}.\nNew Try ({tries}/{max_tries}) with a lower number of scraped assets at once...',
+                        'warning'
+                    )
+                    self.assets_per_page = int(self.assets_per_page * 0.7)  # 30% less
+                    self._log(
+                        f'The value of assets_per_page class has been adjusted to {self.assets_per_page}\nIf this message is repeated, you should change the value of assets_per_page in the GUISettings class',
+                        'info'
+                    )
+                elif check == GetDataResult.TIMEOUT:
+                    self._log(
+                        f'While testing the first url, we could not get data from url {self._urls[0]}.\nNew Try ({tries}/{max_tries}) with a higher timeout value...',
+                        'warning'
+                    )
+                    gui_g.s.scraping_asset_timeout = int(gui_g.s.scraping_asset_timeout * 1.5)  # 50% more
+                check = self.get_data_from_url(self._urls[0], owned_assets_only)
+
+            if check != GetDataResult.OK:
+                return False
+
+            result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
             if result_count == -1:
                 return False
 
