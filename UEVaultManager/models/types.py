@@ -25,11 +25,10 @@ class CSVFieldState(Enum):
     Enum for the state of a field in the database
     Used for filtering the fields regarding the context.
     """
-    NORMAL = 1  # field is only in the database
-    CHANGED = 2  # Changed during the process. Will be preserved if already present in data (CSV file or database)
-    NOT_PRESERVED = 3  # value will NOT be preserved if already present in data (CSV file or database)
+    NORMAL = 1  # field will NOT be preserved if already present in data (CSV file or database)
+    CHANGED = 2  # field is changed during the process. Will be preserved if already present in data (CSV file or database)
+    USER = 3  # field is only in the user data. Will be preserved if already present in data (CSV file or database)
     ASSET_ONLY = 4  # field is only in the property of the UEAsset class
-    USER = 5  # field is only in the user data. Will be preserved if already present in data (CSV file or database)
 
 
 class CSVFieldType(Enum):
