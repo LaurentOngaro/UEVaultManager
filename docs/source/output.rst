@@ -88,7 +88,7 @@ file:
       'App title': {
           # intentionnaly duplicated
           'sql_name': 'title',
-          'state': CSVFieldState.CSV_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Category': {
@@ -104,7 +104,7 @@ file:
       'Review count': {
           # not in "standard/result" csv file
           'sql_name': 'review_count',
-          'state': CSVFieldState.SQL_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.INT
       },
       'Developer': {
@@ -140,19 +140,19 @@ file:
       'Is new': {
           # not in "standard/result" csv file
           'sql_name': 'is_new',
-          'state': CSVFieldState.SQL_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.BOOL
       },
       'Free': {
           # not in "standard/result" csv file
           'sql_name': 'free',
-          'state': CSVFieldState.SQL_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.BOOL
       },
       'Can purchase': {
           # not in "standard/result" csv file
           'sql_name': 'can_purchase',
-          'state': CSVFieldState.SQL_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.BOOL
       },
       'Owned': {
@@ -230,7 +230,7 @@ file:
       'Custom attributes': {
           # not in "standard/result" csv file
           'sql_name': 'custom_attributes',
-          'state': CSVFieldState.SQL_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Page title': {
@@ -251,7 +251,7 @@ file:
       'Compatible versions': {
           # not in database
           'sql_name': None,
-          'state': CSVFieldState.CSV_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Date added': {
@@ -272,7 +272,7 @@ file:
       'UE version': {
           # not in database
           'sql_name': None,
-          'state': CSVFieldState.CSV_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Uid': {
@@ -293,7 +293,7 @@ file:
       },
       'Asset slug': {
           'sql_name': 'asset_slug',
-          'state': CSVFieldState.SQL_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Currency code': {
@@ -313,7 +313,7 @@ file:
       },
       'Tags': {
           'sql_name': 'tags',
-          'state': CSVFieldState.SQL_ONLY,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Comment rating id': {

@@ -380,8 +380,8 @@ class UEAssetScraper:
                     asset_url = self.core.egs.get_marketplace_product_url(asset_slug)
                 one_asset_json_data_parsed['asset_slug'] = asset_slug
                 one_asset_json_data_parsed['asset_url'] = asset_url
-                # if 'urlSlug' in asset_data:
-                #     asset_data.pop('urlSlug')  # we remove the duplicate field to avoid future mistakes
+                if 'urlSlug' in one_asset_json_data_parsed:
+                    one_asset_json_data_parsed.pop('urlSlug')  # we remove the duplicate field to avoid future mistakes
 
                 # prices and discount
                 price = self.core.egs.extract_price(one_asset_json_data_from_egs_ori.get('price', gui_g.no_text_data), asset_name=app_name)
@@ -435,7 +435,6 @@ class UEAssetScraper:
                     one_asset_json_data_parsed['custom_attributes'] = gui_g.no_text_data
 
                 # supported_versions
-                # supported_versions = asset_data.get('supported_versions', gui_g.no_text_data)  # data can come from the extra_data
                 supported_versions = ''
                 try:
                     tmp_list = [check_and_convert_list_to_str(item.get('compatibleApps')) for item in release_info]
@@ -512,7 +511,7 @@ class UEAssetScraper:
                     self._log(f'No id found for current asset. Passing to next asset', level='warning')
                     continue
                 # keep only fields that are in "valid" (filter all unused fields from the json file)
-                cleaned_data = {key: data.get(key, '') for key in get_sql_field_name_list(include_asset_only=True, exclude_csv_only=False)}
+                cleaned_data = {key: data.get(key, '') for key in get_sql_field_name_list(include_asset_only=True)}
                 returned_assets_json_data_parsed.append(cleaned_data)
                 message = f'Asset with uid={uid} added to content: owned={ue_asset.get("owned")} creation_date={ue_asset.get("creation_date")}'
                 self._log(message, 'debug')  # use debug here instead of info to avoid spamming the log file
@@ -555,8 +554,7 @@ class UEAssetScraper:
         """
         # merge data from the items in the file (if exists) and those get by the application
         # items_in_file must be a dict of dicts
-        file_field_names = get_csv_field_name_list(include_asset_only=True)
-        file_fields_count = len(file_field_names)
+        file_fields_count = len(_csv_field_name_list)
         if _assets_in_file.get(_asset_id):
             item_in_file = _assets_in_file.get(_asset_id)
             keys_check = item_in_file.keys()
@@ -678,6 +676,9 @@ class UEAssetScraper:
                     # get the data (it's a dict)
                     for csv_record in csv_file_content:
                         # noinspection PyTypeChecker
+                        csv_record = dict(csv_record)
+                        if 'urlSlug' in csv_record:
+                            del (csv_record['urlSlug'])  # we remove the duplicate field to avoid future mistakes
                         asset_id = csv_record['Asset_id']
                         assets_in_file[asset_id] = csv_record
                     output.close()
@@ -688,17 +689,19 @@ class UEAssetScraper:
             writer = csv.writer(output, dialect='excel-tab' if save_to_format == 'tcsv' else 'excel', lineterminator='\n')
 
             # get final the csv fields name list by
-            # - using the columns_infos from the settings
-            # - ordering the columns by their position
-            # - adding the csv_field_name_list that are not in columns_infos
             csv_field_name_list = get_csv_field_name_list()
             columns_infos = gui_g.s.get_column_infos(DataSourceType.FILE)
             sorted_cols_by_pos = dict(sorted(columns_infos.items(), key=lambda item: item[1]['pos']))
-            new_csv_field_name_list = list(sorted_cols_by_pos.keys())
-            # add field in csv_field_name_list if it's not in the list
-            for col_name in csv_field_name_list:
-                if col_name not in new_csv_field_name_list:
+            new_csv_field_name_list = []
+            # add the csv fields in the same order as in the columns_infos
+            for col_name in sorted_cols_by_pos:
+                if col_name in csv_field_name_list:
                     new_csv_field_name_list.append(col_name)
+            # add the csv fields that could be missing in the columns_infos
+            for col_name in csv_field_name_list:
+                if col_name not in csv_field_name_list:
+                    new_csv_field_name_list.append(col_name)
+
             # remove the "index copy" field from the list
             if gui_g.s.index_copy_col_name in new_csv_field_name_list:
                 new_csv_field_name_list.remove(gui_g.s.index_copy_col_name)
@@ -710,7 +713,7 @@ class UEAssetScraper:
                     return False
                 for key in asset_data.keys():
                     # clean the asset data by removing the columns that are not in the csv field name list
-                    ignore_in_csv = is_on_state(csv_field_name=key, states=[CSVFieldState.ASSET_ONLY, CSVFieldState.SQL_ONLY], default=False)
+                    ignore_in_csv = is_on_state(csv_field_name=key, states=[CSVFieldState.ASSET_ONLY], default=False)
                     if ignore_in_csv:
                         self._log(f'{key} must be ignored in CSV. Removing it from the asset data', 'debug')
                         del (asset_data[key])

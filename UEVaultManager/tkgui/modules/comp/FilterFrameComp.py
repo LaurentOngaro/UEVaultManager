@@ -288,7 +288,7 @@ class FilterFrame(ttk.LabelFrame):
                         # filter_value is a function that returns a mask (boolean Series)
                         mask = filter_value()
                     else:
-                        check_value = True # needed for the test "==" bellow
+                        check_value = True  # needed for the test "==" bellow
                         if isinstance(filter_value, str) and filter_value.startswith('^'):
                             # ^ negates the filter
                             check_value = not check_value

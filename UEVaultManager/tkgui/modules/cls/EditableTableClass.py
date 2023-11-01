@@ -1540,11 +1540,7 @@ class EditableTable(Table):
             typed_value = gui_t.get_typed_value(sql_field=key, value=value)
             # get the column index of the key
             col_name = gui_t.get_csv_field_name(key)
-            if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(
-                key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
-            ):
-                continue
-            if self.is_using_database() and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
+            if gui_t.is_on_state(key, [gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             col_index = self.get_col_index(col_name)  # return -1 col_name is not on the table
             if col_index >= 0:
@@ -1715,11 +1711,9 @@ class EditableTable(Table):
             key_lower = key.lower()
             if key_lower in hidden_col_list_lower:
                 continue
-            if self.data_source_type == DataSourceType.FILE and gui_t.is_on_state(
-                key, [gui_t.CSVFieldState.SQL_ONLY, gui_t.CSVFieldState.ASSET_ONLY]
+            if gui_t.is_on_state(
+                key, [gui_t.CSVFieldState.ASSET_ONLY]
             ):
-                continue
-            if self.is_using_database() and gui_t.is_on_state(key, [gui_t.CSVFieldState.CSV_ONLY, gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             label = gui_t.get_label_for_field(key)
 
