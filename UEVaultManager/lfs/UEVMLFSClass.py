@@ -71,8 +71,6 @@ class UEVMLFS:
         self.user_data_filename: str = path_join(self.json_files_folder, 'user_data.json')
         # filename for storing data about the current version of the application
         self.online_version_filename: str = path_join(self.json_files_folder, 'online_version.json')
-        # filename for storing cache data for asset's metadata updating
-        self.assets_cache_info_filename: str = path_join(self.json_files_folder, 'assets_cache_info.json')
         # filename for the installed assets list
         self.installed_asset_filename: str = path_join(self.json_files_folder, 'installed_assets.json')
         # filename for storing the size of asset (filled by the 'info' command).

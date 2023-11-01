@@ -555,13 +555,14 @@ class UEAssetScraper:
         """
         # merge data from the items in the file (if exists) and those get by the application
         # items_in_file must be a dict of dicts
-        csv_fields_count = len(get_csv_field_name_list())
+        file_field_names = get_csv_field_name_list(include_asset_only=True)
+        file_fields_count = len(file_field_names)
         if _assets_in_file.get(_asset_id):
             item_in_file = _assets_in_file.get(_asset_id)
             keys_check = item_in_file.keys()
             if gui_g.s.index_copy_col_name in keys_check:
-                csv_fields_count += 1
-            if len(keys_check) != csv_fields_count:
+                file_fields_count += 1
+            if len(keys_check) != file_fields_count:
                 self._log(
                     f'In the existing file, asset {_asset_id} has not the same number of keys as the CSV headings. This asset is ignored and its values will be overwritten',
                     'error'
@@ -608,7 +609,7 @@ class UEAssetScraper:
                 # end for key, state in csv_sql_fields.items()
                 if price_index > 0:
                     _csv_record[price_index + 1] = old_price
-            # end ELSE if len(item_in_file.keys()) != csv_fields_count
+            # end ELSE if len(item_in_file.keys()) != file_fields_count
         # end if _assets_in_file.get(_asset_id)
         # print(f'debug here')
         return _csv_record
