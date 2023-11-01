@@ -30,7 +30,7 @@ csv_sql_fields = {
     'App title': {
         # intentionnaly duplicated
         'sql_name': 'title',
-        'state': CSVFieldState.CSV_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
     },
     'Category': {
@@ -46,7 +46,7 @@ csv_sql_fields = {
     'Review count': {
         # not in "standard/result" csv file
         'sql_name': 'review_count',
-        'state': CSVFieldState.SQL_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.INT
     },
     'Developer': {
@@ -82,19 +82,19 @@ csv_sql_fields = {
     'Is new': {
         # not in "standard/result" csv file
         'sql_name': 'is_new',
-        'state': CSVFieldState.SQL_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.BOOL
     },
     'Free': {
         # not in "standard/result" csv file
         'sql_name': 'free',
-        'state': CSVFieldState.SQL_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.BOOL
     },
     'Can purchase': {
         # not in "standard/result" csv file
         'sql_name': 'can_purchase',
-        'state': CSVFieldState.SQL_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.BOOL
     },
     'Owned': {
@@ -173,7 +173,7 @@ csv_sql_fields = {
     'Custom attributes': {
         # not in "standard/result" csv file
         'sql_name': 'custom_attributes',
-        'state': CSVFieldState.SQL_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
     },
     'Page title': {
@@ -244,7 +244,7 @@ csv_sql_fields = {
     },
     'Tags': {
         'sql_name': 'tags',
-        'state': CSVFieldState.SQL_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
     },
     'Comment rating id': {
@@ -281,10 +281,9 @@ csv_sql_fields = {
 }
 
 
-def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, return_as_string=False, filter_on_states=None):
+def get_csv_field_name_list(include_asset_only=False, return_as_string=False, filter_on_states=None):
     """
     Get the csv fields list.
-    :param exclude_sql_only: whether to exclude the sql only fields from result.
     :param include_asset_only: whether to include the asset only fields from result.
     :param return_as_string: whether to return a string instead of a list.
     :param filter_on_states: if not empty, only return the fields in the given states.
@@ -293,8 +292,6 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
     result = []
     for csv_field, value in csv_sql_fields.items():
         if csv_field == gui_g.s.index_copy_col_name:
-            continue
-        if exclude_sql_only and value['state'] == CSVFieldState.SQL_ONLY:
             continue
         if not include_asset_only and value['state'] == CSVFieldState.ASSET_ONLY:
             continue
@@ -307,10 +304,9 @@ def get_csv_field_name_list(exclude_sql_only=True, include_asset_only=False, ret
     return result
 
 
-def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, return_as_string=False, add_alias=False, filter_on_states=None):
+def get_sql_field_name_list(include_asset_only=False, return_as_string=False, add_alias=False, filter_on_states=None):
     """
     Get the sql fields list.
-    :param exclude_csv_only: whether to exclude the csv only fields from result.
     :param include_asset_only: whether to include the asset only fields from result.
     :param return_as_string: whether to return a string instead of a list.
     :param add_alias: whether to add the csv name as alias to the sql field name.
@@ -319,8 +315,6 @@ def get_sql_field_name_list(exclude_csv_only=True, include_asset_only=False, ret
     """
     result = []
     for csv_field, value in csv_sql_fields.items():
-        if exclude_csv_only and value['state'] == CSVFieldState.CSV_ONLY:
-            continue
         if not include_asset_only and value['state'] == CSVFieldState.ASSET_ONLY:
             continue
         if filter_on_states and value['state'] not in filter_on_states:

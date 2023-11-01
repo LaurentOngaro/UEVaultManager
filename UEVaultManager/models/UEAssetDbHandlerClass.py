@@ -624,7 +624,7 @@ class UEAssetDbHandler:
         if self.connection is not None:
             cursor = self.connection.cursor()
             # generate column names for the CSV file using AS to rename the columns
-            fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
+            fields = get_sql_field_name_list(return_as_string=True, add_alias=True)
             query = f"SELECT {fields} FROM assets"
             if where_clause:
                 query += f" WHERE {where_clause}"
@@ -638,7 +638,7 @@ class UEAssetDbHandler:
                 else:
                     sort = ' DESC'
                 order = order.replace(' ASC', '').replace(' DESC', '')
-                if order not in get_sql_field_name_list(exclude_csv_only=True, return_as_string=True):
+                if order not in get_sql_field_name_list(return_as_string=True):
                     order = 'date_added DESC'
                 else:
                     order += sort
@@ -663,7 +663,7 @@ class UEAssetDbHandler:
         if self.connection is not None:
             cursor = self.connection.cursor()
             # generate column names for the CSV file using AS to rename the columns
-            fields = get_sql_field_name_list(exclude_csv_only=True, return_as_string=True, add_alias=True)
+            fields = get_sql_field_name_list(return_as_string=True, add_alias=True)
             query = f"SELECT {fields} FROM assets LIMIT 1"
             try:
                 cursor.execute(query)
