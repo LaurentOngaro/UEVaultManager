@@ -25,8 +25,7 @@ class CSVFieldState(Enum):
     Enum for the state of a field in the database
     Used for filtering the fields regarding the context.
     """
-    CSV_ONLY = 0  # field is only in the CSV result file
-    SQL_ONLY = 1  # field is only in the database
+    NORMAL = 1  # field is only in the database
     CHANGED = 2  # Changed during the process. Will be preserved if already present in data (CSV file or database)
     NOT_PRESERVED = 3  # value will NOT be preserved if already present in data (CSV file or database)
     ASSET_ONLY = 4  # field is only in the property of the UEAsset class
@@ -96,7 +95,7 @@ class GetDataResult(Enum):
     OK = 0
     ERROR = 1
     CANCELLED = 2  # user cancelled the process
-    BAD_CONTEXT = 3  # the context is not valid getting data (ie. offine)
+    BAD_CONTEXT = 3  # the context is not valid getting data (i.e. offine)
     NO_URL = 4  # no url to get data
     ERROR_431 = 5  # mainly occurs because the number of asset to scrap is too big
     TIMEOUT = 6  # mainly occurs because the timeout is too short for the number of asset to scrap
