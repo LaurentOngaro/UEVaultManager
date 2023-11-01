@@ -51,6 +51,9 @@ class GUISettings:
         self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
         self.filters_folder: str = path_join(self.path, 'filters')
 
+        self.backup_folder: str = path_join(self.path, 'backups')
+        self.backup_file_ext: str = '.BAK'
+        self.backup_file_to_keep: int = 10  # when creating a backup, this is the number of files to keep. Set to 0 for No limit
         self.default_filename: str = 'assets'
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
         self.ue_valid_file_ext = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
@@ -145,7 +148,7 @@ class GUISettings:
 
         folders = [
             self.assets_folder, self.assets_data_folder, self.owned_assets_data_folder, self.assets_global_folder, self.assets_csv_files_folder,
-            self.filters_folder
+            self.filters_folder, self.backup_folder, self.asset_images_folder, self.results_folder, self.scraping_folder
         ]
         for folder in folders:
             check_and_create_folder(folder)
@@ -717,7 +720,7 @@ class GUISettings:
         # if config file has been modified externally, back-up the user-modified version before writing
         if os.path.exists(self.config_file_gui):
             if (mod_time := int(os.stat(self.config_file_gui).st_mtime)) != self.config.mod_time:
-                new_filename = f'config.{mod_time}.ini.BAK'
+                new_filename = f'config.{mod_time}.ini{self.backup_file_ext}'
                 self._log(
                     f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
                 )

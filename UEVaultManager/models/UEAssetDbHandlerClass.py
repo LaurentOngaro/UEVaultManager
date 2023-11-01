@@ -1045,7 +1045,7 @@ class UEAssetDbHandler:
                 file_name_p = folder_for_csv_files_p / f'{table_name}{suffix_all}.csv'
                 file_name = str(file_name_p)
                 if backup_existing:
-                    create_file_backup(file_src=file_name, path=folder_for_csv_files)
+                    create_file_backup(file_src=file_name, backup_folder=folder_for_csv_files)
                 # Get column names
                 if fields == '*':
                     cursor.execute(f"PRAGMA table_info({table_name});")

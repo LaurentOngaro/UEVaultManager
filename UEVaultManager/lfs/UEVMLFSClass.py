@@ -63,7 +63,6 @@ class UEVMLFS:
 
         # Folders used by the application
         self.json_files_folder: str = path_join(self.path, 'json')  # folder for json files other than metadata, extra and manifests
-        # self.metadata_folder: str = path_join(self.json_files_folder, 'metadata')
         self.manifests_folder: str = path_join(self.json_files_folder, 'manifests')
         self.tmp_folder: str = path_join(self.path, 'tmp')
 
@@ -80,6 +79,10 @@ class UEVMLFS:
         for f in ['', self.manifests_folder, self.tmp_folder, self.json_files_folder]:
             if not os.path.exists(path_join(self.path, f)):
                 os.makedirs(path_join(self.path, f))
+
+        # backup important files (before creation to avoid backup of empty files)
+        create_file_backup(self.asset_sizes_filename, backup_folder=gui_g.s.backup_folder)
+        create_file_backup(self.installed_asset_filename, backup_folder=gui_g.s.backup_folder)
 
         # check and create some empty files (to avoid file not found errors in debug)
         check_and_create_file(self.asset_sizes_filename, content='{}')
@@ -466,6 +469,9 @@ class UEVMLFS:
                 # file_name = os.path.abspath(file_name)
                 app_name, file_ext = os.path.splitext(f)
                 file_ext = file_ext.lower()
+                # make extensions_to_delete lower
+                if extensions_to_delete is not None:
+                    extensions_to_delete = [ext.lower() for ext in extensions_to_delete]
                 file_is_ok = (file_name_to_keep is None or app_name not in file_name_to_keep)
                 ext_is_ok = (extensions_to_delete is None or file_ext in extensions_to_delete)
                 if file_is_ok and ext_is_ok:
@@ -535,8 +541,8 @@ class UEVMLFS:
         Delete all the log and backup files in the application folders.
         :return: size of the deleted files.
         """
-        folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
-        return self.delete_folder_content(folders, ['.log', '.bak'])
+        folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder, gui_g.s.backup_folder]
+        return self.delete_folder_content(folders, ['.log', gui_g.s.backup_file_ext])
 
     def load_installed_assets(self) -> bool:
         """
@@ -692,7 +698,7 @@ class UEVMLFS:
         if self.config.read_only or not self.config.modified:
             return
 
-        file_backup = create_file_backup(self.config_file)
+        file_backup = create_file_backup(self.config_file, backup_folder=gui_g.s.backup_folder)
         with open(self.config_file, 'w', encoding='utf-8') as file:
             self.config.write(file)
         # delete the backup if the files and the backup are identical

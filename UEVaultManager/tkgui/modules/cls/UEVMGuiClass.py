@@ -611,7 +611,7 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
-        file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui)
+        file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui, backup_folder=gui_g.s.backup_folder)
         gui_g.s.save_config_file()
         # delete the backup if the files and the backup are identical
         if filecmp.cmp(gui_g.s.config_file_gui, file_backup):
