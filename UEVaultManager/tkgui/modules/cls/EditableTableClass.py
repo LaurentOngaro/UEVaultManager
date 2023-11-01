@@ -895,10 +895,10 @@ class EditableTable(Table):
                         asset_id = df.at[idx, 'Asset_id']  # at checked
                         index_to_delete.append(idx)
                         self.add_to_asset_ids_to_delete(asset_id)
-                        self.logger.info(f'Adding row index #{idx} with asset_id={asset_id} to the list of index to delete')
+                        self.logger.info(f'Adding row index {idx} with asset_id={asset_id} to the list of index to delete')
                     except (IndexError, KeyError) as error:
                         self.add_error(error)
-                        self.logger.warning(f'Could add row index #{idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
+                        self.logger.warning(f'Could add row index {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
 
                     # update the index copy column because index is changed after each deletion
                     df[gui_g.s.index_copy_col_name] = df.index
@@ -1515,7 +1515,7 @@ class EditableTable(Table):
             else:
                 return row
         except IndexError:
-            self.logger.warning(f'Could not get row index #{row_index} from the table data')
+            self.logger.warning(f'Could not get data for row index {row_index} from the datatable')
             return None
 
     def update_row(self, row_number: int, ue_asset_data: dict, convert_row_number_to_row_index: bool = False) -> None:
@@ -1533,7 +1533,7 @@ class EditableTable(Table):
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
         if asset_id in gui_g.s.cell_is_empty_list[1:]:  # exclude 'NA'
             asset_id = ue_asset_data.get('asset_id', gui_g.s.cell_is_empty_list[0])
-        text = f'Row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
+        text = f'Row #{row_number + 1}' if convert_row_number_to_row_index else f'row index {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
         for key, value in ue_asset_data.items():

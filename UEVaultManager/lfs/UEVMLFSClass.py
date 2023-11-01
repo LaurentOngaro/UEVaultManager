@@ -367,6 +367,9 @@ class UEVMLFS:
         Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary).
         :param data_from_egs_format: json data from EGS format (NEW).
         :return: json data in UEVM format (OLD).
+
+        Notes:
+            Mainly used when manipulating assets in the "old" format (I.E. when using ClI methods), like install_asset(), info() and list_files()
         """
         app_name = data_from_egs_format['appName']
         category = data_from_egs_format['categories'][0]['path']
@@ -421,6 +424,9 @@ class UEVMLFS:
         :param app_name: name of the asset to load the data from.
         :param owned_assets_only: whether only the owned assets are scraped.
         :return: dictionary containing the loaded data.
+
+        Notes:
+            Mainly used when manipulating assets in the "old" format (I.E. when using ClI methods), like install_asset(), info() and list_files()
         """
         folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
         filename = app_name + '.json'
