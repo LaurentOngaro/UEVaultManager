@@ -393,6 +393,8 @@ class FilterFrame(ttk.LabelFrame):
         """
         filter_dict = {}
         selected_filter = self.cb_quick_filter.get()
+        state = tk.NORMAL if selected_filter else tk.DISABLED
+        self.btn_apply_filters['state'] = state
         quick_filter = self._quick_filters.get(selected_filter, None)
         if selected_filter and quick_filter:
             str_type = type(quick_filter[1]).__name__
