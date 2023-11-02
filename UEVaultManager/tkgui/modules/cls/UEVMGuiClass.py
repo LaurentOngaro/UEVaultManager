@@ -34,6 +34,7 @@ from UEVaultManager.tkgui.modules.cls.DbToolWindowClass import DbToolWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
+from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
 from UEVaultManager.tkgui.modules.cls.JsonToolWindowClass import JsonToolWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
@@ -1341,7 +1342,9 @@ class UEVMGui(tk.Tk):
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 # we keep UrlSlug here because it can arise from the scrapped data
                 asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
-                if asset_slug_from_row and asset_slug_from_url and not asset_slug_from_row.startswith(gui_g.s.duplicate_row_prefix) and asset_slug_from_url != asset_slug_from_row:
+                if asset_slug_from_row and asset_slug_from_url and not asset_slug_from_row.startswith(
+                    gui_g.s.duplicate_row_prefix
+                ) and asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Asset slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
@@ -2074,13 +2077,15 @@ class UEVMGui(tk.Tk):
     def create_dynamic_filters(self) -> {str: []}:
         """
         Create a dynamic filters list that can be added to the filter frame quick filter list.
-        :return: dict that will be added to the FilterFrame quick filters list.
+        :return: dict of FilterValue using column name as key or a 'callable'
 
         Notes:
-            It returns a dict where each entry must respect the folowing format: "{'<label>': ['callable': <callable> ]}"
-            where:
-             <label> is the label to display in the quick filter list
-             <callable> is the function to call to get the mask.
+            It returns a dict where each entry must be
+            - {'<label>': FilterValue}
+            - {'<label>': {'callable', <callable>, False} }
+                where:
+                 <label> is the label to display in the quick filter list
+                 <callable> is the function to call to get the mask.
         """
         filters = {
             # add ^ to the beginning of the value to search for the INVERSE the result
@@ -2110,7 +2115,13 @@ class UEVMGui(tk.Tk):
                 'Tags with number': ['callable', self.filter_tags_with_number],  #
             }
             filters.update(db_filters)
-        return filters
+
+        # convert to dict of FilterValues
+        result = {}
+        for filter_name, value in filters.items():
+            col_name, col_value = value
+            result[filter_name] = FilterValue(col_name, col_value, False)
+        return result
 
     def filter_tags_with_number(self) -> pd.Series:
         """
@@ -2180,8 +2191,8 @@ class UEVMGui(tk.Tk):
         # all the local assets
         local_asset_rows = df['Origin'].ne(gui_g.s.origin_marketplace)
         # all the marketplace assets with a local version
-        marketplace_asset_rows_with_local = df['Page title'].isin(df.loc[local_asset_rows, 'Page title']
-                                                                 ) & df['Origin'].eq(gui_g.s.origin_marketplace)
+        marketplace_asset_rows_with_local = df['Page title'].isin(df.loc[local_asset_rows, 'Page title'])
+        marketplace_asset_rows_with_local &= df['Origin'].eq(gui_g.s.origin_marketplace)
         # only the rows that are local and marketplace
         mask = df['Page title'].isin(df.loc[marketplace_asset_rows_with_local, 'Page title'])
         return mask

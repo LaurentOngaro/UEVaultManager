@@ -5,6 +5,7 @@ Definition for the types used in this module:
 - CSVFieldType: Enum for the (simplified) type of field in the database
 - DbVersionNum: version of the database or/and class.
 """
+import datetime
 from enum import Enum
 
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int
@@ -56,9 +57,29 @@ class CSVFieldType(Enum):
             return convert_to_float(value)
         if self == self.BOOL:
             return convert_to_bool(value)
-        if self == self.BOOL:
+        if self == self.DATETIME:
             return convert_to_datetime(value, formats_to_use=[DateFormat.epic, DateFormat.csv])
+        if self == self.LIST:
+            return list(value)
         return str(value)
+
+    def cast_to_type(self):
+        """
+        Cast the type of the field to a python type.
+        :return: python type.
+        """
+        if self == self.INT:
+            return int
+        if self == self.FLOAT:
+            return float
+        if self == self.BOOL:
+            return bool
+        if self == self.DATETIME:
+            return datetime
+        if self == self.LIST:
+            return list
+        else:
+            return str
 
 
 class DbVersionNum(Enum):

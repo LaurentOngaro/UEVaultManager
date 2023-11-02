@@ -21,6 +21,7 @@ from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import InstalledAsset
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue, FilterValueEncoder
 from UEVaultManager.tkgui.modules.functions import create_file_backup
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, create_uid, merge_lists_or_strings
 from UEVaultManager.utils.cli import check_and_create_file
@@ -295,8 +296,12 @@ class UEVMLFS:
             return {}
         try:
             with open(full_filename, 'r', encoding='utf-8') as file:
-                filters = json.load(file)
-        except (Exception, ):
+                filters_dict = json.load(file)
+            filters = {}
+            for filter_name, data in filters_dict.items():
+                filters[filter_name] = FilterValue.init(data)
+        except (Exception, ) as error:
+            print(f'Error while loading filter file "{filename}": {error!r}')
             return None
         return filters
 
@@ -311,7 +316,7 @@ class UEVMLFS:
         if not full_filename:
             return
         with open(full_filename, 'w', encoding='utf-8') as file:
-            json.dump(filters, file, indent=2, sort_keys=True)
+            json.dump(filters, file, indent=2, cls=FilterValueEncoder)
 
     @staticmethod
     def get_app_name_from_asset_data(asset_data: dict, use_sql_fields: bool = False) -> (str, bool):

@@ -5,17 +5,17 @@ Implementation for:
 """
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import Any, Callable, Dict, Tuple
+from typing import Callable, Dict
 
 import pandas as pd
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
 from UEVaultManager.tkgui.modules.functions import box_message, log_info
 
 
 # not needed here
 # warnings.filterwarnings('ignore', category=FutureWarning)  # Avoid the FutureWarning when PANDAS use ser.astype(object).apply()
-
 
 class FilterFrame(ttk.LabelFrame):
     """
@@ -25,7 +25,7 @@ class FilterFrame(ttk.LabelFrame):
     :param update_func: function that updates the table.
     :param save_filter_func: function that save the filters.
     :param load_filter_func: function that load the filters.
-    :param dynamic_filters_func: function used to create dynamic filter added to the quick filter list.
+    :param quick_filters: initial content for quick_filters
     :param title: title of the frame.
     :param value_for_all: value to use for the 'All' option.
     """
@@ -37,10 +37,12 @@ class FilterFrame(ttk.LabelFrame):
         update_func: Callable,
         save_filter_func: Callable,
         load_filter_func: Callable,
-        dynamic_filters_func: Callable = None,
+        quick_filters=None,
         title: str = 'Define view filters for the data table',
         value_for_all: str = 'All',
     ):
+        if quick_filters is None:
+            quick_filters = dict()
         if container is None:
             raise ValueError('container can not be None')
         if data_func is None:
@@ -49,14 +51,15 @@ class FilterFrame(ttk.LabelFrame):
             raise ValueError('update_func can not be None')
 
         super().__init__(container, text=title)
-        self._filters = {}
-        self._quick_filters = {}
+        self._filters = {}  # type: Dict[str, FilterValue]
+        self._quick_filters = quick_filters if quick_filters else {}  # type: Dict[str, FilterValue]
         self._filter_mask = None
         self.frm_widgets = None
         self.cb_col_name = None
         self.cb_quick_filter = None
         self.btn_apply_filters = None
-        self.btn_add_filters = None
+        self.btn_add_and_filters = None
+        self.btn_add_or_filters = None
         self.btn_clear_filters = None
         self.btn_view_filters = None
         self.lbl_filters_count = None
@@ -69,17 +72,12 @@ class FilterFrame(ttk.LabelFrame):
         self.data_func = data_func
         self.save_filter_func = save_filter_func
         self.load_filter_func = load_filter_func
-        self.dynamic_filters_func = dynamic_filters_func
         if self.data_func is None:
             raise ValueError('data_func can not be None')
         self.update_func = update_func
         if self.update_func is None:
             raise ValueError('update_func can not be None')
-        # call the dynamic filters function to add dynamic filters to the quick filters
-        if self.dynamic_filters_func is not None:
-            dynamic_filters = self.dynamic_filters_func()
-            if dynamic_filters is not None:
-                self._quick_filters.update(dynamic_filters)
+
         self._create_filter_widgets()
 
     def _search_combobox(self, _event, combobox) -> None:
@@ -121,7 +119,7 @@ class FilterFrame(ttk.LabelFrame):
         cur_col = 0
         self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly', width=14)
         self.cb_quick_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
-        self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.quick_filter())
+        self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.get_quick_filter())
         self.cb_quick_filter.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_quick_filter))
         cur_col += 1
         self.cb_col_name = ttk.Combobox(self, values=columns_to_list, state='readonly', width=18)
@@ -141,8 +139,11 @@ class FilterFrame(ttk.LabelFrame):
         self.lbl_filters_count = ttk.Label(self, textvariable=self.var_filters_count)
         self.lbl_filters_count.grid(row=cur_row, column=cur_col, **{'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.E})
         cur_col += 1
-        self.btn_add_filters = ttk.Button(self, text='Add to', command=self._add_to_filters)
-        self.btn_add_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        self.btn_add_and_filters = ttk.Button(self, text='+ (And)', command=self._add_and_to_filters)
+        self.btn_add_and_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        cur_col += 1
+        self.btn_add_or_filters = ttk.Button(self, text='+ (Or)', command=self._add_or_to_filters)
+        self.btn_add_or_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
         self.btn_apply_filters = ttk.Button(self, text='Apply', command=self.apply_filters)
         self.btn_apply_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
@@ -170,23 +171,27 @@ class FilterFrame(ttk.LabelFrame):
         if filters is not None:
             self.set_filters(filters)
 
-    def _add_to_filters(self) -> None:
+    def _add_and_to_filters(self) -> None:
+        self._add_to_filters(use_or=False)
+
+    def _add_or_to_filters(self) -> None:
+        self._add_to_filters(use_or=True)
+
+    def _add_to_filters(self, use_or: bool = False) -> None:
         """
         Read current selection from filter widgets and adds it to the filters' dictionary.
         """
-        cb_selection = self.cb_col_name.get()
-        if cb_selection:
-            value_type_str, filter_value = self._get_filter_value_and_type()
-            if cb_selection == 'Category' and filter_value:
-                self.category = filter_value
+        col_name = self.cb_col_name.get()
+        if col_name:
+            current_filter = self._create_filter_from_widgets(col_name, use_or)
+            if col_name == 'Category' and current_filter.value:
+                self.category = current_filter.value
             else:
                 self.category = None
-            if filter_value:
-                # Filter values are a tuple of the form (value_type_str, filter_value)
-                self._filters[cb_selection] = (value_type_str, filter_value)
-                # print a text to easily add a new filter to self._quick_filters
-                value = f"'{filter_value}'" if value_type_str == 'str' else filter_value
-                log_info(f"Added filter: '{cb_selection}_filter':['{cb_selection}', {value}]  (value_type: {value_type_str})")
+            if current_filter.value:
+                filter_name = f'Filter_{col_name}'
+                self._filters[filter_name] = current_filter
+                log_info(f'Added {current_filter!r}')
             self.update_controls()
 
     def _update_filter_widgets(self) -> None:
@@ -225,66 +230,67 @@ class FilterFrame(ttk.LabelFrame):
 
         self.update_controls()
 
-    def _get_filter_value_and_type(self) -> Tuple[str, Any]:
+    def _create_filter_from_widgets(self, col_name: str, use_or: bool = False) -> FilterValue:
         """
         Read current value from filter widgets and determines its type.
+        :param col_name: name of the column to filter.
+        :param use_or: wether to use an OR condition.
         :return: tuple containing the type (str) and value of the filter condition.
         """
-        if not self.filter_widget:
-            return 'str', ''
+        if not self.filter_widget or not col_name:
+            return FilterValue('', '', False)
 
         if isinstance(self.filter_widget, ttk.Checkbutton):
-            value_type_str = 'bool'
+            # value_type = bool
             state = self.filter_widget.state()
             if 'alternate' in state:
-                filter_value = ''
+                value = ''
             elif 'selected' in state:
-                filter_value = True
+                value = True
             else:
-                filter_value = False
+                value = False
         elif isinstance(self.filter_widget, ttk.Spinbox):
-            value_type_str = 'float'
-            filter_value = self.filter_widget.get()
+            # value_type = float
+            value = self.filter_widget.get()
         else:
-            value_type_str = 'str'
-            filter_value = self.filter_widget.get()
-
-        # value_type_str = re.sub(r"<class '(.*)'>", r'\1', str(value_type))
-        return value_type_str, filter_value
+            # value_type = str
+            value = self.filter_widget.get()
+        return FilterValue(col_name, value, use_or)
 
     def create_mask(self, filters=None):
         """
         Create a boolean mask for specified column based on filter value in a pandas DataFrame.
         """
-        # if not filters:
-        #     # load quick filter first
-        #     filters = self.quick_filter(only_return_filter=True).items()
-        # if not filters:
-        #     filters = self._filters.items()
-
         if not filters:
-            quick_filters: dict = self.quick_filter(only_return_filter=True)
-            filters: dict = self._filters.copy()
-            filters.update(quick_filters)
+            # if no filters are specified, use the quick_filter
+            filters = self._filters.copy()
+            quick_filter = self.get_quick_filter(only_return_filter=True)
+            if quick_filter:
+                filters['quick_filter'] = quick_filter
 
         final_mask = None
         mask = False
         data = self.data_func()
-        for col_name, (value_type_str, filter_value) in filters.items():
+        for filter_name, a_filter in filters.items():
+            col_name = a_filter.col_name
+            ftype = a_filter.ftype
+            filter_value = a_filter.value
+            use_or = a_filter.use_or
+            # TODO: use the use_or flag
             if col_name == self.value_for_all:
                 mask = False
                 for col in data.columns:
                     mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
             else:
                 try:
-                    if value_type_str == 'bool':
+                    if ftype == bool:
                         mask = data[col_name].astype(bool) == filter_value
-                    elif value_type_str == 'int':
+                    elif ftype == int:
                         mask = data[col_name].astype(int) == int(filter_value)
-                    elif value_type_str == 'float':
-                        filter_value = filter_value.replace(',', '.')
+                    elif ftype == float:
+                        filter_value = str(filter_value).replace(',', '.')
                         mask = data[col_name].astype(float) == float(filter_value)
-                    elif value_type_str.lower() in ('callable', 'method') and filter_value:
+                    elif str(ftype).lower() in ('callable', 'method') and filter_value:
                         # filter_value is a function that returns a mask (boolean Series)
                         mask = filter_value()
                     else:
@@ -305,7 +311,7 @@ class FilterFrame(ttk.LabelFrame):
         """
         return self._filter_mask
 
-    def set_filters(self, filters: Dict[str, Tuple[type, Any]]) -> None:
+    def set_filters(self, filters: Dict = None) -> None:
         """
         Set the filters used.
         :param filters: filter dictionary containing the filter conditions.
@@ -323,8 +329,9 @@ class FilterFrame(ttk.LabelFrame):
         # Note:
         # No need to use the global widgets list here beceause this frame is meant to be "standalone" and its widgets are not used elsewhere.
 
-        cb_selection = self.cb_col_name.get()
-        _, filter_value = self._get_filter_value_and_type()
+        col_name = self.cb_col_name.get()
+        current_filter = self._create_filter_from_widgets(col_name=col_name)
+
         filter_count = len(self._filters)
 
         state = tk.NORMAL
@@ -332,13 +339,14 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_clear_filters['state'] = state
         self.btn_save_filters['state'] = state  # empty filters can be saved to remove existing one in config
 
-        cond_1 = not cb_selection
+        cond_1 = not col_name
         state = tk.NORMAL if cond_1 else tk.DISABLED
         self.cb_quick_filter['state'] = state
 
-        cond_2 = (cb_selection and filter_value)
+        cond_2 = (col_name and current_filter.value)
         state = tk.NORMAL if cond_2 else tk.DISABLED
-        self.btn_add_filters['state'] = state
+        self.btn_add_and_filters['state'] = state
+        self.btn_add_or_filters['state'] = state
 
         cond_3 = (filter_count > 0)
         state = tk.NORMAL if cond_3 else tk.DISABLED
@@ -356,7 +364,7 @@ class FilterFrame(ttk.LabelFrame):
         """
         self._add_to_filters()
         self.update_controls()
-        self.update_func(reset_page=True, update_filters=True)
+        self.update_func(reset_page=True, update_filters=True)  # will call self.create_mask() and self.get_filter_mask()
 
     def clear_filters(self) -> None:
         """
@@ -379,27 +387,29 @@ class FilterFrame(ttk.LabelFrame):
         """
         View the filter dictionary.
         """
-        values = '\n'.join([f'"{k}" equals or contains "{v[1]}"' for k, v in self._filters.items()])
+        values = []
+        for a_filter in self._filters.items():
+            a_filter: FilterValue = a_filter  # cast to FilterValue
+            values.append(f'"{a_filter.col_name}" equals or contains "{a_filter.value}" {"(OR)" if a_filter.use_or else "(AND)"} ')
+        values = '\n'.join(values)
         msg = values + '\n\nCopy values into clipboard ?'
         if messagebox.askyesno('View data filters', message=msg):
             self.clipboard_clear()
             self.clipboard_append(values)
 
-    def quick_filter(self, only_return_filter=False) -> dict:
+    def get_quick_filter(self, only_return_filter=False) -> FilterValue:
         """
         Update the widgets that are used for filtering based on the selected column.
         :param only_return_filter: wether only return the filter string without applying it.
         :return: filter dict.
         """
-        filter_dict = {}
-        selected_filter = self.cb_quick_filter.get()
-        state = tk.NORMAL if selected_filter else tk.DISABLED
+        quick_filter_name = self.cb_quick_filter.get()
+        state = tk.NORMAL if quick_filter_name else tk.DISABLED
         self.btn_apply_filters['state'] = state
-        quick_filter = self._quick_filters.get(selected_filter, None)
-        if selected_filter and quick_filter:
-            str_type = type(quick_filter[1]).__name__
-            filter_dict = {quick_filter[0]: (str_type, quick_filter[1])}
+
+        quick_filter = self._quick_filters.get(quick_filter_name, None)
+        if quick_filter_name and quick_filter:
             if not only_return_filter:
-                # self.create_mask(filter_dict.items())
+                # self.create_mask(filter_dict.items()) # done in the line bellow
                 self.update_func(reset_page=True, update_filters=True)
-        return filter_dict
+        return quick_filter
