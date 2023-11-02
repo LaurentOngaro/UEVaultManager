@@ -27,12 +27,6 @@ csv_sql_fields = {
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
     },
-    # 'App title': {
-    #     # intentionnaly duplicated
-    #     'sql_name': 'title',
-    #     'state': CSVFieldState.NORMAL,
-    #     'field_type': CSVFieldType.STR
-    # },
     'Category': {
         'sql_name': 'category',
         'state': CSVFieldState.CHANGED,
@@ -44,7 +38,6 @@ csv_sql_fields = {
         'field_type': CSVFieldType.FLOAT
     },
     'Review count': {
-        # not in "standard/result" csv file
         'sql_name': 'review_count',
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.INT
@@ -80,19 +73,16 @@ csv_sql_fields = {
         'field_type': CSVFieldType.BOOL
     },
     'Is new': {
-        # not in "standard/result" csv file
         'sql_name': 'is_new',
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.BOOL
     },
     'Free': {
-        # not in "standard/result" csv file
         'sql_name': 'free',
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.BOOL
     },
     'Can purchase': {
-        # not in "standard/result" csv file
         'sql_name': 'can_purchase',
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.BOOL
@@ -171,7 +161,6 @@ csv_sql_fields = {
     },
     # ## less important fields
     'Custom attributes': {
-        # not in "standard/result" csv file
         'sql_name': 'custom_attributes',
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
@@ -342,7 +331,6 @@ def get_typed_value(csv_field='', sql_field='', value='') -> (any, ):
     """
     if sql_field and not csv_field:
         csv_field = get_csv_field_name(sql_field)
-
     try:
         associated_field = csv_sql_fields.get(csv_field, None)
         if associated_field is not None:
@@ -384,14 +372,14 @@ def is_from_type(csv_field_name: str, types: list[CSVFieldType], default=False) 
     if not isinstance(types, list):
         types = [types]
     try:
-        field_type = get_type(csv_field_name)
+        field_type = get_field_type(csv_field_name)
         return field_type in types
     except KeyError:
         # print(f'Key not found {csv_field_name} in is_from_type()')  # debug only. Will flood the console
         return default  # by default, we consider that the field is not on this type
 
 
-def get_type(csv_field_name: str):
+def get_field_type(csv_field_name: str):
     """
     Get the type of field.
     :param csv_field_name: csv field name.
@@ -409,7 +397,7 @@ def get_converters(csv_field_name: str):
     :param csv_field_name: csv field name.
     :return: list of converters to use sequentially. [str] will be returned if the field is not found.
     """
-    field_type = get_type(csv_field_name)
+    field_type = get_field_type(csv_field_name)
 
     if csv_field_name == 'Category':
         return [CategoricalDtype(categories=gui_g.s.asset_categories, ordered=True)]
@@ -445,7 +433,7 @@ def get_default_value(csv_field_name: str = '', sql_field_name: str = ''):
     """
     if sql_field_name and not csv_field_name:
         csv_field_name = get_csv_field_name(sql_field_name)
-    field_type = get_type(csv_field_name)
+    field_type = get_field_type(csv_field_name)
     default_values = {
         # CSVFieldType.LIST: [],
         # CSVFieldType.STR: '',

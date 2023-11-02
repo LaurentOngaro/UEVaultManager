@@ -139,7 +139,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             save_filter_func=self.save_filters,
             load_filter_func=self.load_filters,
             value_for_all=gui_g.s.default_value_for_all,
-            dynamic_filters_func=self._container.create_dynamic_filters,
+            quick_filters=self._container.create_dynamic_filters(),
         )
         frm_filter.pack(**lblf_def_options)
         self._container._frm_filter = frm_filter
