@@ -1711,9 +1711,7 @@ class EditableTable(Table):
             key_lower = key.lower()
             if key_lower in hidden_col_list_lower:
                 continue
-            if gui_t.is_on_state(
-                key, [gui_t.CSVFieldState.ASSET_ONLY]
-            ):
+            if gui_t.is_on_state(key, [gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             label = gui_t.get_label_for_field(key)
 
@@ -1834,9 +1832,7 @@ class EditableTable(Table):
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)
-            widget.focus_set()
             widget.tag_add('sel', '1.0', tk.END)  # select the content
-
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
         elif gui_t.is_from_type(col_name, [gui_t.CSVFieldType.BOOL]):
             widget = ExtendedCheckButton(edit_cell_window.frm_content, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
@@ -1845,17 +1841,15 @@ class EditableTable(Table):
             # other field is just a ExtendedEntry
             widget = ExtendedEntry(edit_cell_window.frm_content, tag=col_name)
             widget.insert(0, cell_value_str)
-            widget.focus_set()
             widget.selection_range(0, tk.END)  # select the content
 
         widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        widget.focus_set()
         self._edit_cell_widget = widget
         self._edit_cell_row_number = row_number
         self._edit_cell_col_index = col_index
         self._edit_cell_window = edit_cell_window
         edit_cell_window.initial_values = self.get_edit_cell_values()
-        gui_f.make_modal(edit_cell_window)
+        gui_f.make_modal(edit_cell_window, widget_to_focus=widget)
 
     def get_edit_cell_values(self) -> str:
         """
