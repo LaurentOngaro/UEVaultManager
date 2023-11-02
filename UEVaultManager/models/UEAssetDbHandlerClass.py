@@ -585,6 +585,8 @@ class UEAssetDbHandler:
                 release_info = get_and_check_release_info(asset.get('release_info', []))
                 release_info_str = json.dumps(release_info)
                 asset['release_info'] = release_info_str  # if isinstance(release_info, list) else release_info
+                if 'row_index' in asset:
+                    asset.pop('row_index')  # remove the row_index key from the asset dictionary
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
