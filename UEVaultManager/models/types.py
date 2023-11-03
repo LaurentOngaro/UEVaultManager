@@ -59,8 +59,9 @@ class CSVFieldType(Enum):
             return convert_to_bool(value)
         if self == self.DATETIME:
             return convert_to_datetime(value, formats_to_use=[DateFormat.epic, DateFormat.csv])
-        if self == self.LIST:
-            return list(value)
+        # NO !!! it will convert a category value in a list of chars
+        # if self == self.LIST:
+        #     return list(value)
         return str(value)
 
     def cast_to_type(self):

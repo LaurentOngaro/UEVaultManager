@@ -1619,7 +1619,7 @@ class EditableTable(Table):
             df.iat[idx, col_index] = value  # iat checked
             self.must_save = True
             return True
-        except TypeError as error:
+        except (ValueError, TypeError) as error:
             self.add_error(error)
             if not self._is_scanning and 'Cannot setitem on a Categorical with a new category' in str(error):
                 # this will occur when scanning folder with category that are not in the table yet
