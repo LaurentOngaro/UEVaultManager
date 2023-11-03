@@ -19,10 +19,11 @@ class FilterValue:
     :param use_or: wether to use an OR condition with the PREVIOUS filter.
     """
 
-    def __init__(self, col_name: str, value: Any, use_or: bool = False):
+    def __init__(self, col_name: str, value: Any, use_or: bool = False, pos: int = -1):
         self.col_name: str = col_name
         self.value: Any = value
         self.use_or: bool = use_or
+        self.pos: int = pos
         if col_name == 'callable':
             self._ftype = 'callable'  # must be a literal string
         else:
@@ -33,7 +34,8 @@ class FilterValue:
         return self.to_json()
 
     def __repr__(self):
-        result = f'Filter: "{self.col_name}" of type "{self._ftype.__name__}" is/contains "{self.value}"'
+        result = f'"{self.col_name}" of type "{self._ftype.__name__}" is/contains "{self.value}"'
+        result += f' at pos {self.pos}' if self.pos >= 0 else ''
         result += ' (OR)' if self.use_or else ' (AND)'
         return result
 
@@ -49,6 +51,7 @@ class FilterValue:
             'col_name': self.col_name,
             'ftype': self._ftype.__name__ if self._ftype != 'callable' else 'callable',  # 'callable' is a literal string
             'value': self.value,
+            'pos': self.pos,
             'use_or': self.use_or
         }
 
@@ -66,7 +69,7 @@ class FilterValue:
         :param data: a dictionnary string representing a FilterValue object.
         :return: a FilterValue object created from the JSON string.
         """
-        return cls(data['col_name'], data['value'], data['use_or'])
+        return cls(data.get('col_name', ''), data.get('value', ''), data.get('use_or', False), data.get('pos', -1))
 
     @property
     def ftype(self) -> type:

@@ -156,7 +156,7 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_clear_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         if self.save_filter_func is not None:
             cur_col += 1
-            self.btn_save_filters = ttk.Button(self, text='Save', command=lambda: self.save_filter_func(self._filters))
+            self.btn_save_filters = ttk.Button(self, text='Save', command=lambda: self.save_filter_func(self.sorted_filters()))
             self.btn_save_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         if self.load_filter_func is not None:
             cur_col += 1
@@ -238,8 +238,9 @@ class FilterFrame(ttk.LabelFrame):
         :param use_or: wether to use an OR condition.
         :return: tuple containing the type (str) and value of the filter condition.
         """
+        pos = len(self._filters)
         if not self.filter_widget or not col_name:
-            return FilterValue('', '', False)
+            return FilterValue('', '', False, pos)
 
         if isinstance(self.filter_widget, ttk.Checkbutton):
             # value_type = bool
@@ -256,7 +257,7 @@ class FilterFrame(ttk.LabelFrame):
         else:
             # value_type = str
             value = self.filter_widget.get()
-        return FilterValue(col_name, value, use_or)
+        return FilterValue(col_name, value, use_or, pos)
 
     def create_mask(self, filters=None):
         """
@@ -272,7 +273,7 @@ class FilterFrame(ttk.LabelFrame):
         final_mask = None
         mask = False
         data = self.data_func()
-        for filter_name, a_filter in filters.items():
+        for filter_name, a_filter in self.sorted_filters().items():
             col_name = a_filter.col_name
             ftype = a_filter.ftype
             filter_value = a_filter.value
@@ -326,6 +327,12 @@ class FilterFrame(ttk.LabelFrame):
         self._update_filter_widgets()
         self.update_func(reset_page=True, update_filters=True, update_format=True)
 
+    def sorted_filters(self) -> Dict[str, FilterValue]:
+        """
+        Return the filters sorted by position.
+        """
+        return dict(sorted(self._filters.items(), key=lambda item: item[1].pos))
+
     def update_controls(self) -> None:
         """
         Update the state of the controls based on the current state of the filters.
@@ -335,8 +342,6 @@ class FilterFrame(ttk.LabelFrame):
 
         col_name = self.cb_col_name.get()
         current_filter = self._create_filter_from_widgets(col_name=col_name)
-
-        filter_count = len(self._filters)
 
         state = tk.NORMAL
         self.cb_col_name['state'] = state
@@ -352,7 +357,8 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_add_and_filters['state'] = state
         self.btn_add_or_filters['state'] = state
 
-        cond_3 = (filter_count > 0)
+        filter_count = len(self._filters)
+        cond_3 = (len(self._filters) > 0)
         state = tk.NORMAL if cond_3 else tk.DISABLED
         self.btn_view_filters['state'] = state
         self.btn_save_filters['state'] = state
@@ -392,12 +398,12 @@ class FilterFrame(ttk.LabelFrame):
         View the filter dictionary.
         """
         values = []
-        for filter_name in self._filters:
+        for filter_name in self.sorted_filters():
             a_filter: FilterValue = self._filters[filter_name]  # cast to FilterValue because the loop variable is a string
-            values.append(f'{a_filter!r}')
+            values.append(a_filter.__repr__())
         values = '\n'.join(values)
         msg = values + '\n\nCopy values into clipboard ?'
-        if messagebox.askyesno('View data filters', message=msg):
+        if messagebox.askyesno('View applied filters on datatable', message=msg):
             self.clipboard_clear()
             self.clipboard_append(values)
 
