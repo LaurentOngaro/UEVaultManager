@@ -21,6 +21,7 @@ from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import InstalledAsset
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue, FilterValueEncoder
 from UEVaultManager.tkgui.modules.functions import create_file_backup
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, create_uid, merge_lists_or_strings
 from UEVaultManager.utils.cli import check_and_create_file
@@ -295,8 +296,12 @@ class UEVMLFS:
             return {}
         try:
             with open(full_filename, 'r', encoding='utf-8') as file:
-                filters = json.load(file)
-        except (Exception, ):
+                filters_dict = json.load(file)
+            filters = {}
+            for filter_name, data in filters_dict.items():
+                filters[filter_name] = FilterValue.init(data)
+        except (Exception, ) as error:
+            print(f'Error while loading filter file "{filename}": {error!r}')
             return None
         return filters
 
@@ -311,7 +316,7 @@ class UEVMLFS:
         if not full_filename:
             return
         with open(full_filename, 'w', encoding='utf-8') as file:
-            json.dump(filters, file, indent=2, sort_keys=True)
+            json.dump(filters, file, indent=2, cls=FilterValueEncoder)
 
     @staticmethod
     def get_app_name_from_asset_data(asset_data: dict, use_sql_fields: bool = False) -> (str, bool):
@@ -367,6 +372,9 @@ class UEVMLFS:
         Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary).
         :param data_from_egs_format: json data from EGS format (NEW).
         :return: json data in UEVM format (OLD).
+
+        Notes:
+            Mainly used when manipulating assets in the "old" format (I.E. when using ClI methods), like install_asset(), info() and list_files()
         """
         app_name = data_from_egs_format['appName']
         category = data_from_egs_format['categories'][0]['path']
@@ -421,20 +429,27 @@ class UEVMLFS:
         :param app_name: name of the asset to load the data from.
         :param owned_assets_only: whether only the owned assets are scraped.
         :return: dictionary containing the loaded data.
+
+        Notes:
+            Mainly used when manipulating assets in the "old" format (I.E. when using ClI methods), like install_asset(), info() and list_files()
         """
         folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
         filename = app_name + '.json'
-        json_data = {}
+        json_data_uevm = {}
         message = ''
-        with open(path_join(folder, filename), 'r', encoding='utf-8') as file:
-            try:
-                json_data = json.load(file)
-            except json.decoder.JSONDecodeError as error:
-                message = f'The following error occured when loading data from {filename}:{error!r}'
-            # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
-            # it needed by the json_data_mapping() method
-            json_data['appName'] = app_name
-            json_data_uevm = self.json_data_mapping(json_data)
+        full_filename = path_join(folder, filename)
+        if not os.path.isfile(full_filename):
+            message = f'The json file "{filename}" to get data from does not exist.\nTry to scrap the asset first.'
+        else:
+            with open(full_filename, 'r', encoding='utf-8') as file:
+                try:
+                    json_data = json.load(file)
+                except json.decoder.JSONDecodeError as error:
+                    message = f'The following error occured when loading data from {filename}:{error!r}'
+                # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
+                # it needed by the json_data_mapping() method
+                json_data['appName'] = app_name
+                json_data_uevm = self.json_data_mapping(json_data)
         return json_data_uevm, message
 
     def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:

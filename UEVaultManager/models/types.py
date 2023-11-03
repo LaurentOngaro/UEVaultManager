@@ -5,6 +5,7 @@ Definition for the types used in this module:
 - CSVFieldType: Enum for the (simplified) type of field in the database
 - DbVersionNum: version of the database or/and class.
 """
+import datetime
 from enum import Enum
 
 from UEVaultManager.tkgui.modules.functions_no_deps import convert_to_bool, convert_to_datetime, convert_to_float, convert_to_int
@@ -25,11 +26,10 @@ class CSVFieldState(Enum):
     Enum for the state of a field in the database
     Used for filtering the fields regarding the context.
     """
-    NORMAL = 1  # field is only in the database
-    CHANGED = 2  # Changed during the process. Will be preserved if already present in data (CSV file or database)
-    NOT_PRESERVED = 3  # value will NOT be preserved if already present in data (CSV file or database)
+    NORMAL = 1  # field will NOT be preserved if already present in data (CSV file or database)
+    CHANGED = 2  # field is changed during the process. Will be preserved if already present in data (CSV file or database)
+    USER = 3  # field is only in the user data. Will be preserved if already present in data (CSV file or database)
     ASSET_ONLY = 4  # field is only in the property of the UEAsset class
-    USER = 5  # field is only in the user data. Will be preserved if already present in data (CSV file or database)
 
 
 class CSVFieldType(Enum):
@@ -57,9 +57,30 @@ class CSVFieldType(Enum):
             return convert_to_float(value)
         if self == self.BOOL:
             return convert_to_bool(value)
-        if self == self.BOOL:
+        if self == self.DATETIME:
             return convert_to_datetime(value, formats_to_use=[DateFormat.epic, DateFormat.csv])
+        # NO !!! it will convert a category value in a list of chars
+        # if self == self.LIST:
+        #     return list(value)
         return str(value)
+
+    def cast_to_type(self):
+        """
+        Cast the type of the field to a python type.
+        :return: python type.
+        """
+        if self == self.INT:
+            return int
+        if self == self.FLOAT:
+            return float
+        if self == self.BOOL:
+            return bool
+        if self == self.DATETIME:
+            return datetime
+        if self == self.LIST:
+            return list
+        else:
+            return str
 
 
 class DbVersionNum(Enum):

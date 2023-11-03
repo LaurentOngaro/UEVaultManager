@@ -139,7 +139,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             save_filter_func=self.save_filters,
             load_filter_func=self.load_filters,
             value_for_all=gui_g.s.default_value_for_all,
-            dynamic_filters_func=self._container.create_dynamic_filters,
+            quick_filters=self._container.create_dynamic_filters(),
         )
         frm_filter.pack(**lblf_def_options)
         self._container._frm_filter = frm_filter
@@ -306,12 +306,10 @@ class UEVMGuiControlFrame(ttk.Frame):
         filename = os.path.normpath(filename)
         fd_folder = os.path.dirname(filename)
         filename = os.path.basename(filename)  # remove the folder from the filename
-        filename, ext = os.path.splitext(filename)
-        if not ext:
-            filename += json_ext
-        elif ext.lower() != json_ext:
-            messagebox.showwarning('Warning', f'Filters can only be save to a json file. Do not forget to add the extension to the filename.')
-            return
+        filename, ext = os.path.splitext(filename)  # remove the extension from the filename
+        filename += json_ext  # add the json extension
+        if ext.lower() != json_ext:
+            messagebox.showwarning('Info', f'Filters can only be save to a json file. It has been automaticaly added to the filename.')
         if folder != fd_folder:
             messagebox.showwarning('Warning', f'The folder to save filters into can not be changed. The file will be saved in {folder}')
         try:

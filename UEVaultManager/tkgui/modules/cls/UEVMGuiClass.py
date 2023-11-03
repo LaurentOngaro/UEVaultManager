@@ -34,6 +34,7 @@ from UEVaultManager.tkgui.modules.cls.DbToolWindowClass import DbToolWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
+from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
 from UEVaultManager.tkgui.modules.cls.JsonToolWindowClass import JsonToolWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
@@ -859,19 +860,33 @@ class UEVMGui(tk.Tk):
                 if parent_folder not in folder_to_scan:
                     folder_to_scan.append(parent_folder)
 
-        valid_folders = {}
+        data_from_valid_folders = {}
         invalid_folders = []
         folder_to_scan = folder_list if (folder_list is not None and len(folder_list) > 0) else gui_g.s.folders_to_scan
-        if not from_add_button and gui_g.s.testing_switch == 2:  # here, do_not_ask is used to detect if the caller is the "add" button and not the "scan" button
-            # noinspection GrazieInspection
-            folder_to_scan = [
-                'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  #
-                'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  #
-                'G:/Assets/pour UE/00 A trier/Warez/Battle Royale Island Pack',  #
-                'G:/Assets/pour UE/00 A trier/Warez/ColoradoNature',  #
-                'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  #
-                'G:/Assets/pour UE/02 Warez/Animations/Female Movement Animset Pro 4.26',  #
-            ]
+        if not from_add_button:
+            if gui_g.s.testing_switch == 2:  # here, do_not_ask is used to detect if the caller is the "add" button and not the "scan" button
+                # noinspection GrazieInspection
+                folder_to_scan = [
+                    'G:/Assets/pour UE/02 Warez/Battle Royale Island Pack',  # # test folder n'existe pas OK
+                    'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # OK
+                    'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # OK
+                    'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  # OK
+                ]  # ETAPEOK
+            elif gui_g.s.testing_switch == 3:
+                # noinspection GrazieInspection
+                folder_to_scan = [
+                    'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  # update ERREUR APRES l'update dans la BD
+                    'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # update
+                    'G:/Assets/pour UE/02 Warez/Environments/Battle Royale Island Pack',  # new OK
+                    'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # update
+                ]
+            elif gui_g.s.testing_switch == 4:
+                # noinspection GrazieInspection
+                folder_to_scan = [
+                    'G:/Assets/pour UE/02 Warez/Animations/Female Movement Animset Pro 4.26',  # new
+                    'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # update
+                    'G:/Assets/pour UE/02 Warez/Environments/Battle Royale Island Pack',  # update
+                ]
         if not from_add_button and (
             len(folder_to_scan) > 1 and not gui_f.box_yesno(
                 'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
@@ -939,7 +954,7 @@ class UEVMGui(tk.Tk):
                             gui_f.close_progress(self)
                             # grab_result = GrabResult.TIMEOUT.name
                             return
-                    valid_folders[folder_name] = {
+                    data_from_valid_folders[folder_name] = {
                         'path': path,
                         'asset_type': UEAssetType.Asset,
                         'marketplace_url': marketplace_url,
@@ -1012,7 +1027,7 @@ class UEVMGui(tk.Tk):
                                             level='warning'
                                         )
                                         grab_result = GrabResult.TIMEOUT.name
-                                valid_folders[folder_name] = {
+                                data_from_valid_folders[folder_name] = {
                                     'path': path,
                                     'asset_type': asset_type,
                                     'marketplace_url': marketplace_url,
@@ -1055,86 +1070,89 @@ class UEVMGui(tk.Tk):
         #   BEFORE scraping and getting real Ids
         temp_id = gui_g.s.temp_id_prefix + gui_fn.create_uid()
         row_data = {'Asset_id': temp_id, 'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
-        df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        count = len(valid_folders.items())
-        pw.reset(new_text='Scraping data and updating assets', new_max_value=count)
+        folders_count = len(data_from_valid_folders)
+        pw.reset(new_text='Scraping data and updating assets', new_max_value=folders_count)
         row_added = 0
         data_table.is_scanning = True
+        count = 0
         # copy_col_index = data_table.get_col_index(gui_g.s.index_copy_col_name)
-        for name, content in valid_folders.items():
-            marketplace_url = content['marketplace_url']
-            self.logger.info(f'{name} : {content["asset_type"].name} at {content["path"]} with marketplace_url {marketplace_url} ')
-            # set default values for the row, some will be replaced by Scraping
+        for folder_name, folder_data in data_from_valid_folders.items():
+            df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)  # put the df here to have it updated after each row
+            marketplace_url = folder_data['marketplace_url']
+            self.logger.info(f'{folder_name} : {folder_data["asset_type"].name} at {folder_data["path"]} with marketplace_url {marketplace_url} ')
+            # set default values for the row, some will be replaced after scraping
             row_data.update(
                 {
-                    'App name': name,
-                    'Origin': content['path'],
-                    'Url': content['marketplace_url'],
-                    'Grab result': content['grab_result'],
-                    'Category': content['asset_type'].category_name,
-                    'Comment': content['comment'],
-                    'Supported versions': content.get('supported_versions', ''),
+                    'App name': folder_name,
+                    'Origin': folder_data['path'],
+                    'Url': folder_data['marketplace_url'],
+                    'Grab result': folder_data['grab_result'],
+                    'Category': folder_data['asset_type'].category_name,
+                    'Comment': folder_data['comment'],
+                    'Supported versions': folder_data.get('supported_versions', ''),
                     'Added manually': True,
-                    'Downloaded size': content['downloaded_size'],
+                    'Downloaded size': folder_data['downloaded_size'],
                 }
             )
             row_index = -1
-            text = f'Checking {name}'
+            text = f'Checking {folder_name}'
             existing_data_in_row = {}
             # check if the row already exists
             try:
                 # we try to get the indexes if value already exists in column 'Origin' for a pandastable
-                rows_serie = df.loc[lambda x: x['Origin'].str.lower() == content['path'].lower()]
+                rows_serie = df.loc[lambda x: x['Origin'].str.lower() == folder_data['path'].lower()]
                 row_indexes = rows_serie.index  # returns a list of indexes. It should contain only 1 value
                 if not row_indexes.empty:
                     # FOUND, we update the row
-                    row_index = row_indexes[0]
-                    existing_data_in_row = self._get_existing_data_in_row(row_index=row_index)
-                    text = f'Updating {name} row index #{row_index}. Old name is {existing_data_in_row["title"]}'
-                    self.logger.info(f"{text} with path {content['path']}")
+                    # we pass the rows_serie we've found to get the existing values. it has only one row, so row_index is always 1
+                    existing_data_in_row = self._get_existing_data_in_row(row_index=1, df=rows_serie)
+                    row_index = existing_data_in_row.pop('row_index')
+                    text = f'Updating row index {row_index}.\nExisting Asset_id is {existing_data_in_row["asset_id"]}'
+                    self.logger.info(f"{text} with path {folder_data['path']}")
             except (IndexError, ValueError) as error:
                 self.add_error(error)
-                self.logger.warning(f'Error when checking the existence for {name} at {content["path"]}: error {error!r}')
-                invalid_folders.append(content['path'])
-                text = f'An Error occured when cheking {name}'
+                self.logger.warning(f'Error when checking the existence for {folder_name} at {folder_data["path"]}: error {error!r}')
+                invalid_folders.append(folder_data['path'])
+                text = f'An Error occured when cheking {folder_name}'
                 pw.set_text(text)
                 continue
             is_adding = row_index == -1
             if is_adding:
                 # NOT FOUND, we add a new row
                 _, row_index = data_table.create_row(row_data=row_data, do_not_save=True)
-                text = f'Adding {name} row index #{row_index}'
-                self.logger.info(f"{text} with path {content['path']}")
+                text = f'Adding "{folder_name}" at row index {row_index}'
+                self.logger.info(f"{text} with path {folder_data['path']}")
                 row_added += 1
-
-            if not pw.update_and_continue(increment=1, text=text):
+            count += 1
+            if not pw.update_and_continue(value=count, max_value=folders_count, text=text):
                 break
             # need to keep the local value created when adding an existing asset
             forced_data = existing_data_in_row.copy()
             # set the data the must be kept after the scraping
             forced_data.update(
                 {
-                    # normally NO KEY returned by existing_data_in_row() should be present here
-                    'origin': content['path'],
-                    'asset_url': content['marketplace_url'],
-                    'grab_result': content['grab_result'],
+                    # these value will overwrite those returned by existing_data_in_row()
+                    'origin': folder_data['path'],
+                    'asset_url': folder_data['marketplace_url'],
+                    'grab_result': folder_data['grab_result'],
                     'added_manually': True,
-                    'category': content['asset_type'].category_name,
-                    'downloaded_size': content['downloaded_size']
+                    'category': folder_data['asset_type'].category_name,
+                    'downloaded_size': folder_data['downloaded_size']
                 }
             )
             if forced_data.get('comment', ''):
-                forced_data['comment'] += '\n' + content['comment']
+                forced_data['comment'] += '\n' + folder_data['comment']
 
-            if content['grab_result'] == GrabResult.NO_ERROR.name:
+            if folder_data['grab_result'] == GrabResult.NO_ERROR.name:
                 try:
                     self.scrap_asset(
                         marketplace_url=marketplace_url,
                         row_index=row_index,
                         forced_data=forced_data,
                         update_dataframe=False,
-                        check_unicity=is_adding
-                    )  # call update_row() inside
+                        check_unicity=is_adding,
+                        is_silent=self.silent_mode,
+                    )  # !! IMPORTANT: update_row() and save in database already DONE inside scrap_asset()
                 except ReadTimeout as error:
                     self.add_error(error)
                     self.silent_message(
@@ -1142,7 +1160,6 @@ class UEVMGui(tk.Tk):
                         level='warning'
                     )
                     forced_data['grab_result'] = GrabResult.TIMEOUT.name
-                else:
                     data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
                     data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         pw.hide_progress_bar()
@@ -1165,11 +1182,10 @@ class UEVMGui(tk.Tk):
                 gui_f.make_modal(gui_g.WindowsRef.display_content)
             self.logger.warning(result)
 
-    def _scrap_from_url(self, marketplace_url: str, show_message: bool = False, app_name: str = '') -> dict:
+    def _scrap_from_url(self, marketplace_url: str, app_name: str = '') -> dict:
         """
         Scrap the data from a marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
-        :param show_message: whether to show message boxes or not.
         :param app_name: name of the app to scrap (Optional).
         :return: data scrapped from the marketplace_url Or None if the marketplace_url is invalid.
         """
@@ -1182,12 +1198,9 @@ class UEVMGui(tk.Tk):
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if not asset_data or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
                 msg = f'Failed to grab data from {marketplace_url}'
-                if show_message:
-                    gui_f.box_message(msg, level='warning', show_dialog=not self.silent_mode)
-                else:
-                    self.logger.warning(msg)
-                    if self.core.notfound_logger:
-                        self.core.notfound_logger.info(msg)
+                gui_f.box_message(msg, level='warning', show_dialog=not self.silent_mode)
+                if self.core.notfound_logger:
+                    self.core.notfound_logger.info(msg)
                 return {}
             api_product_url = self.core.egs.get_api_product_url(asset_data['id'])
             if self.ue_asset_scraper is None:
@@ -1214,10 +1227,7 @@ class UEVMGui(tk.Tk):
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
             if self.core.notfound_logger:
                 self.core.notfound_logger.info(f'{app_name}: invalid url "{marketplace_url}"')
-            if show_message:
-                gui_f.box_message(msg, level='warning', show_dialog=not self.silent_mode)
-            else:
-                self.logger.warning(msg)
+            gui_f.box_message(msg, level='warning', show_dialog=not self.silent_mode)
             # change the grab result to CONTENT_NOT_FOUND in database
             if self.is_using_database() and self.ue_asset_scraper:
                 self.ue_asset_scraper.asset_db_handler.update_asset('grab_result', GrabResult.CONTENT_NOT_FOUND.name, asset_id=app_name)
@@ -1248,10 +1258,13 @@ class UEVMGui(tk.Tk):
                 maxvalue=max_val
             )
             if end is not None:
+                self.silent_mode = gui_f.box_yesno(
+                    f'Do you want to run the scan silently ?\nIt will use choices by default and avoid user confirmation dialogs.'
+                )
                 start = max(min_val, start)
                 end = min(max_val, end)
                 all_row_numbers = list(range(start, end))
-                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False)
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, is_silent=self.silent_mode)
                 self.ue_asset_scraper = None
 
     def scrap_asset(
@@ -1262,24 +1275,26 @@ class UEVMGui(tk.Tk):
         forced_data: {} = None,
         update_dataframe: bool = True,
         check_unicity: bool = False,
+        is_silent: bool = False,
     ) -> None:
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
         :param row_numbers: list a row numbers to scrap. If None, will use the selected rows.
         :param row_index: (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
-        :param forced_data: if not None, all the key in forced_data will replace the scrapped data.
+        :param forced_data: if not None, all the key in forced_data_initial will replace the scrapped data.
         :param update_dataframe: whether to update the dataframe after scraping.
         :param check_unicity: whether to check if the data are unique and ask the user to update the row if not.
+        :param is_silent: whether to show message boxes or not.
         """
-        show_message = False  # no message by default to not interrupt the process by a messagebox
-        if show_message:
-            if gui_g.s.offline_mode:
-                self.silent_message('You are in offline mode, Scraping and scanning features are not available')
-                return
-            if self.core is None:
-                gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible', show_dialog=not self.silent_mode)
-                return
+        # by default (i.e. self.silent_mode sis not changed), we show the following message boxes
+        if gui_g.s.offline_mode:
+            self.silent_message('You are in offline mode, Scraping and scanning features are not available')
+            return
+        if self.core is None:
+            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible', show_dialog=not self.silent_mode)
+            return
+        self.silent_mode = is_silent
         if forced_data is None:
             forced_data = {}
         is_unique = not check_unicity  # by default, we consider that the data are unique
@@ -1288,16 +1303,14 @@ class UEVMGui(tk.Tk):
         if not row_numbers:
             row_numbers = data_table.multiplerowlist
             use_range = False
+            self.silent_mode = False if not is_silent else True  # NO silent_mode only if it has explicitly been set to False
         else:
             use_range = True
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
-            if show_message:
-                self.silent_message('You must select a row first', level='warning')
-            return
+            self.silent_message('You must select a row first', level='warning')
         if row_index >= 0:
             # a row index has been given, we scrap only this row
             row_indexes = [row_index]
-            show_message = True
         elif use_range:
             # convert row numbers to row indexes
             row_indexes = [
@@ -1329,24 +1342,30 @@ class UEVMGui(tk.Tk):
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 # we keep UrlSlug here because it can arise from the scrapped data
                 asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
-                if asset_slug_from_row and asset_slug_from_url and asset_slug_from_url != asset_slug_from_row:
-                    msg = f'The Url slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
+                if asset_slug_from_row and asset_slug_from_url and not asset_slug_from_row.startswith(
+                    gui_g.s.duplicate_row_prefix
+                ) and asset_slug_from_url != asset_slug_from_row:
+                    msg = f'The Asset slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
-                    if show_message and gui_f.box_yesno(
+                    if gui_f.box_yesno(
                         f'{msg}.\nDo you wan to create a new Url with {asset_slug_from_row} and use it for scraping ?\nIf no, the given url with {asset_slug_from_url} will be used',
                         show_dialog=not self.silent_mode
                     ):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
                         data_table.update_cell(row_index, col_index, marketplace_url, convert_row_number_to_row_index=False)
-                text = base_text + f'\n Row index #{row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
+                text = base_text + f'\n Row index {row_index}: scraping {gui_fn.shorten_text(marketplace_url)}'
                 # if pw and not pw.update_and_continue(value=count, text=text, max_value=row_count):  # uses value and max_value here because increment does not work well with multiple rows
                 if pw and not pw.update_and_continue(increment=1, text=text):
                     gui_f.close_progress(self)
                     return
-                asset_data = self._scrap_from_url(marketplace_url, show_message=show_message)
+                asset_data = self._scrap_from_url(marketplace_url)
                 if asset_data:
+                    if forced_data:
+                        asset_forced_data = forced_data.copy()
+                    else:
+                        asset_forced_data = {}
                     if self.core.verbose_mode or gui_g.s.debug_mode:
                         debug_parsed_data(asset_data, self.editable_table.data_source_type)
                     if check_unicity:  # note: only done when ADDING a row
@@ -1357,29 +1376,25 @@ class UEVMGui(tk.Tk):
                         asset_id = existing_data.get('asset_id', '')
                         if asset_id and asset_id.startswith(gui_g.s.duplicate_row_prefix):
                             # we KEEP some existing values (the "local" ones) when updating
-                            if forced_data:
-                                forced_data.update(existing_data)
-                            else:
-                                forced_data = existing_data.copy()
+                            asset_forced_data = existing_data.copy()
 
-                    for key, value in forced_data.items():
+                    for key, value in asset_forced_data.items():
                         asset_data[key] = value
                     if is_unique or gui_f.box_yesno(
-                        f'The data for row index #{row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped',
+                        f'The scrapped data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to create a row using tthis data ?\nIf No, the row will be skipped',
                         show_dialog=not self.silent_mode
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                    if self.is_using_database():
-                        self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=False)
+                        if self.is_using_database():
+                            self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=False)
                 else:
                     col_index = data_table.get_col_index('Grab result')
                     data_table.update_cell(row_index, col_index, GrabResult.CONTENT_NOT_FOUND.name, convert_row_number_to_row_index=False)
             gui_f.close_progress(self)
-            # if show_message and row_count > 1:
             if row_count > 1:
                 message = f'All Datas for {row_count} rows have been updated from the marketplace.'
             else:
-                message = f'Data for row index #{row_index} have been updated from the marketplace.'
+                message = f'Data for row index {row_index} have been updated from the marketplace.'
             tags_message = ''
             if self.is_using_database():
                 tags_count = data_table.db_handler.get_rows_count('tags')
@@ -1387,21 +1402,22 @@ class UEVMGui(tk.Tk):
                 tags_message = f'\n{tags_count - tags_count_saved} tags and {rating_count - rating_count_saved} ratings have been added to the database.'
             self.silent_message(message + tags_message)
         else:
-            asset_data = self._scrap_from_url(marketplace_url, show_message=show_message)
+            asset_data = self._scrap_from_url(marketplace_url)
             if asset_data:
                 if self.core.verbose_mode or gui_g.s.debug_mode:
                     debug_parsed_data(asset_data, self.editable_table.data_source_type)
                 if check_unicity:  # note: only done when ADDING a row
                     is_unique, asset_data = self._check_unicity(asset_data)
                 if is_unique or gui_f.box_yesno(
-                    f'The data for row index #{row_index} are not unique. Do you want to update the row with the new data ?\nIf no, the row will be skipped',
+                    f'The data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to update the row with the new data ?\nIf No, the row will be skipped',
                     show_dialog=not self.silent_mode
                 ):
+                    if forced_data is not None:
+                        for key, value in forced_data.items():
+                            asset_data[key] = value
                     data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                if self.is_using_database() and forced_data is not None:
-                    for key, value in forced_data.items():
-                        asset_data[key] = value
-                self.ue_asset_scraper.asset_db_handler.set_assets(asset_data)
+                    if self.is_using_database():
+                        self.ue_asset_scraper.asset_db_handler.set_assets(asset_data)
             else:
                 col_index = data_table.get_col_index('Grab result')
                 data_table.update_cell(row_index, col_index, GrabResult.CONTENT_NOT_FOUND.name, convert_row_number_to_row_index=False)
@@ -1409,19 +1425,28 @@ class UEVMGui(tk.Tk):
         if update_dataframe:
             data_table.update()
 
-    def _get_existing_data_in_row(self, row_index: int = -1) -> dict:
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        index_copy = df.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
-        # need to keep the local value created when adding an existing asset
+    def _get_existing_data_in_row(self, row_index: int = -1, df: pd.DataFrame = None) -> dict:
+        if df is None:
+            df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
+            idx = df.loc[row_index, gui_g.s.index_copy_col_name]  # important to get the value before updating the row
+            row_index = idx
+        else:
+            idx = 0
+            row_index = df.index[0]
+        df_row = df.iloc[idx]
         existing_data = {
             # create an id field from the asset_id to be able to update the corresponding row in the database (id is the primary key)
-            'id': df.loc[index_copy, 'Asset_id'],
-            'asset_id': df.loc[index_copy, 'Asset_id'],
-            'asset_slug': df.loc[index_copy, 'Asset slug'],
-            'title': df.loc[index_copy, 'App name'],
-            'comment': df.loc[index_copy, 'Comment'],
-            'origin': df.loc[index_copy, 'Origin'],
+            'row_index': row_index,  # need to keep the index of the row to update in the datatable. Will be suppressed later
+            'id': df_row.loc['Asset_id'],
+            'asset_id': df_row.loc['Asset_id'],
+            'asset_slug': df_row.loc['Asset slug'],
+            'comment': df_row.loc['Comment'],
+            'origin': df_row.loc['Origin'],
+            'added_manually': df_row.loc['Added manually'],
+            'category': df_row.loc['Category'],
+            'downloaded_size': df_row.loc['Downloaded size']
         }
+        # need to keep the local value created when adding an existing asset
         return existing_data
 
     def _check_unicity(self, asset_data: {}) -> (bool, dict):
@@ -2052,13 +2077,15 @@ class UEVMGui(tk.Tk):
     def create_dynamic_filters(self) -> {str: []}:
         """
         Create a dynamic filters list that can be added to the filter frame quick filter list.
-        :return: dict that will be added to the FilterFrame quick filters list.
+        :return: dict of FilterValue using column name as key or a 'callable'
 
         Notes:
-            It returns a dict where each entry must respect the folowing format: "{'<label>': ['callable': <callable> ]}"
-            where:
-             <label> is the label to display in the quick filter list
-             <callable> is the function to call to get the mask.
+            It returns a dict where each entry must be
+            - {'<label>': FilterValue}
+            - {'<label>': {'callable', <callable>, False} }
+                where:
+                 <label> is the label to display in the quick filter list
+                 <callable> is the function to call to get the mask.
         """
         filters = {
             # add ^ to the beginning of the value to search for the INVERSE the result
@@ -2088,7 +2115,13 @@ class UEVMGui(tk.Tk):
                 'Tags with number': ['callable', self.filter_tags_with_number],  #
             }
             filters.update(db_filters)
-        return filters
+
+        # convert to dict of FilterValues
+        result = {}
+        for filter_name, value in filters.items():
+            col_name, col_value = value
+            result[filter_name] = FilterValue(col_name, col_value, False)
+        return result
 
     def filter_tags_with_number(self) -> pd.Series:
         """
@@ -2158,7 +2191,8 @@ class UEVMGui(tk.Tk):
         # all the local assets
         local_asset_rows = df['Origin'].ne(gui_g.s.origin_marketplace)
         # all the marketplace assets with a local version
-        marketplace_asset_rows_with_local = df['App name'].isin(df.loc[local_asset_rows, 'App name']) & df['Origin'].eq(gui_g.s.origin_marketplace)
+        marketplace_asset_rows_with_local = df['Page title'].isin(df.loc[local_asset_rows, 'Page title'])
+        marketplace_asset_rows_with_local &= df['Origin'].eq(gui_g.s.origin_marketplace)
         # only the rows that are local and marketplace
-        mask = df['App name'].isin(df.loc[marketplace_asset_rows_with_local, 'App name'])
+        mask = df['Page title'].isin(df.loc[marketplace_asset_rows_with_local, 'Page title'])
         return mask

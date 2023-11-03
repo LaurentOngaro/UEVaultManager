@@ -477,14 +477,18 @@ def update_loggers_level(logger: logging.Logger = None, debug_value=None) -> Non
         logger.setLevel(level=logging.DEBUG if debug_value else logging.INFO)
 
 
-def make_modal(window: tk.Toplevel = None, wait_for_close=True) -> None:
+def make_modal(window: tk.Toplevel = None, wait_for_close=True, widget_to_focus: tk.Widget = None) -> None:
     """
     Make the given window modal.
     :param window: window to make modal.
     :param wait_for_close: whether to wait for the window to be closed before continuing.
+    :param widget_to_focus: widget to focus when the window is opened.
     """
     window.grab_set()
-    window.focus_set()
+    if widget_to_focus is not None:
+        widget_to_focus.focus_set()
+    else:
+        window.focus_set()
     if wait_for_close:
         # Note: this will block the main window
         window.wait_window()
