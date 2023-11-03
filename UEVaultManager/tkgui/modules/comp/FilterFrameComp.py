@@ -17,6 +17,7 @@ from UEVaultManager.tkgui.modules.functions import box_message, log_info
 # not needed here
 # warnings.filterwarnings('ignore', category=FutureWarning)  # Avoid the FutureWarning when PANDAS use ser.astype(object).apply()
 
+
 class FilterFrame(ttk.LabelFrame):
     """
     A frame that contains widgets for filtering a DataFrame.
@@ -51,7 +52,7 @@ class FilterFrame(ttk.LabelFrame):
             raise ValueError('update_func can not be None')
 
         super().__init__(container, text=title)
-        self._filters = {}  # type: Dict[str, FilterValue]
+        self._filters: Dict[str, FilterValue] = {}
         self._quick_filters = quick_filters if quick_filters else {}  # type: Dict[str, FilterValue]
         self._filter_mask = None
         self.frm_widgets = None
@@ -276,7 +277,6 @@ class FilterFrame(ttk.LabelFrame):
             ftype = a_filter.ftype
             filter_value = a_filter.value
             use_or = a_filter.use_or
-            # TODO: use the use_or flag
             if col_name == self.value_for_all:
                 mask = False
                 for col in data.columns:
@@ -301,7 +301,11 @@ class FilterFrame(ttk.LabelFrame):
                         mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower()) == check_value
                 except ValueError:
                     box_message(f'the value {filter_value} does not correspond to the type of column {col_name}')
-            final_mask = mask if final_mask is None else final_mask & mask
+            # final_mask = mask if final_mask is None else final_mask | mask if use_or else final_mask & mask
+            if use_or:
+                final_mask = mask if final_mask is None else final_mask | mask
+            else:
+                final_mask = mask if final_mask is None else final_mask & mask
         self._filter_mask = final_mask
 
     def get_filter_mask(self) -> pd.Series:
@@ -388,9 +392,9 @@ class FilterFrame(ttk.LabelFrame):
         View the filter dictionary.
         """
         values = []
-        for a_filter in self._filters.items():
-            a_filter: FilterValue = a_filter  # cast to FilterValue
-            values.append(f'"{a_filter.col_name}" equals or contains "{a_filter.value}" {"(OR)" if a_filter.use_or else "(AND)"} ')
+        for filter_name in self._filters:
+            a_filter: FilterValue = self._filters[filter_name]  # cast to FilterValue because the loop variable is a string
+            values.append(f'{a_filter!r}')
         values = '\n'.join(values)
         msg = values + '\n\nCopy values into clipboard ?'
         if messagebox.askyesno('View data filters', message=msg):
