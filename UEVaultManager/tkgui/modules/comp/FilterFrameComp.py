@@ -265,15 +265,15 @@ class FilterFrame(ttk.LabelFrame):
         """
         if not filters:
             # if no filters are specified, use the quick_filter
-            filters = self._filters.copy()
-            quick_filter = self.get_quick_filter(only_return_filter=True)
-            if quick_filter:
-                filters['quick_filter'] = quick_filter
+            filters = self._filters
+        quick_filter = self.get_quick_filter(only_return_filter=True)
+        if quick_filter:
+            filters['quick_filter'] = quick_filter
 
         final_mask = None
         mask = False
         data = self.data_func()
-        for filter_name, a_filter in self.sorted_filters().items():
+        for filter_name, a_filter in self.sorted_filters(filters).items():
             col_name = a_filter.col_name
             ftype = a_filter.ftype
             filter_value = a_filter.value
@@ -324,14 +324,16 @@ class FilterFrame(ttk.LabelFrame):
         if not filters or not isinstance(filters, dict):
             return
         self._filters = filters.copy()
-        self._update_filter_widgets()
         self.update_func(reset_page=True, update_filters=True, update_format=True)
+        self._update_filter_widgets()
 
-    def sorted_filters(self) -> Dict[str, FilterValue]:
+    def sorted_filters(self, filters=None) -> Dict[str, FilterValue]:
         """
         Return the filters sorted by position.
         """
-        return dict(sorted(self._filters.items(), key=lambda item: item[1].pos))
+        if not filters:
+            filters = self._filters
+        return dict(sorted(filters.items(), key=lambda item: item[1].pos))
 
     def update_controls(self) -> None:
         """
@@ -422,4 +424,5 @@ class FilterFrame(ttk.LabelFrame):
             if not only_return_filter:
                 # self.create_mask(filter_dict.items()) # done in the line bellow
                 self.update_func(reset_page=True, update_filters=True)
+        self._update_filter_widgets()
         return quick_filter

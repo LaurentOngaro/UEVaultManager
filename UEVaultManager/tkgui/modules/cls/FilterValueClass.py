@@ -50,7 +50,7 @@ class FilterValue:
         return {
             'col_name': self.col_name,
             'ftype': self._ftype.__name__ if self._ftype != 'callable' else 'callable',  # 'callable' is a literal string
-            'value': self.value,
+            'value': self.value.__name__ if self._ftype == 'callable' else self.value,
             'pos': self.pos,
             'use_or': self.use_or
         }
