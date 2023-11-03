@@ -895,10 +895,10 @@ class EditableTable(Table):
                         asset_id = df.at[idx, 'Asset_id']  # at checked
                         index_to_delete.append(idx)
                         self.add_to_asset_ids_to_delete(asset_id)
-                        self.logger.info(f'Adding row index #{idx} with asset_id={asset_id} to the list of index to delete')
+                        self.logger.info(f'Adding row index {idx} with asset_id={asset_id} to the list of index to delete')
                     except (IndexError, KeyError) as error:
                         self.add_error(error)
-                        self.logger.warning(f'Could add row index #{idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
+                        self.logger.warning(f'Could add row index {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
 
                     # update the index copy column because index is changed after each deletion
                     df[gui_g.s.index_copy_col_name] = df.index
@@ -1515,7 +1515,7 @@ class EditableTable(Table):
             else:
                 return row
         except IndexError:
-            self.logger.warning(f'Could not get row index #{row_index} from the table data')
+            self.logger.warning(f'Could not get data for row index {row_index} from the datatable')
             return None
 
     def update_row(self, row_number: int, ue_asset_data: dict, convert_row_number_to_row_index: bool = False) -> None:
@@ -1533,7 +1533,7 @@ class EditableTable(Table):
         asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'), convert_row_number_to_row_index)
         if asset_id in gui_g.s.cell_is_empty_list[1:]:  # exclude 'NA'
             asset_id = ue_asset_data.get('asset_id', gui_g.s.cell_is_empty_list[0])
-        text = f'Row #{row_number + 1}' if convert_row_number_to_row_index else f'row {row_number}'
+        text = f'Row #{row_number + 1}' if convert_row_number_to_row_index else f'row index {row_number}'
         self.logger.info(f'Updating {text} with asset_id={asset_id}')
         error_count = 0
         for key, value in ue_asset_data.items():
@@ -1619,7 +1619,7 @@ class EditableTable(Table):
             df.iat[idx, col_index] = value  # iat checked
             self.must_save = True
             return True
-        except TypeError as error:
+        except (ValueError, TypeError) as error:
             self.add_error(error)
             if not self._is_scanning and 'Cannot setitem on a Categorical with a new category' in str(error):
                 # this will occur when scanning folder with category that are not in the table yet
@@ -1711,9 +1711,7 @@ class EditableTable(Table):
             key_lower = key.lower()
             if key_lower in hidden_col_list_lower:
                 continue
-            if gui_t.is_on_state(
-                key, [gui_t.CSVFieldState.ASSET_ONLY]
-            ):
+            if gui_t.is_on_state(key, [gui_t.CSVFieldState.ASSET_ONLY]):
                 continue
             label = gui_t.get_label_for_field(key)
 
@@ -1834,9 +1832,7 @@ class EditableTable(Table):
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)
-            widget.focus_set()
             widget.tag_add('sel', '1.0', tk.END)  # select the content
-
             edit_cell_window.set_size(width=width, height=height + 80)  # more space for the lines in the text
         elif gui_t.is_from_type(col_name, [gui_t.CSVFieldType.BOOL]):
             widget = ExtendedCheckButton(edit_cell_window.frm_content, tag=col_name, label='', images_folder=gui_g.s.assets_folder)
@@ -1845,17 +1841,15 @@ class EditableTable(Table):
             # other field is just a ExtendedEntry
             widget = ExtendedEntry(edit_cell_window.frm_content, tag=col_name)
             widget.insert(0, cell_value_str)
-            widget.focus_set()
             widget.selection_range(0, tk.END)  # select the content
 
         widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        widget.focus_set()
         self._edit_cell_widget = widget
         self._edit_cell_row_number = row_number
         self._edit_cell_col_index = col_index
         self._edit_cell_window = edit_cell_window
         edit_cell_window.initial_values = self.get_edit_cell_values()
-        gui_f.make_modal(edit_cell_window)
+        gui_f.make_modal(edit_cell_window, widget_to_focus=widget)
 
     def get_edit_cell_values(self) -> str:
         """

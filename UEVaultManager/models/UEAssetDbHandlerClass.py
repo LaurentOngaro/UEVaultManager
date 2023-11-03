@@ -585,6 +585,8 @@ class UEAssetDbHandler:
                 release_info = get_and_check_release_info(asset.get('release_info', []))
                 release_info_str = json.dumps(release_info)
                 asset['release_info'] = release_info_str  # if isinstance(release_info, list) else release_info
+                if 'row_index' in asset:
+                    asset.pop('row_index')  # remove the row_index key from the asset dictionary
                 self._insert_or_update_row('assets', asset)
         try:
             self.connection.commit()
@@ -1045,7 +1047,7 @@ class UEAssetDbHandler:
                 file_name_p = folder_for_csv_files_p / f'{table_name}{suffix_all}.csv'
                 file_name = str(file_name_p)
                 if backup_existing:
-                    create_file_backup(file_src=file_name, path=folder_for_csv_files)
+                    create_file_backup(file_src=file_name, backup_folder=folder_for_csv_files)
                 # Get column names
                 if fields == '*':
                     cursor.execute(f"PRAGMA table_info({table_name});")

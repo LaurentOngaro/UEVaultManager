@@ -21,6 +21,7 @@ from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import InstalledAsset
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
+from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue, FilterValueEncoder
 from UEVaultManager.tkgui.modules.functions import create_file_backup
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, create_uid, merge_lists_or_strings
 from UEVaultManager.utils.cli import check_and_create_file
@@ -63,7 +64,6 @@ class UEVMLFS:
 
         # Folders used by the application
         self.json_files_folder: str = path_join(self.path, 'json')  # folder for json files other than metadata, extra and manifests
-        # self.metadata_folder: str = path_join(self.json_files_folder, 'metadata')
         self.manifests_folder: str = path_join(self.json_files_folder, 'manifests')
         self.tmp_folder: str = path_join(self.path, 'tmp')
 
@@ -80,6 +80,10 @@ class UEVMLFS:
         for f in ['', self.manifests_folder, self.tmp_folder, self.json_files_folder]:
             if not os.path.exists(path_join(self.path, f)):
                 os.makedirs(path_join(self.path, f))
+
+        # backup important files (before creation to avoid backup of empty files)
+        create_file_backup(self.asset_sizes_filename, backup_folder=gui_g.s.backup_folder)
+        create_file_backup(self.installed_asset_filename, backup_folder=gui_g.s.backup_folder)
 
         # check and create some empty files (to avoid file not found errors in debug)
         check_and_create_file(self.asset_sizes_filename, content='{}')
@@ -292,8 +296,12 @@ class UEVMLFS:
             return {}
         try:
             with open(full_filename, 'r', encoding='utf-8') as file:
-                filters = json.load(file)
-        except (Exception, ):
+                filters_dict = json.load(file)
+            filters = {}
+            for filter_name, data in filters_dict.items():
+                filters[filter_name] = FilterValue.init(data)
+        except (Exception, ) as error:
+            print(f'Error while loading filter file "{filename}": {error!r}')
             return None
         return filters
 
@@ -308,7 +316,7 @@ class UEVMLFS:
         if not full_filename:
             return
         with open(full_filename, 'w', encoding='utf-8') as file:
-            json.dump(filters, file, indent=2, sort_keys=True)
+            json.dump(filters, file, indent=2, cls=FilterValueEncoder)
 
     @staticmethod
     def get_app_name_from_asset_data(asset_data: dict, use_sql_fields: bool = False) -> (str, bool):
@@ -364,6 +372,9 @@ class UEVMLFS:
         Convert json data from EGS format (NEW) to UEVM format (OLD, i.e. legendary).
         :param data_from_egs_format: json data from EGS format (NEW).
         :return: json data in UEVM format (OLD).
+
+        Notes:
+            Mainly used when manipulating assets in the "old" format (I.E. when using ClI methods), like install_asset(), info() and list_files()
         """
         app_name = data_from_egs_format['appName']
         category = data_from_egs_format['categories'][0]['path']
@@ -418,20 +429,27 @@ class UEVMLFS:
         :param app_name: name of the asset to load the data from.
         :param owned_assets_only: whether only the owned assets are scraped.
         :return: dictionary containing the loaded data.
+
+        Notes:
+            Mainly used when manipulating assets in the "old" format (I.E. when using ClI methods), like install_asset(), info() and list_files()
         """
         folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
         filename = app_name + '.json'
-        json_data = {}
+        json_data_uevm = {}
         message = ''
-        with open(path_join(folder, filename), 'r', encoding='utf-8') as file:
-            try:
-                json_data = json.load(file)
-            except json.decoder.JSONDecodeError as error:
-                message = f'The following error occured when loading data from {filename}:{error!r}'
-            # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
-            # it needed by the json_data_mapping() method
-            json_data['appName'] = app_name
-            json_data_uevm = self.json_data_mapping(json_data)
+        full_filename = path_join(folder, filename)
+        if not os.path.isfile(full_filename):
+            message = f'The json file "{filename}" to get data from does not exist.\nTry to scrap the asset first.'
+        else:
+            with open(full_filename, 'r', encoding='utf-8') as file:
+                try:
+                    json_data = json.load(file)
+                except json.decoder.JSONDecodeError as error:
+                    message = f'The following error occured when loading data from {filename}:{error!r}'
+                # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
+                # it needed by the json_data_mapping() method
+                json_data['appName'] = app_name
+                json_data_uevm = self.json_data_mapping(json_data)
         return json_data_uevm, message
 
     def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:
@@ -466,6 +484,9 @@ class UEVMLFS:
                 # file_name = os.path.abspath(file_name)
                 app_name, file_ext = os.path.splitext(f)
                 file_ext = file_ext.lower()
+                # make extensions_to_delete lower
+                if extensions_to_delete is not None:
+                    extensions_to_delete = [ext.lower() for ext in extensions_to_delete]
                 file_is_ok = (file_name_to_keep is None or app_name not in file_name_to_keep)
                 ext_is_ok = (extensions_to_delete is None or file_ext in extensions_to_delete)
                 if file_is_ok and ext_is_ok:
@@ -535,8 +556,8 @@ class UEVMLFS:
         Delete all the log and backup files in the application folders.
         :return: size of the deleted files.
         """
-        folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder]
-        return self.delete_folder_content(folders, ['.log', '.bak'])
+        folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder, gui_g.s.backup_folder]
+        return self.delete_folder_content(folders, ['.log', gui_g.s.backup_file_ext])
 
     def load_installed_assets(self) -> bool:
         """
@@ -692,7 +713,7 @@ class UEVMLFS:
         if self.config.read_only or not self.config.modified:
             return
 
-        file_backup = create_file_backup(self.config_file)
+        file_backup = create_file_backup(self.config_file, backup_folder=gui_g.s.backup_folder)
         with open(self.config_file, 'w', encoding='utf-8') as file:
             self.config.write(file)
         # delete the backup if the files and the backup are identical

@@ -329,6 +329,13 @@ class ExtendedCheckButton(ExtendedWidget):
         self._lbl_text.bind(sequence, command)
         self._lbl_check.bind(sequence, command)
 
+    def focus_set(self) -> None:
+        """
+        Sets the focus on the widget.
+        """
+        # self._lbl_text.focus_set()
+        self._lbl_check.focus_set()
+
     # noinspection PyUnusedLocal
     def switch_state(self, event=None) -> bool:
         """

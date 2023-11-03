@@ -225,10 +225,10 @@ class UEVaultManagerCLI:
         """
         Create a backup of the log files.
         """
-        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
-        create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
-        create_file_backup(self.core.scan_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
-        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger, path=self.core.uevmlfs.path)
+        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
+        create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
+        create_file_backup(self.core.scan_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
+        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
 
     def auth(self, args) -> None:
         """
@@ -358,7 +358,7 @@ class UEVaultManagerCLI:
             self._log(f'The String "{args.filter_category}" will be search in Assets category')
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
-            create_file_backup(args.output)
+            create_file_backup(args.output, backup_folder=gui_g.s.backup_folder)
         if args.csv:
             file_format = 'csv'
         elif args.tsv:
@@ -531,7 +531,7 @@ class UEVaultManagerCLI:
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
         # check the item using the UEVM method (old)
         item = self.core.asset_obj_from_json(app_name)
-        message = f'Asset information for "{app_name}" is missing, this may be due to the asset not being available on the selected platform or currently logged-in account.'
+        message = f'Asset information for "{app_name}" is missing, this may be due to the asset not being available on the selected platform or currently logged-in account. Also, You can try to scrap the data for this asset to get this file.'
         if not item:
             self._log_and_gui_message(message, level='warning')
             args.offline = True

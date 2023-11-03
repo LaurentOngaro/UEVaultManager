@@ -48,6 +48,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
             'Last Opened Project': gui_g.s.last_opened_project,
             'Last Opened Engine': gui_g.s.last_opened_engine,
             'Filters Folder': gui_g.s.filters_folder,
+            'Backup Folder': gui_g.s.backup_folder,
             'Scraping Folder': gui_g.s.scraping_folder,
             'Results Files Folder': gui_g.s.results_folder,
             'Assets Images Folder': gui_g.s.asset_images_folder,

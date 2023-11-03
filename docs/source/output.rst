@@ -77,12 +77,12 @@ file:
       #   a csv field with this name must exist to get the value
       'Asset_id': {
           'sql_name': 'asset_id',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'App name': {
           'sql_name': 'title',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'App title': {
@@ -98,7 +98,7 @@ file:
       },
       'Review': {
           'sql_name': 'review',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.FLOAT
       },
       'Review count': {
@@ -109,32 +109,32 @@ file:
       },
       'Developer': {
           'sql_name': 'author',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Description': {
           'sql_name': 'description',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.TEXT
       },
       'Status': {
           'sql_name': 'status',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Discount price': {
           'sql_name': 'discount_price',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.FLOAT
       },
       'Discount percentage': {
           'sql_name': 'discount_percentage',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.INT
       },
       'Discounted': {
           'sql_name': 'discounted',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.BOOL
       },
       'Is new': {
@@ -157,27 +157,27 @@ file:
       },
       'Owned': {
           'sql_name': 'owned',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.BOOL
       },
       'Obsolete': {
           'sql_name': 'obsolete',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.BOOL
       },
       'Supported versions': {
           'sql_name': 'supported_versions',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Grab result': {
           'sql_name': 'grab_result',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.LIST
       },
       'Price': {
           'sql_name': 'price',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.FLOAT
       },
       'Old price': {
@@ -235,12 +235,12 @@ file:
       },
       'Page title': {
           'sql_name': 'page_title',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Image': {
           'sql_name': 'thumbnail_url',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Url': {
@@ -256,17 +256,17 @@ file:
       },
       'Date added': {
           'sql_name': 'date_added',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.DATETIME
       },
       'Creation date': {
           'sql_name': 'creation_date',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.DATETIME
       },
       'Update date': {
           'sql_name': 'update_date',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.DATETIME
       },
       'UE version': {
@@ -277,7 +277,7 @@ file:
       },
       'Uid': {
           'sql_name': 'id',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       # ## UE asset class field only
@@ -339,12 +339,12 @@ file:
       },
       'Release info': {
           'sql_name': 'release_info',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
       'Downloaded size': {
           'sql_name': 'downloaded_size',
-          'state': CSVFieldState.NOT_PRESERVED,
+          'state': CSVFieldState.NORMAL,
           'field_type': CSVFieldType.STR
       },
   }
