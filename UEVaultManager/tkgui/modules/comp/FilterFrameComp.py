@@ -189,7 +189,7 @@ class FilterFrame(ttk.LabelFrame):
                 self.category = current_filter.value
             else:
                 self.category = None
-            if current_filter.value:
+            if current_filter.value != '':
                 filter_name = f'Filter_{col_name}'
                 self._filters[filter_name] = current_filter
                 log_info(f'Added {current_filter!r}')
@@ -238,7 +238,7 @@ class FilterFrame(ttk.LabelFrame):
         :param use_or: wether to use an OR condition.
         :return: tuple containing the type (str) and value of the filter condition.
         """
-        pos = len(self._filters)
+        pos = len(self._filters) + 1  # we start at 1
         if not self.filter_widget or not col_name:
             return FilterValue('', '', False, pos)
 
@@ -352,7 +352,7 @@ class FilterFrame(ttk.LabelFrame):
         state = tk.NORMAL if cond_1 else tk.DISABLED
         self.cb_quick_filter['state'] = state
 
-        cond_2 = (col_name and current_filter.value)
+        cond_2 = col_name and current_filter.value != ''
         state = tk.NORMAL if cond_2 else tk.DISABLED
         self.btn_add_and_filters['state'] = state
         self.btn_add_or_filters['state'] = state
