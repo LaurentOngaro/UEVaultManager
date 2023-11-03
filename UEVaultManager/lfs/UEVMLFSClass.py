@@ -435,17 +435,21 @@ class UEVMLFS:
         """
         folder = gui_g.s.owned_assets_data_folder if owned_assets_only else gui_g.s.assets_data_folder
         filename = app_name + '.json'
-        json_data = {}
+        json_data_uevm = {}
         message = ''
-        with open(path_join(folder, filename), 'r', encoding='utf-8') as file:
-            try:
-                json_data = json.load(file)
-            except json.decoder.JSONDecodeError as error:
-                message = f'The following error occured when loading data from {filename}:{error!r}'
-            # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
-            # it needed by the json_data_mapping() method
-            json_data['appName'] = app_name
-            json_data_uevm = self.json_data_mapping(json_data)
+        full_filename = path_join(folder, filename)
+        if not os.path.isfile(full_filename):
+            message = f'The json file "{filename}" to get data from does not exist.\nTry to scrap the asset first.'
+        else:
+            with open(full_filename, 'r', encoding='utf-8') as file:
+                try:
+                    json_data = json.load(file)
+                except json.decoder.JSONDecodeError as error:
+                    message = f'The following error occured when loading data from {filename}:{error!r}'
+                # we need to add the appName  (i.e. assetId) to the data because it can't be found INSIDE the json data
+                # it needed by the json_data_mapping() method
+                json_data['appName'] = app_name
+                json_data_uevm = self.json_data_mapping(json_data)
         return json_data_uevm, message
 
     def delete_folder_content(self, folders=None, extensions_to_delete: list = None, file_name_to_keep: list = None) -> int:

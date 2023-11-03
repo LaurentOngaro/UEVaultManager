@@ -531,7 +531,7 @@ class UEVaultManagerCLI:
         InfoItem = namedtuple('InfoItem', ['name', 'json_name', 'value', 'json_value'])
         # check the item using the UEVM method (old)
         item = self.core.asset_obj_from_json(app_name)
-        message = f'Asset information for "{app_name}" is missing, this may be due to the asset not being available on the selected platform or currently logged-in account.'
+        message = f'Asset information for "{app_name}" is missing, this may be due to the asset not being available on the selected platform or currently logged-in account. Also, You can try to scrap the data for this asset to get this file.'
         if not item:
             self._log_and_gui_message(message, level='warning')
             args.offline = True
