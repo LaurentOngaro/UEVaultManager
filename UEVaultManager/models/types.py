@@ -120,3 +120,27 @@ class GetDataResult(Enum):
     NO_URL = 4  # no url to get data
     ERROR_431 = 5  # mainly occurs because the number of asset to scrap is too big
     TIMEOUT = 6  # mainly occurs because the timeout is too short for the number of asset to scrap
+
+
+class BooleanOperator(Enum):
+    """
+    Boolean operators for the filters.
+    """
+    AND = 0  # added to the previous filter with an & operator
+    OR = 1  # added to the previous filter with an | operator
+    NOT = 2  # added to the previous filter with a not operator
+    ALL_AND = 3  # added to the all the previous filters with an & operator
+    ALL_OR = 4  # added to the all the previous filters with an | operator
+    ALL_NOT = 5  # added to the all the previous filters with a not operator
+
+    @staticmethod
+    def get_from_name(name: str) -> 'BooleanOperator':
+        """
+        Returns the BooleanOperator corresponding to the given name.
+        :param name: name of the BooleanOperator.
+        :return: the BooleanOperator corresponding to the given name.
+        """
+        for operator in BooleanOperator:
+            if operator.name == name or operator == name:
+                return operator
+        raise ValueError(f"No BooleanOperator found with name '{name}'.")

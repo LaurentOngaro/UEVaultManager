@@ -9,6 +9,7 @@ import json
 from typing import Any
 
 from UEVaultManager.models.csv_sql_fields import get_field_type
+from UEVaultManager.models.types import BooleanOperator
 
 
 class FilterValue:
@@ -16,13 +17,13 @@ class FilterValue:
     A class that contains the filter conditions.
     :param col_name: name of the coliumn to filter or string literal 'callable'
     :param value: value to filter or function to call if col_name is 'callable'.
-    :param use_or: wether to use an OR condition with the PREVIOUS filter.
+    :param operator: boolean operator to use.
     """
 
-    def __init__(self, col_name: str, value: Any, use_or: bool = False, pos: int = -1):
+    def __init__(self, col_name: str, value: Any, operator: BooleanOperator, pos: int = -1):
         self.col_name: str = col_name
         self.value: Any = value
-        self.use_or: bool = use_or
+        self.operator: BooleanOperator = operator
         self.pos: int = pos
         if col_name == 'callable':
             self._ftype = 'callable'  # must be a literal string
@@ -36,7 +37,7 @@ class FilterValue:
     def __repr__(self):
         result = f'"{self.col_name}" of type "{self._ftype.__name__}" is/contains "{self.value}"'
         result += f' at pos {self.pos}' if self.pos >= 0 else ''
-        result += ' (OR)' if self.use_or else ' (AND)'
+        result += ' (OR)' if self.operator == BooleanOperator.OR else ' (AND)'
         return result
 
     def __dict__(self):
@@ -52,7 +53,7 @@ class FilterValue:
             'ftype': self._ftype.__name__ if self._ftype != 'callable' else 'callable',  # 'callable' is a literal string
             'value': self.value.__name__ if self._ftype == 'callable' else self.value,
             'pos': self.pos,
-            'use_or': self.use_or
+            'operator': self.operator.name
         }
 
     def to_json(self) -> str:
@@ -69,7 +70,12 @@ class FilterValue:
         :param data: a dictionnary string representing a FilterValue object.
         :return: a FilterValue object created from the JSON string.
         """
-        return cls(data.get('col_name', ''), data.get('value', ''), data.get('use_or', False), data.get('pos', -1))
+        return cls(
+            data.get('col_name', ''),  #
+            data.get('value', ''),  #
+            BooleanOperator.get_from_name(data.get('operator', 'ALL_AND')),  #
+            data.get('pos', -1)  #
+        )
 
     @property
     def ftype(self) -> type:

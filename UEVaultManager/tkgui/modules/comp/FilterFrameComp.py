@@ -10,6 +10,7 @@ from typing import Callable, Dict
 import pandas as pd
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.models.types import BooleanOperator
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
 from UEVaultManager.tkgui.modules.functions import box_message, log_info
 
@@ -173,18 +174,22 @@ class FilterFrame(ttk.LabelFrame):
             self.set_filters(filters)
 
     def _add_and_to_filters(self) -> None:
-        self._add_to_filters(use_or=False)
+        # the filter is added to the all the previous filters with an & operator
+        self._add_to_filters(operator=BooleanOperator.ALL_AND)
 
     def _add_or_to_filters(self) -> None:
-        self._add_to_filters(use_or=True)
+        # the filter is added to the all the previous filters with an | operator
 
-    def _add_to_filters(self, use_or: bool = False) -> None:
+        self._add_to_filters(operator=BooleanOperator.ALL_OR)
+
+    def _add_to_filters(self, operator: BooleanOperator) -> None:
         """
         Read current selection from filter widgets and adds it to the filters' dictionary.
+        :param operator: boolean operator to use.
         """
         col_name = self.cb_col_name.get()
         if col_name:
-            current_filter = self._create_filter_from_widgets(col_name, use_or)
+            current_filter = self._create_filter_from_widgets(col_name, operator)
             if col_name == 'Category' and current_filter.value:
                 self.category = current_filter.value
             else:
@@ -231,16 +236,16 @@ class FilterFrame(ttk.LabelFrame):
 
         self.update_controls()
 
-    def _create_filter_from_widgets(self, col_name: str, use_or: bool = False) -> FilterValue:
+    def _create_filter_from_widgets(self, col_name: str, operator: BooleanOperator) -> FilterValue:
         """
         Read current value from filter widgets and determines its type.
         :param col_name: name of the column to filter.
-        :param use_or: wether to use an OR condition.
+        :param operator: boolean operator to use.
         :return: tuple containing the type (str) and value of the filter condition.
         """
         pos = len(self._filters) + 1  # we start at 1
         if not self.filter_widget or not col_name:
-            return FilterValue('', '', False, pos)
+            return FilterValue('', '', BooleanOperator.ALL_AND, pos)
 
         if isinstance(self.filter_widget, ttk.Checkbutton):
             # value_type = bool
@@ -257,7 +262,7 @@ class FilterFrame(ttk.LabelFrame):
         else:
             # value_type = str
             value = self.filter_widget.get()
-        return FilterValue(col_name, value, use_or, pos)
+        return FilterValue(col_name, value, operator, pos)
 
     def create_mask(self, filters=None):
         """
@@ -271,15 +276,16 @@ class FilterFrame(ttk.LabelFrame):
             filters['quick_filter'] = quick_filter
 
         final_mask = None
-        mask = False
+        mask_list = {}
         data = self.data_func()
+        # create the list of masks to apply
         for filter_name, a_filter in self.sorted_filters(filters).items():
             col_name = a_filter.col_name
             ftype = a_filter.ftype
             filter_value = a_filter.value
-            use_or = a_filter.use_or
+            operator = a_filter.operator
+            mask = False
             if col_name == self.value_for_all:
-                mask = False
                 for col in data.columns:
                     mask |= data[col].astype(str).str.lower().str.contains(filter_value.lower())
             else:
@@ -302,11 +308,27 @@ class FilterFrame(ttk.LabelFrame):
                         mask = data[col_name].astype(str).str.lower().str.contains(filter_value.lower()) == check_value
                 except ValueError:
                     box_message(f'the value {filter_value} does not correspond to the type of column {col_name}')
-            # final_mask = mask if final_mask is None else final_mask | mask if use_or else final_mask & mask
-            if use_or:
-                final_mask = mask if final_mask is None else final_mask | mask
+            mask_list[filter_name] = {'mask': mask, 'operator': operator}
+
+        # apply the masks
+        index = 0
+        for filter_name, mask_dict in mask_list.items():
+            index += 1
+            operator = mask_dict['operator']
+            mask = mask_dict['mask']
+            if index == 1:
+                final_mask = mask_dict['mask']
+                continue
+            # else:
+            #     previous_mask = mask_list[index - 1]['mask']
+            if operator == BooleanOperator.ALL_OR:
+                final_mask = final_mask | mask
+            elif operator == BooleanOperator.ALL_NOT:
+                final_mask = final_mask ^ mask  # TODO: fix, does not work well
             else:
-                final_mask = mask if final_mask is None else final_mask & mask
+                # by default all others operators ar ignored and set to BooleanOperator.ALL_AND
+                # TODO: implement the "ALL", "OR" and "NOT" operators using a combination with the previous_mask
+                final_mask = final_mask & mask
         self._filter_mask = final_mask
 
     def get_filter_mask(self) -> pd.Series:
@@ -343,7 +365,7 @@ class FilterFrame(ttk.LabelFrame):
         # No need to use the global widgets list here beceause this frame is meant to be "standalone" and its widgets are not used elsewhere.
 
         col_name = self.cb_col_name.get()
-        current_filter = self._create_filter_from_widgets(col_name=col_name)
+        current_filter = self._create_filter_from_widgets(col_name=col_name, operator=BooleanOperator.ALL_AND)
 
         state = tk.NORMAL
         self.cb_col_name['state'] = state
@@ -374,7 +396,7 @@ class FilterFrame(ttk.LabelFrame):
         """
         Applie the filters and updates the caller.
         """
-        self._add_to_filters()
+        self._add_to_filters(BooleanOperator.ALL_AND)
         self.update_controls()
         self.update_func(reset_page=True, update_filters=True)  # will call self.create_mask() and self.get_filter_mask()
 

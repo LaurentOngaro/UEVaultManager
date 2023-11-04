@@ -19,7 +19,7 @@ from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.AppConfigClass import AppConfig
 from UEVaultManager.models.Asset import InstalledAsset
-from UEVaultManager.models.types import DateFormat
+from UEVaultManager.models.types import BooleanOperator, DateFormat
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue, FilterValueEncoder
 from UEVaultManager.tkgui.modules.functions import create_file_backup
@@ -299,6 +299,10 @@ class UEVMLFS:
                 filters_dict = json.load(file)
             filters = {}
             for filter_name, data in filters_dict.items():
+                # convert to old format that was using the 'use_or' key
+                if 'use_or' in data:
+                    data['operator'] = BooleanOperator.ALL_OR if data['use_or'] else BooleanOperator.ALL_AND
+                    data.pop('use_or')
                 filters[filter_name] = FilterValue.init(data)
         except (Exception, ) as error:
             print(f'Error while loading filter file "{filename}": {error!r}')
