@@ -136,8 +136,8 @@ class UEVMGuiControlFrame(ttk.Frame):
             self,
             data_func=data_table.get_data,
             update_func=data_table.update,
-            save_filter_func=self.save_filters,
-            load_filter_func=self.load_filters,
+            load_query_func=self.load_filters,
+            save_query_func=self.save_filters,
             value_for_all=gui_g.s.default_value_for_all,
             quick_filters=self._container.create_dynamic_filters(),
         )
@@ -313,7 +313,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         if folder != fd_folder:
             messagebox.showwarning('Warning', f'The folder to save filters into can not be changed. The file will be saved in {folder}')
         try:
-            self._container.core.uevmlfs.save_filter_list(filters, filename)
+            self._container.core.uevmlfs.save_filter(filters, filename)
         except AttributeError:
             pass
 
@@ -346,7 +346,7 @@ class UEVMGuiControlFrame(ttk.Frame):
             messagebox.showwarning('Warning', f'Filters can only be read from a json file.')
             return {}
         try:
-            filters = self._container.core.uevmlfs.load_filter_list(filename)
+            filters = self._container.core.uevmlfs.load_filter(filename)
             gui_g.s.last_opened_filter = filename
             gui_g.s.save_config_file()
         except AttributeError:

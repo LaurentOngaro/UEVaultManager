@@ -44,11 +44,11 @@ class UEAssetType(Enum):
     def category_name(self):
         """ Return the category name of the asset type """
         if self == self.Plugin:
-            return 'local/plugins'  # existing category in the marketplace
+            return 'local/Plugin'  # existing category in the marketplace
         if self == self.Asset:
             return 'local/asset'  # non-existing category in the marketplace
         if self == self.Manifest:
-            return 'local/manifest'  # non-existing category in the marketplace
+            return 'local/Manifest'  # non-existing category in the marketplace
         return 'local/unknown'  # non-existing category in the marketplace
 
 
