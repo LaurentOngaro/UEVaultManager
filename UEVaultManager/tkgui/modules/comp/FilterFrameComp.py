@@ -13,6 +13,7 @@ import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest var
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterCallableClass import FilterCallable
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
+from UEVaultManager.tkgui.modules.types import FilterType
 
 
 # not needed here
@@ -117,7 +118,7 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_view_filter = ttk.Button(self, text='View', command=self.view_filter)
         self.btn_view_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        self.btn_clear_filter = ttk.Button(self, text='Clear', command=self.get_filter)
+        self.btn_clear_filter = ttk.Button(self, text='Clear', command=self.clear_filter)
         self.btn_clear_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         if self.save_filter_func is not None:
             cur_col += 1
@@ -173,15 +174,15 @@ class FilterFrame(ttk.LabelFrame):
         if not filter_value:
             # create a filter value from the query string entry
             query_string = self._var_entry_query.get()
-            ftype = str
-            filter_value = FilterValue('filter_loaded', ftype, query_string)
+            ftype = FilterType.STR
+            filter_value = FilterValue(name='filter_loaded', value=query_string, ftype=ftype)
         # check if the filter_value is a callable and fix its ftype
         func_name, func_params = gui_f.parse_callable(filter_value.value)
         method = self.callable.get_method(func_name)
         if method is None:
-            filter_value.ftype = str
+            filter_value.ftype = FilterType.STR
         else:
-            filter_value.ftype = 'callable'
+            filter_value.ftype = FilterType.CALLABLE
         self.set_filter(filter_value)
 
     def update_controls(self) -> None:
@@ -224,7 +225,7 @@ class FilterFrame(ttk.LabelFrame):
         self.update_controls()
         self.update_func(reset_page=True)  # will call self.create_mask() and self.get_query()
 
-    def get_filter(self) -> None:
+    def clear_filter(self) -> None:
         """
         Reset all filter conditions and update the caller.
         """
@@ -261,3 +262,32 @@ class FilterFrame(ttk.LabelFrame):
                 self.update_func(reset_page=True)
             self.update_controls()
         return quick_filter
+
+    def get_filtered_df(self)->Optional[pd.DataFrame] :
+        """
+        Get the filtered dataframe.
+        :return: the filtered data or None if no filter is defined.
+        """
+        if self.loaded_filter:
+            try:
+                ftype: FilterType = self.loaded_filter.ftype
+                filter_value = self.loaded_filter.value
+                if ftype == FilterType.CALLABLE and filter_value:
+                    # filter_value is a string with a function to call and some parameters
+                    # that returns a mask (boolean Series)
+                    func_name, func_params = gui_f.parse_callable(filter_value)
+                    # get the method to call from the callable class
+                    method = self.callable.get_method(func_name)
+                    if method is None:
+                        raise AttributeError(f'Could not find the method {func_name} in the class {self.callable.__class__.__name__}')
+                    # noinspection PyUnusedLocal
+                    mask_from_callable = method(*func_params)
+                    query = '@mask_from_callable'  # with pandas, we can pass a reference to a mask to execute a query !!!!
+                else:
+                    query = filter_value
+                if query:
+                    return self._df.query(query)
+            except (AttributeError, ):
+                # print(f'Error with defined filters. Updating filter...')
+                self.clear_filter()
+                return None

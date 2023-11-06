@@ -10,22 +10,21 @@ from typing import Any
 
 from UEVaultManager.tkgui.modules.functions import parse_callable
 from UEVaultManager.tkgui.modules.functions_no_deps import create_uid
+from UEVaultManager.tkgui.modules.types import FilterType
 
 
 class FilterValue:
     """
     A class that contains the filter conditions.
     :param name: name of the filter
-    :param ftype: type of the filter. Can be a type or string literal 'callable'
-    :param value: value to filter or function to call if col_name is 'callable'.
+    :param ftype: type of the filter.
+    :param value: various: value to search, function to call, list of values
     """
 
-    def __init__(self, name: str, ftype: Any, value: Any):
+    def __init__(self, name: str, value: Any, ftype=FilterType.STR):
         self.name: str = name
         self.value: Any = value
-        self._ftype = str  # set type to str by default
-        if ftype == 'callable':
-            self._ftype: str = 'callable'  # must be a literal string
+        self._ftype: FilterType = ftype  # set type to str by default
 
     def __str__(self):
         return self.to_json()
@@ -47,11 +46,7 @@ class FilterValue:
         Export the properties of the FilterValue instance as a dictionary.
         :return: a dictionary containing the properties of the FilterValue instance.
         """
-        return {
-            'name': self.name,
-            'ftype': self._ftype.__name__ if self._ftype != 'callable' else 'callable',  # 'callable' is a literal string
-            'value': self.value
-        }
+        return {'name': self.name, 'ftype': self._ftype.name, 'value': self.value}
 
     def to_json(self) -> str:
         """
@@ -67,7 +62,9 @@ class FilterValue:
         :param data: a dictionnary string representing a FilterValue object.
         :return: a FilterValue object created from the JSON string.
         """
-        return cls(data.get('name', 'f_' + create_uid()), data.get('type', str), data.get('value', ''))
+        ftype_name = data.get('ftype', '')
+        ftype = FilterType.from_name(ftype_name)
+        return cls(name=data.get('name', 'f_' + create_uid()), ftype=ftype, value=data.get('value', ''))
 
     @property
     def ftype(self) -> Any:
