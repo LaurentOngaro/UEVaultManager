@@ -1309,35 +1309,6 @@ class EditableTable(Table):
         if df_filtered is not None:
             self.is_filtered = True
             self.set_data(df_filtered, df_type=DataFrameUsed.FILTERED)
-
-        # loaded_filter = self._frm_filter.loaded_filter if self._frm_filter is not None else None
-        # if loaded_filter:
-        #     try:
-        #         ftype: FilterType = loaded_filter.ftype
-        #         filter_value = loaded_filter.value
-        #         if ftype == FilterType.CALLABLE and filter_value:
-        #             # filter_value is a string with a function to call and some parameters
-        #             # that returns a mask (boolean Series)
-        #             func_name, func_params = gui_f.parse_callable(filter_value)
-        #             # get the method to call from the _frm_filter.callable class
-        #             method = self._frm_filter.callable.get_method(func_name)
-        #             if method is None:
-        #                 raise AttributeError(f'Could not find the method {func_name} in the class {self._frm_filter.callable.__class__.__name__}')
-        #             # noinspection PyUnusedLocal
-        #             mask_from_callable = method(*func_params)
-        #             query = '@mask_from_callable'  # with pandas, we can pass a reference to a mask to execute a query !!!!
-        #         else:
-        #             query = filter_value
-        #         if query:
-        #             self.is_filtered = True
-        #             df_queried = df.query(query)
-        #             self.set_data(df_queried, df_type=DataFrameUsed.FILTERED)
-        #     except (AttributeError, IndexingError):
-        #         self.logger.warning(f'Error with defined filters. Updating filter...')
-        #         self._frm_filter.clear_filters()
-        #         self.set_data(df, df_type=DataFrameUsed.FILTERED)
-        # if not self.is_filtered:
-        #     self.set_data(df, df_type=DataFrameUsed.FILTERED)
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             self.update_index_copy_column()
