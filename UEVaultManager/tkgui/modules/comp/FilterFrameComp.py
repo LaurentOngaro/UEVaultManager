@@ -151,6 +151,7 @@ class FilterFrame(ttk.LabelFrame):
         """
         Set the loaded filter to a file (Wrapper)
         """
+        self.create_filter()  # needed to update the self._loaded_filter
         self.save_filter_func(self._loaded_filter)
 
     def set_filter(self, filter_values: FilterValue, forced_value: str = '') -> None:

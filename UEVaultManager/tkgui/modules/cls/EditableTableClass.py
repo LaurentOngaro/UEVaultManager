@@ -1330,11 +1330,19 @@ class EditableTable(Table):
             args: list with the following values in order:
                 the column name to search in. If 'all', search in all columns.
                 the value to search for.
+                flag (optional): another column name with a True value to check for. If the column name starts with '^', the value is negated.
         """
         col_name = args[0]
         value = args[1]
+        flag = args[2] if len(args) > 2 else None
         df = self.get_data(df_type=DataFrameUsed.UNFILTERED)
         mask = df[col_name].str.contains(value, case=False)
+        if flag is not None:
+            if flag.startswith('^'):
+                flag = flag[1:]
+                mask = mask & ~df[flag]
+            else:
+                mask = mask & df[flag]
         return mask
 
     def update_page(self, keep_col_infos=False) -> None:

@@ -135,13 +135,22 @@ class FilterCallable:
             args: list with the following values in order:
                 the column name to search in. If 'all', search in all columns.
                 the value to search for.
+                flag (optional): a column name to get a True value from. If the column name starts with '^', the value is negated.
         """
         col_name = args[0]
         value = args[1]
-        if col_name == gui_g.s.default_value_for_all.lower():
+        flag = args[2] if len(args) > 2 else None
+        if col_name.lower() == gui_g.s.default_value_for_all.lower():
             mask = False
             for col in self.df.columns:
                 mask |= self.df[col].astype(str).str.lower().str.contains(value.lower())
         else:
             mask = self.df[col_name].str.contains(value, case=False)
+        if flag:
+            # remove ` from flag
+            flag = flag.replace('`', '')
+            if flag.startswith('^'):
+                mask &= ~self.df[flag[1:]]
+            else:
+                mask &= self.df[flag]
         return mask
