@@ -34,7 +34,6 @@ from UEVaultManager.tkgui.modules.cls.DbToolWindowClass import DbToolWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
 from UEVaultManager.tkgui.modules.cls.JsonToolWindowClass import JsonToolWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
@@ -241,12 +240,13 @@ class UEVMGui(tk.Tk):
         data_table.update_downloaded_size(self.core.uevmlfs.asset_sizes)
 
         if gui_g.s.last_opened_filter:
-            filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
-            if filters is not None:
+            filter_value = self.core.uevmlfs.load_filter(gui_g.s.last_opened_filter)
+            if filter_value is not None:
                 gui_f.show_progress(self, text=f'Loading filters from {gui_g.s.last_opened_filter}...')
                 try:
-                    self._frm_filter.set_filters(filters)
-                    # data_table.update(update_format=True) # done in load_filters and inner calls
+                    self._frm_filter.set_filter(filter_value)
+                    self._frm_filter.update_controls()
+                    data_table.update(update_format=True)
                 except (Exception, ) as error:
                     self.add_error(error)
                     self.logger.error(f'Error loading filters: {error!r}')
@@ -299,7 +299,8 @@ class UEVMGui(tk.Tk):
         event.widget.tk_focusPrev().focus()
         return 'break'
 
-    def _open_file_dialog(self, save_mode: bool = False, filename: str = None) -> str:
+    @staticmethod
+    def _open_file_dialog(save_mode: bool = False, filename: str = None) -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
         :param save_mode: whether the dialog will be in saving mode, else in loading mode.
@@ -313,18 +314,6 @@ class UEVMGui(tk.Tk):
         else:
             initial_dir = os.path.dirname(filename)
         default_filename = os.path.basename(filename)  # remove dir
-        default_ext = os.path.splitext(default_filename)[1]  # get extension
-        default_filename = os.path.splitext(default_filename)[0]  # get filename without extension
-        try:
-            # if the file is empty or absent or invalid when creating the class, the frm_filter is not defined
-            category = self._frm_filter.category
-        except AttributeError as error:
-            self.add_error(error)
-            category = None
-        if category and category != gui_g.s.default_value_for_all:
-            default_filename = default_filename + '_' + category + default_ext
-        else:
-            default_filename = default_filename + default_ext
         if save_mode:
             filename = fd.asksaveasfilename(
                 title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
@@ -511,7 +500,7 @@ class UEVMGui(tk.Tk):
         :param tag: tag of the widget that triggered the event.
         """
         value, widget = self._check_and_get_widget_value(tag)
-        if widget and widget.row >= 0 and widget.col >= 0:
+        if widget and widget.row and widget.col:
             self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
@@ -1166,7 +1155,7 @@ class UEVMGui(tk.Tk):
         pw.hide_btn_stop()
         pw.set_text('Updating the table. Could take a while...')
         data_table.is_scanning = False
-        data_table.update(update_format=True, update_filters=True)
+        data_table.update(update_format=True)
         data_table.update_col_infos()
         gui_f.close_progress(self)
 
@@ -2073,126 +2062,3 @@ class UEVMGui(tk.Tk):
         gui_f.make_modal(tool_window)
         if tool_window.must_reload and gui_f.box_yesno('Some data has been imported into the database. Do you want to reload the data ?'):
             self.reload_data()
-
-    def create_dynamic_filters(self) -> {str: []}:
-        """
-        Create a dynamic filters list that can be added to the filter frame quick filter list.
-        :return: dict of FilterValue using column name as key or a 'callable'
-
-        Notes:
-            It returns a dict where each entry must be
-            - {'<label>': FilterValue}
-            - {'<label>': {'callable', <callable>, False} }
-                where:
-                 <label> is the label to display in the quick filter list
-                 <callable> is the function to call to get the mask.
-        """
-        filters = {
-            # add ^ to the beginning of the value to search for the INVERSE the result
-            'Owned': ['Owned', True],  #
-            'Not Owned': ['Owned', False],  #
-            'Obsolete': ['Obsolete', True],  #
-            'Not Obsolete': ['Obsolete', False],  #
-            'Must buy': ['Must buy', True],  #
-            'Added manually': ['Added manually', True],  #
-            'Plugins only': ['Category', 'plugins'],  #
-            'Free': ['Price', 0],  #
-            'Free and not owned': ['callable', self.filter_free_and_not_owned],  #
-            'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
-            'Downloaded': ['callable', self.filter_is_downloaded],  #
-            'Installed in folder': ['callable', self.filter_with_installed_folders],  #
-            'Local and marketplace':
-            ['callable', self.filter_local_and_marketplace],  # show assets that are local (ie found after a scan folders) and in marketplace
-            'With comment': ['callable', self.filter_with_comment],  #
-            'Empty row': ['Asset_id', gui_g.s.empty_row_prefix],  #
-            'Local id': ['Asset_id', gui_g.s.duplicate_row_prefix],  #
-            'Temp id': ['Asset_id', gui_g.s.temp_id_prefix],  #
-            'Result OK': ['Grab result', 'NO_ERROR'],  #
-            'Result Not OK': ['Grab result', '^NO_ERROR'],  #
-        }
-        if self.is_using_database():
-            db_filters = {
-                'Tags with number': ['callable', self.filter_tags_with_number],  #
-            }
-            filters.update(db_filters)
-
-        # convert to dict of FilterValues
-        result = {}
-        for filter_name, value in filters.items():
-            col_name, col_value = value
-            result[filter_name] = FilterValue(col_name, col_value, False)
-        return result
-
-    def filter_tags_with_number(self) -> pd.Series:
-        """
-        Create a mask to filter the data with tags that contains an integer.
-        :return: mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix, prefix_is_mandatory=True) for i in x))
-        return mask
-
-    def filter_free_and_not_owned(self) -> pd.Series:
-        """
-        Create a mask to filter the data that are not owned and with a price <=0.5 or free.
-        Assets that custom attributes contains external_link are also filtered.
-        :return: mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        # Ensure 'Discount price' and 'Price' are float type
-        df['Discount price'] = df['Discount price'].astype(float)
-        df['Price'] = df['Price'].astype(float)
-        mask = df['Owned'].ne(True) & ~df['Custom attributes'].str.contains('external_link') & (
-            df['Free'].eq(True) | df['Discount price'].le(0.5) | df['Price'].le(0.5)
-        )
-        return mask
-
-    def filter_not_empty(self, col_name: str) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty value for a column.
-        :param col_name: name of the column to check.
-        :return: mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        # mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
-        mask = df[col_name].notnull()
-        for value in gui_g.s.cell_is_empty_list:
-            mask &= df[col_name].ne(value)
-        return mask
-
-    def filter_with_comment(self) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty comment value.
-        :return: mask to filter the data.
-        """
-        return self.filter_not_empty('Comment')
-
-    def filter_with_installed_folders(self) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty installed_folders value.
-        :return: mask to filter the data.
-        """
-        return self.filter_not_empty('Installed folders')
-
-    def filter_is_downloaded(self) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty downloaded size.
-        :return: mask to filter the data.
-        """
-        return self.filter_not_empty('Downloaded size')
-
-    def filter_local_and_marketplace(self) -> pd.Series:
-        """
-        Create a mask to filter the data that are not owned and with a price <=0.5 or free.
-        Assets that custom attributes contains external_link are also filtered.
-        :return: mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        # all the local assets
-        local_asset_rows = df['Origin'].ne(gui_g.s.origin_marketplace)
-        # all the marketplace assets with a local version
-        marketplace_asset_rows_with_local = df['Page title'].isin(df.loc[local_asset_rows, 'Page title'])
-        marketplace_asset_rows_with_local &= df['Origin'].eq(gui_g.s.origin_marketplace)
-        # only the rows that are local and marketplace
-        mask = df['Page title'].isin(df.loc[marketplace_asset_rows_with_local, 'Page title'])
-        return mask

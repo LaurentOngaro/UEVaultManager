@@ -585,3 +585,17 @@ def exit_and_clean_windows(code: int = 1):
             window.quit()
             window.destroy()
     sys.exit(code)
+
+
+def parse_callable(callable_string: str) -> (str, dict):
+    """
+    Parse a callable string and return the function name and parameters.
+    :param callable_string:
+    :return: (function name, parameters)
+    """
+    func_prefix = 'filter_'  # prefix to add to the function name if not already present
+    func_parts = callable_string.split('##')
+    func_name = func_parts[0]
+    func_name = func_prefix + func_name if not func_name.startswith(func_prefix) else func_name
+    func_params = func_parts[1:]
+    return func_name, func_params

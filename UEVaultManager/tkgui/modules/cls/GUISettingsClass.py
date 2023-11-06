@@ -123,7 +123,7 @@ class GUISettings:
         self.asset_categories = [
             '2D Assets', 'Animations', 'Architectural Visualization', 'Blueprints', 'Characters', 'Code Plugins', 'Environments', 'Epic Content',
             'Materials', 'Megascans', 'Music', 'Props', 'Sound Effects', 'Textures', 'UE Feature Samples', 'UE Game Samples', 'UE Legacy Samples',
-            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/asset', 'local/manifest', 'local/plugins'
+            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/Asset', 'local/Manifest', 'local/Plugin'
         ]
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"

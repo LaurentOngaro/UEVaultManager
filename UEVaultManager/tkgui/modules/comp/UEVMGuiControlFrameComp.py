@@ -134,12 +134,10 @@ class UEVMGuiControlFrame(ttk.Frame):
 
         frm_filter = FilterFrame(
             self,
-            data_func=data_table.get_data,
+            df=data_table.get_data(),
             update_func=data_table.update,
             load_query_func=self.load_filters,
             save_query_func=self.save_filters,
-            value_for_all=gui_g.s.default_value_for_all,
-            quick_filters=self._container.create_dynamic_filters(),
         )
         frm_filter.pack(**lblf_def_options)
         self._container._frm_filter = frm_filter
