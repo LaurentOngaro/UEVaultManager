@@ -1497,8 +1497,8 @@ def main():
     )
 
     #####
-    # noinspection DuplicatedCode
     status_parser.add_argument('--offline', dest='offline', action='store_true', help='Only print offline status information, do not log in')
+    # noinspection DuplicatedCode
     status_parser.add_argument('--json', dest='json', action='store_true', help='Show status in JSON format')
     status_parser.add_argument(
         '-f',
@@ -1541,6 +1541,13 @@ def main():
     # noinspection DuplicatedCode
     scrap_parser.add_argument(
         '--offline', dest='offline', action='store_true', help='Use previous saved data files (json) instead of scapping and new data, do not log in'
+    )
+    scrap_parser.add_argument(
+        '-fc',
+        '--filter-category',
+        dest='filter_category',
+        action='store',
+        help='Filter assets by category. Search against the asset category in the marketplace. Search is case-insensitive and can be partial'
     )
     scrap_parser.add_argument('-g', '--gui', dest='gui', action='store_true', help='Display the output in a windows instead of using the console')
 
