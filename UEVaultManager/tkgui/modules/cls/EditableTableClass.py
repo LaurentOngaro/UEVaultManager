@@ -1309,6 +1309,8 @@ class EditableTable(Table):
         if df_filtered is not None:
             self.is_filtered = True
             self.set_data(df_filtered, df_type=DataFrameUsed.FILTERED)
+        else:
+            self.set_data(df, df_type=DataFrameUsed.FILTERED)
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             self.update_index_copy_column()
