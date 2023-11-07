@@ -41,7 +41,7 @@ from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiCon
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionFrameComp import UEVMGuiOptionFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
-from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
+from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, FilterType, UEAssetType
 from UEVaultManager.tkgui.modules.types import GrabResult
 
 
@@ -134,6 +134,7 @@ class UEVMGui(tk.Tk):
         self.releases_choice = {}
         self.update_delay: int = 2000
         self.silent_mode: bool = False
+        self.choice_result: str = ''
         # get the core instance from the cli application if it exists
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
         # if the core instance is not set, create a new one
@@ -241,12 +242,13 @@ class UEVMGui(tk.Tk):
         data_table.update_downloaded_size(self.core.uevmlfs.asset_sizes)
 
         if gui_g.s.last_opened_filter:
-            filters = self.core.uevmlfs.load_filter_list(gui_g.s.last_opened_filter)
-            if filters is not None:
+            filter_value = self.core.uevmlfs.load_filter(gui_g.s.last_opened_filter)
+            if filter_value is not None:
                 gui_f.show_progress(self, text=f'Loading filters from {gui_g.s.last_opened_filter}...')
                 try:
-                    self._frm_filter.set_filters(filters)
-                    # data_table.update(update_format=True) # done in load_filters and inner calls
+                    self._frm_filter.set_filter(filter_value)
+                    self._frm_filter.update_controls()
+                    data_table.update(update_format=True)
                 except (Exception, ) as error:
                     self.add_error(error)
                     self.logger.error(f'Error loading filters: {error!r}')
@@ -299,39 +301,30 @@ class UEVMGui(tk.Tk):
         event.widget.tk_focusPrev().focus()
         return 'break'
 
-    def _open_file_dialog(self, save_mode: bool = False, filename: str = None) -> str:
+    @staticmethod
+    def _open_file_dialog(save_mode: bool = False, filename: str = None, initial_dir: str = '', filetypes: str = '') -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
         :param save_mode: whether the dialog will be in saving mode, else in loading mode.
         :param filename: default filename to use.
+        :param initial_dir: initial directory to use. If empty, the last opened folder will be used.
+        :param filetypes: filetypes to use. If empty, the default filetypes will be used.
         :return: chosen filename.
         """
-        # adding category to the default filename
-        if not filename:
+        if filename:
+            initial_dir = os.path.dirname(filename) or initial_dir
+        else:
             filename = gui_g.s.default_filename
-            initial_dir = gui_g.s.last_opened_folder
-        else:
-            initial_dir = os.path.dirname(filename)
+            initial_dir = initial_dir or gui_g.s.last_opened_folder
         default_filename = os.path.basename(filename)  # remove dir
-        default_ext = os.path.splitext(default_filename)[1]  # get extension
-        default_filename = os.path.splitext(default_filename)[0]  # get filename without extension
-        try:
-            # if the file is empty or absent or invalid when creating the class, the frm_filter is not defined
-            category = self._frm_filter.category
-        except AttributeError as error:
-            self.add_error(error)
-            category = None
-        if category and category != gui_g.s.default_value_for_all:
-            default_filename = default_filename + '_' + category + default_ext
-        else:
-            default_filename = default_filename + default_ext
+        filetypes = filetypes or gui_g.s.data_filetypes
         if save_mode:
             filename = fd.asksaveasfilename(
-                title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
+                title='Choose a file to save data to', initialdir=initial_dir, filetypes=filetypes, initialfile=default_filename
             )
         else:
             filename = fd.askopenfilename(
-                title='Choose a file to read data from', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
+                title='Choose a file to read data from', initialdir=initial_dir, filetypes=filetypes, initialfile=default_filename
             )
         filename = os.path.normpath(filename) if filename else ''
         return filename
@@ -394,6 +387,12 @@ class UEVMGui(tk.Tk):
             if data_table.update_cell(row_index, col_index, installed_folders):
                 data_table.update()  # because the "installed folder" field changed
         data_table.update_quick_edit(row_index)
+
+    def _get_choice_result(self, selection):
+        """
+        Get the result of the choice window.
+        """
+        self.choice_result = selection
 
     def on_key_press(self, event):
         """
@@ -511,7 +510,7 @@ class UEVMGui(tk.Tk):
         :param tag: tag of the widget that triggered the event.
         """
         value, widget = self._check_and_get_widget_value(tag)
-        if widget and widget.row >= 0 and widget.col >= 0:
+        if widget and widget.row and widget.col:
             self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
@@ -682,16 +681,64 @@ class UEVMGui(tk.Tk):
         Export the selected rows to a file.
         """
         data_table = self.editable_table  # shortcut
-        selected_rows = []
+        selected_rows = None
         row_numbers = data_table.multiplerowlist
+        col_name_to_export = 'Asset_id'
         if row_numbers:
             # convert row numbers to row indexes
             row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
             selected_rows = data_table.get_data().iloc[row_indexes]  # iloc checked
-        if len(selected_rows):
-            filename = self._open_file_dialog(save_mode=True)
+        if selected_rows is not None and not selected_rows.empty:
+            json_data = {
+                'csv': {
+                    'value': 'csv',
+                    'desc': 'All the columns data of the selected rows will be exported in a CSV file (comma separated values)'
+                },
+                'list': {
+                    'value': 'list',
+                    'desc': f'Only the "{col_name_to_export}" column of the selected rows will be exported in a text file (one value by line)'
+                },
+                'filter': {
+                    'value': 'filter',
+                    'desc': f'The "{col_name_to_export}" column will be exported as a ready to use filter in a json file '
+                },
+            }
+            ChoiceFromListWindow(
+                window_title='Choose the export format',
+                width=220,
+                height=250,
+                json_data=json_data,
+                show_validate_button=True,
+                first_list_width=13,
+                get_result_func=self._get_choice_result,
+                is_modal=True,
+            )
+            # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed
+            # so, the self._get_choice_result method has been called
+            file_name = f'{col_name_to_export}_{datetime.now().strftime(DateFormat.file_suffix)}'
+            if self.choice_result == 'list':
+                filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.txt', filetypes=gui_g.s.data_filetypes_text)
+            elif self.choice_result == 'filter':
+                filename = self._open_file_dialog(
+                    save_mode=True, filename=f'{file_name}.json', filetypes=gui_g.s.data_filetypes_json, initial_dir=gui_g.s.filters_folder
+                )
+            else:
+                filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.csv')
+
             if filename:
-                selected_rows.to_csv(filename, index=False)
+                if self.choice_result == 'list':
+                    # save the list of "Asset_id" of the selected row to the selected file
+                    selected_rows.to_csv(filename, index=False, columns=['Asset_id'], header=False)
+                elif self.choice_result == 'filter':
+                    # create a filter file with the list of "Asset_id" of the selected row
+                    asset_ids = selected_rows[col_name_to_export].tolist()
+                    # asset_ids = json.dumps(asset_ids)
+                    filter_value = FilterValue(name=col_name_to_export, value=asset_ids, ftype=FilterType.LIST)
+                    with open(filename, 'w') as file:
+                        file.write(filter_value.to_json())
+                else:
+                    # export all the columns of the selected rows to the selected file
+                    selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
         else:
             gui_f.box_message('Select at least one row first', level='warning')
@@ -1166,7 +1213,7 @@ class UEVMGui(tk.Tk):
         pw.hide_btn_stop()
         pw.set_text('Updating the table. Could take a while...')
         data_table.is_scanning = False
-        data_table.update(update_format=True, update_filters=True)
+        data_table.update(update_format=True)
         data_table.update_col_infos()
         gui_f.close_progress(self)
 
@@ -2073,126 +2120,3 @@ class UEVMGui(tk.Tk):
         gui_f.make_modal(tool_window)
         if tool_window.must_reload and gui_f.box_yesno('Some data has been imported into the database. Do you want to reload the data ?'):
             self.reload_data()
-
-    def create_dynamic_filters(self) -> {str: []}:
-        """
-        Create a dynamic filters list that can be added to the filter frame quick filter list.
-        :return: dict of FilterValue using column name as key or a 'callable'
-
-        Notes:
-            It returns a dict where each entry must be
-            - {'<label>': FilterValue}
-            - {'<label>': {'callable', <callable>, False} }
-                where:
-                 <label> is the label to display in the quick filter list
-                 <callable> is the function to call to get the mask.
-        """
-        filters = {
-            # add ^ to the beginning of the value to search for the INVERSE the result
-            'Owned': ['Owned', True],  #
-            'Not Owned': ['Owned', False],  #
-            'Obsolete': ['Obsolete', True],  #
-            'Not Obsolete': ['Obsolete', False],  #
-            'Must buy': ['Must buy', True],  #
-            'Added manually': ['Added manually', True],  #
-            'Plugins only': ['Category', 'plugins'],  #
-            'Free': ['Price', 0],  #
-            'Free and not owned': ['callable', self.filter_free_and_not_owned],  #
-            'Not Marketplace': ['Origin', '^Marketplace'],  # asset with origin that does NOT contain marketplace
-            'Downloaded': ['callable', self.filter_is_downloaded],  #
-            'Installed in folder': ['callable', self.filter_with_installed_folders],  #
-            'Local and marketplace':
-            ['callable', self.filter_local_and_marketplace],  # show assets that are local (ie found after a scan folders) and in marketplace
-            'With comment': ['callable', self.filter_with_comment],  #
-            'Empty row': ['Asset_id', gui_g.s.empty_row_prefix],  #
-            'Local id': ['Asset_id', gui_g.s.duplicate_row_prefix],  #
-            'Temp id': ['Asset_id', gui_g.s.temp_id_prefix],  #
-            'Result OK': ['Grab result', 'NO_ERROR'],  #
-            'Result Not OK': ['Grab result', '^NO_ERROR'],  #
-        }
-        if self.is_using_database():
-            db_filters = {
-                'Tags with number': ['callable', self.filter_tags_with_number],  #
-            }
-            filters.update(db_filters)
-
-        # convert to dict of FilterValues
-        result = {}
-        for filter_name, value in filters.items():
-            col_name, col_value = value
-            result[filter_name] = FilterValue(col_name, col_value, False)
-        return result
-
-    def filter_tags_with_number(self) -> pd.Series:
-        """
-        Create a mask to filter the data with tags that contains an integer.
-        :return: mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        mask = df['Tags'].str.split(',').apply(lambda x: any(gui_fn.is_an_int(i, gui_g.s.tag_prefix, prefix_is_mandatory=True) for i in x))
-        return mask
-
-    def filter_free_and_not_owned(self) -> pd.Series:
-        """
-        Create a mask to filter the data that are not owned and with a price <=0.5 or free.
-        Assets that custom attributes contains external_link are also filtered.
-        :return: mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        # Ensure 'Discount price' and 'Price' are float type
-        df['Discount price'] = df['Discount price'].astype(float)
-        df['Price'] = df['Price'].astype(float)
-        mask = df['Owned'].ne(True) & ~df['Custom attributes'].str.contains('external_link') & (
-            df['Free'].eq(True) | df['Discount price'].le(0.5) | df['Price'].le(0.5)
-        )
-        return mask
-
-    def filter_not_empty(self, col_name: str) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty value for a column.
-        :param col_name: name of the column to check.
-        :return: mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        # mask = df[col_name].notnull() & df[col_name].ne('') & df[col_name].ne('None') & df[col_name].ne('nan') & df[col_name].ne('NA')
-        mask = df[col_name].notnull()
-        for value in gui_g.s.cell_is_empty_list:
-            mask &= df[col_name].ne(value)
-        return mask
-
-    def filter_with_comment(self) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty comment value.
-        :return: mask to filter the data.
-        """
-        return self.filter_not_empty('Comment')
-
-    def filter_with_installed_folders(self) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty installed_folders value.
-        :return: mask to filter the data.
-        """
-        return self.filter_not_empty('Installed folders')
-
-    def filter_is_downloaded(self) -> pd.Series:
-        """
-        Create a mask to filter the data with a non-empty downloaded size.
-        :return: mask to filter the data.
-        """
-        return self.filter_not_empty('Downloaded size')
-
-    def filter_local_and_marketplace(self) -> pd.Series:
-        """
-        Create a mask to filter the data that are not owned and with a price <=0.5 or free.
-        Assets that custom attributes contains external_link are also filtered.
-        :return: mask to filter the data.
-        """
-        df = self.editable_table.get_data(df_type=DataFrameUsed.UNFILTERED)
-        # all the local assets
-        local_asset_rows = df['Origin'].ne(gui_g.s.origin_marketplace)
-        # all the marketplace assets with a local version
-        marketplace_asset_rows_with_local = df['Page title'].isin(df.loc[local_asset_rows, 'Page title'])
-        marketplace_asset_rows_with_local &= df['Origin'].eq(gui_g.s.origin_marketplace)
-        # only the rows that are local and marketplace
-        mask = df['Page title'].isin(df.loc[marketplace_asset_rows_with_local, 'Page title'])
-        return mask

@@ -11,7 +11,7 @@ import webbrowser
 from tkinter import ttk
 
 import pandas as pd
-from pandas.errors import EmptyDataError, IndexingError
+from pandas.errors import EmptyDataError
 from pandastable import config, Table, TableModel
 
 import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest variable name for globals for convenience
@@ -356,7 +356,7 @@ class EditableTable(Table):
                 self.add_error(error)
                 self.logger.warning(f'Could not sort the columns. Error: {error!r}')
         self.update_index_copy_column()
-        self.update(update_filters=True)
+        self.update()
         return
 
     def tableChanged(self) -> None:
@@ -929,7 +929,7 @@ class EditableTable(Table):
                     # or move to the prev row of the first deleted row
                     self.move_to_row(cur_row - number_deleted)
                 # self.redraw() # DOES NOT WORK need a self.update() to copy the changes to model. df AND to self.filtered_df
-                self.update(update_filters=True)
+                self.update()
                 self.tableChanged()
             return number_deleted > 0
         else:
@@ -1026,7 +1026,7 @@ class EditableTable(Table):
             return False
         self.set_data(df_loaded)
         self.update_downloaded_size(asset_sizes)
-        self.update(update_format=True, update_filters=True)  # this call will copy the changes to model. df AND to self.filtered_df
+        self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
         # mf.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
@@ -1137,7 +1137,11 @@ class EditableTable(Table):
         rc = self.rowcolors
         if col not in rc.columns:
             rc[col] = pd.Series()
-        rc[col] = rc[col].where(-mask, clr)
+        try:
+            rc[col] = rc[col].where(-mask, clr)
+        except (Exception, ) as error:
+            self.add_error(error)
+            self.logger.debug(f'setColorByMask: An error as occured with {col} : {error!r}')
         return
 
     def color_cells_if(self, col_names: [] = None, color: str = 'green', value_to_check: any = True) -> None:
@@ -1286,41 +1290,27 @@ class EditableTable(Table):
         if self.model.df is not None:
             self.model.df[gui_g.s.index_copy_col_name] = self.model.df.index
 
-    def update(self, reset_page: bool = False, update_filters: bool = False, update_format: bool = False) -> None:
+    def update(self, reset_page: bool = False, update_format: bool = False) -> None:
         """
         Display the specified page of the table data.*
         :param reset_page: whether to reset the current page to 1.
-        :param update_filters: whether to update the current filters.
         :param update_format: whether to update the table format.
         """
         self._column_infos_saved = self.get_col_infos()  # stores col infos BEFORE self.model.df is updated
         df = self.get_data()
+        self.is_filtered = False
         if update_format:
             # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
             gui_f.show_progress(self, text='Formating and converting DataTable...', keep_existing=True)
             self.set_data(self.set_columns_type(df))
             self.fillna_fixed(df)
             # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
-        if update_filters:
-            self._frm_filter.create_mask()
-        mask = self._frm_filter.get_filter_mask() if self._frm_filter is not None else None
-        if mask is not None:
+        df_filtered = self._frm_filter.get_filtered_df() if self._frm_filter is not None else None
+        if df_filtered is not None:
             self.is_filtered = True
-            try:
-                self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
-            except IndexingError:
-                self.logger.warning(f'IndexingError with defined filters. Updating filter...')
-                self._frm_filter.create_mask()
-                try:
-                    self.set_data(df[mask], df_type=DataFrameUsed.FILTERED)
-                except IndexingError:
-                    self.logger.warning(f'Still an IndexingError with defined filters. Deleting mask...')
-                    self._frm_filter.clear_filters()
-                    self.set_data(df, df_type=DataFrameUsed.FILTERED)
-                    self.is_filtered = False
+            self.set_data(df_filtered, df_type=DataFrameUsed.FILTERED)
         else:
             self.set_data(df, df_type=DataFrameUsed.FILTERED)
-            self.is_filtered = False
         self.model.df = self.get_data(df_type=DataFrameUsed.AUTO)
         if update_format:
             self.update_index_copy_column()
@@ -1328,9 +1318,34 @@ class EditableTable(Table):
         if reset_page:
             self.current_page = 1
             self.update_preview_info_func()
-        if update_filters or self._is_filtered_saved != self.is_filtered:
+        if self._is_filtered_saved != self.is_filtered:
             self.resetColors()
         self.update_page(keep_col_infos=True)
+
+    def filter_search(self, *args) -> pd.Series:
+        """
+        Create a mask to filter the data where a columns (or 'all') contains a value. Search is case-insensitive.
+        :param args: list of parameters.
+        :return: mask to filter the data.
+
+        Notes:
+            args: list with the following values in order:
+                the column name to search in. If 'all', search in all columns.
+                the value to search for.
+                flag (optional): another column name with a True value to check for. If the column name starts with '^', the value is negated.
+        """
+        col_name = args[0]
+        value = args[1]
+        flag = args[2] if len(args) > 2 else None
+        df = self.get_data(df_type=DataFrameUsed.UNFILTERED)
+        mask = df[col_name].str.contains(value, case=False)
+        if flag is not None:
+            if flag.startswith('^'):
+                flag = flag[1:]
+                mask = mask & ~df[flag]
+            else:
+                mask = mask & df[flag]
+        return mask
 
     def update_page(self, keep_col_infos=False) -> None:
         """

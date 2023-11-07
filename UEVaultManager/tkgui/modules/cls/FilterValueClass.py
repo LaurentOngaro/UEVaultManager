@@ -8,35 +8,36 @@ Implementation for:
 import json
 from typing import Any
 
-from UEVaultManager.models.csv_sql_fields import get_field_type
+from UEVaultManager.tkgui.modules.functions import parse_callable
+from UEVaultManager.tkgui.modules.functions_no_deps import create_uid
+from UEVaultManager.tkgui.modules.types import FilterType
 
 
 class FilterValue:
     """
     A class that contains the filter conditions.
-    :param col_name: name of the coliumn to filter or string literal 'callable'
-    :param value: value to filter or function to call if col_name is 'callable'.
-    :param use_or: wether to use an OR condition with the PREVIOUS filter.
+    :param name: name of the filter
+    :param ftype: type of the filter.
+    :param value: various: value to search, function to call, list of values
     """
 
-    def __init__(self, col_name: str, value: Any, use_or: bool = False, pos: int = -1):
-        self.col_name: str = col_name
-        self.value: Any = value
-        self.use_or: bool = use_or
-        self.pos: int = pos
-        if col_name == 'callable':
-            self._ftype = 'callable'  # must be a literal string
-        else:
-            ftype = get_field_type(col_name)
-            self._ftype: type = ftype.cast_to_type() if ftype else str
+    def __init__(self, name: str, value, ftype=FilterType.STR):
+        self.name: str = name
+        self.value = value
+        self._ftype: FilterType = ftype  # set type to str by default
 
     def __str__(self):
         return self.to_json()
 
     def __repr__(self):
-        result = f'"{self.col_name}" of type "{self._ftype.__name__}" is/contains "{self.value}"'
-        result += f' at pos {self.pos}' if self.pos >= 0 else ''
-        result += ' (OR)' if self.use_or else ' (AND)'
+        result = f'"{self.name}" '
+        if self._ftype == FilterType.CALLABLE:
+            func_name, func_params = parse_callable(self.value)
+            result += f'result of {func_name}({",".join(func_params)})'
+        elif self._ftype == FilterType.LIST:
+            result += f'is in {self.value}'
+        else:
+            result += f'is a "{self._ftype.__name__}" equals to "{self.value}"'
         return result
 
     def __dict__(self):
@@ -47,13 +48,7 @@ class FilterValue:
         Export the properties of the FilterValue instance as a dictionary.
         :return: a dictionary containing the properties of the FilterValue instance.
         """
-        return {
-            'col_name': self.col_name,
-            'ftype': self._ftype.__name__ if self._ftype != 'callable' else 'callable',  # 'callable' is a literal string
-            'value': self.value.__name__ if self._ftype == 'callable' else self.value,
-            'pos': self.pos,
-            'use_or': self.use_or
-        }
+        return {'name': self.name, 'ftype': self._ftype.name, 'value': self.value}
 
     def to_json(self) -> str:
         """
@@ -69,12 +64,25 @@ class FilterValue:
         :param data: a dictionnary string representing a FilterValue object.
         :return: a FilterValue object created from the JSON string.
         """
-        return cls(data.get('col_name', ''), data.get('value', ''), data.get('use_or', False), data.get('pos', -1))
+        ftype_name = data.get('ftype', '')
+        ftype = FilterType.from_name(ftype_name)
+        value_str = data.get('value', '')
+        if not isinstance(value_str, list):
+            try:
+                value_str = json.loads(value_str)
+            except json.JSONDecodeError:
+                pass
+        return cls(name=data.get('name', 'f_' + create_uid()), ftype=ftype, value=value_str)
 
     @property
-    def ftype(self) -> type:
+    def ftype(self) -> Any:
         """Get the type of the filter value. """
         return self._ftype
+
+    @ftype.setter
+    def ftype(self, value: Any):
+        """Set the type of the filter value. """
+        self._ftype = value
 
 
 class FilterValueEncoder(json.JSONEncoder):

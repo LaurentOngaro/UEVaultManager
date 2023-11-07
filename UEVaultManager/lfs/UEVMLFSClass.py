@@ -284,39 +284,41 @@ class UEVMLFS:
         return path_join(self.manifests_folder, f'{fname}.manifest')
 
     @staticmethod
-    def load_filter_list(filename: str = '') -> Optional[dict]:
+    def load_filter(filename: str = '') -> Optional[FilterValue]:
         """
         Load the filters from a json file
-        :return: filters or {} if not found. Will return None on error.
+        :return: a FilterValue object or None on error.
         """
         filename = filename or gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
         full_filename = path_join(folder, filename)
         if not os.path.isfile(full_filename):
-            return {}
+            return None
         try:
             with open(full_filename, 'r', encoding='utf-8') as file:
-                filters_dict = json.load(file)
-            filters = {}
-            for filter_name, data in filters_dict.items():
-                filters[filter_name] = FilterValue.init(data)
+                filter_data = json.load(file)
+            filter_value = FilterValue.init(filter_data)
         except (Exception, ) as error:
             print(f'Error while loading filter file "{filename}": {error!r}')
             return None
-        return filters
+        return filter_value
 
     @staticmethod
-    def save_filter_list(filters: {}, filename: str = '') -> None:
+    def save_filter(filter_value: FilterValue, filename: str = '') -> None:
         """
-        Save the filters to a json file.
+        Save a filter to a json file.
+        :param filter_value: filter to save.
+        :param filename: filename to use. If empty, use the last opened filter.
         """
+        if not filter_value:
+            return
         filename = filename or gui_g.s.last_opened_filter
         folder = gui_g.s.filters_folder
         full_filename = path_join(folder, filename)
         if not full_filename:
             return
         with open(full_filename, 'w', encoding='utf-8') as file:
-            json.dump(filters, file, indent=2, cls=FilterValueEncoder)
+            json.dump(filter_value, file, indent=2, cls=FilterValueEncoder)
 
     @staticmethod
     def get_app_name_from_asset_data(asset_data: dict, use_sql_fields: bool = False) -> (str, bool):

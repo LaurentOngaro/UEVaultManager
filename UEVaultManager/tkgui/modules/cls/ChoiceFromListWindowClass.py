@@ -77,10 +77,10 @@ class ChoiceFromListWindow(tk.Toplevel):
     :param icon: icon.
     :param screen_index: screen index.
     :param json_data: dict for choices to display. See the CFLW_Settings in this file for an example of format.
-    :param default_value: default value to return if no value is selected. If None, the set_value_func method will not be called on closed window.
+    :param default_value: default value to return if no value is selected. If None, the get_result_func method will not be called on closed window.
     :param show_validate_button: wether the validate button will be displayed.
     :param show_delete_button: wether the delete button will be displayed.
-    :param set_value_func: function to call after the validate button is clicked and the window closed.
+    :param get_result_func: function to call after the validate button is clicked and the window closed.
     :param list_remove_func: function to call after the delete button is clicked.
     :param show_content_list: wether the content list will be displayed.
     :param remove_from_content_func: function to call after the delete button is clicked in the content list.
@@ -99,14 +99,17 @@ class ChoiceFromListWindow(tk.Toplevel):
         screen_index: int = 0,
         json_data: dict = None,
         default_value='',
+        show_content_list: bool = False,
         show_validate_button: bool = True,
         show_delete_button: bool = False,
-        set_value_func: callable = None,
+        get_result_func: callable = None,
         list_remove_func: callable = None,
-        show_content_list: bool = False,
         remove_from_content_func: callable = None,
         show_delete_content_button: bool = False,
         no_content_text: str = 'No more content available for that choice',
+        first_list_width: int = 35,
+        second_list_width: int = 35,
+        is_modal: bool = False,
     ):
 
         super().__init__()
@@ -116,26 +119,30 @@ class ChoiceFromListWindow(tk.Toplevel):
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
         except Exception as error:
             gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
-        self.main_title = title or window_title
+        self.main_title = title
         self.sub_title = sub_title
+        self.json_data: dict = json_data.copy() if json_data else {}  # its content will be modified
+        self.default_value = default_value
         self.show_content_list = show_content_list
         if self.show_content_list:
             height += 30
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.show_validate_button = show_validate_button
-        self.no_content_text = no_content_text
-        self.json_data: dict = json_data.copy() if json_data else {}  # its content will be modified
         self.show_delete_button = show_delete_button
-        self.set_value_func = set_value_func
+        self.get_result_func = get_result_func
         self.list_remove_func = list_remove_func
-        self.show_delete_content_button = show_delete_content_button
         self.remove_from_content_func = remove_from_content_func
+        self.show_delete_content_button = show_delete_content_button
+        self.no_content_text = no_content_text
+        self.first_list_width = first_list_width
+        self.second_list_width = second_list_width
 
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)
-        self.default_value = default_value
-        # make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
+        self.is_modal = is_modal
+        if is_modal:
+            gui_f.make_modal(self)  # could cause issue if done in the init of the class. better to be done by the caller
 
     class ControlFrame(ttk.Frame):
         """
@@ -146,27 +153,31 @@ class ChoiceFromListWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             self.container = container
-            self.lbl_title = tk.Label(self, text=container.main_title, font=('Helvetica', 14, 'bold'))
-            self.lbl_title.pack(pady=10)
-            self.lbl_goal = tk.Label(self, text=container.sub_title, wraplength=300, justify='center')
-            self.lbl_goal.pack(pady=5)
+            if container.main_title:
+                self.lbl_title = tk.Label(self, text=container.main_title, font=('Helvetica', 14, 'bold'))
+                self.lbl_title.pack(pady=10)
+            if container.sub_title:
+                self.lbl_sub_title = tk.Label(self, text=container.sub_title, wraplength=300, justify='center')
+                self.lbl_sub_title.pack(pady=5)
             var_choices = list(container.json_data.keys())
 
             self.frm_list_choices = tk.Frame(self)
             self.frm_list_choices.pack(pady=5)
             if container.show_delete_button:
-                self.cb_list_choices = ttk.Combobox(self.frm_list_choices, values=var_choices, state='readonly', width=35)
+                self.cb_list_choices = ttk.Combobox(self.frm_list_choices, values=var_choices, state='readonly', width=container.first_list_width)
                 self.cb_list_choices.grid(row=0, column=0, padx=5, pady=1)
                 self.btn_list_del = ttk.Button(self.frm_list_choices, text='Remove', command=self.remove_from_list)
                 self.btn_list_del.grid(row=0, column=1, padx=5, pady=1)
             else:
-                self.cb_list_choices = ttk.Combobox(self.frm_list_choices, values=var_choices, state='readonly', width=45)
+                self.cb_list_choices = ttk.Combobox(
+                    self.frm_list_choices, values=var_choices, state='readonly', width=container.first_list_width + 10
+                )
                 self.cb_list_choices.grid(row=0, column=0, padx=5, pady=1)
             self.cb_list_choices.grid_columnconfigure(0, weight=3)
 
             self.lbl_description = tk.Label(self, text='Description', fg='blue', font=('Helvetica', 11, 'bold'))
             self.lbl_description.pack(padx=1, pady=1, anchor=tk.CENTER)
-            self.text_description = ScrolledText(self, height=6, width=53, font=('Helvetica', 10))
+            self.text_description = ScrolledText(self, height=6, width=53, font=('Helvetica', 10), wrap=tk.WORD)
             # self.text_description = tk.Text(self, fg='blue', height=6, width=53, font=('Helvetica', 10))
             self.text_description.pack(padx=5, pady=2)
 
@@ -180,13 +191,17 @@ class ChoiceFromListWindow(tk.Toplevel):
                 self.lbl_content_label = tk.Label(self.frm_content_choices, text='sub list label', wraplength=300, justify='center')
                 if container.show_delete_content_button:
                     self.lbl_content_label.grid(row=0, column=0, columnspan=2, padx=5, pady=1)
-                    self.cb_content_choices = ttk.Combobox(self.frm_content_choices, values=var_content_choices, state='readonly', width=35)
+                    self.cb_content_choices = ttk.Combobox(
+                        self.frm_content_choices, values=var_content_choices, state='readonly', width=container.second_list_width
+                    )
                     self.cb_content_choices.grid(row=1, column=0, padx=5, pady=1)
                     self.btn_content_del = ttk.Button(self.frm_content_choices, text='Remove', command=self.remove_from_content)
                     self.btn_content_del.grid(row=1, column=1, padx=5, pady=1)
                 else:
                     self.lbl_content_label.grid(row=0, column=0, padx=5, pady=1)
-                    self.cb_content_choices = ttk.Combobox(self.frm_content_choices, values=var_content_choices, state='readonly', width=45)
+                    self.cb_content_choices = ttk.Combobox(
+                        self.frm_content_choices, values=var_content_choices, state='readonly', width=container.second_list_width + 10
+                    )
                     self.cb_content_choices.grid(row=1, column=0, padx=5, pady=1)
                 self.cb_content_choices.grid_columnconfigure(0, weight=3)
                 self.cb_content_choices.bind('<<ComboboxSelected>>', self.set_content_text)
@@ -212,8 +227,8 @@ class ChoiceFromListWindow(tk.Toplevel):
             """
             Close the window.
             """
-            if self.container.default_value is not None and self.container.set_value_func is not None:
-                self.container.set_value_func(self.container.default_value)
+            if self.container.default_value is not None and self.container.get_result_func is not None:
+                self.container.get_result_func(self.container.default_value)
             self.container.destroy()
 
         def set_list_description(self, _event=None) -> None:
@@ -254,25 +269,26 @@ class ChoiceFromListWindow(tk.Toplevel):
                 self.cb_list_choices['values'] = [x for x in self.cb_list_choices['values'] if x != list_selected_value]
             return
 
-        def validate(self) -> None:
+        def validate(self):
             """
             Validate the selected values (in one list or both lists) and close the window.
+            :return: the selected value(s) or None if no value is selected.
             """
             list_selected_value = self.cb_list_choices.get()
             list_data = self.container.json_data.get(list_selected_value, None)
             if list_data is None:
-                return
+                return None
             return_value = list_selected_value
             if self.container.show_content_list:
                 content_data = list_data.get('content', None)
                 if content_data is None:
-                    return
+                    return None
                 content_selected_value = self.cb_content_choices.get()
                 return_value = (list_selected_value, content_selected_value)
-            if self.container.set_value_func is not None:
-                self.container.set_value_func(return_value)
+            if self.container.get_result_func is not None:
+                self.container.get_result_func(return_value)
             self.container.destroy()
-            return
+            return return_value
 
         def set_content_list(self, list_selected_value: str = '') -> None:
             """
@@ -393,7 +409,7 @@ if __name__ == '__main__':
         default_value=st.default,
         show_validate_button=st.show_validate_button,
         show_delete_button=st.show_delete_button,
-        set_value_func=set_choice,
+        get_result_func=set_choice,
         list_remove_func=delete_list,
         show_delete_content_button=st.show_delete_content_button,
         show_content_list=st.show_content_list,

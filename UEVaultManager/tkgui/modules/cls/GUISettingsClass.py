@@ -26,7 +26,12 @@ class GUISettings:
     path: str = ''
     config_file_gui: str = ''  # config file path for gui part (tkgui)
     config_file: str = ''  # config file path for cli part (cli). Set by the cli part
-    data_filetypes = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'), ('json file', '*.json'), ('text file', '*.txt'), ('SQlite file', '*.db'))
+    data_filetypes_all = (('all files', '*.*'), )
+    data_filetypes_text = (('text file', '*.txt'), )
+    data_filetypes_json = (('json file', '*.json'), )
+    data_filetypes_db = (('SQlite file', '*.db'), )
+    data_filetypes_csv = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'))
+    data_filetypes = data_filetypes_all + data_filetypes_text + data_filetypes_json + data_filetypes_db + data_filetypes_csv
 
     def __init__(self, config_file=None):
         self.config = AppConfig(comment_prefixes='/', allow_no_value=True)
@@ -123,7 +128,7 @@ class GUISettings:
         self.asset_categories = [
             '2D Assets', 'Animations', 'Architectural Visualization', 'Blueprints', 'Characters', 'Code Plugins', 'Environments', 'Epic Content',
             'Materials', 'Megascans', 'Music', 'Props', 'Sound Effects', 'Textures', 'UE Feature Samples', 'UE Game Samples', 'UE Legacy Samples',
-            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/asset', 'local/manifest', 'local/plugins'
+            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/Asset', 'local/Manifest', 'local/Plugin'
         ]
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
