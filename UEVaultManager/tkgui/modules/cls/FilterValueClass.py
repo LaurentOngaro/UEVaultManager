@@ -21,9 +21,9 @@ class FilterValue:
     :param value: various: value to search, function to call, list of values
     """
 
-    def __init__(self, name: str, value: Any, ftype=FilterType.STR):
+    def __init__(self, name: str, value, ftype=FilterType.STR):
         self.name: str = name
-        self.value: Any = value
+        self.value = value
         self._ftype: FilterType = ftype  # set type to str by default
 
     def __str__(self):
@@ -31,9 +31,11 @@ class FilterValue:
 
     def __repr__(self):
         result = f'"{self.name}" '
-        if self._ftype == "callable":
+        if self._ftype == FilterType.CALLABLE:
             func_name, func_params = parse_callable(self.value)
             result += f'result of {func_name}({",".join(func_params)})'
+        elif self._ftype == FilterType.LIST:
+            result += f'is in {self.value}'
         else:
             result += f'is a "{self._ftype.__name__}" equals to "{self.value}"'
         return result
@@ -64,7 +66,13 @@ class FilterValue:
         """
         ftype_name = data.get('ftype', '')
         ftype = FilterType.from_name(ftype_name)
-        return cls(name=data.get('name', 'f_' + create_uid()), ftype=ftype, value=data.get('value', ''))
+        value_str = data.get('value', '')
+        if not isinstance(value_str, list):
+            try:
+                value_str = json.loads(value_str)
+            except json.JSONDecodeError:
+                pass
+        return cls(name=data.get('name', 'f_' + create_uid()), ftype=ftype, value=value_str)
 
     @property
     def ftype(self) -> Any:

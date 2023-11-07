@@ -312,7 +312,7 @@ class UEVMGui(tk.Tk):
         :return: chosen filename.
         """
         if filename:
-            initial_dir = os.path.dirname(filename)
+            initial_dir = os.path.dirname(filename) or initial_dir
         else:
             filename = gui_g.s.default_filename
             initial_dir = initial_dir or gui_g.s.last_opened_folder
@@ -683,11 +683,12 @@ class UEVMGui(tk.Tk):
         data_table = self.editable_table  # shortcut
         selected_rows = None
         row_numbers = data_table.multiplerowlist
+        col_name_to_export = 'Asset_id'
         if row_numbers:
             # convert row numbers to row indexes
             row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
             selected_rows = data_table.get_data().iloc[row_indexes]  # iloc checked
-        if len(selected_rows):
+        if selected_rows is not None and not selected_rows.empty:
             json_data = {
                 'csv': {
                     'value': 'csv',
@@ -695,11 +696,11 @@ class UEVMGui(tk.Tk):
                 },
                 'list': {
                     'value': 'list',
-                    'desc': 'Only the "Asset id" column of the selected rows will be exported in a text file (one value by line)'
+                    'desc': f'Only the "{col_name_to_export}" column of the selected rows will be exported in a text file (one value by line)'
                 },
                 'filter': {
                     'value': 'filter',
-                    'desc': 'The "Asset id" column will be exported as a ready to use filter in a json file '
+                    'desc': f'The "{col_name_to_export}" column will be exported as a ready to use filter in a json file '
                 },
             }
             ChoiceFromListWindow(
@@ -714,15 +715,15 @@ class UEVMGui(tk.Tk):
             )
             # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed
             # so, the self._get_choice_result method has been called
-            name = f'assets_{datetime.now().strftime(DateFormat.file_suffix)}'
+            file_name = f'{col_name_to_export}_{datetime.now().strftime(DateFormat.file_suffix)}'
             if self.choice_result == 'list':
-                filename = self._open_file_dialog(save_mode=True, filename=f'{name}.txt', filetypes=gui_g.s.data_filetypes_text)
+                filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.txt', filetypes=gui_g.s.data_filetypes_text)
             elif self.choice_result == 'filter':
                 filename = self._open_file_dialog(
-                    save_mode=True, filename=f'{name}.json', filetypes=gui_g.s.data_filetypes_json, initial_dir=gui_g.s.filters_folder
+                    save_mode=True, filename=f'{file_name}.json', filetypes=gui_g.s.data_filetypes_json, initial_dir=gui_g.s.filters_folder
                 )
             else:
-                filename = self._open_file_dialog(save_mode=True, filename=f'{name}.csv')
+                filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.csv')
 
             if filename:
                 if self.choice_result == 'list':
@@ -730,8 +731,9 @@ class UEVMGui(tk.Tk):
                     selected_rows.to_csv(filename, index=False, columns=['Asset_id'], header=False)
                 elif self.choice_result == 'filter':
                     # create a filter file with the list of "Asset_id" of the selected row
-                    asset_ids = selected_rows['Asset_id'].tolist()
-                    filter_value = FilterValue(name=name, value=asset_ids, ftype=FilterType.LIST)
+                    asset_ids = selected_rows[col_name_to_export].tolist()
+                    # asset_ids = json.dumps(asset_ids)
+                    filter_value = FilterValue(name=col_name_to_export, value=asset_ids, ftype=FilterType.LIST)
                     with open(filename, 'w') as file:
                         file.write(filter_value.to_json())
                 else:
