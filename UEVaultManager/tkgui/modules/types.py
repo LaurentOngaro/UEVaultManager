@@ -71,7 +71,7 @@ class FilterType(Enum):
     """ Enum for the filter types """
     STR = 0  # filter use a string as query
     CALLABLE = 1  # filter use a callable (from FilterCallableClass)
-    LIST = 2  # filter use a list of value for a asset_id or app_name (json encoded)
+    LIST = 2  # filter use a list of value for an asset_id or app_name (json encoded)
 
     @classmethod
     def from_name(cls, name: str) -> 'FilterType':

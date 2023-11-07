@@ -264,7 +264,7 @@ class FilterFrame(ttk.LabelFrame):
             self.update_controls()
         return quick_filter
 
-    def get_filtered_df(self)->Optional[pd.DataFrame] :
+    def get_filtered_df(self) -> Optional[pd.DataFrame]:
         """
         Get the filtered dataframe.
         :return: the filtered data or None if no filter is defined.

@@ -177,7 +177,7 @@ class ChoiceFromListWindow(tk.Toplevel):
 
             self.lbl_description = tk.Label(self, text='Description', fg='blue', font=('Helvetica', 11, 'bold'))
             self.lbl_description.pack(padx=1, pady=1, anchor=tk.CENTER)
-            self.text_description = ScrolledText(self, height=6, width=53, font=('Helvetica', 10),wrap=tk.WORD)
+            self.text_description = ScrolledText(self, height=6, width=53, font=('Helvetica', 10), wrap=tk.WORD)
             # self.text_description = tk.Text(self, fg='blue', height=6, width=53, font=('Helvetica', 10))
             self.text_description.pack(padx=5, pady=2)
 
@@ -269,7 +269,7 @@ class ChoiceFromListWindow(tk.Toplevel):
                 self.cb_list_choices['values'] = [x for x in self.cb_list_choices['values'] if x != list_selected_value]
             return
 
-        def validate(self) -> str:
+        def validate(self):
             """
             Validate the selected values (in one list or both lists) and close the window.
             :return: the selected value(s) or None if no value is selected.
