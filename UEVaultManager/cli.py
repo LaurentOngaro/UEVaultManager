@@ -35,7 +35,7 @@ from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayCo
 from UEVaultManager.tkgui.modules.cls.FakeUEVMGuiClass import FakeUEVMGuiClass
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 from UEVaultManager.tkgui.modules.cls.UEVMGuiClass import UEVMGui
-from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, create_file_backup, custom_print, exit_and_clean_windows, make_modal, \
+from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, create_file_backup, custom_print, exit_and_clean_windows, \
     show_progress  # simplier way to use the custom_print function
 from UEVaultManager.tkgui.modules.functions import json_print_key_val
 from UEVaultManager.tkgui.modules.types import DataSourceType
@@ -1017,16 +1017,17 @@ class UEVaultManagerCLI:
         if uewm_gui_exists:
             # create a windows to choose the release
             sub_title = 'In the list below, select the closest version that matches your project or engine version'
-            cw = ChoiceFromListWindow(
+            ChoiceFromListWindow(
                 window_title='UEVM: select release',
                 title='Choose the release to download',
                 sub_title=sub_title,
                 json_data=releases,
-                set_value_func=self.set_release_id,
-                default_value=''
+                get_result_func=self.set_release_id,
+                default_value='',
+                is_modal=True,
             )
-            make_modal(cw)
-            # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed AND the self.set_release_id methode been called
+            # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed
+            # so, the self.set_release_id method has been called
             if self.release_id:
                 try:
                     release_selected = releases[self.release_id]
