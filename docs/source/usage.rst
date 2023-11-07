@@ -137,6 +137,8 @@ Usage
       -h, --help            Show this help message and exit
       -f, --force-refresh   Force a refresh of all asset metadata. It could take some time ! If not forced, the cached data in json files will be used
       --offline             Use previous saved data files (json) instead of scapping and new data, do not log in
+      -fc, --filter-category  Filter assets by category. Search against the asset category in the marketplace. Search is case-insensitive
+                                and can be partial
       -g, --gui             Display the output in a windows instead of using the console
 
   Command: install

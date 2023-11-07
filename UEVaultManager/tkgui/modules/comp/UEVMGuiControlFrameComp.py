@@ -136,8 +136,8 @@ class UEVMGuiControlFrame(ttk.Frame):
             self,
             df=data_table.get_data(),
             update_func=data_table.update,
-            load_query_func=self.load_filters,
-            save_query_func=self.save_filters,
+            load_query_func=self.load_filter,
+            save_query_func=self.save_filter,
         )
         frm_filter.pack(**lblf_def_options)
         self._container._frm_filter = frm_filter
@@ -284,20 +284,20 @@ class UEVMGuiControlFrame(ttk.Frame):
         widget_list = gui_g.stated_widgets.get('file_is_used', [])
         append_no_duplicate(widget_list, [self.buttons['save_changes_as']['widget']])
 
-    def save_filters(self, filters: dict) -> None:
+    def save_filter(self, _filter: dict) -> None:
         """
-        Save the filters to a file (Wrapper)
-        :param filters: filters to save.
+        Save the filter to a file (Wrapper)
+        :param _filter: filter to save.
         """
         json_ext = '.json'
-        if not filters:
+        if not _filter:
             return
         folder = gui_g.s.filters_folder if gui_g.s.filters_folder else gui_g.s.path
         folder = os.path.abspath(folder)
         if folder and not os.path.isdir(folder):
             os.mkdir(folder)
         filename = fd.asksaveasfilename(
-            title='Choose a file to save filters to', initialdir=folder, filetypes=[('json file', '*.json')], initialfile=gui_g.s.last_opened_filter
+            title='Choose a file to save filter to', initialdir=folder, filetypes=gui_g.s.data_filetypes_json, initialfile=gui_g.s.last_opened_filter
         )
         if not filename:
             return
@@ -311,22 +311,22 @@ class UEVMGuiControlFrame(ttk.Frame):
         if folder != fd_folder:
             messagebox.showwarning('Warning', f'The folder to save filters into can not be changed. The file will be saved in {folder}')
         try:
-            self._container.core.uevmlfs.save_filter(filters, filename)
+            self._container.core.uevmlfs.save_filter(_filter, filename)
         except AttributeError:
             pass
 
-    def load_filters(self) -> dict:
+    def load_filter(self) -> dict:
         """
-        Load the filters from a file (Wrapper)
+        Load the filter from a file (Wrapper)
         """
         folder = gui_g.s.filters_folder if gui_g.s.filters_folder else gui_g.s.path
         folder = os.path.abspath(folder)
         if folder and not os.path.isdir(folder):
             os.mkdir(folder)
         filename = fd.askopenfilename(
-            title='Choose a file to load filters from',
+            title='Choose a file to load filter from',
             initialdir=gui_g.s.filters_folder,
-            filetypes=[('json file', '*.json')],
+            filetypes=gui_g.s.data_filetypes_json,
             initialfile=gui_g.s.last_opened_filter
         )
         if not filename:
@@ -335,21 +335,21 @@ class UEVMGuiControlFrame(ttk.Frame):
         fd_folder = os.path.dirname(filename)
         if folder != fd_folder:
             messagebox.showwarning(
-                'Warning', f'Only files in the folder {folder} can be loaded as filters. Please try again without changing the folder.'
+                'Warning', f'Only files in the folder {folder} can be loaded as filter. Please try again without changing the folder.'
             )
             return {}
         filename = os.path.basename(filename)  # remove the folder from the filename
         _, ext = os.path.splitext(filename)
         if ext != '.json':
-            messagebox.showwarning('Warning', f'Filters can only be read from a json file.')
+            messagebox.showwarning('Warning', f'Filter can only be read from a json file.')
             return {}
         try:
-            filters = self._container.core.uevmlfs.load_filter(filename)
+            _filter = self._container.core.uevmlfs.load_filter(filename)
             gui_g.s.last_opened_filter = filename
             gui_g.s.save_config_file()
         except AttributeError:
-            filters = None
-        if filters is None:
+            _filter = None
+        if _filter is None:
             messagebox.showwarning('Warning', f'An error occurs when opening the filter file. Check its content')
-            filters = {}
-        return filters
+            _filter = {}
+        return _filter

@@ -34,13 +34,14 @@ from UEVaultManager.tkgui.modules.cls.DbToolWindowClass import DbToolWindowClass
 from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
+from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
 from UEVaultManager.tkgui.modules.cls.JsonToolWindowClass import JsonToolWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionFrameComp import UEVMGuiOptionFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiToolbarFrameComp import UEVMGuiToolbarFrame
-from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, UEAssetType
+from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType, FilterType, UEAssetType
 from UEVaultManager.tkgui.modules.types import GrabResult
 
 
@@ -133,6 +134,7 @@ class UEVMGui(tk.Tk):
         self.releases_choice = {}
         self.update_delay: int = 2000
         self.silent_mode: bool = False
+        self.choice_result: str = ''
         # get the core instance from the cli application if it exists
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
         # if the core instance is not set, create a new one
@@ -300,27 +302,29 @@ class UEVMGui(tk.Tk):
         return 'break'
 
     @staticmethod
-    def _open_file_dialog(save_mode: bool = False, filename: str = None) -> str:
+    def _open_file_dialog(save_mode: bool = False, filename: str = None, initial_dir: str = '', filetypes: str = '') -> str:
         """
         Open a file dialog to choose a file to save or load data to/from.
         :param save_mode: whether the dialog will be in saving mode, else in loading mode.
         :param filename: default filename to use.
+        :param initial_dir: initial directory to use. If empty, the last opened folder will be used.
+        :param filetypes: filetypes to use. If empty, the default filetypes will be used.
         :return: chosen filename.
         """
-        # adding category to the default filename
-        if not filename:
-            filename = gui_g.s.default_filename
-            initial_dir = gui_g.s.last_opened_folder
+        if filename:
+            initial_dir = os.path.dirname(filename) or initial_dir
         else:
-            initial_dir = os.path.dirname(filename)
+            filename = gui_g.s.default_filename
+            initial_dir = initial_dir or gui_g.s.last_opened_folder
         default_filename = os.path.basename(filename)  # remove dir
+        filetypes = filetypes or gui_g.s.data_filetypes
         if save_mode:
             filename = fd.asksaveasfilename(
-                title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
+                title='Choose a file to save data to', initialdir=initial_dir, filetypes=filetypes, initialfile=default_filename
             )
         else:
             filename = fd.askopenfilename(
-                title='Choose a file to read data from', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=default_filename
+                title='Choose a file to read data from', initialdir=initial_dir, filetypes=filetypes, initialfile=default_filename
             )
         filename = os.path.normpath(filename) if filename else ''
         return filename
@@ -383,6 +387,12 @@ class UEVMGui(tk.Tk):
             if data_table.update_cell(row_index, col_index, installed_folders):
                 data_table.update()  # because the "installed folder" field changed
         data_table.update_quick_edit(row_index)
+
+    def _get_choice_result(self, selection):
+        """
+        Get the result of the choice window.
+        """
+        self.choice_result = selection
 
     def on_key_press(self, event):
         """
@@ -671,16 +681,64 @@ class UEVMGui(tk.Tk):
         Export the selected rows to a file.
         """
         data_table = self.editable_table  # shortcut
-        selected_rows = []
+        selected_rows = None
         row_numbers = data_table.multiplerowlist
+        col_name_to_export = 'Asset_id'
         if row_numbers:
             # convert row numbers to row indexes
             row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
             selected_rows = data_table.get_data().iloc[row_indexes]  # iloc checked
-        if len(selected_rows):
-            filename = self._open_file_dialog(save_mode=True)
+        if selected_rows is not None and not selected_rows.empty:
+            json_data = {
+                'csv': {
+                    'value': 'csv',
+                    'desc': 'All the columns data of the selected rows will be exported in a CSV file (comma separated values)'
+                },
+                'list': {
+                    'value': 'list',
+                    'desc': f'Only the "{col_name_to_export}" column of the selected rows will be exported in a text file (one value by line)'
+                },
+                'filter': {
+                    'value': 'filter',
+                    'desc': f'The "{col_name_to_export}" column will be exported as a ready to use filter in a json file '
+                },
+            }
+            ChoiceFromListWindow(
+                window_title='Choose the export format',
+                width=220,
+                height=250,
+                json_data=json_data,
+                show_validate_button=True,
+                first_list_width=13,
+                get_result_func=self._get_choice_result,
+                is_modal=True,
+            )
+            # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed
+            # so, the self._get_choice_result method has been called
+            file_name = f'{col_name_to_export}_{datetime.now().strftime(DateFormat.file_suffix)}'
+            if self.choice_result == 'list':
+                filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.txt', filetypes=gui_g.s.data_filetypes_text)
+            elif self.choice_result == 'filter':
+                filename = self._open_file_dialog(
+                    save_mode=True, filename=f'{file_name}.json', filetypes=gui_g.s.data_filetypes_json, initial_dir=gui_g.s.filters_folder
+                )
+            else:
+                filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.csv')
+
             if filename:
-                selected_rows.to_csv(filename, index=False)
+                if self.choice_result == 'list':
+                    # save the list of "Asset_id" of the selected row to the selected file
+                    selected_rows.to_csv(filename, index=False, columns=['Asset_id'], header=False)
+                elif self.choice_result == 'filter':
+                    # create a filter file with the list of "Asset_id" of the selected row
+                    asset_ids = selected_rows[col_name_to_export].tolist()
+                    # asset_ids = json.dumps(asset_ids)
+                    filter_value = FilterValue(name=col_name_to_export, value=asset_ids, ftype=FilterType.LIST)
+                    with open(filename, 'w') as file:
+                        file.write(filter_value.to_json())
+                else:
+                    # export all the columns of the selected rows to the selected file
+                    selected_rows.to_csv(filename, index=False)
                 gui_f.box_message(f'Selected rows exported to "{filename}"')
         else:
             gui_f.box_message('Select at least one row first', level='warning')

@@ -3,6 +3,7 @@
 Implementation for:
 - FilterFrame class: frame that contains widgets for filtering a DataFrame.
 """
+import json
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable, Optional
@@ -10,9 +11,9 @@ from typing import Callable, Optional
 import pandas as pd
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
-import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterCallableClass import FilterCallable
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
+from UEVaultManager.tkgui.modules.types import FilterType
 
 
 # not needed here
@@ -117,7 +118,7 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_view_filter = ttk.Button(self, text='View', command=self.view_filter)
         self.btn_view_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        self.btn_clear_filter = ttk.Button(self, text='Clear', command=self.get_filter)
+        self.btn_clear_filter = ttk.Button(self, text='Clear', command=self.clear_filter)
         self.btn_clear_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         if self.save_filter_func is not None:
             cur_col += 1
@@ -142,25 +143,31 @@ class FilterFrame(ttk.LabelFrame):
         """
         Get the loaded filter from a file (Wrapper)
         """
-        filter_values: FilterValue = self.load_filter_func()
-        self.create_filter(filter_values)  # used instead if set_filter() to check if the filter is callable
-        self.update_controls()
+        filter_value: FilterValue = self.load_filter_func()
+        if filter_value:
+            self.cb_quick_filter.set('')
+            self._var_entry_query.set('')
+            self._loaded_filter = filter_value
+            self.create_filter(self._loaded_filter)  # used instead if set_filter() to check if the filter is callable
+            self.update_controls()
+            self.update_func(reset_page=True, )  # will call self.create_mask() and self.get_query()
 
     def _save_filter(self) -> None:
         """
         Set the loaded filter to a file (Wrapper)
         """
+        self.create_filter()  # needed to update the self._loaded_filter
         self.save_filter_func(self._loaded_filter)
 
-    def set_filter(self, filter_values: FilterValue, forced_value: str = '') -> None:
+    def set_filter(self, filter_value: FilterValue, forced_value: str = '') -> None:
         """
         Set the loaded filter.
-        :param filter_values: filter values to set.
-        :param forced_value: value to set in the query string entry. If empty, the value from filter_values will be used.
+        :param filter_value: filter values to set.
+        :param forced_value: value to set in the query string entry. If empty, the value from filter_value will be used.
         """
         if not forced_value:
-            forced_value = filter_values.value
-        self._loaded_filter = filter_values
+            forced_value = filter_value.value
+        self._loaded_filter = filter_value
         self.old_entry_query = self._var_entry_query.get()
         self._var_entry_query.set(forced_value)
         self.cb_quick_filter.set('')
@@ -170,18 +177,31 @@ class FilterFrame(ttk.LabelFrame):
         Set the current filter from a filter_value.
         :param filter_value: filter value to set. If None, a filter value will be created from query string entry.
         """
-        if not filter_value:
+        if filter_value is None:
+            filter_value = self._loaded_filter
+        query_string = self._var_entry_query.get()
+        name = filter_value.name if filter_value else 'filter_loaded'
+        ftype = filter_value.ftype if filter_value else FilterType.STR
+        value = filter_value.value if filter_value else ''
+        # check if the filter_value is a callable and fix its ftype if not
+        if ftype == FilterType.CALLABLE or ftype == FilterType.STR:
+            func_name, func_params = gui_f.parse_callable(filter_value.value)
+            method = self.callable.get_method(func_name)
+            if method is None:
+                filter_value.ftype = FilterType.STR
+            else:
+                filter_value.ftype = FilterType.CALLABLE
+
+        if isinstance(value, list):
+            # try to convert the query_string to a list to compare with the value
+            try:
+                query_string = json.loads(query_string)
+            except (Exception, ):
+                pass
+
+        if not value or (query_string != '' and query_string != [] and query_string != value):
             # create a filter value from the query string entry
-            query_string = self._var_entry_query.get()
-            ftype = str
-            filter_value = FilterValue('filter_loaded', ftype, query_string)
-        # check if the filter_value is a callable and fix its ftype
-        func_name, func_params = gui_f.parse_callable(filter_value.value)
-        method = self.callable.get_method(func_name)
-        if method is None:
-            filter_value.ftype = str
-        else:
-            filter_value.ftype = 'callable'
+            filter_value = FilterValue(name=name, value=query_string, ftype=ftype)
         self.set_filter(filter_value)
 
     def update_controls(self) -> None:
@@ -218,23 +238,22 @@ class FilterFrame(ttk.LabelFrame):
         quick_filter = self.get_quick_filter(only_return_filter=True)
         if quick_filter:
             self.set_filter(quick_filter)
-        elif self._var_entry_query.get():
-            self.create_filter()
-            self.cb_quick_filter.set('')
+
+        self.create_filter()  # will check a new filter must be created from the query string
+        self.cb_quick_filter.set('')
         self.update_controls()
         self.update_func(reset_page=True)  # will call self.create_mask() and self.get_query()
 
-    def get_filter(self) -> None:
+    def clear_filter(self) -> None:
         """
         Reset all filter conditions and update the caller.
         """
         self.cb_quick_filter.set('')
         self._var_entry_query.set('')
         self._loaded_filter = None
-        gui_g.s.save_config_file()
-        if self._var_entry_query.get() != self.old_entry_query:
-            self.update_controls()
-            self.update_func(reset_page=True)
+        # ?? gui_g.s.save_config_file()
+        self.update_controls()
+        self.update_func(reset_page=True)
 
     def view_filter(self) -> None:
         """
@@ -261,3 +280,37 @@ class FilterFrame(ttk.LabelFrame):
                 self.update_func(reset_page=True)
             self.update_controls()
         return quick_filter
+
+    def get_filtered_df(self) -> Optional[pd.DataFrame]:
+        """
+        Get the filtered dataframe.
+        :return: the filtered data or None if no filter is defined.
+        """
+        if self.loaded_filter:
+            try:
+                ftype: FilterType = self.loaded_filter.ftype
+                filter_value = self.loaded_filter.value
+                if ftype == FilterType.CALLABLE and filter_value:
+                    # filter_value is a string with a function to call and some parameters
+                    # that returns a mask (boolean Series)
+                    func_name, func_params = gui_f.parse_callable(filter_value)
+                    # get the method to call from the callable class
+                    method = self.callable.get_method(func_name)
+                    if method is None:
+                        raise AttributeError(f'Could not find the method {func_name} in the class {self.callable.__class__.__name__}')
+                    # noinspection PyUnusedLocal
+                    mask_from_callable = method(*func_params)
+                    query = '@mask_from_callable'  # with pandas, we can pass a reference to a mask to execute a query !!!!
+                elif ftype == FilterType.LIST and filter_value:
+                    if isinstance(filter_value, str):
+                        filter_value = json.loads(filter_value)
+                    query = f'Asset_id in {filter_value}'
+                else:
+                    query = filter_value
+
+                if query:
+                    return self._df.query(query)
+            except (AttributeError, ):
+                # print(f'Error with defined filters. Updating filter...')
+                self.clear_filter()
+                return None

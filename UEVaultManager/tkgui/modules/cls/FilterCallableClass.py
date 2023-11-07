@@ -10,6 +10,7 @@ import pandas as pd
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
+from UEVaultManager.tkgui.modules.types import FilterType
 
 
 class FilterCallable:
@@ -25,48 +26,50 @@ class FilterCallable:
     def create_dynamic_filters() -> {str: str}:
         """
         Create a dynamic filters list that can be added to the filter frame quick filter list.
-        :return: dict of query (string) using column name as key or a 'callable'
+        :return: dict of filters
 
         Notes:
             It returns a dict where each entry must be
-            - {'<label>': {str, query} }
-            - {'<label>': {'callable', <callable>} }
-                where:
-                 <label> is the label to display in the quick filter list
-                 <callable> is the function to call to get the mask.
+            - {'<label>': {FilterType.STR, <query string>} }
+            - {'<label>': {FilterType.CALLABLE, <callable>} }
+            - {'<label>': {FilterType.LIST, <list of values>} }
+            where:
+             <label> is the label to display in the quick filter list
+             <callable> is the function to call to get the mask.
+             <list of values> list of asset_id ou app_name (json encoded)
         """
         filters = {
-            'Owned': [str, 'Owned == True'],  #
-            'Not Owned': [str, 'Owned == False'],  #
-            'Obsolete': [str, 'Obsolete == True'],  #
-            'Not Obsolete': [str, 'Obsolete == False'],  #
-            'Must buy': [str, '`Must buy` == True'],  #
-            'Added manually': [str, '`Added manually` == True'],  #
-            # 'Plugins only': [str, 'Category.str.contains("Plugin", case=False))'],  #
-            'Plugins only': ['callable', f'search##Category##Plugin'],  #
-            'Free': [str, 'Price == 0 or Free == True'],  #
-            'Free and not owned': ['callable', "free_and_not_owned"],  #
-            'Not Marketplace': [str, 'Origin != "Marketplace"'],
-            'Downloaded': [str, '`Downloaded size` != ""'],  #
-            'Installed in folder': [str, '`Installed folders` != ""'],  #
-            'Local and marketplace': ['callable', 'local_and_marketplace'],  #
-            'With comment': [str, 'Comment != ""'],  #
-            # 'Empty id': [str, f'Asset_id.str.contains("{gui_g.s.empty_row_prefix}", case=False)'],  #
-            # 'Local id': [str, f'Asset_id.str.contains("{gui_g.s.duplicate_row_prefix}", case=False)'],  #
-            # 'Temp id': [str, f'Asset_id.str.contains("{gui_g.s.temp_id_prefix}", case=False)'],  #
-            'Local id': ['callable', f'search##Asset_id##{gui_g.s.duplicate_row_prefix}'],  #
-            'Empty id': ['callable', f'search##Asset_id##{gui_g.s.empty_row_prefix}'],  #
-            'Temp id': ['callable', f'search##Asset_id##{gui_g.s.temp_id_prefix}'],  #
-            'Result OK': [str, '`Grab result` == "NO_ERROR"'],  #
-            'Result Not OK': [str, '`Grab result` != "NO_ERROR"'],  #
-            'Tags without name': ['callable', 'filter_tags_with_number'],  #
+            'Owned': [FilterType.STR, 'Owned == True'],  #
+            'Not Owned': [FilterType.STR, 'Owned == False'],  #
+            'Obsolete': [FilterType.STR, 'Obsolete == True'],  #
+            'Not Obsolete': [FilterType.STR, 'Obsolete == False'],  #
+            'Must buy': [FilterType.STR, '`Must buy` == True'],  #
+            'Added manually': [FilterType.STR, '`Added manually` == True'],  #
+            # 'Plugins only': [FilterType.STR, 'Category.str.contains("Plugin", case=False))'],  #
+            'Plugins only': [FilterType.CALLABLE, f'search##Category##Plugin'],  #
+            'Free': [FilterType.STR, 'Price == 0 or Free == True'],  #
+            'Free and not owned': [FilterType.CALLABLE, "free_and_not_owned"],  #
+            'Not Marketplace': [FilterType.STR, 'Origin != "Marketplace"'],
+            'Downloaded': [FilterType.STR, '`Downloaded size` != ""'],  #
+            'Installed in folder': [FilterType.STR, '`Installed folders` != ""'],  #
+            'Local and marketplace': [FilterType.CALLABLE, 'local_and_marketplace'],  #
+            'With comment': [FilterType.STR, 'Comment != ""'],  #
+            # 'Empty id': [FilterType.STR, f'Asset_id.str.contains("{gui_g.s.empty_row_prefix}", case=False)'],  #
+            # 'Local id': [FilterType.STR, f'Asset_id.str.contains("{gui_g.s.duplicate_row_prefix}", case=False)'],  #
+            # 'Temp id': [FilterType.STR, f'Asset_id.str.contains("{gui_g.s.temp_id_prefix}", case=False)'],  #
+            'Local id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.duplicate_row_prefix}'],  #
+            'Empty id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.empty_row_prefix}'],  #
+            'Temp id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.temp_id_prefix}'],  #
+            'Result OK': [FilterType.STR, '`Grab result` == "NO_ERROR"'],  #
+            'Result Not OK': [FilterType.STR, '`Grab result` != "NO_ERROR"'],  #
+            'Tags without name': [FilterType.CALLABLE, 'filter_tags_with_number'],  #
         }
 
         # convert to dict of FilterValues
         result = {}
         for filter_name, value in filters.items():
             ftype, fvalue = value
-            result[filter_name] = FilterValue(filter_name, ftype, fvalue)
+            result[filter_name] = FilterValue(name=filter_name, value=fvalue, ftype=ftype)
         return result
 
     def get_method(self, func_name: str) -> Optional[callable]:
@@ -75,6 +78,8 @@ class FilterCallable:
         :param func_name: the name of the method to get.
         :return: the method or None if not found.
         """
+        if not func_name:
+            return None
         try:
             method = getattr(self, func_name)
         except (Exception, ):
@@ -132,16 +137,22 @@ class FilterCallable:
             args: list with the following values in order:
                 the column name to search in. If 'all', search in all columns.
                 the value to search for.
+                flag (optional): a column name to get a True value from. If the column name starts with '^', the value is negated.
         """
         col_name = args[0]
         value = args[1]
-        if col_name == gui_g.s.default_value_for_all.lower():
+        flag = args[2] if len(args) > 2 else None
+        if col_name.lower() == gui_g.s.default_value_for_all.lower():
             mask = False
             for col in self.df.columns:
                 mask |= self.df[col].astype(str).str.lower().str.contains(value.lower())
-        # if col_name.lower() == 'all':
-        #     # search in all columns
-        #     mask = self.df.apply(lambda x: x.str.contains(value, case=False).any(), axis=1)
         else:
             mask = self.df[col_name].str.contains(value, case=False)
+        if flag:
+            # remove ` from flag
+            flag = flag.replace('`', '')
+            if flag.startswith('^'):
+                mask &= ~self.df[flag[1:]]
+            else:
+                mask &= self.df[flag]
         return mask

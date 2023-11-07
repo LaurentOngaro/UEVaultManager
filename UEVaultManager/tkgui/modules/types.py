@@ -65,3 +65,18 @@ class WidgetType(Enum):
     LABEL = 2  # Label widget
     CHECKBUTTON = 3  # Checkbutton widget
     BUTTON = 4  # Button widget
+
+
+class FilterType(Enum):
+    """ Enum for the filter types """
+    STR = 0  # filter use a string as query
+    CALLABLE = 1  # filter use a callable (from FilterCallableClass)
+    LIST = 2  # filter use a list of value for an asset_id or app_name (json encoded)
+
+    @classmethod
+    def from_name(cls, name: str) -> 'FilterType':
+        """ Return the filter type from its name """
+        for ftype in cls:
+            if ftype.name.lower() == name.lower():
+                return ftype
+        return cls.STR
