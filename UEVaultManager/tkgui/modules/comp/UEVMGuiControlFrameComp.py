@@ -297,7 +297,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         if folder and not os.path.isdir(folder):
             os.mkdir(folder)
         filename = fd.asksaveasfilename(
-            title='Choose a file to save filter to', initialdir=folder, filetypes=[('json file', '*.json')], initialfile=gui_g.s.last_opened_filter
+            title='Choose a file to save filter to', initialdir=folder, filetypes=gui_g.s.data_filetypes_json, initialfile=gui_g.s.last_opened_filter
         )
         if not filename:
             return
@@ -326,7 +326,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         filename = fd.askopenfilename(
             title='Choose a file to load filter from',
             initialdir=gui_g.s.filters_folder,
-            filetypes=[('json file', '*.json')],
+            filetypes=gui_g.s.data_filetypes_json,
             initialfile=gui_g.s.last_opened_filter
         )
         if not filename:
