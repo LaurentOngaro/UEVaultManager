@@ -78,6 +78,8 @@ class FilterCallable:
         :param func_name: the name of the method to get.
         :return: the method or None if not found.
         """
+        if not func_name:
+            return None
         try:
             method = getattr(self, func_name)
         except (Exception, ):
