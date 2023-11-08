@@ -12,7 +12,7 @@ from tkinter import ttk
 
 import pandas as pd
 from pandas.errors import EmptyDataError
-from pandastable import config, Table, TableModel
+from pandastable import applyStyle, config, Table, TableModel
 
 import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
@@ -70,6 +70,7 @@ class EditableTable(Table):
     _is_filtered: bool = False
     _is_filtered_saved: bool = False
     _column_infos_saved = False  # used to see if column_infos has changed
+    _group = []  # list of rows to keep sticky when filtering
     columns_saved_str: str = ''
     is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
     logger = gui_f.logging.getLogger(__name__.split('.')[-1])  # keep only the class name
@@ -261,6 +262,174 @@ class EditableTable(Table):
         Overrided for debugging
         """
         super().redraw(event, callback)
+
+    def show(self, callback=None):
+        """
+        Show the table
+        :param callback: callback function to call after the table has been shown.
+
+        Overrided for changing the popup menu for col and row headers
+        """
+        super().show(callback)
+        # overwriting the popupMenu method for col and row headers.
+        # Must be done AFTER table.show() because they are created in that method
+        self.colheader.popupMenu = self.colheader_popup_menu
+        self.rowheader.popupMenu = self.rowheader_popup_menu
+
+    def popupMenu(self, event, rows=None, cols=None, outside=None):
+        """Add left and right click behaviour for canvas, should not have to override
+            this function, it will take its values from defined dicts in constructor"""
+
+        def _popup_focus_out(_event):
+            popupmenu.unpost()
+
+        def _create_sub_menu(parent, label, commands):
+            menu = tk.Menu(parent, tearoff=0)
+            popupmenu.add_cascade(label=label, menu=menu)
+            for _action in commands:
+                menu.add_command(label=_action, command=defaultactions[_action])
+            applyStyle(menu)
+            return menu
+
+        def _add_commands(fieldtype):
+            functions = self.columnactions[fieldtype]
+            for f in list(functions.keys()):
+                func = getattr(self, functions[f])
+                popupmenu.add_command(label=f, command=lambda: func(row, col))
+            return
+
+        def _add_defaultcommands():
+            """now add general actions for all cells"""
+            for _action in cmd_inside_no_submenu:
+                if _action == 'Fill Down' and (rows is None or len(rows) <= 1):
+                    continue
+                if _action == 'Undo' and self.prevdf is None:
+                    continue
+                else:
+                    popupmenu.add_command(label=_action, command=defaultactions[_action])
+            return
+
+        defaultactions = {
+            # == edit
+            'Copy': lambda: self.copy(rows, cols),
+            'Undo': self.undo,
+            'Paste': self.paste,
+            'Undo Last Change': self.undo,
+            # == table
+            # 'Fill Down': lambda: self.fillDown(rows, cols),
+            # 'Table to Text': self.showasText,
+            # 'Clean Data': self.cleanData,
+            'Clear Formatting': self.clearFormatting,
+            'Clear Data': lambda: self.deleteCells(rows, cols),
+            'Select All': self.selectAll,
+            'Table Info': self.showInfo,
+            # 'Show as Text': self.showasText,
+            'Filter Rows': self.queryBar,
+            'Preferences': self.showPreferences,
+            # 'Copy Table': self.copyTable,
+            'Find/Replace': self.findText,
+            # 'Sort by index': lambda: self.table.sortTable(index=True),
+            # 'Reset index': self.table.resetIndex,
+            'Color by Value': self.setColorbyValue,
+            # == rows
+            'Add Row(s)': self.addRows,
+            # == row(s) selected
+            'Delete Row(s)': lambda: self.deleteRow(ask=True),
+            'Copy Row(s)': self.duplicateRows,
+            # BUGGY with editabletable 'Set Row Color': self.setRowColors,
+            # == columns
+            'Add Column(s)': self.addColumn,
+            # == columns(s) selected
+            'Delete Column(s)': lambda: self.deleteColumn(ask=True),
+            'Copy column': self.copyColumn,
+            'Align column': self.setAlignment,
+            'Sort columns by row': self.sortColumnIndex,
+            'Move column to Start': self.moveColumns,
+            'Move column to End': lambda: self.moveColumns(pos='end'),
+            'Set column Color': self.setColumnColors,
+            # BUGGY with editabletable 'Value Counts': self.valueCounts,
+            'String Operation': self.applyStringMethod,
+            'Set Data Type': self.setColumnType,
+            # == files
+            # 'New': self.new,
+            # 'Open': self.load,
+            # 'Save': self.save,
+            # 'Save As': self.saveAs,
+            # 'Import Text/CSV': lambda: self.importCSV(dialog=True),
+            # 'Import hdf5': lambda: self.importHDF(dialog=True),
+            # 'Export': self.doExport,
+            # == ploting
+            # 'Plot Selected': self.plotSelected,
+            # 'Hide plot': self.hidePlot,
+            # 'Show plot': self.showPlot,
+            # == custom actions
+            'Add to group': self.add_to_group,
+            'Remove from group': self.remove_from_group
+        }
+        popupmenu = tk.Menu(self, tearoff=0)
+
+        row = self.get_row_clicked(event)
+        col = self.get_col_clicked(event)
+        multicols = self.multiplecollist
+        colnames = list(self.model.df.columns[multicols])[:4]
+        colnames = [str(i)[:20] for i in colnames]
+        if len(colnames) > 2:
+            colnames = ','.join(colnames[:2]) + '+%s others' % str(len(colnames) - 2)
+        else:
+            colnames = ','.join(colnames)
+
+        cmd_inside_no_submenu = ['Add to Sticky Rows', 'Remove from Sticky Rows']
+        cmd_inside_edit = ['Copy', 'Paste', 'Undo', 'Undo Last Change']
+        cmd_both_no_submenu = []
+        cmd_both_table = [
+            'Select All', 'Filter Rows', 'Find/Replace', 'Clear Data', 'Clear Formatting', 'Color by Value', 'Preferences', 'Table Info'
+        ]
+        cmd_row_selected = [
+            'Delete Row(s)', 'Copy Row(s)',
+            # 'Set Row Color',
+        ]
+        cmd_col_selected = [
+            'Delete Column(s)', 'Copy column', 'Align column', 'Sort columns by row', 'Move column to Start', 'Move column to End',
+            'Set column Color', 'String Operation', 'Set Data Type',
+            # 'Value Counts',
+        ]
+        cmd_header_cols = ['Add Column(s)']
+        cmd_header_rows = ['Add Row(s)']
+
+        if outside is None:
+            # On the data
+            _add_defaultcommands()
+            popupmenu.add_separator()
+            _create_sub_menu(popupmenu, 'Edit', cmd_inside_edit)
+            if col:
+                coltype = self.model.getColumnType(col)
+                if coltype in self.columnactions:
+                    _add_commands(coltype)
+                popupmenu.add_separator()
+                _create_sub_menu(popupmenu, 'Columns', cmd_col_selected)
+            if row:
+                popupmenu.add_separator()
+                _create_sub_menu(popupmenu, 'Rows', cmd_row_selected)
+        else:
+            # Outside the data (i.e. on a header)
+            # a column header, show specific items
+            col_menu = _create_sub_menu(popupmenu, 'Columns', cmd_header_cols)
+            col_menu.add_command(label='Sort by ' + colnames + ' \u2193', command=lambda: self.sortTable(ascending=[1 for i in multicols]))
+            col_menu.add_command(label='Sort by ' + colnames + ' \u2191', command=lambda: self.sortTable(ascending=[0 for i in multicols]))
+            # a row header, show specific items
+            _create_sub_menu(popupmenu, 'Rows', cmd_header_rows)
+
+        for action in cmd_both_no_submenu:
+            popupmenu.add_command(label=action, command=defaultactions[action])
+
+        popupmenu.add_separator()
+        _create_sub_menu(popupmenu, 'Table', cmd_both_table)
+
+        popupmenu.bind('<FocusOut>', _popup_focus_out)
+        popupmenu.focus_set()
+        popupmenu.post(event.x_root, event.y_root)
+        applyStyle(popupmenu)
+        return popupmenu
 
     def colorRows(self):
         """
@@ -1045,7 +1214,7 @@ class EditableTable(Table):
         # we create the progress window here to avoid lots of imports in UEAssetScraper class
         max_threads = get_max_threads()
         owned_assets_only = False
-        scraped_assets_per_page = gui_g.s.scraped_asset_per_page  # a bigger value will be refused by UE API
+        scraped_assets_per_page = gui_g.s.scraped_assets_per_page  # a bigger value will be refused by UE API
         if gui_g.s.testing_switch == 1:
             start_row = 15000
             stop_row = 15000 + scraped_assets_per_page * 5
@@ -2080,3 +2249,36 @@ class EditableTable(Table):
         :param error: error to add.
         """
         self._errors.append(error)
+
+    def colheader_popup_menu(self, event, outside=True):
+        """Overwrite the default colheader popupMenu method"""
+        print('colheader_popupMenu')
+        return self.popupMenu(event, outside=outside)
+
+    def rowheader_popup_menu(self, event, outside=True):
+        """Overwrite the default rowheader popupMenu method"""
+        print('rowheader_popupMenu')
+        return self.popupMenu(event, outside=outside)
+
+    def add_to_group(self):
+        """Add selected rows to sticky rows"""
+        rows = self.multiplerowlist
+        if rows:
+            for row in rows:
+                asset_id = self.get_cell(row, self.get_col_index('Asset_id'))
+                self._group.append(asset_id)
+                print(f'added asset_id {asset_id} to group list')
+            self._group = list(set(self._group))
+            self._group.sort()
+            self.update()
+
+    def remove_from_group(self):
+        """Remove selected rows from sticky rows"""
+        rows = self.multiplerowlist
+        if rows:
+            for row in rows:
+                asset_id = self.get_cell(row, self.get_col_index('Asset_id'))
+                if asset_id in self._group:
+                    print(f'removed row_index {asset_id} from group list')
+                    self._group.remove(asset_id)
+            self.update()
