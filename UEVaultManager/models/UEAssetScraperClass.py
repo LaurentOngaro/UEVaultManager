@@ -868,17 +868,16 @@ class UEAssetScraper:
                 debug_value = 0  # other than 0 for debug purpose, changing the value during debug will change the test case
                 if debug_value == 1:
                     # test for a 'common.server_error' error (http 431)
-                    json_data_from_egs_url = self.core.egs.get_json_data_from_url( 'https://www.unrealengine.com/marketplace/api/assets?start=0&count=90&sortBy=effectiveDate&sortDir=DESC', override_timeout=gui_g.s.scraping_asset_timeout)
+                    json_data_from_egs_url = self.core.egs.get_json_data_from_url( 'https://www.unrealengine.com/marketplace/api/assets?start=0&count=90&sortBy=effectiveDate&sortDir=DESC', override_timeout=gui_g.s.timeout_for_scraping)
                 elif debug_value == 2:
                     # test for a timeout error
                     rand_start = random.randint(10, 350) * 100  # create a new url at each test to avoid server caching
                     json_data_from_egs_url = self.core.egs.get_json_data_from_url( f'https://www.unrealengine.com/marketplace/api/assets?start={rand_start}&count=50&sortBy=effectiveDate&sortDir=DESC', override_timeout=1 )
                 else:
                     # normal case
-                    json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=gui_g.s.scraping_asset_timeout)
+                    json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=gui_g.s.timeout_for_scraping)
                 """
-                json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=gui_g.s.scraping_asset_timeout)
-
+                json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=gui_g.s.timeout_for_scraping)
                 error_code = json_data_from_egs_url.get('errorCode', '')  # value returned by self.session.get() call inside get_json_data_from_url()
                 no_error = (error_code == '')
             except (ReadTimeout, ):
@@ -1120,7 +1119,7 @@ class UEAssetScraper:
                         f'While testing the first url, we could not get data from url {self._urls[0]}.\nNew Try ({tries}/{max_tries}) with a higher timeout value...',
                         'warning'
                     )
-                    gui_g.s.scraping_asset_timeout = int(gui_g.s.scraping_asset_timeout * 1.5)  # 50% more
+                    gui_g.s.timeout_for_scraping = int(gui_g.s.timeout_for_scraping * 1.5)  # 50% more
                 check = self.get_data_from_url(self._urls[0], owned_assets_only)
 
             if check != GetDataResult.OK:

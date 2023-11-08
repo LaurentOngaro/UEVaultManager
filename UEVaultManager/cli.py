@@ -909,7 +909,7 @@ class UEVaultManagerCLI:
         # still true ?
         # ue_asset_per_page = gui_g.s.rows_per_page
         start_row = 0
-        scraped_asset_per_page = gui_g.s.scraped_asset_per_page
+        scraped_assets_per_page = gui_g.s.scraped_assets_per_page
         owned_assets_only = False
         max_threads = get_max_threads()
         if gui_g.s.testing_switch == 1:
@@ -922,7 +922,7 @@ class UEVaultManagerCLI:
             datasource_filename=datasource_filename,
             use_database=use_database,
             start=start_row,
-            assets_per_page=scraped_asset_per_page,
+            assets_per_page=scraped_assets_per_page,
             max_threads=max_threads,
             load_from_files=load_from_files,
             keep_intermediate_files=args.debug,
