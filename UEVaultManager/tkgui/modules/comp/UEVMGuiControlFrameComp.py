@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import filedialog as fd, messagebox
 
 import ttkbootstrap as ttk
-from ttkbootstrap.constants import WARNING
+from ttkbootstrap.constants import PRIMARY, WARNING
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.models.csv_sql_fields import get_label_for_field
@@ -36,12 +36,12 @@ class UEVMGuiControlFrame(ttk.Frame):
         self._data_table: EditableTable = data_table
         self._container = container
 
-        pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': True}
+        pack_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': True}
+        pack_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0, 'fill': tk.BOTH, 'expand': True}
         grid_def_options_np = {'ipadx': 0, 'ipady': 0, 'padx': 0, 'pady': 0}  # no padding
-        # pack_def_options = {'ipadx': 2, 'ipady': 2, 'fill': tk.BOTH, 'expand': False}
-        grid_ew_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
-        lblf_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
-        lblf_fw_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
+        grid_ew_options = {'ipadx': 1, 'ipady': 1, 'padx': 2, 'pady': 2, 'sticky': tk.EW}  # full width
+        lblf_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': False}
+        lblf_fw_options = {'ipadx': 1, 'ipady': 1, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}  # full width
         # content frame
         lblf_content = ttk.LabelFrame(self, text='Data Table and content')
         lblf_content.pack(**lblf_def_options)
@@ -50,23 +50,32 @@ class UEVMGuiControlFrame(ttk.Frame):
         # new row
         cur_row += 1
         cur_col = 0
-        lbl_data_source = ttk.Label(lblf_content, text='Data Source: ')
-        lbl_data_source.grid(row=cur_row, column=0, columnspan=3, **grid_ew_options)
-        cur_col += 3
-        lbl_data_type = ttk.Label(lblf_content, text='Type: ')
-        lbl_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.E)
-        cur_col += 1
+        lblf_inner = ttk.Frame(lblf_content)
+        lblf_inner.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_def_options_np)
+        ttk_item = ttk.Label(lblf_inner, text='Data Source type')
+        ttk_item.pack(side=tk.LEFT, **pack_def_options_np)
         self.var_entry_data_source_type = tk.StringVar(value=data_table.data_source_type.name)
         # noinspection PyArgumentList
         # (bootstyle is not recognized by PyCharm)
-        entry_data_type = ttk.Entry(lblf_content, textvariable=self.var_entry_data_source_type, state='readonly', width=10, bootstyle=WARNING)
-        entry_data_type.grid(row=cur_row, column=cur_col, **grid_def_options_np, sticky=tk.W)
+        ttk_item = ttk.Entry(lblf_inner, textvariable=self.var_entry_data_source_type, width=10, state='readonly', bootstyle=WARNING)
+        ttk_item.pack(side=tk.LEFT, **pack_def_options_np)
+        # noinspection PyArgumentList
+        # (bootstyle is not recognized by PyCharm)
+        self.cb_groups = ttk.Combobox(lblf_inner, values=gui_g.s.group_names, width=10, bootstyle=PRIMARY)
+        self.cb_groups.pack(side=tk.RIGHT, **pack_def_options_np)
+        ttk_item = ttk.Label(lblf_inner, text='  Current group')
+        ttk_item.pack(side=tk.RIGHT, **pack_def_options_np)
+        self.cb_groups.set(gui_g.s.current_group_name)
+        self.cb_groups.bind('<<ComboboxSelected>>', self.set_current_group)
         # new row
         cur_row += 1
         cur_col = 0
+        ttk_item = ttk.Label(lblf_content, text='File name')
+        ttk_item.grid(row=cur_row, column=cur_col, **grid_ew_options)
+        cur_col += 1
         self.var_entry_data_source_name = tk.StringVar(value=data_table.data_source)
-        self.entry_data_source = ttk.Entry(lblf_content, textvariable=self.var_entry_data_source_name, state='readonly')
-        self.entry_data_source.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
+        self.entry_data_source = ttk.Entry(lblf_content, textvariable=self.var_entry_data_source_name, width=20, state='readonly')
+        self.entry_data_source.grid(row=cur_row, column=cur_col, columnspan=max_col - 1, **grid_ew_options)
         # new row
         cur_row += 1
         cur_col = 0
@@ -133,11 +142,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
         frm_filter = FilterFrame(
-            self,
-            df=data_table.get_data(),
-            update_func=data_table.update,
-            load_query_func=self.load_filter,
-            save_query_func=self.save_filter,
+            self, df=data_table.get_data(), update_func=data_table.update, load_query_func=self.load_filter, save_query_func=self.save_filter,
         )
         frm_filter.pack(**lblf_def_options)
         self._container._frm_filter = frm_filter
@@ -353,3 +358,8 @@ class UEVMGuiControlFrame(ttk.Frame):
             messagebox.showwarning('Warning', f'An error occurs when opening the filter file. Check its content')
             _filter = {}
         return _filter
+
+    def set_current_group(self, _event) -> None:
+        """ Set the current group """
+        gui_g.s.current_group_name = self.cb_groups.get()
+        gui_g.s.save_config_file()

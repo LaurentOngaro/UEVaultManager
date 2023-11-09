@@ -267,6 +267,11 @@ csv_sql_fields = {
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
     },
+    'In group': {
+        'sql_name': 'in_group',
+        'state': CSVFieldState.NORMAL,
+        'field_type': CSVFieldType.STR
+    },
 }
 
 
@@ -505,19 +510,21 @@ def get_csv_field_name(sql_field_name: str) -> str:
     return result
 
 
-def set_default_values(data: dict, for_sql: bool = False) -> dict:
+def set_default_values(data: dict, for_sql: bool = False, uid: str = '') -> dict:
     """
     Set default values to a new row.
     :param data: data to set default values to.
     :param for_sql: flag indicating if the data is for SQL.
+    :param uid: uid to use for the row. If not provided, a new one will be created.
     :return: data with default values set.
     """
-    uid = create_uid()
+    uid = uid or create_uid()
     new_data = {
         'Asset_id': gui_g.s.empty_row_prefix + uid,
         'Image': gui_g.s.empty_cell,
         'Added manually': True,
         'Uid': uid,
+        'Tags': gui_g.s.empty_cell,
         'Category': UEAssetType.Unknown.category_name,
         'Grab result': GrabResult.INCONSISTANT_DATA.name
     }

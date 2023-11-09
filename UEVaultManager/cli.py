@@ -225,10 +225,10 @@ class UEVaultManagerCLI:
         """
         Create a backup of the log files.
         """
-        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
-        create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
-        create_file_backup(self.core.scan_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
-        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
+        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger)
+        create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger)
+        create_file_backup(self.core.scan_assets_filename_log, logger=self.logger)
+        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger)
 
     def auth(self, args) -> None:
         """
@@ -358,7 +358,7 @@ class UEVaultManagerCLI:
             self._log(f'The String "{args.filter_category}" will be search in Assets category')
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
-            create_file_backup(args.output, backup_folder=gui_g.s.backup_folder)
+            create_file_backup(args.output)
         if args.csv:
             file_format = 'csv'
         elif args.tsv:
@@ -909,7 +909,7 @@ class UEVaultManagerCLI:
         # still true ?
         # ue_asset_per_page = gui_g.s.rows_per_page
         start_row = 0
-        scraped_asset_per_page = gui_g.s.scraped_asset_per_page
+        scraped_assets_per_page = gui_g.s.scraped_assets_per_page
         owned_assets_only = False
         max_threads = get_max_threads()
         if gui_g.s.testing_switch == 1:
@@ -922,7 +922,7 @@ class UEVaultManagerCLI:
             datasource_filename=datasource_filename,
             use_database=use_database,
             start=start_row,
-            assets_per_page=scraped_asset_per_page,
+            assets_per_page=scraped_assets_per_page,
             max_threads=max_threads,
             load_from_files=load_from_files,
             keep_intermediate_files=args.debug,

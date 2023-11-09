@@ -9,10 +9,11 @@ import tkinter as tk
 import warnings
 import webbrowser
 from tkinter import ttk
+from typing import Optional
 
 import pandas as pd
 from pandas.errors import EmptyDataError
-from pandastable import config, Table, TableModel
+from pandastable import applyStyle, config, Table, TableModel
 
 import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
@@ -46,43 +47,8 @@ class EditableTable(Table):
     :param update_preview_info_func: function that updates previewed infos of the current asset.
     :param kwargs: additional arguments to pass to the pandastable.Table class.
     """
-    _data: pd.DataFrame = None
-    _last_selected_row: int = -1
-    _last_selected_col: int = -1
-    _last_cell_value: str = ''
-    _changed_rows = []
-    _deleted_asset_ids = []
-    _db_handler = None
-    _frm_quick_edit = None
-    _frm_filter = None
-    _edit_row_window = None
-    _edit_row_entries = None
-    _edit_row_number: int = -1
-    _edit_cell_window = None
-    _edit_cell_row_number: int = -1
-    _edit_cell_col_index: int = -1
-    _edit_cell_widget = None
-    _dftype_for_coloring = DataFrameUsed.MODEL  # type of dataframe used for coloring
-    _is_scanning = False  # True when a folders scan is in progress
-    _errors: [Exception] = []
-    _current_page: int = 1
-    _current_page_saved: int = 1
-    _is_filtered: bool = False
-    _is_filtered_saved: bool = False
-    _column_infos_saved = False  # used to see if column_infos has changed
-    columns_saved_str: str = ''
-    is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
     logger = gui_f.logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
-    model: TableModel = None  # setup in table.__init__
-    rowcolors: pd.DataFrame = None  # setup in table.__init__
-    df_unfiltered: pd.DataFrame = None  # unfiltered dataframe (default)
-    df_filtered: pd.DataFrame = None  # filtered dataframe
-    progress_window: FakeProgressWindow = None
-    pagination_enabled: bool = True
-    total_pages: int = 1
-    must_save: bool = False
-    must_rebuild: bool = False
 
     def __init__(
         self,
@@ -101,14 +67,53 @@ class EditableTable(Table):
         self._container = container
         self.data_source_type: DataSourceType = data_source_type
         self.data_source = data_source
+        self.rows_per_page: int = rows_per_page
         self.show_toolbar: bool = show_toolbar
         self.show_statusbar: bool = show_statusbar
-        self.rows_per_page: int = rows_per_page
         self.update_controls_state_func = update_controls_state_func
         self.update_preview_info_func = update_preview_info_func
+        self._data: Optional[pd.DataFrame] = None
+        self._last_selected_row: int = -1
+        self._last_selected_col: int = -1
+        self._last_cell_value: str = ''
+        self._changed_rows = []
+        self._deleted_asset_ids = []
+        self._db_handler = None
+        self._frm_quick_edit = None
+        self._frm_filter = None
+        self._edit_row_window = None
+        self._edit_row_entries = None
+        self._edit_row_number: int = -1
+        self._edit_cell_window = None
+        self._edit_cell_row_number: int = -1
+        self._edit_cell_col_index: int = -1
+        self._edit_cell_widget = None
+        self._dftype_for_coloring = DataFrameUsed.MODEL  # type of dataframe used for coloring
+        self._is_scanning = False  # True when a folders scan is in progress
+        self._errors: [Exception] = []
+        self._current_page: int = 1
+        self._current_page_saved: int = 1
+        self._is_filtered: bool = False
+        self._is_filtered_saved: bool = False
+        self._column_infos_saved = False  # used to see if column_infos has changed
+        self._groups = {}  # dictionnary that contains lists of asset_id for each group
+
+        self.columns_saved_str: str = ''
+        self.is_header_dragged = False  # true when a col header is currently dragged by a mouse mouvement
+        # noinspection PyTypeChecker
+        self.model: TableModel = None  # setup in table.__init__
+        self.rowcolors: Optional[pd.DataFrame] = None  # setup in table.__init__
+        self.df_unfiltered: Optional[pd.DataFrame] = None  # unfiltered dataframe (default)
+        self.df_filtered: Optional[pd.DataFrame] = None  # filtered dataframe
+        self.progress_window: Optional[FakeProgressWindow] = None
+        self.pagination_enabled: bool = True
+        self.total_pages: int = 1
+        self.must_save: bool = False
+        self.must_rebuild: bool = False
+
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         gui_f.show_progress(container, text='Loading Data from data source...')
-        if self.is_using_database():
+        if self.is_using_database:
             self._db_handler = UEAssetDbHandler(database_name=self.data_source)
         df_loaded = self.read_data()
         if df_loaded is None:
@@ -117,9 +122,8 @@ class EditableTable(Table):
             return
         else:
             Table.__init__(self, container, dataframe=df_loaded, showtoolbar=show_toolbar, showstatusbar=show_statusbar, **kwargs)
-            # self.set_data(self.set_columns_type(df_loaded), df_type=DataFrameUsed.UNFILTERED)  # is format necessary ?
             self.set_data(df_loaded, df_type=DataFrameUsed.UNFILTERED)
-            self.resize_columns()
+            self.setup_columns()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
         gui_f.close_progress(self)
 
@@ -158,6 +162,11 @@ class EditableTable(Table):
         """
         self._is_filtered_saved = self._is_filtered
         self._is_filtered = value
+
+    @property
+    def is_using_database(self) -> bool:
+        """ Check if the table is using a database as data source. """
+        return self.data_source_type == DataSourceType.DATABASE
 
     @property
     def db_handler(self) -> UEAssetDbHandler:
@@ -261,6 +270,168 @@ class EditableTable(Table):
         Overrided for debugging
         """
         super().redraw(event, callback)
+
+    def show(self, callback=None):
+        """
+        Show the table
+        :param callback: callback function to call after the table has been shown.
+
+        Overrided for changing the popup menu for col and row headers
+        """
+        super().show(callback)
+        # overwriting the popupMenu method for col and row headers.
+        # Must be done AFTER table.show() because they are created in that method
+        self.colheader.popupMenu = self.colheader_popup_menu
+        self.rowheader.popupMenu = self.rowheader_popup_menu
+
+    def popupMenu(self, event, rows=None, cols=None, outside=None):
+        """Add left and right click behaviour for canvas, should not have to override
+            this function, it will take its values from defined dicts in constructor"""
+
+        def _popup_focus_out(_event):
+            popupmenu.unpost()
+
+        def _create_sub_menu(parent, label, commands):
+            menu = tk.Menu(parent, tearoff=0)
+            popupmenu.add_cascade(label=label, menu=menu)
+            for _action in commands:
+                menu.add_command(label=_action, command=defaultactions[_action])
+            applyStyle(menu)
+            return menu
+
+        def _add_commands(fieldtype):
+            functions = self.columnactions[fieldtype]
+            for f in list(functions.keys()):
+                func = getattr(self, functions[f])
+                popupmenu.add_command(label=f, command=lambda: func(row, col))
+            return
+
+        def _add_defaultcommands():
+            """now add general actions for all cells"""
+            for _action in cmd_inside_no_submenu:
+                if _action == 'Fill Down' and (rows is None or len(rows) <= 1):
+                    continue
+                if _action == 'Undo' and self.prevdf is None:
+                    continue
+                else:
+                    popupmenu.add_command(label=_action, command=defaultactions[_action])
+            return
+
+        defaultactions = {
+            # == edit
+            'Copy': lambda: self.copy(rows, cols),
+            'Undo': self.undo,
+            'Paste': self.paste,
+            'Undo Last Change': self.undo,
+            # == table
+            # 'Fill Down': lambda: self.fillDown(rows, cols),
+            # 'Table to Text': self.showasText,
+            # 'Clean Data': self.cleanData,
+            'Clear Formatting': self.clearFormatting,
+            'Clear Data': lambda: self.deleteCells(rows, cols),
+            'Select All': self.selectAll,
+            'Table Info': self.showInfo,
+            # 'Show as Text': self.showasText,
+            'Filter Rows': self.queryBar,
+            'Preferences': self.showPreferences,
+            # 'Copy Table': self.copyTable,
+            'Find/Replace': self.findText,
+            # 'Sort by index': lambda: self.table.sortTable(index=True),
+            # 'Reset index': self.table.resetIndex,
+            'Color by Value': self.setColorbyValue,
+            # == rows
+            'Add Row(s)': self.addRows,
+            # == row(s) selected
+            'Delete Row(s)': lambda: self.deleteRow(ask=True),
+            'Copy Row(s)': self.duplicateRows,
+            # BUGGY with editabletable 'Set Row Color': self.setRowColors,
+            # == columns
+            'Add Column(s)': self.addColumn,
+            # == columns(s) selected
+            'Delete Column(s)': lambda: self.deleteColumn(ask=True),
+            'Copy column': self.copyColumn,
+            'Align column': self.setAlignment,
+            'Sort columns by row': self.sortColumnIndex,
+            'Move column to Start': self.moveColumns,
+            'Move column to End': lambda: self.moveColumns(pos='end'),
+            'Set column Color': self.setColumnColors,
+            # BUGGY with editabletable 'Value Counts': self.valueCounts,
+            'String Operation': self.applyStringMethod,
+            'Set Data Type': self.setColumnType,
+            # == files
+            # 'New': self.new,
+            # 'Open': self.load,
+            # 'Save': self.save,
+            # 'Save As': self.saveAs,
+            # 'Import Text/CSV': lambda: self.importCSV(dialog=True),
+            # 'Import hdf5': lambda: self.importHDF(dialog=True),
+            # 'Export': self.doExport,
+            # == ploting
+            # 'Plot Selected': self.plotSelected,
+            # 'Hide plot': self.hidePlot,
+            # 'Show plot': self.showPlot,
+            # == custom actions
+            'Add to Group': self.add_to_group,
+            'Remove from Group': self.remove_from_group
+        }
+        popupmenu = tk.Menu(self, tearoff=0)
+
+        row = self.get_row_clicked(event)
+        col = self.get_col_clicked(event)
+        multicols = self.multiplecollist
+        colnames = list(self.model.df.columns[multicols])[:4]
+        colnames = [str(i)[:20] for i in colnames]
+        if len(colnames) > 2:
+            colnames = ','.join(colnames[:2]) + '+%s others' % str(len(colnames) - 2)
+        else:
+            colnames = ','.join(colnames)
+
+        cmd_inside_no_submenu = ['Add to Group', 'Remove from Group']
+        cmd_inside_edit = ['Copy', 'Paste', 'Undo', 'Undo Last Change']
+        cmd_both_no_submenu = []
+        cmd_both_rows = [
+            'Add Row(s)', 'Delete Row(s)', 'Copy Row(s)',
+            # 'Set Row Color',
+        ]
+        cmd_both_cols = [
+            'Add Column(s)', 'Delete Column(s)', 'Copy column', 'Align column', 'Sort columns by row', 'Move column to Start', 'Move column to End',
+            'Set column Color', 'String Operation', 'Set Data Type',
+            # 'Value Counts',
+        ]
+        cmd_both_table = [
+            'Select All', 'Filter Rows', 'Find/Replace', 'Clear Data', 'Clear Formatting', 'Color by Value', 'Preferences', 'Table Info'
+        ]
+
+        if outside is None:
+            # On the data
+            _add_defaultcommands()
+            popupmenu.add_separator()
+            _create_sub_menu(popupmenu, 'Edit', cmd_inside_edit)
+            if col:
+                coltype = self.model.getColumnType(col)
+                if coltype in self.columnactions:
+                    _add_commands(coltype)
+        else:
+            # Outside the data (i.e. on a header)
+            pass
+        for action in cmd_both_no_submenu:
+            popupmenu.add_command(label=action, command=defaultactions[action])
+
+        popupmenu.add_separator()
+        _create_sub_menu(popupmenu, 'Rows', cmd_both_rows)
+        popupmenu.add_separator()
+        col_menu = _create_sub_menu(popupmenu, 'Columns', cmd_both_cols)
+        col_menu.insert_command(index=0, label='Sort by ' + colnames + ' \u2193', command=lambda: self.sortTable(ascending=1))
+        col_menu.insert_command(index=0, label='Sort by ' + colnames + ' \u2191', command=lambda: self.sortTable(ascending=0))
+
+        popupmenu.add_separator()
+        _create_sub_menu(popupmenu, 'Table', cmd_both_table)
+
+        popupmenu.bind('<FocusOut>', _popup_focus_out)
+        popupmenu.focus_set()
+        popupmenu.post(event.x_root, event.y_root)
+        applyStyle(popupmenu)
+        return popupmenu
 
     def colorRows(self):
         """
@@ -466,10 +637,6 @@ class EditableTable(Table):
             return True
         return False
 
-    def is_using_database(self) -> bool:
-        """ Check if the table is using a database as data source. """
-        return self.data_source_type == DataSourceType.DATABASE
-
     def set_frm_filter(self, frm_filter=None) -> None:
         """
         Set the filter frame.
@@ -523,7 +690,7 @@ class EditableTable(Table):
         col_infos = {}
         for index, col in enumerate(self.model.df.columns):  # df.model checked
             col_infos[col] = {}
-            col_infos[col]['width'] = self.columnwidths.get(col, -1)  # -1 means default width. Still save the value to
+            col_infos[col]['width'] = self.columnwidths.get(col, -1)  # -1 means default width
             col_infos[col]['pos'] = index
         sorted_cols_by_pos = dict(sorted(col_infos.items(), key=lambda item: item[1]['pos']))
         if gui_g.s.index_copy_col_name not in sorted_cols_by_pos:
@@ -544,7 +711,7 @@ class EditableTable(Table):
             updated_info = self.get_col_infos()
         gui_g.s.set_column_infos(updated_info, self.data_source_type)
         if apply_resize_cols:
-            self.resize_columns()
+            self.setup_columns()
 
     def get_real_index(self, row_number: int, df_type: DataFrameUsed = DataFrameUsed.AUTO, add_page_offset: bool = True) -> int:
         """
@@ -642,37 +809,49 @@ class EditableTable(Table):
             # self.logger.error("The df_type parameter can't be DataFrameUsed.MODEL in that case. THIS MUST NOT OCCUR. Exiting application...")
             # previous line will quit the application
 
-    def resize_columns(self) -> None:
+    def setup_columns(self) -> None:
         """
         Resize and reorder the columns of the table.
         """
+
         column_infos = gui_g.s.get_column_infos(self.data_source_type)
-        column_infos_len = len(column_infos)
-        if column_infos_len <= 0:
+        if not column_infos:
             return
         df = self.get_data(DataFrameUsed.UNFILTERED)
-        column_len = len(df.columns)
+        columns = df.columns
+
+        # add a colum for the groups
+        if gui_g.s.group_col_name not in columns:
+            # self.addColumn(gui_g.s.group_col_name) #can't be used because it will ask user for info
+            self.model.addColumn(gui_g.s.group_col_name, 'object')
+            column_infos.update({gui_g.s.group_col_name: {'width': 45, 'pos': 0}})
+            df = self.get_data(DataFrameUsed.UNFILTERED)
+            columns = df.columns
+
+        column_infos_len = len(column_infos)
+        column_len = len(columns)
         diff_len = column_infos_len - column_len
-        if diff_len > 1:  # the difference could be 0 or 1 depending on the index_copy column has been added to the datatable
+        if diff_len > 2:  # the difference could be 0or 1 depending on the index_copy column has been added to the datatable
             gui_f.box_message(
                 f'The number of columns in data source ({column_len}) does not match the number of values in "column_infos" from the config file ({column_infos_len}).\nA backup of the current config file has been made.\nNormally, this will be fixed automatically on quit.\nIf not, please check the config file.'
             )
         # just for debugging
         col_list = column_infos.copy().keys()
         for col in col_list:
-            if col not in df.columns and col != gui_g.s.index_copy_col_name:
+            if col not in df.columns and col not in [gui_g.s.index_copy_col_name, gui_g.s.group_col_name]:
                 self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable. It has been removed from column_infos.')
                 # remove col from dict column_infos
                 column_infos.pop(col)
-        for col in df.columns:
+
+        for col in columns:
             if col not in column_infos.keys() and col != gui_g.s.index_copy_col_name:
                 self.logger.info(f'Column "{col}" is in the datatable BUT not in column_infos.')
         try:
-            # Add columns to column_infos that are not already present, with a width of 2
+            # Add columns to column_infos that are not already present, with a width of 40
             pos = column_infos_len
-            for col in df.columns:
+            for col in columns:
                 if col not in column_infos:
-                    column_infos[str(col)] = {'width': 2, 'pos': pos}
+                    column_infos[str(col)] = {'width': 40, 'pos': pos}
                     pos += 1
 
             # Update position for an unordered and hidden columns
@@ -762,10 +941,10 @@ class EditableTable(Table):
             )
         return go_on
 
-    def read_data(self) -> pd.DataFrame:
+    def read_data(self) -> Optional[pd.DataFrame]:
         """
         Load data from the specified CSV file or database.
-        :return: data loaded from the file.
+        :return: data loaded from the file or None if an error occurred.
         """
         self.must_rebuild = False
         if not self.valid_source_type(self.data_source):
@@ -778,38 +957,32 @@ class EditableTable(Table):
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
-            elif self.is_using_database():
+            elif self.is_using_database:
                 if self._db_handler is None:
                     # could occur after a call to self.valid_source_type()
                     self._db_handler = UEAssetDbHandler(database_name=self.data_source)
-                data = self._db_handler.get_assets_data_for_csv()
-                column_names: list = self._db_handler.get_columns_name_for_csv()
-                col_index = column_names.index('Uid')
-                data_count = len(data)
+                data = self._db_handler.get_assets_data_for_csv()  # empty if database is new
+                column_names: list = self._db_handler.get_columns_name_for_csv()  # empty if database is new
                 # check to see if the first row has a value in the Uid column
-                if data_count <= 0 or data[0][col_index] is None:
+                if not column_names or not data or data[0][column_names.index('Uid')] is None:
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
                 else:
                     df = pd.DataFrame(data, columns=column_names)
-                # use the
             else:
                 self.logger.error(f'Unknown data source type: {self.data_source_type}')
                 # previous line will quit the application
-                # noinspection PyTypeChecker
                 return None
         except EmptyDataError:
             self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
             df, _ = self.create_row(add_to_existing=False)
-            data_count = len(df)
         if df is None or df.empty:
             self.logger.error(f'No data found in data source: {self.data_source}')
             # previous line will quit the application
-            # noinspection PyTypeChecker
             return None
         else:
             self.df_unfiltered = df
-            self.total_pages = (data_count - 1) // self.rows_per_page + 1
+            self.total_pages = (len(df) - 1) // self.rows_per_page + 1
             return df
 
     def create_row(self, row_data=None, add_to_existing: bool = True, do_not_save: bool = False) -> (pd.DataFrame, int):
@@ -831,11 +1004,15 @@ class EditableTable(Table):
             col_data = gui_t.get_csv_field_name_list(return_as_string=True)  # column names
             str_data = col_data + '\n' + gui_t.create_empty_csv_row(return_as_string=True)  # dummy row
             table_row = pd.read_csv(io.StringIO(str_data), usecols=col_data.split(','), nrows=1, **gui_g.s.csv_options)
-        elif self.is_using_database():
+        elif self.is_using_database:
             # create an empty row (in the database) with the correct columns
             data = self._db_handler.create_empty_row(return_as_string=False, do_not_save=do_not_save)  # dummy row
             column_names = self._db_handler.get_columns_name_for_csv()
-            table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
+            try:
+                table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
+            except ValueError as error:
+                self.add_error(error)
+                self.logger.warning(f'Could not create an empty row for data source: {self.data_source}. Error: {error!r}')
             try:
                 table_row[gui_g.s.index_copy_col_name] = new_index
             except KeyError:
@@ -1039,13 +1216,13 @@ class EditableTable(Table):
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
         self.must_save = False
-        use_database = self.is_using_database()
+        use_database = self.is_using_database
         message = 'Rebuilding Data For database...' if use_database else 'Rebuilding Data For CSV file...'
         pw = gui_f.show_progress(self, message, force_new_window=True)
         # we create the progress window here to avoid lots of imports in UEAssetScraper class
         max_threads = get_max_threads()
         owned_assets_only = False
-        scraped_assets_per_page = gui_g.s.scraped_asset_per_page  # a bigger value will be refused by UE API
+        scraped_assets_per_page = gui_g.s.scraped_assets_per_page  # a bigger value will be refused by UE API
         if gui_g.s.testing_switch == 1:
             start_row = 15000
             stop_row = 15000 + scraped_assets_per_page * 5
@@ -1304,6 +1481,8 @@ class EditableTable(Table):
             gui_f.show_progress(self, text='Formating and converting DataTable...', keep_existing=True)
             self.set_data(self.set_columns_type(df))
             self.fillna_fixed(df)
+            if self._frm_filter is not None:
+                self._frm_filter.clear_filter()
             # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
         df_filtered = self._frm_filter.get_filtered_df() if self._frm_filter is not None else None
         if df_filtered is not None:
@@ -2080,3 +2259,69 @@ class EditableTable(Table):
         :param error: error to add.
         """
         self._errors.append(error)
+
+    def colheader_popup_menu(self, event, outside=True):
+        """Overwrite the default colheader popupMenu method"""
+        print('colheader_popupMenu')
+        return self.popupMenu(event, outside=outside)
+
+    def rowheader_popup_menu(self, event, outside=True):
+        """Overwrite the default rowheader popupMenu method"""
+        print('rowheader_popupMenu')
+        return self.popupMenu(event, outside=outside)
+
+    def init_groups(self) -> None:
+        """
+        Init the groups.
+        :return:
+        """
+        for group_name in gui_g.s.group_names:
+            self.get_group(group_name)  # will create the group if it does not exist
+
+    def get_group(self, name: str = '') -> list:
+        """
+        Get the current group. Create it if it does not exist.
+        :param name: name of the group to get. If None, the current group is returned.
+        :return: current group (list of asset_id)
+        """
+        if not name:
+            name = gui_g.s.current_group_name
+        try:
+            current_group: list = self._groups[name]
+        except (Exception, ):
+            self._groups[name] = []
+            current_group = self._groups[name]
+        return current_group
+
+    def add_to_group(self) -> None:
+        """Add selected rows to current group"""
+        rows = self.multiplerowlist
+        current_group = self.get_group()
+        if rows:
+            for row in rows:
+                asset_id = self.get_cell(row, self.get_col_index('Asset_id'))
+                if asset_id:
+                    current_group.append(asset_id)
+                    self.update_cell(row, self.get_col_index(gui_g.s.group_col_name), gui_g.s.current_group_name)
+                    if self.is_using_database:
+                        self.db_handler.update_asset(asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.current_group_name)
+                    self.logger.debug(f'added asset_id {asset_id} to group {gui_g.s.current_group_name}')
+            # sort the list and remove duplicates
+            current_group = list(set(current_group))
+            current_group.sort()
+            self.update()
+
+    def remove_from_group(self) -> None:
+        """Remove selected rows from current group"""
+        rows = self.multiplerowlist
+        current_group = self.get_group()
+        if rows:
+            for row in rows:
+                asset_id = self.get_cell(row, self.get_col_index('Asset_id'))
+                if asset_id and asset_id in current_group:
+                    current_group.remove(asset_id)
+                    self.update_cell(row, self.get_col_index(gui_g.s.group_col_name), gui_g.s.empty_cell)
+                    if self.is_using_database:
+                        self.db_handler.update_asset(asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.empty_cell)
+                    self.logger.debug(f'Removed asset_id {asset_id} from group {gui_g.s.current_group_name}')
+            self.update()

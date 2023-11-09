@@ -56,7 +56,7 @@ class GUISettings:
         self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
         self.filters_folder: str = path_join(self.path, 'filters')
 
-        self.backup_folder: str = path_join(self.path, 'backups')
+        self.backups_folder: str = path_join(self.path, 'backups')
         self.backup_file_ext: str = '.BAK'
         self.backup_file_to_keep: int = 10  # when creating a backup, this is the number of files to keep. Set to 0 for No limit
         self.default_filename: str = 'assets'
@@ -81,6 +81,7 @@ class GUISettings:
         self.origin_marketplace = 'Marketplace'
 
         self.index_copy_col_name: str = 'Index copy'
+        self.group_col_name: str = 'In group'  # could not be 'group' because it's a reserved word in sqlite
         # if a folder is in this tuple, the folder won't be scanned to find ue folders
         self.ue_invalid_content_subfolder = (
             'binaries', 'build', 'deriveddatacache', 'intermediate', 'saved', 'data'
@@ -105,8 +106,7 @@ class GUISettings:
         self.testing_assets_limit: int = 300  # when testing (ie testing_switch==1) , limit the number of assets to process to this value
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
-        self.scraped_asset_per_page: int = 75  # since 2023-10-31 a value bigger than 75 will be refused by UE API and return a 'common.server_error' error (http 431)
-        self.scraping_asset_timeout: int = 15  # time out for getting grouped assets with one url
+        self.scraped_assets_per_page: int = 75  # since 2023-10-31 a value bigger than 75 will be refused by UE API and return a 'common.server_error' error (http 431)
         self.app_monitor: int = 1
         self.preview_max_width: int = 150
         self.preview_max_height: int = 150
@@ -153,7 +153,7 @@ class GUISettings:
 
         folders = [
             self.assets_folder, self.assets_data_folder, self.owned_assets_data_folder, self.assets_global_folder, self.assets_csv_files_folder,
-            self.filters_folder, self.backup_folder, self.asset_images_folder, self.results_folder, self.scraping_folder
+            self.filters_folder, self.backups_folder, self.asset_images_folder, self.results_folder, self.scraping_folder
         ]
         for folder in folders:
             check_and_create_folder(folder)
@@ -463,6 +463,36 @@ class GUISettings:
         """ Setter for timeout_for_scraping """
         self.config_vars['timeout_for_scraping'] = value
 
+    @property
+    def scraped_assets_per_page(self) -> int:
+        """ Getter for scraped_assets_per_page """
+        return gui_fn.convert_to_int(self.config_vars['scraped_assets_per_page'])
+
+    @scraped_assets_per_page.setter
+    def scraped_assets_per_page(self, value):
+        """ Setter for scraped_assets_per_page """
+        self.config_vars['scraped_assets_per_page'] = value
+
+    @property
+    def group_names(self) -> list:
+        """ Getter for group_names """
+        return self._get_serialized('group_names')
+
+    @group_names.setter
+    def group_names(self, values):
+        """ Setter for group_names """
+        self._set_serialized('group_names', values)
+
+    @property
+    def current_group_name(self) -> str:
+        """ Getter for current_group_name """
+        return self.config_vars['current_group_name']
+
+    @current_group_name.setter
+    def current_group_name(self, value):
+        """ Setter for current_group_name """
+        self.config_vars['current_group_name'] = value
+
     def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
         """
         Get columns infos depending on the datasource type
@@ -528,6 +558,15 @@ class GUISettings:
                 'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
                 'value': 'True'
             },
+            'timeout_for_scraping': {
+                'comment':
+                'timeout in second when scraping several assets in once. This value should not be too low to limit timeout issues and scraping cancellation.',
+                'value': 30
+            },
+            'scraped_assets_per_page': {
+                'comment': 'Number of grouped assets to scrap with one url. Since 2023-10-31 a value bigger than 75 will be refused by UE API',
+                'value': 75
+            },
             'reopen_last_file': {
                 'comment': 'Set to True to re-open the last file at startup if no input file is given',
                 'value': 'True'
@@ -581,6 +620,14 @@ class GUISettings:
                     'elite_landscapes': 90
                 }
             },
+            'group_names': {
+                'comment': 'The name of the groups where the selected rows can be added to.',
+                'value': list(['#1', '#2', '#3'])
+            },
+            'current_group_name': {
+                'comment': 'The name of the current group where the selected rows can be added to.',
+                'value': '#1'
+            },
             'x_pos': {
                 'comment': 'X position of the main windows. Set to 0 to center the window. Automatically saved on quit',
                 'value': 0
@@ -621,7 +668,7 @@ class GUISettings:
             'hidden_column_names': {
                 'comment':
                 'List of columns names that will be hidden when applying columns width. Note that the "Index_copy" will be hidden by default',
-                'value': ['Uid', 'Release info']
+                'value': list(['Uid', 'Release info'])
             },
             'column_infos_sqlite': {
                 'comment': 'Infos about columns width and pos in DATABASE mode. Automatically saved on quit. Leave empty for default',
@@ -641,11 +688,6 @@ class GUISettings:
                 'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviours whithout quitting.',
                 'value': 0
             },
-            'timeout_for_scraping': {
-                'comment':
-                'timeout in second when scraping several assets in once. This value should not be too low to limit timeout issues and scraping cancellation.',
-                'value': 30
-            },
         }
 
         has_changed = False
@@ -656,7 +698,14 @@ class GUISettings:
         for option, content in config_defaults.items():
             if not self.config.has_option('UEVaultManager', option):
                 self.config.set('UEVaultManager', f';{content["comment"]}')
-                self.config.set('UEVaultManager', option, content['value'])
+                value = content['value']
+                if isinstance(value, list) or isinstance(value, dict):
+                    try:
+                        value = json.dumps(value)
+                    except TypeError:
+                        self._log(f'Failed to encode default value in a json string for {option}.Using an empty value')
+                        value = ''
+                self.config.set('UEVaultManager', option, value)
                 has_changed = True
 
         if has_changed:
@@ -675,6 +724,7 @@ class GUISettings:
             'debug_mode': self.config.getboolean('UEVaultManager', 'debug_mode'),
             'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
             'timeout_for_scraping': self.config.getint('UEVaultManager', 'timeout_for_scraping'),
+            'scraped_assets_per_page': self.config.get('UEVaultManager', 'scraped_assets_per_page'),
             'reopen_last_file': self.config.getboolean('UEVaultManager', 'reopen_last_file'),
             'never_update_data_files': self.config.getboolean('UEVaultManager', 'never_update_data_files'),
             'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),
@@ -686,6 +736,8 @@ class GUISettings:
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
             'results_folder': self.config.get('UEVaultManager', 'results_folder'),
             'minimal_fuzzy_score_by_name': self.config.get('UEVaultManager', 'minimal_fuzzy_score_by_name'),
+            'group_names': self.config.get('UEVaultManager', 'group_names'),
+            'current_group_name': self.config.get('UEVaultManager', 'current_group_name'),
             'x_pos': self.config.getint('UEVaultManager', 'x_pos'),
             'y_pos': self.config.getint('UEVaultManager', 'y_pos'),
             'width': self.config.getint('UEVaultManager', 'width'),
@@ -725,11 +777,12 @@ class GUISettings:
         # if config file has been modified externally, back-up the user-modified version before writing
         if os.path.exists(self.config_file_gui):
             if (mod_time := int(os.stat(self.config_file_gui).st_mtime)) != self.config.mod_time:
-                new_filename = f'config.{mod_time}.ini{self.backup_file_ext}'
+                new_filename = f'config.EXISTING_{mod_time}.ini{self.backup_file_ext}'
+                new_filename = path_join(self.backups_folder, new_filename)
+                os.rename(self.config_file_gui, new_filename)
                 self._log(
-                    f'Configuration file has been modified while UEVaultManager was running\nUser-modified config will be renamed to "{new_filename}"...'
+                    f'Configuration file has been modified while UEVaultManager was running\nUser-modified config has been be renamed to "{new_filename}"'
                 )
-                os.rename(self.config_file_gui, path_join(os.path.dirname(self.config_file_gui), new_filename))
 
         with open(self.config_file_gui, 'w', encoding='utf-8') as file:
             self.config.write(file)

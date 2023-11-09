@@ -141,7 +141,7 @@ class UEVMGui(tk.Tk):
         if not self.core:
             self.core = AppCore()
 
-        if self.is_using_database():
+        if self.is_using_database:
             # if using DATABASE
             # ________________
             # update the "installed folders" BEFORE loading the data in the datatable (because datatable content <> database content)
@@ -167,7 +167,7 @@ class UEVMGui(tk.Tk):
             self.quit()
             self.core.clean_exit(1)  # previous line could not quit
 
-        if not self.is_using_database():
+        if not self.is_using_database:
             # if using FILE
             # ________________
             # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
@@ -209,6 +209,11 @@ class UEVMGui(tk.Tk):
         self.protocol('WM_DELETE_WINDOW', self.on_close)
         gui_g.WindowsRef.uevm_gui = self
 
+    @property
+    def is_using_database(self) -> bool:
+        """ Check if the table is using a database as data source. """
+        return self.data_source_type == DataSourceType.DATABASE
+
     def setup(self, show_open_file_dialog: bool = False, rebuild_data: bool = False) -> None:
         """
         Set up the application. Called after the window is created.
@@ -216,7 +221,7 @@ class UEVMGui(tk.Tk):
         :param rebuild_data: whether the data will be rebuilt at startup.
         """
         data_table = self.editable_table  # shortcut
-        if data_table.is_using_database():
+        if data_table.is_using_database:
             show_open_file_dialog = False
         if not show_open_file_dialog and (rebuild_data or data_table.must_rebuild):
             if gui_f.box_yesno('Data file is invalid or empty. Do you want to rebuild data from sources files ?'):
@@ -260,10 +265,6 @@ class UEVMGui(tk.Tk):
         if show_option_fist:
             self.toggle_options_panel(True)
             self.toggle_actions_panel(False)
-
-    def is_using_database(self) -> bool:
-        """ Check if the table is using a database as data source. """
-        return self.data_source_type == DataSourceType.DATABASE
 
     def mainloop(self, n=0):
         """
@@ -564,7 +565,7 @@ class UEVMGui(tk.Tk):
         new_columns_infos = {}
         for i, col in enumerate(columns):
             try:
-                new_columns_infos[col] = columns_infos_saved[col]
+                new_columns_infos[col] = columns_infos_saved.get(col, {'width': 40, 'pos': i})  # columns_infos_saved could be empty
                 new_columns_infos[col]['pos'] = i
             except KeyError:
                 pass
@@ -611,7 +612,7 @@ class UEVMGui(tk.Tk):
         gui_g.s.height = self.winfo_height()
         gui_g.s.x_pos = self.winfo_x()
         gui_g.s.y_pos = self.winfo_y()
-        file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui, backup_folder=gui_g.s.backup_folder)
+        file_backup = gui_f.create_file_backup(gui_g.s.config_file_gui)
         gui_g.s.save_config_file()
         # delete the backup if the files and the backup are identical
         if filecmp.cmp(gui_g.s.config_file_gui, file_backup):
@@ -1254,7 +1255,7 @@ class UEVMGui(tk.Tk):
                 # using a global scraper to avoid creating a new one and a new db connection for each row
                 self.ue_asset_scraper = UEAssetScraper(
                     datasource_filename=self.editable_table.data_source,
-                    use_database=self.editable_table.is_using_database(),
+                    use_database=self.editable_table.is_using_database,
                     start=0,
                     assets_per_page=1,  # scrap only one asset
                     max_threads=1,
@@ -1276,7 +1277,7 @@ class UEVMGui(tk.Tk):
                 self.core.notfound_logger.info(f'{app_name}: invalid url "{marketplace_url}"')
             gui_f.box_message(msg, level='warning', show_dialog=not self.silent_mode)
             # change the grab result to CONTENT_NOT_FOUND in database
-            if self.is_using_database() and self.ue_asset_scraper:
+            if self.is_using_database and self.ue_asset_scraper:
                 self.ue_asset_scraper.asset_db_handler.update_asset('grab_result', GrabResult.CONTENT_NOT_FOUND.name, asset_id=app_name)
         return asset_data[0] if asset_data is not None else None
 
@@ -1369,7 +1370,7 @@ class UEVMGui(tk.Tk):
         pw = None
         row_count = len(row_indexes)
         data_table = self.editable_table  # shortcut
-        if self.is_using_database():
+        if self.is_using_database:
             tags_count_saved = data_table.db_handler.get_rows_count('tags')
             rating_count_saved = data_table.db_handler.get_rows_count('ratings')
         else:
@@ -1432,7 +1433,7 @@ class UEVMGui(tk.Tk):
                         show_dialog=not self.silent_mode
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                        if self.is_using_database():
+                        if self.is_using_database:
                             self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=False)
                 else:
                     col_index = data_table.get_col_index('Grab result')
@@ -1443,7 +1444,7 @@ class UEVMGui(tk.Tk):
             else:
                 message = f'Data for row index {row_index} have been updated from the marketplace.'
             tags_message = ''
-            if self.is_using_database():
+            if self.is_using_database:
                 tags_count = data_table.db_handler.get_rows_count('tags')
                 rating_count = data_table.db_handler.get_rows_count('ratings')
                 tags_message = f'\n{tags_count - tags_count_saved} tags and {rating_count - rating_count_saved} ratings have been added to the database.'
@@ -1463,7 +1464,7 @@ class UEVMGui(tk.Tk):
                         for key, value in forced_data.items():
                             asset_data[key] = value
                     data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                    if self.is_using_database():
+                    if self.is_using_database:
                         self.ue_asset_scraper.asset_db_handler.set_assets(asset_data)
             else:
                 col_index = data_table.get_col_index('Grab result')
@@ -1689,8 +1690,8 @@ class UEVMGui(tk.Tk):
         gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
         gui_f.update_widgets_in_list(url != '', 'asset_has_url')
         gui_f.update_widgets_in_list(gui_g.UEVM_cli_ref, 'cli_is_available')
-        gui_f.update_widgets_in_list(data_table.is_using_database(), 'database_is_used')
-        gui_f.update_widgets_in_list(not data_table.is_using_database(), 'file_is_used')
+        gui_f.update_widgets_in_list(data_table.is_using_database, 'database_is_used')
+        gui_f.update_widgets_in_list(not data_table.is_using_database, 'file_is_used')
         gui_f.update_widgets_in_list(row_is_selected, 'row_is_selected')
         gui_f.update_widgets_in_list(row_is_selected and not gui_g.s.offline_mode, 'row_is_selected_and_not_offline')
         gui_f.update_widgets_in_list(is_owned and not gui_g.s.offline_mode, 'asset_is_owned_and_not_offline')
@@ -1774,7 +1775,7 @@ class UEVMGui(tk.Tk):
 
     def _update_after_reload(self):
         data_table = self.editable_table  # shortcut
-        if not self.is_using_database():
+        if not self.is_using_database:
             df = data_table.get_data()
             # if using FILE
             # ________________
@@ -2088,7 +2089,7 @@ class UEVMGui(tk.Tk):
         """
         Run the window to update missing data in database from json files.
         """
-        if not self.editable_table.is_using_database():
+        if not self.editable_table.is_using_database:
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
         tool_window = JsonToolWindow(
@@ -2106,7 +2107,7 @@ class UEVMGui(tk.Tk):
         """
         Run the window to import/export database to csv files.
         """
-        if not self.editable_table.is_using_database():
+        if not self.editable_table.is_using_database:
             gui_f.box_message('This command can only be run with a database as data source', level='warning')
             return
         tool_window = DbToolWindowClass(

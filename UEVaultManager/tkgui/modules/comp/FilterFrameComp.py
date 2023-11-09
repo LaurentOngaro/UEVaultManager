@@ -9,6 +9,7 @@ from tkinter import messagebox, ttk
 from typing import Callable, Optional
 
 import pandas as pd
+from pandas.errors import UndefinedVariableError
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterCallableClass import FilterCallable
@@ -79,13 +80,13 @@ class FilterFrame(ttk.LabelFrame):
         if len(text_lower) < 3:
             return
         for value in combobox['values']:
-            if value.lower().startswith(text_lower):
+            if text_lower in value.lower():
                 combobox.set(value)
                 self.update_controls()
                 break
 
     # noinspection DuplicatedCode
-    def _create_widgets(self) -> None:
+    def _create_widgets(self, _args=None) -> None:
         """
         Create filter widgets inside the FilterFrame instance.
         """
@@ -100,9 +101,9 @@ class FilterFrame(ttk.LabelFrame):
         # new row
         cur_row += 1
         cur_col = 0
-        self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), state='readonly', width=20)
+        self.cb_quick_filter = ttk.Combobox(self, values=list(self._quick_filters.keys()), width=20)
         self.cb_quick_filter.grid(row=cur_row, column=cur_col, **self.grid_def_options)
-        self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.get_quick_filter())
+        self.cb_quick_filter.bind('<<ComboboxSelected>>', lambda event: self.get_quick_filter())  # do not remove lambda !
         self.cb_quick_filter.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_quick_filter))
         cur_col += 1
         self._var_entry_query = tk.StringVar()
@@ -310,7 +311,7 @@ class FilterFrame(ttk.LabelFrame):
 
                 if query:
                     return self._df.query(query)
-            except (AttributeError, ):
+            except (AttributeError, UndefinedVariableError):
                 # print(f'Error with defined filters. Updating filter...')
                 self.clear_filter()
                 return None

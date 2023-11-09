@@ -1,6 +1,8 @@
 # coding=utf-8
 """
 implementation for:
+- UEADBH_Settings: Settings for the class when running as main.
+- DbVersionNum: The version of the database or/and class.
 - UEAssetDbHandler: Handles database operations for the UE Assets.
 """
 import csv
@@ -11,14 +13,15 @@ import logging
 import os
 import random
 import sqlite3
+from enum import Enum
 from pathlib import Path
 
 from faker import Faker
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name_list, set_default_values
-from UEVaultManager.models.types import DateFormat, DbVersionNum
+from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name, get_sql_field_name_list, set_default_values
+from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str, convert_to_int, convert_to_str_datetime, create_uid, \
@@ -34,6 +37,33 @@ class UEADBH_Settings:
     read_data_only = True  # if True, the code will not create fake assets, but only read them from the database
     db_folder = path_from_relative_to_absolute('K:/UE/UEVM/scraping')
     db_name = path_join(db_folder, 'assets.db')
+
+
+class DbVersionNum(Enum):
+    """
+    The version of the database or/and class.
+    Used when checking if database must be upgraded by comparing with the class version.
+    """
+    # when a new version is added to the DbVersionNum enum
+    # - add code for the new version to the create_tables() method
+    # - add code for the new version check to the check_and_upgrade_database() method
+    V0 = 0  # invalid version
+    V1 = 1  # initial version : only the "standard" marketplace columns
+    V2 = 2  # add the columns used fo user data to the "standard" marketplace columns
+    V3 = 3  # add the last_run table to get data about the last run of the application
+    V4 = 4  # add custom_attributes field to the assets table
+    V5 = 5  # add added_manually column to the assets table
+    V6 = 6  # add tags column to the assets table
+    V7 = 7  # add the tags table
+    V8 = 8  # add the ratings tags table
+    V9 = 9  # create the "assets_tags" view for the tags in the assets table
+    V10 = 10  # add an autoincrement id to the last_run table
+    V11 = 11  # rename column installed_folder TO installed_folders
+    V12 = 12  # add release_info column to the assets table
+    V13 = 13  # add downloaded_size columns to the assets table
+    V14 = 14  # add categories et grab_result views
+    V15 = 15  # add Group column to the assets table
+    V16 = 16  # future version
 
 
 class UEAssetDbHandler:
@@ -148,10 +178,12 @@ class UEAssetDbHandler:
         :param new_version: new database version.
         """
         if self.connection is not None:
+            backup = create_file_backup(self.database_name, suffix=self.db_version.name)
             cursor = self.connection.cursor()
             cursor.execute(f'PRAGMA user_version = {new_version.value}')
             cursor.close()
             self.logger.info(f'database version is now set to {new_version}')
+            self.logger.info(f'Old version has been saved in {backup}')
 
     def _check_db_version(self, minimal_db_version: DbVersionNum, caller_name: str = 'this method') -> bool:
         """
@@ -186,7 +218,7 @@ class UEAssetDbHandler:
             self.connection.commit()
             cursor.close()
 
-    def _run_query(self, query: str, data: dict = None) -> list:
+    def run_query(self, query: str, data: dict = None) -> list:
         """
         Run a query.
         :param query: query to run.
@@ -392,6 +424,8 @@ class UEAssetDbHandler:
         """
         if not self.is_table_exist('assets'):
             previous_version = DbVersionNum.V0
+        elif not self.is_table_exist('last_run'):
+            previous_version = DbVersionNum.V2
         elif not self.is_table_exist('tags'):
             previous_version = DbVersionNum.V6
         elif not self.is_table_exist('ratings'):
@@ -435,7 +469,6 @@ class UEAssetDbHandler:
             self._add_missing_columns(
                 'assets',
                 required_columns={
-                    'added_manually': 'BOOLEAN',
                     'page_title': 'TEXT',
                     'obsolete': 'BOOLEAN',
                     'supported_versions': 'TEXT',
@@ -463,7 +496,7 @@ class UEAssetDbHandler:
             # next line produce error: sqlite3.OperationalError: Cannot add a PRIMARY KEY column
             # self._add_missing_columns('last_run', required_columns={'id': 'INTEGER PRIMARY KEY AUTOINCREMENT'})
             query = "DROP TABLE last_run"
-            self._run_query(query)
+            self.run_query(query)
             query = """
             CREATE TABLE last_run (
                 date        DATETIME,
@@ -473,12 +506,12 @@ class UEAssetDbHandler:
                 scraped_ids TEXT,
                 id          INTEGER PRIMARY KEY AUTOINCREMENT
             );"""
-            self._run_query(query)
+            self.run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V10
         if upgrade_from_version == DbVersionNum.V10:
             column = 'installed_folder'  # use a var to avoid issue whith pycharm inspection
             query = f"ALTER TABLE assets RENAME COLUMN {column} TO installed_folders;"
-            self._run_query(query)
+            self.run_query(query)
             self.db_version = upgrade_from_version = DbVersionNum.V11
         if upgrade_from_version == DbVersionNum.V11:
             self._add_missing_columns('assets', required_columns={'release_info': 'TEXT'})
@@ -489,6 +522,10 @@ class UEAssetDbHandler:
         if upgrade_from_version.value == DbVersionNum.V13.value:
             self.db_version = upgrade_from_version = DbVersionNum.V14
             self.create_tables(upgrade_to_version=self.db_version)
+        if upgrade_from_version == DbVersionNum.V14:
+            col_name = get_sql_field_name(gui_g.s.group_col_name)
+            self._add_missing_columns('assets', required_columns={col_name: 'TEXT'})
+            self.db_version = upgrade_from_version = DbVersionNum.V15
         if previous_version != self.db_version:
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)
@@ -685,19 +722,19 @@ class UEAssetDbHandler:
         :return: row (dict) or a string representing the empty row.
         """
         result = '' if return_as_string else {}
+        uid = create_uid()  # just to avoid a warning
         # add a new row to the 'assets' table
         if self.connection is not None:
             cursor = self.connection.cursor()
-            # generate a unique ID and check if it already exists in the database
-            uid = ''
             count = 1
             while count > 0:
+                # generate a unique ID and check if it already exists in the database
                 uid = create_uid()
                 cursor.execute("SELECT COUNT(*) FROM assets WHERE id = ?", (uid, ))
                 count = cursor.fetchone()[0]
             cursor.close()
             ue_asset = UEAsset()
-            ue_asset.set_data(set_default_values(ue_asset.get_data(), for_sql=True))
+            ue_asset.set_data(set_default_values(ue_asset.get_data(), for_sql=True, uid=uid))
 
             if not do_not_save:
                 self.save_ue_asset(ue_asset)
@@ -1047,7 +1084,7 @@ class UEAssetDbHandler:
                 file_name_p = folder_for_csv_files_p / f'{table_name}{suffix_all}.csv'
                 file_name = str(file_name_p)
                 if backup_existing:
-                    create_file_backup(file_src=file_name, backup_folder=folder_for_csv_files)
+                    create_file_backup(file_src=file_name, backups_folder=folder_for_csv_files)
                 # Get column names
                 if fields == '*':
                     cursor.execute(f"PRAGMA table_info({table_name});")
@@ -1195,6 +1232,8 @@ class UEAssetDbHandler:
             print(f'creating test asset #{index} with id {assets_id}')
             ue_asset = UEAsset()
             data = {
+                # in order of the columns creation in the database
+                # V1
                 'id': assets_id,
                 'namespace': fake.word(),
                 'catalog_item_id': fake.uuid4(),
@@ -1207,7 +1246,6 @@ class UEAssetDbHandler:
                 'description': fake.text(),
                 'technical_details': fake.text(),
                 'long_description': fake.text(),
-                'tags': [fake.word(), fake.word(), fake.word()],
                 'comment_rating_id': fake.uuid4(),
                 'rating_id': fake.uuid4(),
                 'status': fake.word(),
@@ -1223,6 +1261,7 @@ class UEAssetDbHandler:
                 'review': round(random.uniform(0, 5), 1),
                 'review_count': random.randint(0, 1000),
                 'custom_attributes': fake.sentence(),
+                # V3
                 'asset_id': fake.uuid4(),
                 'asset_url': fake.url(),
                 'comment': fake.text(),
@@ -1233,6 +1272,7 @@ class UEAssetDbHandler:
                 'alternative': fake.sentence(),
                 'origin': fake.word(),
                 'added_manually': random.choice([0, 1]),
+                # V4
                 'page_title': fake.sentence(),
                 'obsolete': random.choice([0, 1]),
                 'supported_versions': fake.word(),
@@ -1241,7 +1281,14 @@ class UEAssetDbHandler:
                 'date_added': fake.date_time(),
                 'grab_result': fake.word(),
                 'old_price': random.randint(0, 1000),
+                # V5
+                'tags': [fake.word(), fake.word(), fake.word()],
+                # V11
                 'release_info': json.dumps(fake.pydict()),
+                # V12
+                'downloaded_size': random.randint(100, 5000),
+                # V14
+                get_sql_field_name(gui_g.s.group_col_name): fake.word(),
             }
             ue_asset.init_from_dict(data=data)
             self.set_assets(ue_asset.get_data())

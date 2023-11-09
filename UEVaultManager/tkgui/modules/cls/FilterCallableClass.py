@@ -39,13 +39,14 @@ class FilterCallable:
              <list of values> list of asset_id ou app_name (json encoded)
         """
         filters = {
+            'In current Group': [FilterType.CALLABLE, 'filter_rows_in_current_group'],  #
+            'In a Group': [FilterType.STR, f'`{gui_g.s.group_col_name}` != ""'],  #
             'Owned': [FilterType.STR, 'Owned == True'],  #
             'Not Owned': [FilterType.STR, 'Owned == False'],  #
             'Obsolete': [FilterType.STR, 'Obsolete == True'],  #
             'Not Obsolete': [FilterType.STR, 'Obsolete == False'],  #
             'Must buy': [FilterType.STR, '`Must buy` == True'],  #
             'Added manually': [FilterType.STR, '`Added manually` == True'],  #
-            # 'Plugins only': [FilterType.STR, 'Category.str.contains("Plugin", case=False))'],  #
             'Plugins only': [FilterType.CALLABLE, f'search##Category##Plugin'],  #
             'Free': [FilterType.STR, 'Price == 0 or Free == True'],  #
             'Free and not owned': [FilterType.CALLABLE, "free_and_not_owned"],  #
@@ -54,9 +55,6 @@ class FilterCallable:
             'Installed in folder': [FilterType.STR, '`Installed folders` != ""'],  #
             'Local and marketplace': [FilterType.CALLABLE, 'local_and_marketplace'],  #
             'With comment': [FilterType.STR, 'Comment != ""'],  #
-            # 'Empty id': [FilterType.STR, f'Asset_id.str.contains("{gui_g.s.empty_row_prefix}", case=False)'],  #
-            # 'Local id': [FilterType.STR, f'Asset_id.str.contains("{gui_g.s.duplicate_row_prefix}", case=False)'],  #
-            # 'Temp id': [FilterType.STR, f'Asset_id.str.contains("{gui_g.s.temp_id_prefix}", case=False)'],  #
             'Local id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.duplicate_row_prefix}'],  #
             'Empty id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.empty_row_prefix}'],  #
             'Temp id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.temp_id_prefix}'],  #
@@ -155,4 +153,15 @@ class FilterCallable:
                 mask &= ~self.df[flag[1:]]
             else:
                 mask &= self.df[flag]
+        return mask
+
+    def filter_rows_in_current_group(self):
+        """
+        Create a mask to filter the data where the row is in the current group.
+        :return: mask to filter the data.
+        """
+        try:
+            mask = self.df[gui_g.s.group_col_name] == gui_g.s.current_group_name
+        except (Exception, ):
+            mask = False
         return mask
