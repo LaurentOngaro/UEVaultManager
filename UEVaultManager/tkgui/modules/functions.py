@@ -252,7 +252,6 @@ def show_default_image(canvas_image=None) -> None:
         # Load the default image
         if os.path.isfile(gui_g.s.default_image_filename):
             def_image = Image.open(gui_g.s.default_image_filename)
-            # noinspection PyTypeChecker
             resize_and_show_image(def_image, canvas_image)
     except Exception as error:
         log_warning(f'Error showing default image {gui_g.s.default_image_filename} cwd:{os.getcwd()}: {error!r}')
@@ -372,7 +371,7 @@ def show_progress(
         if force_new_window:
             pw.close_window(True)
         else:
-            pw.update()  # a call to test if the window is still active
+            pw.get_text()  # a call to test if the window is still active
     except (tk.TclError, AttributeError, RuntimeError):
         create_a_new_progress_window = True
 
@@ -398,8 +397,10 @@ def show_progress(
         if keep_existing:
             text = pw.get_text() + '\n' + text
         pw.set_text(text)
-    except (tk.TclError, AttributeError):
+    except (tk.TclError, AttributeError) as error:
+        log_debug(f'Error showing progress window: {error!r}')
         pw = None
+        root.progress_window = None
         gui_g.progress_window_ref = None
     return pw
 
@@ -416,42 +417,55 @@ def close_progress(parent) -> None:
         root.progress_window = None
 
 
-def create_file_backup(file_src: str, logger: logging.Logger = None, backup_folder: str = '', backup_to_keep: int = -1) -> str:
+def create_file_backup(file_src: str, logger: logging.Logger = None, backups_folder: str = '', backup_to_keep: int = -1, suffix: str = '') -> str:
     """
     Create a backup of a file.
     :param file_src: path to the file to back up.
     :param logger: logger to use to display info. Could be None.
-    :param backup_folder: path to the backup folder. If empty, the backup will be in the same folder as the source file.
+    :param backups_folder: path to the backup folder.
     :param backup_to_keep: number of backup to keep. Set to 0 to keep all the backups or to -1 to use the default value in the settings.
+    :param suffix: suffix to add to the backup file name. If None, it will use the current date.
     :return: full path to the backup file.
+
+    Notes:
+        If backups_folder to None, the backup will be done in the same folder as the source file,
+        If backups_folder to '', the backup will be done in the default backup folder set in the config file.
     """
     file_backup = ''
     if not file_src or not os.path.isfile(file_src):
         return ''
     file_name_no_ext, file_ext = os.path.splitext(file_src)
+    suffix = suffix if suffix else f'{datetime.now().strftime(DateFormat.file_suffix)}'
     try:
-        file_backup = f'{file_name_no_ext}_{datetime.now().strftime(DateFormat.file_suffix)}{file_ext}{gui_g.s.backup_file_ext}'
-        if backup_folder:
-            file_backup = path_join(backup_folder, os.path.basename(file_backup))
+        file_name_no_ext = os.path.basename(file_name_no_ext)
+        file_backup = f'{file_name_no_ext}_{suffix}{file_ext}{gui_g.s.backup_file_ext}'
+        if backups_folder is None:
+            backups_folder = os.path.dirname(file_src)
+        elif backups_folder == '':
+            backups_folder = gui_g.s.backups_folder
+        if not os.path.isdir(backups_folder):
+            os.mkdir(backups_folder)
+        file_backup = path_join(backups_folder, file_backup)
         shutil.copy(file_src, file_backup)
         if logger is not None:
             logger.info(f'File {file_src} has been copied to {file_backup}')
-    except FileNotFoundError:
+    except (Exception, ):
         if logger is not None:
-            logger.info(f'File {file_src} has not been found')
+            logger.info(f'File {file_src} coulnd not been backed up')
+            return ''
     backup_to_keep = gui_g.s.backup_file_to_keep if backup_to_keep == -1 else backup_to_keep
     if backup_to_keep > 0:
         # delete old backups
         backup_list = []
         file_name_no_ext = os.path.basename(file_name_no_ext)
-        for file in os.listdir(backup_folder):
+        for file in os.listdir(backups_folder):
             filename = os.path.basename(file)
             if filename.startswith(file_name_no_ext) and filename.endswith(gui_g.s.backup_file_ext):
                 backup_list.append(file)
         backup_list.sort()
         if len(backup_list) > backup_to_keep:
             for file in backup_list[:-backup_to_keep]:
-                file_to_delete = path_join(backup_folder, file)
+                file_to_delete = path_join(backups_folder, file)
                 os.remove(file_to_delete)
                 if logger is not None:
                     logger.info(f'Backup File {file_to_delete} has been deleted')
