@@ -57,7 +57,6 @@ no_bool_false_data = False
 
 # reference to the cli object of the UEVM main application (the main one, it gives all access to all the features)
 # if empty, direct access to its features from this script won't be available and a message will be displayed instead
-# noinspection PyTypeChecker
 UEVM_cli_ref = None  # avoid importing classes from the UEVM main application here because it can cause circular dependencies when importing the module
 #  reference to the log object of the UEVM main application.
 #  If empty, log will be message printed in the console
