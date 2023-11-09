@@ -85,7 +85,7 @@ class EditableTable(Table):
         self._edit_row_entries = None
         self._edit_row_number: int = -1
         self._edit_cell_window = None
-        self._edit_cell_row_number: int = -1
+        self._edit_cell_row_numbers: [int] = []
         self._edit_cell_col_index: int = -1
         self._edit_cell_widget = None
         self._dftype_for_coloring = DataFrameUsed.MODEL  # type of dataframe used for coloring
@@ -1151,8 +1151,8 @@ class EditableTable(Table):
                     ue_asset.init_from_dict(asset_data)
                     # update the row in the database
                     tags = ue_asset.get('tags', [])
-                    tags_str = self._db_handler.convert_tag_list_to_string(tags)
-                    ue_asset.set('tags', tags_str)
+                    # tags = self._db_handler.convert_tag_list_to_string(tags) # done in save_ue_asset()
+                    ue_asset.set('tags', tags)
                     self._db_handler.save_ue_asset(ue_asset)
                     asset_id = ue_asset.get('asset_id', '')
                     self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
@@ -2000,16 +2000,25 @@ class EditableTable(Table):
             return
 
         if event.type != tk.EventType.KeyPress:
-            row_number = self.get_row_clicked(event)
             col_index = self.get_col_clicked(event)
+            row_numbers = [self.get_row_clicked(event)]
+            is_single = True
         else:
-            row_number = self.get_selected_row_fixed()
             col_index = self.getSelectedColumn()
+            row_numbers = self.multiplerowlist
+            is_single = False
 
-        if row_number is None or col_index is None or row_number >= len(self.model.df):  # model. df checked
+        if not row_numbers or col_index is None:  # model. df checked
             return None
-        cell_value = self.get_cell(row_number, col_index)
-        title = 'Edit current cell values'
+        if is_single:
+            if row_numbers[0] >= len(self.model.df):
+                return None
+            cell_value = self.get_cell(row_numbers[0], col_index)
+            title = 'Edit current cell value'
+        else:
+            title = 'Edit a value for multiple cells'
+            cell_value = '' # value used in the if condition bellow
+
         width = 300
         height = 120
         # window is displayed at mouse position
@@ -2039,10 +2048,10 @@ class EditableTable(Table):
 
         widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self._edit_cell_widget = widget
-        self._edit_cell_row_number = row_number
+        self._edit_cell_row_numbers = row_numbers
         self._edit_cell_col_index = col_index
         self._edit_cell_window = edit_cell_window
-        edit_cell_window.initial_values = self.get_edit_cell_values()
+        edit_cell_window.initial_values = self.get_edit_cell_values() if is_single else None
         gui_f.make_modal(edit_cell_window, widget_to_focus=widget)
 
     def get_edit_cell_values(self) -> str:
@@ -2062,42 +2071,46 @@ class EditableTable(Table):
         Save the edited cell value to the table data.
         """
         widget = self._edit_cell_widget
-        if widget is None or self._edit_cell_widget is None or self._edit_cell_row_number < 0 or self._edit_cell_col_index < 0:
+        if widget is None or self._edit_cell_widget is None or not self._edit_cell_row_numbers or self._edit_cell_col_index < 0:
             return
-        try:
-            tag = self._edit_cell_widget.tag
-            value = self._edit_cell_widget.get_content()
-            row_number = self._edit_cell_row_number
-            col_index = self._edit_cell_col_index
-            value_saved = self.get_cell(row_number, col_index)
-            typed_value_saved = gui_t.get_typed_value(csv_field=tag, value=value_saved)
-            typed_value = gui_t.get_typed_value(csv_field=tag, value=value)
+        col_installed_folders = self.get_col_index('Installed folders')
+        has_already_confirmed = False
+        idx = -1
+        for row_number in self._edit_cell_row_numbers:
             try:
-                typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
-            except AttributeError:
-                # no strip method for the typed_value
-                pass
-            col_installed_folders = self.get_col_index('Installed folders')
-            if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_value_saved:
-                if not gui_f.box_yesno(
-                    'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
-                ):
-                    self._edit_cell_window.close_window()
-                    return
-            if not self.update_cell(row_number, col_index, typed_value):
-                self.logger.warning(f'Failed to update the row #{row_number + 1}')
-                return
-            self._edit_cell_widget = None
-            self._edit_cell_row_number = -1
-            self._edit_cell_col_index = -1
-        except TypeError:
-            self.logger.warning(f'Failed to get content of {widget}')
-            return
-        idx = self.get_real_index(row_number)
-        self.add_to_rows_to_save(idx)  # self.must_save = Trueis done inside
+                tag = self._edit_cell_widget.tag
+                value = self._edit_cell_widget.get_content()
+                col_index = self._edit_cell_col_index
+                value_saved = self.get_cell(row_number, col_index)
+                typed_value_saved = gui_t.get_typed_value(csv_field=tag, value=value_saved)
+                typed_value = gui_t.get_typed_value(csv_field=tag, value=value)
+                try:
+                    typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
+                except AttributeError:
+                    # no strip method for the typed_value
+                    continue
+                if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_value_saved:
+                    if has_already_confirmed or not gui_f.box_yesno(
+                        'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
+                    ):
+                        self._edit_cell_window.close_window()
+                        return
+                has_already_confirmed = True
+                if not self.update_cell(row_number, col_index, typed_value):
+                    self.logger.warning(f'Failed to update the row #{row_number + 1}')
+                    continue
+            except TypeError:
+                self.logger.warning(f'Failed to get content of {widget}')
+                continue
+            idx = self.get_real_index(row_number)
+            self.add_to_rows_to_save(idx)  # self.must_save = Trueis done inside
+        if idx >= 0:
+            self.update_quick_edit(idx)
+        self._edit_cell_widget = None
+        self._edit_cell_row_numbers = []
+        self._edit_cell_col_index = -1
         self._edit_cell_window.close_window()
         self.update()  # this call will copy the changes to model. df AND to self.filtered_df
-        self.update_quick_edit(idx)
 
     def update_quick_edit(self, row_number: int = None) -> None:
         """
@@ -2304,7 +2317,9 @@ class EditableTable(Table):
                     current_group.append(asset_id)
                     self.update_cell(row, self.get_col_index(gui_g.s.group_col_name), gui_g.s.current_group_name)
                     if self.is_using_database:
-                        self.db_handler.update_asset(asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.current_group_name)
+                        self.db_handler.update_asset(
+                            asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.current_group_name
+                        )
                     self.logger.debug(f'added asset_id {asset_id} to group {gui_g.s.current_group_name}')
             # sort the list and remove duplicates
             current_group = list(set(current_group))
@@ -2322,6 +2337,8 @@ class EditableTable(Table):
                     current_group.remove(asset_id)
                     self.update_cell(row, self.get_col_index(gui_g.s.group_col_name), gui_g.s.empty_cell)
                     if self.is_using_database:
-                        self.db_handler.update_asset(asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.empty_cell)
+                        self.db_handler.update_asset(
+                            asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.empty_cell
+                        )
                     self.logger.debug(f'Removed asset_id {asset_id} from group {gui_g.s.current_group_name}')
             self.update()
