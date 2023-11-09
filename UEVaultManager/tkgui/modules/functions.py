@@ -453,7 +453,7 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, backups_fol
         if logger is not None:
             logger.info(f'File {file_src} coulnd not been backed up')
             return ''
-    backup_to_keep = gui_g.s.backup_file_to_keep if backup_to_keep == -1 else backup_to_keep
+    backup_to_keep = gui_g.s.backup_files_to_keep if backup_to_keep == -1 else backup_to_keep
     if backup_to_keep > 0:
         # delete old backups
         backup_list = []

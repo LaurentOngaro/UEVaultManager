@@ -58,7 +58,6 @@ class GUISettings:
 
         self.backups_folder: str = path_join(self.path, 'backups')
         self.backup_file_ext: str = '.BAK'
-        self.backup_file_to_keep: int = 10  # when creating a backup, this is the number of files to keep. Set to 0 for No limit
         self.default_filename: str = 'assets'
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
         self.ue_valid_file_ext = ('.uplugin', '.uproject')  # MUST BE LOWERCASE for comparison
@@ -493,6 +492,16 @@ class GUISettings:
         """ Setter for current_group_name """
         self.config_vars['current_group_name'] = value
 
+    @property
+    def backup_files_to_keep(self) -> int:
+        """ Getter for backup_files_to_keep """
+        return gui_fn.convert_to_int(self.config_vars['backup_files_to_keep'])
+
+    @backup_files_to_keep.setter
+    def backup_files_to_keep(self, value):
+        """ Setter for backup_files_to_keep """
+        self.config_vars['backup_files_to_keep'] = value
+
     def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
         """
         Get columns infos depending on the datasource type
@@ -591,6 +600,11 @@ class GUISettings:
                 'comment':
                 'Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value',
                 'value': 37
+            },
+            'backup_files_to_keep': {
+                'comment':
+                    'Number of backup files version to keep in the folder for backups. The oldest will be deleted. Set to 0 to keep all the backups',
+                'value': 30
             },
             'image_cache_max_time': {
                 'comment': 'Delay in seconds when image cache will be invalidated. Default value represent 15 days',
@@ -731,6 +745,7 @@ class GUISettings:
             'check_asset_folders': self.config.getboolean('UEVaultManager', 'check_asset_folders'),
             'browse_when_add_row': self.config.getboolean('UEVaultManager', 'browse_when_add_row'),
             'rows_per_page': self.config.getint('UEVaultManager', 'rows_per_page'),
+            'backup_files_to_keep': self.config.getint('UEVaultManager', 'backup_files_to_keep'),
             'image_cache_max_time': self.config.getint('UEVaultManager', 'image_cache_max_time'),
             'asset_images_folder': self.config.get('UEVaultManager', 'asset_images_folder'),
             'scraping_folder': self.config.get('UEVaultManager', 'scraping_folder'),
