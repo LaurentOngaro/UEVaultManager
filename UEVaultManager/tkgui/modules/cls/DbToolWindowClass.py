@@ -117,10 +117,14 @@ class DbToolWindowClass(tk.Toplevel):
             # (bootstyle is not recognized by PyCharm)
             self.btn_close = ttk.Button(self.frm_inner, text='Close Window', bootstyle=WARNING, command=self.close_window)
             self.btn_close.pack(side=tk.RIGHT, **pack_def_options)
-            self.btn_import = ttk.Button(self.frm_inner, text='Import from files', command=self.import_data)
+            self.btn_import = ttk.Button(self.frm_inner, text='Import', command=self.import_data)
             self.btn_import.pack(side=tk.LEFT, **pack_def_options)
-            self.btn_export = ttk.Button(self.frm_inner, text='Export to files', command=self.export_data)
+            self.btn_export = ttk.Button(self.frm_inner, text='Export', command=self.export_data)
             self.btn_export.pack(side=tk.LEFT, **pack_def_options)
+            # noinspection PyArgumentList
+            # (bootstyle is not recognized by PyCharm)
+            self.btn_fix = ttk.Button(self.frm_inner, text='Fix Issues', command=self.fix_database)
+            self.btn_fix.pack(side=tk.LEFT, **pack_def_options)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
             self.btn_clean = ttk.Button(self.frm_inner, text='Clean Assets', bootstyle=DANGER, command=self.clean_database)
@@ -257,13 +261,30 @@ class DbToolWindowClass(tk.Toplevel):
             if self.processing:
                 messagebox.showinfo('Info', 'Processing is already running.')
                 return
-            if not messagebox.askyesno('Warning', 'This will delete all ASSETS in the database. Are you sure ?'):
+            if not messagebox.askyesno('Warning', 'This will delete all ASSETS in the database. Are you sure to continue ?'):
                 return
             self.processing = True
             self.add_result('Processing...', set_status=True)
             self.update()
             self.container.db_handler.delete_all_assets(keep_added_manually=False)
             self.add_result('All Assets have been deleted.', set_status=True)
+            self.processing = False
+
+        def fix_database(self) -> None:
+            """
+            Fix some issues in the database.
+            """
+            if self.processing:
+                messagebox.showinfo('Info', 'Processing is already running.')
+                return
+            if not messagebox.askyesno('Warning', 'This will make changes in the database. Are you sure to continue ?'):
+                return
+            self.processing = True
+            self.add_result('Removing assets with no Asset_id...', set_status=True)
+            self.update()
+            self.container.db_handler.run_query("DELETE FROM assets WHERE asset_id == '' or asset_id is NULL")
+            self.add_result('...Done. You should restart the App or Rebuild the data')
+            self.add_result('Issues have been fixed.', set_status=True)
             self.processing = False
 
 

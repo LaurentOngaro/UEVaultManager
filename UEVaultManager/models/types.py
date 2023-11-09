@@ -83,32 +83,6 @@ class CSVFieldType(Enum):
             return str
 
 
-class DbVersionNum(Enum):
-    """
-    The version of the database or/and class.
-    Used when checking if database must be upgraded by comparing with the class version.
-    """
-    # when a new version is added to the DbVersionNum enum
-    # - add code for the new version to the create_tables() method
-    # - add code for the new version check to the check_and_upgrade_database() method
-    V0 = 0  # invalid version
-    V1 = 1  # initial version : only the "standard" marketplace columns
-    V2 = 2  # add the columns used fo user data to the "standard" marketplace columns
-    V3 = 3  # add the last_run table to get data about the last run of the application
-    V4 = 4  # add custom_attributes field to the assets table
-    V5 = 5  # add added_manually column to the assets table
-    V6 = 6  # add tags column to the assets table
-    V7 = 7  # add the tags table
-    V8 = 8  # add the ratings tags table
-    V9 = 9  # create the "assets_tags" view for the tags in the assets table
-    V10 = 10  # add an autoincrement id to the last_run table
-    V11 = 11  # rename column installed_folder TO installed_folders
-    V12 = 12  # add release_info columns to the assets table
-    V13 = 13  # add downloaded_size columns to the assets table
-    V14 = 14  # add categories et grab_result views
-    V15 = 15  # future version
-
-
 class GetDataResult(Enum):
     """
     Result of the get_data_from_url() function.

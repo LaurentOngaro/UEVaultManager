@@ -82,8 +82,8 @@ class UEVMLFS:
                 os.makedirs(path_join(self.path, f))
 
         # backup important files (before creation to avoid backup of empty files)
-        create_file_backup(self.asset_sizes_filename, backup_folder=gui_g.s.backup_folder)
-        create_file_backup(self.installed_asset_filename, backup_folder=gui_g.s.backup_folder)
+        create_file_backup(self.asset_sizes_filename)
+        create_file_backup(self.installed_asset_filename)
 
         # check and create some empty files (to avoid file not found errors in debug)
         check_and_create_file(self.asset_sizes_filename, content='{}')
@@ -558,7 +558,7 @@ class UEVMLFS:
         Delete all the log and backup files in the application folders.
         :return: size of the deleted files.
         """
-        folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder, gui_g.s.backup_folder]
+        folders = [self.path, gui_g.s.results_folder, gui_g.s.scraping_folder, gui_g.s.backups_folder]
         return self.delete_folder_content(folders, ['.log', gui_g.s.backup_file_ext])
 
     def load_installed_assets(self) -> bool:
@@ -715,7 +715,7 @@ class UEVMLFS:
         if self.config.read_only or not self.config.modified:
             return
 
-        file_backup = create_file_backup(self.config_file, backup_folder=gui_g.s.backup_folder)
+        file_backup = create_file_backup(self.config_file)
         with open(self.config_file, 'w', encoding='utf-8') as file:
             self.config.write(file)
         # delete the backup if the files and the backup are identical

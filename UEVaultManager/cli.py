@@ -225,10 +225,10 @@ class UEVaultManagerCLI:
         """
         Create a backup of the log files.
         """
-        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
-        create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
-        create_file_backup(self.core.scan_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
-        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger, backup_folder=gui_g.s.backup_folder)
+        create_file_backup(self.core.ignored_assets_filename_log, logger=self.logger)
+        create_file_backup(self.core.notfound_assets_filename_log, logger=self.logger)
+        create_file_backup(self.core.scan_assets_filename_log, logger=self.logger)
+        create_file_backup(self.core.scrap_assets_filename_log, logger=self.logger)
 
     def auth(self, args) -> None:
         """
@@ -358,7 +358,7 @@ class UEVaultManagerCLI:
             self._log(f'The String "{args.filter_category}" will be search in Assets category')
         # output with extended info
         if args.output and (args.csv or args.tsv or args.json) and self.core.create_output_backup:
-            create_file_backup(args.output, backup_folder=gui_g.s.backup_folder)
+            create_file_backup(args.output)
         if args.csv:
             file_format = 'csv'
         elif args.tsv:
