@@ -438,7 +438,7 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, backups_fol
     suffix = suffix if suffix else f'{datetime.now().strftime(DateFormat.file_suffix)}'
     try:
         file_name_no_ext = os.path.basename(file_name_no_ext)
-        file_backup = f'{file_name_no_ext}_{suffix}{file_ext}'
+        file_backup = f'{file_name_no_ext}_{suffix}{file_ext}{gui_g.s.backup_file_ext}'
         if backups_folder is None:
             backups_folder = os.path.dirname(file_src)
         elif backups_folder == '':
