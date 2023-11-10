@@ -111,6 +111,7 @@ class GUISettings:
         self.preview_max_height: int = 150
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
+        self.keyword_query_string = 'QUERY'  # use this keyword in a CALLABLE filter to replace the value by the in the search field
         # self.empty_cell: str = 'None'
         self.cell_is_empty_list = ['NA', 'None', 'nan', 'NaN', 'False', '0', '0.0', '']  # keep 'NA' value at first position
         self.cell_is_empty_and_zero_list = self.cell_is_empty_list + ['False', '0', '0.0', '']
@@ -603,7 +604,7 @@ class GUISettings:
             },
             'backup_files_to_keep': {
                 'comment':
-                    'Number of backup files version to keep in the folder for backups. The oldest will be deleted. Set to 0 to keep all the backups',
+                'Number of backup files version to keep in the folder for backups. The oldest will be deleted. Set to 0 to keep all the backups',
                 'value': 30
             },
             'image_cache_max_time': {

@@ -21,6 +21,7 @@ class FilterCallable:
 
     def __init__(self, df: pd.DataFrame):
         self.df: pd.DataFrame = df
+        self._query_string: str = ''
 
     @staticmethod
     def create_dynamic_filters() -> {str: str}:
@@ -69,6 +70,16 @@ class FilterCallable:
             ftype, fvalue = value
             result[filter_name] = FilterValue(name=filter_name, value=fvalue, ftype=ftype)
         return result
+
+    @property
+    def query_string(self):
+        """ Get the query string. """
+        return self._query_string
+
+    @query_string.setter
+    def query_string(self, value: str):
+        """ Set the query string. """
+        self._query_string = value
 
     def get_method(self, func_name: str) -> Optional[callable]:
         """
@@ -139,6 +150,8 @@ class FilterCallable:
         """
         col_name = args[0]
         value = args[1]
+        if value == gui_g.s.keyword_query_string:
+            value = self.query_string
         flag = args[2] if len(args) > 2 else None
         if col_name.lower() == gui_g.s.default_value_for_all.lower():
             mask = False

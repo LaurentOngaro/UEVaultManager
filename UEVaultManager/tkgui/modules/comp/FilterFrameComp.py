@@ -93,10 +93,10 @@ class FilterFrame(ttk.LabelFrame):
         # new row
         cur_row = 0
         cur_col = 0
-        ttk_item = ttk.Label(self, text='Select quick filter')
+        ttk_item = ttk.Label(self, text='Select a quick filter')
         ttk_item.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        ttk_item = ttk.Label(self, text='Or Write a text query using column names')
+        ttk_item = ttk.Label(self, text='Or write a query string')
         ttk_item.grid(row=cur_row, column=cur_col, columnspan=5, **self.grid_def_options)
         # new row
         cur_row += 1
@@ -112,7 +112,10 @@ class FilterFrame(ttk.LabelFrame):
         self.entry_query.grid(row=cur_row, column=cur_col, columnspan=5, **self.grid_def_options)
         # new row
         cur_row += 1
-        cur_col = 1
+        cur_col = 0
+        self.btn_simple_search = ttk.Button(self, text='Search query string', command=self.simple_search)
+        self.btn_simple_search.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        cur_col += 1
         self.btn_apply_filters = ttk.Button(self, text='Apply', command=self.apply_filters)
         self.btn_apply_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
@@ -136,8 +139,10 @@ class FilterFrame(ttk.LabelFrame):
         Event handler for the query string entry.
         :param _event: event that triggered the search.
         """
-        if self._var_entry_query.get() != self.old_entry_query:
-            self.old_entry_query = self._var_entry_query.get()
+        query_string = self._var_entry_query.get()
+        if query_string != self.old_entry_query:
+            self.callable.query_string = query_string
+            self.old_entry_query = query_string
             self.update_controls()
 
     def _load_filter(self) -> None:
@@ -172,6 +177,18 @@ class FilterFrame(ttk.LabelFrame):
         self.old_entry_query = self._var_entry_query.get()
         self._var_entry_query.set(forced_value)
         self.cb_quick_filter.set('')
+
+    def simple_search(self) -> None:
+        """
+        Apply a simple search on the data.
+        """
+        query_string = self._var_entry_query.get()
+        if query_string:
+            self.set_filter(
+                FilterValue(name='simple_search', value=f'search##All##{query_string}', ftype=FilterType.CALLABLE), forced_value=query_string
+            )
+            self.update_controls()
+            self.update_func(reset_page=True)
 
     def create_filter(self, filter_value: FilterValue = None) -> None:
         """

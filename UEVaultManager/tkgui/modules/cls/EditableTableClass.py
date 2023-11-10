@@ -2017,7 +2017,7 @@ class EditableTable(Table):
             title = 'Edit current cell value'
         else:
             title = 'Edit a value for multiple cells'
-            cell_value = '' # value used in the if condition bellow
+            cell_value = ''  # value used in the if condition bellow
 
         width = 300
         height = 120
