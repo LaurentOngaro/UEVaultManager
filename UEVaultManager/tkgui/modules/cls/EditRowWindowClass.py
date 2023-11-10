@@ -111,9 +111,11 @@ class EditRowWindow(tk.Toplevel):
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=2, **grid_def_options)
-            btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
+            ttk_item = ttk.Button(lblf_actions, text='Open Json', command=container.open_json_file)
+            ttk_item.pack(**pack_def_options, side=tk.LEFT)
+            btn_open_url = ttk.Button(lblf_actions, text='Open URL', command=container.open_asset_url)
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
-            btn_open_folder = ttk.Button(lblf_actions, text="Open Folder", command=container.open_asset_folder)
+            btn_open_folder = ttk.Button(lblf_actions, text='Open Folder', command=container.open_asset_folder)
             btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
@@ -213,6 +215,12 @@ class EditRowWindow(tk.Toplevel):
         Open the asset URL (Wrapper).
         """
         self.editable_table.open_origin_folder()
+
+    def open_json_file(self) -> None:
+        """
+        Open the source file of the asset (Wrapper).
+        """
+        self.editable_table.open_json_file()
 
     def update_controls_state(self) -> None:
         """

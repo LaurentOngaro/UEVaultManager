@@ -19,6 +19,7 @@ import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest varia
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -2193,22 +2194,35 @@ class EditableTable(Table):
         """
         return '' if row_number is None else self.get_cell(row_number, self.get_col_index('Image'))
 
-    def open_asset_url(self, url: str = None):
+    def open_asset_url(self, url: str = ''):
         """
         Open the asset URL in a web browser.
         :param url: URL to open.
         """
-        if url is None:
+        if not url:
             if self._edit_row_entries is None:
                 return
             asset_url = self._edit_row_entries['Url'].get()
         else:
             asset_url = url
-        self.logger.info(f'calling open_asset_url={asset_url}')
+        self.logger.info(f'Opening {asset_url} in browser')
         if not asset_url or asset_url == gui_g.s.empty_cell:
             self.logger.info('asset URL is empty for this asset')
             return
         webbrowser.open(asset_url)
+
+    def open_json_file(self, asset_id: str = '') -> None:
+        """
+        Open the source file of the asset.
+        """
+        if not asset_id:
+            if self._edit_row_entries is None:
+                return
+            asset_id = self._edit_row_entries['Asset_id'].get()
+        file_name = path_join(gui_g.s.assets_data_folder, asset_id + '.json')
+        if os.path.isfile(file_name):
+            self.logger.info(f'Opening {file_name} in default application')
+            os.system(f'start {file_name}')
 
     def open_origin_folder(self) -> None:
         """

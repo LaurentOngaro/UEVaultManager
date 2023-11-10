@@ -344,14 +344,12 @@ class UEVMGui(tk.Tk):
         if widget is None:
             self.logger.warning(f'Could not find a widget with tag {tag}')
             return None, None
-
-        col, row = widget.col, widget.row
-
-        if col is None or row is None or col < 0 or row < 0:
-            self.logger.debug(f'invalid values for row={row} and col={col}')
-            return None, widget
-
         value = widget.get_content()
+        # not sure the next code is useful
+        # col, row = widget.col, widget.row
+        # if col is None or row is None or col < 0 or row < 0:
+        #     self.logger.debug(f'invalid values for row={row} and col={col}')
+        #     return None, widget
         return value, widget
 
     def _wait_for_window(self, window: tk.Toplevel) -> None:
@@ -1897,6 +1895,14 @@ class UEVMGui(tk.Tk):
         Open the asset URL (Wrapper).
         """
         self.editable_table.open_origin_folder()
+
+    def open_json_file(self) -> None:
+        """
+        Open the source file (Wrapper).
+        """
+        asset_id, widget = self._check_and_get_widget_value(tag='Asset_id')
+        if asset_id:
+            self.editable_table.open_json_file(asset_id)
 
     def run_install(self):
         """
