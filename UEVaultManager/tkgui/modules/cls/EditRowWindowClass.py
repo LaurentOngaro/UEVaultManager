@@ -11,6 +11,7 @@ from ttkbootstrap import INFO, WARNING
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.types import DataFrameUsed
 
 
 class EditRowWindow(tk.Toplevel):
@@ -91,26 +92,22 @@ class EditRowWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'anchor': tk.NW}
-            grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
-
-            lblf_navigation = ttk.LabelFrame(self, text='Navigation')
-            lblf_navigation.grid(row=0, column=0, **grid_def_options)
-            btn_prev_asset_edit = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
-            btn_prev_asset_edit.pack(**pack_def_options, side=tk.LEFT)
-            btn_next_asset_edit = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
-            btn_next_asset_edit.pack(**pack_def_options, side=tk.RIGHT)
+            grid_def_options = {'ipadx': 0, 'ipady': 0, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
 
             lbf_preview = ttk.LabelFrame(self, text='Image Preview')
-            lbf_preview.grid(row=0, column=1, **grid_def_options)
+            lbf_preview.grid(row=0, column=0, **grid_def_options)
             width = int(gui_g.s.preview_max_width * container.preview_scale)
             height = int(gui_g.s.preview_max_height * container.preview_scale)
-
             canvas_image = tk.Canvas(lbf_preview, width=width, height=height, highlightthickness=0)
             canvas_image.pack()
             canvas_image.create_rectangle((0, 0), (width, height), fill='black')
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
-            lblf_actions.grid(row=0, column=2, **grid_def_options)
+            lblf_actions.grid(row=0, column=1, **grid_def_options)
+            btn_prev_asset_edit = ttk.Button(lblf_actions, text='Prev Asset', command=container.prev_asset)
+            btn_prev_asset_edit.pack(**pack_def_options, side=tk.LEFT)
+            btn_next_asset_edit = ttk.Button(lblf_actions, text='Next Asset', command=container.next_asset)
+            btn_next_asset_edit.pack(**pack_def_options, side=tk.LEFT)
             ttk_item = ttk.Button(lblf_actions, text='Open Json', command=container.open_json_file)
             ttk_item.pack(**pack_def_options, side=tk.LEFT)
             btn_open_url = ttk.Button(lblf_actions, text='Open URL', command=container.open_asset_url)
@@ -227,7 +224,7 @@ class EditRowWindow(tk.Toplevel):
         Update some controls in the window depending on conditions
         """
         data_table = self.editable_table  # shortcut
-        max_index = len(data_table.get_data())
+        max_index = len(data_table.get_data(df_type=DataFrameUsed.AUTO))
         current_index = data_table.add_page_offset(data_table.getSelectedRow())
         gui_f.update_widgets_in_list(current_index > 0, 'not_first_asset')
         gui_f.update_widgets_in_list(current_index < max_index - 1, 'not_last_asset')
