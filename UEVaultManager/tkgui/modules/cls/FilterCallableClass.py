@@ -56,6 +56,7 @@ class FilterCallable:
             'Installed in folder': [FilterType.STR, '`Installed folders` != ""'],  #
             'Local and marketplace': [FilterType.CALLABLE, 'local_and_marketplace'],  #
             'With comment': [FilterType.STR, 'Comment != ""'],  #
+            'Not EU-Only license': [FilterType.STR, 'License != "UE-Only"'],  #
             'Local id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.duplicate_row_prefix}'],  #
             'Empty id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.empty_row_prefix}'],  #
             'Temp id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.temp_id_prefix}'],  #
