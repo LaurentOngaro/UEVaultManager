@@ -45,7 +45,7 @@ class ScrapTask:
 
     def __init__(self, caller, log_func: callable = None, task_name: str = '', url: str = '', owned_assets_only: bool = False):
         self.caller = caller
-        self.name = f'ScrapTask_{gui_fn.shorten_text(url,limit=35,prefix="_")}' if not task_name else task_name
+        self.name = f'ScrapTask_{gui_fn.shorten_text(url, limit=35, prefix="_")}' if not task_name else task_name
         self.log_func = log_func if log_func else print
         self.url = url
         self.owned_assets_only = owned_assets_only
@@ -331,7 +331,7 @@ class UEAssetScraper:
                 )  # '' because we want the cell to be empty if no size
 
                 # license
-                description = one_asset_json_data_from_egs_ori.get('longDescription'                                                                   '')
+                description = one_asset_json_data_from_egs_ori.get('longDescription', '')
                 lic_unknown = 'Unknown'
                 license_type = lic_unknown  # by default
                 for key, search in gui_g.s.license_types.items():
@@ -509,7 +509,7 @@ class UEAssetScraper:
                     # tags could be a list of dicts (new version). Get all the "name" fields and save them into tags_str
                     try:
                         tags_str = ','.join([tag.get('name', '').title() for tag in tags])
-                    except (Exception,):
+                    except (Exception, ):
                         # no dict, so this is the oldest version, with just a list of ids
                         tags_str = check_and_convert_list_to_str(tags)
                     installed_folders_str = check_and_convert_list_to_str(one_asset_json_data_from_egs_ori.get('installed_folders', []))

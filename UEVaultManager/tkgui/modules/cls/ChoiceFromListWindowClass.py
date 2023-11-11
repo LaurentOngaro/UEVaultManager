@@ -26,11 +26,14 @@ class CFLW_Settings:
     show_content_list = True
     json_data = {
         'Label1': {  # MANDATORY: 'Label1' is the label to display in the first list. WHEN VALIDATE,  THIS VALUE IS RETURNED TO THE CALLER as first id
-            'value': 'value 1',  # OPTIONAL: example of a value for an item of the list, it can be replaced by another field name. Other fields can also be added.
+            'value': 'value 1',
+            # OPTIONAL: example of a value for an item of the list, it can be replaced by another field name. Other fields can also be added.
             'desc': 'this is Label1 description',  # MANDATORY: 'desc' is the description to display in the description text bellow the first list
             'content': {  # MANDATORY: 'content' is used to fill the second list if show_content_list is True
-                'contentLabel1_1': {  # MANDATORY: 'contentLabel1' is the label to display in the second list. WHEN VALIDATE, THIS VALUE IS RETURNED TO THE CALLER as second id
-                    'value': 'value 1_1',  # OPTIONAL: example of a value for an item of the list, it can be replaced by another field name. Other fields can also be added.
+                'contentLabel1_1': {
+                    # MANDATORY: 'contentLabel1' is the label to display in the second list. WHEN VALIDATE, THIS VALUE IS RETURNED TO THE CALLER as second id
+                    'value': 'value 1_1',
+                    # OPTIONAL: example of a value for an item of the list, it can be replaced by another field name. Other fields can also be added.
                     'text': 'this is the id1_1 short label'  # MANDATORY: 'text' is the text to display in the label above the second list
                 }
             }

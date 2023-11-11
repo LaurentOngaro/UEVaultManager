@@ -341,7 +341,7 @@ class UEVaultManagerCLI:
         if args.output:
             # test if the folder is writable
             if not check_and_create_file(args.output):
-                message = f'Could not create result file { args.output}. Quiting Application...'
+                message = f'Could not create result file {args.output}. Quiting Application...'
                 self._log_and_gui_message(message, 'critical')
         self._log('Login...')
         if not self.core.login(raise_error=False):

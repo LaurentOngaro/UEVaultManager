@@ -426,10 +426,9 @@ def get_converters(csv_field_name: str):
     if field_type == CSVFieldType.BOOL:
         return [convert_to_bool, bool]
 
-
-# not use full to convert date: Causes issue when loading a filter
-#    if field_type == CSVFieldType.DATETIME:
-#        return [lambda x: convert_to_datetime(x, formats_to_use=[DateFormat.epic, DateFormat.csv])]
+    # not use full to convert date: Causes issue when loading a filter
+    #    if field_type == CSVFieldType.DATETIME:
+    #        return [lambda x: convert_to_datetime(x, formats_to_use=[DateFormat.epic, DateFormat.csv])]
     else:
         return [str]
 

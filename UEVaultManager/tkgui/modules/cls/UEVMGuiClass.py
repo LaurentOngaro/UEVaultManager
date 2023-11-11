@@ -1291,7 +1291,7 @@ class UEVMGui(tk.Tk):
         start = simpledialog.askinteger(
             parent=self,  #
             title='Select the starting asset',  #
-            prompt=f'INDEX (not row number) between {min_val} and {max_val-1})',  #
+            prompt=f'INDEX (not row number) between {min_val} and {max_val - 1})',  #
             minvalue=min_val,  #
             maxvalue=max_val - 1
         )
@@ -1299,7 +1299,7 @@ class UEVMGui(tk.Tk):
             end = simpledialog.askinteger(
                 parent=self,
                 title='Select the ending asset',  #
-                prompt=f'INDEX (not row number) between {start+1} and {max_val})',  #
+                prompt=f'INDEX (not row number) between {start + 1} and {max_val})',  #
                 minvalue=start + 1,  #
                 maxvalue=max_val
             )
