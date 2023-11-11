@@ -958,6 +958,13 @@ class EditableTable(Table):
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
+                else:
+                    csv_field_name_list = gui_t.get_csv_field_name_list()
+                    # add the fields that are in csv_field_name_list but nom in df, in case of the current CSV file does not have all of them
+                    for field in csv_field_name_list:
+                        if field not in df:
+                            df[field] = ''
+
             elif self.is_using_database:
                 if self._db_handler is None:
                     # could occur after a call to self.valid_source_type()
