@@ -272,6 +272,11 @@ csv_sql_fields = {
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
     },
+    'License': {
+        'sql_name': 'license',
+        'state': CSVFieldState.NORMAL,
+        'field_type': CSVFieldType.STR
+    },
 }
 
 

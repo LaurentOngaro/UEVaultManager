@@ -162,7 +162,8 @@ class FilterFrame(ttk.LabelFrame):
         """
         Set the loaded filter to a file (Wrapper)
         """
-        self.create_filter()  # needed to update the self._loaded_filter
+        if self._loaded_filter and not self._loaded_filter.name == 'simple_search':
+            self.create_filter()  # needed to update the self._loaded_filter. If it's a "simple_search", it has already been created
         self.save_filter_func(self._loaded_filter)
 
     def set_filter(self, filter_value: FilterValue, forced_value: str = '') -> None:
@@ -203,7 +204,7 @@ class FilterFrame(ttk.LabelFrame):
         value = filter_value.value if filter_value else ''
         # check if the filter_value is a callable and fix its ftype if not
         if ftype == FilterType.CALLABLE or ftype == FilterType.STR:
-            func_name, func_params = gui_f.parse_callable(filter_value.value)
+            func_name, func_params = gui_f.parse_callable(value)
             method = self.callable.get_method(func_name)
             if method is None:
                 filter_value.ftype = FilterType.STR

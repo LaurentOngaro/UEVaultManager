@@ -63,7 +63,8 @@ class DbVersionNum(Enum):
     V13 = 13  # add downloaded_size columns to the assets table
     V14 = 14  # add categories et grab_result views
     V15 = 15  # add Group column to the assets table
-    V16 = 16  # future version
+    V16 = 16  # add License column to the assets table
+    V17 = 17  # future version
 
 
 class UEAssetDbHandler:
@@ -522,12 +523,15 @@ class UEAssetDbHandler:
             self._add_missing_columns('assets', required_columns={'downloaded_size': 'TEXT'})
             self.db_version = upgrade_from_version = DbVersionNum.V13
         if upgrade_from_version.value == DbVersionNum.V13.value:
-            self.db_version = upgrade_from_version = DbVersionNum.V14
             self.create_tables(upgrade_to_version=self.db_version)
+            self.db_version = upgrade_from_version = DbVersionNum.V14
         if upgrade_from_version == DbVersionNum.V14:
             col_name = get_sql_field_name(gui_g.s.group_col_name)
             self._add_missing_columns('assets', required_columns={col_name: 'TEXT'})
             self.db_version = upgrade_from_version = DbVersionNum.V15
+        if upgrade_from_version.value == DbVersionNum.V15.value:
+            self._add_missing_columns('assets', required_columns={'license': 'TEXT'})
+            self.db_version = upgrade_from_version = DbVersionNum.V16
         if previous_version != self.db_version:
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)
@@ -1291,6 +1295,8 @@ class UEAssetDbHandler:
                 'downloaded_size': random.randint(100, 5000),
                 # V14
                 get_sql_field_name(gui_g.s.group_col_name): fake.word(),
+                # V15
+                'license': fake.word(),
             }
             ue_asset.init_from_dict(data=data)
             self.set_assets(ue_asset.get_data())

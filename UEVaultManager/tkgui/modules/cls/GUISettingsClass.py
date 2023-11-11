@@ -150,7 +150,12 @@ class GUISettings:
             'rowselectedcolor': '#E4DED4',  #
             'textcolor': 'black'  #
         }
-
+        self.license_types = {
+            # key is the license type (in the License column), value is the text to search in the asset data, see _parse_data() method in UEAssetClass.
+            # for now, only ue_only is significant
+            'Unknown': '',  # 'Unknown' is used when the license type is not found in the asset data
+            'UE-Only': 'UE-Only Content',
+        }
         folders = [
             self.assets_folder, self.assets_data_folder, self.owned_assets_data_folder, self.assets_global_folder, self.assets_csv_files_folder,
             self.filters_folder, self.backups_folder, self.asset_images_folder, self.results_folder, self.scraping_folder

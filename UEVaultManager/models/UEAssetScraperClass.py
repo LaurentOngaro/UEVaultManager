@@ -330,6 +330,17 @@ class UEAssetScraper:
                     app_name, gui_g.no_text_data
                 )  # '' because we want the cell to be empty if no size
 
+                # license
+                description = one_asset_json_data_from_egs_ori.get('longDescription'
+                                                                   '')
+                lic_unknown = 'Unknown'
+                license_type = lic_unknown  # by default
+                for key, search in gui_g.s.license_types.items():
+                    if key != lic_unknown and search in description:
+                        license_type = key
+                        break
+                one_asset_json_data_parsed['license'] = license_type
+
                 # thumbnail_url
                 one_asset_json_data_parsed['thumbnail_url'] = one_asset_json_data_from_egs_ori.get('thumbnail', '')
                 if not one_asset_json_data_parsed['thumbnail_url']:
