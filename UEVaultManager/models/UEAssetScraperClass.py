@@ -331,8 +331,7 @@ class UEAssetScraper:
                 )  # '' because we want the cell to be empty if no size
 
                 # license
-                description = one_asset_json_data_from_egs_ori.get('longDescription'
-                                                                   '')
+                description = one_asset_json_data_from_egs_ori.get('longDescription'                                                                   '')
                 lic_unknown = 'Unknown'
                 license_type = lic_unknown  # by default
                 for key, search in gui_g.s.license_types.items():
@@ -506,9 +505,13 @@ class UEAssetScraper:
                     tags_str = asset_db_handler.convert_tag_list_to_string(tags)
                     # asset_data['installed_folders'] = installed_folders_str
                 else:
-                    # just convert the list of ids into a comma separated string
-                    tags_str = check_and_convert_list_to_str(tags)
-                    # we need to convert list to string if we are in FILE Mode because it's done when saving the asset in database in the DATABASE mode
+                    # with no database, we don't have access to the tags table. So we keep the tags as a list of dicts and extract the names when exists
+                    # tags could be a list of dicts (new version). Get all the "name" fields and save them into tags_str
+                    try:
+                        tags_str = ','.join([tag.get('name', '').title() for tag in tags])
+                    except (Exception,):
+                        # no dict, so this is the oldest version, with just a list of ids
+                        tags_str = check_and_convert_list_to_str(tags)
                     installed_folders_str = check_and_convert_list_to_str(one_asset_json_data_from_egs_ori.get('installed_folders', []))
                 one_asset_json_data_parsed['installed_folders'] = installed_folders_str
                 one_asset_json_data_parsed['tags'] = tags_str
