@@ -3,7 +3,7 @@
 Implementation for:
 - FilterCallable class: a class that contains methods to create dynamic filters.
 """
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 
@@ -17,12 +17,19 @@ from UEVaultManager.tkgui.modules.types import FilterType
 class FilterCallable:
     """
     A class that contains methods to create dynamic filters.
-    :param df: the dataframe to filter.
+    :param get_data_func: a function that returns the dataframe to filter.
     """
 
-    def __init__(self, df: pd.DataFrame):
-        self.df: pd.DataFrame = df
+    def __init__(self, get_data_func: Callable):
+        self._df: Optional[pd.DataFrame] = None
         self._query_string: str = ''
+        self.get_data_func = get_data_func
+
+    @property
+    def df(self):
+        """ Get the dataframe to filter. """
+        self._df = self.get_data_func()  # update the dataframe
+        return self._df
 
     @staticmethod
     def create_dynamic_filters() -> {str: str}:

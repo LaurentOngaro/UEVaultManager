@@ -26,19 +26,20 @@ class FilterFrame(ttk.LabelFrame):
     """
     A frame that contains widgets for filtering a DataFrame.
     :param container: container widget.
-    :param df: DataFrame to be filtered. It is not modified.
     :param update_func: function that updates the table.
+    :param title: title of the frame.
+    :param get_data_func: function that returns the dataframe to filter.
     :param save_query_func: function that save the filters.
     :param load_query_func: function that load the filters.
-    :param title: title of the frame.
+    :param logger: logger to use.
     """
 
     def __init__(
         self,
         container: tk,
-        df: pd.DataFrame,
         update_func: Callable,
         title: str = 'Define view filters for the data table',
+        get_data_func: Callable = None,
         save_query_func: Callable = None,
         load_query_func: Callable = None,
         logger=None,
@@ -48,7 +49,7 @@ class FilterFrame(ttk.LabelFrame):
         if update_func is None:
             raise ValueError('update_func can not be None')
         super().__init__(container, text=title)
-        self._df: pd.DataFrame = df
+        self._df: Optional[pd.DataFrame] = None
         self._loaded_filter: Optional[FilterValue] = None
         self._quick_filters: Optional[FilterValue] = None
         self._old_entry_query: str = ''
@@ -60,13 +61,20 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_clear_filter = None
         self.container = container
         self.update_func: Callable = update_func
+        self.get_data_func: Callable = get_data_func
         self.load_filter_func: Callable = load_query_func
         self.save_filter_func: Callable = save_query_func
         self.logger = logger
-        fillna_fixed(self._df)
-        self.callable: FilterCallable = FilterCallable(self._df)
+        self.callable: FilterCallable = FilterCallable(self.get_data_func)
         self._quick_filters = self.callable.create_dynamic_filters()
         self._create_widgets()
+
+    @property
+    def df(self):
+        """ Get the dataframe to filter. """
+        self._df = self.get_data_func()  # update the dataframe
+        fillna_fixed(self._df)
+        return self._df
 
     @property
     def loaded_filter(self) -> Optional[FilterValue]:
@@ -331,7 +339,8 @@ class FilterFrame(ttk.LabelFrame):
                 else:
                     query = filter_value
                 if query:
-                    return self._df.query(query)
+                    df_filtrered = self.df.query(query)
+                    return df_filtrered
             except (AttributeError, UndefinedVariableError) as error:
                 if self.logger:
                     self.logger.error(f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...')

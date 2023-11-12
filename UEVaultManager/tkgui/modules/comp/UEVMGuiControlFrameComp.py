@@ -142,7 +142,11 @@ class UEVMGuiControlFrame(ttk.Frame):
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
         frm_filter = FilterFrame(
-            self, df=data_table.get_data(), update_func=data_table.update, load_query_func=self.load_filter, save_query_func=self.save_filter,
+            self,
+            update_func=data_table.update,
+            get_data_func=data_table.get_data,
+            load_query_func=self.load_filter,
+            save_query_func=self.save_filter,
             logger=self._data_table.logger
         )
         frm_filter.pack(**lblf_def_options)
