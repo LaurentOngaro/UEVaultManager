@@ -37,6 +37,7 @@ from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgres
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
 from UEVaultManager.tkgui.modules.cls.JsonToolWindowClass import JsonToolWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
+from UEVaultManager.tkgui.modules.comp.functions_panda import post_update_installed_folders
 from UEVaultManager.tkgui.modules.comp.UEVMGuiContentFrameComp import UEVMGuiContentFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiControlFrameComp import UEVMGuiControlFrame
 from UEVaultManager.tkgui.modules.comp.UEVMGuiOptionFrameComp import UEVMGuiOptionFrame
@@ -171,7 +172,8 @@ class UEVMGui(tk.Tk):
             # if using FILE
             # ________________
             # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
-            self.core.uevmlfs.post_update_installed_folders(df)
+            installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
+            post_update_installed_folders(installed_assets_json, df)
 
         self.editable_table = data_table
 
@@ -1425,7 +1427,8 @@ class UEVMGui(tk.Tk):
                             asset_forced_data = existing_data.copy()
 
                     for key, value in asset_forced_data.items():
-                        asset_data[key] = value
+                        if str(value) not in gui_g.s.cell_is_nan_list:
+                            asset_data[key] = value
                     if is_unique or gui_f.box_yesno(
                         f'The scrapped data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to create a row using tthis data ?\nIf No, the row will be skipped',
                         show_dialog=not self.silent_mode
@@ -1460,7 +1463,8 @@ class UEVMGui(tk.Tk):
                 ):
                     if forced_data is not None:
                         for key, value in forced_data.items():
-                            asset_data[key] = value
+                            if str(value) not in gui_g.s.cell_is_nan_list:
+                                asset_data[key] = value
                     data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                     if self.is_using_database:
                         self.ue_asset_scraper.asset_db_handler.set_assets(asset_data)
@@ -1778,7 +1782,8 @@ class UEVMGui(tk.Tk):
             # if using FILE
             # ________________
             # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
-            self.core.uevmlfs.post_update_installed_folders(df)
+            installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
+            post_update_installed_folders(installed_assets_json, df)
         self.update_controls_state()
         self.update_category_var()
         # data_table.update()

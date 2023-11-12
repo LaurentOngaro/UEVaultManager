@@ -250,7 +250,7 @@ class UEAssetDbHandler:
         _id = row_data.get('id', None)  # check if the row as an id to check
         # remove all fields whith a None Value
         # keep the empty string because we want to be able to save an empty string
-        none_values = [x for x in gui_g.s.cell_is_empty_list if x != '']
+        none_values = [x for x in gui_g.s.cell_is_nan_list]
         filtered_fields = {k: v for k, v in row_data.items() if (v is not None and v not in none_values)}
         if len(filtered_fields) == 0:
             return False

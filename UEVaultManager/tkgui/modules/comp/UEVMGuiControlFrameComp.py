@@ -143,6 +143,7 @@ class UEVMGuiControlFrame(ttk.Frame):
 
         frm_filter = FilterFrame(
             self, df=data_table.get_data(), update_func=data_table.update, load_query_func=self.load_filter, save_query_func=self.save_filter,
+            logger=self._data_table.logger
         )
         frm_filter.pack(**lblf_def_options)
         self._container._frm_filter = frm_filter

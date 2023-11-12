@@ -10,6 +10,7 @@ import pandas as pd
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
+from UEVaultManager.tkgui.modules.comp.functions_panda import fillna_fixed
 from UEVaultManager.tkgui.modules.types import FilterType
 
 
@@ -154,6 +155,7 @@ class FilterCallable:
         if value == gui_g.s.keyword_query_string:
             value = self.query_string
         flag = args[2] if len(args) > 2 else None
+        fillna_fixed(self.df)
         if col_name.lower() == gui_g.s.default_value_for_all.lower():
             mask = False
             for col in self.df.columns:

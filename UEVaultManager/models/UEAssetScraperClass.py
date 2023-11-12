@@ -593,7 +593,7 @@ class UEAssetScraper:
                         self._log(f'In the existing data, asset {_asset_id} has no column named {_csv_field}.', level='warning')
                         continue
                     # get rid of 'None' values in CSV file
-                    if value in gui_g.s.cell_is_empty_list:
+                    if value in gui_g.s.cell_is_nan_list:
                         _csv_record[index] = ''
                         continue
                     value = str(value)

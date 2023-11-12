@@ -6,8 +6,6 @@ Implementation for:
 import json
 import os
 
-from termcolor import colored
-
 # we can't import the following modules here because of circular dependencies
 # UEVaultManager.tkgui.modules.functions_no_deps
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
@@ -112,11 +110,10 @@ class GUISettings:
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
         self.keyword_query_string = 'QUERY'  # use this keyword in a CALLABLE filter to replace the value by the in the search field
-        # self.empty_cell: str = 'None'
-        self.cell_is_empty_list = ['NA', 'None', 'nan', 'NaN', 'False', '0', '0.0', '']  # keep 'NA' value at first position
-        self.cell_is_empty_and_zero_list = self.cell_is_empty_list + ['False', '0', '0.0', '']
+        self.cell_is_nan_list = ['NA', 'None', 'nan', 'NaN']  # keep 'NA' value at first position
+        self.cell_is_empty_list = self.cell_is_nan_list + ['False', '0', '0.0', '']
         self.empty_cell: str = ''
-        self.empty_row_prefix: str = 'dummy_row_'
+        self.empty_row_prefix: str = 'new_'
         self.duplicate_row_prefix: str = 'local_'
         self.temp_id_prefix: str = 'temp_id_'
         self.unknown_size: str = 'yes'
@@ -125,10 +122,11 @@ class GUISettings:
         self.contract_columns_factor: int = 20
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
         # The list off all the possible value for the field 'category'. It should be updated if necessary
+        self.missing_category = 'Incomplete Asset'
         self.asset_categories = [
             '2D Assets', 'Animations', 'Architectural Visualization', 'Blueprints', 'Characters', 'Code Plugins', 'Environments', 'Epic Content',
             'Materials', 'Megascans', 'Music', 'Props', 'Sound Effects', 'Textures', 'UE Feature Samples', 'UE Game Samples', 'UE Legacy Samples',
-            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/Asset', 'local/Manifest', 'local/Plugin'
+            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/Asset', 'local/Manifest', 'local/Plugin', self.missing_category
         ]
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
@@ -171,8 +169,9 @@ class GUISettings:
     @staticmethod
     def _log(message):
         """ print a colored message."""
-        msg = colored(message, 'orange')
-        print(msg)
+        # cause issue when run in a console, not in IDE
+        # message = colored(message, 'orange')
+        print(message)
 
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """

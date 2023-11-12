@@ -28,6 +28,7 @@ from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
+from UEVaultManager.tkgui.modules.comp.functions_panda import fillna_fixed
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
@@ -176,23 +177,6 @@ class EditableTable(Table):
         :return: db handler.
         """
         return self._db_handler
-
-    @staticmethod
-    def fillna_fixed(dataframe: pd.DataFrame) -> None:
-        """
-        Fill the empty cells in the dataframe. Fix FutureWarning messages by using the correct value for each dtype
-        :param dataframe: dataframe to fill.
-        """
-        for col in dataframe.columns:
-            if dataframe[col].dtype == 'object':
-                # dataframe[col].fillna(gui_g.s.empty_cell, inplace=True)  # does not replace all possible values
-                dataframe[col].replace(gui_g.s.cell_is_empty_list, gui_g.s.empty_cell, regex=False, inplace=True)
-            elif dataframe[col].dtype == 'int64':
-                dataframe[col].fillna(0, inplace=True)
-            elif dataframe[col].dtype == 'float64':
-                dataframe[col].fillna(0.0, inplace=True)
-            elif dataframe[col].dtype == 'bool':
-                dataframe[col].fillna(False, inplace=True)
 
     def handle_arrow_keys(self, event):
         """
@@ -1488,7 +1472,7 @@ class EditableTable(Table):
             # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
             gui_f.show_progress(self, text='Formating and converting DataTable...', keep_existing=True)
             self.set_data(self.set_columns_type(df))
-            self.fillna_fixed(df)
+            fillna_fixed(df)
             if self._frm_filter is not None:
                 self._frm_filter.clear_filter()
             # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
@@ -1812,7 +1796,7 @@ class EditableTable(Table):
         """
         if row_number < 0 or col_index < 0 or value is None:
             return False
-        value = gui_g.s.empty_cell if value in gui_g.s.cell_is_empty_list else value  # convert 'None' values to ''
+        value = gui_g.s.empty_cell if value in gui_g.s.cell_is_nan_list else value  # convert 'None' values to ''
         try:
             idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
             df = self.get_data()  # always used the unfiltered because the real index is set from unfiltered dataframe
@@ -2039,7 +2023,7 @@ class EditableTable(Table):
         col_name = self.get_col_name(col_index)
         label = gui_t.get_label_for_field(col_name)
         ttk.Label(edit_cell_window.frm_content, text=label).pack(side=tk.LEFT)
-        cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_empty_list) else ''
+        cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_nan_list) else ''
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)

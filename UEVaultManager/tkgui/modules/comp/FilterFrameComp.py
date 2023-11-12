@@ -14,6 +14,7 @@ from pandas.errors import UndefinedVariableError
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterCallableClass import FilterCallable
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
+from UEVaultManager.tkgui.modules.comp.functions_panda import fillna_fixed
 from UEVaultManager.tkgui.modules.types import FilterType
 
 
@@ -37,9 +38,10 @@ class FilterFrame(ttk.LabelFrame):
         container: tk,
         df: pd.DataFrame,
         update_func: Callable,
+        title: str = 'Define view filters for the data table',
         save_query_func: Callable = None,
         load_query_func: Callable = None,
-        title: str = 'Define view filters for the data table',
+        logger=None,
     ):
         if container is None:
             raise ValueError('container can not be None')
@@ -49,6 +51,7 @@ class FilterFrame(ttk.LabelFrame):
         self._df: pd.DataFrame = df
         self._loaded_filter: Optional[FilterValue] = None
         self._quick_filters: Optional[FilterValue] = None
+        self._old_entry_query: str = ''
         self._var_entry_query = tk.StringVar()
         self.pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}
         self.grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.W}
@@ -56,10 +59,11 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_apply_filters = None
         self.btn_clear_filter = None
         self.container = container
-        self.update_func = update_func
-        self.load_filter_func = load_query_func
-        self.save_filter_func = save_query_func
-        self.old_entry_query = ''
+        self.update_func: Callable = update_func
+        self.load_filter_func: Callable = load_query_func
+        self.save_filter_func: Callable = save_query_func
+        self.logger = logger
+        fillna_fixed(self._df)
         self.callable: FilterCallable = FilterCallable(self._df)
         self._quick_filters = self.callable.create_dynamic_filters()
         self._create_widgets()
@@ -140,9 +144,9 @@ class FilterFrame(ttk.LabelFrame):
         :param _event: event that triggered the search.
         """
         query_string = self._var_entry_query.get()
-        if query_string != self.old_entry_query:
+        if query_string != self._old_entry_query:
             self.callable.query_string = query_string
-            self.old_entry_query = query_string
+            self._old_entry_query = query_string
             self.update_controls()
 
     def _load_filter(self) -> None:
@@ -175,7 +179,7 @@ class FilterFrame(ttk.LabelFrame):
         if not forced_value:
             forced_value = filter_value.value
         self._loaded_filter = filter_value
-        self.old_entry_query = self._var_entry_query.get()
+        self._old_entry_query = self._var_entry_query.get()
         self._var_entry_query.set(forced_value)
         self.cb_quick_filter.set('')
 
@@ -248,7 +252,7 @@ class FilterFrame(ttk.LabelFrame):
         Check if the query string has changed.
         :return: True if the query string has changed, False otherwise.
         """
-        return self.old_entry_query != self._var_entry_query.get()
+        return self._old_entry_query != self._var_entry_query.get()
 
     def apply_filters(self) -> None:
         """
@@ -326,10 +330,10 @@ class FilterFrame(ttk.LabelFrame):
                     query = f'Asset_id in {filter_value}'
                 else:
                     query = filter_value
-
                 if query:
                     return self._df.query(query)
-            except (AttributeError, UndefinedVariableError):
-                # print(f'Error with defined filters. Updating filter...')
+            except (AttributeError, UndefinedVariableError) as error:
+                if self.logger:
+                    self.logger.error(f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...')
                 self.clear_filter()
                 return None
