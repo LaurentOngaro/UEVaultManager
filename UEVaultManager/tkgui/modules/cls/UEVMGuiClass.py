@@ -1427,7 +1427,7 @@ class UEVMGui(tk.Tk):
                             asset_forced_data = existing_data.copy()
 
                     for key, value in asset_forced_data.items():
-                        if str(value) not in gui_g.s.cell_is_nan_list:
+                        if str(value) not in gui_g.s.cell_is_nan_list + [gui_g.s.missing_category]:
                             asset_data[key] = value
                     if is_unique or gui_f.box_yesno(
                         f'The scrapped data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to create a row using tthis data ?\nIf No, the row will be skipped',

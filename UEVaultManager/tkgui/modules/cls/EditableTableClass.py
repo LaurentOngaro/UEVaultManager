@@ -2280,12 +2280,12 @@ class EditableTable(Table):
 
     def colheader_popup_menu(self, event, outside=True):
         """Overwrite the default colheader popupMenu method"""
-        print('colheader_popupMenu')
+        # print('colheader_popupMenu')
         return self.popupMenu(event, outside=outside)
 
     def rowheader_popup_menu(self, event, outside=True):
         """Overwrite the default rowheader popupMenu method"""
-        print('rowheader_popupMenu')
+        # print('rowheader_popupMenu')
         return self.popupMenu(event, outside=outside)
 
     def init_groups(self) -> None:
