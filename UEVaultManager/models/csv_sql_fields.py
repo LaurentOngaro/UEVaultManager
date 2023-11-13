@@ -151,7 +151,7 @@ csv_sql_fields = {
     },
     'Origin': {
         'sql_name': 'origin',
-        'state': CSVFieldState.CHANGED,
+        'state': CSVFieldState.USER,
         'field_type': CSVFieldType.STR
     },
     'Added manually': {
