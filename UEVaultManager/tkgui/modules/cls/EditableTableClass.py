@@ -1860,7 +1860,7 @@ class EditableTable(Table):
             return None
         title = 'Edit current row'
         width = 800
-        height = 1010 if self.data_source_type == DataSourceType.DATABASE else 920
+        height = 1030 if self.data_source_type == DataSourceType.DATABASE else 920
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
@@ -2080,7 +2080,7 @@ class EditableTable(Table):
                     typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
                 except AttributeError:
                     # no strip method for the typed_value
-                    continue
+                    pass
                 if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_value_saved:
                     if has_already_confirmed or not gui_f.box_yesno(
                         'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
