@@ -12,6 +12,7 @@ import pandas as pd
 from pandas.errors import UndefinedVariableError
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterCallableClass import FilterCallable
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
 from UEVaultManager.tkgui.modules.comp.functions_panda import fillna_fixed
@@ -102,6 +103,7 @@ class FilterFrame(ttk.LabelFrame):
         """
         Create filter widgets inside the FilterFrame instance.
         """
+        max_col = 7
         # new row
         cur_row = 0
         cur_col = 0
@@ -109,7 +111,7 @@ class FilterFrame(ttk.LabelFrame):
         ttk_item.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
         ttk_item = ttk.Label(self, text='Or write a query string')
-        ttk_item.grid(row=cur_row, column=cur_col, columnspan=5, **self.grid_def_options)
+        ttk_item.grid(row=cur_row, column=cur_col, columnspan=max_col - cur_col, **self.grid_def_options)
         # new row
         cur_row += 1
         cur_col = 0
@@ -119,13 +121,18 @@ class FilterFrame(ttk.LabelFrame):
         self.cb_quick_filter.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_quick_filter))
         cur_col += 1
         self._var_entry_query = tk.StringVar()
-        self.entry_query = ttk.Entry(self, textvariable=self._var_entry_query, width=40)
+        self.entry_query = ttk.Entry(self, textvariable=self._var_entry_query, width=45)
         self.entry_query.bind("<KeyRelease>", self._on_query_change)  # keyup
-        self.entry_query.grid(row=cur_row, column=cur_col, columnspan=5, **self.grid_def_options)
+        self.entry_query.grid(row=cur_row, column=cur_col, columnspan=max_col - cur_col, **self.grid_def_options)
         # new row
         cur_row += 1
         cur_col = 0
-        self.btn_simple_search = ttk.Button(self, text='Search query string', command=self.simple_search)
+        self.cb_category = ttk.Combobox(self, values=list(gui_g.s.asset_categories), width=20)
+        self.cb_category.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        self.cb_category.bind('<<ComboboxSelected>>', lambda event: self.get_category())  # do not remove lambda !
+        self.cb_category.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_category))
+        cur_col += 1
+        self.btn_simple_search = ttk.Button(self, text='Search string', command=self.simple_search)
         self.btn_simple_search.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
         self.btn_apply_filters = ttk.Button(self, text='Apply', command=self.apply_filters)
@@ -311,6 +318,18 @@ class FilterFrame(ttk.LabelFrame):
                 self.update_func(reset_page=True)
             self.update_controls()
         return quick_filter
+
+    def get_category(self):
+        """
+        Get the filter value from the categories combobox.
+        :return: a FilterValue object.
+        """
+        cat_filter_name = self.cb_category.get()
+        if cat_filter_name:
+            filter_value = FilterValue(name='category_filter', value=f'Category == "{cat_filter_name}"', ftype=FilterType.STR)
+            self.set_filter(filter_value)
+            self.update_func(reset_page=True)
+            self.update_controls()
 
     def get_filtered_df(self) -> Optional[pd.DataFrame]:
         """
