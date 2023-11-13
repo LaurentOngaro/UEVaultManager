@@ -113,9 +113,9 @@ class GUISettings:
         self.cell_is_nan_list = ['NA', 'None', 'nan', 'NaN']  # keep 'NA' value at first position
         self.cell_is_empty_list = self.cell_is_nan_list + ['False', '0', '0.0', '']
         self.empty_cell: str = ''
-        self.empty_row_prefix: str = 'new_'
-        self.duplicate_row_prefix: str = 'local_'
-        self.temp_id_prefix: str = 'temp_id_'
+        self.empty_row_prefix: str = 'newid_'
+        self.duplicate_row_prefix: str = 'localid_'
+        self.temp_id_prefix: str = 'tempid_'
         self.unknown_size: str = 'yes'
         self.tag_prefix: str = 't_'
         self.expand_columns_factor: int = 20
