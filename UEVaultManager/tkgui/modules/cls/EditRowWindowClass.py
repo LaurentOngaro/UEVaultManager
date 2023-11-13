@@ -11,6 +11,7 @@ from ttkbootstrap import INFO, WARNING
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.cls.ImagePreviewWindowClass import ImagePreviewWindow
 from UEVaultManager.tkgui.modules.types import DataFrameUsed
 
 
@@ -36,10 +37,11 @@ class EditRowWindow(tk.Toplevel):
             gui_f.log_warning(f'Error in EditRowWindow: {error!r}')
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
+        self.screen_index = screen_index
         self.resizable(True, False)
 
         self.editable_table = editable_table
-        self.preview_scale = 0.5
+        self.preview_scale = 0.25
         self.must_save: bool = False
         self.initial_values = []
         self.width: int = width
@@ -94,16 +96,18 @@ class EditRowWindow(tk.Toplevel):
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'anchor': tk.NW}
             grid_def_options = {'ipadx': 0, 'ipady': 0, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
 
-            lbf_preview = ttk.LabelFrame(self, text='Image Preview')
-            lbf_preview.grid(row=0, column=0, **grid_def_options)
             width = int(gui_g.s.preview_max_width * container.preview_scale)
             height = int(gui_g.s.preview_max_height * container.preview_scale)
-            canvas_image = tk.Canvas(lbf_preview, width=width, height=height, highlightthickness=0)
-            canvas_image.pack()
-            canvas_image.create_rectangle((0, 0), (width, height), fill='black')
+            lbf_preview = ttk.LabelFrame(self, text='Clic to Zoom')
+            lbf_preview.grid(row=0, column=0, **grid_def_options)
+            canvas_image = tk.Canvas(lbf_preview, width=width, height=height)
+            canvas_image.pack(**pack_def_options)
+            # add a bind on left clic on the image to display it in a ImagePreviewWindow
+            canvas_image.bind('<Button-1>', container.open_image_preview)
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
             lblf_actions.grid(row=0, column=1, **grid_def_options)
+
             btn_prev_asset_edit = ttk.Button(lblf_actions, text='Prev Asset', command=container.prev_asset)
             btn_prev_asset_edit.pack(**pack_def_options, side=tk.LEFT)
             btn_next_asset_edit = ttk.Button(lblf_actions, text='Next Asset', command=container.next_asset)
@@ -240,3 +244,17 @@ class EditRowWindow(tk.Toplevel):
             url = widgets.get('Url', '')
             gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
             gui_f.update_widgets_in_list(url != '', 'asset_has_url')
+
+    def open_image_preview(self, _event):
+        """
+        Open the image preview window.
+        """
+        widgets = self.editable_table.get_edited_row_values()
+        url = widgets.get('Image', '')
+        if gui_g.WindowsRef.image_preview:
+            gui_g.WindowsRef.image_preview.close_window()
+        ipw = ImagePreviewWindow(
+            title='Image Preview', screen_index=self.screen_index, url=url, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height
+        )
+        if not ipw.display(url=url):
+            ipw.close_window()

@@ -10,6 +10,7 @@ import UEVaultManager.tkgui.modules.cls.EditCellWindowClass as EditCellWindow
 import UEVaultManager.tkgui.modules.cls.EditRowWindowClass as EditRowWindow
 from UEVaultManager.tkgui.modules.cls.FakeUEVMGuiClass import FakeUEVMGuiClass
 from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
+from UEVaultManager.tkgui.modules.cls.ImagePreviewWindowClass import ImagePreviewWindow
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 
@@ -26,6 +27,7 @@ class WindowsRef(ABC):
     display_content = None
     progress: ProgressWindow = None
     tool = None  # could be a ref to a ToolWindows like DBToolWindow or JsonToolWindow
+    image_preview: ImagePreviewWindow = None
 
     @classmethod
     def get_properties_name(cls) -> list:

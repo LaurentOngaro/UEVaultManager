@@ -35,6 +35,7 @@ from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayCo
 from UEVaultManager.tkgui.modules.cls.EditableTableClass import EditableTable
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
+from UEVaultManager.tkgui.modules.cls.ImagePreviewWindowClass import ImagePreviewWindow
 from UEVaultManager.tkgui.modules.cls.JsonToolWindowClass import JsonToolWindow
 from UEVaultManager.tkgui.modules.comp.FilterFrameComp import FilterFrame
 from UEVaultManager.tkgui.modules.comp.functions_panda import post_update_installed_folders
@@ -127,6 +128,7 @@ class UEVMGui(tk.Tk):
             x_pos, y_pos = gui_fn.get_center_screen_positions(screen_index, width, height)
         self.geometry(f'{width}x{height}+{x_pos}+{y_pos}')
         gui_fn.set_icon_and_minmax(self, icon)
+        self.screen_index = screen_index
         self.resizable(True, True)
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
@@ -1409,6 +1411,13 @@ class UEVMGui(tk.Tk):
                     gui_f.close_progress(self)
                     return
                 asset_data = self._scrap_from_url(marketplace_url)
+                if not asset_data and row_data['Added manually']:
+                    # it's a local asset, we can try to get an url file from the local folder
+                    local_folder = row_data['Origin']
+                    folder_name = os.path.basename(local_folder)
+                    parent_folder = os.path.dirname(local_folder)
+                    marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
+                    asset_data = self._scrap_from_url(marketplace_url)
                 if asset_data:
                     if forced_data:
                         asset_forced_data = forced_data.copy()
@@ -2132,3 +2141,15 @@ class UEVMGui(tk.Tk):
         gui_f.make_modal(tool_window)
         if tool_window.must_reload and gui_f.box_yesno('Some data has been imported into the database. Do you want to reload the data ?'):
             self.reload_data()
+
+    def open_image_preview(self, _event) -> None:
+        """
+        Open the image preview window.
+        :param _event: event from the widget.
+        """
+        url = self.editable_table.get_image_url()
+        ipw = ImagePreviewWindow(
+            title='Image Preview', screen_index=self.screen_index, url=url, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height
+        )
+        if not ipw.display():
+            ipw.close_window()
