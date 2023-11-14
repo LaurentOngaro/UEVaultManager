@@ -51,7 +51,7 @@ class ScrapTask:
         self.owned_assets_only = owned_assets_only
 
     def __call__(self):
-        self.log_func(f'Started ScrapTask {self.name} at {datetime.now()}')
+        self.log_func(f'START OF ScrapTask {self.name} at {datetime.now()}')
         result = self.caller.get_data_from_url(self.url, self.owned_assets_only)
         self.log_func(f'END OF ScrapTask {self.name} at {datetime.now()}')
         return result
