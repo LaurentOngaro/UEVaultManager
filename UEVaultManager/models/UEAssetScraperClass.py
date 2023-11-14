@@ -201,7 +201,7 @@ class UEAssetScraper:
         self._log(message)
 
     @property
-    def scrapped_data(self) -> list:
+    def scraped_data(self) -> list:
         """ Return the scraped data. """
         return self._scraped_data
 
@@ -378,7 +378,7 @@ class UEAssetScraper:
                 one_asset_json_data_parsed['asset_id'] = asset_id
 
                 # asset slug and asset url
-                # we keep UrlSlug here because it can arise from the scrapped data
+                # we keep UrlSlug here because it can arise from the scraped data
                 asset_slug = (
                     one_asset_json_data_from_egs_ori.get('urlSlug', gui_g.no_text_data)  #
                     or one_asset_json_data_from_egs_ori.get('asset_slug', gui_g.no_text_data)
@@ -454,7 +454,7 @@ class UEAssetScraper:
                 one_asset_json_data_parsed['supported_versions'] = supported_versions
 
                 # dates
-                # asset_data['creation_date'] = asset_data['creationDate']  # does not exist in when scrapping from marketplace
+                # asset_data['creation_date'] = asset_data['creationDate']  # does not exist in when scraping from marketplace
                 # we use the first realase date instead as it exist in both cases
                 tmp_date = first_release.get('dateAdded', gui_g.no_text_data) if first_release else gui_g.no_text_data
                 tmp_date = gui_fn.convert_to_datetime(tmp_date, formats_to_use=[DateFormat.epic, DateFormat.csv])
@@ -1076,7 +1076,7 @@ class UEAssetScraper:
         :return: True if OK, False if no.
 
         Notes:
-            Execute the scrapper. Load from files or downloads the items from the URLs and stores them in the scraped_data property.
+            Execute the scraper. Load from files or downloads the items from the URLs and stores them in the scraped_data property.
             The execution is done in parallel using threads.
             If self.urls is None or empty, gather_urls() will be called first.
         """
@@ -1251,7 +1251,7 @@ class UEAssetScraper:
         self._log(message)
         return is_ok
 
-    def pop_last_scrapped_data(self) -> []:
+    def pop_last_scraped_data(self) -> []:
         """
         Pop the last scraped data from the scraped_data property.
         :return: last scraped data.

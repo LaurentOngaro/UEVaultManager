@@ -586,7 +586,7 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     # all the field names in asset data are in snake_case
     # the CSV header (in datatable or CSV file) are the keys of csv_sql_fields and fierrent of the previous both
 
-    # all the fields that are present in data grabed with the "old" method (ie file/csv mode)
+    # all the fields that are present in data grabbed with the "old" method (ie file/csv mode)
     csv_data_keys_saved = [
         'categories', 'creationDate', 'description', 'developer', 'developerId', 'endOfSupport', 'entitlementName', 'entitlementType', 'id',
         'itemType', 'keyImages', 'lastModifiedDate', 'longDescription', 'namespace', 'releaseInfo', 'requiresSecureAccount', 'status',

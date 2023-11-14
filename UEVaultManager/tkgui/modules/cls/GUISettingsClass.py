@@ -571,7 +571,7 @@ class GUISettings:
                 'value': 'False'
             },
             'use_threads': {
-                'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
+                'comment': 'Set to True to use multiple threads when scraping/grabbing data for UE assets',
                 'value': 'True'
             },
             'timeout_for_scraping': {

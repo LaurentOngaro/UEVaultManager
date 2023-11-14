@@ -790,7 +790,7 @@ class UEVaultManagerCLI:
         if args.delete_scraping_data:
             message = 'Removing scraping data...'
             custom_print(message)
-            deleted_size += self.core.uevmlfs.clean_scrapping()
+            deleted_size += self.core.uevmlfs.clean_scraping()
 
         message = f'Cleanup complete! Removed {deleted_size / 1024 / 1024:.02f} MiB.'
         self._log(message)
@@ -869,7 +869,7 @@ class UEVaultManagerCLI:
         :param use_database: wether the database will be used to store the data, otherwise the data will be stored in files.
         :param file_name: name of the file to save the data. Used only when use_database is False.
         :param save_to_format: format of the file to save the data. Sould be 'csv','tcsv' or 'json'. Used only when use_database is False.
-        :return: List containing the scrapped data.
+        :return: List containing the scraped data.
 
         Notes:
             Unlike the list_asset method, this method is not intended to be called through the GUI. So there is no need to add a ProgressWindow setup here.
@@ -932,7 +932,7 @@ class UEVaultManagerCLI:
             core=self.core,  # VERY IMPORTANT: pass the code object to the scraper to keep the same session
             filter_category=args.filter_category,
         )
-        scrapped_data = []
+        scraped_data = []
         result_count = 0
         if not load_from_files:
             result_count = scraper.gather_all_assets_urls(
@@ -940,8 +940,8 @@ class UEVaultManagerCLI:
             )  # return -1 if interrupted or error
         if result_count != -1:
             if scraper.save(owned_assets_only=owned_assets_only, save_to_format=save_to_format):
-                scrapped_data = scraper.scrapped_data
-                for asset_data in scrapped_data:
+                scraped_data = scraper.scraped_data
+                for asset_data in scraped_data:
                     app_name = asset_data.get('asset_id', '')
                     asset_data['downloaded_size'] = self.core.uevmlfs.get_asset_size(app_name)
 
@@ -949,7 +949,7 @@ class UEVaultManagerCLI:
             # pw.mainloop()
             pw.quit_on_close = False
             pw.close_window(destroy_window=True)
-        return scrapped_data
+        return scraped_data
 
     def set_release_id(self, value):
         """

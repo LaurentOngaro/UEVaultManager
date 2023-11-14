@@ -1249,7 +1249,7 @@ class UEVMGui(tk.Tk):
         Scrap the data from a marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
         :param app_name: name of the app to scrap (Optional).
-        :return: data scrapped from the marketplace_url Or None if the marketplace_url is invalid.
+        :return: data scraped from the marketplace_url Or None if the marketplace_url is invalid.
         """
         is_ok = False
         asset_data = None
@@ -1279,14 +1279,14 @@ class UEVMGui(tk.Tk):
                     core=self.core  # VERY IMPORTANT: pass the core object to the scraper to keep the same session
                 )
             else:
-                # next line because the scrapper is initialized only at startup
+                # next line because the scraper is initialized only at startup
                 self.ue_asset_scraper.keep_intermediate_files = gui_g.s.debug_mode
             self.ue_asset_scraper.get_data_from_url(api_product_url)
-            asset_data = self.ue_asset_scraper.pop_last_scrapped_data()  # returns a list of one element
+            asset_data = self.ue_asset_scraper.pop_last_scraped_data()  # returns a list of one element
             is_ok = asset_data is not None and len(asset_data) > 0
         if not is_ok:
             asset_data = None
-            msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
+            msg = f'The asset url {marketplace_url} is invalid and could not be scraped for this row'
             if self.core.notfound_logger:
                 self.core.notfound_logger.info(f'{app_name}: invalid url "{marketplace_url}"')
             gui_f.box_message(msg, level='warning', show_dialog=not self._silent_mode)
@@ -1344,7 +1344,7 @@ class UEVMGui(tk.Tk):
         :param marketplace_url: marketplace_url to scrap.
         :param row_numbers: list a row numbers to scrap. If None, will use the selected rows.
         :param row_index: (real) index of the row to scrap. If >= 0, will scrap only this row and will ignore the marketplace_url and row_numbers.
-        :param forced_data: if not None, all the key in forced_data_initial will replace the scrapped data.
+        :param forced_data: if not None, all the key in forced_data_initial will replace the scraped data.
         :param update_dataframe: whether to update the dataframe after scraping.
         :param check_unicity: whether to check if the data are unique and ask the user to update the row if not.
         :param is_silent: whether to show message boxes or not.
@@ -1402,7 +1402,7 @@ class UEVMGui(tk.Tk):
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
-                # we keep UrlSlug here because it can arise from the scrapped data
+                # we keep UrlSlug here because it can arise from the scraped data
                 asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
                 if asset_slug_from_row and asset_slug_from_url and not asset_slug_from_row.startswith(
                     gui_g.s.duplicate_row_prefix
@@ -1451,7 +1451,7 @@ class UEVMGui(tk.Tk):
                         if str(value) not in gui_g.s.cell_is_nan_list + [gui_g.s.missing_category]:
                             asset_data[key] = value
                     if is_unique or gui_f.box_yesno(
-                        f'The scrapped data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to create a row using tthis data ?\nIf No, the row will be skipped',
+                        f'The scraped data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to create a row using tthis data ?\nIf No, the row will be skipped',
                         show_dialog=not self._silent_mode
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)

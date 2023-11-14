@@ -348,7 +348,7 @@ class UEVMLFS:
                 release_info = json.loads(release_info)
             app_id = release_info[-1][app_id_field]  # appid from the latest release
         except (Exception, ):
-            # we keep UrlSlug here because it can arise from the scrapped data
+            # we keep UrlSlug here because it can arise from the scraped data
             app_id = asset_data.get(asset_slug_field, None)
             if app_id is None:
                 app_id = asset_data.get(catalog_item_id_field, create_uid())
@@ -720,7 +720,7 @@ class UEVMLFS:
         if os.path.isfile(file_backup) and filecmp.cmp(self.config_file, file_backup):
             os.remove(file_backup)
 
-    def clean_scrapping(self) -> int:
+    def clean_scraping(self) -> int:
         """
         Delete all the metadata files that are not in the names_to_keep list.
         :return: size of the deleted files.
