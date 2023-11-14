@@ -18,7 +18,7 @@ csv_sql_fields = {
     # key: csv field name, value: {sql name, state }
     'Asset_id': {
         'sql_name': 'asset_id',
-        'state': CSVFieldState.NORMAL,
+        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR,
         'label': 'Latest release id'
     },
@@ -117,6 +117,11 @@ csv_sql_fields = {
         'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.FLOAT
     },
+    'Origin': {
+        'sql_name': 'origin',
+        'state': CSVFieldState.CHANGED,
+        'field_type': CSVFieldType.STR
+    },
     # ## User Fields
     'Comment': {
         'sql_name': 'comment',
@@ -146,11 +151,6 @@ csv_sql_fields = {
     },
     'Alternative': {
         'sql_name': 'alternative',
-        'state': CSVFieldState.USER,
-        'field_type': CSVFieldType.STR
-    },
-    'Origin': {
-        'sql_name': 'origin',
         'state': CSVFieldState.USER,
         'field_type': CSVFieldType.STR
     },
@@ -511,6 +511,34 @@ def get_csv_field_name(sql_field_name: str) -> str:
         if value['sql_name'] == sql_field_name:
             result = key
             break
+    return result
+
+
+def get_sql_user_fields() -> list:
+    """
+    Get the sql user fields.
+    :return: sql user fields.
+
+    Notes:
+        The user fields must be preserved when updating the database
+        These fields are also present in the asset table and in the UEAsset.init_data() method
+        THEY WILL BE PRESERVED when parsing the asset data
+    """
+    return get_sql_field_name_list(filter_on_states=[CSVFieldState.USER])
+
+
+def get_sql_preserved_fields() -> list:
+    """
+    Get the sql preserved fields.
+    :return: sql preserved fields.
+
+    Notes:
+        The field kept for previous data.
+        NEED TO BE SEPARATED FROM self.user_fields
+        THEY WILL BE USED (BUT NOT FORCELY PRESERVED) when parsing the asset data
+    """
+    result = get_sql_field_name_list(filter_on_states=[CSVFieldState.USER, CSVFieldState.CHANGED, CSVFieldState.ASSET_ONLY])
+    result.append('id')
     return result
 
 

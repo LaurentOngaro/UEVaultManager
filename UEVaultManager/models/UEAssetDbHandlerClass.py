@@ -20,7 +20,7 @@ from faker import Faker
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name, get_sql_field_name_list, set_default_values
+from UEVaultManager.models.csv_sql_fields import get_sql_field_name, get_sql_field_name_list, set_default_values
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
@@ -82,19 +82,6 @@ class UEAssetDbHandler:
 
     def __init__(self, database_name: str, reset_database: bool = False):
         self.connection = None
-        # the user fields that must be preserved when updating the database
-        # these fields are also present in the asset table and in the UEAsset.init_data() method
-        # THEY WILL BE PRESERVED when parsing the asset data
-        self.user_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.USER])
-        # the field we keep for previous data. NEED TO BE SEPARATED FROM self.user_fields
-        # THEY WILL BE USED (BUT NOT FORCELY PRESERVED) when parsing the asset data
-        self.preserved_data_fields = self.user_fields
-        self.preserved_data_fields.append('id')
-        changed_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.CHANGED])
-        self.preserved_data_fields.extend(changed_fields)
-        # we also need to preserve the values in the database that are not in the (CSV) table
-        asset_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.ASSET_ONLY])
-        self.preserved_data_fields.extend(asset_fields)
         self.database_name: str = database_name
         self.init_connection()
         if reset_database:
