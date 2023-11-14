@@ -2104,7 +2104,7 @@ class EditableTable(Table):
         if row_number is None or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or frm_quick_edit is None:
             return
 
-        column_names = ['Asset_id', 'Url']
+        column_names = ['Asset_id', 'Url', 'Origin']  # fields to quick edit but with no type 'USER'
         column_names.extend(gui_t.get_csv_field_name_list(filter_on_states=[gui_t.CSVFieldState.USER]))
         for col_name in column_names:
             col_index = self.get_col_index(col_name)
