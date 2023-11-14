@@ -131,37 +131,23 @@ class EditableTable(Table):
 
     @property
     def current_page(self) -> int:
-        """
-        Get the current page.
-        :return: current page number.
-        """
+        """ Get the current page. """
         return self._current_page
 
     @current_page.setter
     def current_page(self, value: int) -> None:
-        """
-        Set the current page.
-        :param value: page number to set.
-        """
+        """ Set the current page. """
         self._current_page_saved = self._current_page
         self._current_page = value
-        # self.update_controls_state_func()
-        # self.update_preview_info_func()
 
     @property
     def is_filtered(self) -> int:
-        """
-        Get the current page.
-        :return: current page number.
-        """
+        """ Get the current page. """
         return self._is_filtered
 
     @is_filtered.setter
     def is_filtered(self, value: bool) -> None:
-        """
-        Set the filtered state.
-        :param value: filtered state to set.
-        """
+        """ Set the filtered state. """
         self._is_filtered_saved = self._is_filtered
         self._is_filtered = value
 
@@ -172,11 +158,13 @@ class EditableTable(Table):
 
     @property
     def db_handler(self) -> UEAssetDbHandler:
-        """
-        Get the db handler.
-        :return: db handler.
-        """
+        """ Get the db handler. """
         return self._db_handler
+
+    @property
+    def last_selected_row(self) -> int:
+        """ Get the last selected row. """
+        return self._last_selected_row
 
     def handle_arrow_keys(self, event):
         """

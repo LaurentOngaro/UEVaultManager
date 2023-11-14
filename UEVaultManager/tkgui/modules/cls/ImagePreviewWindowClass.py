@@ -48,9 +48,6 @@ class ImagePreviewWindow(tk.Toplevel):
         url: str = '',
         show_buttons: bool = False
     ):
-        if not url:
-            return
-
         super().__init__()
         self.title(title)
         try:
@@ -70,6 +67,7 @@ class ImagePreviewWindow(tk.Toplevel):
             self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         else:
             self.bind("<Button-1>", self.on_close)
+        self.bind('<Key>', self.on_key_press)
         self.frm_content = self.ContentFrame(self)
         self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.BOTH, expand=True)
 
@@ -115,6 +113,15 @@ class ImagePreviewWindow(tk.Toplevel):
         :param _event: event that triggered the call of this function.
         """
         self.close_window()
+
+    def on_key_press(self, event):
+        """
+        Event when a key is pressed.
+        :param event: event that triggered the call of this function.
+        """
+        if event.keysym == 'Escape':
+            self.on_close()
+        return 'break'
 
     def close_window(self) -> None:
         """

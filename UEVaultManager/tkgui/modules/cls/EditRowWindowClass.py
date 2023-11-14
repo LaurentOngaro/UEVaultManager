@@ -252,15 +252,12 @@ class EditRowWindow(tk.Toplevel):
             gui_f.update_widgets_in_list(url != '', 'asset_has_url')
             gui_f.set_widget_state(self.frm_control.btn_open_json, is_marketplace)
 
-    def update_image_preview(self, url: str = '') -> bool:
+    def update_image_preview(self) -> bool:
         """
         Update the image preview.
         :return: True if the image was displayed, False otherwise.
         """
-        if not url:
-            url = self.image_url
-        else:
-            self.image_url = url
+        url = self.image_url
         if not gui_f.show_asset_image(image_url=url, canvas_image=self.frm_control.canvas_image, scale=self.preview_scale):
             return False
         self.update_controls_state()
