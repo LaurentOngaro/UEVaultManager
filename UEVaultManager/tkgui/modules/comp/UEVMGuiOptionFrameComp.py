@@ -54,6 +54,16 @@ class UEVMGuiOptionFrame(ttk.Frame):
             'Assets Images Folder': gui_g.s.asset_images_folder,
             'Assets CSV Files Folder': gui_g.s.assets_csv_files_folder,
         }
+        try:
+            # get any folder name from the log files in the core object
+            core = gui_g.UEVM_cli_ref.core
+            any_core_log_file = core.scrap_assets_filename_log or core.scan_assets_filename_log or core.ignored_assets_filename_log or core.notfound_assets_filename_log
+            log_folder = os.path.dirname(any_core_log_file)
+            log_folder = os.path.normpath(log_folder)
+            if os.path.isdir(log_folder):
+                self.quick_folders_list['Log Folder'] = log_folder
+        except (Exception, ):
+            pass
         cb_quick_folders = ttk.Combobox(lblf_quick_access, values=list(self.quick_folders_list.keys()), state='readonly', width=35)
         cb_quick_folders.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
         self._cb_quick_folders = cb_quick_folders
