@@ -970,8 +970,9 @@ class UEVMGui(tk.Tk):
         if gui_g.s.check_asset_folders:
             self.clean_asset_folders()
 
-        pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False, show_btn_stop_l=True)
         data_table = self.editable_table  # shortcut
+        gui_f.create_file_backup(data_table.data_source, backup_to_keep=1, suffix='BEFORE_SCAN')
+        pw = gui_f.show_progress(self, text='Scanning folders for new assets', width=500, height=120, show_progress_l=False, show_btn_stop_l=True)
         while folder_to_scan:
             full_folder = folder_to_scan.pop()
             full_folder = os.path.abspath(full_folder)
@@ -1383,7 +1384,7 @@ class UEVMGui(tk.Tk):
             row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
         pw = None
         row_count = len(row_indexes)
-        data_table = self.editable_table  # shortcut
+
         if self.is_using_database:
             tags_count_saved = data_table.db_handler.get_rows_count('tags')
             rating_count_saved = data_table.db_handler.get_rows_count('ratings')
@@ -2162,7 +2163,11 @@ class UEVMGui(tk.Tk):
         if gui_g.WindowsRef.image_preview:
             gui_g.WindowsRef.image_preview.close_window()
         ipw = ImagePreviewWindow(
-            title='Image Preview', screen_index=self.screen_index, url=self._image_url, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height
+            title='Image Preview',
+            screen_index=self.screen_index,
+            url=self._image_url,
+            width=gui_g.s.preview_max_width,
+            height=gui_g.s.preview_max_height
         )
         if not ipw.display(url=self._image_url):
             ipw.close_window()
