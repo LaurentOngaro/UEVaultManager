@@ -621,3 +621,25 @@ def parse_callable(callable_string: str) -> (str, dict):
         return func_name, func_params
     except (Exception, ):
         return '', []
+
+
+def save_image_to_png(image: tk.PhotoImage, filename: str) -> bool:
+    """
+    Save an image to a PNG file.
+    :param image: image to save.
+    :param filename: filename to save the image to. The extension will be changed to .png if needed.
+    :return: True if the image was saved, False otherwise.
+    """
+    try:
+        filename = os.path.normpath(filename)
+        filename = os.path.splitext(filename)[0] + '.png'
+        img_pil = ImageTk.getimage(image)
+        if img_pil.mode in ('RGBA', 'LA'):
+            background = Image.new(img_pil.mode[:-1], img_pil.size, '#000')
+            background.paste(img_pil, img_pil.split()[-1])
+            img_pil = background
+        img_pil.save(filename, format='PNG', subsampling=0, quality=100)
+        img_pil.close()
+        return True
+    except (Exception, ):
+        return False

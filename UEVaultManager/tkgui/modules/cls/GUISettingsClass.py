@@ -24,6 +24,8 @@ class GUISettings:
     path: str = ''
     config_file_gui: str = ''  # config file path for gui part (tkgui)
     config_file: str = ''  # config file path for cli part (cli). Set by the cli part
+    data_filetypes_jpg = (('Jpeg image', '*.jpg'), )
+    data_filetypes_png = (('PNG image', '*.png'), )
     data_filetypes_all = (('all files', '*.*'), )
     data_filetypes_text = (('text file', '*.txt'), )
     data_filetypes_json = (('json file', '*.json'), )

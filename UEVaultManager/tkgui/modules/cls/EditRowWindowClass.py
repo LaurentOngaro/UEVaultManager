@@ -48,7 +48,7 @@ class EditRowWindow(tk.Toplevel):
         # the photoimage is stored is the variable to avoid garbage collection
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.canvas_image = None
-
+        self.image_url: str = ''
         self.frm_control = self.ControlFrame(self)
         self.frm_content = self.ContentFrame(self)
 
@@ -112,8 +112,8 @@ class EditRowWindow(tk.Toplevel):
             btn_prev_asset_edit.pack(**pack_def_options, side=tk.LEFT)
             btn_next_asset_edit = ttk.Button(lblf_actions, text='Next Asset', command=container.next_asset)
             btn_next_asset_edit.pack(**pack_def_options, side=tk.LEFT)
-            ttk_item = ttk.Button(lblf_actions, text='Open Json', command=container.open_json_file)
-            ttk_item.pack(**pack_def_options, side=tk.LEFT)
+            self.btn_open_json = ttk.Button(lblf_actions, text='Open Json', command=container.open_json_file)
+            self.btn_open_json.pack(**pack_def_options, side=tk.LEFT)
             btn_open_url = ttk.Button(lblf_actions, text='Open URL', command=container.open_asset_url)
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
             btn_open_folder = ttk.Button(lblf_actions, text='Open Folder', command=container.open_asset_folder)
@@ -195,6 +195,7 @@ class EditRowWindow(tk.Toplevel):
         """
         Go to the previous asset (Wrapper).
         """
+        self.close_image_preview()
         row_number = self.editable_table.prev_row()
         self.editable_table.edit_row(row_number)
 
@@ -202,6 +203,7 @@ class EditRowWindow(tk.Toplevel):
         """
         Go to the next asset (Wrapper).
         """
+        self.close_image_preview()
         row_number = self.editable_table.next_row()
         self.editable_table.edit_row(row_number)
 
@@ -209,18 +211,21 @@ class EditRowWindow(tk.Toplevel):
         """
         Open the asset URL (Wrapper).
         """
+        self.close_image_preview()
         self.editable_table.open_asset_url()
 
     def open_asset_folder(self) -> None:
         """
         Open the asset URL (Wrapper).
         """
+        self.close_image_preview()
         self.editable_table.open_origin_folder()
 
     def open_json_file(self) -> None:
         """
         Open the source file of the asset (Wrapper).
         """
+        self.close_image_preview()
         self.editable_table.open_json_file()
 
     def update_controls_state(self) -> None:
@@ -241,9 +246,25 @@ class EditRowWindow(tk.Toplevel):
         widgets = data_table.get_edited_row_values()
         if len(widgets):
             is_added = widgets.get('Added manually', False)
+            is_marketplace = widgets.get('Origin', '') == gui_g.s.origin_marketplace
             url = widgets.get('Url', '')
             gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
             gui_f.update_widgets_in_list(url != '', 'asset_has_url')
+            gui_f.set_widget_state(self.frm_control.btn_open_json, is_marketplace)
+
+    def update_image_preview(self, url: str = '') -> bool:
+        """
+        Update the image preview.
+        :return: True if the image was displayed, False otherwise.
+        """
+        if not url:
+            url = self.image_url
+        else:
+            self.image_url = url
+        if not gui_f.show_asset_image(image_url=url, canvas_image=self.frm_control.canvas_image, scale=self.preview_scale):
+            return False
+        self.update_controls_state()
+        return True
 
     def open_image_preview(self, _event):
         """
@@ -258,3 +279,14 @@ class EditRowWindow(tk.Toplevel):
         )
         if not ipw.display(url=url):
             ipw.close_window()
+        else:
+            gui_f.make_modal(ipw)  # make the preview window modal
+        gui_f.make_modal(self)  # (re)make the edit row window modal
+
+    @staticmethod
+    def close_image_preview():
+        """
+        Close the image preview window.
+        """
+        if gui_g.WindowsRef.image_preview:
+            gui_g.WindowsRef.image_preview.close_window()

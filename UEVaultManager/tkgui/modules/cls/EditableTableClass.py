@@ -1943,12 +1943,10 @@ class EditableTable(Table):
         self._edit_row_number = row_number
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
-        # image preview
-        if not gui_f.show_asset_image(
-            image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale
-        ):
-            # the image could not be loaded and the offline mode could have been enabled
-            self._container.update_controls_state(update_title=True)
+        edit_row_window.image_url = image_url
+        self.after(300, edit_row_window.update_image_preview)  # to update the preview once all has been loaded
+        # the image could not be loaded and the offline mode could have been enabled
+        self.after(500, self.update_controls_state_func)  # to update the buttons state
         gui_f.make_modal(edit_row_window)
 
     def save_edit_row(self) -> None:
