@@ -109,6 +109,12 @@ class UEVMGui(tk.Tk):
         self._frm_option: Optional[UEVMGuiOptionFrame] = None
         self._frm_content: Optional[UEVMGuiContentFrame] = None
         self._frm_filter: Optional[FilterFrame] = None
+        self._releases_choice = {}
+        self._update_delay: int = 2000
+        self._silent_mode: bool = False
+        self._choice_result: str = ''
+        self._image_url: str = ''
+
         self.editable_table: Optional[EditableTable] = None
         self.progress_window: Optional[FakeProgressWindow] = None
         self.egs: Optional[EPCAPI] = None
@@ -134,10 +140,7 @@ class UEVMGui(tk.Tk):
 
         frm_content = UEVMGuiContentFrame(self)
         self._frm_content = frm_content
-        self.releases_choice = {}
-        self.update_delay: int = 2000
-        self.silent_mode: bool = False
-        self.choice_result: str = ''
+
         # get the core instance from the cli application if it exists
         self.core = None if gui_g.UEVM_cli_ref is None else gui_g.UEVM_cli_ref.core
         # if the core instance is not set, create a new one
@@ -278,7 +281,7 @@ class UEVMGui(tk.Tk):
         Overrided to add logging function for debugging
         """
         self.logger.info(f'starting mainloop in {__name__}')
-        self.after(self.update_delay, self.update_progress_windows)
+        self.after(self._update_delay, self.update_progress_windows)
         self.tk.mainloop(n)
         # check is a child window is still open
         # child_windows = self.progress_window or gui_g.WindowsRef.edit_cell or gui_g.WindowsRef.edit_row
@@ -294,7 +297,7 @@ class UEVMGui(tk.Tk):
         if self.progress_window:
             self.progress_window.update()
             # print('UPDATE')
-        self.after(self.update_delay, self.update_progress_windows)
+        self.after(self._update_delay, self.update_progress_windows)
 
     @staticmethod
     def _focus_next_widget(event):
@@ -395,7 +398,7 @@ class UEVMGui(tk.Tk):
         """
         Get the result of the choice window.
         """
-        self.choice_result = selection
+        self._choice_result = selection
 
     def on_key_press(self, event):
         """
@@ -442,8 +445,8 @@ class UEVMGui(tk.Tk):
             if row_number < 0:
                 return
             self.update_preview_info(row_number)
-            image_url = self.editable_table.get_image_url(row_number)
-            if not gui_f.show_asset_image(image_url=image_url, canvas_image=canvas_image):
+            self._image_url = self.editable_table.get_image_url(row_number)
+            if not gui_f.show_asset_image(image_url=self._image_url, canvas_image=canvas_image):
                 # the image could not be loaded and the offline mode could have been enabled
                 self.update_controls_state(update_title=True)
         except IndexError:
@@ -453,10 +456,19 @@ class UEVMGui(tk.Tk):
         """
         Show the default image when the mouse leaves the cell.
         :param _event: event that triggered the call.
+
+        Note:
+            If defined, it will display the last selected row info.
         """
-        self.update_preview_info()
+        row_number = self.editable_table.last_selected_row
         canvas_image = self._frm_control.canvas_image
-        gui_f.show_default_image(canvas_image=canvas_image)
+        if row_number < 0:
+            self.update_preview_info()
+            gui_f.show_default_image(canvas_image=canvas_image)
+        else:
+            self.update_preview_info(row_number)
+            self._image_url = self.editable_table.get_image_url(row_number)
+            gui_f.show_asset_image(image_url=self._image_url, canvas_image=canvas_image)
 
     def on_selection_change(self, event=None) -> None:
         """
@@ -719,9 +731,9 @@ class UEVMGui(tk.Tk):
             # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed
             # so, the self._get_choice_result method has been called
             file_name = f'{col_name_to_export}_{datetime.now().strftime(DateFormat.file_suffix)}'
-            if self.choice_result == 'list':
+            if self._choice_result == 'list':
                 filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.txt', filetypes=gui_g.s.data_filetypes_text)
-            elif self.choice_result == 'filter':
+            elif self._choice_result == 'filter':
                 filename = self._open_file_dialog(
                     save_mode=True, filename=f'{file_name}.json', filetypes=gui_g.s.data_filetypes_json, initial_dir=gui_g.s.filters_folder
                 )
@@ -729,10 +741,10 @@ class UEVMGui(tk.Tk):
                 filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.csv')
 
             if filename:
-                if self.choice_result == 'list':
+                if self._choice_result == 'list':
                     # save the list of "Asset_id" of the selected row to the selected file
                     selected_rows.to_csv(filename, index=False, columns=['Asset_id'], header=False)
-                elif self.choice_result == 'filter':
+                elif self._choice_result == 'filter':
                     # create a filter file with the list of "Asset_id" of the selected row
                     asset_ids = selected_rows[col_name_to_export].tolist()
                     # asset_ids = json.dumps(asset_ids)
@@ -853,7 +865,7 @@ class UEVMGui(tk.Tk):
         :param message: message to display.
         :return: True if the user answered yes, False otherwise.
         """
-        if self.silent_mode:
+        if self._silent_mode:
             return True
         else:
             return gui_f.box_yesno(message)
@@ -869,7 +881,7 @@ class UEVMGui(tk.Tk):
         """
         level_lower = level.lower()
 
-        if self.silent_mode:
+        if self._silent_mode:
             if level_lower == 'warning':
                 self.logger.warning(message)
             elif level_lower == 'error':
@@ -943,14 +955,14 @@ class UEVMGui(tk.Tk):
             )
         ):
             return
-        self.silent_mode = gui_f.box_yesno(
+        self._silent_mode = gui_f.box_yesno(
             f'Do you want to run the scan silently ?\nIt will use choices by default and avoid user confirmation dialogs.'
         )
         if gui_g.s.offline_mode:
             self.silent_message('You are in offline mode, Scraping and scanning features are not available')
             return
         if self.core is None:
-            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible', show_dialog=not self.silent_mode)
+            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible', show_dialog=not self._silent_mode)
             return
         if not folder_to_scan:
             self.silent_message('No folder to scan. Please add some in the config file', level='warning')
@@ -1201,7 +1213,7 @@ class UEVMGui(tk.Tk):
                         forced_data=forced_data,
                         update_dataframe=False,
                         check_unicity=is_adding,
-                        is_silent=self.silent_mode,
+                        is_silent=self._silent_mode,
                     )  # !! IMPORTANT: update_row() and save in database already DONE inside scrap_asset()
                 except ReadTimeout as error:
                     self.add_error(error)
@@ -1248,7 +1260,7 @@ class UEVMGui(tk.Tk):
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if not asset_data or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
                 msg = f'Failed to grab data from {marketplace_url}'
-                gui_f.box_message(msg, level='warning', show_dialog=not self.silent_mode)
+                gui_f.box_message(msg, level='warning', show_dialog=not self._silent_mode)
                 if self.core.notfound_logger:
                     self.core.notfound_logger.info(msg)
                 return {}
@@ -1277,7 +1289,7 @@ class UEVMGui(tk.Tk):
             msg = f'The asset url {marketplace_url} is invalid and could not be scrapped for this row'
             if self.core.notfound_logger:
                 self.core.notfound_logger.info(f'{app_name}: invalid url "{marketplace_url}"')
-            gui_f.box_message(msg, level='warning', show_dialog=not self.silent_mode)
+            gui_f.box_message(msg, level='warning', show_dialog=not self._silent_mode)
             # change the grab result to CONTENT_NOT_FOUND in database
             if self.is_using_database and self.ue_asset_scraper:
                 self.ue_asset_scraper.asset_db_handler.update_asset('grab_result', GrabResult.CONTENT_NOT_FOUND.name, asset_id=app_name)
@@ -1308,13 +1320,13 @@ class UEVMGui(tk.Tk):
                 maxvalue=max_val
             )
             if end is not None:
-                self.silent_mode = gui_f.box_yesno(
+                self._silent_mode = gui_f.box_yesno(
                     f'Do you want to run the scan silently ?\nIt will use choices by default and avoid user confirmation dialogs.'
                 )
                 start = max(min_val, start)
                 end = min(max_val, end)
                 all_row_numbers = list(range(start, end))
-                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, is_silent=self.silent_mode)
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, is_silent=self._silent_mode)
                 self.ue_asset_scraper = None
 
     def scrap_asset(
@@ -1342,9 +1354,9 @@ class UEVMGui(tk.Tk):
             self.silent_message('You are in offline mode, Scraping and scanning features are not available')
             return
         if self.core is None:
-            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible', show_dialog=not self.silent_mode)
+            gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible', show_dialog=not self._silent_mode)
             return
-        self.silent_mode = is_silent
+        self._silent_mode = is_silent
         if forced_data is None:
             forced_data = {}
         is_unique = not check_unicity  # by default, we consider that the data are unique
@@ -1353,7 +1365,7 @@ class UEVMGui(tk.Tk):
         if not row_numbers:
             row_numbers = data_table.multiplerowlist
             use_range = False
-            self.silent_mode = False if not is_silent else True  # NO silent_mode only if it has explicitly been set to False
+            self._silent_mode = False if not is_silent else True  # NO silent_mode only if it has explicitly been set to False
         else:
             use_range = True
         if row_index < 0 and marketplace_url is None and row_numbers is None and len(row_numbers) < 1:
@@ -1400,7 +1412,7 @@ class UEVMGui(tk.Tk):
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
                     if gui_f.box_yesno(
                         f'{msg}.\nDo you wan to create a new Url with {asset_slug_from_row} and use it for scraping ?\nIf no, the given url with {asset_slug_from_url} will be used',
-                        show_dialog=not self.silent_mode
+                        show_dialog=not self._silent_mode
                     ):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
@@ -1440,7 +1452,7 @@ class UEVMGui(tk.Tk):
                             asset_data[key] = value
                     if is_unique or gui_f.box_yesno(
                         f'The scrapped data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to create a row using tthis data ?\nIf No, the row will be skipped',
-                        show_dialog=not self.silent_mode
+                        show_dialog=not self._silent_mode
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                         if self.is_using_database:
@@ -1468,7 +1480,7 @@ class UEVMGui(tk.Tk):
                     is_unique, asset_data = self._check_unicity(asset_data)
                 if is_unique or gui_f.box_yesno(
                     f'The data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to update the row with the new data ?\nIf No, the row will be skipped',
-                    show_dialog=not self.silent_mode
+                    show_dialog=not self._silent_mode
                 ):
                     if forced_data is not None:
                         for key, value in forced_data.items():
@@ -1980,12 +1992,12 @@ class UEVMGui(tk.Tk):
         if not releases or not latest_id:
             gui_f.box_message('There is no releases to install for this asset.\nCommand is aborted.')
             return
-        self.releases_choice = releases
+        self._releases_choice = releases
         cw = ChoiceFromListWindow(
             window_title='UEVM: select release',
             title='Select the release',
             sub_title='In the list below, Select the release you want to see detail from or to remove from the installed releases',
-            json_data=self.releases_choice,
+            json_data=self._releases_choice,
             default_value='',
             show_validate_button=False,
             show_delete_button=False,
@@ -2007,7 +2019,7 @@ class UEVMGui(tk.Tk):
         asset_id, folder_id = selected_ids
         if asset_id:
             try:
-                release_selected = self.releases_choice[asset_id]
+                release_selected = self._releases_choice[asset_id]
             except IndexError:
                 return False
         if folder_id:
@@ -2147,9 +2159,12 @@ class UEVMGui(tk.Tk):
         Open the image preview window.
         :param _event: event from the widget.
         """
-        url = self.editable_table.get_image_url()
+        if gui_g.WindowsRef.image_preview:
+            gui_g.WindowsRef.image_preview.close_window()
         ipw = ImagePreviewWindow(
-            title='Image Preview', screen_index=self.screen_index, url=url, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height
+            title='Image Preview', screen_index=self.screen_index, url=self._image_url, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height
         )
-        if not ipw.display():
+        if not ipw.display(url=self._image_url):
             ipw.close_window()
+        else:
+            gui_f.make_modal(ipw)  # make the preview window modal
