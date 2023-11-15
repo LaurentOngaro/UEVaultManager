@@ -64,8 +64,7 @@ def clean_ue_asset_name(name_to_clean: str) -> str:
         r'_UE[\d._]+',  # any string starting with '_UE' followed by any digit, dot or underscore ex: '_UE4_26'
         r'\d+[._]+',  # at least one digit followed by a dot or underscore  ex: '1.0' or '1_0'
         ' - UE Marketplace',  # remove ' - UE Marketplace'
-        r'\b(\w+)\b in (\1){1}.',
-        # remove ' in ' and the string before and after ' in ' are the same ex: "Linhi Character in Characters" will keep only "Linhi"
+        # TOO WIDE '\b(\w+)\b in (\1){1}.', # remove ' in ' and the string before and after ' in ' are the same ex: "Linhi Character in Characters" will keep only "Linhi"
         r' in \b.+?$',  # any string starting with ' in ' and ending with the end of the string ex: ' in Characters'
     ]
     patterns = [re.compile(p) for p in patterns]
@@ -216,6 +215,9 @@ class UEVMGui(tk.Tk):
         self.protocol('WM_DELETE_WINDOW', self.on_close)
         gui_g.WindowsRef.uevm_gui = self
 
+    def __del__(self):
+        self.logger.debug(f'{__name__} instance deleted')
+
     @property
     def is_using_database(self) -> bool:
         """ Check if the table is using a database as data source. """
@@ -289,6 +291,9 @@ class UEVMGui(tk.Tk):
         # if child_windows:
         #     self._wait_for_window(child_windows)
         self.logger.info(f'ending mainloop in {__name__}')
+        self.logger.info('\nList of errors that occured during this session:\n')
+        for error in self._errors:
+            self.logger.info(error)
 
     def update_progress_windows(self):
         """
@@ -819,18 +824,42 @@ class UEVMGui(tk.Tk):
             :param returned_urls: list of urls to return. We use a list instead of a str because we need to modify it from the inner function.
             :return: True if the entry is a file and the name matches the folder name, False otherwise.
             """
+
+            def _clean_keys(key_to_clean: str) -> str:
+                """ used to compare keys in the minimal_fuzzy_score_by_name config var with the folder name"""
+                name_cleaned = key_to_clean.lower()
+                patterns = [
+                    # any roman number
+                    r'\bM{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b',
+                    # any space or underscore or dot or dash
+                    r'[\s_\-\.]',
+                    # any number
+                    r'\d+',
+                ]
+                patterns = [re.compile(p) for p in patterns]
+                for pattern in patterns:
+                    name_cleaned = pattern.sub('', name_cleaned)
+                return name_cleaned.strip()
+
             if entry.is_file() and entry.name.lower().endswith('.url'):
                 folder_name_cleaned = clean_ue_asset_name(folder_name)
                 file_name = os.path.splitext(entry.name)[0]
                 file_name_cleaned = clean_ue_asset_name(file_name)
                 fuzz_score = fuzz.ratio(folder_name_cleaned, file_name_cleaned)
                 self.logger.debug(f'Fuzzy compare {folder_name} ({folder_name_cleaned}) with {file_name} ({file_name_cleaned}): {fuzz_score}')
-                minimal_score = gui_g.s.minimal_fuzzy_score_by_name.get('default', 70)
-                for key, value in gui_g.s.minimal_fuzzy_score_by_name.items():
-                    key = key.lower()
-                    if key in folder_name_cleaned.lower() or key in file_name_cleaned.lower():
-                        minimal_score = value
-                        break
+                try:
+                    minimal_score = gui_g.s.minimal_fuzzy_score_by_name.get('default', 70)
+                    folder_to_compare = _clean_keys(folder_name_cleaned)
+                    file_to_compare = _clean_keys(file_name_cleaned)
+                    for key, value in gui_g.s.minimal_fuzzy_score_by_name.items():
+                        key_to_compare = _clean_keys(key)
+                        if key_to_compare in [folder_to_compare, file_to_compare]:
+                            minimal_score = value
+                            break
+                except (Exception, ) as error:
+                    msg = f'The following error occured when reading the "minimal_fuzzy_score_by_name" value in config file.\nCheck the value and fix it.\n{error!r}'
+                    self.add_error(Exception(msg))
+                    minimal_score = 80
 
                 if fuzz_score >= minimal_score:
                     with open(entry.path, 'r', encoding='utf-8') as file:
@@ -851,6 +880,7 @@ class UEVMGui(tk.Tk):
         else:
             found_url = egs.get_marketplace_product_url(asset_slug=clean_ue_asset_name(folder))
         try:
+            found_url = found_url.replace('?sessionInvalidated=true', '')  # can be added by errror when creating the url file by drag and drop
             if check_if_valid and egs is not None and not egs.is_valid_url(found_url):
                 found_url = ''
         except (Exception, ):  # trap all exceptions on connection
@@ -929,11 +959,12 @@ class UEVMGui(tk.Tk):
             if gui_g.s.testing_switch == 2:  # here, do_not_ask is used to detect if the caller is the "add" button and not the "scan" button
                 # noinspection GrazieInspection
                 folder_to_scan = [
-                    'G:/Assets/pour UE/02 Warez/Battle Royale Island Pack',  # # test folder n'existe pas OK
-                    'G:/Assets/pour UE/02 Warez/Characters/Boths/G2 Cyborg Characters 4.27',
-                    'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # OK
-                    'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # OK
-                    'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  # OK
+                    # 'G:/Assets/pour UE/02 Warez/Battle Royale Island Pack',  # # test folder n'existe pas OK
+                    # 'G:/Assets/pour UE/02 Warez/Characters/Boths/G2 Cyborg Characters 4.27',
+                    # 'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # OK
+                    # 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # OK
+                    # 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  # OK
+                    'G:/Assets/pour UE/01 Acquis/Environments/Kitbash3d/Neo City.unreal.2k',  # Valid but no url - must be kept
                 ]  # ETAPEOK
             elif gui_g.s.testing_switch == 3:
                 # noinspection GrazieInspection
@@ -1037,10 +1068,19 @@ class UEVMGui(tk.Tk):
                 try:
                     for entry in os.scandir(full_folder):
                         entry_is_valid = entry.name.lower() not in gui_g.s.ue_invalid_content_subfolder
+                        # Entry is a file:trying to find what kind of asset folder is it
+                        #   - set the default type to UEAssetType.Asset for the asset.
+                        #   - checks if it's a manifest file or an uplugin file or an uproject file
+                        #     - If Entry filename is equal to the predefined manifest filename, it performs additional checks and operations to validate the manifest file
+                        #       - checks if the current folder (full_folder) contains a "valid" folder structure
+                        #          - if NO, we fix it
+                        #   - if Entry is not a manifest file, it checks the file extension to determine if it's a plugin file
+                        #   - searches for a marketplace_url file that matches the folder name
+                        #     - if a marketplace_url is found, it checks if it's valid
+                        #       - if the marketplace_url is valid, it adds the folder to the list of valid folders
+                        # Entry is a folder: add it to the list of folders to scan
                         comment = ''
                         if entry.is_file():
-                            # Entry is a file, trying to find what kind of asset folder is it
-                            # - check if it's a manifest file or an uplugin file or an uproject file
                             asset_type = UEAssetType.Asset
                             extension_lower = os.path.splitext(entry.name)[1].lower()
                             filename_lower = os.path.splitext(entry.name)[0].lower()
@@ -1104,7 +1144,7 @@ class UEVMGui(tk.Tk):
                                 }
                                 if grab_result != GrabResult.NO_ERROR.name or not marketplace_url:
                                     invalid_folders.append(full_folder)
-                                    msg = f'-->{folder_name} is an invalid folder'
+                                    msg = f'-->{folder_name} not recognized as a valid marketplace asset folder'
                                     if self.core.scan_assets_logger:
                                         self.core.scan_assets_logger.warning(msg)
                                 else:
@@ -1126,7 +1166,7 @@ class UEVMGui(tk.Tk):
             # sort the list to have the parent folder POPED (by the end) before the subfolders
             folder_to_scan = sorted(folder_to_scan, key=lambda x: len(x), reverse=True)
 
-        msg = '\n\nValid folders found after scan:\n'
+        msg = '\n\nAsset folders found after scan:\n'
         self.logger.info(msg)
         if self.core.scan_assets_logger:
             self.core.scan_assets_logger.info(msg)
@@ -1211,7 +1251,7 @@ class UEVMGui(tk.Tk):
                 forced_data['comment'] += '\n' + folder_data['comment']
 
             # during the folders scan the marketplace_url has been chacked and the result put in 'grab_result'
-            # so, if its' not 'NO_ERROR', so don't have to scrap_the asset because the we need to check it here
+            # so, if its' not 'NO_ERROR', so we don't have to scrap_the asset because we need to check it here
             if folder_data['grab_result'] == GrabResult.NO_ERROR.name:
                 # TRYING TO SCRAP DATA
                 try:
@@ -1231,7 +1271,7 @@ class UEVMGui(tk.Tk):
                     forced_data['grab_result'] = GrabResult.TIMEOUT.name
             else:
                 # NO SCRAP TO DO
-                forced_data['Asset_id'] = gui_g.s.empty_row_prefix + gui_fn.create_uid()  # needed for the row to be saved in databse
+                forced_data['asset_id'] = gui_g.s.empty_row_prefix + gui_fn.create_uid()  # needed for the row to be saved in databse
                 # TODO: check and add other forced values for an partial, local and not scraped asset
             # we update the datatable and save in database whetever the result is
             data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
@@ -1246,7 +1286,7 @@ class UEVMGui(tk.Tk):
 
         if invalid_folders:
             result = '\n'.join(invalid_folders)
-            result = f'The following folders have produce invalid results during the scan:\n{result}'
+            result = f'\n\nThe following folders have produce invalid results during the scan:\n{result}\n\n'
             if gui_g.WindowsRef.display_content is None:
                 file_name = f'scan_folder_results_{datetime.now().strftime(DateFormat.us_short)}.txt'
                 gui_g.WindowsRef.display_content = DisplayContentWindow(
