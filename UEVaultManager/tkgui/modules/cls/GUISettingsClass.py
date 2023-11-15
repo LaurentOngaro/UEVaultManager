@@ -509,6 +509,19 @@ class GUISettings:
         """ Setter for backup_files_to_keep """
         self.config_vars['backup_files_to_keep'] = value
 
+    @property
+    def keep_invalid_scans(self) -> bool:
+        """ Getter for keep_invalid_scans """
+        return gui_fn.convert_to_bool(self.config_vars['keep_invalid_scans'])
+
+    @keep_invalid_scans.setter
+    def keep_invalid_scans(self, value):
+        """ Setter for keep_invalid_scans """
+        self.config_vars['keep_invalid_scans'] = value
+
+    # #############
+    # Nexts are NOT properties
+    # #############
     def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
         """
         Get columns infos depending on the datasource type
@@ -583,6 +596,10 @@ class GUISettings:
                 'comment': 'Number of grouped assets to scrap with one url. Since 2023-10-31 a value bigger than 75 will be refused by UE API',
                 'value': 75
             },
+            'keep_invalid_scans': {
+                'comment': 'Set to True to keep folders that contain a "non marketplace friendly" asset during a folders scan.',
+                'value': 'True'
+            },
             'reopen_last_file': {
                 'comment': 'Set to True to re-open the last file at startup if no input file is given',
                 'value': 'True'
@@ -643,11 +660,11 @@ class GUISettings:
             },
             'group_names': {
                 'comment': 'The name of the groups where the selected rows can be added to.',
-                'value': list(['#1', '#2', '#3'])
+                'value': list(['G1', 'G2', 'G3'])
             },
             'current_group_name': {
                 'comment': 'The name of the current group where the selected rows can be added to.',
-                'value': '#1'
+                'value': 'G1'
             },
             'x_pos': {
                 'comment': 'X position of the main windows. Set to 0 to center the window. Automatically saved on quit',
@@ -732,11 +749,14 @@ class GUISettings:
         if has_changed:
             self.save_config_file(save_config_var=False)
 
-    def read_config_properties(self) -> dict:
+    def read_config_properties(self, update_from_config_file: bool = False) -> dict:
         """
         Read the properties from the config file.
-        :return:
+        :param update_from_config_file: True to update the config_vars from the config file.
+        :return: dict of config vars.
         """
+        if update_from_config_file:
+            self.init_gui_config_file(self.config_file_gui)
         # ##### start of properties stored in config file
         # store all the properties that must be saved in config file
         # no need of fallback values here, they are set in the config file by default
@@ -746,6 +766,7 @@ class GUISettings:
             'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
             'timeout_for_scraping': self.config.getint('UEVaultManager', 'timeout_for_scraping'),
             'scraped_assets_per_page': self.config.get('UEVaultManager', 'scraped_assets_per_page'),
+            'keep_invalid_scans': self.config.getboolean('UEVaultManager', 'keep_invalid_scans'),
             'reopen_last_file': self.config.getboolean('UEVaultManager', 'reopen_last_file'),
             'never_update_data_files': self.config.getboolean('UEVaultManager', 'never_update_data_files'),
             'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),

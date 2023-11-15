@@ -1108,7 +1108,7 @@ class EditableTable(Table):
                 if row_data is None:
                     continue
                 _id = row_data.get('Asset_id', '')
-                if _id.startswith(gui_g.s.temp_id_prefix):
+                if _id.startswith(gui_g.s.temp_id_prefix) and not gui_g.s.keep_invalid_scans:
                     # this a new row , partialled empty, created before scraping the data.
                     # No need to save it, It will produce a database error.
                     # It will be saved after scraping

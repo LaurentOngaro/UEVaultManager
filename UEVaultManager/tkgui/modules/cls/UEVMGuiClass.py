@@ -965,6 +965,8 @@ class UEVMGui(tk.Tk):
                     # 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # OK
                     # 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  # OK
                     'G:/Assets/pour UE/01 Acquis/Environments/Kitbash3d/Neo City.unreal.2k',  # Valid but no url - must be kept
+                    'G:/Assets/pour UE/01 Acquis/Characters/Female/Dark Elf Blader', # a new row id
+                    'G:/Assets/pour UE/01 Acquis/Characters/Female/Modular Mercenary - Female Humans - Fantasy Collection', # still a temp_id
                 ]  # ETAPEOK
             elif gui_g.s.testing_switch == 3:
                 # noinspection GrazieInspection
@@ -1702,6 +1704,8 @@ class UEVMGui(tk.Tk):
         if force_showing:
             self._frm_option.pack(side=tk.RIGHT, fill=tk.BOTH)
             self._frm_toolbar.btn_toggle_options.config(text=' Hide Options')
+            gui_g.s.read_config_properties(update_from_config_file=True)
+            self._frm_option.refresh_widgets()
             # self._frm_toolbar.btn_toggle_controls.config(state=tk.DISABLED)
         else:
             self._frm_option.pack_forget()
