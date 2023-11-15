@@ -594,7 +594,9 @@ class UEAssetDbHandler:
                 ):
                     return False
                 _id = str(asset.get('id', ''))
-                if _id.startswith(gui_g.s.temp_id_prefix):
+                if not _id or _id in gui_g.s.cell_is_nan_list:
+                    _id = str(asset.get('asset_id', ''))
+                if _id and _id.startswith(gui_g.s.temp_id_prefix):
                     # this a new row, partialled empty, created before scraping the data.
                     # No need to save it, It will produce an error.
                     # It will be saved after scraping

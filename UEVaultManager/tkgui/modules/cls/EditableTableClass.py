@@ -1092,6 +1092,42 @@ class EditableTable(Table):
         else:
             return False
 
+    def save_row_in_db(self, row_index: int):
+        """
+        Save a row in the database.
+        :param row_index: row index to save.
+        """
+        row_data = self.get_row(row_index, return_as_dict=True)
+        if row_data is None:
+            return
+        asset_id = row_data.get('Asset_id', '')
+        if asset_id.startswith(gui_g.s.temp_id_prefix) and not gui_g.s.keep_invalid_scans:
+            # this a new row , partialled empty, created before scraping the data.
+            # No need to save it, It will produce a database error.
+            # It will be saved after scraping
+            return
+        if asset_id in gui_g.s.cell_is_empty_list and asset_id in gui_g.s.cell_is_empty_list:
+            self.logger.warning(f'The asset for row index {row_index + 1} is missing asset_id or if field value. Bypassing the save.')
+            return
+        if asset_id in self._deleted_asset_ids:
+            # do not update an asset if that will be deleted
+            return
+        # convert the key names to the database column names
+        asset_data = gui_t.convert_csv_row_to_sql_row(row_data)
+        ue_asset = UEAsset()
+        try:
+            ue_asset.init_from_dict(asset_data)
+            # update the row in the database
+            tags = ue_asset.get('tags', [])
+            # tags = self._db_handler.convert_tag_list_to_string(tags) # done in save_ue_asset()
+            ue_asset.set('tags', tags)
+            self._db_handler.save_ue_asset(ue_asset)
+            asset_id = ue_asset.get('asset_id', '')
+            self.logger.info(f'UE_asset ({asset_id}) for row index {row_index + 1} has been saved to the database')
+        except (KeyError, ValueError, AttributeError) as error:
+            self.add_error(error)
+            self.logger.warning(f'Failed to save UE_asset for row index {row_index + 1} to the database. Error: {error!r}')
+
     def save_data(self, source_type: DataSourceType = None) -> None:
         """
         Save the current table data to the CSV file.
@@ -1103,42 +1139,8 @@ class EditableTable(Table):
         if source_type == DataSourceType.FILE:
             df.to_csv(self.data_source, index=False, na_rep='', date_format=DateFormat.csv)
         else:
-            for row_number in self._changed_rows:
-                row_data = self.get_row(row_number, return_as_dict=True)
-                if row_data is None:
-                    continue
-                _id = row_data.get('Asset_id', '')
-                if _id.startswith(gui_g.s.temp_id_prefix) and not gui_g.s.keep_invalid_scans:
-                    # this a new row , partialled empty, created before scraping the data.
-                    # No need to save it, It will produce a database error.
-                    # It will be saved after scraping
-                    if len(self._changed_rows) > 1:
-                        continue
-                    else:
-                        self.must_save = False
-                        return
-                asset_id = row_data.get('Asset_id', '')
-                if asset_id in gui_g.s.cell_is_empty_list and _id in gui_g.s.cell_is_empty_list:
-                    self.logger.warning(f'The asset for row #{row_number + 1} is missing asset_id or if field value. Bypassing the save.')
-                    continue
-                if asset_id in self._deleted_asset_ids:
-                    # do not update an asset if that will be deleted
-                    continue
-                # convert the key names to the database column names
-                asset_data = gui_t.convert_csv_row_to_sql_row(row_data)
-                ue_asset = UEAsset()
-                try:
-                    ue_asset.init_from_dict(asset_data)
-                    # update the row in the database
-                    tags = ue_asset.get('tags', [])
-                    # tags = self._db_handler.convert_tag_list_to_string(tags) # done in save_ue_asset()
-                    ue_asset.set('tags', tags)
-                    self._db_handler.save_ue_asset(ue_asset)
-                    asset_id = ue_asset.get('asset_id', '')
-                    self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
-                except (KeyError, ValueError, AttributeError) as error:
-                    self.add_error(error)
-                    self.logger.warning(f'Failed to save UE_asset for row #{row_number + 1} to the database. Error: {error!r}')
+            for row_index in self._changed_rows:
+                self.save_row_in_db(row_index)
             for asset_id in self._deleted_asset_ids:
                 try:
                     # delete the row in the database

@@ -960,14 +960,11 @@ class UEVMGui(tk.Tk):
             if gui_g.s.testing_switch == 2:  # here, do_not_ask is used to detect if the caller is the "add" button and not the "scan" button
                 # noinspection GrazieInspection
                 folder_to_scan = [
-                    # 'G:/Assets/pour UE/02 Warez/Battle Royale Island Pack',  # # test folder n'existe pas OK
-                    # 'G:/Assets/pour UE/02 Warez/Characters/Boths/G2 Cyborg Characters 4.27',
-                    # 'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # OK
-                    # 'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # OK
-                    # 'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  # OK
-                    'G:/Assets/pour UE/01 Acquis/Environments/Kitbash3d/Neo City.unreal.2k',  # Valid but no url - must be kept
-                    'G:/Assets/pour UE/01 Acquis/Characters/Female/Dark Elf Blader', # a new row id
-                    'G:/Assets/pour UE/01 Acquis/Characters/Female/Modular Mercenary - Female Humans - Fantasy Collection', # still a temp_id
+                    'G:/Assets/pour UE/02 Warez/Battle Royale Island Pack',  # # test folder n'existe pas OK
+                    'G:/Assets/pour UE/02 Warez/Characters/Boths/G2 Cyborg Characters 4.27',
+                    'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # OK
+                    'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # OK
+                    'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  # OK
                 ]  # ETAPEOK
             elif gui_g.s.testing_switch == 3:
                 # noinspection GrazieInspection
@@ -976,14 +973,22 @@ class UEVMGui(tk.Tk):
                     'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # update
                     'G:/Assets/pour UE/02 Warez/Environments/Battle Royale Island Pack',  # new OK
                     'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # update
-                ]
+                ]  # ETAPEOK
             elif gui_g.s.testing_switch == 4:
                 # noinspection GrazieInspection
                 folder_to_scan = [
                     'G:/Assets/pour UE/02 Warez/Animations/Female Movement Animset Pro 4.26',  # new
                     'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # update
                     'G:/Assets/pour UE/02 Warez/Environments/Battle Royale Island Pack',  # update
+                ]  # ETAPEOK
+            elif gui_g.s.testing_switch == 5:
+                # noinspection GrazieInspection
+                folder_to_scan = [
+                    'G:/Assets/pour UE/01 Acquis/Environments/Kitbash3d/Neo City.unreal.2k',  # Valid but no url - must be kept
+                    'G:/Assets/pour UE/01 Acquis/Characters/Female/Dark Elf Blader',  # a new row id
+                    'G:/Assets/pour UE/01 Acquis/Characters/Female/Modular Mercenary - Female Humans - Fantasy Collection',  # still a temp_id
                 ]
+
         if not from_add_button and (
             len(folder_to_scan) > 1 and not gui_f.box_yesno(
                 'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
@@ -1258,7 +1263,7 @@ class UEVMGui(tk.Tk):
             if folder_data['grab_result'] == GrabResult.NO_ERROR.name:
                 # TRYING TO SCRAP DATA
                 try:
-                    self.scrap_asset(
+                    scraped_data = self.scrap_asset(
                         marketplace_url=marketplace_url,
                         row_index=row_index,
                         forced_data=forced_data,
@@ -1266,19 +1271,24 @@ class UEVMGui(tk.Tk):
                         check_unicity=is_adding,
                         is_silent=self._silent_mode,
                     )  # !! IMPORTANT: update_row() and save in database already DONE inside scrap_asset()
+                    forced_data['grab_result'] = scraped_data.get(
+                        'grab_result', GrabResult.INCONSISTANT_DATA.name
+                    ) if scraped_data else GrabResult.CONTENT_NOT_FOUND.name
                 except ReadTimeout as error:
                     self.add_error(error)
                     self.silent_message(
                         f'Request timeout when accessing {marketplace_url}\n.Check you internet connection or try again later.', level='warning'
                     )
                     forced_data['grab_result'] = GrabResult.TIMEOUT.name
-            else:
-                # NO SCRAP TO DO
-                forced_data['asset_id'] = gui_g.s.empty_row_prefix + gui_fn.create_uid()  # needed for the row to be saved in databse
-                # TODO: check and add other forced values for an partial, local and not scraped asset
-            # we update the datatable and save in database whetever the result is
-            data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
-            data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
+
+            if forced_data['grab_result'] != GrabResult.NO_ERROR.name:
+                # replace the temp_id prefix for the row to be saved in databse
+                if not forced_data.get('asset_id','') or forced_data.get('asset_id','').startswith(gui_g.s.temp_id_prefix):
+                    uid = gui_g.s.empty_row_prefix + gui_fn.create_uid()
+                    forced_data['asset_id'] = uid
+                forced_data['id'] = forced_data['asset_id']  # in case of a missing id value
+                data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
+                data_table.save_row_in_db(row_index)
         pw.hide_progress_bar()
         pw.hide_btn_stop()
         pw.set_text('Updating the table. Could take a while...')
@@ -1393,7 +1403,7 @@ class UEVMGui(tk.Tk):
         update_dataframe: bool = True,
         check_unicity: bool = False,
         is_silent: bool = False,
-    ) -> None:
+    ) -> dict:
         """
         Scrap the data for the current row or a given marketplace_url.
         :param marketplace_url: marketplace_url to scrap.
@@ -1407,10 +1417,10 @@ class UEVMGui(tk.Tk):
         # by default (i.e. self.silent_mode sis not changed), we show the following message boxes
         if gui_g.s.offline_mode:
             self.silent_message('You are in offline mode, Scraping and scanning features are not available')
-            return
+            return {}
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible', show_dialog=not self._silent_mode)
-            return
+            return {}
         self._silent_mode = is_silent
         if forced_data is None:
             forced_data = {}
@@ -1445,6 +1455,7 @@ class UEVMGui(tk.Tk):
         else:
             tags_count_saved, rating_count_saved = 0, 0
         if marketplace_url is None:
+            asset_data = {}
             base_text = "Scraping asset's data. Could take a while..."
             if row_count > 1:
                 pw = gui_f.show_progress(
@@ -1477,7 +1488,7 @@ class UEVMGui(tk.Tk):
                 # if pw and not pw.update_and_continue(value=count, text=text, max_value=row_count):  # uses value and max_value here because increment does not work well with multiple rows
                 if pw and not pw.update_and_continue(increment=1, text=text):
                     gui_f.close_progress(self)
-                    return
+                    return {}
                 asset_data = self._scrap_from_url(marketplace_url)
                 if not asset_data and row_data['Added manually']:
                     # it's a local asset, we can try to get an url file from the local folder
@@ -1551,6 +1562,7 @@ class UEVMGui(tk.Tk):
 
         if update_dataframe:
             data_table.update()
+        return asset_data
 
     def _get_existing_data_in_row(self, row_index: int = -1, df: pd.DataFrame = None) -> dict:
         if df is None:
