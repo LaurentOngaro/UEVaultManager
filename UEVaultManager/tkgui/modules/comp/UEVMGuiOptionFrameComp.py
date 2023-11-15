@@ -168,7 +168,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         self.add_widget(
             'keep_invalid_scans',
             'bool',
-            'Keep non marketplace assets after a folders scan',
+            'Keep non marketplace assets after a scan',
             lblf_folders_to_scan,
             cur_row,
             cur_col,

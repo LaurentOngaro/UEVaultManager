@@ -63,12 +63,13 @@ class OptionWidget:
             self._var = tk.BooleanVar(value=setting)
             self.widget = ttk.Checkbutton(self._container, text=self.label, variable=self._var)
             self._widget_label = None
-            self.widget.grid(row=self.cur_row, column=self.cur_col + 1, columnspan=self.colspan, **self.grid_options)
+            self.widget.grid(row=self.cur_row, column=self.cur_col, columnspan=self.colspan, **self.grid_options)
         elif self.vtype == 'int' or self.vtype == 'str':
+
             self._var = tk.IntVar(value=setting)
             self._widget_label = ttk.Label(self._container, text=self.label)
             self._widget_label.grid(row=self.cur_row, column=self.cur_col, **grid_e_options)
-            self.widget = ttk.Entry(self._container, textvariable=self._var)
+            self.widget = ttk.Entry(self._container, textvariable=self._var, width=4 if self.vtype == 'int' else 10)
             self.widget.grid(row=self.cur_row, column=self.cur_col + 1, columnspan=self.colspan - 1, **self.grid_options)
         self.trace_on()
 
@@ -97,7 +98,11 @@ class OptionWidget:
 
     def set_setting(self):
         """ Set the associated setting value."""
-        setting = self._var.get()
+        try:
+            setting = self._var.get()
+        except tk.TclError:
+            # this happens when the value is not valid, when is currently modified for instance
+            return
         if self.is_cli:
             # to the CLI object args
             gui_g.UEVM_cli_args.set(self.name, setting)
