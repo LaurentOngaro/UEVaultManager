@@ -514,6 +514,10 @@ class UEVaultManagerCLI:
         name_or_path = args.app_name_or_manifest or args.app_name
         show_all_info = args.all
         app_name = manifest_uri = None
+        if name_or_path is None:
+            message = 'You must provide either a manifest url/path or asset name!'
+            self._log_and_gui_message(message, level='error')
+            return
         if os.path.exists(name_or_path) or name_or_path.startswith('http'):
             manifest_uri = name_or_path
         else:
@@ -544,7 +548,7 @@ class UEVaultManagerCLI:
                 with open(manifest_uri, 'rb') as file:
                     manifest_data = file.read()
             else:
-                self._log('Local Manifest file not found and offline mode enabled, can not load manifest.')
+                self._log_and_gui_display('Local Manifest file not found and offline mode enabled, can not load manifest.')
         elif item:
             try:
                 egl_meta, status_code = self.core.egs.get_item_info(item.namespace, item.catalog_item_id)
