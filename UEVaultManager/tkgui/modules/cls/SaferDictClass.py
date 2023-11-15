@@ -51,6 +51,14 @@ class SaferDict(dict):
         """
         return super().get(key, default)
 
+    def set(self, key: str, value):
+        """
+        Set the value associated with the given key.
+        :param key: key to set.
+        :param value: value to set.
+        """
+        self[key] = value
+
     def copy_from(self, source: dict):
         """
         Copie the content of the given source dictionary into the SaferDict.
