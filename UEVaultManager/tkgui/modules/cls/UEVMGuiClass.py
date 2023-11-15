@@ -930,6 +930,7 @@ class UEVMGui(tk.Tk):
                 # noinspection GrazieInspection
                 folder_to_scan = [
                     'G:/Assets/pour UE/02 Warez/Battle Royale Island Pack',  # # test folder n'existe pas OK
+                    'G:/Assets/pour UE/02 Warez/Characters/Boths/G2 Cyborg Characters 4.27',
                     'G:/Assets/pour UE/02 Warez/Plugins/Riverology UE_5',  # OK
                     'G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_II',  # OK
                     'G:/Assets/pour UE/02 Warez/Characters/Female/FurryS1 Fantasy Warrior',  # OK
@@ -1038,6 +1039,8 @@ class UEVMGui(tk.Tk):
                         entry_is_valid = entry.name.lower() not in gui_g.s.ue_invalid_content_subfolder
                         comment = ''
                         if entry.is_file():
+                            # Entry is a file, trying to find what kind of asset folder is it
+                            # - check if it's a manifest file or an uplugin file or an uproject file
                             asset_type = UEAssetType.Asset
                             extension_lower = os.path.splitext(entry.name)[1].lower()
                             filename_lower = os.path.splitext(entry.name)[0].lower()
@@ -1130,11 +1133,12 @@ class UEVMGui(tk.Tk):
         date_added = datetime.now().strftime(DateFormat.csv)
         # Note:
         #   we need to create fake ids here because all the datatable will be saved in database in self.scrap_asset()
-        #   BEFORE scraping and getting real Ids
+        #   BEFORE scraping and getting final Ids (scraped or local)
+        #   IMPORTANT !! A row with a temp_id will be ignored when saving in db !!!
         temp_id = gui_g.s.temp_id_prefix + gui_fn.create_uid()
         row_data = {'Asset_id': temp_id, 'Date added': date_added, 'Creation date': date_added, 'Update date': date_added, 'Added manually': True}
         folders_count = len(data_from_valid_folders)
-        pw.reset(new_text='Scraping data and updating assets', new_max_value=folders_count)
+        pw.reset(new_text='Scraping data and updating assets', new_max_value=folders_count, keep_execution_state=True)
         row_added = 0
         data_table.is_scanning = True
         count = 0
@@ -1206,7 +1210,10 @@ class UEVMGui(tk.Tk):
             if forced_data.get('comment', ''):
                 forced_data['comment'] += '\n' + folder_data['comment']
 
+            # during the folders scan the marketplace_url has been chacked and the result put in 'grab_result'
+            # so, if its' not 'NO_ERROR', so don't have to scrap_the asset because the we need to check it here
             if folder_data['grab_result'] == GrabResult.NO_ERROR.name:
+                # TRYING TO SCRAP DATA
                 try:
                     self.scrap_asset(
                         marketplace_url=marketplace_url,
@@ -1219,12 +1226,16 @@ class UEVMGui(tk.Tk):
                 except ReadTimeout as error:
                     self.add_error(error)
                     self.silent_message(
-                        f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
-                        level='warning'
+                        f'Request timeout when accessing {marketplace_url}\n.Check you internet connection or try again later.', level='warning'
                     )
                     forced_data['grab_result'] = GrabResult.TIMEOUT.name
-                    data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
-                    data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
+            else:
+                # NO SCRAP TO DO
+                forced_data['Asset_id'] = gui_g.s.empty_row_prefix + gui_fn.create_uid()  # needed for the row to be saved in databse
+                # TODO: check and add other forced values for an partial, local and not scraped asset
+            # we update the datatable and save in database whetever the result is
+            data_table.update_row(row_number=row_index, ue_asset_data=forced_data, convert_row_number_to_row_index=False)
+            data_table.add_to_rows_to_save(row_index)  # done inside self.must_save = True
         pw.hide_progress_bar()
         pw.hide_btn_stop()
         pw.set_text('Updating the table. Could take a while...')
@@ -1400,6 +1411,7 @@ class UEVMGui(tk.Tk):
                 if row_index < 0:
                     # a conversion error in get_real_index has occured
                     continue
+                tags_message = ''
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
@@ -1458,20 +1470,20 @@ class UEVMGui(tk.Tk):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                         if self.is_using_database:
                             self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=False)
+                    if row_count > 1:
+                        message = f'All Datas for {row_count} rows have been updated from the marketplace.'
+                    else:
+                        message = f'Data for row index {row_index} have been updated from the marketplace.'
+                    if self.is_using_database:
+                        tags_count = data_table.db_handler.get_rows_count('tags')
+                        rating_count = data_table.db_handler.get_rows_count('ratings')
+                        tags_message = f'\n{tags_count - tags_count_saved} tags and {rating_count - rating_count_saved} ratings have been added to the database.'
                 else:
                     col_index = data_table.get_col_index('Grab result')
                     data_table.update_cell(row_index, col_index, GrabResult.CONTENT_NOT_FOUND.name, convert_row_number_to_row_index=False)
+                    message = f'No data have been found for row index {row_index}.\nCheck the marketplace url and try again.'
+                self.silent_message(message + tags_message)
             gui_f.close_progress(self)
-            if row_count > 1:
-                message = f'All Datas for {row_count} rows have been updated from the marketplace.'
-            else:
-                message = f'Data for row index {row_index} have been updated from the marketplace.'
-            tags_message = ''
-            if self.is_using_database:
-                tags_count = data_table.db_handler.get_rows_count('tags')
-                rating_count = data_table.db_handler.get_rows_count('ratings')
-                tags_message = f'\n{tags_count - tags_count_saved} tags and {rating_count - rating_count_saved} ratings have been added to the database.'
-            self.silent_message(message + tags_message)
         else:
             asset_data = self._scrap_from_url(marketplace_url)
             if asset_data:
