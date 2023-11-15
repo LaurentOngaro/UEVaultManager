@@ -585,7 +585,7 @@ class UEAssetDbHandler:
                 _asset_list = [_asset_list]
             str_today = datetime.datetime.now().strftime(DateFormat.csv)
             if update_progress and gui_g.WindowsRef.progress:
-                gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(_asset_list))
+                gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(_asset_list), keep_execution_state=True)
             for index, asset in enumerate(_asset_list):
                 # if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
                 if gui_g.WindowsRef.progress and (
@@ -715,7 +715,7 @@ class UEAssetDbHandler:
         :return: row (dict) or a string representing the empty row.
         """
         result = '' if return_as_string else {}
-        uid = create_uid()  # just to avoid a warning
+        uid = create_uid()  # just to avoid a warning in Pycharm
         # add a new row to the 'assets' table
         if self.connection is not None:
             cursor = self.connection.cursor()
