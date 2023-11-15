@@ -850,10 +850,11 @@ class UEVMGui(tk.Tk):
                 try:
                     minimal_score = gui_g.s.minimal_fuzzy_score_by_name.get('default', 70)
                     folder_to_compare = _clean_keys(folder_name_cleaned)
-                    file_to_compare = _clean_keys(file_name_cleaned)
+                    # file_to_compare = _clean_keys(file_name_cleaned)
                     for key, value in gui_g.s.minimal_fuzzy_score_by_name.items():
                         key_to_compare = _clean_keys(key)
-                        if key_to_compare in [folder_to_compare, file_to_compare]:
+                        # if key_to_compare in [folder_to_compare, file_to_compare]:
+                        if key_to_compare == folder_to_compare:
                             minimal_score = value
                             break
                 except (Exception, ) as error:
