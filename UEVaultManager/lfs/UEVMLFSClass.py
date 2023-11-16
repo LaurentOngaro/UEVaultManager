@@ -11,8 +11,6 @@ from datetime import datetime
 from time import time
 from typing import Optional
 
-import pandas as pd
-
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import clean_filename, generate_label_from_path
@@ -350,7 +348,7 @@ class UEVMLFS:
                 release_info = json.loads(release_info)
             app_id = release_info[-1][app_id_field]  # appid from the latest release
         except (Exception, ):
-            # we keep UrlSlug here because it can arise from the scrapped data
+            # we keep UrlSlug here because it can arise from the scraped data
             app_id = asset_data.get(asset_slug_field, None)
             if app_id is None:
                 app_id = asset_data.get(catalog_item_id_field, create_uid())
@@ -722,7 +720,7 @@ class UEVMLFS:
         if os.path.isfile(file_backup) and filecmp.cmp(self.config_file, file_backup):
             os.remove(file_backup)
 
-    def clean_scrapping(self) -> int:
+    def clean_scraping(self) -> int:
         """
         Delete all the metadata files that are not in the names_to_keep list.
         :return: size of the deleted files.
@@ -885,18 +883,3 @@ class UEVMLFS:
         # installed_assets_db = db_handler.get_rows_with_installed_folders()
         # for app_name, asset_data in installed_assets_db.items():
         #  self.update_installed_asset(app_name, asset_data)
-
-    def post_update_installed_folders(self, df: pd.DataFrame) -> None:
-        """
-        Update the "installed folders" AFTER loading the data.
-        :param df: datatable.
-        """
-        installed_assets_json = self.get_installed_assets().copy()  # copy because the content could change during the process
-        # get all installed folders for a given catalog_item_id
-        for app_name, asset in installed_assets_json.items():
-            installed_folders = asset.get('installed_folders', None)
-            if installed_folders:
-                # here we use app_name because catalog_item_id does not exsist in CSV
-                app_name = asset.get('app_name', None)
-                installed_folders_str = check_and_convert_list_to_str(installed_folders)
-                df.loc[df['Asset_id'] == app_name, 'Installed folders'] = installed_folders_str

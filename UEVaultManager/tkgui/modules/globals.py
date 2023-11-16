@@ -8,8 +8,10 @@ from abc import ABC
 # import UEVaultManager.tkgui.modules.DisplayContentWindowClass as DisplayContentWindow
 import UEVaultManager.tkgui.modules.cls.EditCellWindowClass as EditCellWindow
 import UEVaultManager.tkgui.modules.cls.EditRowWindowClass as EditRowWindow
+from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.FakeUEVMGuiClass import FakeUEVMGuiClass
 from UEVaultManager.tkgui.modules.cls.GUISettingsClass import GUISettings
+from UEVaultManager.tkgui.modules.cls.ImagePreviewWindowClass import ImagePreviewWindow
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 from UEVaultManager.tkgui.modules.cls.SaferDictClass import SaferDict
 
@@ -22,10 +24,10 @@ class WindowsRef(ABC):
     uevm_gui: FakeUEVMGuiClass = None  # tkgui window , we can not use the real UEVMGuiClass because it will cause circular import error
     edit_cell: EditCellWindow = None
     edit_row: EditRowWindow = None
-    # display_content: DisplayContentWindow = None
-    display_content = None
+    display_content: DisplayContentWindow = None
     progress: ProgressWindow = None
     tool = None  # could be a ref to a ToolWindows like DBToolWindow or JsonToolWindow
+    image_preview: ImagePreviewWindow = None
 
     @classmethod
     def get_properties_name(cls) -> list:

@@ -13,8 +13,8 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.font import nametofont
 
+import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.tkgui.modules.functions import log_warning
 from UEVaultManager.tkgui.modules.functions_no_deps import path_from_relative_to_absolute
 from UEVaultManager.tkgui.modules.types import WidgetType
 
@@ -85,7 +85,7 @@ class ExtendedWidget:
             # noinspection PyUnresolvedReferences
             self.config(text=content)
         except (AttributeError, tk.TclError) as error:
-            log_warning(f'Failed to set content of {self} to {content}: {error!r}')
+            gui_f.log_warning(f'Failed to set content of {self} to {content}: {error!r}')
 
     def get_content(self) -> str:
         """
@@ -96,7 +96,7 @@ class ExtendedWidget:
             # noinspection PyUnresolvedReferences
             return self.get()
         except (AttributeError, tk.TclError) as error:
-            log_warning(f'Failed to get content of {self}: {error!r}')
+            gui_f.log_warning(f'Failed to get content of {self}: {error!r}')
             return ''
 
     def reset_content(self) -> None:
@@ -212,7 +212,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
             self.delete('1.0', tk.END)
             self.insert('1.0', content)
         except (AttributeError, tk.TclError) as error:
-            log_warning(f'Failed to set content of {self} to {content}: {error!r}')
+            gui_f.log_warning(f'Failed to set content of {self} to {content}: {error!r}')
 
     def get_content(self) -> str:
         """
@@ -225,7 +225,7 @@ class ExtendedText(ExtendedWidget, tk.Text):
             # return self.get('1.0', tk.END)
             return self.get('1.0', 'end-1c')
         except (AttributeError, tk.TclError) as error:
-            log_warning(f'Failed to get content of {self}: {error!r}')
+            gui_f.log_warning(f'Failed to get content of {self}: {error!r}')
             return ''
 
 
@@ -377,7 +377,7 @@ class ExtendedCheckButton(ExtendedWidget):
 
             self._update_state()
         except (AttributeError, tk.TclError) as error:
-            log_warning(f'Failed to set content of {self} to {content}: {error!r}')
+            gui_f.log_warning(f'Failed to set content of {self} to {content}: {error!r}')
 
     def get_content(self) -> bool:
         """

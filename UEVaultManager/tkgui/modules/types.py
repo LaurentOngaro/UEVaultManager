@@ -46,7 +46,7 @@ class UEAssetType(Enum):
         if self == self.Plugin:
             return 'local/Plugin'  # existing category in the marketplace
         if self == self.Asset:
-            return 'local/asset'  # non-existing category in the marketplace
+            return 'local/Asset'  # non-existing category in the marketplace
         if self == self.Manifest:
             return 'local/Manifest'  # non-existing category in the marketplace
         return 'local/unknown'  # non-existing category in the marketplace

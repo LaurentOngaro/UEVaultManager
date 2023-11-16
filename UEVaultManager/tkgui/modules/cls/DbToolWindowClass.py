@@ -13,6 +13,7 @@ from ttkbootstrap import DANGER, WARNING
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.models.csv_sql_fields import get_sql_user_fields
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
@@ -237,9 +238,7 @@ class DbToolWindowClass(tk.Toplevel):
             files = self.container.db_handler.export_to_csv(self.container.folder_for_csv_files, table_name, backup_existing=backup_on_export)
 
             if self.var_user_fields.get():
-                fields = ','.join(
-                    self.container.db_handler.user_fields
-                )  # keep join() here to raise an error if installed_folders is not a list of strings
+                fields = ','.join(get_sql_user_fields())  # keep join() here to raise an error if installed_folders is not a list of strings
                 files += self.container.db_handler.export_to_csv(
                     self.container.folder_for_csv_files,
                     'assets',

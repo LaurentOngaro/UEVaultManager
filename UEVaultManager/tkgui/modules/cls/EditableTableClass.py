@@ -19,6 +19,7 @@ import UEVaultManager.models.csv_sql_fields as gui_t  # using the shortest varia
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -27,6 +28,7 @@ from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
+from UEVaultManager.tkgui.modules.comp.functions_panda import fillna_fixed
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
 
@@ -129,37 +131,23 @@ class EditableTable(Table):
 
     @property
     def current_page(self) -> int:
-        """
-        Get the current page.
-        :return: current page number.
-        """
+        """ Get the current page. """
         return self._current_page
 
     @current_page.setter
     def current_page(self, value: int) -> None:
-        """
-        Set the current page.
-        :param value: page number to set.
-        """
+        """ Set the current page. """
         self._current_page_saved = self._current_page
         self._current_page = value
-        # self.update_controls_state_func()
-        # self.update_preview_info_func()
 
     @property
     def is_filtered(self) -> int:
-        """
-        Get the current page.
-        :return: current page number.
-        """
+        """ Get the current page. """
         return self._is_filtered
 
     @is_filtered.setter
     def is_filtered(self, value: bool) -> None:
-        """
-        Set the filtered state.
-        :param value: filtered state to set.
-        """
+        """ Set the filtered state. """
         self._is_filtered_saved = self._is_filtered
         self._is_filtered = value
 
@@ -170,28 +158,13 @@ class EditableTable(Table):
 
     @property
     def db_handler(self) -> UEAssetDbHandler:
-        """
-        Get the db handler.
-        :return: db handler.
-        """
+        """ Get the db handler. """
         return self._db_handler
 
-    @staticmethod
-    def fillna_fixed(dataframe: pd.DataFrame) -> None:
-        """
-        Fill the empty cells in the dataframe. Fix FutureWarning messages by using the correct value for each dtype
-        :param dataframe: dataframe to fill.
-        """
-        for col in dataframe.columns:
-            if dataframe[col].dtype == 'object':
-                # dataframe[col].fillna(gui_g.s.empty_cell, inplace=True)  # does not replace all possible values
-                dataframe[col].replace(gui_g.s.cell_is_empty_list, gui_g.s.empty_cell, regex=False, inplace=True)
-            elif dataframe[col].dtype == 'int64':
-                dataframe[col].fillna(0, inplace=True)
-            elif dataframe[col].dtype == 'float64':
-                dataframe[col].fillna(0.0, inplace=True)
-            elif dataframe[col].dtype == 'bool':
-                dataframe[col].fillna(False, inplace=True)
+    @property
+    def last_selected_row(self) -> int:
+        """ Get the last selected row. """
+        return self._last_selected_row
 
     def handle_arrow_keys(self, event):
         """
@@ -957,6 +930,13 @@ class EditableTable(Table):
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
                     self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
+                else:
+                    csv_field_name_list = gui_t.get_csv_field_name_list()
+                    # add the fields that are in csv_field_name_list but nom in df, in case of the current CSV file does not have all of them
+                    for field in csv_field_name_list:
+                        if field not in df:
+                            df[field] = ''
+
             elif self.is_using_database:
                 if self._db_handler is None:
                     # could occur after a call to self.valid_source_type()
@@ -1112,6 +1092,42 @@ class EditableTable(Table):
         else:
             return False
 
+    def save_row_in_db(self, row_index: int):
+        """
+        Save a row in the database.
+        :param row_index: row index to save.
+        """
+        row_data = self.get_row(row_index, return_as_dict=True)
+        if row_data is None:
+            return
+        asset_id = row_data.get('Asset_id', '')
+        if asset_id.startswith(gui_g.s.temp_id_prefix) and not gui_g.s.keep_invalid_scans:
+            # this a new row , partialled empty, created before scraping the data.
+            # No need to save it, It will produce a database error.
+            # It will be saved after scraping
+            return
+        if asset_id in gui_g.s.cell_is_empty_list and asset_id in gui_g.s.cell_is_empty_list:
+            self.logger.warning(f'The asset for row index {row_index + 1} is missing asset_id or if field value. Bypassing the save.')
+            return
+        if asset_id in self._deleted_asset_ids:
+            # do not update an asset if that will be deleted
+            return
+        # convert the key names to the database column names
+        asset_data = gui_t.convert_csv_row_to_sql_row(row_data)
+        ue_asset = UEAsset()
+        try:
+            ue_asset.init_from_dict(asset_data)
+            # update the row in the database
+            tags = ue_asset.get('tags', [])
+            # tags = self._db_handler.convert_tag_list_to_string(tags) # done in save_ue_asset()
+            ue_asset.set('tags', tags)
+            self._db_handler.save_ue_asset(ue_asset)
+            asset_id = ue_asset.get('asset_id', '')
+            self.logger.info(f'UE_asset ({asset_id}) for row index {row_index + 1} has been saved to the database')
+        except (KeyError, ValueError, AttributeError) as error:
+            self.add_error(error)
+            self.logger.warning(f'Failed to save UE_asset for row index {row_index + 1} to the database. Error: {error!r}')
+
     def save_data(self, source_type: DataSourceType = None) -> None:
         """
         Save the current table data to the CSV file.
@@ -1123,42 +1139,8 @@ class EditableTable(Table):
         if source_type == DataSourceType.FILE:
             df.to_csv(self.data_source, index=False, na_rep='', date_format=DateFormat.csv)
         else:
-            for row_number in self._changed_rows:
-                row_data = self.get_row(row_number, return_as_dict=True)
-                if row_data is None:
-                    continue
-                _id = row_data.get('Asset_id', '')
-                if _id.startswith(gui_g.s.temp_id_prefix):
-                    # this a new row , partialled empty, created before scraping the data.
-                    # No need to save it, It will produce a database error.
-                    # It will be saved after scraping
-                    if len(self._changed_rows) > 1:
-                        continue
-                    else:
-                        self.must_save = False
-                        return
-                asset_id = row_data.get('Asset_id', '')
-                if asset_id in gui_g.s.cell_is_empty_list and _id in gui_g.s.cell_is_empty_list:
-                    self.logger.warning(f'The asset for row #{row_number + 1} is missing asset_id or if field value. Bypassing the save.')
-                    continue
-                if asset_id in self._deleted_asset_ids:
-                    # do not update an asset if that will be deleted
-                    continue
-                # convert the key names to the database column names
-                asset_data = gui_t.convert_csv_row_to_sql_row(row_data)
-                ue_asset = UEAsset()
-                try:
-                    ue_asset.init_from_dict(asset_data)
-                    # update the row in the database
-                    tags = ue_asset.get('tags', [])
-                    # tags = self._db_handler.convert_tag_list_to_string(tags) # done in save_ue_asset()
-                    ue_asset.set('tags', tags)
-                    self._db_handler.save_ue_asset(ue_asset)
-                    asset_id = ue_asset.get('asset_id', '')
-                    self.logger.info(f'UE_asset ({asset_id}) for row #{row_number + 1} has been saved to the database')
-                except (KeyError, ValueError, AttributeError) as error:
-                    self.add_error(error)
-                    self.logger.warning(f'Failed to save UE_asset for row #{row_number + 1} to the database. Error: {error!r}')
+            for row_index in self._changed_rows:
+                self.save_row_in_db(row_index)
             for asset_id in self._deleted_asset_ids:
                 try:
                     # delete the row in the database
@@ -1480,7 +1462,7 @@ class EditableTable(Table):
             # Done here because the changes in the unfiltered dataframe will be copied to the filtered dataframe
             gui_f.show_progress(self, text='Formating and converting DataTable...', keep_existing=True)
             self.set_data(self.set_columns_type(df))
-            self.fillna_fixed(df)
+            fillna_fixed(df)
             if self._frm_filter is not None:
                 self._frm_filter.clear_filter()
             # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
@@ -1804,7 +1786,7 @@ class EditableTable(Table):
         """
         if row_number < 0 or col_index < 0 or value is None:
             return False
-        value = gui_g.s.empty_cell if value in gui_g.s.cell_is_empty_list else value  # convert 'None' values to ''
+        value = gui_g.s.empty_cell if value in gui_g.s.cell_is_nan_list else value  # convert 'None' values to ''
         try:
             idx = self.get_real_index(row_number) if convert_row_number_to_row_index else row_number
             df = self.get_data()  # always used the unfiltered because the real index is set from unfiltered dataframe
@@ -1868,7 +1850,7 @@ class EditableTable(Table):
             return None
         title = 'Edit current row'
         width = 800
-        height = 1010 if self.data_source_type == DataSourceType.DATABASE else 920
+        height = 1030 if self.data_source_type == DataSourceType.DATABASE else 920
         # window is displayed at mouse position
         # x = self.master.winfo_rootx()
         # y = self.master.winfo_rooty()
@@ -1951,12 +1933,10 @@ class EditableTable(Table):
         self._edit_row_number = row_number
         self._edit_row_window = edit_row_window
         edit_row_window.initial_values = self.get_edited_row_values()
-        # image preview
-        if not gui_f.show_asset_image(
-            image_url=image_url, canvas_image=edit_row_window.frm_control.canvas_image, scale=edit_row_window.preview_scale
-        ):
-            # the image could not be loaded and the offline mode could have been enabled
-            self._container.update_controls_state(update_title=True)
+        edit_row_window.image_url = image_url
+        self.after(300, edit_row_window.update_image_preview)  # to update the preview once all has been loaded
+        # the image could not be loaded and the offline mode could have been enabled
+        self.after(500, self.update_controls_state_func)  # to update the buttons state
         gui_f.make_modal(edit_row_window)
 
     def save_edit_row(self) -> None:
@@ -2017,7 +1997,7 @@ class EditableTable(Table):
             title = 'Edit current cell value'
         else:
             title = 'Edit a value for multiple cells'
-            cell_value = '' # value used in the if condition bellow
+            cell_value = ''  # value used in the if condition bellow
 
         width = 300
         height = 120
@@ -2031,7 +2011,7 @@ class EditableTable(Table):
         col_name = self.get_col_name(col_index)
         label = gui_t.get_label_for_field(col_name)
         ttk.Label(edit_cell_window.frm_content, text=label).pack(side=tk.LEFT)
-        cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_empty_list) else ''
+        cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_nan_list) else ''
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
             widget.set_content(cell_value_str)
@@ -2088,7 +2068,7 @@ class EditableTable(Table):
                     typed_value = typed_value.strip('\n\t\r')  # remove unwanted characters
                 except AttributeError:
                     # no strip method for the typed_value
-                    continue
+                    pass
                 if col_index == col_installed_folders and typed_value != gui_g.s.empty_cell and typed_value != typed_value_saved:
                     if has_already_confirmed or not gui_f.box_yesno(
                         'Usually, the "installed folders" field should not be manually change to avoid incoherent data.\nAre you sure you want to change this value ?'
@@ -2126,7 +2106,7 @@ class EditableTable(Table):
         if row_number is None or row_number >= len(self.get_data(df_type=DataFrameUsed.MODEL)) or frm_quick_edit is None:
             return
 
-        column_names = ['Asset_id', 'Url']
+        column_names = ['Asset_id', 'Url', 'Origin']  # fields to quick edit but with no type 'USER'
         column_names.extend(gui_t.get_csv_field_name_list(filter_on_states=[gui_t.CSVFieldState.USER]))
         for col_name in column_names:
             col_index = self.get_col_index(col_name)
@@ -2193,22 +2173,35 @@ class EditableTable(Table):
         """
         return '' if row_number is None else self.get_cell(row_number, self.get_col_index('Image'))
 
-    def open_asset_url(self, url: str = None):
+    def open_asset_url(self, url: str = ''):
         """
         Open the asset URL in a web browser.
         :param url: URL to open.
         """
-        if url is None:
+        if not url:
             if self._edit_row_entries is None:
                 return
             asset_url = self._edit_row_entries['Url'].get()
         else:
             asset_url = url
-        self.logger.info(f'calling open_asset_url={asset_url}')
+        self.logger.info(f'Opening {asset_url} in browser')
         if not asset_url or asset_url == gui_g.s.empty_cell:
             self.logger.info('asset URL is empty for this asset')
             return
         webbrowser.open(asset_url)
+
+    def open_json_file(self, asset_id: str = '') -> None:
+        """
+        Open the source file of the asset.
+        """
+        if not asset_id:
+            if self._edit_row_entries is None:
+                return
+            asset_id = self._edit_row_entries['Asset_id'].get()
+        file_name = path_join(gui_g.s.assets_data_folder, asset_id + '.json')
+        if os.path.isfile(file_name):
+            self.logger.info(f'Opening {file_name} in default application')
+            os.system(f'start {file_name}')
 
     def open_origin_folder(self) -> None:
         """
@@ -2275,12 +2268,12 @@ class EditableTable(Table):
 
     def colheader_popup_menu(self, event, outside=True):
         """Overwrite the default colheader popupMenu method"""
-        print('colheader_popupMenu')
+        # print('colheader_popupMenu')
         return self.popupMenu(event, outside=outside)
 
     def rowheader_popup_menu(self, event, outside=True):
         """Overwrite the default rowheader popupMenu method"""
-        print('rowheader_popupMenu')
+        # print('rowheader_popupMenu')
         return self.popupMenu(event, outside=outside)
 
     def init_groups(self) -> None:

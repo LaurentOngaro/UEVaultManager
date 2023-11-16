@@ -142,7 +142,12 @@ class UEVMGuiControlFrame(ttk.Frame):
         lblf_content.columnconfigure('all', weight=1)  # important to make the buttons expand
 
         frm_filter = FilterFrame(
-            self, df=data_table.get_data(), update_func=data_table.update, load_query_func=self.load_filter, save_query_func=self.save_filter,
+            self,
+            update_func=data_table.update,
+            get_data_func=data_table.get_data,
+            load_query_func=self.load_filter,
+            save_query_func=self.save_filter,
+            logger=self._data_table.logger
         )
         frm_filter.pack(**lblf_def_options)
         self._container._frm_filter = frm_filter
@@ -155,6 +160,8 @@ class UEVMGuiControlFrame(ttk.Frame):
         data_table.set_frm_quick_edit(self.lbtf_quick_edit)
 
         frm_asset_action = ttk.Frame(self.lbtf_quick_edit)
+        ttk_item = ttk.Button(frm_asset_action, text="Open Json", command=self._container.open_json_file)
+        ttk_item.pack(**pack_def_options, side=tk.LEFT)
         btn_open_url = ttk.Button(frm_asset_action, text='Open Url', command=self._container.open_asset_url)
         btn_open_url.pack(**pack_def_options, side=tk.LEFT)
         btn_open_folder = ttk.Button(frm_asset_action, text='Open Folder', command=self._container.open_asset_folder)
@@ -163,7 +170,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         btn_show_installed_releases.pack(**pack_def_options, side=tk.LEFT)
         btn_download_asset = ttk.Button(frm_asset_action, text='Download', command=self._container.download_asset)
         btn_download_asset.pack(**pack_def_options, side=tk.LEFT)
-        btn_install_asset = ttk.Button(frm_asset_action, text='INSTALL', command=self._container.install_asset)
+        btn_install_asset = ttk.Button(frm_asset_action, text='Install', command=self._container.install_asset)
         btn_install_asset.pack(**pack_def_options, side=tk.LEFT)
         frm_asset_action.pack(**lblf_fw_options)
 
@@ -263,6 +270,7 @@ class UEVMGuiControlFrame(ttk.Frame):
         self.canvas_image = tk.Canvas(self.asset_infos, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height, highlightthickness=0)
         self.canvas_image.pack(side=tk.RIGHT, expand=True, anchor=tk.CENTER)
         self.canvas_image.create_rectangle((0, 0), (gui_g.s.preview_max_width, gui_g.s.preview_max_height), fill='black')
+        self.canvas_image.bind('<Button-1>', container.open_image_preview)
         asset_info = 'No info'
         self.txt_info = ttk.Text(self.asset_infos, height=5, width=34)
         self.txt_info.pack(side=tk.LEFT, expand=True, anchor=tk.CENTER)

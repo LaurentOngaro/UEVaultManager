@@ -61,7 +61,7 @@ This is an example of this file content and the settings you can change:
   folders_to_scan = ["G:/Assets/pour UE/01 Acquis", "G:/Assets/pour UE/00 A trier"]
   ;Set to True to print debug information (GUI related only)
   debug_mode = False
-  ;Set to True to use multiple threads when scraping/grabing data for UE assets
+  ;Set to True to use multiple threads when scraping/grabbing data for UE assets
   use_threads = True
   ;timeout in second when scraping several assets in once. This value should not be too low to limit timeout issues and scraping cancellation.
   timeout_for_scraping = 30
@@ -79,6 +79,8 @@ This is an example of this file content and the settings you can change:
   browse_when_add_row = True
   ;Number of Rows displayed or scraped per page.If this value is changed all the scraped files must be updated to match the new value
   rows_per_page = 37
+  ;Number of backup files version to keep in the folder for backups. The oldest will be deleted. Set to 0 to keep all the backups
+  backup_files_to_keep = 30
   ;Delay in seconds when image cache will be invalidated. Default value represent 15 days
   image_cache_max_time = 1296000
   ;Folder (relative or absolute) to store images for assets

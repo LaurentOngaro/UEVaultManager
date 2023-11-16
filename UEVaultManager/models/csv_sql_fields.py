@@ -18,7 +18,7 @@ csv_sql_fields = {
     # key: csv field name, value: {sql name, state }
     'Asset_id': {
         'sql_name': 'asset_id',
-        'state': CSVFieldState.NORMAL,
+        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR,
         'label': 'Latest release id'
     },
@@ -117,6 +117,11 @@ csv_sql_fields = {
         'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.FLOAT
     },
+    'Origin': {
+        'sql_name': 'origin',
+        'state': CSVFieldState.CHANGED,
+        'field_type': CSVFieldType.STR
+    },
     # ## User Fields
     'Comment': {
         'sql_name': 'comment',
@@ -147,11 +152,6 @@ csv_sql_fields = {
     'Alternative': {
         'sql_name': 'alternative',
         'state': CSVFieldState.USER,
-        'field_type': CSVFieldType.STR
-    },
-    'Origin': {
-        'sql_name': 'origin',
-        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.STR
     },
     'Added manually': {
@@ -269,6 +269,11 @@ csv_sql_fields = {
     },
     'In group': {
         'sql_name': 'in_group',
+        'state': CSVFieldState.NORMAL,
+        'field_type': CSVFieldType.STR
+    },
+    'License': {
+        'sql_name': 'license',
         'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
     },
@@ -421,10 +426,9 @@ def get_converters(csv_field_name: str):
     if field_type == CSVFieldType.BOOL:
         return [convert_to_bool, bool]
 
-
-# not use full to convert date: Causes issue when loading a filter
-#    if field_type == CSVFieldType.DATETIME:
-#        return [lambda x: convert_to_datetime(x, formats_to_use=[DateFormat.epic, DateFormat.csv])]
+    # not use full to convert date: Causes issue when loading a filter
+    #    if field_type == CSVFieldType.DATETIME:
+    #        return [lambda x: convert_to_datetime(x, formats_to_use=[DateFormat.epic, DateFormat.csv])]
     else:
         return [str]
 
@@ -510,6 +514,34 @@ def get_csv_field_name(sql_field_name: str) -> str:
     return result
 
 
+def get_sql_user_fields() -> list:
+    """
+    Get the sql user fields.
+    :return: sql user fields.
+
+    Notes:
+        The user fields must be preserved when updating the database
+        These fields are also present in the asset table and in the UEAsset.init_data() method
+        THEY WILL BE PRESERVED when parsing the asset data
+    """
+    return get_sql_field_name_list(filter_on_states=[CSVFieldState.USER])
+
+
+def get_sql_preserved_fields() -> list:
+    """
+    Get the sql preserved fields.
+    :return: sql preserved fields.
+
+    Notes:
+        The field kept for previous data.
+        NEED TO BE SEPARATED FROM self.user_fields
+        THEY WILL BE USED (BUT NOT FORCELY PRESERVED) when parsing the asset data
+    """
+    result = get_sql_field_name_list(filter_on_states=[CSVFieldState.USER, CSVFieldState.CHANGED, CSVFieldState.ASSET_ONLY])
+    result.append('id')
+    return result
+
+
 def set_default_values(data: dict, for_sql: bool = False, uid: str = '') -> dict:
     """
     Set default values to a new row.
@@ -582,7 +614,7 @@ def debug_parsed_data(asset_data: dict, mode: DataSourceType) -> None:
     # all the field names in asset data are in snake_case
     # the CSV header (in datatable or CSV file) are the keys of csv_sql_fields and fierrent of the previous both
 
-    # all the fields that are present in data grabed with the "old" method (ie file/csv mode)
+    # all the fields that are present in data grabbed with the "old" method (ie file/csv mode)
     csv_data_keys_saved = [
         'categories', 'creationDate', 'description', 'developer', 'developerId', 'endOfSupport', 'entitlementName', 'entitlementType', 'id',
         'itemType', 'keyImages', 'lastModifiedDate', 'longDescription', 'namespace', 'releaseInfo', 'requiresSecureAccount', 'status',

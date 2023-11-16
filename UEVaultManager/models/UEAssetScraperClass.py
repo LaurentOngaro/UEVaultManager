@@ -22,7 +22,7 @@ from UEVaultManager.api.egs import is_asset_obsolete
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import convert_data_to_csv, csv_sql_fields, debug_parsed_data, get_csv_field_name_list, \
-    get_sql_field_name_list, is_on_state, is_preserved
+    get_sql_field_name_list, get_sql_preserved_fields, get_sql_user_fields, is_on_state, is_preserved
 from UEVaultManager.models.types import CSVFieldState, DateFormat, GetDataResult
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -45,13 +45,13 @@ class ScrapTask:
 
     def __init__(self, caller, log_func: callable = None, task_name: str = '', url: str = '', owned_assets_only: bool = False):
         self.caller = caller
-        self.name = f'ScrapTask_{gui_fn.shorten_text(url,limit=35,prefix="_")}' if not task_name else task_name
+        self.name = f'ScrapTask_{gui_fn.shorten_text(url, limit=35, prefix="_")}' if not task_name else task_name
         self.log_func = log_func if log_func else print
         self.url = url
         self.owned_assets_only = owned_assets_only
 
     def __call__(self):
-        self.log_func(f'Started ScrapTask {self.name} at {datetime.now()}')
+        self.log_func(f'START OF ScrapTask {self.name} at {datetime.now()}')
         result = self.caller.get_data_from_url(self.url, self.owned_assets_only)
         self.log_func(f'END OF ScrapTask {self.name} at {datetime.now()}')
         return result
@@ -201,7 +201,7 @@ class UEAssetScraper:
         self._log(message)
 
     @property
-    def scrapped_data(self) -> list:
+    def scraped_data(self) -> list:
         """ Return the scraped data. """
         return self._scraped_data
 
@@ -293,7 +293,7 @@ class UEAssetScraper:
             else:
                 asset_existing_data = {}
                 if use_database:
-                    existing_data = asset_db_handler.get_assets_data(asset_db_handler.preserved_data_fields, uid)
+                    existing_data = asset_db_handler.get_assets_data(get_sql_preserved_fields(), uid)
                     asset_existing_data = existing_data.get(uid, {})
                 categories = one_asset_json_data_from_egs_ori.get('categories', None)
 
@@ -329,6 +329,16 @@ class UEAssetScraper:
                 one_asset_json_data_parsed['downloaded_size'] = self.core.uevmlfs.get_asset_size(
                     app_name, gui_g.no_text_data
                 )  # '' because we want the cell to be empty if no size
+
+                # license
+                description = one_asset_json_data_from_egs_ori.get('longDescription', '')
+                lic_unknown = 'Unknown'
+                license_type = lic_unknown  # by default
+                for key, search in gui_g.s.license_types.items():
+                    if key != lic_unknown and search in description:
+                        license_type = key
+                        break
+                one_asset_json_data_parsed['license'] = license_type
 
                 # thumbnail_url
                 one_asset_json_data_parsed['thumbnail_url'] = one_asset_json_data_from_egs_ori.get('thumbnail', '')
@@ -368,7 +378,7 @@ class UEAssetScraper:
                 one_asset_json_data_parsed['asset_id'] = asset_id
 
                 # asset slug and asset url
-                # we keep UrlSlug here because it can arise from the scrapped data
+                # we keep UrlSlug here because it can arise from the scraped data
                 asset_slug = (
                     one_asset_json_data_from_egs_ori.get('urlSlug', gui_g.no_text_data)  #
                     or one_asset_json_data_from_egs_ori.get('asset_slug', gui_g.no_text_data)
@@ -444,7 +454,7 @@ class UEAssetScraper:
                 one_asset_json_data_parsed['supported_versions'] = supported_versions
 
                 # dates
-                # asset_data['creation_date'] = asset_data['creationDate']  # does not exist in when scrapping from marketplace
+                # asset_data['creation_date'] = asset_data['creationDate']  # does not exist in when scraping from marketplace
                 # we use the first realase date instead as it exist in both cases
                 tmp_date = first_release.get('dateAdded', gui_g.no_text_data) if first_release else gui_g.no_text_data
                 tmp_date = gui_fn.convert_to_datetime(tmp_date, formats_to_use=[DateFormat.epic, DateFormat.csv])
@@ -478,7 +488,7 @@ class UEAssetScraper:
                     asset_existing_data = {field: value for field, value in asset_existing_data.items() if field not in fields_to_remove}
 
                 if asset_existing_data and use_database:
-                    for field in asset_db_handler.user_fields:
+                    for field in get_sql_user_fields():
                         existing_value = asset_existing_data.get(field, None)
                         if existing_value:
                             one_asset_json_data_parsed[field] = existing_value
@@ -495,9 +505,13 @@ class UEAssetScraper:
                     tags_str = asset_db_handler.convert_tag_list_to_string(tags)
                     # asset_data['installed_folders'] = installed_folders_str
                 else:
-                    # just convert the list of ids into a comma separated string
-                    tags_str = check_and_convert_list_to_str(tags)
-                    # we need to convert list to string if we are in FILE Mode because it's done when saving the asset in database in the DATABASE mode
+                    # with no database, we don't have access to the tags table. So we keep the tags as a list of dicts and extract the names when exists
+                    # tags could be a list of dicts (new version). Get all the "name" fields and save them into tags_str
+                    try:
+                        tags_str = ','.join([tag.get('name', '').title() for tag in tags])
+                    except (Exception, ):
+                        # no dict, so this is the oldest version, with just a list of ids
+                        tags_str = check_and_convert_list_to_str(tags)
                     installed_folders_str = check_and_convert_list_to_str(one_asset_json_data_from_egs_ori.get('installed_folders', []))
                 one_asset_json_data_parsed['installed_folders'] = installed_folders_str
                 one_asset_json_data_parsed['tags'] = tags_str
@@ -579,7 +593,7 @@ class UEAssetScraper:
                         self._log(f'In the existing data, asset {_asset_id} has no column named {_csv_field}.', level='warning')
                         continue
                     # get rid of 'None' values in CSV file
-                    if value in gui_g.s.cell_is_empty_list:
+                    if value in gui_g.s.cell_is_nan_list:
                         _csv_record[index] = ''
                         continue
                     value = str(value)
@@ -1062,7 +1076,7 @@ class UEAssetScraper:
         :return: True if OK, False if no.
 
         Notes:
-            Execute the scrapper. Load from files or downloads the items from the URLs and stores them in the scraped_data property.
+            Execute the scraper. Load from files or downloads the items from the URLs and stores them in the scraped_data property.
             The execution is done in parallel using threads.
             If self.urls is None or empty, gather_urls() will be called first.
         """
@@ -1237,7 +1251,7 @@ class UEAssetScraper:
         self._log(message)
         return is_ok
 
-    def pop_last_scrapped_data(self) -> []:
+    def pop_last_scraped_data(self) -> []:
         """
         Pop the last scraped data from the scraped_data property.
         :return: last scraped data.

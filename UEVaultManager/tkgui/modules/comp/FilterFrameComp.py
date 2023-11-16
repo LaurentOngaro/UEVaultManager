@@ -12,8 +12,10 @@ import pandas as pd
 from pandas.errors import UndefinedVariableError
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
+import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterCallableClass import FilterCallable
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
+from UEVaultManager.tkgui.modules.comp.functions_panda import fillna_fixed
 from UEVaultManager.tkgui.modules.types import FilterType
 
 
@@ -25,30 +27,33 @@ class FilterFrame(ttk.LabelFrame):
     """
     A frame that contains widgets for filtering a DataFrame.
     :param container: container widget.
-    :param df: DataFrame to be filtered. It is not modified.
     :param update_func: function that updates the table.
+    :param title: title of the frame.
+    :param get_data_func: function that returns the dataframe to filter.
     :param save_query_func: function that save the filters.
     :param load_query_func: function that load the filters.
-    :param title: title of the frame.
+    :param logger: logger to use.
     """
 
     def __init__(
         self,
         container: tk,
-        df: pd.DataFrame,
         update_func: Callable,
+        title: str = 'Define view filters for the data table',
+        get_data_func: Callable = None,
         save_query_func: Callable = None,
         load_query_func: Callable = None,
-        title: str = 'Define view filters for the data table',
+        logger=None,
     ):
         if container is None:
             raise ValueError('container can not be None')
         if update_func is None:
             raise ValueError('update_func can not be None')
         super().__init__(container, text=title)
-        self._df: pd.DataFrame = df
+        self._df: Optional[pd.DataFrame] = None
         self._loaded_filter: Optional[FilterValue] = None
         self._quick_filters: Optional[FilterValue] = None
+        self._old_entry_query: str = ''
         self._var_entry_query = tk.StringVar()
         self.pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'expand': True}
         self.grid_def_options = {'ipadx': 1, 'ipady': 1, 'padx': 1, 'pady': 1, 'sticky': tk.W}
@@ -56,13 +61,21 @@ class FilterFrame(ttk.LabelFrame):
         self.btn_apply_filters = None
         self.btn_clear_filter = None
         self.container = container
-        self.update_func = update_func
-        self.load_filter_func = load_query_func
-        self.save_filter_func = save_query_func
-        self.old_entry_query = ''
-        self.callable: FilterCallable = FilterCallable(self._df)
+        self.update_func: Callable = update_func
+        self.get_data_func: Callable = get_data_func
+        self.load_filter_func: Callable = load_query_func
+        self.save_filter_func: Callable = save_query_func
+        self.logger = logger
+        self.callable: FilterCallable = FilterCallable(self.get_data_func)
         self._quick_filters = self.callable.create_dynamic_filters()
         self._create_widgets()
+
+    @property
+    def df(self):
+        """ Get the dataframe to filter. """
+        self._df = self.get_data_func()  # update the dataframe
+        fillna_fixed(self._df)
+        return self._df
 
     @property
     def loaded_filter(self) -> Optional[FilterValue]:
@@ -90,14 +103,15 @@ class FilterFrame(ttk.LabelFrame):
         """
         Create filter widgets inside the FilterFrame instance.
         """
+        max_col = 7
         # new row
         cur_row = 0
         cur_col = 0
-        ttk_item = ttk.Label(self, text='Select quick filter')
+        ttk_item = ttk.Label(self, text='Select a quick filter')
         ttk_item.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
-        ttk_item = ttk.Label(self, text='Or Write a text query using column names')
-        ttk_item.grid(row=cur_row, column=cur_col, columnspan=5, **self.grid_def_options)
+        ttk_item = ttk.Label(self, text='Or write a query string')
+        ttk_item.grid(row=cur_row, column=cur_col, columnspan=max_col - cur_col, **self.grid_def_options)
         # new row
         cur_row += 1
         cur_col = 0
@@ -107,12 +121,20 @@ class FilterFrame(ttk.LabelFrame):
         self.cb_quick_filter.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_quick_filter))
         cur_col += 1
         self._var_entry_query = tk.StringVar()
-        self.entry_query = ttk.Entry(self, textvariable=self._var_entry_query, width=40)
+        self.entry_query = ttk.Entry(self, textvariable=self._var_entry_query, width=45)
         self.entry_query.bind("<KeyRelease>", self._on_query_change)  # keyup
-        self.entry_query.grid(row=cur_row, column=cur_col, columnspan=5, **self.grid_def_options)
+        self.entry_query.grid(row=cur_row, column=cur_col, columnspan=max_col - cur_col, **self.grid_def_options)
         # new row
         cur_row += 1
-        cur_col = 1
+        cur_col = 0
+        self.cb_category = ttk.Combobox(self, values=list(gui_g.s.asset_categories), width=20)
+        self.cb_category.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        self.cb_category.bind('<<ComboboxSelected>>', lambda event: self.get_category())  # do not remove lambda !
+        self.cb_category.bind('<KeyRelease>', lambda event: self._search_combobox(event, self.cb_category))
+        cur_col += 1
+        self.btn_simple_search = ttk.Button(self, text='Search string', command=self.simple_search)
+        self.btn_simple_search.grid(row=cur_row, column=cur_col, **self.grid_def_options)
+        cur_col += 1
         self.btn_apply_filters = ttk.Button(self, text='Apply', command=self.apply_filters)
         self.btn_apply_filters.grid(row=cur_row, column=cur_col, **self.grid_def_options)
         cur_col += 1
@@ -136,8 +158,10 @@ class FilterFrame(ttk.LabelFrame):
         Event handler for the query string entry.
         :param _event: event that triggered the search.
         """
-        if self._var_entry_query.get() != self.old_entry_query:
-            self.old_entry_query = self._var_entry_query.get()
+        query_string = self._var_entry_query.get()
+        if query_string != self._old_entry_query:
+            self.callable.query_string = query_string
+            self._old_entry_query = query_string
             self.update_controls()
 
     def _load_filter(self) -> None:
@@ -157,7 +181,8 @@ class FilterFrame(ttk.LabelFrame):
         """
         Set the loaded filter to a file (Wrapper)
         """
-        self.create_filter()  # needed to update the self._loaded_filter
+        if self._loaded_filter and not self._loaded_filter.name == 'simple_search':
+            self.create_filter()  # needed to update the self._loaded_filter. If it's a "simple_search", it has already been created
         self.save_filter_func(self._loaded_filter)
 
     def set_filter(self, filter_value: FilterValue, forced_value: str = '') -> None:
@@ -169,9 +194,21 @@ class FilterFrame(ttk.LabelFrame):
         if not forced_value:
             forced_value = filter_value.value
         self._loaded_filter = filter_value
-        self.old_entry_query = self._var_entry_query.get()
+        self._old_entry_query = self._var_entry_query.get()
         self._var_entry_query.set(forced_value)
         self.cb_quick_filter.set('')
+
+    def simple_search(self) -> None:
+        """
+        Apply a simple search on the data.
+        """
+        query_string = self._var_entry_query.get()
+        if query_string:
+            self.set_filter(
+                FilterValue(name='simple_search', value=f'search##All##{query_string}', ftype=FilterType.CALLABLE), forced_value=query_string
+            )
+            self.update_controls()
+            self.update_func(reset_page=True)
 
     def create_filter(self, filter_value: FilterValue = None) -> None:
         """
@@ -186,7 +223,7 @@ class FilterFrame(ttk.LabelFrame):
         value = filter_value.value if filter_value else ''
         # check if the filter_value is a callable and fix its ftype if not
         if ftype == FilterType.CALLABLE or ftype == FilterType.STR:
-            func_name, func_params = gui_f.parse_callable(filter_value.value)
+            func_name, func_params = gui_f.parse_callable(value)
             method = self.callable.get_method(func_name)
             if method is None:
                 filter_value.ftype = FilterType.STR
@@ -230,7 +267,7 @@ class FilterFrame(ttk.LabelFrame):
         Check if the query string has changed.
         :return: True if the query string has changed, False otherwise.
         """
-        return self.old_entry_query != self._var_entry_query.get()
+        return self._old_entry_query != self._var_entry_query.get()
 
     def apply_filters(self) -> None:
         """
@@ -282,6 +319,18 @@ class FilterFrame(ttk.LabelFrame):
             self.update_controls()
         return quick_filter
 
+    def get_category(self):
+        """
+        Get the filter value from the categories combobox.
+        :return: a FilterValue object.
+        """
+        cat_filter_name = self.cb_category.get()
+        if cat_filter_name:
+            filter_value = FilterValue(name='category_filter', value=f'Category == "{cat_filter_name}"', ftype=FilterType.STR)
+            self.set_filter(filter_value)
+            self.update_func(reset_page=True)
+            self.update_controls()
+
     def get_filtered_df(self) -> Optional[pd.DataFrame]:
         """
         Get the filtered dataframe.
@@ -308,10 +357,11 @@ class FilterFrame(ttk.LabelFrame):
                     query = f'Asset_id in {filter_value}'
                 else:
                     query = filter_value
-
                 if query:
-                    return self._df.query(query)
-            except (AttributeError, UndefinedVariableError):
-                # print(f'Error with defined filters. Updating filter...')
+                    df_filtrered = self.df.query(query)
+                    return df_filtrered
+            except (AttributeError, UndefinedVariableError) as error:
+                if self.logger:
+                    self.logger.error(f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...')
                 self.clear_filter()
                 return None

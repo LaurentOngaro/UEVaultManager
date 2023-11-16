@@ -286,13 +286,14 @@ class ProgressWindow(tk.Toplevel):
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
 
-    def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None) -> None:
+    def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None, keep_execution_state:bool=False) -> None:
         """
         Reset the progress bar.
         :param new_title: new title.
         :param new_value: new value.
         :param new_text: new text.
         :param new_max_value: new maximum value.
+        :param keep_execution_state: whether to keep the execution state (continue or not).
         """
         self.is_closing = False
         try:
@@ -314,15 +315,19 @@ class ProgressWindow(tk.Toplevel):
             self.frm_control.btn_stop.config(text='Stop')
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
-        self._continue_execution = True
+        if not keep_execution_state:
+            self.continue_execution = True
         self.update()
 
     @property
     def continue_execution(self) -> bool:
-        """
-        Returns whether the execution should continue.
-        """
+        """ Returns whether the execution should continue. """
         return self._continue_execution
+
+    @continue_execution.setter
+    def continue_execution(self, value: bool) -> None:
+        """ Set whether the execution should continue. """
+        self._continue_execution = value
 
     def start_execution(self) -> None:
         """
@@ -331,7 +336,7 @@ class ProgressWindow(tk.Toplevel):
         if self.function is None:
             gui_f.log_warning('the function name to execute is not set')
             return
-        self._continue_execution = True
+        self.continue_execution = True
         self.set_activation(False)
         # Run the function in a separate thread
         t = threading.Thread(target=self._function_result_wrapper, args=(self.function, self), kwargs=self.function_params)
@@ -345,7 +350,7 @@ class ProgressWindow(tk.Toplevel):
         """
         if self.frm_control.btn_stop is not None:
             self.frm_control.btn_stop.config(text='Canceling...', width=15)
-        self._continue_execution = False
+        self.continue_execution = False
         self.set_activation(True)
 
     def get_result(self):
@@ -399,7 +404,7 @@ class ProgressWindow(tk.Toplevel):
         :param _event: event that triggered the close.
         """
         self.is_closing = True
-        self._continue_execution = True
+        # self.continue_execution = True
         if destroy_window:
             if self.quit_on_close:
                 self.quit()
