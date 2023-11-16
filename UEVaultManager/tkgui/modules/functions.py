@@ -175,12 +175,14 @@ def log_error(msg: str) -> None:
         exit_and_clean_windows()
 
 
-def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -> None:
+def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0, x: int = -1, y: int = -1) -> None:
     """
     Resize the given image and display it in the given canvas.
     :param image: image to display.
     :param canvas: canvas to display the image in.
     :param scale: scale to apply to the image.
+    :param x: x coordinate of the image. If -1, the image will be centered.
+    :param y: y coordinate of the image. If -1, the image will be centered.
     """
     # Resize the image while keeping the aspect ratio
     target_height = int(gui_g.s.preview_max_height * scale)
@@ -188,19 +190,22 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0) -
     target_width = int(target_height * aspect_ratio)
     resized_image = image.resize((target_width, target_height), Image.BILINEAR)
     tk_image = ImageTk.PhotoImage(resized_image)
+    anchor = tk.NW if x == -1 and y == -1 else tk.CENTER
     # Calculate center coordinates
-    x = max(0, (canvas.winfo_width() - tk_image.width()) // 2)
-    y = max(0, (canvas.winfo_height() - tk_image.height()) // 2)
-    canvas.create_image(x, y, anchor=tk.NW, image=tk_image)
+    x = max(0, (canvas.winfo_width() - tk_image.width()) // 2) if x == -1 else x
+    y = max(0, (canvas.winfo_height() - tk_image.height()) // 2) if y == -1 else y
+    canvas.create_image(x, y, anchor=anchor, image=tk_image)
     canvas.image = tk_image
 
 
-def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, timeout=(4, 4)) -> bool:
+def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, x: int = -1, y: int = -1, timeout=(4, 4)) -> bool:
     """
     Show the image of the given asset in the given canvas.
     :param image_url: url of the image to display.
     :param canvas_image: canvas to display the image in.
     :param scale: scale to apply to the image.
+    :param x: x coordinate of the image. If -1, the image will be centered.
+    :param y: y coordinate of the image. If -1, the image will be centered.
     :param timeout: timeout for the request. Could be a float or a tuple of float (connect timeout, read timeout).
     :return: True if the image has been displayed, False otherwise.
     """
@@ -225,7 +230,7 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, time
             image = Image.open(BytesIO(response.content))
             with open(image_filename, "wb") as file:
                 file.write(response.content)
-        resize_and_show_image(image, canvas_image, scale)
+        resize_and_show_image(image=image, canvas=canvas_image, scale=scale, x=x, y=y)
         return True
     except Exception as error:
         log_warning(f'Error showing image: {error!r}')
@@ -616,3 +621,25 @@ def parse_callable(callable_string: str) -> (str, dict):
         return func_name, func_params
     except (Exception, ):
         return '', []
+
+
+def save_image_to_png(image: tk.PhotoImage, filename: str) -> bool:
+    """
+    Save an image to a PNG file.
+    :param image: image to save.
+    :param filename: filename to save the image to. The extension will be changed to .png if needed.
+    :return: True if the image was saved, False otherwise.
+    """
+    try:
+        filename = os.path.normpath(filename)
+        filename = os.path.splitext(filename)[0] + '.png'
+        img_pil = ImageTk.getimage(image)
+        if img_pil.mode in ('RGBA', 'LA'):
+            background = Image.new(img_pil.mode[:-1], img_pil.size, '#000')
+            background.paste(img_pil, img_pil.split()[-1])
+            img_pil = background
+        img_pil.save(filename, format='PNG', subsampling=0, quality=100)
+        img_pil.close()
+        return True
+    except (Exception, ):
+        return False

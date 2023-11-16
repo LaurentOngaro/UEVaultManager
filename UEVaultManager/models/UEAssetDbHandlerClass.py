@@ -20,7 +20,7 @@ from faker import Faker
 
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.lfs.utils import path_join
-from UEVaultManager.models.csv_sql_fields import CSVFieldState, get_sql_field_name, get_sql_field_name_list, set_default_values
+from UEVaultManager.models.csv_sql_fields import get_sql_field_name, get_sql_field_name_list, set_default_values
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.tkgui.modules.functions import create_file_backup, update_loggers_level
@@ -63,7 +63,8 @@ class DbVersionNum(Enum):
     V13 = 13  # add downloaded_size columns to the assets table
     V14 = 14  # add categories et grab_result views
     V15 = 15  # add Group column to the assets table
-    V16 = 16  # future version
+    V16 = 16  # add License column to the assets table
+    V17 = 17  # future version
 
 
 class UEAssetDbHandler:
@@ -81,19 +82,6 @@ class UEAssetDbHandler:
 
     def __init__(self, database_name: str, reset_database: bool = False):
         self.connection = None
-        # the user fields that must be preserved when updating the database
-        # these fields are also present in the asset table and in the UEAsset.init_data() method
-        # THEY WILL BE PRESERVED when parsing the asset data
-        self.user_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.USER])
-        # the field we keep for previous data. NEED TO BE SEPARATED FROM self.user_fields
-        # THEY WILL BE USED (BUT NOT FORCELY PRESERVED) when parsing the asset data
-        self.preserved_data_fields = self.user_fields
-        self.preserved_data_fields.append('id')
-        changed_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.CHANGED])
-        self.preserved_data_fields.extend(changed_fields)
-        # we also need to preserve the values in the database that are not in the (CSV) table
-        asset_fields = get_sql_field_name_list(filter_on_states=[CSVFieldState.ASSET_ONLY])
-        self.preserved_data_fields.extend(asset_fields)
         self.database_name: str = database_name
         self.init_connection()
         if reset_database:
@@ -249,7 +237,7 @@ class UEAssetDbHandler:
         _id = row_data.get('id', None)  # check if the row as an id to check
         # remove all fields whith a None Value
         # keep the empty string because we want to be able to save an empty string
-        none_values = [x for x in gui_g.s.cell_is_empty_list if x != '']
+        none_values = [x for x in gui_g.s.cell_is_nan_list]
         filtered_fields = {k: v for k, v in row_data.items() if (v is not None and v not in none_values)}
         if len(filtered_fields) == 0:
             return False
@@ -522,12 +510,15 @@ class UEAssetDbHandler:
             self._add_missing_columns('assets', required_columns={'downloaded_size': 'TEXT'})
             self.db_version = upgrade_from_version = DbVersionNum.V13
         if upgrade_from_version.value == DbVersionNum.V13.value:
-            self.db_version = upgrade_from_version = DbVersionNum.V14
             self.create_tables(upgrade_to_version=self.db_version)
+            self.db_version = upgrade_from_version = DbVersionNum.V14
         if upgrade_from_version == DbVersionNum.V14:
             col_name = get_sql_field_name(gui_g.s.group_col_name)
             self._add_missing_columns('assets', required_columns={col_name: 'TEXT'})
             self.db_version = upgrade_from_version = DbVersionNum.V15
+        if upgrade_from_version.value == DbVersionNum.V15.value:
+            self._add_missing_columns('assets', required_columns={'license': 'TEXT'})
+            self.db_version = upgrade_from_version = DbVersionNum.V16
         if previous_version != self.db_version:
             self.logger.info(f'Database upgraded to {upgrade_from_version}')
             self._set_db_version(self.db_version)
@@ -594,7 +585,7 @@ class UEAssetDbHandler:
                 _asset_list = [_asset_list]
             str_today = datetime.datetime.now().strftime(DateFormat.csv)
             if update_progress and gui_g.WindowsRef.progress:
-                gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(_asset_list))
+                gui_g.WindowsRef.progress.reset(new_value=0, new_max_value=len(_asset_list), keep_execution_state=True)
             for index, asset in enumerate(_asset_list):
                 # if gui_g.WindowsRef.progress and not gui_g.WindowsRef.progress.update_and_continue(increment=1):
                 if gui_g.WindowsRef.progress and (
@@ -603,7 +594,9 @@ class UEAssetDbHandler:
                 ):
                     return False
                 _id = str(asset.get('id', ''))
-                if _id.startswith(gui_g.s.temp_id_prefix):
+                if not _id or _id in gui_g.s.cell_is_nan_list:
+                    _id = str(asset.get('asset_id', ''))
+                if _id and _id.startswith(gui_g.s.temp_id_prefix):
                     # this a new row, partialled empty, created before scraping the data.
                     # No need to save it, It will produce an error.
                     # It will be saved after scraping
@@ -724,7 +717,7 @@ class UEAssetDbHandler:
         :return: row (dict) or a string representing the empty row.
         """
         result = '' if return_as_string else {}
-        uid = create_uid()  # just to avoid a warning
+        uid = create_uid()  # just to avoid a warning in Pycharm
         # add a new row to the 'assets' table
         if self.connection is not None:
             cursor = self.connection.cursor()
@@ -959,7 +952,7 @@ class UEAssetDbHandler:
 
     # def get_rows_with_tags_to_convert(self, tag_value: int = None) -> list:
     #     """
-    #     Get all rows from the 'assets_tags' table that could be scrapped to fix their tags.
+    #     Get all rows from the 'assets_tags' table that could be scraped to fix their tags.
     #     param tag_value: if not None, only get the rows that have a tag == tag_value.
     #     :return: list of asset_id.
     #
@@ -1291,6 +1284,8 @@ class UEAssetDbHandler:
                 'downloaded_size': random.randint(100, 5000),
                 # V14
                 get_sql_field_name(gui_g.s.group_col_name): fake.word(),
+                # V15
+                'license': fake.word(),
             }
             ue_asset.init_from_dict(data=data)
             self.set_assets(ue_asset.get_data())

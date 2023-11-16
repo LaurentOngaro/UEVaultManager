@@ -11,6 +11,8 @@ from ttkbootstrap import INFO, WARNING
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
+from UEVaultManager.tkgui.modules.cls.ImagePreviewWindowClass import ImagePreviewWindow
+from UEVaultManager.tkgui.modules.types import DataFrameUsed
 
 
 class EditRowWindow(tk.Toplevel):
@@ -35,17 +37,18 @@ class EditRowWindow(tk.Toplevel):
             gui_f.log_warning(f'Error in EditRowWindow: {error!r}')
         self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
+        self.screen_index = screen_index
         self.resizable(True, False)
 
         self.editable_table = editable_table
-        self.preview_scale = 0.5
+        self.preview_scale = 0.25
         self.must_save: bool = False
         self.initial_values = []
         self.width: int = width
         # the photoimage is stored is the variable to avoid garbage collection
         # see: https://stackoverflow.com/questions/30210618/image-not-getting-displayed-on-tkinter-through-label-widget
         self.canvas_image = None
-
+        self.image_url: str = ''
         self.frm_control = self.ControlFrame(self)
         self.frm_content = self.ContentFrame(self)
 
@@ -91,29 +94,29 @@ class EditRowWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.X, 'anchor': tk.NW}
-            grid_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
+            grid_def_options = {'ipadx': 0, 'ipady': 0, 'padx': 2, 'pady': 2, 'sticky': tk.NSEW}
 
-            lblf_navigation = ttk.LabelFrame(self, text='Navigation')
-            lblf_navigation.grid(row=0, column=0, **grid_def_options)
-            btn_prev_asset_edit = ttk.Button(lblf_navigation, text='Prev Asset', command=container.prev_asset)
-            btn_prev_asset_edit.pack(**pack_def_options, side=tk.LEFT)
-            btn_next_asset_edit = ttk.Button(lblf_navigation, text='Next Asset', command=container.next_asset)
-            btn_next_asset_edit.pack(**pack_def_options, side=tk.RIGHT)
-
-            lbf_preview = ttk.LabelFrame(self, text='Image Preview')
-            lbf_preview.grid(row=0, column=1, **grid_def_options)
             width = int(gui_g.s.preview_max_width * container.preview_scale)
             height = int(gui_g.s.preview_max_height * container.preview_scale)
-
-            canvas_image = tk.Canvas(lbf_preview, width=width, height=height, highlightthickness=0)
-            canvas_image.pack()
-            canvas_image.create_rectangle((0, 0), (width, height), fill='black')
+            lbf_preview = ttk.LabelFrame(self, text='Clic to Zoom')
+            lbf_preview.grid(row=0, column=0, **grid_def_options)
+            canvas_image = tk.Canvas(lbf_preview, width=width, height=height)
+            canvas_image.pack(**pack_def_options)
+            # add a bind on left clic on the image to display it in a ImagePreviewWindow
+            canvas_image.bind('<Button-1>', container.open_image_preview)
 
             lblf_actions = ttk.LabelFrame(self, text='Actions')
-            lblf_actions.grid(row=0, column=2, **grid_def_options)
-            btn_open_url = ttk.Button(lblf_actions, text="Open URL", command=container.open_asset_url)
+            lblf_actions.grid(row=0, column=1, **grid_def_options)
+
+            btn_prev_asset_edit = ttk.Button(lblf_actions, text='Prev Asset', command=container.prev_asset)
+            btn_prev_asset_edit.pack(**pack_def_options, side=tk.LEFT)
+            btn_next_asset_edit = ttk.Button(lblf_actions, text='Next Asset', command=container.next_asset)
+            btn_next_asset_edit.pack(**pack_def_options, side=tk.LEFT)
+            self.btn_open_json = ttk.Button(lblf_actions, text='Open Json', command=container.open_json_file)
+            self.btn_open_json.pack(**pack_def_options, side=tk.LEFT)
+            btn_open_url = ttk.Button(lblf_actions, text='Open URL', command=container.open_asset_url)
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
-            btn_open_folder = ttk.Button(lblf_actions, text="Open Folder", command=container.open_asset_folder)
+            btn_open_folder = ttk.Button(lblf_actions, text='Open Folder', command=container.open_asset_folder)
             btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
@@ -192,6 +195,7 @@ class EditRowWindow(tk.Toplevel):
         """
         Go to the previous asset (Wrapper).
         """
+        self.close_image_preview()
         row_number = self.editable_table.prev_row()
         self.editable_table.edit_row(row_number)
 
@@ -199,6 +203,7 @@ class EditRowWindow(tk.Toplevel):
         """
         Go to the next asset (Wrapper).
         """
+        self.close_image_preview()
         row_number = self.editable_table.next_row()
         self.editable_table.edit_row(row_number)
 
@@ -206,20 +211,29 @@ class EditRowWindow(tk.Toplevel):
         """
         Open the asset URL (Wrapper).
         """
+        self.close_image_preview()
         self.editable_table.open_asset_url()
 
     def open_asset_folder(self) -> None:
         """
         Open the asset URL (Wrapper).
         """
+        self.close_image_preview()
         self.editable_table.open_origin_folder()
+
+    def open_json_file(self) -> None:
+        """
+        Open the source file of the asset (Wrapper).
+        """
+        self.close_image_preview()
+        self.editable_table.open_json_file()
 
     def update_controls_state(self) -> None:
         """
         Update some controls in the window depending on conditions
         """
         data_table = self.editable_table  # shortcut
-        max_index = len(data_table.get_data())
+        max_index = len(data_table.get_data(df_type=DataFrameUsed.AUTO))
         current_index = data_table.add_page_offset(data_table.getSelectedRow())
         gui_f.update_widgets_in_list(current_index > 0, 'not_first_asset')
         gui_f.update_widgets_in_list(current_index < max_index - 1, 'not_last_asset')
@@ -232,6 +246,44 @@ class EditRowWindow(tk.Toplevel):
         widgets = data_table.get_edited_row_values()
         if len(widgets):
             is_added = widgets.get('Added manually', False)
+            is_marketplace = widgets.get('Origin', '') == gui_g.s.origin_marketplace
             url = widgets.get('Url', '')
             gui_f.update_widgets_in_list(is_added, 'asset_added_mannually')
             gui_f.update_widgets_in_list(url != '', 'asset_has_url')
+            gui_f.set_widget_state(self.frm_control.btn_open_json, is_marketplace)
+
+    def update_image_preview(self) -> bool:
+        """
+        Update the image preview.
+        :return: True if the image was displayed, False otherwise.
+        """
+        url = self.image_url
+        if not gui_f.show_asset_image(image_url=url, canvas_image=self.frm_control.canvas_image, scale=self.preview_scale):
+            return False
+        self.update_controls_state()
+        return True
+
+    def open_image_preview(self, _event):
+        """
+        Open the image preview window.
+        """
+        widgets = self.editable_table.get_edited_row_values()
+        url = widgets.get('Image', '')
+        if gui_g.WindowsRef.image_preview:
+            gui_g.WindowsRef.image_preview.close_window()
+        ipw = ImagePreviewWindow(
+            title='Image Preview', screen_index=self.screen_index, url=url, width=gui_g.s.preview_max_width, height=gui_g.s.preview_max_height
+        )
+        if not ipw.display(url=url):
+            ipw.close_window()
+        else:
+            gui_f.make_modal(ipw)  # make the preview window modal
+        gui_f.make_modal(self)  # (re)make the edit row window modal
+
+    @staticmethod
+    def close_image_preview():
+        """
+        Close the image preview window.
+        """
+        if gui_g.WindowsRef.image_preview:
+            gui_g.WindowsRef.image_preview.close_window()

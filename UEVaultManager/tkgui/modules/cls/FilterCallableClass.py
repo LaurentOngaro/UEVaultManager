@@ -3,24 +3,33 @@
 Implementation for:
 - FilterCallable class: a class that contains methods to create dynamic filters.
 """
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 from UEVaultManager.tkgui.modules.cls.FilterValueClass import FilterValue
+from UEVaultManager.tkgui.modules.comp.functions_panda import fillna_fixed
 from UEVaultManager.tkgui.modules.types import FilterType
 
 
 class FilterCallable:
     """
     A class that contains methods to create dynamic filters.
-    :param df: the dataframe to filter.
+    :param get_data_func: a function that returns the dataframe to filter.
     """
 
-    def __init__(self, df: pd.DataFrame):
-        self.df: pd.DataFrame = df
+    def __init__(self, get_data_func: Callable):
+        self._df: Optional[pd.DataFrame] = None
+        self._query_string: str = ''
+        self.get_data_func = get_data_func
+
+    @property
+    def df(self):
+        """ Get the dataframe to filter. """
+        self._df = self.get_data_func()  # update the dataframe
+        return self._df
 
     @staticmethod
     def create_dynamic_filters() -> {str: str}:
@@ -55,8 +64,9 @@ class FilterCallable:
             'Installed in folder': [FilterType.STR, '`Installed folders` != ""'],  #
             'Local and marketplace': [FilterType.CALLABLE, 'local_and_marketplace'],  #
             'With comment': [FilterType.STR, 'Comment != ""'],  #
+            'Not EU-Only license': [FilterType.STR, 'License != "UE-Only"'],  #
             'Local id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.duplicate_row_prefix}'],  #
-            'Empty id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.empty_row_prefix}'],  #
+            'New id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.empty_row_prefix}'],  #
             'Temp id': [FilterType.CALLABLE, f'search##Asset_id##{gui_g.s.temp_id_prefix}'],  #
             'Result OK': [FilterType.STR, '`Grab result` == "NO_ERROR"'],  #
             'Result Not OK': [FilterType.STR, '`Grab result` != "NO_ERROR"'],  #
@@ -69,6 +79,16 @@ class FilterCallable:
             ftype, fvalue = value
             result[filter_name] = FilterValue(name=filter_name, value=fvalue, ftype=ftype)
         return result
+
+    @property
+    def query_string(self):
+        """ Get the query string. """
+        return self._query_string
+
+    @query_string.setter
+    def query_string(self, value: str):
+        """ Set the query string. """
+        self._query_string = value
 
     def get_method(self, func_name: str) -> Optional[callable]:
         """
@@ -139,7 +159,10 @@ class FilterCallable:
         """
         col_name = args[0]
         value = args[1]
+        if value == gui_g.s.keyword_query_string:
+            value = self.query_string
         flag = args[2] if len(args) > 2 else None
+        fillna_fixed(self.df)
         if col_name.lower() == gui_g.s.default_value_for_all.lower():
             mask = False
             for col in self.df.columns:

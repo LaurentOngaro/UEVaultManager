@@ -23,7 +23,7 @@ class WebImage:
             try:
                 response = requests.get(url, timeout=(4, 4))
                 self.__image_pil = Image.open(BytesIO(response.content))
-                self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
+                self._image_tk = ImageTk.PhotoImage(self.__image_pil)
             except Exception as error:
                 log_warning(f'image could not be read from url {url}.\nError:{error!r}')
 
@@ -32,7 +32,7 @@ class WebImage:
         Get the downloaded image.
         :return: image.
         """
-        return self.__image_tk
+        return self._image_tk
 
     def get_resized(self, new_width: int, new_height: int) -> ImageTk.PhotoImage:
         """
@@ -45,8 +45,8 @@ class WebImage:
             # resize the PIL.Image object in place
             self.__image_pil.thumbnail((new_width, new_height))
             # create a PhotoImage object from the resized PIL.Image
-            self.__image_tk = ImageTk.PhotoImage(self.__image_pil)
+            self._image_tk = ImageTk.PhotoImage(self.__image_pil)
         except Exception as error:
             # log a warning if image can not be resized
             log_warning(f'Could not get resized image from url {self.url}.\nError:{error!r}')
-        return self.__image_tk
+        return self._image_tk

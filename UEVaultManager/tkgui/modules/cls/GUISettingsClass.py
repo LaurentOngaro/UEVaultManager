@@ -6,8 +6,6 @@ Implementation for:
 import json
 import os
 
-from termcolor import colored
-
 # we can't import the following modules here because of circular dependencies
 # UEVaultManager.tkgui.modules.functions_no_deps
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn
@@ -26,6 +24,8 @@ class GUISettings:
     path: str = ''
     config_file_gui: str = ''  # config file path for gui part (tkgui)
     config_file: str = ''  # config file path for cli part (cli). Set by the cli part
+    data_filetypes_jpg = (('Jpeg image', '*.jpg'), )
+    data_filetypes_png = (('PNG image', '*.png'), )
     data_filetypes_all = (('all files', '*.*'), )
     data_filetypes_text = (('text file', '*.txt'), )
     data_filetypes_json = (('json file', '*.json'), )
@@ -111,12 +111,12 @@ class GUISettings:
         self.preview_max_height: int = 150
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
-        # self.empty_cell: str = 'None'
-        self.cell_is_empty_list = ['NA', 'None', 'nan', 'NaN', 'False', '0', '0.0', '']  # keep 'NA' value at first position
-        self.cell_is_empty_and_zero_list = self.cell_is_empty_list + ['False', '0', '0.0', '']
+        self.keyword_query_string = 'QUERY'  # use this keyword in a CALLABLE filter to replace the value by the in the search field
+        self.cell_is_nan_list = ['NA', 'None', 'nan', 'NaN']  # keep 'NA' value at first position
+        self.cell_is_empty_list = self.cell_is_nan_list + ['False', '0', '0.0', '']
         self.empty_cell: str = ''
-        self.empty_row_prefix: str = 'dummy_row_'
-        self.duplicate_row_prefix: str = 'local_'
+        self.empty_row_prefix: str = 'new_id_'
+        self.duplicate_row_prefix: str = 'local_id_'
         self.temp_id_prefix: str = 'temp_id_'
         self.unknown_size: str = 'yes'
         self.tag_prefix: str = 't_'
@@ -124,10 +124,11 @@ class GUISettings:
         self.contract_columns_factor: int = 20
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
         # The list off all the possible value for the field 'category'. It should be updated if necessary
+        self.missing_category = 'Incomplete Asset'
         self.asset_categories = [
             '2D Assets', 'Animations', 'Architectural Visualization', 'Blueprints', 'Characters', 'Code Plugins', 'Environments', 'Epic Content',
             'Materials', 'Megascans', 'Music', 'Props', 'Sound Effects', 'Textures', 'UE Feature Samples', 'UE Game Samples', 'UE Legacy Samples',
-            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/Asset', 'local/Manifest', 'local/Plugin'
+            'UE Online Learning', 'Visual Effects', 'Weapons', 'local/Asset', 'local/Manifest', 'local/Plugin', self.missing_category
         ]
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
@@ -149,7 +150,12 @@ class GUISettings:
             'rowselectedcolor': '#E4DED4',  #
             'textcolor': 'black'  #
         }
-
+        self.license_types = {
+            # key is the license type (in the License column), value is the text to search in the asset data, see _parse_data() method in UEAssetClass.
+            # for now, only ue_only is significant
+            'Unknown': '',  # 'Unknown' is used when the license type is not found in the asset data
+            'UE-Only': 'UE-Only Content',
+        }
         folders = [
             self.assets_folder, self.assets_data_folder, self.owned_assets_data_folder, self.assets_global_folder, self.assets_csv_files_folder,
             self.filters_folder, self.backups_folder, self.asset_images_folder, self.results_folder, self.scraping_folder
@@ -165,8 +171,9 @@ class GUISettings:
     @staticmethod
     def _log(message):
         """ print a colored message."""
-        msg = colored(message, 'orange')
-        print(msg)
+        # cause issue when run in a console, not in IDE
+        # message = colored(message, 'orange')
+        print(message)
 
     def _get_serialized(self, var_name: str = '', is_dict=False, force_reload=False):
         """
@@ -502,6 +509,19 @@ class GUISettings:
         """ Setter for backup_files_to_keep """
         self.config_vars['backup_files_to_keep'] = value
 
+    @property
+    def keep_invalid_scans(self) -> bool:
+        """ Getter for keep_invalid_scans """
+        return gui_fn.convert_to_bool(self.config_vars['keep_invalid_scans'])
+
+    @keep_invalid_scans.setter
+    def keep_invalid_scans(self, value):
+        """ Setter for keep_invalid_scans """
+        self.config_vars['keep_invalid_scans'] = value
+
+    # #############
+    # Nexts are NOT properties
+    # #############
     def get_column_infos(self, source_type: DataSourceType = DataSourceType.DATABASE) -> dict:
         """
         Get columns infos depending on the datasource type
@@ -564,7 +584,7 @@ class GUISettings:
                 'value': 'False'
             },
             'use_threads': {
-                'comment': 'Set to True to use multiple threads when scraping/grabing data for UE assets',
+                'comment': 'Set to True to use multiple threads when scraping/grabbing data for UE assets',
                 'value': 'True'
             },
             'timeout_for_scraping': {
@@ -575,6 +595,10 @@ class GUISettings:
             'scraped_assets_per_page': {
                 'comment': 'Number of grouped assets to scrap with one url. Since 2023-10-31 a value bigger than 75 will be refused by UE API',
                 'value': 75
+            },
+            'keep_invalid_scans': {
+                'comment': 'Set to True to keep folders that contain a "non marketplace friendly" asset during a folders scan.',
+                'value': 'True'
             },
             'reopen_last_file': {
                 'comment': 'Set to True to re-open the last file at startup if no input file is given',
@@ -603,7 +627,7 @@ class GUISettings:
             },
             'backup_files_to_keep': {
                 'comment':
-                    'Number of backup files version to keep in the folder for backups. The oldest will be deleted. Set to 0 to keep all the backups',
+                'Number of backup files version to keep in the folder for backups. The oldest will be deleted. Set to 0 to keep all the backups',
                 'value': 30
             },
             'image_cache_max_time': {
@@ -636,11 +660,11 @@ class GUISettings:
             },
             'group_names': {
                 'comment': 'The name of the groups where the selected rows can be added to.',
-                'value': list(['#1', '#2', '#3'])
+                'value': list(['G1', 'G2', 'G3'])
             },
             'current_group_name': {
                 'comment': 'The name of the current group where the selected rows can be added to.',
-                'value': '#1'
+                'value': 'G1'
             },
             'x_pos': {
                 'comment': 'X position of the main windows. Set to 0 to center the window. Automatically saved on quit',
@@ -725,11 +749,14 @@ class GUISettings:
         if has_changed:
             self.save_config_file(save_config_var=False)
 
-    def read_config_properties(self) -> dict:
+    def read_config_properties(self, update_from_config_file: bool = False) -> dict:
         """
         Read the properties from the config file.
-        :return:
+        :param update_from_config_file: True to update the config_vars from the config file.
+        :return: dict of config vars.
         """
+        if update_from_config_file:
+            self.init_gui_config_file(self.config_file_gui)
         # ##### start of properties stored in config file
         # store all the properties that must be saved in config file
         # no need of fallback values here, they are set in the config file by default
@@ -739,6 +766,7 @@ class GUISettings:
             'use_threads': self.config.getboolean('UEVaultManager', 'use_threads'),
             'timeout_for_scraping': self.config.getint('UEVaultManager', 'timeout_for_scraping'),
             'scraped_assets_per_page': self.config.get('UEVaultManager', 'scraped_assets_per_page'),
+            'keep_invalid_scans': self.config.getboolean('UEVaultManager', 'keep_invalid_scans'),
             'reopen_last_file': self.config.getboolean('UEVaultManager', 'reopen_last_file'),
             'never_update_data_files': self.config.getboolean('UEVaultManager', 'never_update_data_files'),
             'use_colors_for_data': self.config.getboolean('UEVaultManager', 'use_colors_for_data'),

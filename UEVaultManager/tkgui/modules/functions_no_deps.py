@@ -492,7 +492,7 @@ def get_and_check_release_info(data_to_check) -> Optional[list]:
     tries = 0
     # Note:
     #   here we use ast.literal_eval instead of json.loads because it can raise an error if the string came from a datatable and uses ' instead of " for string literals
-    while '[{\"id\":' in data_to_check and tries < max_tries:
+    while '[{\"id\":' in str(data_to_check) and tries < max_tries:
         # fix a multiple encoding issue. Should not occur
         # data_to_check = json.loads(data_to_check)
         tries += 1

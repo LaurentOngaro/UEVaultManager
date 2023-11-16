@@ -61,7 +61,7 @@ This is an example of this file content and the settings you can change:
   folders_to_scan = ["G:/Assets/pour UE/01 Acquis", "G:/Assets/pour UE/00 A trier"]
   ;Set to True to print debug information (GUI related only)
   debug_mode = False
-  ;Set to True to use multiple threads when scraping/grabing data for UE assets
+  ;Set to True to use multiple threads when scraping/grabbing data for UE assets
   use_threads = True
   ;timeout in second when scraping several assets in once. This value should not be too low to limit timeout issues and scraping cancellation.
   timeout_for_scraping = 30

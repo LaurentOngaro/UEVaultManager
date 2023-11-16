@@ -111,14 +111,12 @@ class DisplayContentWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3}
-
             text_content = ExtendedText(self)
             scrollbar = ttk.Scrollbar(self)
             scrollbar.config(command=text_content.yview)
             text_content.config(yscrollcommand=scrollbar.set)
             scrollbar.pack(side=tk.RIGHT, fill=tk.Y, **pack_def_options)
             text_content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, **pack_def_options)
-
             self.text_content = text_content
 
     class ControlFrame(ttk.Frame):
