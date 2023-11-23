@@ -2168,31 +2168,32 @@ class EditableTable(Table):
         """
         return '' if row_number is None else self.get_cell(row_number, self.get_col_index('Image'))
 
-    def open_asset_url(self, url: str = ''):
+    def open_asset_url(self):
         """
         Open the asset URL in a web browser.
-        :param url: URL to open.
         """
-        if not url:
-            if self._edit_row_entries is None:
-                return
-            asset_url = self._edit_row_entries['Url'].get()
-        else:
-            asset_url = url
+        row_number = self.get_selected_row_fixed()
+        if row_number is None or row_number < 0:
+            return
+        asset_url = self.get_cell(row_number, self.get_col_index('Url'))
         self.logger.info(f'Opening {asset_url} in browser')
         if not asset_url or asset_url == gui_g.s.empty_cell:
-            self.logger.info('asset URL is empty for this asset')
+            self.notify('Url value is empty for this asset')
             return
         webbrowser.open(asset_url)
 
-    def open_json_file(self, asset_id: str = '') -> None:
+    def open_json_file(self) -> None:
         """
         Open the source file of the asset.
         """
-        if not asset_id:
-            if self._edit_row_entries is None:
-                return
-            asset_id = self._edit_row_entries['Asset_id'].get()
+        row_number = self.get_selected_row_fixed()
+        if row_number is None or row_number < 0:
+            return
+        asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'))
+        self.logger.info(f'Opening json file for {asset_id} in browser')
+        if not asset_id or asset_id == gui_g.s.empty_cell:
+            self.notify('Asset_id value is empty for this asset')
+            return
         file_name = path_join(gui_g.s.assets_data_folder, asset_id + '.json')
         if os.path.isfile(file_name):
             self.logger.info(f'Opening {file_name} in default application')
@@ -2209,6 +2210,9 @@ class EditableTable(Table):
         # open the folder of the asset
         if added:
             origin = self.get_cell(row_number, self.get_col_index('Origin'))
+            if not origin or origin == gui_g.s.empty_cell:
+                self.notify('Origin value is empty for this asset')
+                return
             # open the folder of the asset
             if not gui_fn.open_folder_in_file_explorer(origin):
                 gui_f.box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')

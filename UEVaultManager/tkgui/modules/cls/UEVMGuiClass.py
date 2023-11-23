@@ -1982,9 +1982,7 @@ class UEVMGui(tk.Tk):
         """
         Open the asset URL (Wrapper).
         """
-        url, widget = self._check_and_get_widget_value(tag='Url')
-        if url:
-            self.editable_table.open_asset_url(url=url)
+        self.editable_table.open_asset_url()
 
     def open_asset_folder(self) -> None:
         """
@@ -1996,9 +1994,7 @@ class UEVMGui(tk.Tk):
         """
         Open the source file (Wrapper).
         """
-        asset_id, widget = self._check_and_get_widget_value(tag='Asset_id')
-        if asset_id:
-            self.editable_table.open_json_file(asset_id)
+        self.editable_table.open_json_file()
 
     def run_install(self):
         """
