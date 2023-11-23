@@ -366,4 +366,4 @@ class FilterFrame(ttk.LabelFrame):
                     message = f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...'
                     self.logger.error(message)
                 self.clear_filter()
-                return None, error_message
+        return None, error_message
