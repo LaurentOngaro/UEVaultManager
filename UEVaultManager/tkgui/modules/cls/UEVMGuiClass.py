@@ -291,9 +291,9 @@ class UEVMGui(tk.Tk):
         # if child_windows:
         #     self._wait_for_window(child_windows)
         self.logger.info(f'ending mainloop in {__name__}')
-        self.logger.info('\nList of errors that occured during this session:\n')
-        for error in self._errors:
-            self.logger.info(error)
+        self.logger.info('\nList of error messages that occured during this session:\n')
+        for error_msg in self._errors:
+            self.logger.info(error_msg)
 
     def update_progress_windows(self):
         """
