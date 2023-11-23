@@ -1458,7 +1458,7 @@ class EditableTable(Table):
             df_filtered, error_message = self._frm_filter.get_filtered_df() if self._frm_filter is not None else None
             if error_message:
                 self.notify(error_message)
-        except (KeyError, ValueError) as error:
+        except (KeyError, ValueError, TypeError) as error:
             self.notify(
                 f'Could not get the filtered dataframe.\nCheck the content of your filter and the name of the columns you used (tip: it is case sensitive !).\nError: {error!r}'
             )
@@ -2265,9 +2265,8 @@ class EditableTable(Table):
         gui_fn.append_no_duplicate(self._errors, message, ok_if_exists=True)
         notification_title = ''
         level_lower = level.lower()
-        container = gui_g.WindowsRef.uevm_gui
         if level_lower == 'debug':
-            self.notify(message, level='debug')
+            self.logger.debug(message)
             notification_title = 'Debug message' if gui_g.s.debug_mode else ''
         elif level_lower == 'warning':
             notification_title = 'Warning message'
@@ -2277,7 +2276,7 @@ class EditableTable(Table):
             self.logger.error(message)
 
         if notification_title:
-            NotificationWindow(container=container, window_title=notification_title, message=message, duration=15000).show()
+            NotificationWindow(title=notification_title, message=message, duration=gui_g.s.notification_time).show()
 
     def colheader_popup_menu(self, event, outside=True):
         """Overwrite the default colheader popupMenu method"""

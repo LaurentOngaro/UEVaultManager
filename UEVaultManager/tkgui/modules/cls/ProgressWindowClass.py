@@ -65,7 +65,7 @@ class ProgressWindow(tk.Toplevel):
         self.title(title)
         # get the root window
         root = gui_g.WindowsRef.uevm_gui or self
-        self.screen_index = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+        self.screen_index: int = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
         self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self._thread_check_delay: int = 100
@@ -289,7 +289,7 @@ class ProgressWindow(tk.Toplevel):
         except tk.TclError as error:
             gui_f.log_debug(f'Some tkinter elements are not set. The window is probably already destroyed. {error!r}')
 
-    def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None, keep_execution_state:bool=False) -> None:
+    def reset(self, new_title=None, new_value=None, new_text=None, new_max_value=None, keep_execution_state: bool = False) -> None:
         """
         Reset the progress bar.
         :param new_title: new title.

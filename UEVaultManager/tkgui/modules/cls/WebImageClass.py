@@ -18,7 +18,7 @@ class WebImage:
     """
 
     def __init__(self, url: str = None):
-        self.url = url
+        self.url: str = url
         if url:
             try:
                 response = requests.get(url, timeout=(4, 4))

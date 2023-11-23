@@ -133,7 +133,7 @@ class UEVMGui(tk.Tk):
             x_pos, y_pos = gui_fn.get_center_screen_positions(screen_index, width, height)
         self.geometry(f'{width}x{height}+{x_pos}+{y_pos}')
         gui_fn.set_icon_and_minmax(self, icon)
-        self.screen_index = screen_index
+        self.screen_index: int = screen_index
         self.resizable(True, True)
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
@@ -239,7 +239,7 @@ class UEVMGui(tk.Tk):
                     self.destroy()  # self.quit() won't work here
                     return
             elif data_table.data_source_type == DataSourceType.FILE and gui_f.box_yesno(
-                'So, do you want to load another file ? If not, the application will be closed'
+                    'So, do you want to load another file ? If not, the application will be closed'
             ):
                 show_open_file_dialog = True
             else:
@@ -263,7 +263,7 @@ class UEVMGui(tk.Tk):
                     self._frm_filter.set_filter(filter_value)
                     self._frm_filter.update_controls()
                     data_table.update(update_format=True)
-                except (Exception, ) as error:
+                except (Exception,) as error:
                     self.add_error(error)
                     self.logger.error(f'Error loading filters: {error!r}')
         else:
@@ -857,7 +857,7 @@ class UEVMGui(tk.Tk):
                         if key_to_compare == folder_to_compare:
                             minimal_score = value
                             break
-                except (Exception, ) as error:
+                except (Exception,) as error:
                     msg = f'The following error occured when reading the "minimal_fuzzy_score_by_name" value in config file.\nCheck the value and fix it.\n{error!r}'
                     self.add_error(Exception(msg))
                     minimal_score = 80
@@ -884,7 +884,7 @@ class UEVMGui(tk.Tk):
             found_url = found_url.replace('?sessionInvalidated=true', '')  # can be added by errror when creating the url file by drag and drop
             if check_if_valid and egs is not None and not egs.is_valid_url(found_url):
                 found_url = ''
-        except (Exception, ):  # trap all exceptions on connection
+        except (Exception,):  # trap all exceptions on connection
             message = f'Request timeout when accessing {found_url}\n.Operation is stopped, check you internet connection or try again later.',
             self.logger.warning(message)
             found_url = ''
@@ -935,7 +935,7 @@ class UEVMGui(tk.Tk):
             :param content_folder_name: name of the subfolder to create.
             """
             if self.silent_yesno(
-                f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
+                    f'The folder {parent_folder} seems to be a valid UE folder but with a bad structure. Do you want to move all its subfolders inside a "{content_folder_name}" subfolder ?'
             ):
                 content_folder = path_join(parent_folder, content_folder_name)
                 if not os.path.isdir(content_folder):
@@ -990,9 +990,9 @@ class UEVMGui(tk.Tk):
                 ]
 
         if not from_add_button and (
-            len(folder_to_scan) > 1 and not gui_f.box_yesno(
-                'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
-            )
+                len(folder_to_scan) > 1 and not gui_f.box_yesno(
+            'Specified Folders to scan saved in the config file will be processed.\nSome assets will be added to the table and the process could take come time.\nDo you want to continue ?'
+        )
         ):
             return
         self._silent_mode = gui_f.box_yesno(
@@ -1048,7 +1048,7 @@ class UEVMGui(tk.Tk):
                     if marketplace_url:
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
-                        except (Exception, ) as error:  # trap all exceptions on connection
+                        except (Exception,) as error:  # trap all exceptions on connection
                             self.add_error(error)
                             self.silent_message(
                                 f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
@@ -1134,7 +1134,7 @@ class UEVMGui(tk.Tk):
                                         grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(
                                             marketplace_url
                                         ) else GrabResult.TIMEOUT.name
-                                    except (Exception, ) as error:  # trap all exceptions on connection
+                                    except (Exception,) as error:  # trap all exceptions on connection
                                         self.add_error(error)
                                         self.silent_message(
                                             f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
@@ -1283,7 +1283,7 @@ class UEVMGui(tk.Tk):
 
             if forced_data['grab_result'] != GrabResult.NO_ERROR.name:
                 # replace the temp_id prefix for the row to be saved in databse
-                if not forced_data.get('asset_id','') or forced_data.get('asset_id','').startswith(gui_g.s.temp_id_prefix):
+                if not forced_data.get('asset_id', '') or forced_data.get('asset_id', '').startswith(gui_g.s.temp_id_prefix):
                     uid = gui_g.s.empty_row_prefix + gui_fn.create_uid()
                     forced_data['asset_id'] = uid
                 forced_data['id'] = forced_data['asset_id']  # in case of a missing id value
@@ -1472,14 +1472,14 @@ class UEVMGui(tk.Tk):
                 # we keep UrlSlug here because it can arise from the scraped data
                 asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
                 if asset_slug_from_row and asset_slug_from_url and not asset_slug_from_row.startswith(
-                    gui_g.s.duplicate_row_prefix
+                        gui_g.s.duplicate_row_prefix
                 ) and asset_slug_from_url != asset_slug_from_row:
                     msg = f'The Asset slug from the given Url {asset_slug_from_url} is different from the existing data {asset_slug_from_row}.'
                     self.logger.warning(msg)
                     # we use existing_url and not asset_data['asset_url'] because it could have been corrected by the user
                     if gui_f.box_yesno(
-                        f'{msg}.\nDo you wan to create a new Url with {asset_slug_from_row} and use it for scraping ?\nIf no, the given url with {asset_slug_from_url} will be used',
-                        show_dialog=not self._silent_mode
+                            f'{msg}.\nDo you wan to create a new Url with {asset_slug_from_row} and use it for scraping ?\nIf no, the given url with {asset_slug_from_url} will be used',
+                            show_dialog=not self._silent_mode
                     ):
                         marketplace_url = self.core.egs.get_marketplace_product_url(asset_slug_from_row)
                         col_index = data_table.get_col_index('Url')
@@ -1518,8 +1518,8 @@ class UEVMGui(tk.Tk):
                         if str(value) not in gui_g.s.cell_is_nan_list + [gui_g.s.missing_category]:
                             asset_data[key] = value
                     if is_unique or gui_f.box_yesno(
-                        f'The scraped data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to create a row using tthis data ?\nIf No, the row will be skipped',
-                        show_dialog=not self._silent_mode
+                            f'The scraped data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to create a row using tthis data ?\nIf No, the row will be skipped',
+                            show_dialog=not self._silent_mode
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
                         if self.is_using_database:
@@ -1546,8 +1546,8 @@ class UEVMGui(tk.Tk):
                 if check_unicity:  # note: only done when ADDING a row
                     is_unique, asset_data = self._check_unicity(asset_data)
                 if is_unique or gui_f.box_yesno(
-                    f'The data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to update the row with the new data ?\nIf No, the row will be skipped',
-                    show_dialog=not self._silent_mode
+                        f'The data for row index {row_index} ({asset_data["title"]}) is not unique.\nDo you want to update the row with the new data ?\nIf No, the row will be skipped',
+                        show_dialog=not self._silent_mode
                 ):
                     if forced_data is not None:
                         for key, value in forced_data.items():
@@ -1885,7 +1885,7 @@ class UEVMGui(tk.Tk):
         """
         data_table = self.editable_table  # shortcut
         if not data_table.must_save or (
-            data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
+                data_table.must_save and gui_f.box_yesno('Changes have been made, they will be lost. Are you sure you want to continue ?')
         ):
             data_table.update_col_infos(apply_resize_cols=False)
             gui_f.show_progress(self, text=f'Reloading assets data...')
@@ -2046,7 +2046,7 @@ class UEVMGui(tk.Tk):
         gui_g.UEVM_cli_args['no_install'] = False
 
         if self.editable_table.data_source_type != DataSourceType.FILE or gui_f.box_yesno(
-            'To install an asset, using a database is a better option to avoid incoherent data in the "installed folder" field of the asset.\nThe current datasource type is "FILE", not "DATABASE".\nYou can switch the mode by using the "cli edit --database" instead of "cli edit --input" command.\nAre you sure you want to continue the operation in the current mode ?',
+                'To install an asset, using a database is a better option to avoid incoherent data in the "installed folder" field of the asset.\nThe current datasource type is "FILE", not "DATABASE".\nYou can switch the mode by using the "cli edit --database" instead of "cli edit --input" command.\nAre you sure you want to continue the operation in the current mode ?',
         ):
             self.run_install()
 
@@ -2180,7 +2180,7 @@ class UEVMGui(tk.Tk):
         deleted = 0
         if count:
             if gui_f.box_yesno(
-                f'{count} assets with a non existing folder have been found.\nDo you want to delete them from the table and the database ?'
+                    f'{count} assets with a non existing folder have been found.\nDo you want to delete them from the table and the database ?'
             ):
                 deleted = data_table.del_rows(row_numbers=indexes_to_delete, convert_to_index=False, confirm_dialog=False)
             if deleted:

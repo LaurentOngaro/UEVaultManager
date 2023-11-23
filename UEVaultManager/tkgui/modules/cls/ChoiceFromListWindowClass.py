@@ -124,7 +124,7 @@ class ChoiceFromListWindow(tk.Toplevel):
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
             # get the root window
             root = gui_g.WindowsRef.uevm_gui or self
-            self.screen_index = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+            self.screen_index: int = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
             self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         except Exception as error:
             gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
