@@ -55,7 +55,6 @@ class GUISettings:
         self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
         self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
         self.filters_folder: str = path_join(self.path, 'filters')
-
         self.backups_folder: str = path_join(self.path, 'backups')
         self.backup_file_ext: str = '.BAK'
         self.default_filename: str = 'assets'
@@ -122,6 +121,7 @@ class GUISettings:
         self.tag_prefix: str = 't_'
         self.expand_columns_factor: int = 20
         self.contract_columns_factor: int = 20
+        self.warning_limit_for_batch_op: int = 20
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
         # The list off all the possible value for the field 'category'. It should be updated if necessary
         self.missing_category = 'Incomplete Asset'

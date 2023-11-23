@@ -1983,10 +1983,10 @@ class EditableTable(Table):
             row_numbers = self.multiplerowlist
             is_single = False
 
-        if not row_numbers or col_index is None:  # model. df checked
+        if not row_numbers or col_index is None:
             return None
         if is_single:
-            if row_numbers[0] >= len(self.model.df):
+            if row_numbers[0] >= len(self.model.df):  # model. df checked
                 return None
             cell_value = self.get_cell(row_numbers[0], col_index)
             title = 'Edit current cell value'
@@ -2170,54 +2170,84 @@ class EditableTable(Table):
 
     def open_asset_url(self):
         """
-        Open the asset URL in a web browser.
+        Open the asset URLs in a web browser.
         """
-        row_number = self.get_selected_row_fixed()
-        if row_number is None or row_number < 0:
-            return
-        asset_url = self.get_cell(row_number, self.get_col_index('Url'))
-        self.logger.info(f'Opening {asset_url} in browser')
-        if not asset_url or asset_url == gui_g.s.empty_cell:
-            self.notify('Url value is empty for this asset')
-            return
-        webbrowser.open(asset_url)
+        row_numbers = self.multiplerowlist
+        if not row_numbers:
+            row_numbers = [self.get_selected_row_fixed()]
+            is_single = True
+        else:
+            is_single = False
+        if len(row_numbers) > gui_g.s.warning_limit_for_batch_op:
+            if not gui_f.box_yesno('Are you sure you want to open all these urls in your browser ?'):
+                return
+        for row_number in row_numbers:
+            if row_number is None or row_number < 0 or row_number >= len(self.model.df):  # model. df checked
+                continue
+            asset_url = self.get_cell(row_number, self.get_col_index('Url'))
+            if is_single:
+                self.logger.info(f'Opening {asset_url} in browser')
+                if not asset_url or asset_url == gui_g.s.empty_cell:
+                    self.notify('Url value is empty for this asset')
+                    return
+            webbrowser.open(asset_url)
 
     def open_json_file(self) -> None:
         """
         Open the source file of the asset.
         """
-        row_number = self.get_selected_row_fixed()
-        if row_number is None or row_number < 0:
-            return
-        asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'))
-        self.logger.info(f'Opening json file for {asset_id} in browser')
-        if not asset_id or asset_id == gui_g.s.empty_cell:
-            self.notify('Asset_id value is empty for this asset')
-            return
-        file_name = path_join(gui_g.s.assets_data_folder, asset_id + '.json')
-        if os.path.isfile(file_name):
-            self.logger.info(f'Opening {file_name} in default application')
-            os.system(f'start {file_name}')
+        row_numbers = self.multiplerowlist
+        if not row_numbers:
+            row_numbers = [self.get_selected_row_fixed()]
+            is_single = True
+        else:
+            is_single = False
+        if len(row_numbers) > gui_g.s.warning_limit_for_batch_op:
+            if not gui_f.box_yesno('Are you sure you want to open all these files in the associated program ?'):
+                return
+        for row_number in row_numbers:
+            if row_number is None or row_number < 0 or row_number >= len(self.model.df):  # model. df checked
+                continue
+            asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'))
+            if is_single:
+                self.logger.info(f'Opening json file for {asset_id} in browser')
+                if not asset_id or asset_id == gui_g.s.empty_cell:
+                    self.notify('Asset_id value is empty for this asset')
+                    return
+            file_name = path_join(gui_g.s.assets_data_folder, asset_id + '.json')
+            if os.path.isfile(file_name):
+                self.logger.info(f'Opening {file_name} in default application')
+                os.system(f'start {file_name}')
 
     def open_origin_folder(self) -> None:
         """
         Open the asset origin folder.
         """
-        row_number = self.get_selected_row_fixed()
-        if row_number is None or row_number < 0:
-            return
-        added = self.get_cell(row_number, self.get_col_index('Added manually'))
-        # open the folder of the asset
-        if added:
-            origin = self.get_cell(row_number, self.get_col_index('Origin'))
-            if not origin or origin == gui_g.s.empty_cell:
-                self.notify('Origin value is empty for this asset')
-                return
-            # open the folder of the asset
-            if not gui_fn.open_folder_in_file_explorer(origin):
-                gui_f.box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
+        row_numbers = self.multiplerowlist
+        if not row_numbers:
+            row_numbers = [self.get_selected_row_fixed()]
+            is_single = True
         else:
-            gui_f.box_message('Only possible with asset that have been mannualy added.', 'info')
+            is_single = False
+        if len(row_numbers) > gui_g.s.warning_limit_for_batch_op:
+            if not gui_f.box_yesno('Are you sure you want to open all these folders in the file explorer ?'):
+                return
+        for row_number in row_numbers:
+            if row_number is None or row_number < 0 or row_number >= len(self.model.df):  # model. df checked
+                continue
+            added = self.get_cell(row_number, self.get_col_index('Added manually'))
+            # open the folder of the asset
+            if added:
+                origin = self.get_cell(row_number, self.get_col_index('Origin'))
+                if is_single and (not origin or origin == gui_g.s.empty_cell):
+                    self.notify('Origin value is empty for this asset')
+                    return
+                # open the folder of the asset
+                if not gui_fn.open_folder_in_file_explorer(origin):
+                    if is_single:
+                        gui_f.box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
+            elif is_single:
+                gui_f.box_message('Only possible with asset that have been mannualy added.', 'info')
 
     def get_release_info(self, row_number: int = None) -> str:
         """
