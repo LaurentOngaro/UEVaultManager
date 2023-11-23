@@ -21,6 +21,7 @@ from termcolor import colored
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.tkgui.modules import globals as gui_g
+from UEVaultManager.tkgui.modules.cls.NotificationWindowClass import NotificationWindow
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 
 
@@ -52,12 +53,21 @@ def box_message(msg: str, level='info', show_dialog: bool = True):
     else:
         log_info(msg)
     if show_dialog:
-        if level_lower == 'warning':
-            messagebox.showwarning(title=gui_g.s.app_title, message=msg)
+        # if level_lower == 'warning':
+        #     messagebox.showwarning(title=gui_g.s.app_title, message=msg)
+        # elif level_lower == 'error':
+        #     messagebox.showerror(title=gui_g.s.app_title, message=msg)
+        # else:
+        #     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
+        notification_title = ''
+        if level_lower == 'debug':
+            notification_title = 'Debug message' if gui_g.s.debug_mode else ''
+        elif level_lower == 'warning':
+            notification_title = 'Warning message'
         elif level_lower == 'error':
-            messagebox.showerror(title=gui_g.s.app_title, message=msg)
-        else:
-            messagebox.showinfo(title=gui_g.s.app_title, message=msg)
+            notification_title = 'Error message'
+        if notification_title:
+            NotificationWindow(title=notification_title, message=msg, duration=gui_g.s.notification_time).show()
 
 
 def box_yesno(msg: str, show_dialog: bool = True, default: bool = True) -> bool:
