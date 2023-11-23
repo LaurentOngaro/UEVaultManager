@@ -223,12 +223,12 @@ class FilterFrame(ttk.LabelFrame):
         value = filter_value.value if filter_value else ''
         # check if the filter_value is a callable and fix its ftype if not
         if ftype == FilterType.CALLABLE or ftype == FilterType.STR:
-            func_name, func_params = gui_f.parse_callable(value)
+            func_name, func_params = gui_f.parse_callable(value or query_string)
             method = self.callable.get_method(func_name)
             if method is None:
-                filter_value.ftype = FilterType.STR
+                ftype = FilterType.STR
             else:
-                filter_value.ftype = FilterType.CALLABLE
+                ftype = FilterType.CALLABLE
 
         if isinstance(value, list):
             # try to convert the query_string to a list to compare with the value
@@ -331,11 +331,12 @@ class FilterFrame(ttk.LabelFrame):
             self.update_func(reset_page=True)
             self.update_controls()
 
-    def get_filtered_df(self) -> Optional[pd.DataFrame]:
+    def get_filtered_df(self) -> (Optional[pd.DataFrame], str):
         """
         Get the filtered dataframe.
-        :return: the filtered data or None if no filter is defined.
+        :return: (the filtered data or None if no filter is defined, an error message).
         """
+        error_message = ''
         if self.loaded_filter:
             try:
                 ftype: FilterType = self.loaded_filter.ftype
@@ -359,9 +360,10 @@ class FilterFrame(ttk.LabelFrame):
                     query = filter_value
                 if query:
                     df_filtrered = self.df.query(query)
-                    return df_filtrered
+                    return df_filtrered, error_message
             except (AttributeError, UndefinedVariableError) as error:
                 if self.logger:
-                    self.logger.error(f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...')
+                    message = f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...'
+                    self.logger.error(message)
                 self.clear_filter()
-                return None
+                return None, error_message
