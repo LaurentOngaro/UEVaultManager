@@ -121,7 +121,9 @@ class FilterCallable:
         # Ensure 'Discount price' and 'Price' are float type
         self.df['Discount price'] = self.df['Discount price'].astype(float)
         self.df['Price'] = self.df['Price'].astype(float)
-        mask = self.df['Owned'].ne(True) & (self.df['Free'].eq(True) | self.df['Discount price'].le(0.5) | self.df['Price'].le(0.5))
+        mask = self.df['Owned'].ne(True) & self.df['Added manually'].ne(True) & (
+            self.df['Free'].eq(True) | self.df['Discount price'].le(0.5) | self.df['Price'].le(0.5)
+        )
         try:
             # next line could produce an error: {TypeError}bad operand type for unary ~: 'NoneType'
             other_mask = ~self.df['Custom attributes'].str.contains('external_link', case=False)
