@@ -42,7 +42,7 @@ class DisplayContentWindow(tk.Toplevel):
         width: int = 600,
         height: int = 430,
         icon=None,
-        screen_index: int = 0,
+        screen_index: int = -1,
         quit_on_close: bool = False,
         text: str = '',
         result_filename: str = 'UEVM_output.txt'
@@ -52,9 +52,12 @@ class DisplayContentWindow(tk.Toplevel):
         try:
             # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+            # get the root window
+            root = gui_g.WindowsRef.uevm_gui or self
+            self.screen_index = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+            self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         except Exception as error:
             gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
-        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
         self._keep_existing: bool = False  # whether to keep the existing content when adding a new one

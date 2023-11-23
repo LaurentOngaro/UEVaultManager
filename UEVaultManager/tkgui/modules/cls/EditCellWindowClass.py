@@ -25,15 +25,18 @@ class EditCellWindow(tk.Toplevel):
     :param editable_table: table to edit.
     """
 
-    def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index: int = 0, editable_table=None):
+    def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index: int = -1, editable_table=None):
         super().__init__(parent)
         self.title(title)
         try:
             # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+            # get the root window
+            root = gui_g.WindowsRef.uevm_gui or self
+            self.screen_index = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+            self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         except Exception as error:
             gui_f.log_warning(f'Error in EditCellWindowClass: {error!r}')
-        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
 

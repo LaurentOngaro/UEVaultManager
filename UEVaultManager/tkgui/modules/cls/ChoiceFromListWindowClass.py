@@ -99,7 +99,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         width: int = 320,
         height: int = 330,
         icon=None,
-        screen_index: int = 0,
+        screen_index: int = -1,
         json_data: dict = None,
         default_value='',
         show_content_list: bool = False,
@@ -117,9 +117,15 @@ class ChoiceFromListWindow(tk.Toplevel):
 
         super().__init__()
         self.title(window_title)
+        if show_content_list:
+            height += 30
         try:
             # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+            # get the root window
+            root = gui_g.WindowsRef.uevm_gui or self
+            self.screen_index = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+            self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         except Exception as error:
             gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
         self.main_title = title
@@ -127,9 +133,6 @@ class ChoiceFromListWindow(tk.Toplevel):
         self.json_data: dict = json_data.copy() if json_data else {}  # its content will be modified
         self.default_value = default_value
         self.show_content_list = show_content_list
-        if self.show_content_list:
-            height += 30
-        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.show_validate_button = show_validate_button
         self.show_delete_button = show_delete_button

@@ -52,7 +52,7 @@ class ProgressWindow(tk.Toplevel):
         width: int = 300,
         height: int = 150,
         icon=None,
-        screen_index: int = 0,
+        screen_index: int = -1,
         max_value: int = 100,
         show_btn_start: bool = False,
         show_btn_stop: bool = True,
@@ -63,7 +63,10 @@ class ProgressWindow(tk.Toplevel):
     ):
         super().__init__(parent)
         self.title(title)
-        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
+        # get the root window
+        root = gui_g.WindowsRef.uevm_gui or self
+        self.screen_index = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+        self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self._thread_check_delay: int = 100
         self.is_closing: bool = False
