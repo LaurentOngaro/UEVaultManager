@@ -53,17 +53,34 @@ def path_from_relative_to_absolute(path: str) -> str:
     return os.path.normpath(absolute_path)
 
 
-def center_window_on_screen(screen_index: int, width: int, height: int) -> str:
+def center_window_on_screen(screen_index: int, width: int, height: int, set_size: bool = True) -> str:
     """
     Calculate the geometry of the window to display in the center of the given screen.
     :param screen_index: index of the screen to use.
     :param width: width of the window.
     :param height: height of the window.
+    :param set_size: wether to set the size of the window or not.
     :return: geometry string to use to display the window in the center of the screen.
     """
     x, y = get_center_screen_positions(screen_index, width, height)
-    geometry: str = f'{width}x{height}+{x}+{y}'
+    x = f'+{x}'  # keep the sign !
+    y = f'+{y}'  # keep the sign !
+    geometry: str = f'{width}x{height}{x}{y}' if set_size else f'{x}{y}'
     return geometry
+
+
+def get_screen_positions(screen_index: int) -> (int, int, int, int):
+    """
+    Return the x and y positions of the given screen.
+    :param screen_index: index of the screen to use.
+    :return: (x, y, w, h) positions of the given screen.
+    """
+    monitors = get_monitors()
+    if screen_index > len(monitors):
+        log(f'The screen #{screen_index} is not available. Using 0 as screen index.')  # no use of log functions here to prevent circular import
+        screen_index = 0
+    target_screen = monitors[screen_index]
+    return target_screen.x, target_screen.y, target_screen.width, target_screen.height
 
 
 def get_center_screen_positions(screen_index: int, width: int, height: int) -> (int, int):
@@ -72,18 +89,11 @@ def get_center_screen_positions(screen_index: int, width: int, height: int) -> (
     :param screen_index: index of the screen to use.
     :param width: width of the window.
     :param height: height of the window.
-    :return: geometry string to use to display the window in the center of the screen.
+    :return: (x, y) positions of the window to display in the center of the given screen.
     """
-    monitors = get_monitors()
-    if screen_index > len(monitors):
-        log(f'The screen #{screen_index} is not available. Using 0 as screen index.')  # no use of log functions here to prevent circular import
-        screen_index = 0
-    # Position the window in the center of the screen
-    target_screen = monitors[screen_index]
-    screen_width = target_screen.width
-    screen_height = target_screen.height
-    x = target_screen.x + (screen_width - width) // 2
-    y = target_screen.y + (screen_height - height) // 2
+    screen_x, screen_y, screen_w, screen_h = get_screen_positions(screen_index)
+    x = screen_x + (screen_w - width) // 2
+    y = screen_y + (screen_h - height) // 2
     return x, y
 
 
