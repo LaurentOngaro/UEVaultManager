@@ -62,6 +62,7 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
         self.bind('<Button-1>', self.on_left_click)
+        self.bind('<Button-3>', self.on_right_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
         gui_g.WindowsRef.edit_row = self
@@ -177,6 +178,13 @@ class EditRowWindow(tk.Toplevel):
         :param event: event that triggered the call of this function.
         """
         self.update_controls_state()  # to update when clicking on the checkbox
+
+    def on_right_click(self, event=None) -> None:
+        """
+        When the right mouse button is clicked, show the selected row in the quick edit frame.
+        :param event: event that triggered the call.
+        """
+        gui_f.copy_widget_value_to_clipboard(self, event)
 
     def close_window(self) -> None:
         """

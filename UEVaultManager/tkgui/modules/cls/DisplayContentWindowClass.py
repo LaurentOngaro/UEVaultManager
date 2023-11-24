@@ -73,6 +73,7 @@ class DisplayContentWindow(tk.Toplevel):
         self.bind('<Control-Tab>', self._focus_next_widget)
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
+        self.bind('<Button-3>', self.on_right_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
         if text:
             self.display(text)
@@ -104,6 +105,13 @@ class DisplayContentWindow(tk.Toplevel):
     def _focus_prev_widget(event):
         event.widget.tk_focusPrev().focus()
         return 'break'
+
+    def on_right_click(self, event=None) -> None:
+        """
+        When the right mouse button is clicked, show the selected row in the quick edit frame.
+        :param event: event that triggered the call.
+        """
+        gui_f.copy_widget_value_to_clipboard(self, event)
 
     class ContentFrame(ttk.Frame):
         """
