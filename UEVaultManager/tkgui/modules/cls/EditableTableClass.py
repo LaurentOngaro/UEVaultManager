@@ -28,7 +28,6 @@ from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.cls.NotificationWindowClass import NotificationWindow
 from UEVaultManager.tkgui.modules.comp.functions_panda import fillna_fixed
 from UEVaultManager.tkgui.modules.types import DataFrameUsed, DataSourceType
 from UEVaultManager.utils.cli import get_max_threads
@@ -2310,7 +2309,7 @@ class EditableTable(Table):
             self.logger.error(message)
 
         if notification_title:
-            NotificationWindow(title=notification_title, message=message, duration=gui_g.s.notification_time).show()
+            gui_f.notify(title=notification_title, message=message)
 
     def colheader_popup_menu(self, event, outside=True):
         """Overwrite the default colheader popupMenu method"""
@@ -2381,3 +2380,7 @@ class EditableTable(Table):
                         )
                     self.notify(f'Removed asset_id {asset_id} from group {gui_g.s.current_group_name}', level='debug')
             self.update()
+
+    def get_errors(self) -> list:
+        """ Return the list of errors. """
+        return self._errors

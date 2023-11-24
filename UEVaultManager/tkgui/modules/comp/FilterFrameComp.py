@@ -363,7 +363,7 @@ class FilterFrame(ttk.LabelFrame):
                     return df_filtrered, error_message
             except (AttributeError, UndefinedVariableError) as error:
                 if self.logger:
-                    message = f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...'
-                    self.logger.error(message)
+                    error_message = f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...'
+                    self.logger.error(error_message)
                 self.clear_filter()
         return None, error_message

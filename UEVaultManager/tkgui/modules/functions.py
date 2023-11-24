@@ -67,7 +67,7 @@ def box_message(msg: str, level='info', show_dialog: bool = True):
         elif level_lower == 'error':
             notification_title = 'Error message'
         if notification_title:
-            NotificationWindow(title=notification_title, message=msg, duration=gui_g.s.notification_time).show()
+            notify(title=notification_title, message=msg)
 
 
 def box_yesno(msg: str, show_dialog: bool = True, default: bool = True) -> bool:
@@ -652,4 +652,46 @@ def save_image_to_png(image: tk.PhotoImage, filename: str) -> bool:
         img_pil.close()
         return True
     except (Exception, ):
+        return False
+
+
+def notify(message: str = '', title: str = '', duration: int = -1) -> None:
+    """
+    Display a notification message.
+    :param message: message to display.
+    :param title: title of the notification.
+    :param duration: duration of the notification in seconds. If -1, it will use the default value set in the settings.
+    """
+    if not message:
+        return
+    if duration == -1:
+        duration = gui_g.s.notification_time
+    NotificationWindow(title=title or gui_g.s.app_title, message=message, duration=duration).show()
+
+
+def copy_widget_value_to_clipboard(container, event) -> bool:
+    """
+    Copy the value of a widget to the clipboard.
+    :param container: container of the widget.
+    :param event: event that triggered the function.
+    :return: True if the value was copied, False otherwise.
+    """
+    try:
+        widget = event.widget
+        if widget.widgetName != 'ttk::frame':
+            # get the widget content depending on the widget type
+            if widget.widgetName in ['ttk::combobox', 'ttk::spinbox', 'ttk::entry']:
+                value = widget.get()
+            elif widget.widgetName == 'ttk::checkbutton':
+                value = widget.switch_state(event=event)
+            elif widget.widgetName == 'tk.text':
+                value = widget.get('1.0', tk.END)
+            else:  # any ExtendedWidget
+                value = widget.get_content()
+            # copy the value in clipboard
+            container.clipboard_clear()
+            container.clipboard_append(value)
+            notify(f'Widget content has been copied into clipboard', duration=3000)
+            return True
+    except AttributeError:
         return False
