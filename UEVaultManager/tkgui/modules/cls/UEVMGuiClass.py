@@ -2073,7 +2073,7 @@ class UEVMGui(tk.Tk):
         """
         Display the releases of the asset in a choice window.
         """
-        release_info = gui_fn.get_and_check_release_info(self.editable_table.get_release_info())
+        release_info = gui_fn.get_and_check_release_info(self.editable_table.get_release_info(), empty_values=gui_g.s.cell_is_nan_list)
         if release_info is None:
             self.logger.warning(f'Invalid release info: {release_info}')
 

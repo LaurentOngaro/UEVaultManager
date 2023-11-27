@@ -614,7 +614,7 @@ class UEAssetDbHandler:
                 tags = asset.get('tags', [])
                 asset['tags'] = self.convert_tag_list_to_string(tags)  # will search the tags table for ids
                 asset['installed_folders'] = check_and_convert_list_to_str(asset.get('installed_folders', []))
-                release_info = get_and_check_release_info(asset.get('release_info', []))
+                release_info = get_and_check_release_info(asset.get('release_info', []), empty_values=gui_g.s.cell_is_nan_list)
                 release_info_str = json.dumps(release_info)
                 asset['release_info'] = release_info_str  # if isinstance(release_info, list) else release_info
                 if 'row_index' in asset:

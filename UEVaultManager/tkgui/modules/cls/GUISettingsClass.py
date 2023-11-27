@@ -111,7 +111,7 @@ class GUISettings:
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
         self.keyword_query_string = 'QUERY'  # use this keyword in a CALLABLE filter to replace the value by the in the search field
-        self.cell_is_nan_list = ['NA', 'None', 'nan', 'NaN']  # keep 'NA' value at first position
+        self.cell_is_nan_list = ['NA', 'None', 'nan', 'NaN', 'NULL', 'null', 'Null']  # keep 'NA' value at first position
         self.cell_is_empty_list = self.cell_is_nan_list + ['False', '0', '0.0', '']
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'new_id_'

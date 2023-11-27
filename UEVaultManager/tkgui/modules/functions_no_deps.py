@@ -490,26 +490,30 @@ def check_and_convert_list_to_str(str_or_list) -> str:
     return result
 
 
-def get_and_check_release_info(data_to_check) -> Optional[list]:
+def get_and_check_release_info(data_to_check, empty_values: list = None) -> Optional[list]:
     """
     Check if the given data is a list of release info.
     :param data_to_check: data to check.
+    :param empty_values: list of values to consider as empty.
     :return: list of release info or None if the data is not valid.
     """
-    if not data_to_check:
+    if not data_to_check or (empty_values and data_to_check in empty_values):
         return []
-    max_tries = 3
-    tries = 0
-    # Note:
-    #   here we use ast.literal_eval instead of json.loads because it can raise an error if the string came from a datatable and uses ' instead of " for string literals
-    while '[{\"id\":' in str(data_to_check) and tries < max_tries:
-        # fix a multiple encoding issue. Should not occur
-        # data_to_check = json.loads(data_to_check)
-        tries += 1
-        data_to_check = ast.literal_eval(data_to_check)
-    if isinstance(data_to_check, str):
-        # data_to_check = json.loads(data_to_check)
-        data_to_check = ast.literal_eval(data_to_check)
-    if not isinstance(data_to_check, list):
+    try:
+        max_tries = 3
+        tries = 0
+        # Note:
+        #   here we use ast.literal_eval instead of json.loads because it can raise an error if the string came from a datatable and uses ' instead of " for string literals
+        while '[{\"id\":' in str(data_to_check) and tries < max_tries:
+            # fix a multiple encoding issue. Should not occur
+            # data_to_check = json.loads(data_to_check)
+            tries += 1
+            data_to_check = ast.literal_eval(data_to_check)
+        if isinstance(data_to_check, str):
+            # data_to_check = json.loads(data_to_check)
+            data_to_check = ast.literal_eval(data_to_check)
+        if not isinstance(data_to_check, list):
+            return None
+        return list(data_to_check)
+    except (Exception, ):
         return None
-    return list(data_to_check)
