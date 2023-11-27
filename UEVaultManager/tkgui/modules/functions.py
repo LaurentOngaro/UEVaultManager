@@ -36,29 +36,24 @@ def log_format_message(name: str, levelname: str, message: str) -> str:
     return f'[{name}] {levelname}: {message}'
 
 
-def box_message(msg: str, level='info', show_dialog: bool = True):
+def box_message(msg: str, level='info', show_dialog: bool = True, duration: int = -1):
     """
     Display a message box with the given message.
     :param msg: message to display.
     :param show_dialog: True to display the message in a messagebox, False to only print it on the console.
+    :param duration: duration of the notification in seconds. If -1, it will use the default value set in the settings.
     :param level: level of the message (info, warning, error).
     """
     level_lower = level.lower()
     if level_lower == 'warning':
         log_warning(msg)
-    elif level_lower == 'error':
+    elif level_lower == 'error' or 'critical':
         log_error(msg)
         # done in log_error
         # exit(1)
     else:
         log_info(msg)
     if show_dialog:
-        # if level_lower == 'warning':
-        #     messagebox.showwarning(title=gui_g.s.app_title, message=msg)
-        # elif level_lower == 'error':
-        #     messagebox.showerror(title=gui_g.s.app_title, message=msg)
-        # else:
-        #     messagebox.showinfo(title=gui_g.s.app_title, message=msg)
         notification_title = ''
         if level_lower == 'debug':
             notification_title = 'Debug message' if gui_g.s.debug_mode else ''
@@ -67,7 +62,7 @@ def box_message(msg: str, level='info', show_dialog: bool = True):
         elif level_lower == 'error':
             notification_title = 'Error message'
         if notification_title:
-            notify(title=notification_title, message=msg)
+            notify(title=notification_title, message=msg, duration=duration)
 
 
 def box_yesno(msg: str, show_dialog: bool = True, default: bool = True) -> bool:
@@ -655,7 +650,7 @@ def save_image_to_png(image: tk.PhotoImage, filename: str) -> bool:
         return False
 
 
-def notify(message: str = '', title: str = '', duration: int = -1) -> None:
+def notify(message: str = '', title: str = '', duration: int = -1) -> Optional[NotificationWindow]:
     """
     Display a notification message.
     :param message: message to display.
@@ -663,10 +658,20 @@ def notify(message: str = '', title: str = '', duration: int = -1) -> None:
     :param duration: duration of the notification in seconds. If -1, it will use the default value set in the settings.
     """
     if not message:
-        return
+        return None
     if duration == -1:
         duration = gui_g.s.notification_time
-    NotificationWindow(title=title or gui_g.s.app_title, message=message, duration=duration).show()
+    nw = NotificationWindow(title=title or gui_g.s.app_title, message=message, duration=duration)
+    nw.show()
+    return nw
+
+
+def close_notify():
+    """
+    Close the notiification Widows
+    """
+    if gui_g.WindowsRef:
+        gui_g.WindowsRef.notification.close()
 
 
 def copy_widget_value_to_clipboard(container, event) -> bool:

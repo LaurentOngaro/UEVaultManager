@@ -182,8 +182,12 @@ class UEVMGui(tk.Tk):
         self.editable_table = data_table
 
         data_table.set_preferences(gui_g.s.datatable_default_pref)
-        data_table.show()
-
+        try:
+            data_table.show()
+        except (Exception, ) as error:
+            nw = gui_f.notify(f'An unrecoverable error has occured when showing the datatable: {error!r}', duration=0)
+            gui_f.make_modal(nw)
+            gui_f.exit_and_clean_windows()
         frm_toolbar = UEVMGuiToolbarFrame(self, data_table)
         self._frm_toolbar = frm_toolbar
         frm_control = UEVMGuiControlFrame(self, data_table)
@@ -1066,7 +1070,8 @@ class UEVMGui(tk.Tk):
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
                         except (Exception, ):  # trap all exceptions on connection
-                            self.silent_message(
+                            # it's a final message, so no silent here
+                            gui_f.box_message(
                                 f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                                 level='warning'
                             )
@@ -1167,7 +1172,7 @@ class UEVMGui(tk.Tk):
                                 }
                                 if grab_result != GrabResult.NO_ERROR.name or not marketplace_url:
                                     invalid_folders.append(full_folder)
-                                    msg = f'-->{folder_name} not recognized as a valid marketplace asset folder'
+                                    msg = f'-->"{folder_name}" had a timeout when accessing to its marketplace url.' if grab_result == GrabResult.TIMEOUT.name else f'-->"{folder_name}" is not recognized as a valid marketplace asset folder.'
                                     if self.core.scan_assets_logger:
                                         self.core.scan_assets_logger.warning(msg)
                                 else:
@@ -1291,7 +1296,7 @@ class UEVMGui(tk.Tk):
                     forced_data['grab_result'] = scraped_data.get(
                         'grab_result', GrabResult.INCONSISTANT_DATA.name
                     ) if scraped_data else GrabResult.CONTENT_NOT_FOUND.name
-                except ReadTimeout as error:
+                except ReadTimeout:
                     self.silent_message(
                         f'Request timeout when accessing {marketplace_url}\n.Check you internet connection or try again later.', level='warning'
                     )

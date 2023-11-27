@@ -75,6 +75,8 @@ class NotificationWindow(tk.Toplevel):
         gui_fn.set_icon_and_minmax(self)
         self.sub_title: str = sub_title or gui_g.s.app_title
         self.display_icon: str = display_icon
+        if duration == 0:
+            message += '\nCLIC ON THIS WINSOWS TO CLOSE IT.'
         self.message: str = message
         self.duration: int = duration
         self.alert: bool = alert
@@ -170,12 +172,16 @@ class NotificationWindow(tk.Toplevel):
             alpha = float(self.attributes("-alpha"))
             if alpha <= 0.1:
                 self.is_visible = False
-                self.destroy()
+                self.close()
             else:
                 self.attributes("-alpha", alpha - 0.1)
                 self.after(25, self.hide)
         except (Exception, ):
-            self.destroy()
+            self.close()
+
+    def close(self) -> None:
+        """ Close the window. """
+        self.destroy()
 
 
 if __name__ == "__main__":
