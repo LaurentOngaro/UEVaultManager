@@ -24,6 +24,7 @@ from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
+from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
@@ -1876,7 +1877,7 @@ class EditableTable(Table):
         image_url = ''
         previous_was_a_bool = False
         row = 0
-        hidden_col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
+        hidden_col_list = [gui_g.s.index_copy_col_name, 'Long description'] + gui_g.s.hidden_column_names
         hidden_col_list_lower = [col.lower() for col in hidden_col_list]
         for key, value in row_data.items():
             # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool})  # debug only
@@ -2168,6 +2169,16 @@ class EditableTable(Table):
         :return: image URL of the selected row.
         """
         return '' if row_number is None else self.get_cell(row_number, self.get_col_index('Image'))
+
+    def open_show_long_description(self) -> None:
+        """
+        Open the long description of the selected asset in a new window.
+        """
+        row_number = self.get_selected_row_fixed()
+        description = self.get_cell(row_number, self.get_col_index('Long description'))
+        display_window = DisplayContentWindow(title=f'UEVM: Asset Full Description', use_html=True, width=800, height=600)
+        display_window.display(description)
+        gui_f.make_modal(display_window)
 
     def open_asset_url(self):
         """

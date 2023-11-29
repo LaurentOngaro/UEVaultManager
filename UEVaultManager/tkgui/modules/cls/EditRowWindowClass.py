@@ -121,6 +121,8 @@ class EditRowWindow(tk.Toplevel):
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
             btn_open_folder = ttk.Button(lblf_actions, text='Open Folder', command=container.open_asset_folder)
             btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
+            btn_show_description = ttk.Button(lblf_actions, text='Show Description', command=container.open_show_long_description)
+            btn_show_description.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
             ttk_item = ttk.Button(lblf_actions, text='Close', command=container.on_close, bootstyle=WARNING)
@@ -237,6 +239,13 @@ class EditRowWindow(tk.Toplevel):
         """
         self.close_image_preview()
         self.editable_table.open_json_file()
+
+    def open_show_long_description(self) -> None:
+        """
+        Open the asset URL (Wrapper).
+        """
+        self.close_image_preview()
+        self.editable_table.open_show_long_description()
 
     def update_controls_state(self) -> None:
         """

@@ -691,6 +691,8 @@ def copy_widget_value_to_clipboard(container, event) -> bool:
                 value = widget.switch_state(event=event)
             elif widget.widgetName == 'tk.text':
                 value = widget.get('1.0', tk.END)
+            elif 'HTMLScrolledText' in str(type(widget)):  # HTMLScrolledText
+                value = widget.get('1.0', tk.END)
             else:  # any ExtendedWidget
                 value = widget.get_content()
             # copy the value in clipboard

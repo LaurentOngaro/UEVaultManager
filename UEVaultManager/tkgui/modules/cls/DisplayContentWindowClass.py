@@ -24,7 +24,7 @@ class DCW_Settings:
     """
     title = 'Display a text'
     use_html: bool = True
-    text = '<html><body><h3>THIs IS HTML</h3><p>This is a demonstration</p><p>of the <b>HTML</b> capabilities</p></body></html>'
+    text = '<html><body><h3>THIS IS HTML</h3><p>This is a demonstration</p><p>of the <b>HTML</b> capabilities</p></body></html>'
 
 
 class DisplayContentWindow(tk.Toplevel):
@@ -128,7 +128,7 @@ class DisplayContentWindow(tk.Toplevel):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3}
             if container.use_html:
-                text_content = HTMLScrolledText(self)
+                text_content = HTMLScrolledText(self, font=gui_g.s.theme_font)
             else:
                 text_content = ExtendedText(self)
                 scrollbar = ttk.Scrollbar(self)
@@ -152,6 +152,7 @@ class DisplayContentWindow(tk.Toplevel):
             lblf_commands = ttk.LabelFrame(self, text='Commands')
             lblf_commands.pack(**lblf_def_options)
             ttk.Button(lblf_commands, text='Clean content', command=container.clean).pack(**pack_def_options, side=tk.LEFT)
+            ttk.Button(lblf_commands, text='Copy to clipboard', command=container.copy_to_clipboard).pack(**pack_def_options, side=tk.LEFT)
             ttk.Button(lblf_commands, text='Save To File', command=container.save_changes).pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
@@ -187,6 +188,22 @@ class DisplayContentWindow(tk.Toplevel):
         else:
             self.destroy()
 
+    def fit_height(self) -> None:
+        """
+        Fit the height of the window to the content.
+
+        Notes:
+            It replaces the content of the fit_height() method of the tkhtmlview.HTMLScrolledText class because it does not work properly.
+        """
+        widget = self.frm_content.text_content
+        for h in range(1, 4):
+            widget.config(height=h)
+            self.update()
+            if widget.yview()[1] >= 1:
+                break
+        else:
+            widget.config(height=2 + 3 / widget.yview()[1])
+
     def display(self, content='', keep_mode=True) -> None:
         """
         Display the content in the window. By default, i.e. keep_mode==True, each new call adds the content to the existing content with a new line.
@@ -198,7 +215,7 @@ class DisplayContentWindow(tk.Toplevel):
             if self.use_html:
                 self.text = content if not self._keep_existing else self.text + '<br/>' + content
                 widget.set_html(self.text)
-                # widget.fit_height()
+                self.fit_height()
             else:
                 self.text = content if not self._keep_existing else self.text + '\n' + content
                 widget.delete('1.0', tk.END)
@@ -212,9 +229,7 @@ class DisplayContentWindow(tk.Toplevel):
             pass
 
     def clean(self) -> None:
-        """
-        Clean the content of the window.
-        """
+        """ Clean the content of the window. """
         self.text = ''
         if self.use_html:
             self.frm_content.text_content.set_html('')
@@ -225,6 +240,7 @@ class DisplayContentWindow(tk.Toplevel):
     def save_changes(self) -> str:
         """
         Save the content displayed to a file.
+        :return: the filename where the content has been saved.
         """
         initial_dir = gui_g.s.last_opened_folder
         filename, ext = os.path.splitext(self.result_filename)
@@ -246,12 +262,16 @@ class DisplayContentWindow(tk.Toplevel):
         return filename
 
     def set_focus(self) -> None:
-        """
-        Set the focus on the window.
-        """
+        """ Set the focus on the window. """
         self.focus_set()
         self.grab_set()
         self.wait_window()
+
+    def copy_to_clipboard(self) -> None:
+        """ Copy text to the clipboard. """
+        self.clipboard_clear()
+        self.clipboard_append(self.text)
+        gui_f.notify('Content copied to the clipboard.')
 
 
 if __name__ == '__main__':
