@@ -37,7 +37,7 @@ class FilterValue:
         elif self._ftype == FilterType.LIST:
             result += f'is in {self.value}'
         else:
-            result += f'is a "{self._ftype.__name__}" equals to "{self.value}"'
+            result += f'is a "{self._ftype.name}" equals to "{self.value}"'
         return result
 
     def __dict__(self):
