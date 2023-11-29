@@ -47,7 +47,7 @@ def box_message(msg: str, level='info', show_dialog: bool = True, duration: int 
     level_lower = level.lower()
     if level_lower == 'warning':
         log_warning(msg)
-    elif level_lower == 'error' or 'critical':
+    elif level_lower == 'error' or level_lower == 'critical':
         log_error(msg)
         # done in log_error
         # exit(1)
