@@ -1991,7 +1991,7 @@ class UEVMGui(tk.Tk):
         if subparser:
             display_name += ' - ' + gui_g.UEVM_cli_args['subparser']
         display_window = DisplayContentWindow(title=f'UEVM: {display_name} display result')
-        gui_g.WindowsRef.display_content = display_window
+        gui_g.WindowsRef.display_content = display_window  # to avoid inspection warning bellow
         display_window.display(f'Running command {command_name}...Please wait')
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         function_to_call(gui_g.UEVM_cli_args)
