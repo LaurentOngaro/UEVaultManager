@@ -292,6 +292,8 @@ class EditableTable(Table):
 
         defaultactions = {
             # == edit
+            'Copy column name': self.copy_column_names,
+            'Copy cell content': self.copy_cell_content,
             'Copy': lambda: self.copy(rows, cols),
             'Undo': self.undo,
             'Paste': self.paste,
@@ -359,7 +361,7 @@ class EditableTable(Table):
         else:
             colnames = ','.join(colnames)
 
-        cmd_inside_no_submenu = ['Add to Group', 'Remove from Group']
+        cmd_inside_no_submenu = ['Add to Group', 'Remove from Group', 'Copy column name', 'Copy cell content']
         cmd_inside_edit = ['Copy', 'Paste', 'Undo', 'Undo Last Change']
         cmd_both_no_submenu = []
         cmd_both_rows = [
@@ -2301,9 +2303,12 @@ class EditableTable(Table):
         if level_lower == 'debug':
             self.logger.debug(message)
             notification_title = 'Debug message' if gui_g.s.debug_mode else ''
+        elif level_lower == 'info':
+            notification_title = 'Info message'
+            self.logger.warning(message)
         elif level_lower == 'warning':
             notification_title = 'Warning message'
-            self.logger.warning(message)
+            self.logger.info(message)
         elif level_lower == 'error':
             notification_title = 'Error message'
             self.logger.error(message)
@@ -2380,6 +2385,28 @@ class EditableTable(Table):
                         )
                     self.notify(f'Removed asset_id {asset_id} from group {gui_g.s.current_group_name}', level='debug')
             self.update()
+
+    def copy_column_names(self) -> None:
+        """
+        Copy the column names to the clipboard.
+        """
+        col = self.currentcol
+        df = self.get_data()
+        value = df.columns[col]
+        self.clipboard_clear()
+        self.clipboard_append(value)
+        self.notify(f'Copied name "{value}" to clipboard', level='info')
+
+    def copy_cell_content(self) -> None:
+        """
+        Copy the cell content to the clipboard.
+        """
+        col = self.currentcol
+        row = self.currentrow
+        value = self.get_cell(row, col)
+        self.clipboard_clear()
+        self.clipboard_append(value)
+        self.notify(f'Copied value "{value}" to clipboard', level='info')
 
     def get_errors(self) -> list:
         """ Return the list of errors. """
