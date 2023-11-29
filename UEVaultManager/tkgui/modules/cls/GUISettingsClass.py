@@ -28,6 +28,7 @@ class GUISettings:
     data_filetypes_png = (('PNG image', '*.png'), )
     data_filetypes_all = (('all files', '*.*'), )
     data_filetypes_text = (('text file', '*.txt'), )
+    data_filetypes_html = (('html file', '*.html'), )
     data_filetypes_json = (('json file', '*.json'), )
     data_filetypes_db = (('SQlite file', '*.db'), )
     data_filetypes_csv = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'))
