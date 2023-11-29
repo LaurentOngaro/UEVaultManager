@@ -419,7 +419,7 @@ class UEVMGui(tk.Tk):
         :param event: event that triggered the call.
         """
         # Note: this event will be triggered AFTER the event in the editabletable
-        # print(event.keysym)
+        print(event.keysym)
         # shift_pressed = event.state == 1 or event.state & 0x00001 != 0
         # alt_pressed = event.state == 8 or event.state & 0x20000 != 0
         # 4th keys of (FRENCH) keyboard: ampersand eacute quotedbl apostrophe
@@ -441,6 +441,8 @@ class UEVMGui(tk.Tk):
             self.editable_table.create_edit_row_window(event)
         elif control_pressed and (event.keysym == '3' or event.keysym == 'quotedbl'):
             self.scrap_asset()
+        elif control_pressed and (event.keysym == '4' or event.keysym == 'apostrophe'):
+            self.open_asset_url()
         return 'break'
 
         # return 'break'  # stop event propagation
