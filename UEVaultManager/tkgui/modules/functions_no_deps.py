@@ -435,9 +435,9 @@ def merge_lists_or_strings(list_to_merge, list_to_append) -> list:
     :return: merged list.
     """
     if isinstance(list_to_merge, str):
-        list_to_merge = list_to_merge.split(',')
+        list_to_merge = list_to_merge.split(',') if list_to_merge else []
     if isinstance(list_to_append, str):
-        list_to_append = list_to_append.split(',')
+        list_to_append = list_to_append.split(',') if list_to_append else []
     # merge the 2 lists without duplicates
     # old method
     # for folder in set(list_to_merge + list_to_append):
