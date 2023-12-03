@@ -130,6 +130,30 @@ class EditableTable(Table):
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
         gui_f.close_progress(self)
 
+    def _get_search_query(self, col: int, value=None) -> str:
+        """
+        Return the search query.
+        :param col: column index.
+        :param value: value to search.
+        :return: search query.
+        """
+        dataframe = self.get_data()
+        # get the type of the column with index=col
+        col_name_no_quote = dataframe.columns[col]
+        dtype = dataframe.dtypes[col]
+        # check if col_name contains a space
+        col_name_quoted = f'`{col_name_no_quote}`' if ' ' in col_name_no_quote else col_name_no_quote
+        if dtype in ['object', 'category']:
+            result = f'search##{col_name_no_quote}'
+            result += f'##{value}' if value else ''
+        elif dtype == 'bool':
+            result = col_name_quoted if value else f'not {col_name_quoted}'
+        elif dtype in ['int64', 'float64']:
+            result = f'{col_name_quoted}==' + str(value) if value else ''
+        else:
+            result = col_name_quoted
+        return result
+
     @property
     def current_page(self) -> int:
         """ Get the current page. """
@@ -293,8 +317,6 @@ class EditableTable(Table):
 
         defaultactions = {
             # == edit
-            'Copy column name': self.copy_column_names,
-            'Copy cell content': self.copy_cell_content,
             'Copy': lambda: self.copy(rows, cols),
             'Undo': self.undo,
             'Paste': self.paste,
@@ -348,7 +370,13 @@ class EditableTable(Table):
             # 'Show plot': self.showPlot,
             # == custom actions
             'Add to Group': self.add_to_group,
-            'Remove from Group': self.remove_from_group
+            'Remove from Group': self.remove_from_group,
+            'Copy column name': self.copy_column_names,
+            'Copy cell content': self.copy_cell_content,
+            'Open Assets Url': self.open_asset_url,
+            'Seach column': self.search_column,
+            'Seach cell content': self.search_cell_content,
+            'Scrap asset': self.scrap_asset,
         }
         popupmenu = tk.Menu(self, tearoff=0)
 
@@ -362,7 +390,7 @@ class EditableTable(Table):
         else:
             colnames = ','.join(colnames)
 
-        cmd_inside_no_submenu = ['Add to Group', 'Remove from Group', 'Copy column name', 'Copy cell content']
+        cmd_inside_no_submenu = ['Add to Group', 'Remove from Group', 'Copy column name', 'Copy cell content', 'Seach column', 'Seach cell content', 'Scrap asset']
         cmd_inside_edit = ['Copy', 'Paste', 'Undo', 'Undo Last Change']
         cmd_both_no_submenu = []
         cmd_both_rows = [
@@ -1243,7 +1271,9 @@ class EditableTable(Table):
                 return False
             self.set_data(df_loaded)
             self.update_downloaded_size(asset_sizes)
-        self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
+            self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
+        else:
+            return False
         # gui_f.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
@@ -2402,11 +2432,10 @@ class EditableTable(Table):
         Copy the column names to the clipboard.
         """
         col = self.currentcol
-        df = self.get_data()
-        value = df.columns[col]
+        col_name = self.get_data().columns[col]
         self.clipboard_clear()
-        self.clipboard_append(value)
-        self.notify(f'Copied name "{value}" to clipboard', level='info')
+        self.clipboard_append(col_name)
+        # self.notify(f'Copied name "{col_name}" to clipboard', level='info')
 
     def copy_cell_content(self) -> None:
         """
@@ -2417,7 +2446,26 @@ class EditableTable(Table):
         value = self.get_cell(row, col)
         self.clipboard_clear()
         self.clipboard_append(value)
-        self.notify(f'Copied value "{value}" to clipboard', level='info')
+        # self.notify(f'Copied value "{value}" to clipboard', level='info')
+
+    def search_column(self) -> None:
+        """ Set the query string to the current column. """
+        col = self.currentcol
+        query_string = self._get_search_query(col) + f'##'
+        self._frm_filter.set_query_string(query_string)
+
+    def search_cell_content(self) -> None:
+        """ Set the query string to a value from the current cell. """
+        col = self.currentcol
+        row = self.currentrow
+        value = self.get_cell(row, col)
+        query_string = self._get_search_query(col, value)
+        self._frm_filter.set_query_string(query_string)
+
+    def scrap_asset(self) -> None:
+        """ Scrap the selected asset (Wrapper) """
+        row = self.currentrow
+        gui_g.WindowsRef.uevm_gui.scrap_asset(row)
 
     def get_errors(self) -> list:
         """ Return the list of errors. """
