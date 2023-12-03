@@ -3,6 +3,7 @@
 Implementation for:
 - ChoiceFromListWindow: Window to select a value in a list
 """
+import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
@@ -23,6 +24,7 @@ class CFLW_Settings:
     show_validate_button = True
     show_delete_button = False
     show_delete_content_button = True
+    show_browse_button = True
     show_content_list = True
     json_data = {
         'Label1': {  # MANDATORY: 'Label1' is the label to display in the first list. WHEN VALIDATE,  THIS VALUE IS RETURNED TO THE CALLER as first id
@@ -88,6 +90,7 @@ class ChoiceFromListWindow(tk.Toplevel):
     :param show_content_list: wether the content list will be displayed.
     :param remove_from_content_func: function to call after the delete button is clicked in the content list.
     :param show_delete_content_button: wether the delete button for the content list will be displayed.
+    :param show_browse_button: wether the browse button for the content list will be displayed.
 
     """
 
@@ -109,6 +112,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         list_remove_func: callable = None,
         remove_from_content_func: callable = None,
         show_delete_content_button: bool = False,
+        show_browse_button: bool = False,
         no_content_text: str = 'No more content available for that choice',
         first_list_width: int = 35,
         second_list_width: int = 35,
@@ -140,6 +144,7 @@ class ChoiceFromListWindow(tk.Toplevel):
         self.list_remove_func = list_remove_func
         self.remove_from_content_func = remove_from_content_func
         self.show_delete_content_button = show_delete_content_button
+        self.show_browse_button = show_browse_button
         self.no_content_text = no_content_text
         self.first_list_width = first_list_width
         self.second_list_width = second_list_width
@@ -171,14 +176,14 @@ class ChoiceFromListWindow(tk.Toplevel):
             self.frm_list_choices.pack(pady=5)
             if container.show_delete_button:
                 self.cb_list_choices = ttk.Combobox(self.frm_list_choices, values=var_choices, state='readonly', width=container.first_list_width)
-                self.cb_list_choices.grid(row=0, column=0, padx=5, pady=1)
+                self.cb_list_choices.grid(row=0, column=0, padx=2, pady=1)
                 self.btn_list_del = ttk.Button(self.frm_list_choices, text='Remove', command=self.remove_from_list)
-                self.btn_list_del.grid(row=0, column=1, padx=5, pady=1)
+                self.btn_list_del.grid(row=0, column=1, padx=2, pady=1)
             else:
                 self.cb_list_choices = ttk.Combobox(
                     self.frm_list_choices, values=var_choices, state='readonly', width=container.first_list_width + 10
                 )
-                self.cb_list_choices.grid(row=0, column=0, padx=5, pady=1)
+                self.cb_list_choices.grid(row=0, column=0, padx=2, pady=1)
             self.cb_list_choices.grid_columnconfigure(0, weight=3)
 
             self.lbl_description = tk.Label(self, text='Description', fg='blue', font=('Helvetica', 11, 'bold'))
@@ -188,6 +193,9 @@ class ChoiceFromListWindow(tk.Toplevel):
             self.text_description.pack(padx=5, pady=2)
 
             if container.show_content_list:
+                second_list_width = container.second_list_width
+                second_list_width -= 4 if container.show_delete_content_button else 0
+                second_list_width -= 4 if container.show_browse_button else 0
                 # we take the fist item of the first list to get the sub_choices
                 list_selected_value = var_choices[0]
                 list_data = container.json_data.get(list_selected_value, None)
@@ -195,20 +203,17 @@ class ChoiceFromListWindow(tk.Toplevel):
                 self.frm_content_choices = tk.Frame(self)
                 self.frm_content_choices.pack(pady=2)
                 self.lbl_content_label = tk.Label(self.frm_content_choices, text='sub list label', wraplength=300, justify='center')
+                self.lbl_content_label.grid(row=0, column=0, columnspan=3, padx=2, pady=1)
+                self.cb_content_choices = ttk.Combobox(
+                    self.frm_content_choices, values=var_content_choices, state='readonly', width=second_list_width
+                )
+                self.cb_content_choices.grid(row=1, column=0, padx=2, pady=1)
                 if container.show_delete_content_button:
-                    self.lbl_content_label.grid(row=0, column=0, columnspan=2, padx=5, pady=1)
-                    self.cb_content_choices = ttk.Combobox(
-                        self.frm_content_choices, values=var_content_choices, state='readonly', width=container.second_list_width
-                    )
-                    self.cb_content_choices.grid(row=1, column=0, padx=5, pady=1)
                     self.btn_content_del = ttk.Button(self.frm_content_choices, text='Remove', command=self.remove_from_content)
-                    self.btn_content_del.grid(row=1, column=1, padx=5, pady=1)
-                else:
-                    self.lbl_content_label.grid(row=0, column=0, padx=5, pady=1)
-                    self.cb_content_choices = ttk.Combobox(
-                        self.frm_content_choices, values=var_content_choices, state='readonly', width=container.second_list_width + 10
-                    )
-                    self.cb_content_choices.grid(row=1, column=0, padx=5, pady=1)
+                    self.btn_content_del.grid(row=1, column=1, padx=2, pady=1)
+                if container.show_browse_button:
+                    self.btn_browse_content = ttk.Button(self.frm_content_choices, text='Browse', command=self.browse_content)
+                    self.btn_browse_content.grid(row=1, column=2, padx=2, pady=1)
                 self.cb_content_choices.grid_columnconfigure(0, weight=3)
                 self.cb_content_choices.bind('<<ComboboxSelected>>', self.set_content_text)
 
@@ -217,12 +222,12 @@ class ChoiceFromListWindow(tk.Toplevel):
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
             self.btn_close = ttk.Button(self.frm_buttons, text='Close', bootstyle=WARNING, command=self.close_window)
-            self.btn_close.pack(side=tk.LEFT, padx=5)
+            self.btn_close.pack(side=tk.LEFT, padx=2)
             if container.show_validate_button:
                 # noinspection PyArgumentList
                 # (bootstyle is not recognized by PyCharm)
                 self.btn_import = ttk.Button(self.frm_buttons, text='Valid and Close', bootstyle=INFO, command=self.validate)
-                self.btn_import.pack(side=tk.LEFT, padx=5)
+                self.btn_import.pack(side=tk.LEFT, padx=2)
 
             self.cb_list_choices.bind('<<ComboboxSelected>>', self.set_list_description)
 
@@ -311,13 +316,19 @@ class ChoiceFromListWindow(tk.Toplevel):
                 var_content_choices = list(content_data.keys())
                 self.cb_content_choices['values'] = var_content_choices
                 self.cb_content_choices.config(state=tk.NORMAL)
-                self.btn_content_del.config(state=tk.NORMAL)
                 self.cb_content_choices.set(var_content_choices[0])  # select the first value
                 self.set_content_text()
+                if self.container.show_delete_content_button:
+                    self.btn_content_del.config(state=tk.NORMAL)
+                if self.container.show_browse_button:
+                    self.btn_browse_content.config(state=tk.NORMAL)
             except (IndexError, KeyError, AttributeError):
                 self.cb_content_choices.config(state=tk.DISABLED)
-                self.btn_content_del.config(state=tk.DISABLED)
                 self.lbl_content_label['text'] = self.container.no_content_text
+                if self.container.show_delete_content_button:
+                    self.btn_content_del.config(state=tk.DISABLED)
+                if self.container.show_browse_button:
+                    self.btn_browse_content.config(state=tk.DISABLED)
 
         def set_content_text(self, _event=None) -> None:
             """
@@ -355,6 +366,22 @@ class ChoiceFromListWindow(tk.Toplevel):
                 self.cb_content_choices.set('')
                 self.cb_content_choices['values'] = [x for x in self.cb_content_choices['values'] if x != content_selected_value]
                 self.set_list_description()
+
+        def browse_content(self) -> None:
+            """
+            Browse the selected value from the second list
+            """
+            # noinspection DuplicatedCode
+            if not self.container.show_content_list:
+                return
+
+            list_selected_value = self.cb_list_choices.get()
+            list_data = self.container.json_data.get(list_selected_value, {})
+            content_selected_value = self.cb_content_choices.get()
+            content_data = list_data.get('content', {})
+            folder = content_data.get(content_selected_value).get('value', '')
+            if folder and os.path.exists(folder):
+                gui_fn.open_folder_in_file_explorer(folder)
 
 
 def set_choice(selection):
@@ -418,6 +445,7 @@ if __name__ == '__main__':
         get_result_func=set_choice,
         list_remove_func=delete_list,
         show_delete_content_button=st.show_delete_content_button,
+        show_browse_button=st.show_browse_button,
         show_content_list=st.show_content_list,
         remove_from_content_func=delete_content,
     )
