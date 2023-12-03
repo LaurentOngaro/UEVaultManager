@@ -2097,6 +2097,7 @@ class UEVMGui(tk.Tk):
             show_content_list=True,
             remove_from_content_func=self.remove_installed_folder,
             show_delete_content_button=True,
+            show_browse_button=True,
             no_content_text='This release has not been installed yet',
         )
         gui_f.make_modal(cw)

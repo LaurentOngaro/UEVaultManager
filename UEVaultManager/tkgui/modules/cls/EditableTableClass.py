@@ -2465,7 +2465,7 @@ class EditableTable(Table):
     def scrap_asset(self) -> None:
         """ Scrap the selected asset (Wrapper) """
         row = self.currentrow
-        gui_g.WindowsRef.uevm_gui.scrap_asset(row)
+        gui_g.WindowsRef.uevm_gui.scrap_asset(row_numbers=[row])
 
     def get_errors(self) -> list:
         """ Return the list of errors. """
