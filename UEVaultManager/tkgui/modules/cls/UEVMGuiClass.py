@@ -365,11 +365,11 @@ class UEVMGui(tk.Tk):
             self.logger.warning(f'Could not find a widget with tag {tag}')
             return None, None
         value = widget.get_content()
-        # not sure the next code is useful
-        # col, row = widget.col, widget.row
-        # if col is None or row is None or col < 0 or row < 0:
-        #     self.logger.debug(f'invalid values for row={row} and col={col}')
-        #     return None, widget
+        # check the row to return None if the row is invalid, but not when the row is 0
+        col, row = widget.col, widget.row
+        if col is None or row is None or col < 0 or row < 0:
+            self.logger.debug(f'invalid values for row={row} and col={col}')
+            return None, widget
         return value, widget
 
     def _wait_for_window(self, window: tk.Toplevel) -> None:
@@ -548,7 +548,7 @@ class UEVMGui(tk.Tk):
         :param tag: tag of the widget that triggered the event.
         """
         value, widget = self._check_and_get_widget_value(tag)
-        if widget and widget.row and widget.col:
+        if widget and widget.row is not None and widget.col is not None:  # 0 is a valid value for row and col
             self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal

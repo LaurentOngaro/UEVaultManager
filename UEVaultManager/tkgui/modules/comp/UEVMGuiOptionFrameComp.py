@@ -34,9 +34,44 @@ class UEVMGuiOptionFrame(ttk.Frame):
         lblf_options = ttk.Frame(self)
         lblf_options.pack(side=tk.TOP, **{'ipadx': 1, 'ipady': 1, 'fill': tk.BOTH, 'expand': True})
 
-        # Quick Folder Access
-        lblf_quick_access = ttk.LabelFrame(lblf_options, text='Quick Folder Access')
-        lblf_quick_access.pack(side=tk.TOP, **lblf_def_options)
+        # Quick Files Access
+        lblf_quick_files = ttk.LabelFrame(lblf_options, text='Quick Files Access')
+        lblf_quick_files.pack(side=tk.TOP, **lblf_def_options)
+        max_col = 2
+        cur_row = -1
+        # new row
+        cur_row += 1
+        cur_col = 0
+        self.quick_files_list = {
+            'CLI Config File': gui_g.s.config_file,
+            'GUI Config File': gui_g.s.config_file_gui,
+            'Last Opened File': gui_g.s.config_vars['last_opened_file'],
+        }
+        try:
+            # get any folder name from the log files in the core object
+            core = gui_g.UEVM_cli_ref.core
+            self.quick_files_list['scan assets log'] = core.scan_assets_filename_log
+            self.quick_files_list['scrap assets log'] = core.scrap_assets_filename_log
+            self.quick_files_list['ignored assets log'] = core.ignored_assets_filename_log
+            self.quick_files_list['not found assets log'] = core.notfound_assets_filename_log
+            uevmlfs = core.uevmlfs
+            self.quick_files_list['installed assets file'] = uevmlfs.installed_asset_filename
+            self.quick_files_list['asset sizes file'] = uevmlfs.asset_sizes_filename
+        except (Exception, ):
+            pass
+
+        cb_quick_files = ttk.Combobox(lblf_quick_files, values=list(self.quick_files_list.keys()), state='readonly', width=35)
+        cb_quick_files.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
+        self._cb_quick_files = cb_quick_files
+        # new row
+        cur_row += 1
+        cur_col = 0
+        ttk_item = ttk.Button(lblf_quick_files, text='Open File', command=self.quick_file_open)
+        ttk_item.grid(row=cur_row, column=cur_col, columnspan=2, **grid_ew_options)
+
+        # Quick Folders Access
+        lblf_quick_folders = ttk.LabelFrame(lblf_options, text='Quick Folders Access')
+        lblf_quick_folders.pack(side=tk.TOP, **lblf_def_options)
         max_col = 2
         cur_row = -1
         # new row
@@ -64,13 +99,13 @@ class UEVMGuiOptionFrame(ttk.Frame):
                 self.quick_folders_list['Log Folder'] = log_folder
         except (Exception, ):
             pass
-        cb_quick_folders = ttk.Combobox(lblf_quick_access, values=list(self.quick_folders_list.keys()), state='readonly', width=35)
+        cb_quick_folders = ttk.Combobox(lblf_quick_folders, values=list(self.quick_folders_list.keys()), state='readonly', width=35)
         cb_quick_folders.grid(row=cur_row, column=cur_col, columnspan=max_col, **grid_ew_options)
         self._cb_quick_folders = cb_quick_folders
         # new row
         cur_row += 1
         cur_col = 0
-        ttk_item = ttk.Button(lblf_quick_access, text='Browse Folder', command=self.browse_quick_folder)
+        ttk_item = ttk.Button(lblf_quick_folders, text='Browse Folder', command=self.quick_folders_browse)
         ttk_item.grid(row=cur_row, column=cur_col, columnspan=2, **grid_ew_options)
 
         # Options for Commands frame
@@ -277,7 +312,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
         gui_g.s.folders_to_scan = self._folders_to_scan
         gui_g.s.save_config_file()
 
-    def browse_quick_folder(self):
+    def quick_folders_browse(self):
         """
         Browse a quick folder.
         """
@@ -285,6 +320,16 @@ class UEVMGuiOptionFrame(ttk.Frame):
         if cb_selection:
             folder = self.quick_folders_list.get(cb_selection, '')
             open_folder_in_file_explorer(folder)
+
+    def quick_file_open(self):
+        """
+        Open a file.
+        """
+        cb_selection = self._cb_quick_files.get()
+        if cb_selection:
+            file_name = self.quick_files_list.get(cb_selection, '')
+            if os.path.isfile(file_name):
+                os.system(f'start {file_name}')
 
     def update_on_changes(self) -> None:
         """
