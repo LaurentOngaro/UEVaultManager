@@ -144,8 +144,7 @@ class EditableTable(Table):
         # check if col_name contains a space
         col_name_quoted = f'`{col_name_no_quote}`' if ' ' in col_name_no_quote else col_name_no_quote
         if dtype in ['object', 'category']:
-            result = f'search##{col_name_no_quote}'
-            result += f'##{value}' if value else ''
+            result = f'{col_name_quoted}.str.contains(\'{value}\', False)'
         elif dtype == 'bool':
             result = col_name_quoted if value else f'not {col_name_quoted}'
         elif dtype in ['int64', 'float64']:
@@ -390,7 +389,10 @@ class EditableTable(Table):
         else:
             colnames = ','.join(colnames)
 
-        cmd_inside_no_submenu = ['Add to Group', 'Remove from Group', 'Copy column name', 'Copy cell content', 'Seach column', 'Seach cell content', 'Scrap asset']
+        cmd_inside_no_submenu = [
+            'Add to Group', 'Remove from Group', 'Copy column name', 'Copy cell content', 'Seach column', 'Seach cell content', 'Open Assets Url',
+            'Scrap asset'
+        ]
         cmd_inside_edit = ['Copy', 'Paste', 'Undo', 'Undo Last Change']
         cmd_both_no_submenu = []
         cmd_both_rows = [
