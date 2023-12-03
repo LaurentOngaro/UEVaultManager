@@ -265,10 +265,10 @@ class EPCAPI:
             url = f'https://{self._url_owned_assets}'
         else:
             url = f'https://{self._url_asset_list}'
-        r = self.session.get(url, timeout=self.timeout)
-        r.raise_for_status()
-        json_content = r.json()
         try:
+            r = self.session.get(url, timeout=self.timeout)
+            r.raise_for_status()
+            json_content = r.json()
             assets_count = json_content['data']['paging']['total']
         except Exception as error:
             self.logger.warning(f'Can not get the asset count from {url}:{error!r}')

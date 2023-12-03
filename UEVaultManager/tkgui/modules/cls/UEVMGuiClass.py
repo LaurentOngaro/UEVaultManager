@@ -1930,7 +1930,9 @@ class UEVMGui(tk.Tk):
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
             gui_f.show_progress(self, text=f'Rebuilding Asset data...')
-            if data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
+            result = data_table.rebuild_data(self.core.uevmlfs.asset_sizes)
+            gui_f.close_progress(self)
+            if result:
                 self._update_after_reload()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
             else:

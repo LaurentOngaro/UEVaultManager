@@ -832,7 +832,10 @@ class UEAssetScraper:
             else:
                 url = self.core.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
             self._urls.append(url)
-        self._log(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
+        if self._urls:
+            self._log(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
+        else:
+            self._log('No url has been gathered', 'warning')
         if save_result:
             self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=owned_assets_only)
         return assets_to_scrap
@@ -1107,11 +1110,14 @@ class UEAssetScraper:
             self.load_from_files = False
             self.save_parsed_to_files = True
             start_time = time.time()
-            result_count = 0
             if not self._urls:
                 result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
-            if result_count == -1:
-                return False
+                if result_count == -1:
+                    self._log(f'An error has occured when retriving the urls list for assets to scrap.', 'error')
+                    return False
+                if result_count == 0:
+                    self._log(f'No result has been returned when retriving the urls list for assets to scrap.', 'warning')
+                    return False
             # test the first url to see if the data is available
             tries = 0
             max_tries = 3
