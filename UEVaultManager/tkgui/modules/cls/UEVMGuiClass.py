@@ -1886,7 +1886,7 @@ class UEVMGui(tk.Tk):
                 _add_text('Not downloaded yet')
             _add_text(f'Row Index: {idx}')
         else:
-            _add_text('Place the cursor on a row for detail', 'orange')
+            _add_text('Place the cursor on a row for details', 'orange')
         _add_text(f'Total rows: {row_count}')
         if row_count_filtered != row_count:
             _add_text(f'Filtered rows: {row_count_filtered} ')
