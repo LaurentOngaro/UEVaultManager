@@ -3,12 +3,12 @@
 Implementation for:
 - AppCore: handle most of the lower level interaction with the downloader, lfs, and api components to make writing CLI/GUI code easier and cleaner and avoid duplication.
 """
+import datetime
 import json
 import logging
 import os
 import shutil
 from base64 import b64decode
-from datetime import datetime
 from hashlib import sha1
 from locale import getlocale, LC_CTYPE
 from multiprocessing import Queue
@@ -84,7 +84,7 @@ class AppCore:
                 self.uevmlfs.config.remove_option('UEVaultManager', 'egl_programdata')
                 self.uevmlfs.save_config()
 
-        self.local_timezone = datetime.now().astimezone().tzinfo
+        self.local_timezone = datetime.datetime.now().astimezone().tzinfo
         self.language_code, self.country_code = ('en', 'US')
 
         if locale := self.uevmlfs.config.get('UEVaultManager', 'locale', fallback=getlocale(LC_CTYPE)[0]):
@@ -201,7 +201,7 @@ class AppCore:
                 return None
 
         formatter = logging.Formatter('%(message)s')
-        message = f"-----\n{datetime.now().strftime(DateFormat.csv)} Log Started\n-----\n"
+        message = f"-----\n{datetime.datetime.now().strftime(DateFormat.csv)} Log Started\n-----\n"
 
         if self.ignored_assets_filename_log:
             self.ignored_logger = create_logger('IgnoredAssets', self.ignored_assets_filename_log)
@@ -319,12 +319,11 @@ class AppCore:
                 self.user_is_connected = False
                 return False
         elif self.user_is_connected and self.uevmlfs.userdata['expires_at']:
-            dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
-            dt_now = datetime.utcnow()
-            td = dt_now - dt_exp
-
+            dt_exp = datetime.datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
+            dt_now = datetime.datetime.now(datetime.UTC)
+            td = dt_now.timestamp() - dt_exp.timestamp()
             # if session still has at least 10 minutes left we can re-use it.
-            if dt_exp > dt_now and abs(td.total_seconds()) > 600:
+            if td > 600:
                 return True
             else:
                 self.user_is_connected = False
@@ -337,12 +336,12 @@ class AppCore:
                 self.logger.warning(f'Checking for UEVaultManager updates failed: {error!r}')
 
         if self.uevmlfs.userdata['expires_at'] and not force_refresh:
-            dt_exp = datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
-            dt_now = datetime.utcnow()
-            td = dt_now - dt_exp
+            dt_exp = datetime.datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
+            dt_now = datetime.datetime.now(datetime.UTC)
+            td = dt_now.timestamp() - dt_exp.timestamp()
 
             # if session still has at least 10 minutes left we can re-use it.
-            if dt_exp > dt_now and abs(td.total_seconds()) > 600:
+            if td > 600:
                 self.logger.info('Trying to re-use existing login session...')
                 try:
                     self.egs.resume_session(self.uevmlfs.userdata)
@@ -405,7 +404,7 @@ class AppCore:
 
         cached = self.uevmlfs.get_online_version_saved()
         version_info = cached['data']
-        if force or not version_info or (datetime.now().timestamp() - cached['last_update']) > 24 * 3600:
+        if force or not version_info or (datetime.datetime.now().timestamp() - cached['last_update']) > 24 * 3600:
             version_info = self.uevm_api.get_online_version_information()
             self.uevmlfs.set_online_version_saved(version_info)
 
