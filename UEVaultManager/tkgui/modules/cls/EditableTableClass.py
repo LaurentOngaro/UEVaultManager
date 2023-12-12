@@ -1909,6 +1909,7 @@ class EditableTable(Table):
         image_url = ''
         previous_was_a_bool = False
         row = 0
+        # noinspection GrazieInspection
         hidden_col_list = [gui_g.s.index_copy_col_name, 'Long description'] + gui_g.s.hidden_column_names
         hidden_col_list_lower = [col.lower() for col in hidden_col_list]
         for key, value in row_data.items():
@@ -2207,6 +2208,7 @@ class EditableTable(Table):
         Open the long description of the selected asset in a new window.
         """
         row_number = self.get_selected_row_fixed()
+        # noinspection GrazieInspection
         description = self.get_cell(row_number, self.get_col_index('Long description'))
         display_window = DisplayContentWindow(title=f'UEVM: Asset Full Description', use_html=True, width=800, height=600)
         display_window.display(description)
