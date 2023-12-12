@@ -295,7 +295,7 @@ class UEAssetScraper:
                 if use_database:
                     existing_data = asset_db_handler.get_assets_data(get_sql_preserved_fields(), uid)
                     asset_existing_data = existing_data.get(uid, {})
-                categories = one_asset_json_data_from_egs_ori.get('categories', None)
+                categories = one_asset_json_data_from_egs_ori.get('categories', [])
 
                 # releases
                 # release_info = gui_fn.get_and_check_release_info(json_asset_data_ori.get('releaseInfo', []))
@@ -320,7 +320,7 @@ class UEAssetScraper:
                 # make some calculation with the "raw" data
                 # ------------
                 # simple fields
-                seller = one_asset_json_data_from_egs_ori.get('seller', None)
+                seller = one_asset_json_data_from_egs_ori.get('seller', {})
                 author = seller.get('name', '') if seller else one_asset_json_data_from_egs_ori.get('developer', '')
                 one_asset_json_data_parsed['author'] = author
                 one_asset_json_data_parsed['page_title'] = one_asset_json_data_from_egs_ori['title']

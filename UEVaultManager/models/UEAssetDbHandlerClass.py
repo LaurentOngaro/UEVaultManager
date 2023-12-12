@@ -972,13 +972,13 @@ class UEAssetDbHandler:
     #         cursor.close()
     #     return [row[0] for row in rows]
 
-    def convert_tag_list_to_string(self, tags: None) -> str:
+    def convert_tag_list_to_string(self, tags: []) -> str:
         """
         Convert a tags id list to a comma separated string of tag names.
         """
         tags_str = ''
         prefix = gui_g.s.tag_prefix  # prefix to add to the tag that has been checked
-        if tags and tags is not None and tags != [] and tags != {}:
+        if tags and tags != [] and tags != {}:
             if isinstance(tags, str):
                 try:
                     tags = tags.split(',')  # convert the string to a list
