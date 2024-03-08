@@ -16,6 +16,7 @@ def double_clicked() -> bool:
     # Create an array to store the processes in.  This doesn't actually need to
     # be large enough to store the whole process list since GetConsoleProcess[]
     # just returns the number of processes if the array is too small.
+    # noinspection PyCallingNonCallable,PyTypeChecker
     process_array = (ctypes.c_uint * 1)()
     num_processes = kernel32.GetConsoleProcessList(process_array, 1)
     return num_processes < 3

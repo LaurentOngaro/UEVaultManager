@@ -159,7 +159,7 @@ def log_warning(msg: str) -> None:
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
     else:
-        print_msg = log_format_message(gui_g.s.app_title, 'Warning', colored(msg, 'orange'))
+        print_msg = log_format_message(gui_g.s.app_title, 'Warning', colored(msg, 'magenta'))
         print(print_msg)
 
 
@@ -175,7 +175,7 @@ def log_error(msg: str) -> None:
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.error(msg)
     else:
-        print_msg = log_format_message(gui_g.s.app_title, 'Error', colored(msg, 'red', 'bold'))
+        print_msg = log_format_message(gui_g.s.app_title, 'Error', msg)
         print(print_msg)
         exit_and_clean_windows()
 
@@ -639,8 +639,10 @@ def save_image_to_png(image: tk.PhotoImage, filename: str) -> bool:
         filename = os.path.normpath(filename)
         filename = os.path.splitext(filename)[0] + '.png'
         img_pil = ImageTk.getimage(image)
+        size = img_pil.size  # get the size of the image
         if img_pil.mode in ('RGBA', 'LA'):
-            background = Image.new(img_pil.mode[:-1], img_pil.size, '#000')
+            background = Image.new(img_pil.mode[:-1], size, '#000')
+            # noinspection PyTypeChecker
             background.paste(img_pil, img_pil.split()[-1])
             img_pil = background
         img_pil.save(filename, format='PNG', subsampling=0, quality=100)
