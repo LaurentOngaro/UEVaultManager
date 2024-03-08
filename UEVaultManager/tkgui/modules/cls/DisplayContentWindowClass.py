@@ -9,6 +9,7 @@ import tkinter as tk
 from tkinter import filedialog as fd
 from tkinter import ttk
 
+from tkhtmlview import HTMLScrolledText
 from ttkbootstrap import WARNING
 
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
@@ -22,7 +23,8 @@ class DCW_Settings:
     Settings for the class when running as main.
     """
     title = 'Display a text'
-    text = 'This is a demonstration'
+    use_html: bool = True
+    text = '<html><body><h3>THIS IS HTML</h3><p>This is a demonstration</p><p>of the <b>HTML</b> capabilities</p></body></html>'
 
 
 class DisplayContentWindow(tk.Toplevel):
@@ -42,35 +44,42 @@ class DisplayContentWindow(tk.Toplevel):
         width: int = 600,
         height: int = 430,
         icon=None,
-        screen_index: int = 0,
+        screen_index: int = -1,
         quit_on_close: bool = False,
         text: str = '',
-        result_filename: str = 'UEVM_output.txt'
+        result_filename: str = 'UEVM_output.txt',
+        use_html: bool = False,
     ):
         super().__init__()
         self.title(title)
         try:
             # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+            # get the root window
+            root = gui_g.WindowsRef.uevm_gui or self
+            self.screen_index: int = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+            self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         except Exception as error:
             gui_f.log_warning(f'Error in DisplayContentWindow: {error!r}')
-        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
         self._keep_existing: bool = False  # whether to keep the existing content when adding a new one
-        self.quit_on_close = quit_on_close
-        self.result_filename = result_filename
+        self.quit_on_close: bool = quit_on_close
+        self.result_filename: str = result_filename
+        self.use_html: bool = use_html
         self.frm_content = self.ContentFrame(self)
         self.frm_control = self.ControlFrame(self)
 
-        self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
         self.frm_control.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
+        self.frm_content.pack(ipadx=5, ipady=5, padx=5, pady=5, fill=tk.X)
 
         self.bind('<Tab>', self._focus_next_widget)
         self.bind('<Control-Tab>', self._focus_next_widget)
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
+        self.bind('<Button-3>', self.on_right_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
+        self.text: str = ''
         if text:
             self.display(text)
         gui_g.WindowsRef.display_content = self
@@ -102,6 +111,13 @@ class DisplayContentWindow(tk.Toplevel):
         event.widget.tk_focusPrev().focus()
         return 'break'
 
+    def on_right_click(self, event=None) -> None:
+        """
+        When the right mouse button is clicked, show the selected row in the quick edit frame.
+        :param event: event that triggered the call.
+        """
+        gui_f.copy_widget_value_to_clipboard(self, event)
+
     class ContentFrame(ttk.Frame):
         """
         The frame containing the content of the window.
@@ -111,12 +127,15 @@ class DisplayContentWindow(tk.Toplevel):
         def __init__(self, container):
             super().__init__(container)
             pack_def_options = {'ipadx': 3, 'ipady': 3}
-            text_content = ExtendedText(self)
-            scrollbar = ttk.Scrollbar(self)
-            scrollbar.config(command=text_content.yview)
-            text_content.config(yscrollcommand=scrollbar.set)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y, **pack_def_options)
-            text_content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, **pack_def_options)
+            if container.use_html:
+                text_content = HTMLScrolledText(self, font=gui_g.s.theme_font)
+            else:
+                text_content = ExtendedText(self)
+                scrollbar = ttk.Scrollbar(self)
+                scrollbar.config(command=text_content.yview)
+                text_content.config(yscrollcommand=scrollbar.set)
+                scrollbar.pack(side=tk.RIGHT, fill=tk.Y, **pack_def_options)
+            text_content.pack(fill=tk.BOTH, expand=True, **pack_def_options)
             self.text_content = text_content
 
     class ControlFrame(ttk.Frame):
@@ -127,11 +146,13 @@ class DisplayContentWindow(tk.Toplevel):
 
         def __init__(self, container):
             super().__init__(container)
+            self.container = container
             pack_def_options = {'ipadx': 2, 'ipady': 2, 'padx': 2, 'pady': 2, 'fill': tk.BOTH, 'expand': False}
             lblf_def_options = {'ipadx': 1, 'ipady': 1, 'expand': True, 'fill': tk.X}
             lblf_commands = ttk.LabelFrame(self, text='Commands')
             lblf_commands.pack(**lblf_def_options)
             ttk.Button(lblf_commands, text='Clean content', command=container.clean).pack(**pack_def_options, side=tk.LEFT)
+            ttk.Button(lblf_commands, text='Copy to clipboard', command=container.copy_to_clipboard).pack(**pack_def_options, side=tk.LEFT)
             ttk.Button(lblf_commands, text='Save To File', command=container.save_changes).pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
@@ -167,19 +188,38 @@ class DisplayContentWindow(tk.Toplevel):
         else:
             self.destroy()
 
+    def fit_height(self) -> None:
+        """
+        Fit the height of the window to the content.
+
+        Notes:
+            It replaces the content of the fit_height() method of the tkhtmlview.HTMLScrolledText class because it does not work properly.
+        """
+        widget = self.frm_content.text_content
+        for h in range(1, 4):
+            widget.config(height=h)
+            self.update()
+            if widget.yview()[1] >= 1:
+                break
+        else:
+            widget.config(height=2 + 3 / widget.yview()[1])
+
     def display(self, content='', keep_mode=True) -> None:
         """
         Display the content in the window. By default, i.e. keep_mode==True, each new call adds the content to the existing content with a new line.
         :param content: text to print.
         :param keep_mode: whether to keep the existing content when a new one is added.
         """
+        widget = self.frm_content.text_content  # shortcut
         try:
-            if self._keep_existing:
-                content += '\n'
-                self.frm_content.text_content.insert(tk.END, content)
+            if self.use_html:
+                self.text = content if not self._keep_existing else self.text + '<br/>' + content
+                widget.set_html(self.text)
+                self.fit_height()
             else:
-                self.frm_content.text_content.delete('1.0', tk.END)
-                self.frm_content.text_content.insert(tk.END, content)
+                self.text = content if not self._keep_existing else self.text + '\n' + content
+                widget.delete('1.0', tk.END)
+                widget.insert(tk.END, self.text)
             # set the mode at the end to allow using display() to be used to change the mode for the next call
             self._keep_existing = keep_mode
             self.update()
@@ -189,34 +229,49 @@ class DisplayContentWindow(tk.Toplevel):
             pass
 
     def clean(self) -> None:
-        """
-        Clean the content of the window.
-        """
-        self.frm_content.text_content.delete('1.0', tk.END)
+        """ Clean the content of the window. """
+        self.text = ''
+        if self.use_html:
+            self.frm_content.text_content.set_html('')
+        else:
+            self.frm_content.text_content.delete('1.0', tk.END)
         self.update()
 
     def save_changes(self) -> str:
         """
         Save the content displayed to a file.
+        :return: the filename where the content has been saved.
         """
         initial_dir = gui_g.s.last_opened_folder
+        filename, ext = os.path.splitext(self.result_filename)
+        if self.use_html:
+            filename += '.html'
+        else:
+            filename += '.txt'
         filename = fd.asksaveasfilename(
-            title='Choose a file to save data to', initialdir=initial_dir, filetypes=gui_g.s.data_filetypes, initialfile=self.result_filename
+            title='Choose a file to save data to',
+            initialdir=initial_dir,
+            filetypes=gui_g.s.data_filetypes_html if self.use_html else gui_g.s.data_filetypes_text,
+            initialfile=filename
         )
         if filename:
             filename = os.path.normpath(filename)
             with open(filename, 'w', encoding='utf-8') as file:
-                file.write(self.frm_content.text_content.get('1.0', tk.END))
+                file.write(self.text)
             gui_f.box_message(f'Content Saved to {filename}')
         return filename
 
     def set_focus(self) -> None:
-        """
-        Set the focus on the window.
-        """
+        """ Set the focus on the window. """
         self.focus_set()
         self.grab_set()
         self.wait_window()
+
+    def copy_to_clipboard(self) -> None:
+        """ Copy text to the clipboard. """
+        self.clipboard_clear()
+        self.clipboard_append(self.text)
+        gui_f.notify('Content copied to the clipboard.')
 
 
 if __name__ == '__main__':
@@ -224,5 +279,5 @@ if __name__ == '__main__':
     main = tk.Tk()
     main.title('FAKE MAIN Window')
     main.geometry('200x100')
-    DisplayContentWindow(title=st.title, text=st.text)
+    DisplayContentWindow(title=st.title, text=st.text, use_html=st.use_html)
     main.mainloop()

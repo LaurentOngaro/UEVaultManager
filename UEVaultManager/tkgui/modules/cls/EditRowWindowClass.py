@@ -27,21 +27,23 @@ class EditRowWindow(tk.Toplevel):
     :param editable_table: table to edit.
     """
 
-    def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = 0, editable_table=None):
+    def __init__(self, parent, title: str, width: int = 600, height: int = 800, icon=None, screen_index: int = -1, editable_table=None):
         super().__init__(parent)
         self.title(title)
         try:
             # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+            # get the root window
+            root = gui_g.WindowsRef.uevm_gui or self
+            self.screen_index: int = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+            self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         except Exception as error:
             gui_f.log_warning(f'Error in EditRowWindow: {error!r}')
-        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
-        self.screen_index = screen_index
         self.resizable(True, False)
 
         self.editable_table = editable_table
-        self.preview_scale = 0.25
+        self.preview_scale: float = 0.25
         self.must_save: bool = False
         self.initial_values = []
         self.width: int = width
@@ -60,6 +62,7 @@ class EditRowWindow(tk.Toplevel):
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
         self.bind('<Button-1>', self.on_left_click)
+        self.bind('<Button-3>', self.on_right_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
         gui_g.WindowsRef.edit_row = self
@@ -118,6 +121,8 @@ class EditRowWindow(tk.Toplevel):
             btn_open_url.pack(**pack_def_options, side=tk.LEFT)
             btn_open_folder = ttk.Button(lblf_actions, text='Open Folder', command=container.open_asset_folder)
             btn_open_folder.pack(**pack_def_options, side=tk.LEFT)
+            btn_show_description = ttk.Button(lblf_actions, text='Show Description', command=container.open_show_long_description)
+            btn_show_description.pack(**pack_def_options, side=tk.LEFT)
             # noinspection PyArgumentList
             # (bootstyle is not recognized by PyCharm)
             ttk_item = ttk.Button(lblf_actions, text='Close', command=container.on_close, bootstyle=WARNING)
@@ -176,6 +181,13 @@ class EditRowWindow(tk.Toplevel):
         """
         self.update_controls_state()  # to update when clicking on the checkbox
 
+    def on_right_click(self, event=None) -> None:
+        """
+        When the right mouse button is clicked, show the selected row in the quick edit frame.
+        :param event: event that triggered the call.
+        """
+        gui_f.copy_widget_value_to_clipboard(self, event)
+
     def close_window(self) -> None:
         """
         Close the window.
@@ -227,6 +239,13 @@ class EditRowWindow(tk.Toplevel):
         """
         self.close_image_preview()
         self.editable_table.open_json_file()
+
+    def open_show_long_description(self) -> None:
+        """
+        Open the asset URL (Wrapper).
+        """
+        self.close_image_preview()
+        self.editable_table.open_show_long_description()
 
     def update_controls_state(self) -> None:
         """

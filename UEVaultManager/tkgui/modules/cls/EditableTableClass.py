@@ -24,6 +24,7 @@ from UEVaultManager.models.types import DateFormat
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.models.UEAssetScraperClass import UEAssetScraper
+from UEVaultManager.tkgui.modules.cls.DisplayContentWindowClass import DisplayContentWindow
 from UEVaultManager.tkgui.modules.cls.EditCellWindowClass import EditCellWindow
 from UEVaultManager.tkgui.modules.cls.EditRowWindowClass import EditRowWindow
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedCheckButton, ExtendedEntry, ExtendedText
@@ -92,7 +93,7 @@ class EditableTable(Table):
         self._edit_cell_widget = None
         self._dftype_for_coloring = DataFrameUsed.MODEL  # type of dataframe used for coloring
         self._is_scanning = False  # True when a folders scan is in progress
-        self._errors: [Exception] = []
+        self._errors: [str] = []
         self._current_page: int = 1
         self._current_page_saved: int = 1
         self._is_filtered: bool = False
@@ -119,7 +120,7 @@ class EditableTable(Table):
             self._db_handler = UEAssetDbHandler(database_name=self.data_source)
         df_loaded = self.read_data()
         if df_loaded is None:
-            self.logger.error('Failed to load data from data source when initializing the table')
+            self.notify('Failed to load data from data source when initializing the table.', level='error')
             # previous line will NOT quit the application (why ?)
             return
         else:
@@ -128,6 +129,29 @@ class EditableTable(Table):
             self.setup_columns()
             self.bind('<Double-Button-1>', self.create_edit_cell_window)
         gui_f.close_progress(self)
+
+    def _get_search_query(self, col: int, value=None) -> str:
+        """
+        Return the search query.
+        :param col: column index.
+        :param value: value to search.
+        :return: search query.
+        """
+        dataframe = self.get_data()
+        # get the type of the column with index=col
+        col_name_no_quote = dataframe.columns[col]
+        dtype = dataframe.dtypes[col]
+        # check if col_name contains a space
+        col_name_quoted = f'`{col_name_no_quote}`' if ' ' in col_name_no_quote else col_name_no_quote
+        if dtype in ['object', 'category']:
+            result = f'{col_name_quoted}.str.contains(\'{value}\', False)'
+        elif dtype == 'bool':
+            result = col_name_quoted if value else f'not {col_name_quoted}'
+        elif dtype in ['int64', 'float64']:
+            result = f'{col_name_quoted}==' + str(value) if value else ''
+        else:
+            result = col_name_quoted
+        return result
 
     @property
     def current_page(self) -> int:
@@ -345,7 +369,13 @@ class EditableTable(Table):
             # 'Show plot': self.showPlot,
             # == custom actions
             'Add to Group': self.add_to_group,
-            'Remove from Group': self.remove_from_group
+            'Remove from Group': self.remove_from_group,
+            'Copy column name': self.copy_column_names,
+            'Copy cell content': self.copy_cell_content,
+            'Open Assets Url': self.open_asset_url,
+            'Seach column': self.search_column,
+            'Seach cell content': self.search_cell_content,
+            'Scrap asset': self.scrap_asset,
         }
         popupmenu = tk.Menu(self, tearoff=0)
 
@@ -359,7 +389,10 @@ class EditableTable(Table):
         else:
             colnames = ','.join(colnames)
 
-        cmd_inside_no_submenu = ['Add to Group', 'Remove from Group']
+        cmd_inside_no_submenu = [
+            'Add to Group', 'Remove from Group', 'Copy column name', 'Copy cell content', 'Seach column', 'Seach cell content', 'Open Assets Url',
+            'Scrap asset'
+        ]
         cmd_inside_edit = ['Copy', 'Paste', 'Undo', 'Undo Last Change']
         cmd_both_no_submenu = []
         cmd_both_rows = [
@@ -497,8 +530,7 @@ class EditableTable(Table):
                 # noinspection PyTypeChecker
                 df.sort_values(by=colnames, inplace=True, ascending=ascending)
             except (Exception, ) as error:
-                self.add_error(error)
-                self.logger.warning(f'Could not sort the columns. Error: {error!r}')
+                self.notify(f'Could not sort the columns. Error: {error!r}')
         self.update_index_copy_column()
         self.update()
         return
@@ -646,9 +678,8 @@ class EditableTable(Table):
                     else:
                         df[col] = df[col].astype(converter)
                 except (KeyError, ValueError) as error:
-                    self.add_error(error)
-                    self.logger.warning(f'Could not convert column "{col}" using {converter}. Error: {error!r}')
-        # self.logger.debug("\nCOL TYPES AFTER CONVERSION\n")
+                    self.notify(f'Could not convert column "{col}" using {converter}. Error: {error!r}')
+        # self.notify("\nCOL TYPES AFTER CONVERSION\n",level='debug')
         # df.info()  # direct print info
         return df
 
@@ -712,7 +743,7 @@ class EditableTable(Table):
         elif df_type == DataFrameUsed.MODEL:
             df = self.model.df
         elif df_type == DataFrameUsed.BOTH:
-            self.logger.warning('The df_type parameter can not be "DataFrameUsed.BOTH" in that case. Using "DataFrameUsed.AUTO" instead.')
+            self.notify('The df_type parameter can not be "DataFrameUsed.BOTH" in that case. Using "DataFrameUsed.AUTO" instead.')
             return int(self.get_real_index(row_number))
         else:
             return int(self.get_real_index(row_number))
@@ -729,10 +760,9 @@ class EditableTable(Table):
                 idx_copy = df.iat[row_number, copy_col_index]  # could return '' if the column is empty
                 result = int(idx_copy) if str(idx_copy) else -1
             else:
-                self.logger.warning(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
+                self.notify(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
         except (ValueError, IndexError) as error:
-            self.add_error(error)
-            self.logger.warning(f'Could not get the real index for row number #{row_number + 1}. Error: {error!r}')
+            self.notify(f'Could not get the real index for row number #{row_number + 1}. Error: {error!r}')
         return result
 
     def get_data(self, df_type: DataFrameUsed = DataFrameUsed.UNFILTERED) -> pd.DataFrame:
@@ -756,7 +786,7 @@ class EditableTable(Table):
         elif df_type == DataFrameUsed.MODEL:
             return self.model.df
         elif df_type == DataFrameUsed.BOTH:
-            self.logger.warning('The df_type parameter can not be "DataFrameUsed.BOTH" in that case. Using "DataFrameUsed.AUTO" instead.')
+            self.notify('The df_type parameter can not be "DataFrameUsed.BOTH" in that case. Using "DataFrameUsed.AUTO" instead.')
             return self.get_data(df_type=DataFrameUsed.AUTO)
 
     def set_data(self, df: pd.DataFrame, df_type: DataFrameUsed = DataFrameUsed.UNFILTERED) -> None:
@@ -779,8 +809,6 @@ class EditableTable(Table):
             self.df_filtered = df
         elif df_type == DataFrameUsed.MODEL:
             self.model.df = df
-            # self.logger.error("The df_type parameter can't be DataFrameUsed.MODEL in that case. THIS MUST NOT OCCUR. Exiting application...")
-            # previous line will quit the application
 
     def setup_columns(self) -> None:
         """
@@ -812,7 +840,7 @@ class EditableTable(Table):
         col_list = column_infos.copy().keys()
         for col in col_list:
             if col not in df.columns and col not in [gui_g.s.index_copy_col_name, gui_g.s.group_col_name]:
-                self.logger.warning(f'Column "{col}" is in column_infos BUT not in the datatable. It has been removed from column_infos.')
+                self.notify(f'Column "{col}" is in column_infos BUT not in the datatable. It has been removed from column_infos.')
                 # remove col from dict column_infos
                 column_infos.pop(col)
 
@@ -864,8 +892,8 @@ class EditableTable(Table):
             if df is not None:
                 df.reindex(columns=keys_ordered, fill_value='')  # reorder columns
                 self.set_data(df, DataFrameUsed.FILTERED)
-        except KeyError:
-            self.logger.warning('Error when reordering the columns.')
+        except KeyError as error:
+            self.notify(f'Error when reordering the columns:{error!r}')
         else:
             try:
                 # resizing columns
@@ -873,8 +901,8 @@ class EditableTable(Table):
                     width = int(info.get('width', -1))
                     if width > 0:
                         self.columnwidths[colname] = width
-            except KeyError:
-                self.logger.warning('Error when resizing the columns.')
+            except KeyError as error:
+                self.notify(f'Error when resizing the columns:{error!r}')
         self._set_with_for_hidden_columns()
         self.setColPositions()
         self.redraw()
@@ -928,7 +956,7 @@ class EditableTable(Table):
                 df = pd.read_csv(self.data_source, **gui_g.s.csv_options)
                 data_count = len(df)  # model. df checked
                 if data_count <= 0 or df.iat[0, 0] is None:  # iat checked
-                    self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
+                    self.notify(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
                 else:
                     csv_field_name_list = gui_t.get_csv_field_name_list()
@@ -945,19 +973,19 @@ class EditableTable(Table):
                 column_names: list = self._db_handler.get_columns_name_for_csv()  # empty if database is new
                 # check to see if the first row has a value in the Uid column
                 if not column_names or not data or data[0][column_names.index('Uid')] is None:
-                    self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
+                    self.notify(f'Empty file: {self.data_source}. Adding a dummy row.')
                     df, _ = self.create_row(add_to_existing=False)
                 else:
                     df = pd.DataFrame(data, columns=column_names)
             else:
-                self.logger.error(f'Unknown data source type: {self.data_source_type}')
+                self.notify(f'Unknown data source type: {self.data_source_type}', level='error')
                 # previous line will quit the application
                 return None
         except EmptyDataError:
-            self.logger.warning(f'Empty file: {self.data_source}. Adding a dummy row.')
+            self.notify(f'Empty file: {self.data_source}. Adding a dummy row.')
             df, _ = self.create_row(add_to_existing=False)
         if df is None or df.empty:
-            self.logger.error(f'No data found in data source: {self.data_source}')
+            self.notify(f'Could not load data from file: {self.data_source}', level='error')
             # previous line will quit the application
             return None
         else:
@@ -991,17 +1019,16 @@ class EditableTable(Table):
             try:
                 table_row = pd.DataFrame(data, columns=column_names, index=[new_index])
             except ValueError as error:
-                self.add_error(error)
-                self.logger.warning(f'Could not create an empty row for data source: {self.data_source}. Error: {error!r}')
+                self.notify(f'Could not create an empty row for data source: {self.data_source}: {error!r}')
             try:
                 table_row[gui_g.s.index_copy_col_name] = new_index
-            except KeyError:
-                self.logger.warning(f'Could not add column "{gui_g.s.index_copy_col_name}" to the row')
+            except KeyError as error:
+                self.notify(f'Could not add column "{gui_g.s.index_copy_col_name}" to the row:{error!r}')
         else:
-            self.logger.error(f'Unknown data source type: {self.data_source_type}')
+            self.notify(f'Unknown data source type: {self.data_source_type}', level='error')
             # previous line will quit the application
         if table_row is None:
-            self.logger.warning(f'Could not create an empty row for data source: {self.data_source}')
+            self.notify(f'Could not create an empty row for data source: {self.data_source}')
             return None, -1
         if row_data is not None:
             # add the data to the row
@@ -1054,15 +1081,15 @@ class EditableTable(Table):
                         self.add_to_asset_ids_to_delete(asset_id)
                         self.logger.info(f'Adding row index {idx} with asset_id={asset_id} to the list of index to delete')
                     except (IndexError, KeyError) as error:
-                        self.add_error(error)
-                        self.logger.warning(f'Could add row index {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
+                        self.notify(f'Could add row index {idx} with asset_id={asset_id} to the list of index to delete. Error: {error!r}')
 
                     # update the index copy column because index is changed after each deletion
                     df[gui_g.s.index_copy_col_name] = df.index
                     check_asset_id = df.at[idx, 'Asset_id']
                     # done one by on to check if the asset_id is still OK
                     if check_asset_id not in self._deleted_asset_ids:
-                        self.logger.error(f'The row to delete with asset_id={check_asset_id} is not the good one')
+                        self.notify(f'The row to delete with asset_id={check_asset_id} is not the good one', level='error')
+                        # previous line will quit the application
                     else:
                         try:
                             df.drop(idx, inplace=True)
@@ -1071,8 +1098,7 @@ class EditableTable(Table):
                             # if self.df_filtered is not None:
                             #    self.df_filtered.drop(idx, inplace=True)
                         except (IndexError, KeyError) as error:
-                            self.add_error(error)
-                            self.logger.warning(f'Could not perform the deletion of list of indexes. Error: {error!r}')
+                            self.notify(f'Could not perform the deletion of list of indexes: {error!r}')
 
             self.selectNone()
             self.update_index_copy_column()
@@ -1107,7 +1133,7 @@ class EditableTable(Table):
             # It will be saved after scraping
             return
         if asset_id in gui_g.s.cell_is_empty_list and asset_id in gui_g.s.cell_is_empty_list:
-            self.logger.warning(f'The asset for row index {row_index + 1} is missing asset_id or if field value. Bypassing the save.')
+            self.notify(f'The asset for row index {row_index + 1} is missing asset_id or if field value. Bypassing the save.')
             return
         if asset_id in self._deleted_asset_ids:
             # do not update an asset if that will be deleted
@@ -1125,8 +1151,7 @@ class EditableTable(Table):
             asset_id = ue_asset.get('asset_id', '')
             self.logger.info(f'UE_asset ({asset_id}) for row index {row_index + 1} has been saved to the database')
         except (KeyError, ValueError, AttributeError) as error:
-            self.add_error(error)
-            self.logger.warning(f'Failed to save UE_asset for row index {row_index + 1} to the database. Error: {error!r}')
+            self.notify(f'Failed to save UE_asset for row index {row_index + 1} to the database: {error!r}')
 
     def save_data(self, source_type: DataSourceType = None) -> None:
         """
@@ -1147,8 +1172,7 @@ class EditableTable(Table):
                     self._db_handler.delete_asset(asset_id=asset_id)
                     self.logger.info(f'Row with asset_id={asset_id} has been deleted from the database')
                 except (KeyError, ValueError, AttributeError) as error:
-                    self.add_error(error)
-                    self.logger.warning(f'Failed to delete asset_id={asset_id} to the database. Error: {error!r}')
+                    self.notify(f'Failed to delete asset_id={asset_id} to the database. Error: {error!r}')
 
         self.clear_rows_to_save()
         self.clear_asset_ids_to_delete()
@@ -1199,8 +1223,9 @@ class EditableTable(Table):
         self.clear_asset_ids_to_delete()
         self.must_save = False
         use_database = self.is_using_database
-        message = 'Rebuilding Data For database...' if use_database else 'Rebuilding Data For CSV file...'
-        pw = gui_f.show_progress(self, message, force_new_window=True)
+        pw = gui_f.show_progress(
+            self, 'Rebuilding Data For database...' if use_database else 'Rebuilding Data For CSV file...', force_new_window=True
+        )
         # we create the progress window here to avoid lots of imports in UEAssetScraper class
         max_threads = get_max_threads()
         owned_assets_only = False
@@ -1248,7 +1273,9 @@ class EditableTable(Table):
                 return False
             self.set_data(df_loaded)
             self.update_downloaded_size(asset_sizes)
-        self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
+            self.update(update_format=True)  # this call will copy the changes to model. df AND to self.filtered_df
+        else:
+            return False
         # gui_f.close_progress(self)  # done in data_table.update(update_format=True)
         return True
 
@@ -1285,8 +1312,7 @@ class EditableTable(Table):
                 rc = self.rowcolors
                 rc[col_name] = clrs
             except (KeyError, ValueError, TypeError) as error:
-                self.add_error(error)
-                self.logger.debug(f'gradient_color_cells: An error as occured with {col_name} : {error!r}')
+                self.notify(f'gradient_color_cells: An error as occured with {col_name} : {error!r}', level='debug')
                 continue
 
     def setColorByMask(self, col, mask, clr):
@@ -1299,8 +1325,7 @@ class EditableTable(Table):
         try:
             rc[col] = rc[col].where(-mask, clr)
         except (Exception, ) as error:
-            self.add_error(error)
-            self.logger.debug(f'setColorByMask: An error as occured with {col} : {error!r}')
+            self.notify(f'setColorByMask: An error as occured with {col} : {error!r}', level='debug')
         return
 
     def color_cells_if(self, col_names: [] = None, color: str = 'green', value_to_check: any = True) -> None:
@@ -1321,8 +1346,7 @@ class EditableTable(Table):
             try:
                 self.setColorByMask(col=col_name, mask=mask, clr=color)
             except (KeyError, ValueError) as error:
-                self.add_error(error)
-                self.logger.debug(f'color_cells_if: An error as occured with {col_name} : {error!r}')
+                self.notify(f'color_cells_if: An error as occured with {col_name} : {error!r}', level='debug')
 
     def color_cells_if_not(self, col_names: [] = None, color: str = 'grey', value_to_check: any = False) -> None:
         """
@@ -1342,8 +1366,7 @@ class EditableTable(Table):
                 mask = df[col_name] != value_to_check
                 self.setColorByMask(col=col_name, mask=mask, clr=color)
             except (KeyError, ValueError) as error:
-                self.add_error(error)
-                self.logger.debug(f'color_cells_if_not: An error as occured with {col_name} : {error!r}')
+                self.notify(f'color_cells_if_not: An error as occured with {col_name} : {error!r}', level='debug')
                 continue
 
     def color_rows_if(self, col_name_to_check: str, color: str = '#555555', value_to_check: any = True) -> None:
@@ -1363,8 +1386,7 @@ class EditableTable(Table):
             try:
                 self.setColorByMask(col=col_name, mask=mask, clr=color)
             except (KeyError, ValueError) as error:
-                self.add_error(error)
-                self.logger.debug(f'color_rows_if: An error as occured with {col_name} : {error!r}')
+                self.notify(f'color_rows_if: An error as occured with {col_name} : {error!r}', level='debug')
 
     def set_preferences(self, default_pref=None) -> None:
         """
@@ -1412,7 +1434,7 @@ class EditableTable(Table):
         if not gui_g.s.use_colors_for_data:
             self.redraw()
             return
-        # self.logger.debug('set_colors')
+        # self.notify('set_colors',level='debug')
         self.gradient_color_cells(col_names=['Review'], cmap='cool_r', alpha=1, min_val=0, max_val=5)
         self.color_cells_if(col_names=['Owned', 'Discounted'], color='palegreen', value_to_check=True)
         self.color_cells_if(col_names=['Grab result'], color='skyblue', value_to_check='NO_ERROR')
@@ -1466,7 +1488,15 @@ class EditableTable(Table):
             if self._frm_filter is not None:
                 self._frm_filter.clear_filter()
             # df.fillna(gui_g.s.empty_cell, inplace=True)  # cause a FutureWarning
-        df_filtered = self._frm_filter.get_filtered_df() if self._frm_filter is not None else None
+        try:
+            df_filtered, error_message = self._frm_filter.get_filtered_df() if self._frm_filter is not None else None
+            if error_message:
+                self.notify(error_message)
+        except (KeyError, ValueError, TypeError) as error:
+            self.notify(
+                f'Could not get the filtered dataframe.\nCheck the content of your filter and the name of the columns you used (tip: it is case sensitive !).\nError: {error!r}'
+            )
+            df_filtered = None
         if df_filtered is not None:
             self.is_filtered = True
             self.set_data(df_filtered, df_type=DataFrameUsed.FILTERED)
@@ -1690,8 +1720,8 @@ class EditableTable(Table):
                 return row.to_dict()
             else:
                 return row
-        except IndexError:
-            self.logger.warning(f'Could not get data for row index {row_index} from the datatable')
+        except IndexError as error:
+            self.notify(f'Could not get data for row index {row_index} from the datatable: {error!r}')
             return None
 
     def update_row(self, row_number: int, ue_asset_data: dict, convert_row_number_to_row_index: bool = False) -> None:
@@ -1723,7 +1753,7 @@ class EditableTable(Table):
                 if not self.update_cell(row_number, col_index, typed_value, convert_row_number_to_row_index):
                     error_count += 1
         if error_count > 0:
-            self.logger.warning(f'{error_count} Errors occured when updating {len(ue_asset_data.items())} cells for row {text}')
+            self.notify(f'{error_count} Errors occured when updating {len(ue_asset_data.items())} cells for row {text}')
         self.update_page()
 
     def get_col_name(self, col_index: int) -> str:
@@ -1796,11 +1826,10 @@ class EditableTable(Table):
             self.must_save = True
             return True
         except (ValueError, TypeError) as error:
-            self.add_error(error)
             if not self._is_scanning and 'Cannot setitem on a Categorical with a new category' in str(error):
                 # this will occur when scanning folder with category that are not in the table yet
                 col_name = self.get_col_name(col_index)
-                gui_f.log_warning(f'Trying to set a value that is not an existing category for field {col_name}.')
+                self.notify(f'Trying to set a value that is not an existing category for field {col_name}.')
             return False
         except IndexError:
             return False
@@ -1874,13 +1903,14 @@ class EditableTable(Table):
         idx = self.get_real_index(row_number)
         row_data = self.get_row(idx, return_as_dict=True)
         if row_data is None:
-            self.logger.warning(f'edit_row: row_data is None for index #{idx}')
+            self.notify(f'edit_row: row_data is None for index #{idx}')
             return
         entries = {}
         image_url = ''
         previous_was_a_bool = False
         row = 0
-        hidden_col_list = [gui_g.s.index_copy_col_name] + gui_g.s.hidden_column_names
+        # noinspection GrazieInspection
+        hidden_col_list = [gui_g.s.index_copy_col_name, 'Long description'] + gui_g.s.hidden_column_names
         hidden_col_list_lower = [col.lower() for col in hidden_col_list]
         for key, value in row_data.items():
             # print(f'row {row}:key={key} value={value} previous_was_a_bool={previous_was_a_bool})  # debug only
@@ -1960,7 +1990,7 @@ class EditableTable(Table):
                 ):
                     continue
             if not self.update_cell(row_number, col_index, typed_value):
-                self.logger.warning(f'Failed to update the row #{row_number + 1}')
+                self.notify(f'Failed to update the row #{row_number + 1}')
                 continue
         self._edit_row_entries = None
         self._edit_row_number = -1
@@ -1988,10 +2018,10 @@ class EditableTable(Table):
             row_numbers = self.multiplerowlist
             is_single = False
 
-        if not row_numbers or col_index is None:  # model. df checked
+        if not row_numbers or col_index is None:
             return None
         if is_single:
-            if row_numbers[0] >= len(self.model.df):
+            if row_numbers[0] >= len(self.model.df):  # model. df checked
                 return None
             cell_value = self.get_cell(row_numbers[0], col_index)
             title = 'Edit current cell value'
@@ -2077,10 +2107,10 @@ class EditableTable(Table):
                         return
                 has_already_confirmed = True
                 if not self.update_cell(row_number, col_index, typed_value):
-                    self.logger.warning(f'Failed to update the row #{row_number + 1}')
+                    self.notify(f'Failed to update the row #{row_number + 1}')
                     continue
-            except TypeError:
-                self.logger.warning(f'Failed to get content of {widget}')
+            except TypeError as error:
+                self.notify(f'Failed to get content of {widget}: {error!r}')
                 continue
             idx = self.get_real_index(row_number)
             self.add_to_rows_to_save(idx)  # self.must_save = Trueis done inside
@@ -2156,14 +2186,14 @@ class EditableTable(Table):
                 return
         try:
             if not self.update_cell(row_number, col_index, typed_value):
-                self.logger.warning(f'Failed to update the row #{row_number + 1}')
+                self.notify(f'Failed to update the row #{row_number + 1}')
                 return
             idx = self.get_real_index(row_number)
             self.add_to_rows_to_save(idx)  # self.must_save = True is done inside
-            self.logger.debug(f'Saved cell value {typed_value} at ({row_number},{col_index})')
+            self.notify(f'Saved cell value {typed_value} at ({row_number},{col_index})', level='debug')
             self.update()  # this call will copy the changes to model. df AND to self.filtered_df
-        except IndexError:
-            self.logger.warning(f'Failed to save cell value {typed_value} at ({row_number},{col_index})')
+        except IndexError as error:
+            self.notify(f'Failed to save cell value {typed_value} at ({row_number},{col_index}):{error!r}')
 
     def get_image_url(self, row_number: int = None) -> str:
         """
@@ -2173,52 +2203,97 @@ class EditableTable(Table):
         """
         return '' if row_number is None else self.get_cell(row_number, self.get_col_index('Image'))
 
-    def open_asset_url(self, url: str = ''):
+    def open_show_long_description(self) -> None:
         """
-        Open the asset URL in a web browser.
-        :param url: URL to open.
+        Open the long description of the selected asset in a new window.
         """
-        if not url:
-            if self._edit_row_entries is None:
-                return
-            asset_url = self._edit_row_entries['Url'].get()
-        else:
-            asset_url = url
-        self.logger.info(f'Opening {asset_url} in browser')
-        if not asset_url or asset_url == gui_g.s.empty_cell:
-            self.logger.info('asset URL is empty for this asset')
-            return
-        webbrowser.open(asset_url)
+        row_number = self.get_selected_row_fixed()
+        # noinspection GrazieInspection
+        description = self.get_cell(row_number, self.get_col_index('Long description'))
+        display_window = DisplayContentWindow(title=f'UEVM: Asset Full Description', use_html=True, width=800, height=600)
+        display_window.display(description)
+        gui_f.make_modal(display_window)
 
-    def open_json_file(self, asset_id: str = '') -> None:
+    def open_asset_url(self):
+        """
+        Open the asset URLs in a web browser.
+        """
+        row_numbers = self.multiplerowlist
+        if not row_numbers:
+            row_numbers = [self.get_selected_row_fixed()]
+            is_single = True
+        else:
+            is_single = False
+        if len(row_numbers) > gui_g.s.warning_limit_for_batch_op:
+            if not gui_f.box_yesno('Are you sure you want to open all these urls in your browser ?'):
+                return
+        for row_number in row_numbers:
+            if row_number is None or row_number < 0 or row_number >= len(self.model.df):  # model. df checked
+                continue
+            asset_url = self.get_cell(row_number, self.get_col_index('Url'))
+            if is_single:
+                self.logger.info(f'Opening {asset_url} in browser')
+                if not asset_url or asset_url == gui_g.s.empty_cell:
+                    self.notify('Url value is empty for this asset')
+                    return
+            webbrowser.open(asset_url)
+
+    def open_json_file(self) -> None:
         """
         Open the source file of the asset.
         """
-        if not asset_id:
-            if self._edit_row_entries is None:
+        row_numbers = self.multiplerowlist
+        if not row_numbers:
+            row_numbers = [self.get_selected_row_fixed()]
+            is_single = True
+        else:
+            is_single = False
+        if len(row_numbers) > gui_g.s.warning_limit_for_batch_op:
+            if not gui_f.box_yesno('Are you sure you want to open all these files in the associated program ?'):
                 return
-            asset_id = self._edit_row_entries['Asset_id'].get()
-        file_name = path_join(gui_g.s.assets_data_folder, asset_id + '.json')
-        if os.path.isfile(file_name):
-            self.logger.info(f'Opening {file_name} in default application')
-            os.system(f'start {file_name}')
+        for row_number in row_numbers:
+            if row_number is None or row_number < 0 or row_number >= len(self.model.df):  # model. df checked
+                continue
+            asset_id = self.get_cell(row_number, self.get_col_index('Asset_id'))
+            if is_single:
+                self.logger.info(f'Opening json file for {asset_id} in browser')
+                if not asset_id or asset_id == gui_g.s.empty_cell:
+                    self.notify('Asset_id value is empty for this asset')
+                    return
+            file_name = path_join(gui_g.s.assets_data_folder, asset_id + '.json')
+            if os.path.isfile(file_name):
+                self.logger.info(f'Opening {file_name} in default application')
+                os.system(f'start {file_name}')
 
     def open_origin_folder(self) -> None:
         """
         Open the asset origin folder.
         """
-        row_number = self.get_selected_row_fixed()
-        if row_number is None or row_number < 0:
-            return
-        added = self.get_cell(row_number, self.get_col_index('Added manually'))
-        # open the folder of the asset
-        if added:
-            origin = self.get_cell(row_number, self.get_col_index('Origin'))
-            # open the folder of the asset
-            if not gui_fn.open_folder_in_file_explorer(origin):
-                gui_f.box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
+        row_numbers = self.multiplerowlist
+        if not row_numbers:
+            row_numbers = [self.get_selected_row_fixed()]
+            is_single = True
         else:
-            gui_f.box_message('Only possible with asset that have been mannualy added.', 'info')
+            is_single = False
+        if len(row_numbers) > gui_g.s.warning_limit_for_batch_op:
+            if not gui_f.box_yesno('Are you sure you want to open all these folders in the file explorer ?'):
+                return
+        for row_number in row_numbers:
+            if row_number is None or row_number < 0 or row_number >= len(self.model.df):  # model. df checked
+                continue
+            added = self.get_cell(row_number, self.get_col_index('Added manually'))
+            # open the folder of the asset
+            if added:
+                origin = self.get_cell(row_number, self.get_col_index('Origin'))
+                if is_single and (not origin or origin == gui_g.s.empty_cell):
+                    self.notify('Origin value is empty for this asset')
+                    return
+                # open the folder of the asset
+                if not gui_fn.open_folder_in_file_explorer(origin):
+                    if is_single:
+                        gui_f.box_message(f'Error while opening the folder of the asset "{origin}"', 'warning')
+            elif is_single:
+                gui_f.box_message('Only possible with asset that have been mannualy added.', 'info')
 
     def get_release_info(self, row_number: int = None) -> str:
         """
@@ -2259,12 +2334,32 @@ class EditableTable(Table):
             df.style.clear()
         self.redraw()
 
-    def add_error(self, error: Exception) -> None:
+    def notify(self, message: str, level='warning') -> None:
         """
-        Add an error to the list of errors.
-        :param error: error to add.
+        Add an error to the list of errors, log the message and display a notification (if not a debug message).
+        :param message: message to add.
+        :param level: level of the message. Can be 'debug', 'warning' or 'error'.
         """
-        self._errors.append(error)
+        if not message:
+            return
+        gui_fn.append_no_duplicate(self._errors, message, ok_if_exists=True)
+        notification_title = ''
+        level_lower = level.lower()
+        if level_lower == 'debug':
+            self.logger.debug(message)
+            notification_title = 'Debug message' if gui_g.s.debug_mode else ''
+        elif level_lower == 'info':
+            notification_title = 'Info message'
+            self.logger.warning(message)
+        elif level_lower == 'warning':
+            notification_title = 'Warning message'
+            self.logger.info(message)
+        elif level_lower == 'error':
+            notification_title = 'Error message'
+            self.logger.error(message)
+
+        if notification_title:
+            gui_f.notify(title=notification_title, message=message)
 
     def colheader_popup_menu(self, event, outside=True):
         """Overwrite the default colheader popupMenu method"""
@@ -2313,7 +2408,7 @@ class EditableTable(Table):
                         self.db_handler.update_asset(
                             asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.current_group_name
                         )
-                    self.logger.debug(f'added asset_id {asset_id} to group {gui_g.s.current_group_name}')
+                    self.notify(f'added asset_id {asset_id} to group {gui_g.s.current_group_name}', level='debug')
             # sort the list and remove duplicates
             current_group = list(set(current_group))
             current_group.sort()
@@ -2333,5 +2428,49 @@ class EditableTable(Table):
                         self.db_handler.update_asset(
                             asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.empty_cell
                         )
-                    self.logger.debug(f'Removed asset_id {asset_id} from group {gui_g.s.current_group_name}')
+                    self.notify(f'Removed asset_id {asset_id} from group {gui_g.s.current_group_name}', level='debug')
             self.update()
+
+    def copy_column_names(self) -> None:
+        """
+        Copy the column names to the clipboard.
+        """
+        col = self.currentcol
+        col_name = self.get_data().columns[col]
+        self.clipboard_clear()
+        self.clipboard_append(col_name)
+        # self.notify(f'Copied name "{col_name}" to clipboard', level='info')
+
+    def copy_cell_content(self) -> None:
+        """
+        Copy the cell content to the clipboard.
+        """
+        col = self.currentcol
+        row = self.currentrow
+        value = self.get_cell(row, col)
+        self.clipboard_clear()
+        self.clipboard_append(value)
+        # self.notify(f'Copied value "{value}" to clipboard', level='info')
+
+    def search_column(self) -> None:
+        """ Set the query string to the current column. """
+        col = self.currentcol
+        query_string = self._get_search_query(col) + f'##'
+        self._frm_filter.set_query_string(query_string)
+
+    def search_cell_content(self) -> None:
+        """ Set the query string to a value from the current cell. """
+        col = self.currentcol
+        row = self.currentrow
+        value = self.get_cell(row, col)
+        query_string = self._get_search_query(col, value)
+        self._frm_filter.set_query_string(query_string)
+
+    def scrap_asset(self) -> None:
+        """ Scrap the selected asset (Wrapper) """
+        row = self.currentrow
+        gui_g.WindowsRef.uevm_gui.scrap_asset(row_numbers=[row])
+
+    def get_errors(self) -> list:
+        """ Return the list of errors. """
+        return self._errors

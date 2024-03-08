@@ -48,18 +48,21 @@ class DbToolWindowClass(tk.Toplevel):
         width: int = 420,
         height: int = 450,
         icon=None,
-        screen_index: int = 0,
+        screen_index: int = -1,
         folder_for_csv_files: str = '',
         db_path: str = ''
     ):
 
         super().__init__()
         self.title(title)
-        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
+        # get the root window
+        root = gui_g.WindowsRef.uevm_gui or self
+        self.screen_index: int = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+        self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.must_reload: bool = False
-        self.folder_for_csv_files = os.path.normpath(folder_for_csv_files) if folder_for_csv_files else ''
-        self.db_path = os.path.normpath(db_path) if db_path else ''
+        self.folder_for_csv_files: str = os.path.normpath(folder_for_csv_files) if folder_for_csv_files else ''
+        self.db_path: str = os.path.normpath(db_path) if db_path else ''
         self.db_handler = UEAssetDbHandler(database_name=self.db_path)
         self.frm_control = self.ControlFrame(self)
         self.frm_control.pack(ipadx=0, ipady=0, padx=0, pady=0)

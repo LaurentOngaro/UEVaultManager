@@ -25,15 +25,18 @@ class EditCellWindow(tk.Toplevel):
     :param editable_table: table to edit.
     """
 
-    def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index: int = 0, editable_table=None):
+    def __init__(self, parent, title: str, width: int = 600, height: int = 400, icon=None, screen_index: int = -1, editable_table=None):
         super().__init__(parent)
         self.title(title)
         try:
             # an error can occur here AFTER a tool window has been opened and closed (ex: db "import/export")
             self.style = gui_fn.set_custom_style(gui_g.s.theme_name, gui_g.s.theme_font)
+            # get the root window
+            root = gui_g.WindowsRef.uevm_gui or self
+            self.screen_index: int = screen_index if screen_index >= 0 else int(root.winfo_screen()[1])
+            self.geometry(gui_fn.center_window_on_screen(self.screen_index, width, height))
         except Exception as error:
             gui_f.log_warning(f'Error in EditCellWindowClass: {error!r}')
-        self.geometry(gui_fn.center_window_on_screen(screen_index, width, height))
         gui_fn.set_icon_and_minmax(self, icon)
         self.resizable(True, False)
 
@@ -51,6 +54,7 @@ class EditCellWindow(tk.Toplevel):
         self.bind('<Shift-Tab>', self._focus_prev_widget)
         self.bind('<Key>', self.on_key_press)
         self.bind('<Button-1>', self.on_left_click)
+        self.bind('<Button-3>', self.on_right_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
 
         gui_g.WindowsRef.edit_cell = self
@@ -134,6 +138,13 @@ class EditCellWindow(tk.Toplevel):
         :param event: event that triggered the call of this function.
         """
         self.update_controls_state()  # to update when clicking on the checkbox
+
+    def on_right_click(self, event=None) -> None:
+        """
+        When the right mouse button is clicked, show the selected row in the quick edit frame.
+        :param event: event that triggered the call.
+        """
+        gui_f.copy_widget_value_to_clipboard(self, event)
 
     def on_close(self, _event=None) -> None:
         """

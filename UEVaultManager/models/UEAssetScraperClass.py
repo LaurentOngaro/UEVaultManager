@@ -295,7 +295,7 @@ class UEAssetScraper:
                 if use_database:
                     existing_data = asset_db_handler.get_assets_data(get_sql_preserved_fields(), uid)
                     asset_existing_data = existing_data.get(uid, {})
-                categories = one_asset_json_data_from_egs_ori.get('categories', None)
+                categories = one_asset_json_data_from_egs_ori.get('categories', [])
 
                 # releases
                 # release_info = gui_fn.get_and_check_release_info(json_asset_data_ori.get('releaseInfo', []))
@@ -320,7 +320,7 @@ class UEAssetScraper:
                 # make some calculation with the "raw" data
                 # ------------
                 # simple fields
-                seller = one_asset_json_data_from_egs_ori.get('seller', None)
+                seller = one_asset_json_data_from_egs_ori.get('seller', {})
                 author = seller.get('name', '') if seller else one_asset_json_data_from_egs_ori.get('developer', '')
                 one_asset_json_data_parsed['author'] = author
                 one_asset_json_data_parsed['page_title'] = one_asset_json_data_from_egs_ori['title']
@@ -832,7 +832,10 @@ class UEAssetScraper:
             else:
                 url = self.core.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
             self._urls.append(url)
-        self._log(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
+        if self._urls:
+            self._log(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
+        else:
+            self._log('No url has been gathered', 'warning')
         if save_result:
             self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=owned_assets_only)
         return assets_to_scrap
@@ -1107,11 +1110,14 @@ class UEAssetScraper:
             self.load_from_files = False
             self.save_parsed_to_files = True
             start_time = time.time()
-            result_count = 0
             if not self._urls:
                 result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
-            if result_count == -1:
-                return False
+                if result_count == -1:
+                    self._log(f'An error has occured when retriving the urls list for assets to scrap.', 'error')
+                    return False
+                if result_count == 0:
+                    self._log(f'No result has been returned when retriving the urls list for assets to scrap.', 'warning')
+                    return False
             # test the first url to see if the data is available
             tries = 0
             max_tries = 3

@@ -100,9 +100,7 @@ class FilterFrame(ttk.LabelFrame):
 
     # noinspection DuplicatedCode
     def _create_widgets(self, _args=None) -> None:
-        """
-        Create filter widgets inside the FilterFrame instance.
-        """
+        """ Create filter widgets inside the FilterFrame instance. """
         max_col = 7
         # new row
         cur_row = 0
@@ -165,9 +163,7 @@ class FilterFrame(ttk.LabelFrame):
             self.update_controls()
 
     def _load_filter(self) -> None:
-        """
-        Get the loaded filter from a file (Wrapper)
-        """
+        """ Get the loaded filter from a file (Wrapper) """
         filter_value: FilterValue = self.load_filter_func()
         if filter_value:
             self.cb_quick_filter.set('')
@@ -178,9 +174,7 @@ class FilterFrame(ttk.LabelFrame):
             self.update_func(reset_page=True, )  # will call self.create_mask() and self.get_query()
 
     def _save_filter(self) -> None:
-        """
-        Set the loaded filter to a file (Wrapper)
-        """
+        """ Set the loaded filter to a file (Wrapper) """
         if self._loaded_filter and not self._loaded_filter.name == 'simple_search':
             self.create_filter()  # needed to update the self._loaded_filter. If it's a "simple_search", it has already been created
         self.save_filter_func(self._loaded_filter)
@@ -198,10 +192,18 @@ class FilterFrame(ttk.LabelFrame):
         self._var_entry_query.set(forced_value)
         self.cb_quick_filter.set('')
 
+    def set_query_string(self, query_string: str) -> None:
+        """
+        Set the query string entry.
+        :param query_string: query string to set.
+        """
+        self._old_entry_query = self._var_entry_query.get()
+        self._var_entry_query.set(query_string)
+        if self.query_has_changed:
+            self.update_controls()
+
     def simple_search(self) -> None:
-        """
-        Apply a simple search on the data.
-        """
+        """ Apply a simple search on the data. """
         query_string = self._var_entry_query.get()
         if query_string:
             self.set_filter(
@@ -223,12 +225,12 @@ class FilterFrame(ttk.LabelFrame):
         value = filter_value.value if filter_value else ''
         # check if the filter_value is a callable and fix its ftype if not
         if ftype == FilterType.CALLABLE or ftype == FilterType.STR:
-            func_name, func_params = gui_f.parse_callable(value)
+            func_name, func_params = gui_f.parse_callable(value or query_string)
             method = self.callable.get_method(func_name)
             if method is None:
-                filter_value.ftype = FilterType.STR
+                ftype = FilterType.STR
             else:
-                filter_value.ftype = FilterType.CALLABLE
+                ftype = FilterType.CALLABLE
 
         if isinstance(value, list):
             # try to convert the query_string to a list to compare with the value
@@ -243,9 +245,7 @@ class FilterFrame(ttk.LabelFrame):
         self.set_filter(filter_value)
 
     def update_controls(self) -> None:
-        """
-        Update the state of the controls based on the current state of the filters.
-        """
+        """ Update the state of the controls based on the current state of the filters. """
         # Note:
         # No need to use the global widgets list here beceause this frame is meant to be "standalone" and its widgets are not used elsewhere.
 
@@ -270,9 +270,7 @@ class FilterFrame(ttk.LabelFrame):
         return self._old_entry_query != self._var_entry_query.get()
 
     def apply_filters(self) -> None:
-        """
-        Applie the filters and updates the caller.
-        """
+        """ Apply the filters and updates the caller. """
         quick_filter = self.get_quick_filter(only_return_filter=True)
         if quick_filter:
             self.set_filter(quick_filter)
@@ -283,9 +281,7 @@ class FilterFrame(ttk.LabelFrame):
         self.update_func(reset_page=True)  # will call self.create_mask() and self.get_query()
 
     def clear_filter(self) -> None:
-        """
-        Reset all filter conditions and update the caller.
-        """
+        """ Reset all filter conditions and update the caller. """
         self.cb_quick_filter.set('')
         self._var_entry_query.set('')
         self._loaded_filter = None
@@ -331,11 +327,12 @@ class FilterFrame(ttk.LabelFrame):
             self.update_func(reset_page=True)
             self.update_controls()
 
-    def get_filtered_df(self) -> Optional[pd.DataFrame]:
+    def get_filtered_df(self) -> (Optional[pd.DataFrame], str):
         """
         Get the filtered dataframe.
-        :return: the filtered data or None if no filter is defined.
+        :return: (the filtered data or None if no filter is defined, an error message).
         """
+        error_message = ''
         if self.loaded_filter:
             try:
                 ftype: FilterType = self.loaded_filter.ftype
@@ -359,9 +356,10 @@ class FilterFrame(ttk.LabelFrame):
                     query = filter_value
                 if query:
                     df_filtrered = self.df.query(query)
-                    return df_filtrered
+                    return df_filtrered, error_message
             except (AttributeError, UndefinedVariableError) as error:
                 if self.logger:
-                    self.logger.error(f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...')
+                    error_message = f'An Error occured when applying filter. {error!r}.\nFilter has been cleared...'
+                    self.logger.error(error_message)
                 self.clear_filter()
-                return None
+        return None, error_message

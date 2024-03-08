@@ -766,7 +766,7 @@ class UEVMLFS:
         latest_id = ''
         for asset_id, installed_asset in installed_assets.items():
             all_installed_folders[asset_id] = installed_asset['installed_folders']
-        release_info = gui_fn.get_and_check_release_info(release_info)
+        release_info = gui_fn.get_and_check_release_info(release_info, empty_values=gui_g.s.cell_is_nan_list)
         if release_info is None:
             return [], ''
         else:

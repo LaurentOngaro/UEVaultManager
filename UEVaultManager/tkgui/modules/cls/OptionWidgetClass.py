@@ -43,17 +43,17 @@ class OptionWidget:
         self._container = container
         self._widget_label: Optional[tk.Label] = None
         self._trace_name: str = ''
-        self.name = name
-        self.vtype = vtype
-        self.label = label
-        self.is_cli = is_cli
+        self.name: str = name
+        self.vtype: str = vtype
+        self.label: str = label
+        self.is_cli: bool = is_cli
         self.widget: Optional[tk.Widget] = None
         self._var = None
-        self.cur_row = cur_row
-        self.cur_col = cur_col
-        self.colspan = colspan
-        self.grid_options = grid_options
-        self.callback = callback
+        self.cur_row: int = cur_row
+        self.cur_col: int = cur_col
+        self.colspan: int = colspan
+        self.grid_options: dict = grid_options
+        self.callback: callable = callback
 
     def setup(self):
         """ Set up the widget. """

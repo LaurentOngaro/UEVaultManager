@@ -28,6 +28,7 @@ class GUISettings:
     data_filetypes_png = (('PNG image', '*.png'), )
     data_filetypes_all = (('all files', '*.*'), )
     data_filetypes_text = (('text file', '*.txt'), )
+    data_filetypes_html = (('html file', '*.html'), )
     data_filetypes_json = (('json file', '*.json'), )
     data_filetypes_db = (('SQlite file', '*.db'), )
     data_filetypes_csv = (('csv file', '*.csv'), ('tcsv file', '*.tcsv'))
@@ -55,7 +56,6 @@ class GUISettings:
         self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
         self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
         self.filters_folder: str = path_join(self.path, 'filters')
-
         self.backups_folder: str = path_join(self.path, 'backups')
         self.backup_file_ext: str = '.BAK'
         self.default_filename: str = 'assets'
@@ -112,7 +112,7 @@ class GUISettings:
         self.default_global_search: str = 'Text to search...'
         self.default_value_for_all: str = 'All'
         self.keyword_query_string = 'QUERY'  # use this keyword in a CALLABLE filter to replace the value by the in the search field
-        self.cell_is_nan_list = ['NA', 'None', 'nan', 'NaN']  # keep 'NA' value at first position
+        self.cell_is_nan_list = ['NA', 'None', 'nan', 'NaN', 'NULL', 'null', 'Null']  # keep 'NA' value at first position
         self.cell_is_empty_list = self.cell_is_nan_list + ['False', '0', '0.0', '']
         self.empty_cell: str = ''
         self.empty_row_prefix: str = 'new_id_'
@@ -122,6 +122,7 @@ class GUISettings:
         self.tag_prefix: str = 't_'
         self.expand_columns_factor: int = 20
         self.contract_columns_factor: int = 20
+        self.warning_limit_for_batch_op: int = 20
         self.engine_version_for_obsolete_assets: str = '4.26'  # fallback value when cli.core.engine_version_for_obsolete_assets is not available without import
         # The list off all the possible value for the field 'category'. It should be updated if necessary
         self.missing_category = 'Incomplete Asset'
@@ -130,6 +131,8 @@ class GUISettings:
             'Materials', 'Megascans', 'Music', 'Props', 'Sound Effects', 'Textures', 'UE Feature Samples', 'UE Game Samples', 'UE Legacy Samples',
             'UE Online Learning', 'Visual Effects', 'Weapons', 'local/Asset', 'local/Manifest', 'local/Plugin', self.missing_category
         ]
+        self.notification_time = 10000  # time in ms to keep notification window on screen
+
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
         # dark themes: "darkly", "superhero", "solar", "cyborg", "vapor"

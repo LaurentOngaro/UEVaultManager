@@ -21,6 +21,7 @@ from termcolor import colored
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.types import DateFormat
 from UEVaultManager.tkgui.modules import globals as gui_g
+from UEVaultManager.tkgui.modules.cls.NotificationWindowClass import NotificationWindow
 from UEVaultManager.tkgui.modules.cls.ProgressWindowClass import ProgressWindow
 
 
@@ -35,29 +36,33 @@ def log_format_message(name: str, levelname: str, message: str) -> str:
     return f'[{name}] {levelname}: {message}'
 
 
-def box_message(msg: str, level='info', show_dialog: bool = True):
+def box_message(msg: str, level='info', show_dialog: bool = True, duration: int = -1):
     """
     Display a message box with the given message.
     :param msg: message to display.
     :param show_dialog: True to display the message in a messagebox, False to only print it on the console.
+    :param duration: duration of the notification in seconds. If -1, it will use the default value set in the settings.
     :param level: level of the message (info, warning, error).
     """
     level_lower = level.lower()
     if level_lower == 'warning':
         log_warning(msg)
-    elif level_lower == 'error':
+    elif level_lower == 'error' or level_lower == 'critical':
         log_error(msg)
         # done in log_error
         # exit(1)
     else:
         log_info(msg)
     if show_dialog:
-        if level_lower == 'warning':
-            messagebox.showwarning(title=gui_g.s.app_title, message=msg)
+        notification_title = ''
+        if level_lower == 'debug':
+            notification_title = 'Debug message' if gui_g.s.debug_mode else ''
+        elif level_lower == 'warning':
+            notification_title = 'Warning message'
         elif level_lower == 'error':
-            messagebox.showerror(title=gui_g.s.app_title, message=msg)
-        else:
-            messagebox.showinfo(title=gui_g.s.app_title, message=msg)
+            notification_title = 'Error message'
+        if notification_title:
+            notify(title=notification_title, message=msg, duration=duration)
 
 
 def box_yesno(msg: str, show_dialog: bool = True, default: bool = True) -> bool:
@@ -154,7 +159,7 @@ def log_warning(msg: str) -> None:
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.info(msg)
     else:
-        print_msg = log_format_message(gui_g.s.app_title, 'Warning', colored(msg, 'orange'))
+        print_msg = log_format_message(gui_g.s.app_title, 'Warning', colored(msg, 'magenta'))
         print(print_msg)
 
 
@@ -170,7 +175,7 @@ def log_error(msg: str) -> None:
     if gui_g.UEVM_log_ref is not None:
         gui_g.UEVM_log_ref.error(msg)
     else:
-        print_msg = log_format_message(gui_g.s.app_title, 'Error', colored(msg, 'red', 'bold'))
+        print_msg = log_format_message(gui_g.s.app_title, 'Error', msg)
         print(print_msg)
         exit_and_clean_windows()
 
@@ -634,12 +639,68 @@ def save_image_to_png(image: tk.PhotoImage, filename: str) -> bool:
         filename = os.path.normpath(filename)
         filename = os.path.splitext(filename)[0] + '.png'
         img_pil = ImageTk.getimage(image)
+        size = img_pil.size  # get the size of the image
         if img_pil.mode in ('RGBA', 'LA'):
-            background = Image.new(img_pil.mode[:-1], img_pil.size, '#000')
+            background = Image.new(img_pil.mode[:-1], size, '#000')
+            # noinspection PyTypeChecker
             background.paste(img_pil, img_pil.split()[-1])
             img_pil = background
         img_pil.save(filename, format='PNG', subsampling=0, quality=100)
         img_pil.close()
         return True
     except (Exception, ):
+        return False
+
+
+def notify(message: str = '', title: str = '', duration: int = -1) -> Optional[NotificationWindow]:
+    """
+    Display a notification message.
+    :param message: message to display.
+    :param title: title of the notification.
+    :param duration: duration of the notification in seconds. If -1, it will use the default value set in the settings.
+    """
+    if not message:
+        return None
+    if duration == -1:
+        duration = gui_g.s.notification_time
+    nw = NotificationWindow(title=title or gui_g.s.app_title, message=message, duration=duration)
+    nw.show()
+    return nw
+
+
+def close_notify():
+    """
+    Close the notiification Widows
+    """
+    if gui_g.WindowsRef:
+        gui_g.WindowsRef.notification.close()
+
+
+def copy_widget_value_to_clipboard(container, event) -> bool:
+    """
+    Copy the value of a widget to the clipboard.
+    :param container: container of the widget.
+    :param event: event that triggered the function.
+    :return: True if the value was copied, False otherwise.
+    """
+    try:
+        widget = event.widget
+        if widget.widgetName != 'ttk::frame':
+            # get the widget content depending on the widget type
+            if widget.widgetName in ['ttk::combobox', 'ttk::spinbox', 'ttk::entry']:
+                value = widget.get()
+            elif widget.widgetName == 'ttk::checkbutton':
+                value = widget.switch_state(event=event)
+            elif widget.widgetName == 'tk.text':
+                value = widget.get('1.0', tk.END)
+            elif 'HTMLScrolledText' in str(type(widget)):  # HTMLScrolledText
+                value = widget.get('1.0', tk.END)
+            else:  # any ExtendedWidget
+                value = widget.get_content()
+            # copy the value in clipboard
+            container.clipboard_clear()
+            container.clipboard_append(value)
+            notify(f'Widget content has been copied into clipboard', duration=3000)
+            return True
+    except AttributeError:
         return False

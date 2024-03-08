@@ -228,7 +228,7 @@ csv_sql_fields = {
     },
     'Long description': {
         'sql_name': 'long_description',
-        'state': CSVFieldState.ASSET_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.TEXT
     },
     'Tags': {

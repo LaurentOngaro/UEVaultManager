@@ -50,14 +50,14 @@ class FilterCallable:
         filters = {
             'In current Group': [FilterType.CALLABLE, 'filter_rows_in_current_group'],  #
             'In a Group': [FilterType.STR, f'`{gui_g.s.group_col_name}` != ""'],  #
-            'Owned': [FilterType.STR, 'Owned == True'],  #
-            'Not Owned': [FilterType.STR, 'Owned == False'],  #
-            'Obsolete': [FilterType.STR, 'Obsolete == True'],  #
-            'Not Obsolete': [FilterType.STR, 'Obsolete == False'],  #
-            'Must buy': [FilterType.STR, '`Must buy` == True'],  #
-            'Added manually': [FilterType.STR, '`Added manually` == True'],  #
+            'Owned': [FilterType.STR, 'Owned'],  #
+            'Not Owned': [FilterType.STR, 'not Owned'],  #
+            'Obsolete': [FilterType.STR, 'Obsolete'],  #
+            'Not Obsolete': [FilterType.STR, 'not Obsolete'],  #
+            'Must buy': [FilterType.STR, '`Must buy`'],  #
+            'Added manually': [FilterType.STR, '`Added manually`'],  #
             'Plugins only': [FilterType.CALLABLE, f'search##Category##Plugin'],  #
-            'Free': [FilterType.STR, 'Price == 0 or Free == True'],  #
+            'Free': [FilterType.STR, 'Price == 0 or Free'],  #
             'Free and not owned': [FilterType.CALLABLE, "free_and_not_owned"],  #
             'Not Marketplace': [FilterType.STR, 'Origin != "Marketplace"'],
             'Downloaded': [FilterType.STR, '`Downloaded size` != ""'],  #
@@ -121,7 +121,9 @@ class FilterCallable:
         # Ensure 'Discount price' and 'Price' are float type
         self.df['Discount price'] = self.df['Discount price'].astype(float)
         self.df['Price'] = self.df['Price'].astype(float)
-        mask = self.df['Owned'].ne(True) & (self.df['Free'].eq(True) | self.df['Discount price'].le(0.5) | self.df['Price'].le(0.5))
+        mask = self.df['Owned'].ne(True) & self.df['Added manually'].ne(True) & (
+            self.df['Free'].eq(True) | self.df['Discount price'].le(0.5) | self.df['Price'].le(0.5)
+        )
         try:
             # next line could produce an error: {TypeError}bad operand type for unary ~: 'NoneType'
             other_mask = ~self.df['Custom attributes'].str.contains('external_link', case=False)

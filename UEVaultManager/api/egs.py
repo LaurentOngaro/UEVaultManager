@@ -27,7 +27,7 @@ def is_asset_obsolete(supported_versions='', engine_version_for_obsolete_assets=
     if not engine_version_for_obsolete_assets or not supported_versions:
         obsolete = False
     else:
-        supported_versions_list = supported_versions.lower().replace('ue_', '')
+        supported_versions_list = supported_versions.lower().replace('ue_', '').replace('ea', '')
         supported_versions_list = create_list_from_string(supported_versions_list)
         obsolete = True
         for _, version in enumerate(supported_versions_list):
@@ -265,10 +265,10 @@ class EPCAPI:
             url = f'https://{self._url_owned_assets}'
         else:
             url = f'https://{self._url_asset_list}'
-        r = self.session.get(url, timeout=self.timeout)
-        r.raise_for_status()
-        json_content = r.json()
         try:
+            r = self.session.get(url, timeout=self.timeout)
+            r.raise_for_status()
+            json_content = r.json()
             assets_count = json_content['data']['paging']['total']
         except Exception as error:
             self.logger.warning(f'Can not get the asset count from {url}:{error!r}')

@@ -98,7 +98,7 @@ class UEVMGui(tk.Tk):
     is_fake = False
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
-    _errors: [Exception] = []
+    _errors: [str] = []
 
     def __init__(
         self, title: str = 'UVMEGUI', icon='', screen_index: int = 0, data_source_type: DataSourceType = DataSourceType.FILE, data_source=None,
@@ -133,7 +133,7 @@ class UEVMGui(tk.Tk):
             x_pos, y_pos = gui_fn.get_center_screen_positions(screen_index, width, height)
         self.geometry(f'{width}x{height}+{x_pos}+{y_pos}')
         gui_fn.set_icon_and_minmax(self, icon)
-        self.screen_index = screen_index
+        self.screen_index: int = screen_index
         self.resizable(True, True)
         pack_def_options = {'ipadx': 5, 'ipady': 5, 'padx': 3, 'pady': 3}
 
@@ -182,8 +182,12 @@ class UEVMGui(tk.Tk):
         self.editable_table = data_table
 
         data_table.set_preferences(gui_g.s.datatable_default_pref)
-        data_table.show()
-
+        try:
+            data_table.show()
+        except (Exception, ) as error:
+            nw = gui_f.notify(f'An unrecoverable error has occured when showing the datatable: {error!r}', duration=0)
+            gui_f.make_modal(nw)
+            gui_f.exit_and_clean_windows()
         frm_toolbar = UEVMGuiToolbarFrame(self, data_table)
         self._frm_toolbar = frm_toolbar
         frm_control = UEVMGuiControlFrame(self, data_table)
@@ -212,6 +216,7 @@ class UEVMGui(tk.Tk):
         data_table.showIndex = True
 
         self.bind('<Button-1>', self.on_left_click)
+        self.bind('<Button-3>', self.on_right_click)
         self.protocol('WM_DELETE_WINDOW', self.on_close)
         gui_g.WindowsRef.uevm_gui = self
 
@@ -264,8 +269,9 @@ class UEVMGui(tk.Tk):
                     self._frm_filter.update_controls()
                     data_table.update(update_format=True)
                 except (Exception, ) as error:
-                    self.add_error(error)
-                    self.logger.error(f'Error loading filters: {error!r}')
+                    message = f'Error loading filters: {error!r}'
+                    self.add_error(message)
+                    self.logger.error(message)
         else:
             gui_f.show_progress(self, text='Initializing Data Table...')
             data_table.update(update_format=True)
@@ -291,9 +297,11 @@ class UEVMGui(tk.Tk):
         # if child_windows:
         #     self._wait_for_window(child_windows)
         self.logger.info(f'ending mainloop in {__name__}')
-        self.logger.info('\nList of errors that occured during this session:\n')
-        for error in self._errors:
-            self.logger.info(error)
+        self.logger.info('\nList of error messages that occured during this session:\n')
+        for error_msg in self._errors:
+            self.logger.info(error_msg)
+        for error_msg in self.editable_table.get_errors():
+            self.logger.info(error_msg)
 
     def update_progress_windows(self):
         """
@@ -357,11 +365,11 @@ class UEVMGui(tk.Tk):
             self.logger.warning(f'Could not find a widget with tag {tag}')
             return None, None
         value = widget.get_content()
-        # not sure the next code is useful
-        # col, row = widget.col, widget.row
-        # if col is None or row is None or col < 0 or row < 0:
-        #     self.logger.debug(f'invalid values for row={row} and col={col}')
-        #     return None, widget
+        # check the row to return None if the row is invalid, but not when the row is 0
+        col, row = widget.col, widget.row
+        if col is None or row is None or col < 0 or row < 0:
+            self.logger.debug(f'invalid values for row={row} and col={col}')
+            return None, widget
         return value, widget
 
     def _wait_for_window(self, window: tk.Toplevel) -> None:
@@ -384,7 +392,7 @@ class UEVMGui(tk.Tk):
                 self.update_idletasks()
         except tk.TclError as error:
             # the window has been closed so an error is raised
-            self.add_error(error)
+            self.add_error(error.__repr__())
 
     def _update_installed_folders_cell(self, row_index: int, installed_folders: str = None) -> None:
         """
@@ -433,6 +441,8 @@ class UEVMGui(tk.Tk):
             self.editable_table.create_edit_row_window(event)
         elif control_pressed and (event.keysym == '3' or event.keysym == 'quotedbl'):
             self.scrap_asset()
+        elif control_pressed and (event.keysym == '4' or event.keysym == 'apostrophe'):
+            self.open_asset_url()
         return 'break'
 
         # return 'break'  # stop event propagation
@@ -500,6 +510,13 @@ class UEVMGui(tk.Tk):
             pass
         self.update_controls_state()
 
+    def on_right_click(self, event=None) -> None:
+        """
+        When the right mouse button is clicked, show the selected row in the quick edit frame.
+        :param event: event that triggered the call.
+        """
+        gui_f.copy_widget_value_to_clipboard(self, event)
+
     def on_entry_current_item_changed(self, _event=None) -> None:
         """
         When the item (i.e. row or page) number changes, show the corresponding item.
@@ -509,8 +526,9 @@ class UEVMGui(tk.Tk):
         try:
             item_num = int(item_num)
         except (ValueError, UnboundLocalError) as error:
-            self.add_error(error)
-            self.logger.error(f'could not convert item number {item_num} to int. {error!r}')
+            message = f'could not convert item number {item_num} to int. {error!r}'
+            self.add_error(message)
+            self.logger.error(message)
             return
 
         data_table = self.editable_table  # shortcut
@@ -530,7 +548,7 @@ class UEVMGui(tk.Tk):
         :param tag: tag of the widget that triggered the event.
         """
         value, widget = self._check_and_get_widget_value(tag)
-        if widget and widget.row and widget.col:
+        if widget and widget.row is not None and widget.col is not None:  # 0 is a valid value for row and col
             self.editable_table.save_quick_edit_cell(row_number=widget.row, col_index=widget.col, value=value, tag=tag)
 
     # noinspection PyUnusedLocal
@@ -611,12 +629,14 @@ class UEVMGui(tk.Tk):
         if force_quit:
             gui_f.exit_and_clean_windows(0)
 
-    def add_error(self, error: Exception) -> None:
+    def add_error(self, message: str = '') -> None:
         """
-        Add an error to the list of errors.
-        :param error: error to add.
+        Add an error message to the list of errors.
+        :param message: message to add.
         """
-        self._errors.append(error)
+        if not message:
+            return
+        gui_fn.append_no_duplicate(self._errors, message, ok_if_exists=True)
 
     def save_settings(self) -> None:
         """
@@ -859,7 +879,7 @@ class UEVMGui(tk.Tk):
                             break
                 except (Exception, ) as error:
                     msg = f'The following error occured when reading the "minimal_fuzzy_score_by_name" value in config file.\nCheck the value and fix it.\n{error!r}'
-                    self.add_error(Exception(msg))
+                    self.add_error(msg)
                     minimal_score = 80
 
                 if fuzz_score >= minimal_score:
@@ -910,13 +930,16 @@ class UEVMGui(tk.Tk):
         Notes:
             This function must be called FROM this class to use the right logger. It can't be replaced by a call to gui_f.box_message
         """
+        if not message:
+            return
         level_lower = level.lower()
-
         if self._silent_mode:
             if level_lower == 'warning':
                 self.logger.warning(message)
+                self.add_error(message)
             elif level_lower == 'error':
                 self.logger.error(message)
+                self.add_error(message)
             else:
                 self.logger.info(message)
         else:
@@ -1048,9 +1071,9 @@ class UEVMGui(tk.Tk):
                     if marketplace_url:
                         try:
                             grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(marketplace_url) else GrabResult.NO_RESPONSE.name
-                        except (Exception, ) as error:  # trap all exceptions on connection
-                            self.add_error(error)
-                            self.silent_message(
+                        except (Exception, ):  # trap all exceptions on connection
+                            # it's a final message, so no silent here
+                            gui_f.box_message(
                                 f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                                 level='warning'
                             )
@@ -1134,8 +1157,7 @@ class UEVMGui(tk.Tk):
                                         grab_result = GrabResult.NO_ERROR.name if self.core.egs.is_valid_url(
                                             marketplace_url
                                         ) else GrabResult.TIMEOUT.name
-                                    except (Exception, ) as error:  # trap all exceptions on connection
-                                        self.add_error(error)
+                                    except (Exception, ):  # trap all exceptions on connection
                                         self.silent_message(
                                             f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
                                             level='warning'
@@ -1152,7 +1174,7 @@ class UEVMGui(tk.Tk):
                                 }
                                 if grab_result != GrabResult.NO_ERROR.name or not marketplace_url:
                                     invalid_folders.append(full_folder)
-                                    msg = f'-->{folder_name} not recognized as a valid marketplace asset folder'
+                                    msg = f'-->"{folder_name}" had a timeout when accessing to its marketplace url.' if grab_result == GrabResult.TIMEOUT.name else f'-->"{folder_name}" is not recognized as a valid marketplace asset folder.'
                                     if self.core.scan_assets_logger:
                                         self.core.scan_assets_logger.warning(msg)
                                 else:
@@ -1168,8 +1190,9 @@ class UEVMGui(tk.Tk):
                         elif entry.is_dir() and entry_is_valid:
                             folder_to_scan.append(entry.path)
                 except FileNotFoundError as error:
-                    self.add_error(error)
-                    self.logger.debug(f'{full_folder} has been removed during the scan')
+                    message = f'Error during the scan of {full_folder}:{error!r}'
+                    self.add_error(message)
+                    self.logger.debug(message)
 
             # sort the list to have the parent folder POPED (by the end) before the subfolders
             folder_to_scan = sorted(folder_to_scan, key=lambda x: len(x), reverse=True)
@@ -1225,8 +1248,9 @@ class UEVMGui(tk.Tk):
                     text = f'Updating row index {row_index}.\nExisting Asset_id is {existing_data_in_row["asset_id"]}'
                     self.logger.info(f"{text} with path {folder_data['path']}")
             except (IndexError, ValueError) as error:
-                self.add_error(error)
-                self.logger.warning(f'Error when checking the existence for {folder_name} at {folder_data["path"]}: error {error!r}')
+                message = f'Error when checking the existence for {folder_name} at {folder_data["path"]}: error {error!r}'
+                self.add_error(message)
+                self.logger.warning(message)
                 invalid_folders.append(folder_data['path'])
                 text = f'An Error occured when cheking {folder_name}'
                 pw.set_text(text)
@@ -1274,8 +1298,7 @@ class UEVMGui(tk.Tk):
                     forced_data['grab_result'] = scraped_data.get(
                         'grab_result', GrabResult.INCONSISTANT_DATA.name
                     ) if scraped_data else GrabResult.CONTENT_NOT_FOUND.name
-                except ReadTimeout as error:
-                    self.add_error(error)
+                except ReadTimeout:
                     self.silent_message(
                         f'Request timeout when accessing {marketplace_url}\n.Check you internet connection or try again later.', level='warning'
                     )
@@ -1283,7 +1306,7 @@ class UEVMGui(tk.Tk):
 
             if forced_data['grab_result'] != GrabResult.NO_ERROR.name:
                 # replace the temp_id prefix for the row to be saved in databse
-                if not forced_data.get('asset_id','') or forced_data.get('asset_id','').startswith(gui_g.s.temp_id_prefix):
+                if not forced_data.get('asset_id', '') or forced_data.get('asset_id', '').startswith(gui_g.s.temp_id_prefix):
                     uid = gui_g.s.empty_row_prefix + gui_fn.create_uid()
                     forced_data['asset_id'] = uid
                 forced_data['id'] = forced_data['asset_id']  # in case of a missing id value
@@ -1811,14 +1834,16 @@ class UEVMGui(tk.Tk):
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
             categories = list(df['Category'].cat.categories)
         except (AttributeError, TypeError, KeyError) as error:
-            self.add_error(error)
+            message = f'Error when geting the categories from the data: {error!r}'
+            self.add_error(message)
             categories = []
         categories.insert(0, gui_g.s.default_value_for_all)
         try:
             # if the file is empty or absent or invalid when creating the class, the data is empty, so no categories
             grab_results = list(df['Grab result'].cat.categories)
         except (AttributeError, TypeError, KeyError) as error:
-            self.add_error(error)
+            message = f'Error when geting the Grab result from the data: {error!r}'
+            self.add_error(message)
             grab_results = []
         grab_results.insert(0, gui_g.s.default_value_for_all)
         return {'categories': categories, 'grab_results': grab_results}
@@ -1861,7 +1886,7 @@ class UEVMGui(tk.Tk):
                 _add_text('Not downloaded yet')
             _add_text(f'Row Index: {idx}')
         else:
-            _add_text('Place the cursor on a row for detail', 'orange')
+            _add_text('Place the cursor on a row for details', 'orange')
         _add_text(f'Total rows: {row_count}')
         if row_count_filtered != row_count:
             _add_text(f'Filtered rows: {row_count_filtered} ')
@@ -1905,7 +1930,9 @@ class UEVMGui(tk.Tk):
             if gui_g.s.check_asset_folders:
                 self.clean_asset_folders()
             gui_f.show_progress(self, text=f'Rebuilding Asset data...')
-            if data_table.rebuild_data(self.core.uevmlfs.asset_sizes):
+            result = data_table.rebuild_data(self.core.uevmlfs.asset_sizes)
+            gui_f.close_progress(self)
+            if result:
                 self._update_after_reload()
                 gui_f.box_message(f'Data rebuilt from {data_table.data_source}')
             else:
@@ -1968,7 +1995,7 @@ class UEVMGui(tk.Tk):
         if subparser:
             display_name += ' - ' + gui_g.UEVM_cli_args['subparser']
         display_window = DisplayContentWindow(title=f'UEVM: {display_name} display result')
-        gui_g.WindowsRef.display_content = display_window
+        gui_g.WindowsRef.display_content = display_window  # to avoid inspection warning bellow
         display_window.display(f'Running command {command_name}...Please wait')
         function_to_call = getattr(gui_g.UEVM_cli_ref, command_name)
         function_to_call(gui_g.UEVM_cli_args)
@@ -1982,9 +2009,7 @@ class UEVMGui(tk.Tk):
         """
         Open the asset URL (Wrapper).
         """
-        url, widget = self._check_and_get_widget_value(tag='Url')
-        if url:
-            self.editable_table.open_asset_url(url=url)
+        self.editable_table.open_asset_url()
 
     def open_asset_folder(self) -> None:
         """
@@ -1996,9 +2021,7 @@ class UEVMGui(tk.Tk):
         """
         Open the source file (Wrapper).
         """
-        asset_id, widget = self._check_and_get_widget_value(tag='Asset_id')
-        if asset_id:
-            self.editable_table.open_json_file(asset_id)
+        self.editable_table.open_json_file()
 
     def run_install(self):
         """
@@ -2054,7 +2077,7 @@ class UEVMGui(tk.Tk):
         """
         Display the releases of the asset in a choice window.
         """
-        release_info = gui_fn.get_and_check_release_info(self.editable_table.get_release_info())
+        release_info = gui_fn.get_and_check_release_info(self.editable_table.get_release_info(), empty_values=gui_g.s.cell_is_nan_list)
         if release_info is None:
             self.logger.warning(f'Invalid release info: {release_info}')
 
@@ -2074,6 +2097,7 @@ class UEVMGui(tk.Tk):
             show_content_list=True,
             remove_from_content_func=self.remove_installed_folder,
             show_delete_content_button=True,
+            show_browse_button=True,
             no_content_text='This release has not been installed yet',
         )
         gui_f.make_modal(cw)

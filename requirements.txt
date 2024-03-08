@@ -5,11 +5,11 @@
 # -e .
 
 # manual version of requirements for pycharm
-Pillow~=10.0
+Pillow>=10.0.2
 beautifulsoup4~=4.11
 future~=0.18
-pandastable~=0.13
-pandas~=2.0
+pandastable
+pandas>=2.0
 pywebview~=4.3
 requests~=2.0
 screeninfo~=0.8
@@ -18,7 +18,5 @@ termcolor~=2.3
 ttkbootstrap~=1.10
 packaging~=23.0
 Faker~=19.3.1
-rapidfuzz~=2.15  # do not install 3.x version. because build exe will fails
-Jinja2~=3.1
-python-dateutil ~= 2.8
-sphinx_rtd_theme
+rapidfuzz~=2.15  # do not install 3.x version. because build exe will fail
+tkhtmlview>=0.2.0

@@ -1004,7 +1004,7 @@ class UEVaultManagerCLI:
                 quit_on_error=not uewm_gui_exists
             )
             return False
-        categories = asset.metadata.get('categories', None)
+        categories = asset.metadata.get('categories', [])
         category = categories[0]['path'] if categories else ''
         release_info = asset.metadata.get('releaseInfo', None)
         catalog_item_id = asset.catalog_item_id
@@ -1341,7 +1341,7 @@ class UEVaultManagerCLI:
         Run a test command using a CLI prompt. Just for developpers.
         """
         print('UEVaultManager RUN TEST')
-        print('"opening a manifest file from disk...')
+        print('opening a manifest file from disk...')
         # read manifest_data from file
         file_path = "G:/Assets/pour UE/02 Warez/Environments/Elite_Landscapes_Desert_III/EliteLane90e1a8f98bbV1/manifest"
         json_print_key_val(self.core.open_manifest_file(file_path))
