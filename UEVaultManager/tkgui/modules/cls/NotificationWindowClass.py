@@ -76,7 +76,7 @@ class NotificationWindow(tk.Toplevel):
         self.sub_title: str = sub_title or gui_g.s.app_title
         self.display_icon: str = display_icon
         if duration == 0:
-            message += '\nCLIC ON THIS WINSOWS TO CLOSE IT.'
+            message += '\nCLIC ON THIS WINDOW TO CLOSE IT.'
         self.message: str = message
         self.duration: int = duration
         self.alert: bool = alert

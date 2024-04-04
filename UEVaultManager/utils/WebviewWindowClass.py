@@ -162,11 +162,12 @@ class WebviewWindow:
             self.window.load_url(logout_url)
 
 
-def do_webview_login(callback_sid=None, callback_code=None) -> None:
+def do_webview_login(callback_sid=None, callback_code=None, user_agent=None) -> None:
     """
     Open a webview window to log in to Epic Games.
     :param callback_sid: callback function to handle the SID login.
     :param callback_code: callback function to handle the exchange code.
+    :param user_agent: user agent to use.
     """
     api = WebviewWindow(callback_sid=callback_sid, callback_code=callback_code)
     url = login_url
@@ -180,12 +181,14 @@ def do_webview_login(callback_sid=None, callback_code=None) -> None:
 
     logger.info('Opening Epic Games login window...')
     # Open logout URL first to remove existing cookies, then redirect to log in.
-    window = webview.create_window(f'UEVaultManager {UEVM_version} - Epic Games Account Login', url=url, width=768, height=1024, js_api=api)
+    window = webview.create_window(
+        f'UEVaultManager {UEVM_version} - Epic Games Account Login', url=url, width=768, height=1024, js_api=api, on_top=True
+    )
     api.window = window
     window.events.loaded += api.on_loaded
 
     try:
-        webview.start()
+        webview.start(user_agent=user_agent)
     except Exception as we:
         logger.error(
             f'Running webview failed with {we!r}. If this error persists try the manual '

@@ -457,7 +457,7 @@ class EPCAPI:
             response.raise_for_status()
             self.logger.info(f'Grabbing asset data from {url}')
         except requests.exceptions.RequestException as error:
-            self.logger.warning(f'Can not get asset data for {url}:{error!r}')
+            self.logger.warning(f'Can not get asset data for {url}: {error!r}')
             json_data['grab_result'] = GrabResult.PAGE_NOT_FOUND.name
             return json_data
 

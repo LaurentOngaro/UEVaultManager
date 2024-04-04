@@ -282,7 +282,7 @@ class UEVaultManagerCLI:
 
         exchange_token = ''
         auth_code = ''
-        if not args.auth_code and not args.session_id:
+        if not args.auth_code and not args.session_id and not args.ex_token:
             # only import here since pywebview import is slow
             from UEVaultManager.utils.WebviewWindowClass import webview_available, do_webview_login
 
@@ -300,7 +300,10 @@ class UEVaultManagerCLI:
                 else:
                     auth_code = auth_code.strip('"')
             else:
-                if do_webview_login(callback_code=self.core.auth_ex_token):
+
+                user_agent=f'EpicGamesLauncher/{self.core.get_egl_version()}'
+                #user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+                if do_webview_login(callback_code=self.core.auth_ex_token, user_agent=user_agent):
                     self._log_and_gui_display(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}" via WebView')
                 else:
                     message = 'WebView login attempt failed, please see log for details.'
@@ -841,8 +844,18 @@ class UEVaultManagerCLI:
         # set output file name from the input one. Used by the "rebuild" button (or rebuild_data method)
         init_gui_args(args, additional_args={'output': data_source})
         if not self.core.login(raise_error=False):
-            message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nSome functionalities could be disabled and data could be wrong.'
-            self._log_and_gui_message(message, level='warning')
+            # message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nSome functionalities could be disabled and data could be wrong.'
+            # self._log_and_gui_message(message, level='warning')
+            message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nDo you want to log into you account now ?'
+            if box_yesno(message):
+                args.auth_delete = False
+                args.import_egs_auth = True
+                args.auth_code = ""
+                args.session_id = ""
+                args.ex_token = ""
+                args.no_webview = True
+                self.auth(args)
+
         rebuild = False
         if not os.path.isfile(data_source):
             is_valid, data_source = gui_fn.create_empty_file(data_source)

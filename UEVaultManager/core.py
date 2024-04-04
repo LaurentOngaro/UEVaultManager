@@ -411,6 +411,13 @@ class AppCore:
         web_version = version_info['version']
         self.update_available = version_tuple(web_version) > version_tuple(UEVM_version)
 
+    def get_egl_version(self):
+        """
+        return the egl version.
+        :return:
+        """
+        return self._egl_version
+
     def get_update_info(self) -> dict:
         """
         Return update info dict.
