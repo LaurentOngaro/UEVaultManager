@@ -6,6 +6,10 @@
 # my fork fix option to resize the windows and an error at the end of the execution
 # pip install -e git+https://github.com/LaurentOngaro/F_undetected-chromedriver#egg=undetected-chromedriver
 
+# TESTED: This script works as expected.
+# The browser is visible , the page is loaded, the recaptcha is bypassed and the text 'Ninja Combat' is found
+# TIME TO LOAD THE PAGE (with headless=False) : 3.70 -> 4.69 seconds
+
 import undetected_chromedriver as uc
 import time
 import os
@@ -19,6 +23,8 @@ options.add_argument("--window-size=1,1")
 options.add_argument("--no-sandbox")
 
 try:
+    # this check is only usefull with the original package, not the forked one
+    # code is kept for reference
     browser_path = uc.find_chrome_executable()
 except RuntimeError as e:
     # browser detection will not work if the browsers are not installed as "standard" ones
