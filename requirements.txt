@@ -23,11 +23,12 @@ tkhtmlview>=0.2.0
 pywebview>=5.0.5
 
 # additionnal packages for undetected-chromedriver (used to bypass some recaptcha checks when scrapping data)
-websockets
+# websockets
 # undetected-chromedriver
 # add a personal fork of undetected_chromedriver
 # this fork fix some issue with the original:
 #   fix options to set the window size
 #   an error at the end of the execution
 #   check for chrome in chromium folder
-git+https://github.com/LaurentOngaro/F_undetected-chromedriver#egg=undetected_chromedriver
+# git+https://github.com/LaurentOngaro/F_undetected-chromedriver#egg=undetected_chromedriver
+nodriver

@@ -168,6 +168,8 @@ class UEAssetScraper:
         self.offline_mode = offline_mode
         self.progress_window = progress_window or FakeProgressWindow()
         self.core = AppCore(timeout=timeout) if core is None else core
+        if debug_mode and self.core and self.core.egs:
+            self.core.egs.debug_mode = debug_mode
         self.timeout = timeout
         self.filter_category = filter_category
 
