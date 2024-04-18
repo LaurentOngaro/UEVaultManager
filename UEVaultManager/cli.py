@@ -301,7 +301,7 @@ class UEVaultManagerCLI:
                     auth_code = auth_code.strip('"')
             else:
 
-                user_agent=f'EpicGamesLauncher/{self.core.get_egl_version()}'
+                user_agent = f'EpicGamesLauncher/{self.core.get_egl_version()}'
                 #user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
                 if do_webview_login(callback_code=self.core.auth_ex_token, user_agent=user_agent):
                     self._log_and_gui_display(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}" via WebView')
