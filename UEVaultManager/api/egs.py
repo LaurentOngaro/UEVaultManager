@@ -7,10 +7,14 @@ Implementation for:
 """
 import json
 import logging
+from typing import cast
 
+import nodriver as uc
 import requests
 import requests.adapters
 from bs4 import BeautifulSoup
+from requests import PreparedRequest, Response
+from requests.adapters import HTTPAdapter
 from requests.auth import HTTPBasicAuth
 
 from UEVaultManager.models.exceptions import InvalidCredentialsError
@@ -81,28 +85,26 @@ class EPCAPI:
     _user_basic = '34a02cf8f4414e29b15921876da36f9a'
     _pw_basic = 'daafbccc737745039dffe53d94fc76cf'
 
-    _oauth_host = 'account-public-service-prod03.ol.epicgames.com'
-    _launcher_host = 'launcher-public-service-prod06.ol.epicgames.com'
+    _oauth_host = 'https://account-public-service-prod03.ol.epicgames.com'
+    _launcher_host = 'https://launcher-public-service-prod06.ol.epicgames.com'
     # _entitlements_host = 'entitlement-public-service-prod08.ol.epicgames.com'
-    _catalog_host = 'catalog-public-service-prod06.ol.epicgames.com'
-    # _ecommerce_host = 'ecommerceintegration-public-service-ecomprod02.ol.epicgames.com'
-    # _datastorage_host = 'datastorage-public-service-liveegs.live.use1a.on.epicgames.com'
-    # _library_host = 'library-service.live.use1a.on.epicgames.com'
+    _catalog_host = 'https://catalog-public-service-prod06.ol.epicgames.com'
+    # _ecommerce_host = 'https://ecommerceintegration-public-service-ecomprod02.ol.epicgames.com'
+    # _datastorage_host = 'https://datastorage-public-service-liveegs.live.use1a.on.epicgames.com'
+    # _library_host = 'https://library-service.live.use1a.on.epicgames.com'
     # Using the actual store host with a user-agent newer than 14.0.8 leads to a CF verification page,
     # but the dedicated graphql host works fine.
-    # _store_gql_host = 'launcher.store.epicgames.com'
-    # _store_gql_host = 'graphql.epicgames.com'
-    # _artifact_service_host = 'artifact-public-service-prod.beee.live.use1a.on.epicgames.com'
-    # _login_url = 'www.unrealengine.com/id/login/epic'
+    # _store_gql_host = 'https://launcher.store.epicgames.com'
+    # _store_gql_host = 'https://graphql.epicgames.com'
+    # _artifact_service_host = 'https://artifact-public-service-prod.beee.live.use1a.on.epicgames.com'
+    # _login_url = 'https://www.unrealengine.com/id/login/epic'
 
-    _url_marketplace = 'www.unrealengine.com/marketplace'
-    _search_url = _url_marketplace + '/en-US'
-    # _url_asset_list = 'https://www.unrealengine.com/marketplace/api/assets'
-    _url_asset_list = _url_marketplace + '/api/assets'
-    # _url_owned_assets = 'https://www.unrealengine.com/marketplace/api/assets/vault'
-    _url_owned_assets = _url_asset_list + '/vault'
-    # _url_asset = 'https://www.unrealengine.com/marketplace/api/assets/asset'
-    _url_asset = _url_asset_list + '/asset'
+    # THESE URLs COULD NOT BE CALL USING SESSION ANYMORE DU TO RECATCHA VALIDATION
+    _url_marketplace = 'https://www.unrealengine.com/marketplace'
+    _url_asset_list = f'{_url_marketplace}/api/assets'
+    _url_owned_assets = f'{_url_asset_list}/vault'
+    _url_asset = f'{_url_asset_list}/asset'
+    _url_search_asset = f'{_url_marketplace}/en-US/product'
 
     # page d'un asset avec son urlSlug
     # _url_marketplace/en-US/product/{'urlSlug}
@@ -184,6 +186,9 @@ class EPCAPI:
         self.country_code = cc
 
         self.timeout = timeout
+        self._uc_browser = None
+        self._uc_request = {}
+        self.debug_mode = False
 
     def extract_price(self, price_text=None, asset_name='Unknown') -> float:
         """
@@ -210,7 +215,7 @@ class EPCAPI:
         """
         Return the scraping URL for an asset.
         """
-        url = f'https://{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}'
+        url = f'{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}'
         # other possible filters
         # to see the list of possible filters: https://www.unrealengine.com/marketplace/en-US/assets and use filters on the right panel.
         """
@@ -233,8 +238,7 @@ class EPCAPI:
         """
         Return the scraping URL for an owned asset.
         """
-        # 'https://www.unrealengine.com/marketplace/api/assets/vault?start=1000&count=100'
-        url = f'https://{self._url_owned_assets}?start={start}&count={count}'
+        url = f'{self._url_owned_assets}?start={start}&count={count}'
         return url
 
     def get_marketplace_product_url(self, asset_slug: str = '') -> str:
@@ -243,7 +247,7 @@ class EPCAPI:
         :param asset_slug: asset slug.
         :return: url.
         """
-        url = f'https://{self._url_marketplace}/en-US/product/{asset_slug}'
+        url = f'{self._url_search_asset}/{asset_slug}'
         return url
 
     def get_api_product_url(self, uid: str = '') -> str:
@@ -252,7 +256,7 @@ class EPCAPI:
         :param uid: id of the asset (not the slug, nor the catalog_id).
         :return: url.
         """
-        url = f'https://{self._url_asset}/{uid}'
+        url = f'{self._url_asset}/{uid}'
         return url
 
     def get_available_assets_count(self, owned_assets_only=False) -> int:
@@ -260,19 +264,17 @@ class EPCAPI:
         Return the number of assets in the marketplace.
         :param owned_assets_only: whether to only the owned assets are counted.
         """
-        assets_count = 0
         if owned_assets_only:
-            url = f'https://{self._url_owned_assets}'
+            url = self._url_owned_assets
         else:
-            url = f'https://{self._url_asset_list}'
+            url = self._url_asset_list
+        r = self.get_url_with_uc(url, timeout=self.timeout)
         try:
-            r = self.session.get(url, timeout=self.timeout)
-            r.raise_for_status()
             json_content = r.json()
-            assets_count = json_content['data']['paging']['total']
+            return int(json_content['data']['paging']['total'])
         except Exception as error:
-            self.logger.warning(f'Can not get the asset count from {url}:{error!r}')
-        return assets_count
+            self.logger.warning(f'Can not get the asset count from {url}: {error!r}')
+            return 0
 
     def is_valid_url(self, url='') -> bool:
         """
@@ -280,17 +282,16 @@ class EPCAPI:
         :param url: url to check.
         :return: True if the url is valid.
         """
-        result = False
         if not url:
-            return result
+            return False
+
         try:
-            r = self.session.get(url, timeout=self.timeout)
+            r = self.get_url_with_uc(url, timeout=self.timeout)
         except (Exception, ):
             self.logger.warning(f'Timeout for {url}')
             raise ConnectionError()
         if r.status_code == 200:
-            result = True
-        return result
+            return True
 
     def get_json_data_from_url(self, url='', override_timeout=-1) -> dict:
         """
@@ -307,9 +308,8 @@ class EPCAPI:
             return json_data
 
         timeout = self.timeout if override_timeout == -1 else override_timeout
-        r = self.session.get(url, timeout=timeout)
-        # r.raise_for_status() # commented line because we want the exceptions to be raised
-        json_data = r.json()
+        r = self.get_url_with_uc(url, timeout=timeout)
+        json_data = r.json() if r.ok else {}
         return json_data
 
     def resume_session(self, session: dict) -> dict:
@@ -319,7 +319,7 @@ class EPCAPI:
         :return: session.
         """
         self.session.headers['Authorization'] = f'bearer {session["access_token"]}'
-        url = f'https://{self._oauth_host}/account/api/oauth/verify'
+        url = f'{self._oauth_host}/account/api/oauth/verify'
         r = self.session.get(url, timeout=self.timeout)
         if r.status_code >= 500:
             r.raise_for_status()
@@ -357,7 +357,7 @@ class EPCAPI:
         else:
             raise ValueError('At least one token type must be specified!')
 
-        url = f'https://{self._oauth_host}/account/api/oauth/token'
+        url = f'{self._oauth_host}/account/api/oauth/token'
         r = self.session.post(url, data=params, auth=self._oauth_basic, timeout=self.timeout)
         # Only raise HTTP exceptions on server errors
         if r.status_code >= 500:
@@ -390,7 +390,7 @@ class EPCAPI:
         Unused but kept for the global API reference.
         :return: item token using json format.
         """
-        url = f'https://{self._oauth_host}/account/api/oauth/exchange'
+        url = f'{self._oauth_host}/account/api/oauth/exchange'
         r = self.session.get(url, timeout=self.timeout)
         r.raise_for_status()
         return r.json()
@@ -405,7 +405,7 @@ class EPCAPI:
         :param label: label of the manifest.
         :return: item manifest using json format.
         """
-        url = f'https://{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
+        url = f'{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
         r = self.session.get(url, timeout=self.timeout)
         r.raise_for_status()
         return r.json()
@@ -452,12 +452,11 @@ class EPCAPI:
         json_data = empty_data.copy()
         asset_slug = url.split('/')[-1]
         json_data['page_title'] = asset_slug
-        try:
-            response = self.session.get(url)  # when using session, we are already logged in Epic game
-            response.raise_for_status()
+        response = self.get_url_with_uc(url)
+        if response.ok:
             self.logger.info(f'Grabbing asset data from {url}')
-        except requests.exceptions.RequestException as error:
-            self.logger.warning(f'Can not get asset data for {url}: {error!r}')
+        else:
+            self.logger.warning(f'Can not get asset data for {url}')
             json_data['grab_result'] = GrabResult.PAGE_NOT_FOUND.name
             return json_data
 
@@ -497,3 +496,152 @@ class EPCAPI:
             self.logger.warning(f"URLs do not match: {json_data['url']} != {url}")
             json_data['grab_result'] = GrabResult.INCONSISTANT_DATA.name
         return json_data
+
+    def get_url_with_uc(self, url: str, timeout=None) -> Response:
+        """
+        Return the response of an url request:
+        - using the Nodriver object if the url concerns the epic marketplace.
+        - using the session object if not
+        :param url: url to fix.
+        :param timeout: timeout for the request.
+        :return: response Object.
+
+        NOTES:
+            When using Nodriver,
+            The parameters for the browser and the request are stored in self._uc_request['params']
+            The response will be stored in self._uc_request['response'].
+        """
+        if not timeout:
+            timeout = self.timeout
+
+        # if not url.startswith(self._url_marketplace):
+        if not url.startswith(self._url_asset_list) and not url.startswith(self._url_search_asset):
+            # no need to check for a captcha
+            return self.session.get(url, timeout=timeout)
+
+        # has_captcha = response.content.find(b'Please complete a security check to continue') != -1
+        if not self._uc_browser:
+            self.init_uc_browser()
+
+        uc.loop().run_until_complete(self.uc_get_content(url))
+        return self._uc_request['response']
+
+    def init_uc_browser(self) -> None:
+        """
+        Initialize the undetected Chrome Browser.
+
+        NOTES:
+            The parameters for the browser and the request are stored in self._uc_request['params']
+            The response will be stored in self._uc_request['response'].
+        """
+        window_width = 1024 if not self.debug_mode else 100
+        window_height = 768 if not self.debug_mode else 100
+        # note:  the window position could be displayed OUTSIDE the current screen, and it works !!
+        window_left = -window_width if not self.debug_mode else 0
+        window_top = -window_height if not self.debug_mode else 0
+
+        params = {}
+        browser_path = r'C:\Program Files\Chromium\Application\chrome.exe'  # TODO: add the default browser_path to the settings or add a new check to find the browser
+        params['headless'] = False  # True  will not bypass the captcha
+        params['use_subprocess'] = True  # False will crash the script
+        params['browser_executable_path'] = browser_path
+        params['user_multi_procs'] = True  # will speed up the process
+        params['browser_args'] = [
+            f'--window-size={window_width},{window_height}',  # set the initial size of the window
+            f'--window-position={window_left},{window_top}',  # set the initial position of the window
+            '--window-name="UndetectedChrome"',  # set the name of the window
+            '--no-first-run', '--no-default-browser-check', '--no-experiments', '--mute-audio', '--enable-gpu', '--disable-extensions',
+            # next options have been tested and are OK
+            # '--start-maximized', # debug only
+            # '--incognito',
+
+            # next options have been tested and could create issue
+            # '--no-sandbox',  # needed for linux
+
+            # next options have been tested and CAUSE AN ERROR
+            # '--headless',
+            # '--silent-launch',
+        ]
+        self._uc_request['params'] = params
+
+        response = UCResponse()
+        response.request = self.session.request
+        # get the connection object from the current session
+        # we use self._url_marketplace as default url for the connection
+        adapter = cast(HTTPAdapter, self.session.get_adapter(self._url_marketplace))
+        connection = adapter.get_connection(self._url_marketplace)
+        response.connection = connection
+        self._uc_request['response'] = response
+
+    async def uc_get_content(self, url) -> None:
+        """
+        Get the content of a page using the undetected Chrome driver.
+        :param url: url to get the content from.
+
+        NOTES:
+            The response will be stored in self._uc_request['response'].
+        """
+        self._uc_browser = await uc.start(**self._uc_request['params'])
+        page = await self._uc_browser.get(url)
+        await page.activate()
+        raw_content = await page.get_content()
+        await page.close()
+        response = self._uc_request['response']
+        response.headers = self.session.headers
+        response.raw = raw_content
+        response.url = url
+
+        soup = BeautifulSoup(raw_content, 'html.parser')
+        if soup:
+            # get the charset value from the header of raw_content
+            charset_tag = soup.find('meta', charset=True)
+            response.encoding = charset_tag['charset'] if charset_tag else response.encoding
+
+            # if response contains json data, raw_content is a container where the real content is stored between <pre> and </pre>
+            pre_tag = soup.find('pre')
+            response.content = pre_tag.text if pre_tag else raw_content
+
+            # convert content to bytes because it's needed for the json decoding in response.json()
+            response.content = response.content.encode(response.encoding)
+            response.status_code = 200
+        self._uc_request['response'] = response
+
+
+class UCResponse(Response):
+    """
+    Response object for the undetected Chrome driver.
+
+    Overrided to change some attributes and methods
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._content = None
+        self.raw = ''
+        self.reason = ''
+        self.url = ''
+        self.request = PreparedRequest()
+        self.connection = None
+        self.encoding = 'utf-8'
+        self.status_code = 403
+
+    def json(self, **kwargs):
+        """
+        Return the json content of the response.
+        """
+        try:
+            # the following could raise a json.JSONDecodeError if the content is already a string
+            json_content = super().json(**kwargs)
+        except json.JSONDecodeError:
+            json_content = json.loads(self._content)
+        return json_content
+
+    @property
+    def content(self):
+        """ Return the content of the response. """
+        return self._content
+
+    @content.setter
+    def content(self, value):
+        """ Setter for content. """
+        self._content = value
