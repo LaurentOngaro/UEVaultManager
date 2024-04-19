@@ -511,11 +511,13 @@ class EPCAPI:
         :param exchange_token:
         :param authorization_code:
         """
+        keep_existing = True  # True is usefull to keep the authorization_code created at first loggin
         auth_folder = Path('../.private/auth_data')  # TODO: add the path to settings ?
         # delete the content folder if it exists
         if auth_folder.exists():
-            for file in auth_folder.iterdir():
-                file.unlink()
+            if not keep_existing:
+                for file in auth_folder.iterdir():
+                    file.unlink()
         else:
             auth_folder.mkdir(parents=True, exist_ok=True)
         # COOKIES: see: https://scrapfly.io/blog/save-and-load-cookies-in-requests-python/
@@ -631,12 +633,11 @@ class EPCAPI:
         response.headers = self.session.headers
         response.raw = raw_content
         response.url = url
-
         soup = BeautifulSoup(raw_content, 'html.parser')
         if soup:
             # get the charset value from the header of raw_content
             charset_tag = soup.find('meta', charset=True)
-            response.encoding = charset_tag['charset'] if charset_tag else response.encoding
+            response.encoding = charset_tag.get('charset', response.encoding)
 
             # if response contains json data, raw_content is a container where the real content is stored between <pre> and </pre>
             pre_tag = soup.find('pre')
