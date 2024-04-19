@@ -1,14 +1,15 @@
 # coding=utf-8
+"""
+TESTED: This script works as expected.
+The browser is visible , the page is loaded, the recaptcha is bypassed and the text 'Ninja Combat' is found
+TIME TO LOAD THE PAGE: 2 seconds
+"""
 
 # install official package by running the following command in the terminal
 # pip install undetected-chromedriver
 # install my personal fork by running the following command in the terminal
 # my fork fix option to resize the windows and an error at the end of the execution
 # pip install -e git+https://github.com/LaurentOngaro/F_undetected-chromedriver#egg=undetected-chromedriver
-
-# TESTED: This script works as expected.
-# The browser is visible , the page is loaded, the recaptcha is bypassed and the text 'Ninja Combat' is found
-# TIME TO LOAD THE PAGE: 2 seconds
 
 import nodriver as uc
 import time

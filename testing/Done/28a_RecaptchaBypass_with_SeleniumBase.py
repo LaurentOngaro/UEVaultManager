@@ -1,14 +1,15 @@
 # coding=utf-8
+"""
+TESTED: This script works as expected.
+The browser is visible , the page is loaded, the recaptcha is bypassed and the text 'Ninja Combat' is found
+TIME TO LOAD THE PAGE (with headless2=False) : 9.5 seconds
+TIME TO LOAD THE PAGE (with headless2=True) : 12,82 seconds
+
+NOTE: sometimes the page closes BEFORE getting the content and the process enter into an infinite loop
+"""
 
 # install official package by running the following command in the terminal
 # pip install seleniumbase
-
-# TESTED: This script works as expected.
-# The browser is visible , the page is loaded, the recaptcha is bypassed and the text 'Ninja Combat' is found
-# TIME TO LOAD THE PAGE (with headless2=False) : 9.5 seconds
-# TIME TO LOAD THE PAGE (with headless2=True) : 12,82 seconds
-
-# NOTE: sometimes the page closes BEFORE getting the content and the process enter into an infinite loop
 
 from seleniumbase import Driver
 
