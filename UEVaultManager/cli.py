@@ -302,7 +302,7 @@ class UEVaultManagerCLI:
             else:
 
                 user_agent = f'EpicGamesLauncher/{self.core.get_egl_version()}'
-                #user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+                # user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
                 if do_webview_login(callback_code=self.core.auth_ex_token, user_agent=user_agent):
                     self._log_and_gui_display(f'Successfully logged in as "{self.core.uevmlfs.userdata["displayName"]}" via WebView')
                 else:
@@ -329,7 +329,6 @@ class UEVaultManagerCLI:
         else:
             message = 'Login attempt failed, please see log for details.'
             self._log_and_gui_message(message, level='error')
-
         # if not uewm_gui_exists:
         #     gui_g.WindowsRef.uevm_gui.mainloop()
 
