@@ -1707,6 +1707,7 @@ def main():
     conf_log_level = conf_log_level.lower()
     if conf_log_level == 'debug' or args.debug:
         cli.core.verbose_mode = True
+        cli.core.egs.debug_mode = True
         logging.getLogger().setLevel(level=logging.DEBUG)
         # keep requests quiet
         logging.getLogger('requests').setLevel(logging.WARNING)

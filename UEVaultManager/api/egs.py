@@ -7,17 +7,20 @@ Implementation for:
 """
 import json
 import logging
+from pathlib import Path
 from typing import cast
 
 import nodriver as uc
 import requests
 import requests.adapters
 from bs4 import BeautifulSoup
-from requests import PreparedRequest, Response
+from requests import Response
 from requests.adapters import HTTPAdapter
 from requests.auth import HTTPBasicAuth
+from requests.utils import dict_from_cookiejar
 
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.models.UCResponse import UCResponse
 from UEVaultManager.tkgui.modules.types import GrabResult
 from UEVaultManager.utils.cli import create_list_from_string
 
@@ -378,9 +381,13 @@ class EPCAPI:
             raise InvalidCredentialsError('Unknown error')
 
         self.session.headers['Authorization'] = f'bearer {j["access_token"]}'
+
         # only set user info when using non-anonymous login
         if not client_credentials:
             self.user = j
+
+        if self.debug_mode:
+            self.save_auth_data(refresh_token, exchange_token, authorization_code)
 
         return j
 
@@ -497,6 +504,37 @@ class EPCAPI:
             json_data['grab_result'] = GrabResult.INCONSISTANT_DATA.name
         return json_data
 
+    def save_auth_data(self, refresh_token: str = None, exchange_token: str = None, authorization_code: str = None) -> None:
+        """
+        Save user and authorization data into files. This is useful for debugging.
+        :param refresh_token:
+        :param exchange_token:
+        :param authorization_code:
+        """
+        folder = Path('.private/auth_data')
+        # delete the content folder if it exists
+        if folder.exists():
+            for file in folder.iterdir():
+                file.unlink()
+        else:
+            folder.mkdir(parents=True, exist_ok=True)
+        # COOKIES: see: https://scrapfly.io/blog/save-and-load-cookies-in-requests-python/
+        cookies = dict_from_cookiejar(self.session.cookies)
+        if cookies:
+            Path(f'{folder}/session_cookies.json').write_text(json.dumps(cookies))
+        # HEADERS:
+        # NOTE! self.session.headers is a CaseInsensitiveDict object, not a dict
+        headers = dict(self.session.headers)
+        if headers:
+            Path(f'{folder}/session_headers.json').write_text(json.dumps(headers))
+        # Tokens
+        if refresh_token:
+            Path(f'{folder}/refresh_token.token').write_text(refresh_token)
+        if exchange_token:
+            Path(f'{folder}/exchange_code.token').write_text(exchange_token)
+        if authorization_code:
+            Path(f'{folder}/authorization_code.token').write_text(authorization_code)
+
     def get_url_with_uc(self, url: str, timeout=None) -> Response:
         """
         Return the response of an url request:
@@ -546,6 +584,9 @@ class EPCAPI:
         params['use_subprocess'] = True  # False will crash the script
         params['browser_executable_path'] = browser_path
         params['user_multi_procs'] = True  # will speed up the process
+
+        # set some arguments for the browser
+        # full list: https://peter.sh/experiments/chromium-command-line-switches/
         params['browser_args'] = [
             f'--window-size={window_width},{window_height}',  # set the initial size of the window
             f'--window-position={window_left},{window_top}',  # set the initial position of the window
@@ -605,43 +646,3 @@ class EPCAPI:
             response.content = response.content.encode(response.encoding)
             response.status_code = 200
         self._uc_request['response'] = response
-
-
-class UCResponse(Response):
-    """
-    Response object for the undetected Chrome driver.
-
-    Overrided to change some attributes and methods
-    """
-
-    def __init__(self):
-        super().__init__()
-        self._content = None
-        self.raw = ''
-        self.reason = ''
-        self.url = ''
-        self.request = PreparedRequest()
-        self.connection = None
-        self.encoding = 'utf-8'
-        self.status_code = 403
-
-    def json(self, **kwargs):
-        """
-        Return the json content of the response.
-        """
-        try:
-            # the following could raise a json.JSONDecodeError if the content is already a string
-            json_content = super().json(**kwargs)
-        except json.JSONDecodeError:
-            json_content = json.loads(self._content)
-        return json_content
-
-    @property
-    def content(self):
-        """ Return the content of the response. """
-        return self._content
-
-    @content.setter
-    def content(self, value):
-        """ Setter for content. """
-        self._content = value
