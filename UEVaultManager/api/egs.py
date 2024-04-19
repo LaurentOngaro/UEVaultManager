@@ -511,29 +511,29 @@ class EPCAPI:
         :param exchange_token:
         :param authorization_code:
         """
-        folder = Path('.private/auth_data')
+        auth_folder = Path('../.private/auth_data')  # TODO: add the path to settings ?
         # delete the content folder if it exists
-        if folder.exists():
-            for file in folder.iterdir():
+        if auth_folder.exists():
+            for file in auth_folder.iterdir():
                 file.unlink()
         else:
-            folder.mkdir(parents=True, exist_ok=True)
+            auth_folder.mkdir(parents=True, exist_ok=True)
         # COOKIES: see: https://scrapfly.io/blog/save-and-load-cookies-in-requests-python/
         cookies = dict_from_cookiejar(self.session.cookies)
         if cookies:
-            Path(f'{folder}/session_cookies.json').write_text(json.dumps(cookies))
+            Path(f'{auth_folder}/session_cookies.json').write_text(json.dumps(cookies))
         # HEADERS:
         # NOTE! self.session.headers is a CaseInsensitiveDict object, not a dict
         headers = dict(self.session.headers)
         if headers:
-            Path(f'{folder}/session_headers.json').write_text(json.dumps(headers))
+            Path(f'{auth_folder}/session_headers.json').write_text(json.dumps(headers))
         # Tokens
         if refresh_token:
-            Path(f'{folder}/refresh_token.token').write_text(refresh_token)
+            Path(f'{auth_folder}/refresh_token.token').write_text(refresh_token)
         if exchange_token:
-            Path(f'{folder}/exchange_code.token').write_text(exchange_token)
+            Path(f'{auth_folder}/exchange_code.token').write_text(exchange_token)
         if authorization_code:
-            Path(f'{folder}/authorization_code.token').write_text(authorization_code)
+            Path(f'{auth_folder}/authorization_code.token').write_text(authorization_code)
 
     def get_url_with_uc(self, url: str, timeout=None) -> Response:
         """
