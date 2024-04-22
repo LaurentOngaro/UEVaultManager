@@ -193,7 +193,7 @@ def resize_and_show_image(image: Image, canvas: tk.Canvas, scale: float = 1.0, x
     target_height = int(gui_g.s.preview_max_height * scale)
     aspect_ratio = float(image.width * scale) / float(image.height * scale)
     target_width = int(target_height * aspect_ratio)
-    resized_image = image.resize((target_width, target_height), Image.BILINEAR)
+    resized_image = image.resize((target_width, target_height), Image.Resampling.BILINEAR)
     tk_image = ImageTk.PhotoImage(resized_image)
     anchor = tk.NW if x == -1 and y == -1 else tk.CENTER
     # Calculate center coordinates

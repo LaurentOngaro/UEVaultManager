@@ -192,6 +192,8 @@ class EPCAPI:
         self._uc_browser = None
         self._uc_request = {}
         self.debug_mode = False
+        # set to true to use "NoDriver" object instead of a usual session object to bypass captcha on marketplace pages
+        self.bypass_captcha = False
 
     def extract_price(self, price_text=None, asset_name='Unknown') -> float:
         """
@@ -312,8 +314,23 @@ class EPCAPI:
 
         timeout = self.timeout if override_timeout == -1 else override_timeout
         r = self.get_url_with_uc(url, timeout=timeout)
-        json_data = r.json() if r.ok else {}
-        return json_data
+        # print session content for debug
+        # noinspection GrazieInspection
+        # from pprint import pprint
+
+        # try:
+        #     session = self.session
+        #     content = r.text
+        #     print('\n\n===================\n\n')
+        #     pprint(vars(session), depth=20, compact=True, width=120, sort_dicts=False)
+        #     print('\n\n===================\n\n')
+        #     print(url)
+        #     print('\n\n===================\n\n')
+        #     print(content)
+        # except Exception as e:
+        #     print(e)
+
+        return r.json() if r.ok else {}
 
     def resume_session(self, session: dict) -> dict:
         """
@@ -554,12 +571,14 @@ class EPCAPI:
         if not timeout:
             timeout = self.timeout
 
+        del self.session.cookies['EPIC_CLIENT_SESSION']  # this data cause a http 400 errro because its value is too big
         # if not url.startswith(self._url_marketplace):
-        if not url.startswith(self._url_asset_list) and not url.startswith(self._url_search_asset):
+        if not self.bypass_captcha or (not url.startswith(self._url_asset_list) and not url.startswith(self._url_search_asset)):
             # no need to check for a captcha
             return self.session.get(url, timeout=timeout)
 
-        # has_captcha = response.content.find(b'Please complete a security check to continue') != -1
+        # noinspection GrazieInspection
+        # has_captcha = response.content.find(b"Please complete a security check to continue") != -1
         if not self._uc_browser:
             self.init_uc_browser()
 

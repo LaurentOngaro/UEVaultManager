@@ -29,6 +29,7 @@ from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_lis
 from UEVaultManager.utils.cli import check_and_create_file
 
 
+# noinspection PyPep8Naming
 class UEADBH_Settings:
     """
     Settings for the class when running as main.

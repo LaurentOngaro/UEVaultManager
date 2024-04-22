@@ -19,6 +19,7 @@ from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
 
+# noinspection PyPep8Naming
 class JTW_Settings:
     """
     Settings for the class when running as main.

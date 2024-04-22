@@ -18,6 +18,7 @@ import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest varia
 from UEVaultManager.tkgui.modules.cls.ExtendedWidgetClasses import ExtendedText
 
 
+# noinspection PyPep8Naming
 class DCW_Settings:
     """
     Settings for the class when running as main.

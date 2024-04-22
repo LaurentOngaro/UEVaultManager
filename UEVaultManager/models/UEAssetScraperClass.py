@@ -64,6 +64,7 @@ class ScrapTask:
         self.log_func(f'INTERRUPTION OF ScrapTask {self.name} at {datetime.now()}:{message}')
 
 
+# noinspection PyPep8Naming
 class UEAS_Settings:
     """
     Settings for the class when running as main.

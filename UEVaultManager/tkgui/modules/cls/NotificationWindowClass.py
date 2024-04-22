@@ -17,6 +17,7 @@ DEFAULT_ICON_WIN32 = "\ue154"
 DEFAULT_ICON = "\u25f0"
 
 
+# noinspection PyPep8Naming
 class NW_Settings:
     """
     Settings for the class when running as main.

@@ -18,6 +18,7 @@ from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.globals import UEVM_log_ref
 
 
+# noinspection PyPep8Naming
 class DBTW_Settings:
     """
     Settings for the class when running as main.

@@ -14,6 +14,7 @@ import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the sho
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
 
 
+# noinspection PyPep8Naming
 class PW_Settings:
     """
     Settings for the class when running as main.
