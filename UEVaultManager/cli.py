@@ -250,7 +250,7 @@ class UEVaultManagerCLI:
                 return
         try:
             self._log_and_gui_display('Testing existing login data if present...')
-            if self.core.login():
+            if self.core.login(raise_error=True):
                 msg = 'Stored credentials are still valid, if you wish to switch to a different account.\nRun "UEVaultManager auth --delete" and try again.'
                 msg += '\nOr check the "Delete auth (login)" options in the Options panel.' if uewm_gui_exists else ''
                 self._log_and_gui_display(msg)
@@ -346,7 +346,7 @@ class UEVaultManagerCLI:
                 message = f'Could not create result file {args.output}. Quiting Application...'
                 self._log_and_gui_message(message, 'critical')
         self._log('Login...')
-        if not self.core.login(raise_error=False):
+        if not self.core.login():
             message = 'You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n'
             self._log_and_gui_message(message, level='warning')
             # we can not process because we need to be logged in to get the assets list
@@ -396,7 +396,7 @@ class UEVaultManagerCLI:
             manifest_data, _ = self.core.get_uri_manifest(args.override_manifest)
         else:
             self._log(f'Login and downloading manifest for {args.app_name}')
-            if not self.core.login(raise_error=False):
+            if not self.core.login():
                 message = 'You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n'
                 self._log_and_gui_message(message, quit_on_error=False, level='error')
                 return
@@ -460,7 +460,7 @@ class UEVaultManagerCLI:
             uewm_gui_exists, _ = init_display_window(self.logger)
         if not args.offline:
             try:
-                if not self.core.login(raise_error=False):
+                if not self.core.login():
                     message = 'You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n'
                     self._log_and_gui_message(message, quit_on_error=False, level='error')
                     return
@@ -526,7 +526,7 @@ class UEVaultManagerCLI:
             app_name = name_or_path
         if not args.offline and not manifest_uri:
             try:
-                if not self.core.login(raise_error=False):
+                if not self.core.login():
                     message = 'You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n'
                     self._log_and_gui_message(message, quit_on_error=False, level='error')
                     return
@@ -810,7 +810,7 @@ class UEVaultManagerCLI:
         Get the access token for the current user.
         :param args: options passed to the command.
         """
-        if not self.core.login(force_refresh=args.bearer, raise_error=False):
+        if not self.core.login(force_refresh=args.bearer):
             message = 'You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n'
             self._log_and_gui_message(message, quit_on_error=False, level='error')
             return
@@ -842,7 +842,7 @@ class UEVaultManagerCLI:
         data_source, data_source_type = self._init_data_for_gui(args)
         # set output file name from the input one. Used by the "rebuild" button (or rebuild_data method)
         init_gui_args(args, additional_args={'output': data_source})
-        if not self.core.login(raise_error=False):
+        if not self.core.login(force_refresh=True):
             # message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nSome functionalities could be disabled and data could be wrong.'
             # self._log_and_gui_message(message, level='warning')
             message = 'You are not connected or log in failed.\nYou should log first or check your credential.\nDo you want to log into you account now ?'
@@ -910,7 +910,7 @@ class UEVaultManagerCLI:
         if not args.offline:
             # not offline mode => check log in
             try:
-                if not self.core.login(raise_error=False):
+                if not self.core.login(force_refresh=True):
                     message = 'You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n'
                     self._log_and_gui_message(message, quit_on_error=False, level='error')
                     return
@@ -996,7 +996,7 @@ class UEVaultManagerCLI:
             )
             return False
 
-        if not self.core.login():
+        if not self.core.login(raise_error=True):
             self._log_and_gui_message(
                 level='error',
                 message='You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n',
