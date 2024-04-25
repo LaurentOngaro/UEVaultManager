@@ -2415,20 +2415,26 @@ class EditableTable(Table):
             self.update()
 
     def remove_from_group(self) -> None:
-        """Remove selected rows from current group"""
+        """Remove selected rows from its groups"""
         rows = self.multiplerowlist
         current_group = self.get_group()
         if rows:
             for row in rows:
                 asset_id = self.get_cell(row, self.get_col_index('Asset_id'))
-                if asset_id and asset_id in current_group:
-                    current_group.remove(asset_id)
+                # if asset_id and asset_id in current_group:
+                if asset_id:
+                    try:
+                        current_group.remove(asset_id)
+                    except ValueError:
+                        pass
                     self.update_cell(row, self.get_col_index(gui_g.s.group_col_name), gui_g.s.empty_cell)
                     if self.is_using_database:
                         self.db_handler.update_asset(
                             asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.empty_cell
                         )
-                    self.notify(f'Removed asset_id {asset_id} from group {gui_g.s.current_group_name}', level='debug')
+                        message = f'The group of the asset_id {asset_id} has been removed'
+                        self.notify(message, level='debug')
+                        self.logger.info(message)
             self.update()
 
     def copy_column_names(self) -> None:
