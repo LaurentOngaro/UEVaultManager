@@ -130,6 +130,7 @@ class AppCore:
         self.engine_version_for_obsolete_assets = gui_g.s.engine_version_for_obsolete_assets
         # self.display_windows= DisplayContentWindow(title='UEVM command output', quit_on_close=True)
         self.display_windows = None
+        self.session_ttl: int = 100  # time to live for the current user login session in seconds
 
     @staticmethod
     def load_manifest(data: bytes) -> Manifest:
@@ -305,7 +306,7 @@ class AppCore:
             self.logger.error(f'Logging failed with {error!r}, please try again.')
             return False
 
-    def login(self, force_refresh: bool = False, raise_error: bool = True) -> bool:
+    def login(self, force_refresh: bool = False, raise_error: bool = False) -> bool:
         """
         Attempt log in with existing credentials.
         :param force_refresh: whether to force a refresh of the session.
@@ -322,8 +323,7 @@ class AppCore:
             dt_exp = datetime.datetime.fromisoformat(self.uevmlfs.userdata['expires_at'][:-1])
             dt_now = datetime.datetime.now(datetime.UTC)
             td = dt_now.timestamp() - dt_exp.timestamp()
-            # if session still has at least 10 minutes left we can re-use it.
-            if td > 600:
+            if td > self.session_ttl:
                 return True
             else:
                 self.user_is_connected = False
@@ -340,8 +340,7 @@ class AppCore:
             dt_now = datetime.datetime.now(datetime.UTC)
             td = dt_now.timestamp() - dt_exp.timestamp()
 
-            # if session still has at least 10 minutes left we can re-use it.
-            if td > 600:
+            if td > self.session_ttl:
                 self.logger.info('Trying to re-use existing login session...')
                 try:
                     self.egs.resume_session(self.uevmlfs.userdata)

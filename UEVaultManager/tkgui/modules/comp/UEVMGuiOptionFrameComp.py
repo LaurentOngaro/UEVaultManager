@@ -87,6 +87,7 @@ class UEVMGuiOptionFrame(ttk.Frame):
             'Scraping Folder': gui_g.s.scraping_folder,
             'Results Files Folder': gui_g.s.results_folder,
             'Assets Images Folder': gui_g.s.asset_images_folder,
+            'Assets Json Files Folder': gui_g.s.assets_data_folder,
             'Assets CSV Files Folder': gui_g.s.assets_csv_files_folder,
         }
         try:

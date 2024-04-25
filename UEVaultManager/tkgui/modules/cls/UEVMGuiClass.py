@@ -22,7 +22,6 @@ from requests import ReadTimeout
 import UEVaultManager.tkgui.modules.functions as gui_f  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.functions_no_deps as gui_fn  # using the shortest variable name for globals for convenience
 import UEVaultManager.tkgui.modules.globals as gui_g  # using the shortest variable name for globals for convenience
-from UEVaultManager.api.egs import EPCAPI
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import get_version_from_path, path_join
 from UEVaultManager.models.csv_sql_fields import debug_parsed_data
@@ -99,6 +98,7 @@ class UEVMGui(tk.Tk):
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
     _errors: [str] = []
+    relogin_when_scrapping: bool = False
 
     def __init__(
         self, title: str = 'UVMEGUI', icon='', screen_index: int = 0, data_source_type: DataSourceType = DataSourceType.FILE, data_source=None,
@@ -116,7 +116,6 @@ class UEVMGui(tk.Tk):
 
         self.editable_table: Optional[EditableTable] = None
         self.progress_window: Optional[FakeProgressWindow] = None
-        self.egs: Optional[EPCAPI] = None
         # using a global scraper to avoid creating a new one and a new db connection on multiple scrapes
         self.ue_asset_scraper: Optional[UEAssetScraper] = None
 
@@ -1437,13 +1436,15 @@ class UEVMGui(tk.Tk):
         :param check_unicity: whether to check if the data are unique and ask the user to update the row if not.
         :param is_silent: whether to show message boxes or not.
         """
-        # by default (i.e. self.silent_mode sis not changed), we show the following message boxes
+        # by default (i.e. self.silent_mode is not changed), we show the following message boxes
         if gui_g.s.offline_mode:
             self.silent_message('You are in offline mode, Scraping and scanning features are not available')
             return {}
         if self.core is None:
             gui_f.from_cli_only_message('URL Scraping and scanning features are only accessible', show_dialog=not self._silent_mode)
             return {}
+        if self.relogin_when_scrapping and not self.core.login(force_refresh=True):
+            self.silent_message('Starting a login session has failed. Scraping and scanning features are not available')
         self._silent_mode = is_silent
         if forced_data is None:
             forced_data = {}
