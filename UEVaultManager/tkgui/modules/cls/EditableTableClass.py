@@ -2408,7 +2408,9 @@ class EditableTable(Table):
                         self.db_handler.update_asset(
                             asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.current_group_name
                         )
-                    self.notify(f'added asset_id {asset_id} to group {gui_g.s.current_group_name}', level='debug')
+                    message = f'added asset_id {asset_id} to group {gui_g.s.current_group_name}'
+                    self.notify(message, level='debug')
+                    self.logger.info(message)
             # sort the list and remove duplicates
             current_group = list(set(current_group))
             current_group.sort()
@@ -2432,9 +2434,9 @@ class EditableTable(Table):
                         self.db_handler.update_asset(
                             asset_id=asset_id, column=gui_t.get_sql_field_name(gui_g.s.group_col_name), value=gui_g.s.empty_cell
                         )
-                        message = f'The group of the asset_id {asset_id} has been removed'
-                        self.notify(message, level='debug')
-                        self.logger.info(message)
+                    message = f'The group of the asset_id {asset_id} has been removed'
+                    self.notify(message, level='debug')
+                    self.logger.info(message)
             self.update()
 
     def copy_column_names(self) -> None:
