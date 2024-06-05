@@ -65,7 +65,7 @@ This is an example of this file content and the settings you can change:
   use_threads = True
   ;timeout in second when scraping several assets in once. This value should not be too low to limit timeout issues and scraping cancellation.
   timeout_for_scraping = 30
-  ;Number of grouped assets to scrap with one url. Since 2023-10-31 a value bigger than 75 will be refused by UE API
+  ;Number of grouped assets to scrap with one url. Since 2023-10-31 a value bigger than 75 COULD be refused by UE API
   scraped_assets_per_page = 75
   ;Set to True to re-open the last file at startup if no input file is given
   reopen_last_file = True

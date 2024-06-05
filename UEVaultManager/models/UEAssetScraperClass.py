@@ -819,7 +819,7 @@ class UEAssetScraper:
             egs_available_assets_count = self.core.egs.get_available_assets_count(owned_assets_only)
         if empty_list_before:
             self._urls = []
-        if self.stop <= 0:
+        if self.stop <= 0 < egs_available_assets_count:
             self.stop = egs_available_assets_count
         assets_to_scrap = self.stop - self.start
         pages_count = int(assets_to_scrap / self.assets_per_page)
@@ -1090,12 +1090,15 @@ class UEAssetScraper:
             self._log('Only Owned Assets will be scraped')
 
         try:
+            # get the number of assets available on the marketplace: Could fail due to connection issue OR recaptcha !!
             egs_available_assets_count = self.core.egs.get_available_assets_count(owned_assets_only)
         except (Exception, ):
-            self._log('Can not get the asset count from marketplace.\nOffline mode is activated and data will be got from files.', 'warning')
+            self._log('Can not get the asset count from marketplace.\n', 'warning')
             egs_available_assets_count = -1
-            self.offline_mode = True
-            self.load_from_files = True
+            # We stay online because it can be caused by a recatcha error
+            # self._log('Offline mode is activated and data will be got from files.', 'warning')
+            # self.offline_mode = True
+            # self.load_from_files = True
         asset_loaded = 0
         if self.load_from_files:
             asset_loaded = self.load_from_json_files()
@@ -1208,7 +1211,7 @@ class UEAssetScraper:
             # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
             if (self.core.verbose_mode or gui_g.s.debug_mode) and self._scraped_data:
                 debug_parsed_data(self._scraped_data[-1], DataSourceType.DATABASE)
-        elif asset_loaded <= egs_available_assets_count:
+        elif egs_available_assets_count > 0 and asset_loaded <= egs_available_assets_count:
             # some asset are missing in json files
             message = f'{asset_loaded} assets have been loaded from json files, {egs_available_assets_count} available on the marketplace.\nYou should do a rebuild with the force_refresh option enabled to get ²the new ones.'
             if self.progress_window.is_fake:

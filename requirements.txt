@@ -21,6 +21,7 @@ Faker>=24.4.0
 rapidfuzz ~=2.15  # do not install 3.x version. because build exe will fail
 tkhtmlview>=0.2.0
 pywebview>=5.0.5
+Jinja2
 
 # additionnal packages for undetected-chromedriver (used to bypass some recaptcha checks when scrapping data)
 # websockets

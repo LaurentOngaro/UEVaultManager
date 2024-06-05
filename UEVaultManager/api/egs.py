@@ -273,7 +273,7 @@ class EPCAPI:
             url = self._url_owned_assets
         else:
             url = self._url_asset_list
-        r = self.get_url_with_uc(url, timeout=self.timeout)
+        r = self.get_url_with_uc(url, timeout=self.timeout, force_bypass_captcha=True)
         try:
             json_content = r.json()
             return int(json_content['data']['paging']['total'])
@@ -329,6 +329,19 @@ class EPCAPI:
         #     print(content)
         # except Exception as e:
         #     print(e)
+        if r.status_code == 403:
+            # probably a captcha page
+            # make a second request to get the json data with captcha bypass
+            self.logger.warning(f'403 Forbidden result for {url}. Testing a request with captcha bypass.')
+            old_bypass_captcha = self.bypass_captcha
+            self.bypass_captcha = True
+            try:
+                r = self.get_url_with_uc(url, timeout=timeout)
+                if not r.ok:
+                    self.logger.warning(f'Request with captcha bypass failed')
+            except Exception as error:
+                self.logger.warning(f'Request with captcha bypass failed. Error {error!r}')
+                self.bypass_captcha = old_bypass_captcha
 
         return r.json() if r.ok else {}
 
@@ -554,13 +567,14 @@ class EPCAPI:
         if authorization_code:
             Path(f'{auth_folder}/authorization_code.token').write_text(authorization_code)
 
-    def get_url_with_uc(self, url: str, timeout=None) -> Response:
+    def get_url_with_uc(self, url: str, timeout=None, force_bypass_captcha: bool = False) -> Response:
         """
         Return the response of an url request:
         - using the Nodriver object if the url concerns the epic marketplace.
         - using the session object if not
         :param url: url to fix.
         :param timeout: timeout for the request.
+        :param force_bypass_captcha: force the bypass of the captcha.
         :return: response Object.
 
         NOTES:
@@ -571,9 +585,11 @@ class EPCAPI:
         if not timeout:
             timeout = self.timeout
 
-        del self.session.cookies['EPIC_CLIENT_SESSION']  # this data cause a http 400 errro because its value is too big
+        del self.session.cookies['EPIC_CLIENT_SESSION']  # this data cause a http 400 error because its value is too big
         # if not url.startswith(self._url_marketplace):
-        if not self.bypass_captcha or (not url.startswith(self._url_asset_list) and not url.startswith(self._url_search_asset)):
+        if not force_bypass_captcha and not self.bypass_captcha or (
+            not url.startswith(self._url_asset_list) and not url.startswith(self._url_search_asset)
+        ):
             # no need to check for a captcha
             return self.session.get(url, timeout=timeout)
 
@@ -634,6 +650,8 @@ class EPCAPI:
         connection = adapter.get_connection(self._url_marketplace)
         response.connection = connection
         self._uc_request['response'] = response
+        uc_logger = logging.getLogger('nodriver.core.browser')
+        uc_logger.setLevel(logging.WARNING)  # disable info level because too verbose
 
     async def uc_get_content(self, url) -> None:
         """

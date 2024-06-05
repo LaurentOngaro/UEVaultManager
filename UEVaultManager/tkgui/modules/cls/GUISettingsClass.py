@@ -105,7 +105,8 @@ class GUISettings:
         self.testing_assets_limit: int = 300  # when testing (ie testing_switch==1) , limit the number of assets to process to this value
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
-        self.scraped_assets_per_page: int = 75  # since 2023-10-31 a value bigger than 75 will be refused by UE API and return a 'common.server_error' error (http 431)
+        # self.scraped_assets_per_page: int = 75  # since 2023-10-31 a value bigger than 75 will COULD be refused by UE API and return a 'common.server_error' error (http 431)
+        self.scraped_assets_per_page: int = 100  # using the UC browsezr is slower BUT the number of assets can be bigger
         self.app_monitor: int = 1
         self.preview_max_width: int = 150
         self.preview_max_height: int = 150
@@ -596,7 +597,7 @@ class GUISettings:
                 'value': 30
             },
             'scraped_assets_per_page': {
-                'comment': 'Number of grouped assets to scrap with one url. Since 2023-10-31 a value bigger than 75 will be refused by UE API',
+                'comment': 'Number of grouped assets to scrap with one url. Since 2023-10-31 a value bigger than 75 COULD be refused by UE API',
                 'value': 75
             },
             'keep_invalid_scans': {
