@@ -18,6 +18,7 @@ from requests import Response
 from requests.adapters import HTTPAdapter
 from requests.auth import HTTPBasicAuth
 from requests.utils import dict_from_cookiejar
+from selenium.webdriver.remote.command import Command
 
 from UEVaultManager.models.exceptions import InvalidCredentialsError
 from UEVaultManager.models.UCResponse import UCResponse
@@ -490,7 +491,7 @@ class EPCAPI:
         asset_slug = url.split('/')[-1]
         json_data['page_title'] = asset_slug
         response = self.get_url_with_uc(url)
-        if response.ok:
+        if response.ok and response.content:
             self.logger.info(f'Grabbing asset data from {url}')
         else:
             self.logger.warning(f'Can not get asset data for {url}')
@@ -585,21 +586,63 @@ class EPCAPI:
         if not timeout:
             timeout = self.timeout
 
-        del self.session.cookies['EPIC_CLIENT_SESSION']  # this data cause a http 400 error because its value is too big
         # if not url.startswith(self._url_marketplace):
+
+        # method_for_get_session = 0 # use a "normal" session get. Will not bypass the captcha if present
+        # method_for_get_session = 1 # nodriver
+        # method_for_get_session = 2 # reqdriver
+
         if not force_bypass_captcha and not self.bypass_captcha or (
             not url.startswith(self._url_asset_list) and not url.startswith(self._url_search_asset)
         ):
-            # no need to check for a captcha
+            method_for_get_session = 0  # simple session get
+        else:
+            method_for_get_session = 1
+
+        # force a method
+        method_for_get_session = 0  # debug only
+
+        if method_for_get_session == 1:
+            # test nodriver
+            # install by: pip install nodriver
+            # RESULT:
+            #   response is OK, BUT the user is not logged in
+
+            del self.session.cookies['EPIC_CLIENT_SESSION']  # this data cause a http 400 error because its value is too big
+            # noinspection GrazieInspection
+            # has_captcha = response.content.find(b"Please complete a security check to continue") != -1
+            if not self._uc_browser:
+                self.init_uc_browser()
+            uc.loop().run_until_complete(self.uc_get_content(url))
+            return self._uc_request['response']
+        elif method_for_get_session == 2:
+            # test reqdriver
+            # install by: pip install reqdriver
+
+            # RESULT:
+            #   HS: response is empty
+            from reqdriver import RequestsDriver
+            from selenium.webdriver.chrome.options import Options
+            custom_options = Options()
+            custom_options.add_argument('--headless')
+            if not self._uc_browser:
+                req_driver = RequestsDriver(self.session, custom_options=custom_options)
+                self._uc_browser = req_driver.get_driver()
+                result_dict: dict = self._uc_browser.execute(Command.GET, {"url": url})
+                response = UCResponse()
+                response.request = self.session.request
+                # get the connection object from the current session
+                # we use self._url_marketplace as default url for the connection
+                adapter = cast(HTTPAdapter, self.session.get_adapter(self._url_marketplace))
+                connection = adapter.get_connection(self._url_marketplace)
+                response.connection = connection
+                response.content = result_dict['value']
+                response.status_code = 200 if response.content else 403
+                self._uc_request['response'] = response
+                return response
+        else:
+            # use a "normal" session get. Will not bypass the captcha if present
             return self.session.get(url, timeout=timeout)
-
-        # noinspection GrazieInspection
-        # has_captcha = response.content.find(b"Please complete a security check to continue") != -1
-        if not self._uc_browser:
-            self.init_uc_browser()
-
-        uc.loop().run_until_complete(self.uc_get_content(url))
-        return self._uc_request['response']
 
     def init_uc_browser(self) -> None:
         """
@@ -670,6 +713,10 @@ class EPCAPI:
         response.headers = self.session.headers
         response.raw = raw_content
         response.url = url
+        if response.status_code == 403:
+            self._uc_request['response'] = response
+            return
+
         soup = BeautifulSoup(raw_content, 'html.parser')
         if soup:
             # get the charset value from the header of raw_content
