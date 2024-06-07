@@ -26,6 +26,7 @@ rapidfuzz
 tkhtmlview>=0.2.0
 pywebview>=5.0.5
 Jinja2
+selenium
 
 # packages used to test how to bypass some recaptcha checks when scrapping data
 # could be removed if the methode is invalidate (also remove the associated piece of code)

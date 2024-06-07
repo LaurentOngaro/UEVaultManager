@@ -9,7 +9,7 @@ Requirements
 
    -  32-bit operating systems are not supported
 
--  Python 3.9 or newer
+-  Python 3.10 or newer
 -  PyPI packages:
 
    -  `requests`
@@ -24,7 +24,7 @@ Requirements
 Prerequisites
 ~~~~~~~~~~~~~
 
--  Install python3.9
+-  Install python 3.10 or newer
 -  You can manually install all the python packages listed before, but it will be done when running the command ``pip install .`` as indicated bellow.
 -  The tkinter package is not installed by default on Ubuntu and won't be installed by pip.
    So you need to install it manually with the command ``sudo apt install python3-tk``.
