@@ -23,6 +23,7 @@ echo   - check the result of the [compilation of the doc](https://readthedocs.or
 cd ..
 set root_folder=%cd%
 set python_folder=E:/Apps/Python
+set pip_install=%python_folder%/Scripts/pip install
 
 echo root_folder = %root_folder%
 %python_folder%/python --version
@@ -32,7 +33,7 @@ pause
 where sphinx-build > nul 2>&1
 if %errorlevel% neq 0 (
     echo Sphinx is not installed. Installing...
-    pip install -U sphinx
+    %pip_install% -U sphinx
 )
 
 set relaunched=0
@@ -53,8 +54,8 @@ if %errorlevel% neq 0 (
     )
     set relaunched=1
     echo An issue occured when building DOCS. Try to fix by installing some modules...
-    pip install --ignore-installed requirements-parser
-    pip install --ignore-installed sphinx_rtd_theme
+    %pip_install% --ignore-installed requirements-parser
+    %pip_install% --ignore-installed sphinx_rtd_theme
     goto docs
 )
 
@@ -76,10 +77,10 @@ if %errorlevel% neq 0 (
     )
     echo An issue occured when running setup.py. Try to fix by installing some modules...
     set relaunched=1
-    pip install --ignore-installed setuptools
-    pip install --ignore-installed wheel
-    pip install --ignore-installed sdist
-    pip install --ignore-installed requirements-parser
+    %pip_install% --ignore-installed setuptools
+    %pip_install% --ignore-installed wheel
+    %pip_install% --ignore-installed sdist
+    %pip_install% --ignore-installed requirements-parser
     goto build
 )
 
@@ -97,7 +98,7 @@ if %errorlevel% neq 0 (
     )
     echo An issue occured when running twine. Try to fix by installing some modules...
     set relaunched=1
-    pip install --ignore-installed twine
+    %pip_install% --ignore-installed twine
     goto dist
 )
 
