@@ -113,6 +113,7 @@ class EditableTable(Table):
         self.total_pages: int = 1
         self.must_save: bool = False
         self.must_rebuild: bool = False
+        self.owned_catalog_ids = []
 
         self.set_defaults()  # will create and reset all the table properties. To be done FIRST
         gui_f.show_progress(container, text='Loading Data from data source...')

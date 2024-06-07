@@ -1194,8 +1194,6 @@ class UEAssetScraper:
             if (self.core.verbose_mode or gui_g.s.debug_mode) and self._scraped_data:
                 debug_parsed_data(self._scraped_data[-1], DataSourceType.DATABASE)
 
-        self.update_owned_assets(self._scraped_data)
-
         if self.use_database:
             tags_count = self.asset_db_handler.get_rows_count('tags')
             rating_count = self.asset_db_handler.get_rows_count('ratings')
@@ -1254,22 +1252,6 @@ class UEAssetScraper:
         Clear the list of ignored asset names.
         """
         self._ignored_asset_names = []
-
-    def update_owned_assets(self, assets_data: list) -> None:
-        """
-        Update the "owned" field of the assets_data with the owned assets.
-        :param assets_data:
-        """
-        owned_asset = self.core.egs.get_owned_library()
-        if owned_asset:
-            # get the value of the field "CatalogItemId" from owned_asset ain a list
-            owned_asset_catalog_item_id = [asset['catalogItemId'] for asset in owned_asset]
-            if owned_asset_catalog_item_id:
-                # loop through self._scraped_data and check if the "app_name" is in the owned_asset_keys
-                # if it is, then change the "µOwned" fleidd to True
-                for asset in assets_data:
-                    if asset["catalog_item_id"] in owned_asset_catalog_item_id:
-                        asset["owned"] = True
 
 
 if __name__ == '__main__':

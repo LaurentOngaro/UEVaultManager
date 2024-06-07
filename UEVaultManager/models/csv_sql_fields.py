@@ -208,7 +208,7 @@ csv_sql_fields = {
     },
     'Catalog itemid': {
         'sql_name': 'catalog_item_id',
-        'state': CSVFieldState.ASSET_ONLY,
+        'state': CSVFieldState.NORMAL,
         'field_type': CSVFieldType.STR
     },
     'Asset slug': {
