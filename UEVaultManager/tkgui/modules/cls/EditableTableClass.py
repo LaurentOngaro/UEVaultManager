@@ -1228,7 +1228,6 @@ class EditableTable(Table):
         )
         # we create the progress window here to avoid lots of imports in UEAssetScraper class
         max_threads = get_max_threads()
-        owned_assets_only = False
         scraped_assets_per_page = gui_g.s.scraped_assets_per_page  # a bigger value will be refused by UE API
         if gui_g.s.testing_switch == 1:
             start_row = 15000
@@ -1261,11 +1260,11 @@ class EditableTable(Table):
 
         result_count = 0
         if not load_from_files:
-            result_count = scraper.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
+            result_count = scraper.gather_all_assets_urls()  # return -1 if interrupted or error
         if result_count == -1:
             gui_f.close_progress(self)
             return False
-        if scraper.save(owned_assets_only=owned_assets_only):
+        if scraper.save():
             self.current_page = 1
             df_loaded = self.read_data()
             if df_loaded is None:
