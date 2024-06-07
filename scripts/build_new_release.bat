@@ -20,6 +20,14 @@ echo     - add a description (extract from commit messages)
 echo   - publish the release
 echo   - check the result of the [compilation of the doc](https://readthedocs.org/projects/uevaultmanager)
 
+cd ..
+set root_folder=%cd%
+set python_folder=E:/Apps/Python
+
+echo root_folder = %root_folder%
+%python_folder%/python --version
+pause
+
 :check_sphinx
 where sphinx-build > nul 2>&1
 if %errorlevel% neq 0 (
@@ -33,8 +41,10 @@ echo #################
 echo Building docs...
 echo #################
 pause
-cd ../docs/
-rmdir build\html /S /Q
+cd %root_folder%/docs/
+if exist build\html (
+  rmdir build\html /S /Q
+)
 call make.bat
 if %errorlevel% neq 0 (
     if %relaunched% neq 0 (
@@ -43,8 +53,8 @@ if %errorlevel% neq 0 (
     )
     set relaunched=1
     echo An issue occured when building DOCS. Try to fix by installing some modules...
-    pip install --ignore-installed  requirements-parser
-    pip install --ignore-installed  sphinx_rtd_theme
+    pip install --ignore-installed requirements-parser
+    pip install --ignore-installed sphinx_rtd_theme
     goto docs
 )
 
@@ -54,9 +64,11 @@ echo #################
 echo Building dist...
 echo #################
 pause
-cd ..
-rmdir dist /S /Q
-python setup.py sdist bdist_wheel
+cd %root_folder%
+if exist dist (
+  rmdir dist /S /Q
+)
+%python_folder%/python.exe setup.py sdist bdist_wheel
 if %errorlevel% neq 0 (
     if %relaunched% neq 0 (
       echo setup.py execution can not be fixed. Please check the console log and try to fix it manually
@@ -64,9 +76,10 @@ if %errorlevel% neq 0 (
     )
     echo An issue occured when running setup.py. Try to fix by installing some modules...
     set relaunched=1
+    pip install --ignore-installed setuptools
     pip install --ignore-installed wheel
     pip install --ignore-installed sdist
-    pip install --ignore-installed  requirements-parser
+    pip install --ignore-installed requirements-parser
     goto build
 )
 
@@ -75,6 +88,7 @@ set relaunched=0
 echo #################
 echo Check dist...
 echo #################
+cd %root_folder%
 twine check dist/*
 if %errorlevel% neq 0 (
     if %relaunched% neq 0 (

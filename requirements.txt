@@ -5,6 +5,9 @@
 # -e .
 
 # manual version of requirements for pycharm
+requirements-parser
+setuptools
+
 Pillow>=10.0.2
 beautifulsoup4~=4.11
 future>=1.0.0
@@ -23,6 +26,7 @@ rapidfuzz
 tkhtmlview>=0.2.0
 pywebview>=5.0.5
 Jinja2
+selenium
 
 # packages used to test how to bypass some recaptcha checks when scrapping data
 # could be removed if the methode is invalidate (also remove the associated piece of code)
