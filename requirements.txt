@@ -18,12 +18,16 @@ termcolor>=2.3
 ttkbootstrap>=1.10
 packaging>=24.0
 Faker>=24.4.0
-rapidfuzz ~=2.15  # do not install 3.x version. because build exe will fail
+#rapidfuzz ~=2.15  # do not install 3.x version. because build exe will fail
+rapidfuzz
 tkhtmlview>=0.2.0
 pywebview>=5.0.5
 Jinja2
 
-# additionnal packages for undetected-chromedriver (used to bypass some recaptcha checks when scrapping data)
+# packages used to test how to bypass some recaptcha checks when scrapping data
+# could be removed if the methode is invalidate (also remove the associated piece of code)
+############
+# additionnal packages for undetected-chromedriver
 # websockets
 # undetected-chromedriver
 # add a personal fork of undetected_chromedriver
@@ -33,3 +37,6 @@ Jinja2
 #   check for chrome in chromium folder
 # git+https://github.com/LaurentOngaro/F_undetected-chromedriver#egg=undetected_chromedriver
 nodriver
+
+# additionnal packages for reqdriver
+reqdriver
