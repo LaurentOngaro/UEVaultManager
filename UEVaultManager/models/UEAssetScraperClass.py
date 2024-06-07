@@ -27,41 +27,11 @@ from UEVaultManager.models.types import CSVFieldState, DateFormat, GetDataResult
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
 from UEVaultManager.tkgui.modules.cls.FakeProgressWindowClass import FakeProgressWindow
-from UEVaultManager.tkgui.modules.functions import box_message, box_yesno, update_loggers_level
+from UEVaultManager.tkgui.modules.functions import box_yesno, update_loggers_level
 from UEVaultManager.tkgui.modules.functions_no_deps import check_and_convert_list_to_str
 from UEVaultManager.tkgui.modules.types import DataSourceType
 from UEVaultManager.tkgui.modules.types import GrabResult
 from UEVaultManager.utils.cli import str_is_bool, str_to_bool
-
-
-class ScrapTask:
-    """
-    A class that handles scraping data from the Unreal Engine Marketplace.
-    :param caller: UEAssetScraper object.
-    :param log_func: function to use to log messages. Defaults to print.
-    :param task_name: name of the task. Defaults to ''.
-
-    """
-
-    def __init__(self, caller, log_func: callable = None, task_name: str = '', url: str = '', owned_assets_only: bool = False):
-        self.caller = caller
-        self.name = f'ScrapTask_{gui_fn.shorten_text(url, limit=35, prefix="_")}' if not task_name else task_name
-        self.log_func = log_func if log_func else print
-        self.url = url
-        self.owned_assets_only = owned_assets_only
-
-    def __call__(self):
-        self.log_func(f'START OF ScrapTask {self.name} at {datetime.now()}')
-        result = self.caller.get_data_from_url(self.url, self.owned_assets_only)
-        self.log_func(f'END OF ScrapTask {self.name} at {datetime.now()}')
-        return result
-
-    def interrupt(self, message: str = '') -> None:
-        """
-        Interrupt the task.
-        :param message: additional message to log.
-        """
-        self.log_func(f'INTERRUPTION OF ScrapTask {self.name} at {datetime.now()}:{message}')
 
 
 # noinspection PyPep8Naming
@@ -88,6 +58,36 @@ class UEAS_Settings:
         stop_row = 0  # 0 means no limit
         clean_db = True
         load_data_from_files = False  # by default the scraper will rebuild the database from scratch
+
+
+class ScrapTask:
+    """
+    A class that handles scraping data from the Unreal Engine Marketplace.
+    :param caller: UEAssetScraper object.
+    :param log_func: function to use to log messages. Defaults to print.
+    :param task_name: name of the task. Defaults to ''.
+
+    """
+
+    def __init__(self, caller, log_func: callable = None, task_name: str = '', url: str = '', owned_assets_only: bool = False):
+        self.caller = caller
+        self.name = f'ScrapTask_{gui_fn.shorten_text(url, limit=35, prefix="_")}' if not task_name else task_name
+        self.log_func = log_func if log_func else print
+        self.url = url
+        self.owned_assets_only = owned_assets_only
+
+    def __call__(self):
+        self.log_func(f'START OF ScrapTask {self.name} at {datetime.now()}')
+        result = self.caller.get_data_from_url(self.url)
+        self.log_func(f'END OF ScrapTask {self.name} at {datetime.now()}')
+        return result
+
+    def interrupt(self, message: str = '') -> None:
+        """
+        Interrupt the task.
+        :param message: additional message to log.
+        """
+        self.log_func(f'INTERRUPTION OF ScrapTask {self.name} at {datetime.now()}:{message}')
 
 
 class UEAssetScraper:
@@ -802,13 +802,12 @@ class UEAssetScraper:
         #     self.progress_window.close_window()  # must be done here because we will never return to the caller
         #     self._stop_executor()
 
-    def gather_all_assets_urls(self, egs_available_assets_count: int = -1, empty_list_before=True, save_result=True, owned_assets_only=False) -> int:
+    def gather_all_assets_urls(self, egs_available_assets_count: int = -1, empty_list_before=True, save_result=True) -> int:
         """
         Gather all the URLs (with pagination) to be parsed and stores them in a list for further use.
         :param egs_available_assets_count: number of assets available on the marketplace. If not given, it will be retrieved from the EGS API.
         :param empty_list_before: whether the list of URLs is emptied before adding the new ones.
         :param save_result: whether the list of URLs is saved into a text file.
-        :param owned_assets_only: whether only the owned assets are scraped.
         :return: number of assets to be scraped or -1 if the offline mode is active or if the process has been interrupted.
         """
         if self.offline_mode:
@@ -816,7 +815,7 @@ class UEAssetScraper:
             return -1
         start_time = time.time()
         if egs_available_assets_count <= 0:
-            egs_available_assets_count = self.core.egs.get_available_assets_count(owned_assets_only)
+            egs_available_assets_count = self.core.egs.get_available_assets_count()
         if empty_list_before:
             self._urls = []
         if self.stop <= 0 < egs_available_assets_count:
@@ -830,24 +829,20 @@ class UEAssetScraper:
             if not self.progress_window.update_and_continue(value=i, text=f'Gathering URL ({i + 1}/{pages_count})'):
                 return -1
             start = self.start + (i * self.assets_per_page)
-            if owned_assets_only:
-                url = self.core.egs.get_owned_scrap_url(start, self.assets_per_page)
-            else:
-                url = self.core.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
+            url = self.core.egs.get_scrap_url(start, self.assets_per_page, self.sort_by, self.sort_order)
             self._urls.append(url)
         if self._urls:
             self._log(f'It took {(time.time() - start_time):.3f} seconds to gather {len(self._urls)} urls')
         else:
             self._log('No url has been gathered', 'warning')
         if save_result:
-            self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=owned_assets_only)
+            self.save_to_file(filename=self._urls_list_filename, data=self._urls, is_json=False, is_owned=False)
         return assets_to_scrap
 
-    def get_data_from_url(self, url='', owned_assets_only=False) -> GetDataResult:
+    def get_data_from_url(self, url='') -> GetDataResult:
         """
         Grab the data from the given url and stores it in the scraped_data property.
         :param url: url to grab the data from. If not given, uses the url property of the class.
-        :param owned_assets_only: whether only the owned assets are scraped.
         :return: GetDataResult value depending on the result
         """
         thread_state = ' RUNNING...'
@@ -951,10 +946,8 @@ class UEAssetScraper:
                             # if self.core.ignored_logger
                             #     self.core.ignored_logger.info(app_name)
                             continue
-                        if owned_assets_only and not asset_data('owned', False):
-                            continue
                         asset_data['app_name'] = app_name
-                        self.save_to_file(filename=filename, data=asset_data, is_owned=owned_assets_only)
+                        self.save_to_file(filename=filename, data=asset_data, is_owned=False)
                         self._files_count += 1
 
                 parsed_assets_data = self._parse_data(json_data_from_egs_url)  # could return a dict or a list of dict
@@ -1086,19 +1079,6 @@ class UEAssetScraper:
             The execution is done in parallel using threads.
             If self.urls is None or empty, gather_urls() will be called first.
         """
-        if owned_assets_only:
-            self._log('Only Owned Assets will be scraped')
-
-        try:
-            # get the number of assets available on the marketplace: Could fail due to connection issue OR recaptcha !!
-            egs_available_assets_count = self.core.egs.get_available_assets_count(owned_assets_only)
-        except (Exception, ):
-            self._log('Can not get the asset count from marketplace.\n', 'warning')
-            egs_available_assets_count = -1
-            # We stay online because it can be caused by a recatcha error
-            # self._log('Offline mode is activated and data will be got from files.', 'warning')
-            # self.offline_mode = True
-            # self.load_from_files = True
         asset_loaded = 0
         if self.load_from_files:
             asset_loaded = self.load_from_json_files()
@@ -1111,13 +1091,14 @@ class UEAssetScraper:
             rating_count_saved = self.asset_db_handler.get_rows_count('ratings')
         else:
             tags_count_saved, rating_count_saved = 0, 0
+
         if asset_loaded <= 0:
             # no data, ie no files loaded, so we have to save them
             self.load_from_files = False
             self.save_parsed_to_files = True
             start_time = time.time()
             if not self._urls:
-                result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
+                result_count = self.gather_all_assets_urls()  # return -1 if interrupted or error
                 if result_count == -1:
                     self._log(f'An error has occured when retriving the urls list for assets to scrap.', 'error')
                     return False
@@ -1127,7 +1108,7 @@ class UEAssetScraper:
             # test the first url to see if the data is available
             tries = 0
             max_tries = 3
-            check = self.get_data_from_url(self._urls[0], owned_assets_only)
+            check = self.get_data_from_url(self._urls[0])
             while check != GetDataResult.OK and tries < max_tries:
                 tries += 1
                 if check == GetDataResult.ERROR_431:
@@ -1146,12 +1127,12 @@ class UEAssetScraper:
                         'warning'
                     )
                     gui_g.s.timeout_for_scraping = int(gui_g.s.timeout_for_scraping * 1.5)  # 50% more
-                check = self.get_data_from_url(self._urls[0], owned_assets_only)
+                check = self.get_data_from_url(self._urls[0])
 
             if check != GetDataResult.OK:
                 return False
 
-            result_count = self.gather_all_assets_urls(owned_assets_only=owned_assets_only)  # return -1 if interrupted or error
+            result_count = self.gather_all_assets_urls()  # return -1 if interrupted or error
             if result_count == -1:
                 return False
 
@@ -1200,7 +1181,7 @@ class UEAssetScraper:
                                 self.core.scrap_asset_logger.warning(message)
             else:
                 for url in self._urls:
-                    self.get_data_from_url(url, owned_assets_only)
+                    self.get_data_from_url(url)
             if self.save_parsed_to_files:
                 message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self._urls)} urls and store the data in {self._files_count} files'
             else:
@@ -1208,17 +1189,12 @@ class UEAssetScraper:
             self._log(message)
             # format the list to be 1 long list rather than multiple lists nested in a list - [['1'], ['2'], ...] -> ['1','2', ...]
             self._scraped_data = list(chain.from_iterable(self._scraped_data))
+
             # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
             if (self.core.verbose_mode or gui_g.s.debug_mode) and self._scraped_data:
                 debug_parsed_data(self._scraped_data[-1], DataSourceType.DATABASE)
-        elif egs_available_assets_count > 0 and asset_loaded <= egs_available_assets_count:
-            # some asset are missing in json files
-            message = f'{asset_loaded} assets have been loaded from json files, {egs_available_assets_count} available on the marketplace.\nYou should do a rebuild with the force_refresh option enabled to get ²the new ones.'
-            if self.progress_window.is_fake:
-                # use a box message only if the progress window is fake, ie we are in a CLI command with gui option
-                box_message(message)
-            else:
-                self.progress_window.reset(new_value=0, new_text=message, new_max_value=None)
+
+        self.update_owned_assets(self._scraped_data)
 
         if self.use_database:
             tags_count = self.asset_db_handler.get_rows_count('tags')
@@ -1278,6 +1254,22 @@ class UEAssetScraper:
         Clear the list of ignored asset names.
         """
         self._ignored_asset_names = []
+
+    def update_owned_assets(self, assets_data: list) -> None:
+        """
+        Update the "owned" field of the assets_data with the owned assets.
+        :param assets_data:
+        """
+        owned_asset = self.core.egs.get_owned_library()
+        if owned_asset:
+            # get the value of the field "CatalogItemId" from owned_asset ain a list
+            owned_asset_catalog_item_id = [asset['catalogItemId'] for asset in owned_asset]
+            if owned_asset_catalog_item_id:
+                # loop through self._scraped_data and check if the "app_name" is in the owned_asset_keys
+                # if it is, then change the "µOwned" fleidd to True
+                for asset in assets_data:
+                    if asset["catalog_item_id"] in owned_asset_catalog_item_id:
+                        asset["owned"] = True
 
 
 if __name__ == '__main__':

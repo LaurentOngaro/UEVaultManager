@@ -926,7 +926,6 @@ class UEVaultManagerCLI:
         # ue_asset_per_page = gui_g.s.rows_per_page
         start_row = 0
         scraped_assets_per_page = gui_g.s.scraped_assets_per_page
-        owned_assets_only = False
         max_threads = get_max_threads()
         if gui_g.s.testing_switch == 1:
             start_row = 1500  # test only, shorter list
@@ -952,10 +951,10 @@ class UEVaultManagerCLI:
         result_count = 0
         if not load_from_files:
             result_count = scraper.gather_all_assets_urls(
-                empty_list_before=True, owned_assets_only=owned_assets_only
+                empty_list_before=True
             )  # return -1 if interrupted or error
         if result_count != -1:
-            if scraper.save(owned_assets_only=owned_assets_only, save_to_format=save_to_format):
+            if scraper.save(owned_assets_only=False, save_to_format=save_to_format):
                 scraped_data = scraper.scraped_data
                 for asset_data in scraped_data:
                     app_name = asset_data.get('asset_id', '')

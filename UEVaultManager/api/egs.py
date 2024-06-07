@@ -265,15 +265,29 @@ class EPCAPI:
         url = f'{self._url_asset}/{uid}'
         return url
 
-    def get_available_assets_count(self, owned_assets_only=False) -> int:
+    def get_owned_library(self) -> dict:
+        """
+        Get the owned library, INCLUDING the epic game assets owned
+        :return: dict of assets.
+        """
+        platform = 'Windows'
+        label = 'Live'
+        json_data = {}
+        try:
+            r = self.session.get(
+                f'{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.timeout
+            )
+            if r.ok:
+                json_data = r.json()
+        except Exception as error:
+            self.logger.warning(f'Can not get the get owned library assets: {error!r}')
+        return json_data
+
+    def get_available_assets_count(self) -> int:
         """
         Return the number of assets in the marketplace.
-        :param owned_assets_only: whether to only the owned assets are counted.
         """
-        if owned_assets_only:
-            url = self._url_owned_assets
-        else:
-            url = self._url_asset_list
+        url = self._url_asset_list
         r = self.get_url_with_uc(url, timeout=self.timeout, force_bypass_captcha=True)
         try:
             json_content = r.json()
@@ -600,7 +614,7 @@ class EPCAPI:
             method_for_get_session = 1
 
         # force a method
-        method_for_get_session = 0  # debug only
+        # method_for_get_session = 0  # debug only
 
         if method_for_get_session == 1:
             # test nodriver
@@ -652,8 +666,8 @@ class EPCAPI:
             The parameters for the browser and the request are stored in self._uc_request['params']
             The response will be stored in self._uc_request['response'].
         """
-        window_width = 1024 if not self.debug_mode else 100
-        window_height = 768 if not self.debug_mode else 100
+        window_width = 1024 if self.debug_mode else 100
+        window_height = 768 if self.debug_mode else 100
         # note:  the window position could be displayed OUTSIDE the current screen, and it works !!
         window_left = -window_width if not self.debug_mode else 0
         window_top = -window_height if not self.debug_mode else 0
@@ -713,6 +727,7 @@ class EPCAPI:
         response.headers = self.session.headers
         response.raw = raw_content
         response.url = url
+        response.status_code = 200 if raw_content else 403
         if response.status_code == 403:
             self._uc_request['response'] = response
             return
