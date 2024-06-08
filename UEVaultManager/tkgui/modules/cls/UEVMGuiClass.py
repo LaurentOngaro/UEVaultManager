@@ -426,8 +426,8 @@ class UEVMGui(tk.Tk):
                 # filter the owned_ids list to keep only the ids that are in the catalog_ids_to_update list
                 owned_ids = [asset for asset in owned_ids if asset in catalog_ids_to_update]
             if owned_ids:
-                rows_serie_for_id = df['Catalog itemid'].isin(owned_ids)
-                rows_serie_for_id['Owned'] = True
+                mask = df['Catalog itemid'].isin(owned_ids)
+                df['Owned'] = df['Owned'].mask(mask, True)
         # gui_f.close_progress(self)
 
     def _get_choice_result(self, selection):
@@ -1394,7 +1394,7 @@ class UEVMGui(tk.Tk):
                 self.ue_asset_scraper.keep_intermediate_files = gui_g.s.debug_mode
             self.ue_asset_scraper.get_data_from_url(
                 api_product_url
-            )  # Note: I a captcha is present, this call will be made as a not connected user, so we can't get the "owned" flag value anymore
+            )  # Note: If a captcha is present, this call will be made as a not connected user, so we can't get the "owned" flag value anymore
             asset_data = self.ue_asset_scraper.pop_last_scraped_data()  # returns a list of one element
             is_ok = asset_data is not None and len(asset_data) > 0
         if not is_ok:
