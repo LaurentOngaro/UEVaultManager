@@ -78,7 +78,9 @@ class ScrapTask:
 
     def __call__(self):
         self.log_func(f'START OF ScrapTask {self.name} at {datetime.now()}')
-        result = self.caller.get_data_from_url(self.url)
+        result = self.caller.get_data_from_url(
+            self.url
+        )  # Note: If a captcha is present, this call will be made as a not connected user, so we can't get the "owned" flag value anymore
         self.log_func(f'END OF ScrapTask {self.name} at {datetime.now()}')
         return result
 
@@ -1181,7 +1183,9 @@ class UEAssetScraper:
                                 self.core.scrap_asset_logger.warning(message)
             else:
                 for url in self._urls:
-                    self.get_data_from_url(url)
+                    self.get_data_from_url(
+                        url
+                    )  # Note: If a captcha is present, this call will be made as a not connected user, so we can't get the "owned" flag value anymore
             if self.save_parsed_to_files:
                 message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self._urls)} urls and store the data in {self._files_count} files'
             else:
