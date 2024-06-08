@@ -168,9 +168,9 @@ class GUISettings:
             check_and_create_folder(folder)
 
         # keep at the end
-        self._app_title_long: str = ''  # use a getter to uddate the value in live
+        self._app_title_long: str = ''  # use a getter to update the value in live
         self.app_title: str = __name__
-        self.offline_mode: bool = False
+        self._offline_mode: bool = False
 
     @staticmethod
     def _log(message):
@@ -230,7 +230,7 @@ class GUISettings:
         self._app_title_long: str = f'{__name__} Gui v{__version__} ({__codename__})'
         self._app_title_long += f' - SWITCH VALUE {self.testing_switch} ' if self.testing_switch > 0 else ''
         self._app_title_long += ' - DEBUG MODE' if self.debug_mode else ''
-        self._app_title_long += ' - OFFLINE MODE' if self.offline_mode else ''
+        self._app_title_long += ' - OFFLINE MODE' if self._offline_mode else ''
         return self._app_title_long
 
     @property
@@ -502,6 +502,16 @@ class GUISettings:
     def current_group_name(self, value):
         """ Setter for current_group_name """
         self.config_vars['current_group_name'] = value
+
+    @property
+    def offline_mode(self) -> bool:
+        """ Getter for offline_mode """
+        return self._offline_mode
+
+    @offline_mode.setter
+    def offline_mode(self, value):
+        """ Setter for _offline_mode """
+        self._offline_mode = value
 
     @property
     def backup_files_to_keep(self) -> int:

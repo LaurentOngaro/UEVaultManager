@@ -153,6 +153,13 @@ class UEVMGui(tk.Tk):
             db_handler = UEAssetDbHandler(database_name=data_source)  # we need it BEFORE CREATING the editable_table and use its db_handler property
             self.core.uevmlfs.pre_update_installed_folders(db_handler=db_handler)
 
+        if gui_g.UEVM_cli_args.get('offline'):
+            gui_g.s.offline_mode = True
+            self.title(gui_g.s.app_title_long)
+
+        if not gui_g.s.offline_mode:
+            self.core.uevmlfs.invalidate_library_catalog_ids()
+
         data_table = EditableTable(
             container=frm_content,
             data_source_type=data_source_type,
@@ -412,22 +419,22 @@ class UEVMGui(tk.Tk):
         :param catalog_ids_to_update: list of catalog ids to update. If empty, all the (owned) assets will be updated.
         """
         # gui_f.show_progress(self, text=f'Updating data from owned assets list...')
-        data_table = self.editable_table  # shortcut
-        if data_table.owned_catalog_ids:
-            owned_asset = data_table.owned_catalog_ids
-        else:
-            owned_asset = self.core.egs.get_owned_library()
-            data_table.owned_catalog_ids = owned_asset
-        df = data_table.get_data()
-        if owned_asset:
-            # get the value of the field "CatalogItemId" from owned_asset ain a list
-            owned_ids = [asset['catalogItemId'] for asset in owned_asset]
+        library_catalog_ids = self.core.uevmlfs.library_catalog_ids
+        if not library_catalog_ids:
+            library_catalog = self.core.egs.get_owned_library()
+            # get the value of the field "CatalogItemId" from owned_asset in a list
+            library_catalog_ids = [asset['catalogItemId'] for asset in library_catalog]
+            # remove duplicates
+            library_catalog_ids = list(set(library_catalog_ids))
+            self.core.uevmlfs.library_catalog_ids = library_catalog_ids
             if catalog_ids_to_update:
                 # filter the owned_ids list to keep only the ids that are in the catalog_ids_to_update list
-                owned_ids = [asset for asset in owned_ids if asset in catalog_ids_to_update]
-            if owned_ids:
-                mask = df['Catalog itemid'].isin(owned_ids)
-                df['Owned'] = df['Owned'].mask(mask, True)
+                library_catalog_ids = [asset for asset in library_catalog_ids if asset in catalog_ids_to_update]
+        if library_catalog_ids:
+            data_table = self.editable_table  # shortcut
+            df = data_table.get_data()
+            mask = df['Catalog itemid'].isin(library_catalog_ids)
+            df['Owned'] = df['Owned'].mask(mask, True)
         # gui_f.close_progress(self)
 
     def _get_choice_result(self, selection):
