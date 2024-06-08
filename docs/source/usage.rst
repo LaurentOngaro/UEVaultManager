@@ -128,6 +128,7 @@ Usage
     optional arguments:
       -h,  --help            Show this help message and exit
       -i,  --input <file>    The file name (with path) where the list should be read from (it exludes the --database option)
+      --offline              Only edit info available offline. It will use files saved previously, do not log in
       -db, --database <file> The sqlite file name (with path) where the list should be read from (it exludes the --input option)
 
   Command: scrap

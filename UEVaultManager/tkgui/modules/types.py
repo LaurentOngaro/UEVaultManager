@@ -9,6 +9,14 @@ Definition for the types used in this module:
 from enum import Enum
 
 
+class UCRequestType(Enum):
+    """
+    Enum for the type of request.
+    """
+    NORMAL = 1,
+    USING_UD = 2
+
+
 class GrabResult(Enum):
     """
     Enum for the result of grabbing a page.

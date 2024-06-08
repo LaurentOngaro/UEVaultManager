@@ -21,8 +21,9 @@ from requests.utils import dict_from_cookiejar
 from selenium.webdriver.remote.command import Command
 
 from UEVaultManager.models.exceptions import InvalidCredentialsError
+from UEVaultManager.models.UCRequest import UCRequest
 from UEVaultManager.models.UCResponse import UCResponse
-from UEVaultManager.tkgui.modules.types import GrabResult
+from UEVaultManager.tkgui.modules.types import GrabResult, UCRequestType
 from UEVaultManager.utils.cli import create_list_from_string
 
 
@@ -191,7 +192,7 @@ class EPCAPI:
 
         self.timeout = timeout
         self._uc_browser = None
-        self._uc_request = {}
+        self._uc_request = UCRequest()
         self.debug_mode = False
         # set to true to use "NoDriver" object instead of a usual session object to bypass captcha on marketplace pages
         self.bypass_captcha = False
@@ -274,9 +275,7 @@ class EPCAPI:
         label = 'Live'
         json_data = {}
         try:
-            r = self.session.get(
-                f'{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.timeout
-            )
+            r = self.session.get(f'{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.timeout)
             if r.ok:
                 json_data = r.json()
         except Exception as error:
@@ -594,24 +593,30 @@ class EPCAPI:
 
         NOTES:
             When using Nodriver,
-            The parameters for the browser and the request are stored in self._uc_request['params']
-            The response will be stored in self._uc_request['response'].
+            The parameters for the browser and the request are stored in self._uc_request.params
+            The response will be stored in self._uc_request.response.
         """
         if not timeout:
             timeout = self.timeout
 
-        # if not url.startswith(self._url_marketplace):
+        uc_response = UCResponse()
+        uc_response.request = self.session.request
+        # get the connection object from the current session
+        # we use self._url_marketplace as default url for the connection
+        adapter = cast(HTTPAdapter, self.session.get_adapter(self._url_marketplace))
+        connection = adapter.get_connection(self._url_marketplace)
+        uc_response.connection = connection
+        self._uc_request.request_type = UCRequestType.NORMAL  # by default, we consider we are using a normal request
+        self._uc_request.response = uc_response
 
-        # method_for_get_session = 0 # use a "normal" session get. Will not bypass the captcha if present
+        # method_for_get_session = 0 # use a "normal" session get. Will not bypass a captcha if present
         # method_for_get_session = 1 # nodriver
         # method_for_get_session = 2 # reqdriver
 
-        if not force_bypass_captcha and not self.bypass_captcha or (
-            not url.startswith(self._url_asset_list) and not url.startswith(self._url_search_asset)
-        ):
-            method_for_get_session = 0  # simple session get
-        else:
+        if force_bypass_captcha or self.bypass_captcha or url.startswith(self._url_asset_list) or url.startswith(self._url_search_asset):
             method_for_get_session = 1
+        else:
+            method_for_get_session = 0  # simple session get
 
         # force a method
         # method_for_get_session = 0  # debug only
@@ -628,13 +633,15 @@ class EPCAPI:
             if not self._uc_browser:
                 self.init_uc_browser()
             uc.loop().run_until_complete(self.uc_get_content(url))
-            return self._uc_request['response']
+            # note that self._uc_request is updated by the uc_get_content method
+            return self._uc_request.response
         elif method_for_get_session == 2:
             # test reqdriver
             # install by: pip install reqdriver
 
             # RESULT:
             #   HS: response is empty
+            # noinspection PyUnresolvedReferences
             from reqdriver import RequestsDriver
             from selenium.webdriver.chrome.options import Options
             custom_options = Options()
@@ -643,17 +650,11 @@ class EPCAPI:
                 req_driver = RequestsDriver(self.session, custom_options=custom_options)
                 self._uc_browser = req_driver.get_driver()
                 result_dict: dict = self._uc_browser.execute(Command.GET, {"url": url})
-                response = UCResponse()
-                response.request = self.session.request
-                # get the connection object from the current session
-                # we use self._url_marketplace as default url for the connection
-                adapter = cast(HTTPAdapter, self.session.get_adapter(self._url_marketplace))
-                connection = adapter.get_connection(self._url_marketplace)
-                response.connection = connection
-                response.content = result_dict['value']
-                response.status_code = 200 if response.content else 403
-                self._uc_request['response'] = response
-                return response
+                uc_response.content = result_dict['value']
+                uc_response.status_code = 200 if uc_response.content else 403
+                self._uc_request.response = uc_response
+                self._uc_request.request_type = UCRequestType.USING_UD
+                return uc_response
         else:
             # use a "normal" session get. Will not bypass the captcha if present
             return self.session.get(url, timeout=timeout)
@@ -663,8 +664,8 @@ class EPCAPI:
         Initialize the undetected Chrome Browser.
 
         NOTES:
-            The parameters for the browser and the request are stored in self._uc_request['params']
-            The response will be stored in self._uc_request['response'].
+            The parameters for the browser and the request are stored in self._uc_request.params
+            The response will be stored in self._uc_request.response.
         """
         window_width = 1024 if self.debug_mode else 100
         window_height = 768 if self.debug_mode else 100
@@ -697,16 +698,16 @@ class EPCAPI:
             # '--headless',
             # '--silent-launch',
         ]
-        self._uc_request['params'] = params
+        self._uc_request.params = params
 
-        response = UCResponse()
+        response = self._uc_request.response
         response.request = self.session.request
         # get the connection object from the current session
         # we use self._url_marketplace as default url for the connection
         adapter = cast(HTTPAdapter, self.session.get_adapter(self._url_marketplace))
         connection = adapter.get_connection(self._url_marketplace)
         response.connection = connection
-        self._uc_request['response'] = response
+        self._uc_request.response = response
         uc_logger = logging.getLogger('nodriver.core.browser')
         uc_logger.setLevel(logging.WARNING)  # disable info level because too verbose
 
@@ -716,20 +717,21 @@ class EPCAPI:
         :param url: url to get the content from.
 
         NOTES:
-            The response will be stored in self._uc_request['response'].
+            The response will be stored in self._uc_request.response.
         """
-        self._uc_browser = await uc.start(**self._uc_request['params'])
+        self._uc_browser = await uc.start(**self._uc_request.params)
         page = await self._uc_browser.get(url)
         await page.activate()
         raw_content = await page.get_content()
         await page.close()
-        response = self._uc_request['response']
+        response = self._uc_request.response
         response.headers = self.session.headers
         response.raw = raw_content
         response.url = url
         response.status_code = 200 if raw_content else 403
+        self._uc_request.request_type = UCRequestType.USING_UD
+        self._uc_request.response = response
         if response.status_code == 403:
-            self._uc_request['response'] = response
             return
 
         soup = BeautifulSoup(raw_content, 'html.parser')
@@ -745,4 +747,10 @@ class EPCAPI:
             # convert content to bytes because it's needed for the json decoding in response.json()
             response.content = response.content.encode(response.encoding)
             response.status_code = 200
-        self._uc_request['response'] = response
+        self._uc_request.response = response
+
+    def get_last_request_type(self) -> UCRequestType:
+        """
+        Return the type of the last request.
+        """
+        return self._uc_request.request_type

@@ -43,8 +43,10 @@ class UEVMLFS:
         self._user_data = None
         # UEVaultManager update check info
         self._update_info = None
-        # store the dowload size of assets
+        # the sizes of dowloaded assets
         self._asset_sizes = None
+        # the catalog item ids of all the (owned) items (assets and games) of the user library
+        self._library_catalog_ids = None
 
         # Config with item specific settings (e.g. start parameters, env variables)
         self.config = AppConfig(comment_prefixes='/', allow_no_value=True)
@@ -73,6 +75,8 @@ class UEVMLFS:
         self.installed_asset_filename: str = path_join(self.json_files_folder, 'installed_assets.json')
         # filename for storing the size of asset (filled by the 'info' command).
         self.asset_sizes_filename: str = path_join(self.json_files_folder, 'asset_sizes.json')
+        # filename for storing the catalog item ids of all the (owned) items (assets and games) of the user library
+        self.library_catalog_ids_filename: str = path_join(self.json_files_folder, 'library_catalog_ids.json')
 
         # ensure folders exist.
         for f in ['', self.manifests_folder, self.tmp_folder, self.json_files_folder]:
@@ -206,6 +210,9 @@ class UEVMLFS:
             self.logger.debug(f'Loading assets sizes failed: {error!r}')
             self._asset_sizes = None
 
+        # if not gui_g.s.offline_mode:
+        #     self.invalidate_library_catalog_ids()
+
     @property
     def userdata(self):
         """
@@ -243,6 +250,14 @@ class UEVMLFS:
         if os.path.exists(self.user_data_filename):
             os.remove(self.user_data_filename)
 
+    def invalidate_library_catalog_ids(self) -> None:
+        """
+        Invalidate the library catalog ids data.
+        """
+        self._library_catalog_ids = None
+        if os.path.exists(self.library_catalog_ids_filename):
+            os.remove(self.library_catalog_ids_filename)
+
     @property
     def asset_sizes(self):
         """
@@ -266,6 +281,30 @@ class UEVMLFS:
         self._asset_sizes = asset_sizes
         with open(self.asset_sizes_filename, 'w', encoding='utf-8') as file:
             json.dump(self._asset_sizes, file, indent=2, sort_keys=True)
+
+    @property
+    def library_catalog_ids(self):
+        """
+        Return the catalog item ids of all the (owned) items (assets and games) of the user library. If not loaded, load it from the json file.
+        :return: asset's size.
+        """
+        if self._library_catalog_ids is None:
+            try:
+                with open(self.library_catalog_ids_filename, 'r', encoding='utf-8') as file:
+                    self._library_catalog_ids = json.load(file)
+            except Exception as error:
+                self.logger.debug(f"Failed to load item ids of the user library: {error!r}")
+        return self._library_catalog_ids
+
+    @library_catalog_ids.setter
+    def library_catalog_ids(self, catalog_ids) -> None:
+        """
+        Set the asset data and saved it to a json file.
+        :param catalog_ids: catalog item ids of all the (owned) items (assets and games) of the user library.
+        """
+        self._library_catalog_ids = catalog_ids
+        with open(self.library_catalog_ids_filename, 'w', encoding='utf-8') as file:
+            json.dump(self._library_catalog_ids, file, indent=2, sort_keys=True)
 
     def _get_manifest_filename(self, app_name: str, version: str, platform: str = None) -> str:
         """

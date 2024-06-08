@@ -919,8 +919,13 @@ class UEVaultManagerCLI:
         if not self.core.uevmlfs.userdata:
             # not connected => offline mode
             args.offline = True
+
         # not refresh forced or offline mode => load_from_files is true
         load_from_files = not args.force_refresh or args.offline
+
+        if load_from_files:
+            self.core.uevmlfs.invalidate_library_catalog_ids()
+
         # important to keep this value in sync with the one used in the EditableTable and UEVMGui classes
         # still true ?
         # ue_asset_per_page = gui_g.s.rows_per_page
@@ -950,9 +955,7 @@ class UEVaultManagerCLI:
         scraped_data = []
         result_count = 0
         if not load_from_files:
-            result_count = scraper.gather_all_assets_urls(
-                empty_list_before=True
-            )  # return -1 if interrupted or error
+            result_count = scraper.gather_all_assets_urls(empty_list_before=True)  # return -1 if interrupted or error
         if result_count != -1:
             if scraper.save(owned_assets_only=False, save_to_format=save_to_format):
                 scraped_data = scraper.scraped_data
@@ -1541,6 +1544,10 @@ def main():
         metavar='<path/name>',
         action='store',
         help='The sqlite file name (with path) where the list should be read from (it exludes the --input option)'
+    )
+    # noinspection DuplicatedCode
+    edit_parser.add_argument(
+        '--offline', dest='offline', action='store_true', help='Only edit info available offline. It will use files saved previously, do not log in'
     )
     # not use for now
     # edit_parser.add_argument('--csv', dest='csv', action='store_true', help='Input file is in CSV format')
