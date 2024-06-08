@@ -78,7 +78,9 @@ class ScrapTask:
 
     def __call__(self):
         self.log_func(f'START OF ScrapTask {self.name} at {datetime.now()}')
-        result = self.caller.get_data_from_url(self.url)
+        result = self.caller.get_data_from_url(
+            self.url
+        )  # Note: If a captcha is present, this call will be made as a not connected user, so we can't get the "owned" flag value anymore
         self.log_func(f'END OF ScrapTask {self.name} at {datetime.now()}')
         return result
 
@@ -1181,7 +1183,9 @@ class UEAssetScraper:
                                 self.core.scrap_asset_logger.warning(message)
             else:
                 for url in self._urls:
-                    self.get_data_from_url(url)
+                    self.get_data_from_url(
+                        url
+                    )  # Note: If a captcha is present, this call will be made as a not connected user, so we can't get the "owned" flag value anymore
             if self.save_parsed_to_files:
                 message = f'It took {(time.time() - start_time):.3f} seconds to download {len(self._urls)} urls and store the data in {self._files_count} files'
             else:
@@ -1193,8 +1197,6 @@ class UEAssetScraper:
             # debug an instance of asset (here the last one). MUST BE RUN OUTSIDE THE LOOP ON ALL ASSETS
             if (self.core.verbose_mode or gui_g.s.debug_mode) and self._scraped_data:
                 debug_parsed_data(self._scraped_data[-1], DataSourceType.DATABASE)
-
-        self.update_owned_assets(self._scraped_data)
 
         if self.use_database:
             tags_count = self.asset_db_handler.get_rows_count('tags')
@@ -1254,22 +1256,6 @@ class UEAssetScraper:
         Clear the list of ignored asset names.
         """
         self._ignored_asset_names = []
-
-    def update_owned_assets(self, assets_data: list) -> None:
-        """
-        Update the "owned" field of the assets_data with the owned assets.
-        :param assets_data:
-        """
-        owned_asset = self.core.egs.get_owned_library()
-        if owned_asset:
-            # get the value of the field "CatalogItemId" from owned_asset ain a list
-            owned_asset_catalog_item_id = [asset['catalogItemId'] for asset in owned_asset]
-            if owned_asset_catalog_item_id:
-                # loop through self._scraped_data and check if the "app_name" is in the owned_asset_keys
-                # if it is, then change the "µOwned" fleidd to True
-                for asset in assets_data:
-                    if asset["catalog_item_id"] in owned_asset_catalog_item_id:
-                        asset["owned"] = True
 
 
 if __name__ == '__main__':

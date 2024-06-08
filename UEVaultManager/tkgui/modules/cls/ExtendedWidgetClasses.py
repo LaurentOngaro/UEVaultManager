@@ -115,7 +115,7 @@ class ExtendedWidget:
             style = self.winfo_toplevel().style  # only works if the widget is a child of UEVMGui,
         except AttributeError:
             try:
-                # noinspection PyProtectedMember
+                # noinspection PyProtectedMember,PyUnresolvedReferences
                 root = tk._default_root.style
                 style_name = root.theme_use()
                 style = root.Style(style_name)

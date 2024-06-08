@@ -16,6 +16,20 @@ class UCResponse(Response):
     """
 
     def __init__(self):
+        """
+        NOTE:
+            Response properties are:
+            _content
+            status_code
+            headers
+            url
+            history
+            encoding
+            reason
+            cookies
+            elapsed
+            request
+        """
         super().__init__()
         self._content = None
         self.raw = ''

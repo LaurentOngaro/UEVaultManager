@@ -153,6 +153,13 @@ class UEVMGui(tk.Tk):
             db_handler = UEAssetDbHandler(database_name=data_source)  # we need it BEFORE CREATING the editable_table and use its db_handler property
             self.core.uevmlfs.pre_update_installed_folders(db_handler=db_handler)
 
+        if gui_g.UEVM_cli_args.get('offline'):
+            gui_g.s.offline_mode = True
+            self.title(gui_g.s.app_title_long)
+
+        if not gui_g.s.offline_mode:
+            self.core.uevmlfs.invalidate_library_catalog_ids()
+
         data_table = EditableTable(
             container=frm_content,
             data_source_type=data_source_type,
@@ -399,12 +406,36 @@ class UEVMGui(tk.Tk):
         :param row_index: index of the row to update.
         :param installed_folders: new value for the cell.
         """
-        data_table = self.editable_table
+        data_table = self.editable_table  # shortcut
         if installed_folders:
             col_index = data_table.get_col_index('Installed folders')
             if data_table.update_cell(row_index, col_index, installed_folders):
                 data_table.update()  # because the "installed folder" field changed
         data_table.update_quick_edit(row_index)
+
+    def _update_owned_assets(self, catalog_ids_to_update: list = None) -> None:
+        """
+        Update the "owned" field of the assets_data with the owned assets.
+        :param catalog_ids_to_update: list of catalog ids to update. If empty, all the (owned) assets will be updated.
+        """
+        # gui_f.show_progress(self, text=f'Updating data from owned assets list...')
+        library_catalog_ids = self.core.uevmlfs.library_catalog_ids
+        if not library_catalog_ids:
+            library_catalog = self.core.egs.get_owned_library()
+            # get the value of the field "CatalogItemId" from owned_asset in a list
+            library_catalog_ids = [asset['catalogItemId'] for asset in library_catalog]
+            # remove duplicates
+            library_catalog_ids = list(set(library_catalog_ids))
+            self.core.uevmlfs.library_catalog_ids = library_catalog_ids
+            if catalog_ids_to_update:
+                # filter the owned_ids list to keep only the ids that are in the catalog_ids_to_update list
+                library_catalog_ids = [asset for asset in library_catalog_ids if asset in catalog_ids_to_update]
+        if library_catalog_ids:
+            data_table = self.editable_table  # shortcut
+            df = data_table.get_data()
+            mask = df['Catalog itemid'].isin(library_catalog_ids)
+            df['Owned'] = df['Owned'].mask(mask, True)
+        # gui_f.close_progress(self)
 
     def _get_choice_result(self, selection):
         """
@@ -1368,7 +1399,9 @@ class UEVMGui(tk.Tk):
             else:
                 # next line because the scraper is initialized only at startup
                 self.ue_asset_scraper.keep_intermediate_files = gui_g.s.debug_mode
-            self.ue_asset_scraper.get_data_from_url(api_product_url)
+            self.ue_asset_scraper.get_data_from_url(
+                api_product_url
+            )  # Note: If a captcha is present, this call will be made as a not connected user, so we can't get the "owned" flag value anymore
             asset_data = self.ue_asset_scraper.pop_last_scraped_data()  # returns a list of one element
             is_ok = asset_data is not None and len(asset_data) > 0
         if not is_ok:
@@ -1485,6 +1518,7 @@ class UEVMGui(tk.Tk):
                 pw = gui_f.show_progress(
                     self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True
                 )
+            catalog_ids = []
             for count, row_index in enumerate(row_indexes):
                 if row_index < 0:
                     # a conversion error in get_real_index has occured
@@ -1492,6 +1526,10 @@ class UEVMGui(tk.Tk):
                 tags_message = ''
                 row_data = data_table.get_row(row_index, return_as_dict=True)
                 marketplace_url = row_data['Url']
+                try:
+                    catalog_ids.append(row_data['Catalog itemid'])
+                except KeyError:
+                    pass
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 # we keep UrlSlug here because it can arise from the scraped data
                 asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
@@ -1546,6 +1584,7 @@ class UEVMGui(tk.Tk):
                         show_dialog=not self._silent_mode
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
+                        self._update_owned_assets(catalog_ids)
                         if self.is_using_database:
                             self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=False)
                     if row_count > 1:
@@ -1760,7 +1799,7 @@ class UEVMGui(tk.Tk):
         if self._frm_toolbar is None:
             return
 
-        data_table = self.editable_table
+        data_table = self.editable_table  # shortcut
         max_index = len(data_table.get_data())
         current_row = data_table.get_selected_row_fixed()
         current_row_index = data_table.add_page_offset(current_row) if current_row is not None else -1
@@ -1901,6 +1940,7 @@ class UEVMGui(tk.Tk):
             # update the "installed folders" AFTER loading the data in the datatable (because datatable content = CSV content)
             installed_assets_json = self.core.uevmlfs.get_installed_assets().copy()  # copy because the content could change during the process
             post_update_installed_folders(installed_assets_json, df)
+        self._update_owned_assets()
         self.update_controls_state()
         self.update_category_var()
         # data_table.update()
