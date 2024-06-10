@@ -748,8 +748,12 @@ class EditableTable(Table):
         else:
             return int(self.get_real_index(row_number))
         # copy_col_index = self.get_col_index(gui_g.s.index_copy_col_name)  # issue if df and unfiltred data does not have the same columns
-        copy_col_index = df.columns.get_loc(gui_g.s.index_copy_col_name)
         result = -1
+        try:
+            copy_col_index = df.columns.get_loc(gui_g.s.index_copy_col_name)
+        except KeyError:
+            # could occur when reloading and before the columns are updated
+            copy_col_index = -1
         idx_max = len(df)
         if row_number >= idx_max:
             return -1
@@ -759,8 +763,8 @@ class EditableTable(Table):
             if copy_col_index >= 0:
                 idx_copy = df.iat[row_number, copy_col_index]  # could return '' if the column is empty
                 result = int(idx_copy) if str(idx_copy) else -1
-            else:
-                self.notify(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
+            # else:
+            #     self.notify(f'Column "{gui_g.s.index_copy_col_name}" not found in the table. We use the row number instead.')
         except (ValueError, IndexError) as error:
             self.notify(f'Could not get the real index for row number #{row_number + 1}. Error: {error!r}')
         return result
@@ -1593,6 +1597,10 @@ class EditableTable(Table):
         :return: index of the previous row or -1 if the first row is already selected.
         """
         self.gotoprevRow()
+        if self.update_controls_state_func is not None:
+            self.update_controls_state_func()
+        if self.update_preview_info_func is not None:
+            self.update_preview_info_func()
         self._generate_cell_selection_changed_event()
         return self.getSelectedRow()
 
@@ -1602,6 +1610,10 @@ class EditableTable(Table):
         :return: index of the next row, or -1 if the last row is already selected.
         """
         self.gotonextRow()
+        if self.update_controls_state_func is not None:
+            self.update_controls_state_func()
+        if self.update_preview_info_func is not None:
+            self.update_preview_info_func()
         self._generate_cell_selection_changed_event()
         return self.getSelectedRow()
 

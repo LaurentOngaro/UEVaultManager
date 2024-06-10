@@ -490,10 +490,6 @@ class UEVMGui(tk.Tk):
             if row_number < 0:
                 return
             self.update_preview_info(row_number)
-            self._image_url = self.editable_table.get_image_url(row_number)
-            if not gui_f.show_asset_image(image_url=self._image_url, canvas_image=canvas_image):
-                # the image could not be loaded and the offline mode could have been enabled
-                self.update_controls_state(update_title=True)
         except IndexError:
             gui_f.show_default_image(canvas_image)
 
@@ -506,14 +502,7 @@ class UEVMGui(tk.Tk):
             If defined, it will display the last selected row info.
         """
         row_number = self.editable_table.last_selected_row
-        canvas_image = self._frm_control.canvas_image
-        if row_number < 0:
-            self.update_preview_info()
-            gui_f.show_default_image(canvas_image=canvas_image)
-        else:
-            self.update_preview_info(row_number)
-            self._image_url = self.editable_table.get_image_url(row_number)
-            gui_f.show_asset_image(image_url=self._image_url, canvas_image=canvas_image)
+        self.update_preview_info(row_number)
 
     def on_selection_change(self, event=None) -> None:
         """
@@ -1910,6 +1899,8 @@ class UEVMGui(tk.Tk):
         df_filtered = data_table.get_data(df_type=DataFrameUsed.FILTERED)
         row_count_filtered = len(df_filtered) if df_filtered is not None else 0
         row_count = len(df)
+        if row_number < 0:
+            row_number = data_table.getSelectedRow()
         idx = data_table.get_real_index(row_number)
         if idx >= 0:
             app_name = data_table.get_cell(row_number, data_table.get_col_index('Asset_id'))
@@ -1925,8 +1916,11 @@ class UEVMGui(tk.Tk):
             else:
                 _add_text('Not downloaded yet')
             _add_text(f'Row Index: {idx}')
+            self._image_url = data_table.get_image_url(row_number)
+            gui_f.show_asset_image(image_url=self._image_url, canvas_image=self._frm_control.canvas_image)
         else:
             _add_text('Place the cursor on a row for details', 'orange')
+            gui_f.show_default_image(self._frm_control.canvas_image)
         _add_text(f'Total rows: {row_count}')
         if row_count_filtered != row_count:
             _add_text(f'Filtered rows: {row_count_filtered} ')
