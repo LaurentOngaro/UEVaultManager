@@ -89,7 +89,7 @@ csv_sql_fields = {
     },
     'Owned': {
         'sql_name': 'owned',
-        'state': CSVFieldState.NORMAL,
+        'state': CSVFieldState.CHANGED,
         'field_type': CSVFieldType.BOOL
     },
     'Obsolete': {
