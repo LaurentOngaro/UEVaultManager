@@ -186,6 +186,9 @@ class UEVMGui(tk.Tk):
             post_update_installed_folders(installed_assets_json, df)
 
         self.editable_table = data_table
+        gui_f.show_progress(self, text=f'Checking owned assets...')
+        self._update_owned_assets()
+        gui_f.close_progress(self)
 
         data_table.set_preferences(gui_g.s.datatable_default_pref)
         try:
