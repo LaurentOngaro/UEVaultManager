@@ -56,7 +56,7 @@ class GUISettings:
         self.assets_global_folder: str = path_join(self.scraping_folder, 'global')
         self.assets_csv_files_folder: str = path_join(self.scraping_folder, 'csv')
         self.filters_folder: str = path_join(self.path, 'filters')
-        self.backups_folder: str = path_join(self.path, 'backups')
+        self.backups_folder: str = path_join(self.scraping_folder, 'backups')
         self.backup_file_ext: str = '.BAK'
         self.default_filename: str = 'assets'
         # if a file extension is in this tuple, the parent folder is considered as a valid UE folder
