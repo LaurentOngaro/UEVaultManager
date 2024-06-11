@@ -488,7 +488,7 @@ class UEAssetScraper:
 
                 # we use copy data for user_fields to preserve user data
                 if asset_existing_data.get('origin', '') == gui_g.s.origin_marketplace:
-                    # Remove some existing fields to avoid keeping "incohent" values when scraping EXISTING data from the marketplace
+                    # Remove some existing fields to avoid keeping "incoherent" values when scraping EXISTING data from the marketplace
                     fields_to_remove = ['category', 'asset_url', 'added_manually']
                     asset_existing_data = {field: value for field, value in asset_existing_data.items() if field not in fields_to_remove}
 
