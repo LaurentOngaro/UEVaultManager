@@ -416,14 +416,15 @@ class UEVMGui(tk.Tk):
                 data_table.update()  # because the "installed folder" field changed
         data_table.update_quick_edit(row_index)
 
-    def _update_owned_assets(self, catalog_ids_to_update: list = None) -> None:
+    def _update_owned_assets(self, catalog_ids_to_update: list = None, invalidate_existing=False) -> None:
         """
         Update the "owned" field of the assets_data with the owned assets.
         :param catalog_ids_to_update: list of catalog ids to update. If empty, all the (owned) assets will be updated.
+        :param invalidate_existing: whether to invalidate the existing owned assets list.
         """
         # gui_f.show_progress(self, text=f'Updating data from owned assets list...')
         library_catalog_ids = self.core.uevmlfs.library_catalog_ids
-        if not library_catalog_ids:
+        if not library_catalog_ids or invalidate_existing:
             library_catalog = self.core.egs.get_owned_library()
             # get the value of the field "CatalogItemId" from owned_asset in a list
             library_catalog_ids = [asset['catalogItemId'] for asset in library_catalog]
@@ -1438,7 +1439,10 @@ class UEVMGui(tk.Tk):
                 start = max(min_val, start)
                 end = min(max_val, end)
                 all_row_numbers = list(range(start, end))
-                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, is_silent=self._silent_mode)
+                self.scrap_asset(row_numbers=all_row_numbers, check_unicity=False, is_silent=self._silent_mode, check_owned=False)
+                self._update_owned_assets(
+                    invalidate_existing=True
+                )  # we invalidate the existing because the "owned" state could have been changed since the last called to the API for getting the owned assets list
                 self.ue_asset_scraper = None
 
     def scrap_asset(
@@ -1450,6 +1454,7 @@ class UEVMGui(tk.Tk):
         update_dataframe: bool = True,
         check_unicity: bool = False,
         is_silent: bool = False,
+        check_owned: bool = True
     ) -> dict:
         """
         Scrap the data for the current row or a given marketplace_url.
@@ -1460,6 +1465,7 @@ class UEVMGui(tk.Tk):
         :param update_dataframe: whether to update the dataframe after scraping.
         :param check_unicity: whether to check if the data are unique and ask the user to update the row if not.
         :param is_silent: whether to show message boxes or not.
+        :param check_owned: whether to check if the asset is owned or not.
         """
         # by default (i.e. self.silent_mode is not changed), we show the following message boxes
         if gui_g.s.offline_mode:
@@ -1576,9 +1582,13 @@ class UEVMGui(tk.Tk):
                         show_dialog=not self._silent_mode
                     ):
                         data_table.update_row(row_index, ue_asset_data=asset_data, convert_row_number_to_row_index=False)
-                        self._update_owned_assets(catalog_ids)
                         if self.is_using_database:
                             self.ue_asset_scraper.asset_db_handler.set_assets(asset_data, update_progress=False)
+
+                    if check_owned:
+                        self._update_owned_assets(
+                            catalog_ids, invalidate_existing=True
+                        )  # when invalidate the existing because the "owned" state could have been changed since the last called to the API for getting the owned assets list
                     if row_count > 1:
                         message = f'All Datas for {row_count} rows have been updated from the marketplace.'
                     else:
