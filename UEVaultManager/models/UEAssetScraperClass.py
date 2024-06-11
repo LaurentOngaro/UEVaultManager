@@ -22,7 +22,7 @@ from UEVaultManager.api.egs import is_asset_obsolete
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import convert_data_to_csv, csv_sql_fields, debug_parsed_data, get_csv_field_name_list, \
-    get_sql_field_name_list, get_sql_preserved_fields, get_sql_user_fields, is_on_state, is_preserved
+    get_sql_field_name_list, get_sql_preserved_fields, is_on_state, is_preserved
 from UEVaultManager.models.types import CSVFieldState, DateFormat, GetDataResult
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -493,7 +493,8 @@ class UEAssetScraper:
                     asset_existing_data = {field: value for field, value in asset_existing_data.items() if field not in fields_to_remove}
 
                 if asset_existing_data and use_database:
-                    for field in get_sql_user_fields():
+                    # for field in get_sql_user_fields():
+                    for field in get_sql_preserved_fields():
                         existing_value = asset_existing_data.get(field, None)
                         if existing_value:
                             one_asset_json_data_parsed[field] = existing_value
