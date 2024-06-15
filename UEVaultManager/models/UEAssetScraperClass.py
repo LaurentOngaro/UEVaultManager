@@ -298,7 +298,11 @@ class UEAssetScraper:
             else:
                 asset_existing_data = {}
                 if use_database:
-                    existing_data = asset_db_handler.get_assets_data(get_sql_preserved_fields(), uid)
+                    try:
+                        existing_data = asset_db_handler.get_assets_data(get_sql_preserved_fields(), uid)
+                    except (Exception, ):
+                        self._log(f'An error occurs with database when calling the get_assets_data method. Asset is skipped', level='error')
+                        continue
                     asset_existing_data = existing_data.get(uid, {})
                 categories = one_asset_json_data_from_egs_ori.get('categories', [])
 
@@ -434,7 +438,11 @@ class UEAssetScraper:
                         self._log(f'No rating for {one_asset_json_data_from_egs_ori["title"]}', 'debug')
                         # check if self has asset_db_handler
                         if use_database:
-                            average_rating, rating_total = asset_db_handler.get_rating_by_id(uid)
+                            try:
+                                average_rating, rating_total = asset_db_handler.get_rating_by_id(uid)
+                            except (Exception,):
+                                self._log(f'An error occurs with database when calling the get_rating_by_id method. Asset is skipped', level='error')
+                                continue
                 one_asset_json_data_parsed['review'] = average_rating
                 one_asset_json_data_parsed['review_count'] = rating_total
 
@@ -498,7 +506,6 @@ class UEAssetScraper:
                         existing_value = asset_existing_data.get(field, None)
                         if existing_value:
                             one_asset_json_data_parsed[field] = existing_value
-
                 # installed_folders and tags
                 installed_folders_str = one_asset_json_data_parsed.get('installed_folders', '')
                 asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)  # from current existing install
@@ -507,8 +514,12 @@ class UEAssetScraper:
                     installed_folders_str = gui_fn.merge_lists_or_strings(installed_folders_str, asset_installed_folders)
                 tags = one_asset_json_data_from_egs_ori.get('tags', [])
                 if use_database:
-                    # get tag name from tag id and convert the list into a comma separated string
-                    tags_str = asset_db_handler.convert_tag_list_to_string(tags)
+                    try:
+                        # get tag name from tag id and convert the list into a comma separated string
+                        tags_str = asset_db_handler.convert_tag_list_to_string(tags)
+                    except (Exception,):
+                        self._log(f'An error occurs with database when calling the convert_tag_list_to_string method. Asset is skipped', level='error')
+                        continue
                     # asset_data['installed_folders'] = installed_folders_str
                 else:
                     # with no database, we don't have access to the tags table. So we keep the tags as a list of dicts and extract the names when exists
@@ -970,8 +981,14 @@ class UEAssetScraper:
                         asset_data['app_name'] = app_name
                         self.save_to_file(filename=filename, data=asset_data, is_owned=False)
                         self._files_count += 1
-
-                parsed_assets_data = self._parse_data(json_data_from_egs_url)  # could return a dict or a list of dict
+                try:
+                    parsed_assets_data = self._parse_data(json_data_from_egs_url)  # could return a dict or a list of dict
+                except (Exception, ) as error:
+                    message = f'An Error occurs when saving data url {url}: {error!r}'
+                    self._log(message, 'error')
+                    if self.core.scrap_asset_logger:
+                        self.core.scrap_asset_logger.warning(message)
+                    return GetDataResult.ERROR
                 if isinstance(parsed_assets_data, list):
                     self._scraped_data.append(parsed_assets_data)
                 else:
