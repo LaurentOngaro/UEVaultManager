@@ -22,7 +22,7 @@ from UEVaultManager.api.egs import is_asset_obsolete
 from UEVaultManager.core import AppCore
 from UEVaultManager.lfs.utils import path_join
 from UEVaultManager.models.csv_sql_fields import convert_data_to_csv, csv_sql_fields, debug_parsed_data, get_csv_field_name_list, \
-    get_sql_field_name_list, get_sql_preserved_fields, get_sql_user_fields, is_on_state, is_preserved
+    get_sql_field_name_list, get_sql_preserved_fields, is_on_state, is_preserved
 from UEVaultManager.models.types import CSVFieldState, DateFormat, GetDataResult
 from UEVaultManager.models.UEAssetClass import UEAsset
 from UEVaultManager.models.UEAssetDbHandlerClass import UEAssetDbHandler
@@ -298,7 +298,11 @@ class UEAssetScraper:
             else:
                 asset_existing_data = {}
                 if use_database:
-                    existing_data = asset_db_handler.get_assets_data(get_sql_preserved_fields(), uid)
+                    try:
+                        existing_data = asset_db_handler.get_assets_data(get_sql_preserved_fields(), uid)
+                    except (Exception, ):
+                        self._log(f'An error occurs with database when calling the get_assets_data method. Asset is skipped', level='error')
+                        continue
                     asset_existing_data = existing_data.get(uid, {})
                 categories = one_asset_json_data_from_egs_ori.get('categories', [])
 
@@ -434,7 +438,11 @@ class UEAssetScraper:
                         self._log(f'No rating for {one_asset_json_data_from_egs_ori["title"]}', 'debug')
                         # check if self has asset_db_handler
                         if use_database:
-                            average_rating, rating_total = asset_db_handler.get_rating_by_id(uid)
+                            try:
+                                average_rating, rating_total = asset_db_handler.get_rating_by_id(uid)
+                            except (Exception,):
+                                self._log(f'An error occurs with database when calling the get_rating_by_id method. Asset is skipped', level='error')
+                                continue
                 one_asset_json_data_parsed['review'] = average_rating
                 one_asset_json_data_parsed['review_count'] = rating_total
 
@@ -488,16 +496,16 @@ class UEAssetScraper:
 
                 # we use copy data for user_fields to preserve user data
                 if asset_existing_data.get('origin', '') == gui_g.s.origin_marketplace:
-                    # Remove some existing fields to avoid keeping "incohent" values when scraping EXISTING data from the marketplace
+                    # Remove some existing fields to avoid keeping "incoherent" values when scraping EXISTING data from the marketplace
                     fields_to_remove = ['category', 'asset_url', 'added_manually']
                     asset_existing_data = {field: value for field, value in asset_existing_data.items() if field not in fields_to_remove}
 
                 if asset_existing_data and use_database:
-                    for field in get_sql_user_fields():
+                    # for field in get_sql_user_fields():
+                    for field in get_sql_preserved_fields():
                         existing_value = asset_existing_data.get(field, None)
                         if existing_value:
                             one_asset_json_data_parsed[field] = existing_value
-
                 # installed_folders and tags
                 installed_folders_str = one_asset_json_data_parsed.get('installed_folders', '')
                 asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)  # from current existing install
@@ -506,8 +514,12 @@ class UEAssetScraper:
                     installed_folders_str = gui_fn.merge_lists_or_strings(installed_folders_str, asset_installed_folders)
                 tags = one_asset_json_data_from_egs_ori.get('tags', [])
                 if use_database:
-                    # get tag name from tag id and convert the list into a comma separated string
-                    tags_str = asset_db_handler.convert_tag_list_to_string(tags)
+                    try:
+                        # get tag name from tag id and convert the list into a comma separated string
+                        tags_str = asset_db_handler.convert_tag_list_to_string(tags)
+                    except (Exception,):
+                        self._log(f'An error occurs with database when calling the convert_tag_list_to_string method. Asset is skipped', level='error')
+                        continue
                     # asset_data['installed_folders'] = installed_folders_str
                 else:
                     # with no database, we don't have access to the tags table. So we keep the tags as a list of dicts and extract the names when exists
@@ -871,7 +883,7 @@ class UEAssetScraper:
         try:
             if self._threads_count > 1:
                 # add a delay when multiple threads are used
-                time.sleep(random.uniform(1.0, 3.0))
+                time.sleep(random.uniform(0.5, 1.5))
                 thread = current_thread()
                 thread_data = f' ==> By Thread name={thread.name}'
             message = f'--- START scraping data from {url}{thread_data}{thread_state}'
@@ -899,7 +911,21 @@ class UEAssetScraper:
                 no_error = (error_code == '')
             except (ReadTimeout, ):
                 error_code = GetDataResult.TIMEOUT
-
+            except (Exception, ):
+                message = f'An Error occurs when decoding json data from url {url}. Trying to reload the page...'
+                self._log(message, 'warning')
+                if self.core.scrap_asset_logger:
+                    self.core.scrap_asset_logger.warning(message)
+                # try again
+                try:
+                    json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=gui_g.s.timeout_for_scraping)
+                    error_code = json_data_from_egs_url.get(
+                        'errorCode', ''
+                    )  # value returned by self.session.get() call inside get_json_data_from_url()
+                    no_error = (error_code == '')
+                except (Exception, ):
+                    no_error = False
+                    error_code = GetDataResult.JSON_DECODE
             if not no_error:
                 if error_code == GetDataResult.TIMEOUT:
                     # mainly occurs because the timeout is too short for the number of asset to scrap
@@ -909,6 +935,11 @@ class UEAssetScraper:
                     # mainly occurs because the number of asset to scrap is too big
                     # the caller will try a smaller number
                     return GetDataResult.ERROR_431
+                elif error_code == GetDataResult.JSON_DECODE:
+                    message = f'Json data can not be read from from url {url}'
+                    self._log(message, 'error')
+                    if self.core.scrap_asset_logger:
+                        self.core.scrap_asset_logger.warning(message)
                 else:
                     # other error
                     # the caller WON'T DO another try
@@ -925,7 +956,6 @@ class UEAssetScraper:
                 # when only one asset is returned, the data is in the 'data' key
                 self._log(f'==> parsed url {url} for one asset')
                 json_data_from_egs_url['data']['elements'] = [json_data_from_egs_url['data']['data']]
-
             if json_data_from_egs_url:
                 if self.keep_intermediate_files:
                     # store the GLOBAL result file in the raw format
@@ -951,8 +981,14 @@ class UEAssetScraper:
                         asset_data['app_name'] = app_name
                         self.save_to_file(filename=filename, data=asset_data, is_owned=False)
                         self._files_count += 1
-
-                parsed_assets_data = self._parse_data(json_data_from_egs_url)  # could return a dict or a list of dict
+                try:
+                    parsed_assets_data = self._parse_data(json_data_from_egs_url)  # could return a dict or a list of dict
+                except (Exception, ) as error:
+                    message = f'An Error occurs when saving data url {url}: {error!r}'
+                    self._log(message, 'error')
+                    if self.core.scrap_asset_logger:
+                        self.core.scrap_asset_logger.warning(message)
+                    return GetDataResult.ERROR
                 if isinstance(parsed_assets_data, list):
                     self._scraped_data.append(parsed_assets_data)
                 else:
@@ -961,7 +997,7 @@ class UEAssetScraper:
                 if self.core.scrap_asset_logger:
                     self.core.scrap_asset_logger.info(f'--- END scraping from {url}: {len(json_data_from_egs_url)} asset ADDED to scraped_data')
         except (Exception, ) as error:
-            message = f'Error getting data from url {url}: {error!r}'
+            message = f'An Error occurs when getting data from url {url}: {error!r}'
             self._log(message, 'warning')
             if self.core.scrap_asset_logger:
                 self.core.scrap_asset_logger.warning(message)

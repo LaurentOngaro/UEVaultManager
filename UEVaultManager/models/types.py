@@ -94,6 +94,7 @@ class GetDataResult(Enum):
     NO_URL = 4  # no url to get data
     ERROR_431 = 5  # mainly occurs because the number of asset to scrap is too big
     TIMEOUT = 6  # mainly occurs because the timeout is too short for the number of asset to scrap
+    JSON_DECODE = 7  # json decoding error
 
 
 class BooleanOperator(Enum):

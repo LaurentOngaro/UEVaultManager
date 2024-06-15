@@ -193,7 +193,7 @@ class EPCAPI:
         self.timeout = timeout
         self._uc_browser = None
         self._uc_request = UCRequest()
-        self.debug_mode = False
+        self.debug_mode = False  # TODO: make it a setting or use the gui_g.settings.debug_mode (not imported here)
         # set to true to use "NoDriver" object instead of a usual session object to bypass captcha on marketplace pages
         self.bypass_captcha = False
 
@@ -675,7 +675,7 @@ class EPCAPI:
 
         params = {}
         browser_path = r'C:\Program Files\Chromium\Application\chrome.exe'  # TODO: add the default browser_path to the settings or add a new check to find the browser
-        params['headless'] = False  # True  will not bypass the captcha
+        params['headless'] = False  # True will not bypass the captcha
         params['use_subprocess'] = True  # False will crash the script
         params['browser_executable_path'] = browser_path
         params['user_multi_procs'] = True  # will speed up the process
@@ -722,6 +722,8 @@ class EPCAPI:
         self._uc_browser = await uc.start(**self._uc_request.params)
         page = await self._uc_browser.get(url)
         await page.activate()
+        # add a delai to let the page load
+        # await page.wait(1)
         raw_content = await page.get_content()
         await page.close()
         response = self._uc_request.response
@@ -736,9 +738,15 @@ class EPCAPI:
 
         soup = BeautifulSoup(raw_content, 'html.parser')
         if soup:
+            # check if the page contains a captcha
+            captcha_tag = soup.find('div', class_='cf_challenge_container')
+            if captcha_tag:
+                response.status_code = 403
+                return
+
             # get the charset value from the header of raw_content
             charset_tag = soup.find('meta', charset=True)
-            response.encoding = charset_tag.get('charset', response.encoding)
+            response.encoding = charset_tag.get('charset', response.encoding) if charset_tag else 'utf-8'
 
             # if response contains json data, raw_content is a container where the real content is stored between <pre> and </pre>
             pre_tag = soup.find('pre')

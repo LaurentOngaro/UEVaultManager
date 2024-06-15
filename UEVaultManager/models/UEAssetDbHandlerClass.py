@@ -13,6 +13,7 @@ import logging
 import os
 import random
 import sqlite3
+import sys
 from enum import Enum
 from pathlib import Path
 
@@ -98,7 +99,12 @@ class UEAssetDbHandler:
 
         def __init__(self, database_name: str):
             self.database_name: str = database_name
-            self.sqlite_conn = sqlite3.connect(self.database_name, check_same_thread=False)
+            # get python version
+            # Pyhton 3.12 and 3.13 have a bug with the cached_statements parameter that throws a ""bad parameter or other API misuse" error with multi threading requests
+            # see:https://github.com/python/cpython/issues/118172
+            python_version = '.'.join(map(str, sys.version_info[:2]))
+            cached_statements = 0 if python_version in ['3.12', '3.13'] else 128
+            self.sqlite_conn = sqlite3.connect(self.database_name, check_same_thread=False, cached_statements=cached_statements)
 
         def __enter__(self):
             """
