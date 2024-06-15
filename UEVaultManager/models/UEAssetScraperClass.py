@@ -872,7 +872,7 @@ class UEAssetScraper:
         try:
             if self._threads_count > 1:
                 # add a delay when multiple threads are used
-                time.sleep(random.uniform(1.0, 3.0))
+                time.sleep(random.uniform(0.5, 1.5))
                 thread = current_thread()
                 thread_data = f' ==> By Thread name={thread.name}'
             message = f'--- START scraping data from {url}{thread_data}{thread_state}'
@@ -900,7 +900,21 @@ class UEAssetScraper:
                 no_error = (error_code == '')
             except (ReadTimeout, ):
                 error_code = GetDataResult.TIMEOUT
-
+            except (Exception, ):
+                message = f'An Error occurs when decoding json data from url {url}. Trying to reload the page...'
+                self._log(message, 'warning')
+                if self.core.scrap_asset_logger:
+                    self.core.scrap_asset_logger.warning(message)
+                # try again
+                try:
+                    json_data_from_egs_url = self.core.egs.get_json_data_from_url(url, override_timeout=gui_g.s.timeout_for_scraping)
+                    error_code = json_data_from_egs_url.get(
+                        'errorCode', ''
+                    )  # value returned by self.session.get() call inside get_json_data_from_url()
+                    no_error = (error_code == '')
+                except (Exception, ):
+                    no_error = False
+                    error_code = GetDataResult.JSON_DECODE
             if not no_error:
                 if error_code == GetDataResult.TIMEOUT:
                     # mainly occurs because the timeout is too short for the number of asset to scrap
@@ -910,6 +924,11 @@ class UEAssetScraper:
                     # mainly occurs because the number of asset to scrap is too big
                     # the caller will try a smaller number
                     return GetDataResult.ERROR_431
+                elif error_code == GetDataResult.JSON_DECODE:
+                    message = f'Json data can not be read from from url {url}'
+                    self._log(message, 'error')
+                    if self.core.scrap_asset_logger:
+                        self.core.scrap_asset_logger.warning(message)
                 else:
                     # other error
                     # the caller WON'T DO another try
@@ -926,7 +945,6 @@ class UEAssetScraper:
                 # when only one asset is returned, the data is in the 'data' key
                 self._log(f'==> parsed url {url} for one asset')
                 json_data_from_egs_url['data']['elements'] = [json_data_from_egs_url['data']['data']]
-
             if json_data_from_egs_url:
                 if self.keep_intermediate_files:
                     # store the GLOBAL result file in the raw format
@@ -962,7 +980,7 @@ class UEAssetScraper:
                 if self.core.scrap_asset_logger:
                     self.core.scrap_asset_logger.info(f'--- END scraping from {url}: {len(json_data_from_egs_url)} asset ADDED to scraped_data')
         except (Exception, ) as error:
-            message = f'Error getting data from url {url}: {error!r}'
+            message = f'An Error occurs when getting data from url {url}: {error!r}'
             self._log(message, 'warning')
             if self.core.scrap_asset_logger:
                 self.core.scrap_asset_logger.warning(message)
