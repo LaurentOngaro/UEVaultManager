@@ -287,7 +287,7 @@ class EPCAPI:
         Return the number of assets in the marketplace.
         """
         url = self._url_asset_list
-        r = self.get_url_with_uc(url, timeout=self.timeout, force_bypass_captcha=True)
+        r = self.get_url_with_uc(url, timeout=self.timeout, force_bypass_captcha=self.bypass_captcha)
         try:
             json_content = r.json()
             return int(json_content['data']['paging']['total'])
