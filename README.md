@@ -1,3 +1,11 @@
+!!! IMPORTANT !!
+Due to the EPIC Game move theirs assets from Unreal marketplace to FAB, all the data grabing features are not functionning anymore.
+I've not time for now to change all the API calls to work with the new marketplace.
+Perhaps I'll do that in a future time, perhaps not.
+Any help to port these features is welcome !
+For that, you can open an issue and make PRs or contact me directly for more info.
+
+
 Welcome to UEVaultManager
 ==========================================
 ![Logo](https://laurentongaro.github.io/UEVaultManager/statics/UEVM_200x200.png)
