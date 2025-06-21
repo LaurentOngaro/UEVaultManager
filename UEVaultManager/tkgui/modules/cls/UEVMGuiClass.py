@@ -240,6 +240,7 @@ class UEVMGui(tk.Tk):
     def setup(self, show_open_file_dialog: bool = False, rebuild_data: bool = False) -> None:
         """
         Set up the application. Called after the window is created.
+        :rtype: None
         :param show_open_file_dialog: whether the open file dialog will be shown at startup.
         :param rebuild_data: whether the data will be rebuilt at startup.
         """

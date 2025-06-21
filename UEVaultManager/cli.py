@@ -431,7 +431,8 @@ class UEVaultManagerCLI:
                 for fm in files
             ]
             print(content)
-            return self._print_json(_files, args.pretty_json)
+            self._print_json(_files, args.pretty_json)
+            return
         else:
             install_tags = set()
             for fm in files:
@@ -498,7 +499,8 @@ class UEVaultManagerCLI:
                 json_content['Release Url'] = update_information['release_url']
                 json_content['Update recommendation'] = update_information['severity']
         if args.json:
-            return self._print_json(json_content, args.pretty_json)
+            self._print_json(json_content, args.pretty_json)
+            return
         if UEVaultManagerCLI.is_gui:
             json_print_key_val(json_content, output_on_gui=True)
             if not uewm_gui_exists:
@@ -760,8 +762,9 @@ class UEVaultManagerCLI:
             # set empty items to null
             for key, value in json_out.items():
                 if not value:
-                    json_out[key] = None
-            return self._print_json(json_out, args.pretty_json)
+                    json_out[key] = {}
+            self._print_json(json_out, args.pretty_json)
+            return
 
     def cleanup(self, args) -> None:
         """
@@ -878,7 +881,7 @@ class UEVaultManagerCLI:
         gui_windows.after(500, lambda: gui_windows.setup(rebuild_data=rebuild))
         gui_windows.mainloop()
 
-    def scrap_assets(self, args, use_database=True, file_name: str = '', save_to_format: str = 'csv') -> []:
+    def scrap_assets(self, args, use_database=True, file_name: str = '', save_to_format: str = 'csv') -> list:
         """
         Scrap assets from the Epic Games Store or from previously saved files.
         :param args: options passed to the command.
@@ -913,7 +916,7 @@ class UEVaultManagerCLI:
                 if not self.core.login(force_refresh=True):
                     message = 'You are not connected or log in failed.\nYou MUST log first or check your credential to continue.\n'
                     self._log_and_gui_message(message, quit_on_error=False, level='error')
-                    return
+                    return []
             except ValueError:
                 pass
         if not self.core.uevmlfs.userdata:

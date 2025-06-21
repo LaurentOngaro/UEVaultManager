@@ -274,12 +274,13 @@ class EPCAPI:
         platform = 'Windows'
         label = 'Live'
         json_data = {}
+        url = f'{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}'  # TODO : fix this url
         try:
-            r = self.session.get(f'{self._launcher_host}/launcher/api/public/assets/{platform}', params=dict(label=label), timeout=self.timeout)
+            r = self.session.get(url, params=dict(label=label), timeout=self.timeout)
             if r.ok:
                 json_data = r.json()
         except Exception as error:
-            self.logger.warning(f'Can not get the get owned library assets: {error!r}')
+            self.logger.warning(f'Can not get the get owned library assets from {url}: {error!r}')
         return json_data
 
     def get_available_assets_count(self) -> int:
@@ -311,6 +312,7 @@ class EPCAPI:
             raise ConnectionError()
         if r.status_code == 200:
             return True
+        return False
 
     def get_json_data_from_url(self, url='', override_timeout=-1) -> dict:
         """
@@ -468,7 +470,7 @@ class EPCAPI:
         :param catalog_item_id: catalog item id of the item.
         :return: (The item info, status code).
         """
-        url = f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items'
+        url = f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items'    # TODO : fix this url
         r = self.session.get(
             url,
             params=dict(
@@ -658,6 +660,7 @@ class EPCAPI:
         else:
             # use a "normal" session get. Will not bypass the captcha if present
             return self.session.get(url, timeout=timeout)
+        return self._uc_request.response  # return the response from the Nodriver request
 
     def init_uc_browser(self) -> None:
         """
@@ -686,7 +689,12 @@ class EPCAPI:
             f'--window-size={window_width},{window_height}',  # set the initial size of the window
             f'--window-position={window_left},{window_top}',  # set the initial position of the window
             '--window-name="UndetectedChrome"',  # set the name of the window
-            '--no-first-run', '--no-default-browser-check', '--no-experiments', '--mute-audio', '--enable-gpu', '--disable-extensions',
+            '--no-first-run',
+            '--no-default-browser-check',
+            '--no-experiments',
+            '--mute-audio',
+            '--enable-gpu',
+            '--disable-extensions',
             # next options have been tested and are OK
             # '--start-maximized', # debug only
             # '--incognito',

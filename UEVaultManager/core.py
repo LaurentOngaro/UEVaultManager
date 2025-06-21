@@ -145,7 +145,7 @@ class AppCore:
             return Manifest.read_all(data)
 
     @staticmethod
-    def check_installation_conditions(analysis: AnalysisResult, folders: [], ignore_space_req: bool = False) -> ConditionCheckResult:
+    def check_installation_conditions(analysis: AnalysisResult, folders: list, ignore_space_req: bool = False) -> ConditionCheckResult:
         """
         Check installation conditions.
         :param analysis: analysis result to check.
@@ -160,13 +160,13 @@ class AppCore:
             if not folder:
                 results.failures.add(f'"At least one folder is not defined. Check your config and command options.')
                 break
-            if not os.path.exists(folder):
+            if not os.path.exists(str(folder)):
                 results.failures.add(
                     f'"{folder}" does not exist. Check your config and command options and make sure all necessary disks are available.'
                 )
                 break
             min_disk_space = analysis.disk_space_delta
-            _, _, free = shutil.disk_usage(folder)
+            _, _, free = shutil.disk_usage(str(folder))
             if free < min_disk_space:
                 free_gib = free / 1024 ** 3
                 required_gib = min_disk_space / 1024 ** 3
@@ -287,7 +287,7 @@ class AppCore:
             for data_key in self.egl.data_keys:
                 try:
                     decrypted_data = decrypt_epic_data(data_key, raw_data)
-                    re_data = json.loads(decrypted_data)[0]
+                    _ = json.loads(decrypted_data)[0]
                     break
                 except Exception as error:
                     self.logger.debug(f'Decryption with key {data_key} failed with {error!r}')
@@ -525,6 +525,7 @@ class AppCore:
         :param uri: uRI to get the manifest from.
         :return:  Manifest data and base URLs.
         """
+        new_manifest_data = ''
         if uri.startswith('http'):
             r = self.egs.unauth_session.get(uri)
             r.raise_for_status()
