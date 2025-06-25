@@ -25,6 +25,6 @@ __codename__ = 'Hyoga+5'
 __author__ = 'Laurent Ongaro'
 __author_email__ = 'laurent@gameamea.com'
 __description__ = 'Free and open-source replacement for the Epic Games Launcher application, mainly to manage the assets for Unreal Engine'
-__copyright__ = f'{year} {__author__}'
+__copyright__ = f"{year} {__author__}"
 __license__ = 'GPL-3'
 __url__ = 'https://github.com/LaurentOngaro/UEVaultManager'

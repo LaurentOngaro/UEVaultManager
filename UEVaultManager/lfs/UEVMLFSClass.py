@@ -621,6 +621,7 @@ class UEVMLFS:
 
         if has_changed:
             self.save_installed_assets()
+        return True
 
     def save_installed_assets(self) -> None:
         """
@@ -882,7 +883,7 @@ class UEVMLFS:
                 filename, _ = os.path.splitext(file)
                 # print(f'root: {root}, file: {file}, filename: {filename}')
                 if filename.lower() == gui_g.s.ue_manifest_filename.lower():
-                    # print('==>found manifest file')
+                    # print("==>found manifest file")
                     parts = root.split(os.sep)
                     asset_id = parts[-1]  # the folder name is the asset id
                     installed_asset = self.get_installed_asset(asset_id)

@@ -220,6 +220,7 @@ class AppCore:
         :return: exchange code.
         """
         s = session()
+        # noinspection GrazieInspection
         s.headers.update(
             {
                 'X-Epic-Event-Action':

@@ -430,15 +430,15 @@ class DLManager(Process):
 
         # Todo: implement on-disk caching to avoid this issue.
         if analysis_res.min_memory > self.max_shared_memory:
-            shared_mib = f'{self.max_shared_memory / 1024 / 1024:.01f} MiB'
-            required_mib = f'{analysis_res.min_memory / 1024 / 1024:.01f} MiB'
+            shared_mib = f"{self.max_shared_memory / 1024 / 1024:.01f} MiB"
+            required_mib = f"{analysis_res.min_memory / 1024 / 1024:.01f} MiB"
             suggested_mib = round(self.max_shared_memory / 1024 / 1024 + (analysis_res.min_memory - self.max_shared_memory) / 1024 / 1024 + 32)
             if processing_optimization:
-                message = f'Try running UEVaultManager with "--enable-reordering --max-shared-memory {suggested_mib:.0f}"'
+                message = f"Try running UEVaultManager with '--enable-reordering --max-shared-memory {suggested_mib:.0f}'"
             else:
-                message = 'Try running UEVaultManager with "--enable-reordering" to reduce memory usage, or use "--max-shared-memory {suggested_mib:.0f}" to increase the limit.'
+                message = f"Try running UEVaultManager with '--enable-reordering' to reduce memory usage, or use '--max-shared-memory {suggested_mib:.0f}' to increase the limit."
 
-            raise MemoryError(f'Current shared memory cache is smaller than required: {shared_mib} < {required_mib}. ' + message)
+            raise MemoryError(f"Current shared memory cache is smaller than required: {shared_mib} < {required_mib}. " + message)
 
         # calculate actual dl and patch write size.
         analysis_res.dl_size = sum(c.file_size for c in manifest.chunk_data_list.elements if c.guid_num in chunks_in_dl_list)

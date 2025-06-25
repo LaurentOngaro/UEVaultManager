@@ -98,7 +98,7 @@ stated_widgets = {
     'not_offline': [],
     # a row is selected and the asset is owned
     'asset_is_owned': [],
-    # a row is selected and the asset has an url
+    # a row is selected and the asset has a url
     'asset_has_url': [],
     # a row is selected and the asset is local
     'asset_added_mannually': [],

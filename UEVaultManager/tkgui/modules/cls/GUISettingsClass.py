@@ -106,7 +106,7 @@ class GUISettings:
         # self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': True, 'na_values': ['None', 'nan', 'NA', 'NaN'], } # fill "empty" cells with the nan value
         self.csv_options = {'on_bad_lines': 'warn', 'encoding': 'utf-8', 'keep_default_na': False}
         # self.scraped_assets_per_page: int = 75  # since 2023-10-31 a value bigger than 75 will COULD be refused by UE API and return a 'common.server_error' error (http 431)
-        self.scraped_assets_per_page: int = 100  # using the UC browsezr is slower BUT the number of assets can be bigger
+        self.scraped_assets_per_page: int = 100  # using the UC browser is slower BUT the number of assets can be bigger
         self.app_monitor: int = 1
         self.preview_max_width: int = 150
         self.preview_max_height: int = 150
@@ -227,8 +227,8 @@ class GUISettings:
     @property
     def app_title_long(self) -> str:
         """ Getter for app_title_long """
-        self._app_title_long: str = f'{__name__} Gui v{__version__} ({__codename__})'
-        self._app_title_long += f' - SWITCH VALUE {self.testing_switch} ' if self.testing_switch > 0 else ''
+        self._app_title_long: str = f"{__name__} Gui v{__version__} ({__codename__})"
+        self._app_title_long += f" - SWITCH VALUE {self.testing_switch} " if self.testing_switch > 0 else ''
         self._app_title_long += ' - DEBUG MODE' if self.debug_mode else ''
         self._app_title_long += ' - OFFLINE MODE' if self._offline_mode else ''
         return self._app_title_long
@@ -660,12 +660,12 @@ class GUISettings:
                 'comment': 'Folder (relative or absolute) to store result files to read and save data from',
                 'value': '../../../results'
             },
-            # minimal score required when looking for an url file comparing to an asset name.
+            # minimal score required when looking for a url file comparing to an asset name.
             # some comparison are more fuzzy than others, so we can set a different score for each comparison
             # The key is a string that must be in the url file name or asset name
             # default value if no key is found
             'minimal_fuzzy_score_by_name': {
-                'comment': 'Minimal score required when looking for an url file comparing to an asset name. MUST BE LOWERCASE',
+                'comment': 'Minimal score required when looking for a url file comparing to an asset name. MUST BE LOWERCASE',
                 'value': {
                     'default': 80,
                     'brushify': 80,

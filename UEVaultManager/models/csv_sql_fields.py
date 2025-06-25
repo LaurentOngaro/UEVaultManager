@@ -303,7 +303,7 @@ def get_csv_field_name_list(include_asset_only=False, return_as_string=False, fi
     return result
 
 
-def get_sql_field_name_list(include_asset_only=False, return_as_string=False, add_alias=False, filter_on_states=None):
+def get_sql_field_name_list(include_asset_only=False, return_as_string=False, add_alias=False, filter_on_states=None) -> list:
     """
     Get the sql fields list.
     :param include_asset_only: whether to include the asset only fields from result.
@@ -327,7 +327,7 @@ def get_sql_field_name_list(include_asset_only=False, return_as_string=False, ad
         else:
             result.append(sql_name)
     if return_as_string:
-        result = ','.join(result)  # keep join() here to raise an error if installed_folders is not a list of strings
+        return ','.join(result)  # keep join() here to raise an error if installed_folders is not a list of strings
     return result
 
 

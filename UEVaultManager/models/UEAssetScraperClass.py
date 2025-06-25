@@ -264,7 +264,7 @@ class UEAssetScraper:
 
     def _parse_data(self, json_data_from_egs: dict = None) -> list:
         """
-        Parse on or more asset data from the response of an url query.
+        Parse on or more asset data from the response of a url query.
         :param json_data_from_egs: dictionary containing the data to parse.
         :return: list of parsed data
         """
@@ -574,7 +574,7 @@ class UEAssetScraper:
         self.asset_db_handler.save_last_run(last_run_content)
         return is_ok
 
-    def _update_and_merge_csv_record_data(self, _asset_id: str, _csv_field_name_list: [], _csv_record: [], _assets_in_file) -> list:
+    def _update_and_merge_csv_record_data(self, _asset_id: str, _csv_field_name_list: list, _csv_record: list, _assets_in_file) -> list:
         """
         Updates the data of the asset with the data from the items in the file.
         :param _asset_id: id of the asset to update.
@@ -963,10 +963,10 @@ class UEAssetScraper:
                         url_vars = gui_fn.extract_variables_from_url(url)
                         start = int(url_vars['start'])
                         count = int(url_vars['count'])
-                        suffix = f'{start}-{start + count - 1}'
+                        suffix = f"{start}-{start + count - 1}"
                     except (Exception, ):
                         suffix = datetime.now().strftime(DateFormat.file_suffix)
-                    filename = f'assets_{suffix}.json'
+                    filename = f"assets_{suffix}.json"
                     self.save_to_file(filename=filename, data=json_data_from_egs_url, is_global=True)
 
                 if self.save_parsed_to_files:
@@ -984,7 +984,7 @@ class UEAssetScraper:
                 try:
                     parsed_assets_data = self._parse_data(json_data_from_egs_url)  # could return a dict or a list of dict
                 except (Exception, ) as error:
-                    message = f'An Error occurs when saving data url {url}: {error!r}'
+                    message = f"An Error occurs when saving data url {url}: {error!r}"
                     self._log(message, 'error')
                     if self.core.scrap_asset_logger:
                         self.core.scrap_asset_logger.warning(message)

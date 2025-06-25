@@ -260,7 +260,7 @@ class JsonToolWindow(tk.Toplevel):
                         elif data_type == 'ratings':
                             self.extract_and_save_ratings(cursor, json_data)
             conn.commit()
-            status_text = f'{data_type.title()} has been stored in the database. Updated: {self.updated}, Added: {self.added}'
+            status_text = f"{data_type.title()} has been stored in the database. Updated: {self.updated}, Added: {self.added}"
             self.frm_control.add_result(status_text, True)
 
         except sqlite3.Error as error:

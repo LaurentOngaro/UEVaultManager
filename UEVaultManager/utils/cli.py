@@ -39,9 +39,9 @@ def get_int_choice(prompt: str, default=None, min_choice=None, max_choice=None, 
     :return: user's integer choice or None if return_on_invalid is True.
     """
     if default is not None:
-        prompt = f'{prompt} [{default}]: '
+        prompt = f"{prompt} [{default}]: "
     else:
-        prompt = f'{prompt}: '
+        prompt = f"{prompt}: "
 
     while True:
         try:

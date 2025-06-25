@@ -142,13 +142,13 @@ class EditableTable(Table):
         col_name_no_quote = dataframe.columns[col]
         dtype = dataframe.dtypes[col]
         # check if col_name contains a space
-        col_name_quoted = f'`{col_name_no_quote}`' if ' ' in col_name_no_quote else col_name_no_quote
+        col_name_quoted = f"`{col_name_no_quote}`" if ' ' in col_name_no_quote else col_name_no_quote
         if dtype in ['object', 'category']:
-            result = f'{col_name_quoted}.str.contains(\'{value}\', False)'
+            result = f"{col_name_quoted}.str.contains(\"{value}\", False)"
         elif dtype == 'bool':
-            result = col_name_quoted if value else f'not {col_name_quoted}'
+            result = col_name_quoted if value else f"not {col_name_quoted}"
         elif dtype in ['int64', 'float64']:
-            result = f'{col_name_quoted}==' + str(value) if value else ''
+            result = f"{col_name_quoted}==" + str(value) if value else ''
         else:
             result = col_name_quoted
         return result
@@ -212,6 +212,7 @@ class EditableTable(Table):
             self.next_row()
             return 'break'
         super().handle_arrow_keys(event)
+        return 'break'
 
     def on_header_drag(self, event):
         """
@@ -251,7 +252,7 @@ class EditableTable(Table):
         Notes:
             The original method returns 0 if none is selected OR if the first row is selected
             We don't want to return 0 if the first row is selected
-            We don"t override the original method because a changed return type could break the code
+            We don't override the original method because a changed return type could break the code
         """
         current_row = self.currentrow
         if current_row == 0:
@@ -791,7 +792,7 @@ class EditableTable(Table):
             return self.model.df
         elif df_type == DataFrameUsed.BOTH:
             self.notify('The df_type parameter can not be "DataFrameUsed.BOTH" in that case. Using "DataFrameUsed.AUTO" instead.')
-            return self.get_data(df_type=DataFrameUsed.AUTO)
+        return self.get_data(df_type=DataFrameUsed.AUTO)
 
     def set_data(self, df: pd.DataFrame, df_type: DataFrameUsed = DataFrameUsed.UNFILTERED) -> None:
         """
@@ -1067,12 +1068,12 @@ class EditableTable(Table):
         if row_numbers is None:
             row_numbers = self.multiplerowlist
         if isinstance(row_numbers, list):
-            asset_str = f'{len(row_numbers)} rows'
+            asset_str = f"{len(row_numbers)} rows"
             row_numbers.sort(reverse=True)  # delete from the end to the start to avoid index change
         else:
-            asset_str = f' row #{row_numbers + 1}'
+            asset_str = f" row #{row_numbers + 1}"
             row_numbers = [row_numbers]
-        if not confirm_dialog or gui_f.box_yesno(f'Are you sure you want to delete {asset_str}? '):
+        if not confirm_dialog or gui_f.box_yesno(f"Are you sure you want to delete {asset_str}? "):
             index_to_delete = []
             for row_number in row_numbers:
                 df = self.get_data()
@@ -1283,7 +1284,7 @@ class EditableTable(Table):
         return True
 
     def gradient_color_cells(
-        self, col_names: [] = None, cmap: str = 'blues', alpha: float = 1, min_val=None, max_val=None, is_reversed: bool = False
+        self, col_names: list = None, cmap: str = 'blues', alpha: float = 1, min_val=None, max_val=None, is_reversed: bool = False
     ) -> None:
         """
         Create a gradient color for the cells os specified columns. The gradient depends on the cell value between min and max values for that column.
@@ -1331,7 +1332,7 @@ class EditableTable(Table):
             self.notify(f'setColorByMask: An error as occured with {col} : {error!r}', level='debug')
         return
 
-    def color_cells_if(self, col_names: [] = None, color: str = 'green', value_to_check: any = True) -> None:
+    def color_cells_if(self, col_names: list = None, color: str = 'green', value_to_check: any = True) -> None:
         """
         Set the cell color for the specified columns and the cell with a given value.
         :param col_names: name of the columns to color if the value is found.
@@ -1351,7 +1352,7 @@ class EditableTable(Table):
             except (KeyError, ValueError) as error:
                 self.notify(f'color_cells_if: An error as occured with {col_name} : {error!r}', level='debug')
 
-    def color_cells_if_not(self, col_names: [] = None, color: str = 'grey', value_to_check: any = False) -> None:
+    def color_cells_if_not(self, col_names: list = None, color: str = 'grey', value_to_check: any = False) -> None:
         """
         Set the cell color for the specified columns and the cell with NOT a given value.
         :param col_names: name of the columns to color if the value is not found.
@@ -1877,7 +1878,7 @@ class EditableTable(Table):
         """
         if gui_g.WindowsRef.edit_row is not None and gui_g.WindowsRef.edit_row.winfo_viewable():
             gui_g.WindowsRef.edit_row.focus_set()
-            return
+            return None
 
         if event is not None:
             if event.type != tk.EventType.KeyPress:
@@ -1902,6 +1903,7 @@ class EditableTable(Table):
         edit_row_window.frm_content.columnconfigure(0, weight=0)
         edit_row_window.frm_content.columnconfigure(1, weight=1)
         self.edit_row(row_number)
+        return None
 
     def edit_row(self, row_number: int = None) -> None:
         """
@@ -2018,7 +2020,7 @@ class EditableTable(Table):
         """
         if gui_g.WindowsRef.edit_cell is not None and gui_g.WindowsRef.edit_cell.winfo_viewable():
             gui_g.WindowsRef.edit_cell.focus_set()
-            return
+            return None
 
         if event.type != tk.EventType.KeyPress:
             col_index = self.get_col_clicked(event)
@@ -2074,6 +2076,7 @@ class EditableTable(Table):
         self._edit_cell_window = edit_cell_window
         edit_cell_window.initial_values = self.get_edit_cell_values() if is_single else None
         gui_f.make_modal(edit_cell_window, widget_to_focus=widget)
+        return None
 
     def get_edit_cell_values(self) -> str:
         """
@@ -2490,6 +2493,6 @@ class EditableTable(Table):
         row = self.currentrow
         gui_g.WindowsRef.uevm_gui.scrap_asset(row_numbers=[row])
 
-    def get_errors(self) -> list:
+    def get_errors(self) -> [str]:
         """ Return the list of errors. """
         return self._errors

@@ -420,7 +420,7 @@ class UEVaultManagerCLI:
         content = ''
         if args.hashlist:
             for fm in files:
-                content += f'{fm.hash.hex()} *{fm.filename}\n'
+                content += f"{fm.hash.hex()} *{fm.filename}\n"
         elif args.csv or args.tsv:
             writer = csv.writer(sys.stdout, dialect='excel-tab' if args.tsv else 'excel', lineterminator='\n')
             writer.writerow(['path', 'hash', 'size', 'install_tags'])
@@ -493,8 +493,8 @@ class UEVaultManagerCLI:
             json_content['Update available'] = 'yes' if self.core.update_available else 'no'
 
             if self.core.update_available and update_information is not None:
-                json_content['Update info'] = '\n'
-                json_content['New version'] = f'{update_information["version"]} - {update_information["codename"]}'
+                json_content['Update info'] = "\n"
+                json_content['New version'] = f"{update_information['version']} - {update_information['codename']}"
                 json_content['Release summary'] = update_information['summary']
                 json_content['Release Url'] = update_information['release_url']
                 json_content['Update recommendation'] = update_information['severity']
@@ -600,7 +600,7 @@ class UEVaultManagerCLI:
             manifest_info = info_items['manifest']
             manifest = self.core.load_manifest(manifest_data)
             manifest_size = len(manifest_data)
-            manifest_size_human = f'{manifest_size / 1024:.01f} KiB'
+            manifest_size_human = f"{manifest_size / 1024:.01f} KiB"
             manifest_info.append(InfoItem('Manifest size', 'size', manifest_size_human, manifest_size))
             manifest_type = 'JSON' if hasattr(manifest, 'json_data') else 'Binary'
             manifest_info.append(InfoItem('Manifest type', 'type', manifest_type, manifest_type.lower()))
@@ -1651,14 +1651,13 @@ def main():
         help='If the asset has been previouly installed, the installation folder will be reused. In that case, the install-path option will be ignored'
     )
     install_parser.add_argument(
-        '--dlm-debug', dest='dlm_debug', action='store_true', help='Set download manager and worker processes\' loglevel to debug'
+        '--dlm-debug', dest='dlm_debug', action='store_true', help='Set download manager and worker processes loglevel to debug'
     )
     install_parser.add_argument(
         '--enable-reordering',
         dest='order_opt',
         action='store_true',
-        help='Enable reordering optimization to reduce RAM requirements '
-        'during download (may have adverse results for some titles)'
+        help='Enable reordering optimization to reduce RAM requirements during download (may have adverse results for some titles)'
     )
     install_parser.add_argument(
         '--timeout',

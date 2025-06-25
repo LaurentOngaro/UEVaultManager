@@ -36,7 +36,7 @@ class NotificationWindow(tk.Toplevel):
     :param title:
         The notification title.
     :param display_icon:
-        A unicode character to display on the top-left hand corner of the notification. The default symbol is OS specific. Pass an empty string to remove the symbol.
+        A Unicode character to display on the top-left hand corner of the notification. The default symbol is OS specific. Pass an empty string to remove the symbol.
     :param screen_index: screen index.
     :param duration:
         The number of milliseconds to show the notification. If 0 (default), then you must click the notification to close it.

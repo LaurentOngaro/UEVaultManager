@@ -427,6 +427,10 @@ class UEVMGui(tk.Tk):
         library_catalog_ids = self.core.uevmlfs.library_catalog_ids
         if not library_catalog_ids or invalidate_existing:
             library_catalog = self.core.egs.get_owned_library()
+            if library_catalog is None or library_catalog == [] or not isinstance(library_catalog, list):
+                # if the library catalog is empty or not a list, we cannot update the owned assets
+                gui_f.box_message('Could not get the owned assets from the library catalog. The owned assets will not be updated.', level='warning')
+                return
             # get the value of the field "CatalogItemId" from owned_asset in a list
             library_catalog_ids = [asset['catalogItemId'] for asset in library_catalog]
             # remove duplicates
@@ -706,6 +710,7 @@ class UEVMGui(tk.Tk):
                 return filename
             else:
                 gui_f.box_message('Operation cancelled')
+        return ''
 
     def save_changes(self) -> str:
         """
@@ -779,7 +784,7 @@ class UEVMGui(tk.Tk):
             )
             # NOTE: next line will only be executed when the ChoiceFromListWindow will be closed
             # so, the self._get_choice_result method has been called
-            file_name = f'{col_name_to_export}_{datetime.now().strftime(DateFormat.file_suffix)}'
+            file_name = f"{col_name_to_export}_{datetime.now().strftime(DateFormat.file_suffix)}"
             if self._choice_result == 'list':
                 filename = self._open_file_dialog(save_mode=True, filename=f'{file_name}.txt', filetypes=gui_g.s.data_filetypes_text)
             elif self._choice_result == 'filter':
@@ -862,7 +867,7 @@ class UEVMGui(tk.Tk):
 
         def read_from_url_file(entry, folder_name: str, returned_urls: [str]) -> bool:
             """
-            Read an url from a .url file and add it to the list of urls to return.
+            Read a url from a .url file and add it to the list of urls to return.
             :param entry: entry to process.
             :param folder_name: name of the folder to search for.
             :param returned_urls: list of urls to return. We use a list instead of a str because we need to modify it from the inner function.
@@ -1167,11 +1172,11 @@ class UEVMGui(tk.Tk):
                                             _fix_folder_structure(app_name_from_manifest)
                                             continue
                                     if not manifest_is_valid:
-                                        msg = f'{full_folder} has a manifest file but without a data or a valid subfolder folder.It will be considered as an asset'
+                                        msg = f"{full_folder} has a manifest file but without a data or a valid subfolder folder.It will be considered as an asset"
                                         self.logger.warning(msg)
                                         comment = msg
                                         if app_name_from_manifest:
-                                            comment += f'\nThe manifest file and the folder should be moved inside a folder named:\n{app_name_from_manifest}'
+                                            comment += f"\nThe manifest file and the folder should be moved inside a folder named:\n{app_name_from_manifest}"
                                 else:
                                     asset_type = UEAssetType.Plugin if extension_lower == '.uplugin' else UEAssetType.Asset
                                 marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
@@ -1183,7 +1188,7 @@ class UEVMGui(tk.Tk):
                                         ) else GrabResult.TIMEOUT.name
                                     except (Exception, ):  # trap all exceptions on connection
                                         self.silent_message(
-                                            f'Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.',
+                                            f"Request timeout when accessing {marketplace_url}\n.Operation is stopped, check you internet connection or try again later.",
                                             level='warning'
                                         )
                                         grab_result = GrabResult.TIMEOUT.name
@@ -1365,9 +1370,14 @@ class UEVMGui(tk.Tk):
         """
         is_ok = False
         asset_data = None
+
         # check if the marketplace_url is a marketplace marketplace_url
+        # this won't work since the url have changed and the marketplace_url is not always the same as the product url
+        ignore_url_check = True
         ue_marketplace_url = self.core.egs.get_marketplace_product_url()
-        if ue_marketplace_url.lower() in marketplace_url.lower():
+        check_if_valid = ue_marketplace_url.lower() in marketplace_url.lower()
+
+        if ignore_url_check or check_if_valid:
             # get the data from the marketplace marketplace_url
             asset_data = self.core.egs.get_asset_data_from_marketplace(marketplace_url)
             if not asset_data or asset_data.get('grab_result', None) != GrabResult.NO_ERROR.name or not asset_data.get('id', ''):
@@ -1552,7 +1562,7 @@ class UEVMGui(tk.Tk):
                     return {}
                 asset_data = self._scrap_from_url(marketplace_url)
                 if not asset_data and row_data['Added manually']:
-                    # it's a local asset, we can try to get an url file from the local folder
+                    # it's a local asset, we can try to get a url file from the local folder
                     local_folder = row_data['Origin']
                     folder_name = os.path.basename(local_folder)
                     parent_folder = os.path.dirname(local_folder)
@@ -1995,12 +2005,12 @@ class UEVMGui(tk.Tk):
         if gui_g.WindowsRef.display_content is not None:
             self.logger.info('A UEVM command is already running, please wait for it to finish.')
             gui_g.WindowsRef.display_content.set_focus()
-            return
+            return 0,''
         if not command_name:
-            return
+            return 0,''
         if gui_g.UEVM_cli_ref is None:
             gui_f.from_cli_only_message()
-            return
+            return 0,''
         row_index = self.editable_table.get_selected_row_fixed()
         app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('Asset_id')) if row_index is not None else ''
 
@@ -2175,8 +2185,9 @@ class UEVMGui(tk.Tk):
         if not folder_selected:
             return False
         if not self.core.is_installed(asset_id):
-            gui_f.box_message(f'The release {asset_id} is not installed. Nothing to remove here.')
-        elif gui_f.box_yesno(f'Are you sure you want to remove {folder_selected} from the release {asset_id} ?'):
+            gui_f.box_message(f"The release {asset_id} is not installed. Nothing to remove here.")
+            return False
+        elif gui_f.box_yesno(f"Are you sure you want to remove {folder_selected} from the release {asset_id} ?"):
             asset_installed = self.core.uevmlfs.get_installed_asset(asset_id)
             if asset_installed:
                 installed_folders = asset_installed.installed_folders
@@ -2204,8 +2215,7 @@ class UEVMGui(tk.Tk):
                 row_index = self.editable_table.get_selected_row_fixed()
                 self._update_installed_folders_cell(row_index, installed_folders_str)
                 return True
-        else:
-            return False
+        return False
 
     def get_asset_id(self) -> str:
         """

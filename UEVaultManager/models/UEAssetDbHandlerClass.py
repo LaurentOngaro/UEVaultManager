@@ -979,7 +979,7 @@ class UEAssetDbHandler:
     #         cursor.close()
     #     return [row[0] for row in rows]
 
-    def convert_tag_list_to_string(self, tags: []) -> str:
+    def convert_tag_list_to_string(self, tags: list) -> str:
         """
         Convert a tags id list to a comma separated string of tag names.
         """
@@ -1054,7 +1054,7 @@ class UEAssetDbHandler:
         backup_existing=False,
         suffix_separator: str = '_##',
         suffix: str = ''
-    ) -> [str]:
+    ) -> list[str]:
         """
         Export the database to a CSV file.
         :param folder_for_csv_files: folder where the CSV files will be saved.

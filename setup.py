@@ -72,10 +72,9 @@ setup(
         'pywebview>=3.4',  #
         'PyGObject'
     ]),
-    python_requires='>=3.9',
+    python_requires='>=3.10',
     classifiers=[
         'License :: OSI Approved :: BSD License',  #
-        'Programming Language :: Python :: 3.9',  #
         'Programming Language :: Python :: 3.10',  #
         'Programming Language :: Python :: 3.11',  #
         'Programming Language :: Python :: 3.12',  #

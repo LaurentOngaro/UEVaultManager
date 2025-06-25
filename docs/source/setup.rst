@@ -50,7 +50,7 @@ Directly from the repo
 Windows example
 ^^^^^^^^^^^^^^^
 
-1. First install the Python language (3.9 minimal version required) as
+1. First install the Python language (3.10 minimal version required) as
    explained on the `official python
    website <https://www.python.org/downloads/windows/>`__
 2. create a folder for storing the source files

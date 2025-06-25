@@ -105,12 +105,13 @@ class EPCAPI:
     # _login_url = 'https://www.unrealengine.com/id/login/epic'
 
     # THESE URLs COULD NOT BE CALL USING SESSION ANYMORE DU TO RECATCHA VALIDATION
-    _url_marketplace = 'https://www.unrealengine.com/marketplace'
-    _url_asset_list = f'{_url_marketplace}/api/assets'
-    _url_owned_assets = f'{_url_asset_list}/vault'
-    _url_asset = f'{_url_asset_list}/asset'
-    _url_search_asset = f'{_url_marketplace}/en-US/product'
-
+    _url_old_marketplace = 'https://www.unrealengine.com/marketplace' # keep it for compatibility with url of old assets
+    _url_marketplace = 'https://marketplace-website-node-launcher-prod.ol.epicgames.com/ue/marketplace'  # use the new marketplace url
+    _url_asset_list = f"{_url_marketplace}/api/assets"
+    _url_owned_assets = f"{_url_asset_list}/vault"
+    _url_asset = f"{_url_asset_list}/asset"
+    _url_search_asset = f"{_url_marketplace}/en-US/product"
+    _url_owned_library = "https://library-service.live.use1a.on.epicgames.com/library/api/public/items"
     # page d'un asset avec son urlSlug
     # _url_marketplace/en-US/product/{'urlSlug}
     # https://www.unrealengine.com/marketplace/en-US/product/volcrate
@@ -222,7 +223,7 @@ class EPCAPI:
         """
         Return the scraping URL for an asset.
         """
-        url = f'{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}'
+        url = f"{self._url_asset_list}?start={start}&count={count}&sortBy={sort_by}&sortDir={sort_order}"
         # other possible filters
         # to see the list of possible filters: https://www.unrealengine.com/marketplace/en-US/assets and use filters on the right panel.
         """
@@ -245,7 +246,7 @@ class EPCAPI:
         """
         Return the scraping URL for an owned asset.
         """
-        url = f'{self._url_owned_assets}?start={start}&count={count}'
+        url = f"{self._url_owned_assets}?start={start}&count={count}"
         return url
 
     def get_marketplace_product_url(self, asset_slug: str = '') -> str:
@@ -254,7 +255,7 @@ class EPCAPI:
         :param asset_slug: asset slug.
         :return: url.
         """
-        url = f'{self._url_search_asset}/{asset_slug}'
+        url = f"{self._url_search_asset}/{asset_slug}"
         return url
 
     def get_api_product_url(self, uid: str = '') -> str:
@@ -263,24 +264,39 @@ class EPCAPI:
         :param uid: id of the asset (not the slug, nor the catalog_id).
         :return: url.
         """
-        url = f'{self._url_asset}/{uid}'
+        url = f"{self._url_asset}/{uid}"
         return url
 
-    def get_owned_library(self) -> dict:
+    def get_owned_library(self) -> list:
         """
         Get the owned library, INCLUDING the epic game assets owned
         :return: dict of assets.
         """
-        platform = 'Windows'
         label = 'Live'
-        json_data = {}
-        url = f'{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}'  # TODO : fix this url
-        try:
-            r = self.session.get(url, params=dict(label=label), timeout=self.timeout)
-            if r.ok:
-                json_data = r.json()
-        except Exception as error:
-            self.logger.warning(f'Can not get the get owned library assets from {url}: {error!r}')
+        json_data = []
+        cursor = None
+        include_metadata = True
+        # loop to get all the assets in the library
+        while True:
+            if cursor:
+                url = f"{self._url_owned_library}?includeMetadata={include_metadata}&cursor={cursor}"
+            else:
+                url = f"{self._url_owned_library}?includeMetadata={include_metadata}"
+            try:
+                r = self.session.get(url, params=dict(label=label), timeout=self.timeout)
+                if r.ok:
+                    cursor_json_data = r.json()
+                    if not cursor_json_data.get("responseMetadata", None) or not cursor_json_data["responseMetadata"].get("nextCursor", None):
+                        break
+                    records = cursor_json_data.get('records', [])
+                    for record in records:
+                        json_data.append(record)
+
+                    # if the nextCursor is not empty, we continue to get the next page
+                    cursor = cursor_json_data["responseMetadata"]["nextCursor"]
+            except Exception as error:
+                self.logger.warning(f'Can not get the get owned library assets from {url}: {error!r}')
+                break
         return json_data
 
     def get_available_assets_count(self) -> int:
@@ -368,7 +384,7 @@ class EPCAPI:
         :return: session.
         """
         self.session.headers['Authorization'] = f'bearer {session["access_token"]}'
-        url = f'{self._oauth_host}/account/api/oauth/verify'
+        url = f"{self._oauth_host}/account/api/oauth/verify"
         r = self.session.get(url, timeout=self.timeout)
         if r.status_code >= 500:
             r.raise_for_status()
@@ -406,7 +422,7 @@ class EPCAPI:
         else:
             raise ValueError('At least one token type must be specified!')
 
-        url = f'{self._oauth_host}/account/api/oauth/token'
+        url = f"{self._oauth_host}/account/api/oauth/token"
         r = self.session.post(url, data=params, auth=self._oauth_basic, timeout=self.timeout)
         # Only raise HTTP exceptions on server errors
         if r.status_code >= 500:
@@ -443,7 +459,7 @@ class EPCAPI:
         Unused but kept for the global API reference.
         :return: item token using json format.
         """
-        url = f'{self._oauth_host}/account/api/oauth/exchange'
+        url = f"{self._oauth_host}/account/api/oauth/exchange"
         r = self.session.get(url, timeout=self.timeout)
         r.raise_for_status()
         return r.json()
@@ -458,7 +474,7 @@ class EPCAPI:
         :param label: label of the manifest.
         :return: item manifest using json format.
         """
-        url = f'{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}'
+        url = f"{self._launcher_host}/launcher/api/public/assets/v2/platform/{platform}/namespace/{namespace}/catalogItem/{catalog_item_id}/app/{app_name}/label/{label}"
         r = self.session.get(url, timeout=self.timeout)
         r.raise_for_status()
         return r.json()
@@ -470,7 +486,9 @@ class EPCAPI:
         :param catalog_item_id: catalog item id of the item.
         :return: (The item info, status code).
         """
-        url = f'https://{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items'    # TODO : fix this url
+        # url = f"https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/{asset.namespace}/bulk/items?id={asset.catalog_item_id}&includeDLCDetails=true&includeMainGameDetails=true&country=us&locale=lc"
+
+        url = f"{self._catalog_host}/catalog/api/shared/namespace/{namespace}/bulk/items"
         r = self.session.get(
             url,
             params=dict(
@@ -585,7 +603,7 @@ class EPCAPI:
 
     def get_url_with_uc(self, url: str, timeout=None, force_bypass_captcha: bool = False) -> Response:
         """
-        Return the response of an url request:
+        Return the response of a url request:
         - using the Nodriver object if the url concerns the epic marketplace.
         - using the session object if not
         :param url: url to fix.
@@ -629,7 +647,7 @@ class EPCAPI:
             # RESULT:
             #   response is OK, BUT the user is not logged in
 
-            del self.session.cookies['EPIC_CLIENT_SESSION']  # this data cause a http 400 error because its value is too big
+            del self.session.cookies['EPIC_CLIENT_SESSION']  # this data cause an http 400 error because its value is too big
             # noinspection GrazieInspection
             # has_captcha = response.content.find(b"Please complete a security check to continue") != -1
             if not self._uc_browser:

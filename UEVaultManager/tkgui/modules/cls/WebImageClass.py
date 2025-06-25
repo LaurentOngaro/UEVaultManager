@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 Implementation for:
-- WebImage: class to download an image from an url and get it as a PhotoImage.
+- WebImage: class to download an image from a url and get it as a PhotoImage.
 """
 from io import BytesIO
 
@@ -13,7 +13,7 @@ from UEVaultManager.tkgui.modules.functions import log_warning
 
 class WebImage:
     """
-    Class to download an image from an url and get it as a PhotoImage.
+    Class to download an image from a url and get it as a PhotoImage.
     :param url: url of the image to download.
     """
 

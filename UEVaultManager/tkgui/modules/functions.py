@@ -93,7 +93,7 @@ def from_cli_only_message(content='This feature is only accessible', show_dialog
     :param content: Optional content to add to the message.
     :param show_dialog: True to display the message in a messagebox, False to only print it on the console.
     """
-    msg = f'{content} when this application is launched using the UEVM cli edit command.'
+    msg = f"{content} when this application is launched using the UEVM cli edit command."
     print_msg = log_format_message(gui_g.s.app_title, 'info', colored(msg, 'yellow'))
     print(print_msg)
     if show_dialog:
@@ -236,7 +236,6 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, x: i
             with open(image_filename, "wb") as file:
                 file.write(response.content)
         resize_and_show_image(image=image, canvas=canvas_image, scale=scale, x=x, y=y)
-        return True
     except Exception as error:
         log_warning(f'Error showing image: {error!r}')
         gui_g.timeout_error_count += 1
@@ -249,6 +248,7 @@ def show_asset_image(image_url: str, canvas_image=None, scale: float = 1.0, x: i
             gui_g.timeout_error_count = 0
             gui_g.s.offline_mode = True
             return False
+    return True
 
 
 def show_default_image(canvas_image=None) -> None:
@@ -445,10 +445,10 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, backups_fol
     if not file_src or not os.path.isfile(file_src):
         return ''
     file_name_no_ext, file_ext = os.path.splitext(file_src)
-    suffix = suffix if suffix else f'{datetime.now().strftime(DateFormat.file_suffix)}'
+    suffix = suffix if suffix else f"{datetime.now().strftime(DateFormat.file_suffix)}"
     try:
         file_name_no_ext = os.path.basename(file_name_no_ext)
-        file_backup = f'{file_name_no_ext}_{suffix}{file_ext}{gui_g.s.backup_file_ext}'
+        file_backup = f"{file_name_no_ext}_{suffix}{file_ext}{gui_g.s.backup_file_ext}"
         if backups_folder is None:
             backups_folder = os.path.dirname(file_src)
         elif backups_folder == '':
@@ -458,10 +458,10 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, backups_fol
         file_backup = path_join(backups_folder, file_backup)
         shutil.copy(file_src, file_backup)
         if logger is not None:
-            logger.info(f'File {file_src} has been copied to {file_backup}')
+            logger.info(f"File {file_src} has been copied to {file_backup}")
     except (Exception, ):
         if logger is not None:
-            logger.info(f'File {file_src} coulnd not been backed up')
+            logger.info(f"File {file_src} coulnd not been backed up")
             return ''
     backup_to_keep = gui_g.s.backup_files_to_keep if backup_to_keep == -1 else backup_to_keep
     if backup_to_keep > 0:
@@ -478,7 +478,7 @@ def create_file_backup(file_src: str, logger: logging.Logger = None, backups_fol
                 file_to_delete = path_join(backups_folder, file)
                 os.remove(file_to_delete)
                 if logger is not None:
-                    logger.info(f'Backup File {file_to_delete} has been deleted')
+                    logger.info(f"Backup File {file_to_delete} has been deleted")
     return file_backup
 
 
@@ -557,7 +557,7 @@ def disable_widget(widget) -> None:
     set_widget_state(widget, False)
 
 
-def set_widget_state_in_list(list_of_widget: [], is_enabled: bool, text_swap: {} = None) -> None:
+def set_widget_state_in_list(list_of_widget: list, is_enabled: bool, text_swap: {} = None) -> None:
     """
     Enable or disable a widget.
      :param list_of_widget: list of widgets to update.
@@ -568,7 +568,7 @@ def set_widget_state_in_list(list_of_widget: [], is_enabled: bool, text_swap: {}
         set_widget_state(widget, is_enabled, text_swap)
 
 
-def enable_widgets_in_list(list_of_widget: []) -> None:
+def enable_widgets_in_list(list_of_widget: list) -> None:
     """
     Enable a list of widgets.
     :param list_of_widget: list of widgets to enable.
@@ -577,7 +577,7 @@ def enable_widgets_in_list(list_of_widget: []) -> None:
         enable_widget(widget)
 
 
-def disable_widgets_in_list(list_of_widget: []) -> None:
+def disable_widgets_in_list(list_of_widget: list) -> None:
     """
     Disable a list of widgets.
     :param list_of_widget: list of widgets to disable.
@@ -701,6 +701,6 @@ def copy_widget_value_to_clipboard(container, event) -> bool:
             container.clipboard_clear()
             container.clipboard_append(value)
             notify(f'Widget content has been copied into clipboard', duration=3000)
-            return True
     except AttributeError:
         return False
+    return True

@@ -63,9 +63,9 @@ def center_window_on_screen(screen_index: int, width: int, height: int, set_size
     :return: geometry string to use to display the window in the center of the screen.
     """
     x, y = get_center_screen_positions(screen_index, width, height)
-    x = f'+{x}'  # keep the sign !
-    y = f'+{y}'  # keep the sign !
-    geometry: str = f'{width}x{height}{x}{y}' if set_size else f'{x}{y}'
+    x = f"+{x}"  # keep the sign !
+    y = f"+{y}"  # keep the sign !
+    geometry: str = f"{width}x{height}{x}{y}" if set_size else f"{x}{y}"
     return geometry
 
 
@@ -77,7 +77,7 @@ def get_screen_positions(screen_index: int) -> (int, int, int, int):
     """
     monitors = get_monitors()
     if screen_index > len(monitors):
-        log(f'The screen #{screen_index} is not available. Using 0 as screen index.')  # no use of log functions here to prevent circular import
+        log(f"The screen #{screen_index} is not available. Using 0 as screen index.")  # no use of log functions here to prevent circular import
         screen_index = 0
     target_screen = monitors[screen_index]
     return target_screen.x, target_screen.y, target_screen.width, target_screen.height
@@ -349,7 +349,7 @@ def create_uid() -> str:
 
 def shorten_text(url: str, limit: int = 30, prefix: str = '...') -> str:
     """
-    Shorten an url. Get its last part
+    Shorten a url. Get its last part
     :param url:  the url to shorten.
     :param limit: limit of characters to keep.
     :param prefix: prefix to add to the shorted url (if it has been shorted).
@@ -363,7 +363,7 @@ def shorten_text(url: str, limit: int = 30, prefix: str = '...') -> str:
 
 def extract_variables_from_url(url: str) -> dict:
     """
-    Extract variables from an url.
+    Extract variables from a url.
     :param url: url to extract variables from.
     :return: dict containing the variable.
     """
@@ -407,7 +407,7 @@ def open_folder_in_file_explorer(folder_path) -> bool:
         return False
 
 
-def append_no_duplicate(list_to_append: list, items: any, ok_if_exists: object = False) -> bool:
+def append_no_duplicate(list_to_append: list[str], items: any, ok_if_exists: object = False) -> bool:
     """
     Append some items value to a list. Could raise an error if an object is already in the list.
     :param list_to_append: list to append to.

@@ -59,8 +59,7 @@ def extract_severity(old_version: str, new_version: str):
             return UpdateSeverity.MEDIUM
         elif new_ver.micro > old_ver.micro:
             return UpdateSeverity.LOW
-    else:
-        return UpdateSeverity.NONE
+    return UpdateSeverity.NONE
 
 
 class UEVMAPI:
@@ -68,7 +67,7 @@ class UEVMAPI:
     Class for interacting with the UEVaultManager API.
     """
     _package_name = 'UEVaultManager'
-    _user_agent = f'{_package_name}/{UEVM_version} ({system()})'
+    _user_agent = f"{_package_name}/{UEVM_version} ({system()})"
 
     def __init__(self):
         self.session = requests.session()
@@ -80,7 +79,7 @@ class UEVMAPI:
         Get the latest packagage version information from PyPI.
         :return: version information.
         """
-        url = f'https://pypi.org/pypi/{self._package_name}/json'
+        url = f"https://pypi.org/pypi/{self._package_name}/json"
         r = self.session.get(url, timeout=(7, 7))
         r.raise_for_status()
         data = r.json()
