@@ -105,72 +105,86 @@ class EPCAPI:
     # _login_url = 'https://www.unrealengine.com/id/login/epic'
 
     # THESE URLs COULD NOT BE CALL USING SESSION ANYMORE DU TO RECATCHA VALIDATION
-    _url_old_marketplace = 'https://www.unrealengine.com/marketplace' # keep it for compatibility with url of old assets
+    _url_old_marketplace = 'https://www.unrealengine.com/marketplace'  # keep it for compatibility with url of old assets
     _url_marketplace = 'https://marketplace-website-node-launcher-prod.ol.epicgames.com/ue/marketplace'  # use the new marketplace url
     _url_asset_list = f"{_url_marketplace}/api/assets"
     _url_owned_assets = f"{_url_asset_list}/vault"
     _url_asset = f"{_url_asset_list}/asset"
     _url_search_asset = f"{_url_marketplace}/en-US/product"
     _url_owned_library = "https://library-service.live.use1a.on.epicgames.com/library/api/public/items"
-    # page d'un asset avec son urlSlug
-    # _url_marketplace/en-US/product/{'urlSlug}
-    # https://www.unrealengine.com/marketplace/en-US/product/volcrate
-    #
-    # detail json d'un asset avec son id (et non pas son asset_id ou son catalog_id)
-    # UE_ASSET/{el['id']}")
-    # https://www.unrealengine.com/marketplace/api/assets/asset/d27cf128fdc24e328cf950b019563bc5
-    #
-    # liste json des reviews d'un asset avec son id
-    # https://www.unrealengine.com/marketplace/api/review/d27cf128fdc24e328cf950b019563bc5/reviews/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
-    #
-    # liste json des questions d'un asset avec son id
-    # https://www.unrealengine.com/marketplace/api/review/d27cf128fdc24e328cf950b019563bc5/questions/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
-    #
-    # liste json des tags courants
-    # https://www.unrealengine.com/marketplace/api/tags
+
+    """
+    
+    autres urls utiles
+    
+    - detail json d'un asset avec son id (et non pas son asset_id ou son catalog_id) NOT USED → resultat OK (23/06/25)
+    UE_ASSET/{el['id']}")
+    https://www.unrealengine.com/marketplace/api/assets/asset/d27cf128fdc24e328cf950b019563bc5
+    
+    - page d'un asset avec son urlSlug NOT USED AND PROTECTED BY CAPTCHA
+    _url_marketplace/en-US/product/{'urlSlug}
+    https://www.unrealengine.com/marketplace/en-US/product/volcrate → redirection vers l'url FAB (23/06/25) 
+        → https://www.fab.com/listings/5416bfa0-0ec5-4a45-8b53-9b5832c6261d
+    NOTE: l'id figure dans les data de l'asset : {"FabListingId":{"type":"STRING","value":"5416bfa0-0ec5-4a45-8b53-9b5832c6261d"}}
+    
+    - liste json des reviews d'un asset avec son id NOT USED
+    https://www.unrealengine.com/marketplace/api/review/d27cf128fdc24e328cf950b019563bc5/reviews/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
+    
+    - liste json des questions d'un asset avec son id NOT USED
+    https://www.unrealengine.com/marketplace/api/review/d27cf128fdc24e328cf950b019563bc5/questions/list?start=0&count=10&sortBy=CREATEDAT&sortDir=DESC
+    
+    - liste json des tags courants NOT USED → resultat incomplet (23/06/25)
+    https://www.unrealengine.com/marketplace/api/tags
+    """
+
     """ 
     le champ release_info contient l'ID des manifest à telecharger pour chaque version
     (voir app_id) 
+    
     urls dans EAM
-    - start_session
+    - start_session USED in start_session()
     https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token
     
-    - resume_session
+    - resume_session USED in resume_session()
     https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/verify
     
-    - invalidate_sesion
+    - invalidate_sesion NOT USED
     https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/sessions/kill/{}", access_token);
     
-    - account_details
+    - account_details NOT USED
     https://account-public-service-prod03.ol.epicgames.com/account/api/public/account/{}
     
-    - account_ids_details
+    - account_ids_details NOT USED
     https://account-public-service-prod03.ol.epicgames.com/account/api/public/account
     
-    - account_friends
+    - account_friends NOT USED
     https://friends-public-service-prod06.ol.epicgames.com/friends/api/public/friends/{}?includePending={}", id, include_pending);
     
-    # asset
+    # asset NOT USED
     https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/{}?label={}", plat, lab);
     
-    - asset_manifest
+    - asset_manifest USED in get_item_manifest()
     https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/v2/platform/{}/namespace/{}/catalogItem/{}/app/{}/label/{}",
     
-    - asset_info
+    - asset_info USED in get_item_info()
     https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/{}/bulk/items?id={}&includeDLCDetails=true&includeMainGameDetails=true&country=us&locale=lc",asset.namespace, asset.catalog_item_id);
     
-    - game_token
+    - game_token USED in get_item_token()
     https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/exchange"
     
-    - ownership_token
+    - ownership_token NOT USED
     https://ecommerceintegration-public-service-ecomprod02.ol.epicgames.com/ecommerceintegration/api/public/platforms/EPIC/identities/{}/ownershipToken",
     
-    - user_entitlements
+    - user_entitlements NOT USED
     https://entitlement-public-service-prod08.ol.epicgames.com/entitlement/api/account/{}/entitlements?start=0&count=5000",
     
-    - library_items
+    - library_items USED in get_owned_library()
     https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}", include_metadata)
     https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata={}&cursor={}", include_metadata, c)
+    
+    - fab_library_items NOT USED AND PROTECTED BY CAPTCHA
+    https://www.fab.com/e/accounts/{account_id}/ue/library?cursor={library.cursors.next}&count=100"
+    https://www.fab.com/e/accounts/{account_id}/ue/library?count=100"
     """
 
     def __init__(self, lc='en', cc='US', timeout=(7, 7)):

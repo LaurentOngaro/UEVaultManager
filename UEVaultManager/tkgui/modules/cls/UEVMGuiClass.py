@@ -1539,6 +1539,9 @@ class UEVMGui(tk.Tk):
                     catalog_ids.append(row_data['Catalog itemid'])
                 except KeyError:
                     pass
+                """
+                # grab data using the uc browser
+                # !!! does not work with the FAB marketplace due to captcha (even with the uc_browser) !!               
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 # we keep UrlSlug here because it can arise from the scraped data
                 asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
@@ -1568,6 +1571,7 @@ class UEVMGui(tk.Tk):
                     parent_folder = os.path.dirname(local_folder)
                     marketplace_url = self.search_for_url(folder=folder_name, parent=parent_folder, check_if_valid=False)
                     asset_data = self._scrap_from_url(marketplace_url)
+                """
                 if asset_data:
                     if forced_data:
                         asset_forced_data = forced_data.copy()
