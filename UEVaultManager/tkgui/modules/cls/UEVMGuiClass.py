@@ -97,7 +97,7 @@ class UEVMGui(tk.Tk):
     is_fake = False
     logger = logging.getLogger(__name__.split('.')[-1])  # keep only the class name
     gui_f.update_loggers_level(logger)
-    _errors: [str] = []
+    _errors: list[str] = []
     relogin_when_scrapping: bool = False
 
     def __init__(
@@ -204,9 +204,9 @@ class UEVMGui(tk.Tk):
         frm_option = UEVMGuiOptionFrame(self)
         self._frm_option = frm_option
 
-        frm_toolbar.pack(**pack_def_options, fill=tk.X, side=tk.TOP, anchor=tk.NW)
-        frm_content.pack(**pack_def_options, fill=tk.BOTH, side=tk.LEFT, anchor=tk.NW, expand=True)
-        frm_control.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
+        frm_toolbar.pack(**pack_def_options, fill="x", side="top", anchor="nw")
+        frm_content.pack(**pack_def_options, fill="both", side="left", anchor="nw", expand=True)
+        frm_control.pack(**pack_def_options, fill="both", side="right", anchor="nw")
         # not displayed at start
         # _frm_option.pack(**pack_def_options, fill=tk.BOTH, side=tk.RIGHT, anchor=tk.NW)
 
@@ -865,7 +865,7 @@ class UEVMGui(tk.Tk):
         :return: marketplace_url found in the file or an empty string if not found.
         """
 
-        def read_from_url_file(entry, folder_name: str, returned_urls: [str]) -> bool:
+        def read_from_url_file(entry, folder_name: str, returned_urls: list[str]) -> bool:
             """
             Read a url from a .url file and add it to the list of urls to return.
             :param entry: entry to process.
@@ -923,7 +923,7 @@ class UEVMGui(tk.Tk):
         if self.core is None:
             return ''
         egs = self.core.egs
-        read_urls = ['']
+        read_urls = list[str]([''])  # use a list to modify it in the inner function
         entries = os.scandir(parent)
         if any(read_from_url_file(entry, folder, read_urls) for entry in entries):
             found_url = read_urls[0]
@@ -1512,7 +1512,6 @@ class UEVMGui(tk.Tk):
         else:
             # convert row numbers to row indexes
             row_indexes = [data_table.get_real_index(row_number) for row_number in row_numbers]
-        pw = None
         row_count = len(row_indexes)
 
         if self.is_using_database:
@@ -1524,9 +1523,7 @@ class UEVMGui(tk.Tk):
             asset_data = {}
             base_text = "Scraping asset's data. Could take a while..."
             if row_count > 1:
-                pw = gui_f.show_progress(
-                    self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True
-                )
+                gui_f.show_progress(self, text=base_text, max_value_l=row_count, width=450, height=150, show_progress_l=True, show_btn_stop_l=True)
             catalog_ids = []
             for count, row_index in enumerate(row_indexes):
                 if row_index < 0:
@@ -1534,7 +1531,6 @@ class UEVMGui(tk.Tk):
                     continue
                 tags_message = ''
                 row_data = data_table.get_row(row_index, return_as_dict=True)
-                marketplace_url = row_data['Url']
                 try:
                     catalog_ids.append(row_data['Catalog itemid'])
                 except KeyError:
@@ -1542,6 +1538,7 @@ class UEVMGui(tk.Tk):
                 """
                 # grab data using the uc browser
                 # !!! does not work with the FAB marketplace due to captcha (even with the uc_browser) !!               
+                marketplace_url = row_data['Url']
                 asset_slug_from_url = marketplace_url.split('/')[-1]
                 # we keep UrlSlug here because it can arise from the scraped data
                 asset_slug_from_row = row_data.get('urlSlug', '') or row_data.get('Asset slug', '')
@@ -1777,13 +1774,13 @@ class UEVMGui(tk.Tk):
         if force_showing is None:
             force_showing = not self._frm_control.winfo_ismapped()
         if force_showing:
-            self._frm_control.pack(side=tk.RIGHT, fill=tk.BOTH)
+            self._frm_control.pack(side="right", fill="both")
             self._frm_toolbar.btn_toggle_controls.config(text=' Hide Actions')
-            # self._frm_toolbar.btn_toggle_options.config(state=tk.DISABLED)
+            # self._frm_toolbar.btn_toggle_options.config(state="disabled")
         else:
             self._frm_control.pack_forget()
             self._frm_toolbar.btn_toggle_controls.config(text='Show Actions')
-            # self._frm_toolbar.btn_toggle_options.config(state=tk.NORMAL)
+            # self._frm_toolbar.btn_toggle_options.config(state="normal")
 
     # noinspection DuplicatedCode
     def toggle_options_panel(self, force_showing: bool = None) -> None:
@@ -1795,15 +1792,15 @@ class UEVMGui(tk.Tk):
         if force_showing is None:
             force_showing = not self._frm_option.winfo_ismapped()
         if force_showing:
-            self._frm_option.pack(side=tk.RIGHT, fill=tk.BOTH)
+            self._frm_option.pack(side="right", fill="both")
             self._frm_toolbar.btn_toggle_options.config(text=' Hide Options')
             gui_g.s.read_config_properties(update_from_config_file=True)
             self._frm_option.refresh_widgets()
-            # self._frm_toolbar.btn_toggle_controls.config(state=tk.DISABLED)
+            # self._frm_toolbar.btn_toggle_controls.config(state="disabled")
         else:
             self._frm_option.pack_forget()
             self._frm_toolbar.btn_toggle_options.config(text='Show Options')
-            # self._frm_toolbar.btn_toggle_controls.config(state=tk.NORMAL)
+            # self._frm_toolbar.btn_toggle_controls.config(state="normal")
 
     def update_controls_state(self, update_title=False) -> None:
         """
@@ -1912,7 +1909,7 @@ class UEVMGui(tk.Tk):
         """
 
         def _add_text(text: str, tag: str = ''):
-            self._frm_control.txt_info.insert(tk.END, text, tag, '\n')
+            self._frm_control.txt_info.insert("end", text, tag, '\n')
 
         if self._frm_control is None:
             return
@@ -1920,7 +1917,7 @@ class UEVMGui(tk.Tk):
         # we use tags to color the text
         text_box.tag_configure('blue', foreground='blue')
         text_box.tag_configure('orange', foreground='orange')
-        text_box.delete('1.0', tk.END)
+        text_box.delete('1.0', "end")
 
         data_table = self.editable_table  # shortcut
         df = data_table.get_data(df_type=DataFrameUsed.UNFILTERED)
@@ -2009,12 +2006,12 @@ class UEVMGui(tk.Tk):
         if gui_g.WindowsRef.display_content is not None:
             self.logger.info('A UEVM command is already running, please wait for it to finish.')
             gui_g.WindowsRef.display_content.set_focus()
-            return 0,''
+            return 0, ''
         if not command_name:
-            return 0,''
+            return 0, ''
         if gui_g.UEVM_cli_ref is None:
             gui_f.from_cli_only_message()
-            return 0,''
+            return 0, ''
         row_index = self.editable_table.get_selected_row_fixed()
         app_name = self.editable_table.get_cell(row_index, self.editable_table.get_col_index('Asset_id')) if row_index is not None else ''
 

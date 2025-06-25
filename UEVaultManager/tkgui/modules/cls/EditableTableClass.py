@@ -88,12 +88,12 @@ class EditableTable(Table):
         self._edit_row_entries = None
         self._edit_row_number: int = -1
         self._edit_cell_window = None
-        self._edit_cell_row_numbers: [int] = []
+        self._edit_cell_row_numbers: list[int] = []
         self._edit_cell_col_index: int = -1
         self._edit_cell_widget = None
         self._dftype_for_coloring = DataFrameUsed.MODEL  # type of dataframe used for coloring
         self._is_scanning = False  # True when a folders scan is in progress
-        self._errors: [str] = []
+        self._errors: list[str] = []
         self._current_page: int = 1
         self._current_page_saved: int = 1
         self._is_filtered: bool = False
@@ -2053,7 +2053,7 @@ class EditableTable(Table):
         # get and display the cell data
         col_name = self.get_col_name(col_index)
         label = gui_t.get_label_for_field(col_name)
-        ttk.Label(edit_cell_window.frm_content, text=label).pack(side=tk.LEFT)
+        ttk.Label(edit_cell_window.frm_content, text=label).pack(side="left")
         cell_value_str = str(cell_value) if (cell_value not in gui_g.s.cell_is_nan_list) else ''
         if gui_t.is_from_type(col_name, [gui_t.CSVFieldType.TEXT]):
             widget = ExtendedText(edit_cell_window.frm_content, tag=col_name, height=3)
@@ -2493,6 +2493,6 @@ class EditableTable(Table):
         row = self.currentrow
         gui_g.WindowsRef.uevm_gui.scrap_asset(row_numbers=[row])
 
-    def get_errors(self) -> [str]:
+    def get_errors(self) -> list[str]:
         """ Return the list of errors. """
         return self._errors

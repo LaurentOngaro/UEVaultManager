@@ -1277,7 +1277,7 @@ class UEAssetScraper:
         self._log(message)
         return is_ok
 
-    def pop_last_scraped_data(self) -> []:
+    def pop_last_scraped_data(self) -> list:
         """
         Pop the last scraped data from the scraped_data property.
         :return: last scraped data.
