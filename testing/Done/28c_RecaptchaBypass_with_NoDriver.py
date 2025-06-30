@@ -1,5 +1,11 @@
 # coding=utf-8
 """
+AFTER 2025:
+TESTED: This script DOES NOT work as expected.
+The browser is visible , the page is loaded, the recaptcha is NOT bypassed and the text 'Ninja Combat' is NOT found
+
+
+BEFORE 2025:
 TESTED: This script works as expected.
 The browser is visible , the page is loaded, the recaptcha is bypassed and the text 'Ninja Combat' is found
 TIME TO LOAD THE PAGE: 2 seconds
@@ -38,7 +44,12 @@ params['browser_args'] = [
     f'--window-size={window_width},{window_height}',  # set the initial size of the window
     f'--window-position={window_left},{window_top}',  # set the initial position of the window
     '--window-name="UndetectedChrome"',  # set the name of the window
-    '--no-first-run', '--no-default-browser-check', '--no-experiments', '--mute-audio', '--enable-gpu', '--disable-extensions',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--no-experiments',
+    '--mute-audio',
+    '--enable-gpu',
+    '--disable-extensions',
     # next options have been tested and are OK
     #'--start-maximized', # debug only
     #'--incognito',
@@ -53,7 +64,7 @@ params['browser_args'] = [
 params["content"] = ""
 
 
-async def uc_get_content(url, params):
+async def uc_get_content(url, params={}):
     browser = await uc.start(**params)
     page = await browser.get(url)
     await page.activate()
@@ -63,7 +74,7 @@ async def uc_get_content(url, params):
     params["content"] = await page.get_content()
 
 
-uc.loop().run_until_complete(uc_get_content(url))
+uc.loop().run_until_complete(uc_get_content(url, params))
 
 page_content = params["content"]
 # print(page_content)
