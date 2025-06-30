@@ -133,6 +133,8 @@ class GUISettings:
             'UE Online Learning', 'Visual Effects', 'Weapons', 'local/Asset', 'local/Manifest', 'local/Plugin', self.missing_category
         ]
         self.notification_time = 10000  # time in ms to keep notification window on screen
+        self.scrap_using_browser = True  # use the UC browser to scrape data from the marketplace
+        self.skip_owned_assets_check = True  # speed up the starting process by skiping the check for owned assets when starts. For debug purpose only
 
         # ttkbootstrap themes:
         # light themes : "cosmo", "flatly", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"
@@ -292,6 +294,9 @@ class GUISettings:
     def debug_mode(self, value):
         """ Setter for debug_mode """
         self.config_vars['debug_mode'] = value
+        # does not skip the owned assets checks if debug is disabled
+        if not value:
+            self.skip_owned_assets_check = False
 
     @property
     def never_update_data_files(self) -> bool:
@@ -737,7 +742,7 @@ class GUISettings:
             },
             'testing_switch': {
                 'comment':
-                'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviours whithout quitting.',
+                'DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviors without quitting.',
                 'value': 0
             },
         }

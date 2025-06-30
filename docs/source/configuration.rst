@@ -124,7 +124,7 @@ This is an example of this file content and the settings you can change:
   ;DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Column name to sort the assets from the database followed by ASC or DESC (optional).
   ;assets_order_col = asset_id ASC
   assets_order_col = date_added DESC
-  ;DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviours whithout quitting.
+  ;DEV ONLY. NO CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING. Value that can be changed in live to switch some behaviors without quitting.
   testing_switch = 0
 
 
