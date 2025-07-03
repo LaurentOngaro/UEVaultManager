@@ -21,12 +21,9 @@ import nodriver as uc
 import time
 import os
 
-url = "https://www.unrealengine.com/marketplace/en-US/product/ninja-combat"
+url = "https://www.fab.com/{locale}/search?q=ninja-combat"
 window_width = 1024
 window_height = 768
-# note:  the window position could be OUTSIDE the viewable area and its works !!
-window_left = -window_width
-window_top = -window_height
 window_left = 0
 window_top = 0
 

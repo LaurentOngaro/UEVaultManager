@@ -1,0 +1,12 @@
+{
+  "title": "Sorry, we couldn’t find that page.",
+  "price": "Erreur prix: Message: invalid selector: An invalid or illegal selector was specified\n  (Session info: chrome=137.0.7151.69); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalid-selector-exception\nStacktrace:\n\tGetHandleVerifier [0x0x7ff66e37cda5+78885]\n\tGetHandleVerifier [0x0x7ff66e37ce00+78976]\n\t(No symbol) [0x0x7ff66e139bca]\n\t(No symbol) [0x0x7ff66e1415bd]\n\t(No symbol) [0x0x7ff66e14460c]\n\t(No symbol) [0x0x7ff66e1446df]\n\t(No symbol) [0x0x7ff66e190017]\n\t(No symbol) [0x0x7ff66e190a1c]\n\t(No symbol) [0x0x7ff66e1e4467]\n\t(No symbol) [0x0x7ff66e1b8bcf]\n\t(No symbol) [0x0x7ff66e1e122f]\n\t(No symbol) [0x0x7ff66e1b8963]\n\t(No symbol) [0x0x7ff66e1816b1]\n\t(No symbol) [0x0x7ff66e182443]\n\tGetHandleVerifier [0x0x7ff66e654eed+3061101]\n\tGetHandleVerifier [0x0x7ff66e64f33d+3037629]\n\tGetHandleVerifier [0x0x7ff66e66e592+3165202]\n\tGetHandleVerifier [0x0x7ff66e39730e+186766]\n\tGetHandleVerifier [0x0x7ff66e39eb3f+217535]\n\tGetHandleVerifier [0x0x7ff66e3859b4+114740]\n\tGetHandleVerifier [0x0x7ff66e385b69+115177]\n\tGetHandleVerifier [0x0x7ff66e36c368+10728]\n\tBaseThreadInitThunk [0x0x7ff84e8ae8d7+23]\n\tRtlUserThreadStart [0x0x7ff84fafc34c+44]\n",
+  "description": "Description non trouvée",
+  "rating": "Rating non trouvé",
+  "metadata": {},
+  "images": [
+    "https://static.fab.com/static/builds/web/dist/frontend/assets/images/common/illustrations/states/f15b484086dfb603586d6f2fc79d48e6-v1.webp"
+  ],
+  "url": "https://www.fab.com/listings/animation-starter-pack",
+  "slug": "animation-starter-pack"
+}
